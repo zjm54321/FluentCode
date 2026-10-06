@@ -416,7 +416,8 @@ public sealed partial class OpenCodeClient : IDisposable
         };
     }
 
-    private static Uri NormalizeBaseUri(string baseUrl)
+    /// <summary>Pure canonical base URI used by the transport and endpoint identity; preserves path semantics.</summary>
+    public static Uri NormalizeBaseUri(string baseUrl)
     {
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || !uri.IsWellFormedOriginalString())
         {

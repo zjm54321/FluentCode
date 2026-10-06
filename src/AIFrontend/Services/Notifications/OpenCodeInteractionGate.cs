@@ -16,7 +16,7 @@ public sealed class OpenCodeInteractionGate
     {
         internal readonly SemaphoreSlim Mutex = new(1, 1);
         internal readonly Dictionary<(string, NotificationNavigationKind), NotificationInteractionStatus> Results = new();
-        internal bool SessionUnknown;
+        internal (string RequestId, NotificationNavigationKind Kind)? SessionUnknown;
     }
 
     public async Task<Lease> EnterAsync(string endpointIdentity, string sessionId, CancellationToken cancellationToken = default)
@@ -46,7 +46,7 @@ public sealed class OpenCodeInteractionGate
 
         public NotificationInteractionStatus? GetProtectionStatus(string requestId, NotificationNavigationKind kind)
         {
-            if (State.SessionUnknown) return NotificationInteractionStatus.OutcomeUnknown;
+            if (State.SessionUnknown is not null) return NotificationInteractionStatus.OutcomeUnknown;
             if (State.Results.TryGetValue((requestId, kind), out var status))
                 return status == NotificationInteractionStatus.Succeeded ? NotificationInteractionStatus.Duplicate : status;
             return State.Results.Count >= 256 ? NotificationInteractionStatus.NeedsApp : null;
@@ -54,14 +54,18 @@ public sealed class OpenCodeInteractionGate
 
         public bool CanSubmit(string requestId, NotificationNavigationKind kind) => GetProtectionStatus(requestId, kind) is null;
 
+        public (string RequestId, NotificationNavigationKind Kind)? GetSessionProtection() => State.SessionUnknown;
+
         /// <summary>Call immediately before the one POST/DELETE, after trusted fresh-state validation.</summary>
         public void BeginMutation(string requestId, NotificationNavigationKind kind, bool affectsSession = false)
         {
+            if (affectsSession && kind != NotificationNavigationKind.Permission)
+                throw new InvalidOperationException("Only a Permission reject can protect the whole session.");
             if (_mutation is not null || !CanSubmit(requestId, kind)) throw new InvalidOperationException("Request protected; explicit reconciliation required.");
             State.Results[(requestId, kind)] = NotificationInteractionStatus.OutcomeUnknown;
             _mutation = (requestId, kind);
             _affectsSession = affectsSession;
-            if (affectsSession) State.SessionUnknown = true;
+            if (affectsSession) State.SessionUnknown = (requestId, kind);
         }
 
         public void CompleteMutation(NotificationInteractionStatus status)
@@ -72,7 +76,8 @@ public sealed class OpenCodeInteractionGate
             else if (status == NotificationInteractionStatus.Failed)
                 State.Results.Remove(key); // Only a definitive rejection, never timeout/transport/5xx.
             else status = NotificationInteractionStatus.OutcomeUnknown;
-            if (_affectsSession && status != NotificationInteractionStatus.OutcomeUnknown) State.SessionUnknown = false;
+            if (_affectsSession && status != NotificationInteractionStatus.OutcomeUnknown && State.SessionUnknown == key)
+                State.SessionUnknown = null;
             _mutation = null;
         }
 
@@ -82,13 +87,35 @@ public sealed class OpenCodeInteractionGate
         public void ResolveUnknown(string requestId, NotificationNavigationKind kind, bool allowRetry, bool affectsSession = false)
         {
             if (_mutation is not null) throw new InvalidOperationException("Mutation in progress.");
+            if (State.SessionUnknown is not null)
+            {
+                if (!affectsSession) throw new InvalidOperationException("Whole-session reconciliation required.");
+                ResolveSessionUnknown(requestId, kind, allowRetry); // The caller's bool cannot bypass source-key validation.
+                return;
+            }
             if (State.Results.TryGetValue((requestId, kind), out var result) && result == NotificationInteractionStatus.OutcomeUnknown)
             {
-                if (State.SessionUnknown && !affectsSession) throw new InvalidOperationException("Whole-session reconciliation required.");
                 if (allowRetry) State.Results.Remove((requestId, kind));
                 else State.Results[(requestId, kind)] = NotificationInteractionStatus.Expired;
-                if (affectsSession) State.SessionUnknown = false;
             }
+        }
+
+        /// <summary>
+        /// Explicit user reconciliation after a complete fresh permission list AND confirmation of possible
+        /// whole-session effects. The original reject may no longer be pending; pass GetSessionProtection's
+        /// exact source key. Never poll to unlock. Changes only that source result, not other unknown requests.
+        /// </summary>
+        public void ResolveSessionUnknown(string requestId, NotificationNavigationKind kind, bool allowRetry)
+        {
+            if (_mutation is not null) throw new InvalidOperationException("Mutation in progress.");
+            var state = State;
+            var key = (requestId, kind);
+            if (kind != NotificationNavigationKind.Permission || state.SessionUnknown != key
+                || !state.Results.TryGetValue(key, out var result) || result != NotificationInteractionStatus.OutcomeUnknown)
+                throw new InvalidOperationException("Session protection source mismatch or no unknown reject to reconcile.");
+            if (allowRetry) state.Results.Remove(key);
+            else state.Results[key] = NotificationInteractionStatus.Expired;
+            state.SessionUnknown = null;
         }
 
         public void Dispose()

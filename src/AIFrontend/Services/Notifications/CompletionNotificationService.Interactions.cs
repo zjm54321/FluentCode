@@ -15,14 +15,14 @@ public sealed partial class CompletionNotificationService
 {
     private readonly NotificationInteractionCoordinator _interactions = new();
     public OpenCodeInteractionGate InteractionGate => OpenCodeInteractionGate.Shared;
-    private readonly Dictionary<string, NotificationNavigationTarget> _completionTargets = new(StringComparer.Ordinal);
     public event EventHandler<NotificationNavigationEventArgs>? NavigationRequested;
 
     public void InvalidateOpenCodeSource(string endpointIdentity)
     {
         _interactions.InvalidateOpenCodeSource(endpointIdentity);
         lock (_gate)
-            foreach (var id in _completionTargets.Where(p => p.Value.EndpointIdentity == endpointIdentity).Select(p => p.Key).ToArray())
+            foreach (var id in _completionTargets.Where(p => p.Value.Source == NotificationSource.OpenCode
+                && p.Value.Target?.EndpointIdentity == endpointIdentity).Select(p => p.Key).ToArray())
                 _completionTargets.Remove(id);
     }
 
@@ -54,14 +54,14 @@ public sealed partial class CompletionNotificationService
         string sessionId, string requestId, bool form, CancellationToken cancellationToken)
     {
         lock (_gate)
-            if (_status != NotificationServiceStatus.Initialized)
+            if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized)
                 return new(NotificationInteractionStatus.Unavailable, "通知服务未就绪；未请求后端。");
         var prepared = await _interactions.PrepareAsync(source, sessionId, requestId, form, cancellationToken).ConfigureAwait(false);
         prepared = prepared with { Result = prepared.Result with { Kind = form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission } };
         if (prepared.Plan is not { } plan) return prepared.Result;
         lock (_gate)
         {
-            if (_status != NotificationServiceStatus.Initialized || cancellationToken.IsCancellationRequested || !_interactions.IsEligible(plan))
+            if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized || cancellationToken.IsCancellationRequested || !_interactions.IsEligible(plan))
             {
                 _interactions.Retire(plan);
                 return prepared.Result with { Status = NotificationInteractionStatus.Cancelled, Detail = "通知提交已取消。" };
@@ -114,7 +114,7 @@ public sealed partial class CompletionNotificationService
     /// Future single-instance activation redirection may call this boundary. It trusts ONLY live nonce bindings.
     /// A cold-start/missing registry returns NeedsApp; all exceptions are contained, so the callback can discard the Task.
     /// </summary>
-    public async Task<NotificationInteractionResult> HandleInteractionActivationAsync(
+    private async Task<NotificationInteractionResult> HandleInteractionCoreAsync(
         IReadOnlyDictionary<string, string> arguments, IReadOnlyDictionary<string, string> userInput,
         CancellationToken cancellationToken = default)
     {
@@ -129,7 +129,7 @@ public sealed partial class CompletionNotificationService
                 var argumentSnapshot = arguments.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
                 var inputSnapshot = userInput.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
                 lock (_gate)
-                    if (_status != NotificationServiceStatus.Initialized)
+                    if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized)
                         return new(NotificationInteractionStatus.NeedsApp, "服务未就绪或已关闭，请在应用重新验证。");
                 result = await _interactions.ActivateAsync(argumentSnapshot, inputSnapshot, cancellationToken).ConfigureAwait(false);
             }
@@ -204,12 +204,11 @@ public sealed partial class CompletionNotificationService
                     return [NotificationDispatchResult.Unavailable(NotificationSource.OpenCode, string.Empty, "observation capacity reached")];
                 seen.Add(message.Id!);
                 if (isHistoricalSnapshot || message.Outcome != "succeeded") continue;
-                // Tuple encoding is unambiguous; the toast gets only an opaque digest, not endpoint/session metadata.
+                // Tuple digest is only the internal dedupe key; the toast gets a fresh random token.
                 string requestId = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
                     new[] { endpointIdentity, sessionId, message.Id! })));
-                _completionTargets[requestId] = new(NotificationSource.OpenCode, endpointIdentity, sessionId,
-                    message.Id!, NotificationNavigationKind.Completion);
-                results.Add(NotifyCompletedCore(NotificationSource.OpenCode, requestId));
+                results.Add(NotifyCompletedCore(NotificationSource.OpenCode, requestId,
+                    new(NotificationSource.OpenCode, endpointIdentity, sessionId, message.Id!, NotificationNavigationKind.Completion)));
             }
         }
         return results;

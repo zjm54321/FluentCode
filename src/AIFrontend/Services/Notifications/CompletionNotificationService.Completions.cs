@@ -1,0 +1,113 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
+
+namespace AIFrontend.Services.Notifications;
+
+public sealed partial class CompletionNotificationService
+{
+    /// <summary>Local routing sentinel, not a URL or a backend/client selector.</summary>
+    public const string LocalCompletionEndpointIdentity = "local";
+    public static readonly TimeSpan CompletionNavigationLifetime = TimeSpan.FromMinutes(10);
+    public const int MaxCompletionNavigationEntries = 256;
+
+    private sealed record CompletionBinding(NotificationSource Source, string RequestId,
+        NotificationNavigationTarget? Target, DateTimeOffset ExpiresAt);
+    private readonly Dictionary<string, CompletionBinding> _completionTargets = new(StringComparer.Ordinal);
+    private readonly TimeProvider _completionClock;
+    private readonly Action<NotificationSource, string> _submitCompletion;
+
+    public CompletionNotificationService()
+    {
+        _completionClock = TimeProvider.System;
+        _submitCompletion = ShowCompletion;
+    }
+
+    // Offline delivery seam only. Production always uses the public constructor + Initialize/Register.
+    // Real service/coordinator code remains under test; no fake WinRT projection or reflection is needed.
+    internal CompletionNotificationService(TimeProvider clock, Action<NotificationSource, string> submitCompletion)
+    {
+        _completionClock = clock ?? throw new ArgumentNullException(nameof(clock));
+        _submitCompletion = submitCompletion ?? throw new ArgumentNullException(nameof(submitCompletion));
+        _status = NotificationServiceStatus.Initialized;
+    }
+
+    /// <summary>Trusted Local success event only. Retains SessionId in memory, never in toast arguments.</summary>
+    public NotificationDispatchResult NotifyCompleted(NotificationSource source, string requestId, string sessionId)
+    {
+        if (source != NotificationSource.LocalApi || !NotificationArgumentCodec.IsValidRequestId(sessionId))
+            return NotificationDispatchResult.Failed(source, requestId, "invalid Local completion routing");
+        return NotifyCompletedCore(source, requestId, new(source, LocalCompletionEndpointIdentity,
+            sessionId, requestId, NotificationNavigationKind.Completion));
+    }
+
+    private static void ShowCompletion(NotificationSource source, string token)
+    {
+        var notification = new AppNotificationBuilder()
+            .AddArgument(NotificationArgumentCodec.ActionKey, NotificationArgumentCodec.CompletionActionValue)
+            .AddArgument(NotificationArgumentCodec.SourceKey, NotificationSourceLabels.GetArgumentTag(source))
+            .AddArgument(NotificationArgumentCodec.RequestIdKey, token)
+            .AddText(NotificationSourceLabels.GetDisplayName(source))
+            .AddText(BodyText)
+            .BuildNotification();
+        AppNotificationManager.Default.Show(notification);
+    }
+
+    /// <summary>
+    /// Shared native/redirected completion boundary. Only successfully submitted, live runtime bindings
+    /// can navigate. Arguments never select a session, endpoint or client; this method cannot POST.
+    /// Repeated valid clicks raise NavigationRequested again. Null means no complete trusted target.
+    /// </summary>
+    public NotificationNavigationTarget? HandleCompletionActivation(IReadOnlyDictionary<string, string> arguments,
+        IReadOnlyDictionary<string, string> userInput)
+    {
+        lock (_gate)
+        {
+            PruneCompletionTargetsLocked();
+            if (_status == NotificationServiceStatus.Initialized && !_activationDisposing
+                && arguments is not null && userInput is not null && userInput.Count == 0 && arguments.Count == 3
+                && arguments.TryGetValue(NotificationArgumentCodec.ActionKey, out var action)
+                && action == NotificationArgumentCodec.CompletionActionValue
+                && arguments.TryGetValue(NotificationArgumentCodec.SourceKey, out var source)
+                && arguments.TryGetValue(NotificationArgumentCodec.RequestIdKey, out var token)
+                && token is { Length: 64 } && _completionTargets.TryGetValue(token, out var binding)
+                && source == NotificationSourceLabels.GetArgumentTag(binding.Source)
+                && (binding.Source != NotificationSource.OpenCode || !_interactionsSuspended))
+            {
+                // Both source and complete target come from the committed entry, never from raw activation.
+                if (binding.Target is { } target) RaiseNavigationTarget(target);
+                RaiseNavigation(new NotificationActivationInfo(true, binding.Source, binding.RequestId, string.Empty));
+                return binding.Target; // The legacy two-argument API may focus, but cannot invent a session.
+            }
+            PublishInteraction(new(NotificationInteractionStatus.NeedsApp,
+                "通知未知、过期或来源已改变；请在应用选择会话。本次激活未提交任何决定。"));
+            return null;
+        }
+    }
+
+    private void PruneCompletionTargetsLocked()
+    {
+        var now = _completionClock.GetUtcNow();
+        foreach (var token in _completionTargets.Where(p => p.Value.ExpiresAt <= now).Select(p => p.Key).ToArray())
+            _completionTargets.Remove(token);
+    }
+
+    private void CommitCompletionTargetLocked(string token, NotificationSource source, string requestId,
+        NotificationNavigationTarget? target)
+    {
+        PruneCompletionTargetsLocked();
+        while (_completionTargets.Count >= MaxCompletionNavigationEntries)
+            _completionTargets.Remove(_completionTargets.MinBy(p => p.Value.ExpiresAt).Key);
+        _completionTargets.Add(token, new(source, requestId, target, _completionClock.GetUtcNow() + CompletionNavigationLifetime));
+    }
+
+    private string CreateCompletionTokenLocked()
+    {
+        string token;
+        do { token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)); } while (_completionTargets.ContainsKey(token));
+        return token;
+    }
+}

@@ -190,10 +190,15 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
                     result = Result(entry, NotificationInteractionStatus.NeedsApp, "表单字段或范围已变化，请在应用重新验证。");
                 else
                 {
-                    CheckBeforeMutation(entry, linked.Token);
-                    lease.BeginMutation(entry.Request, kind);
-                    mutationStarted = true;
-                    await client.ReplyFormAsync(entry.Session, fresh, answer!, linked.Token).ConfigureAwait(false);
+                    Task mutation;
+                    lock (_gate)
+                    {
+                        CheckBeforeMutation(entry, linked.Token);
+                        lease.BeginMutation(entry.Request, kind);
+                        mutationStarted = true;
+                        mutation = client.ReplyFormAsync(entry.Session, fresh, answer!, linked.Token);
+                    }
+                    await mutation.ConfigureAwait(false);
                     result = Result(entry, NotificationInteractionStatus.Succeeded, "服务器已接受回答（HTTP 204）。");
                 }
             }
@@ -211,10 +216,15 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
                         ActionKind.Reject => OpenCodePermissionDecisions.Reject,
                         _ => throw new InvalidOperationException()
                     };
-                    CheckBeforeMutation(entry, linked.Token);
-                    lease.BeginMutation(entry.Request, kind, action == ActionKind.Reject);
-                    mutationStarted = true;
-                    await client.ReplyPermissionAsync(entry.Session, fresh, decision, cancellationToken: linked.Token).ConfigureAwait(false);
+                    Task mutation;
+                    lock (_gate)
+                    {
+                        CheckBeforeMutation(entry, linked.Token);
+                        lease.BeginMutation(entry.Request, kind, action == ActionKind.Reject);
+                        mutationStarted = true;
+                        mutation = client.ReplyPermissionAsync(entry.Session, fresh, decision, cancellationToken: linked.Token);
+                    }
+                    await mutation.ConfigureAwait(false);
                     result = Result(entry, NotificationInteractionStatus.Succeeded, "服务器已接受权限决定（HTTP 204）。");
                 }
             }

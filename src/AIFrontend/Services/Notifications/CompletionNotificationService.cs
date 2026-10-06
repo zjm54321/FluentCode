@@ -19,7 +19,7 @@ namespace AIFrontend.Services.Notifications;
 /// <item><description>按 (source, requestId) 去重：运行期有界缓存（窗口 <see cref="DedupeWindow"/>、
 /// 上限 <see cref="MaxDedupeEntries"/> 条），不持久化——进程重启后同一 requestId 可再次通知。</description></item>
 /// <item><description>通知内容固定：首行（标题）= 来源展示名（OpenCode / Local API），
-/// 正文固定为 <see cref="BodyText"/>；参数仅含 action / source / requestId，
+    /// 正文固定为 <see cref="BodyText"/>；参数仅含 action / source / requestId（随机完成 token），
 /// 不含聊天内容或密钥。</description></item>
 /// <item><description>系统通过 <see cref="AppNotificationManager.NotificationInvoked"/> 在后台线程回调：
 /// 本服务不操作 UI、不开窗口；交互只解析 nonce，通过运行期受信 registry 再验证后执行。
@@ -164,7 +164,8 @@ public sealed partial class CompletionNotificationService : IDisposable
         return NotifyCompletedCore(source, requestId);
     }
 
-    private NotificationDispatchResult NotifyCompletedCore(NotificationSource source, string requestId)
+    private NotificationDispatchResult NotifyCompletedCore(NotificationSource source, string requestId,
+        NotificationNavigationTarget? target = null)
     {
         if (source is not (NotificationSource.OpenCode or NotificationSource.LocalApi))
         {
@@ -181,45 +182,30 @@ public sealed partial class CompletionNotificationService : IDisposable
 
         lock (_gate)
         {
-            if (_status is not NotificationServiceStatus.Initialized)
+            if (_status is not NotificationServiceStatus.Initialized || _activationDisposing
+                || (source == NotificationSource.OpenCode && _interactionsSuspended))
             {
                 return NotificationDispatchResult.Unavailable(source, requestId, $"service status: {_status}");
             }
 
-            if (!TryReserveLocked(source, requestId, DateTimeOffset.UtcNow))
+            if (!TryReserveLocked(source, requestId, _completionClock.GetUtcNow()))
             {
                 return NotificationDispatchResult.Duplicate(source, requestId);
             }
-        }
-
-        try
-        {
-            AppNotification notification = new AppNotificationBuilder()
-                .AddArgument(NotificationArgumentCodec.ActionKey, NotificationArgumentCodec.CompletionActionValue)
-                .AddArgument(NotificationArgumentCodec.SourceKey, NotificationSourceLabels.GetArgumentTag(source))
-                .AddArgument(NotificationArgumentCodec.RequestIdKey, requestId)
-                .AddText(NotificationSourceLabels.GetDisplayName(source))
-                .AddText(BodyText)
-                .BuildNotification();
-
-            lock (_gate)
+            try
             {
-                if (_status != NotificationServiceStatus.Initialized)
-                    return NotificationDispatchResult.Unavailable(source, requestId, "notification service stopped");
-                AppNotificationManager.Default.Show(notification);
+                string token = CreateCompletionTokenLocked();
+                _submitCompletion(source, token);
+                // Never install a navigable target before successful submission. The same lock excludes
+                // invalidation/disposal during Show + commit and prevents duplicate submissions/rebinding.
+                CommitCompletionTargetLocked(token, source, requestId, target);
+                return NotificationDispatchResult.Submitted(source, requestId);
             }
-
-            return NotificationDispatchResult.Submitted(source, requestId);
-        }
-        catch (Exception)
-        {
-            // 构建或 Show 失败：释放去重预约，允许上游在下次明确成功时重试；不向聊天抛出。
-            lock (_gate)
+            catch (Exception)
             {
                 _recent.Remove((source, requestId));
+                return NotificationDispatchResult.Failed(source, requestId, "notification submission failed");
             }
-
-            return NotificationDispatchResult.Failed(source, requestId, "notification submission failed");
         }
     }
 
@@ -233,6 +219,10 @@ public sealed partial class CompletionNotificationService : IDisposable
     /// </remarks>
     public void Dispose()
     {
+        lock (_gate) _activationDisposing = true;
+        // Legacy synchronous cleanup still fences/cancels; async owners must await DisposeAsync/drain
+        // before disposing any client. Never synchronously wait for an activation on the HWND thread.
+        _ = SuspendInteractionsAsync();
         lock (_gate)
         lock (RegistrationGate)
         {
@@ -301,14 +291,8 @@ public sealed partial class CompletionNotificationService : IDisposable
                     new Dictionary<string, string>(args.UserInput));
                 return;
             }
-            var parsed = NotificationArgumentCodec.Parse(args.Argument);
-            NotificationNavigationTarget? target = null;
-            lock (_gate)
-                if (parsed.IsCompletionAction && parsed.Source == NotificationSource.OpenCode && parsed.RequestId is { } id)
-                    _completionTargets.TryGetValue(id, out target);
-            if (target is not null) RaiseNavigationTarget(target);
-            RaiseNavigation(new NotificationActivationInfo(parsed.IsCompletionAction, parsed.Source,
-                parsed.RequestId, string.Empty)); // Never forward untrusted raw arguments for logging.
+            HandleCompletionActivation(new Dictionary<string, string>(args.Arguments),
+                new Dictionary<string, string>(args.UserInput));
         }
         catch
         {
