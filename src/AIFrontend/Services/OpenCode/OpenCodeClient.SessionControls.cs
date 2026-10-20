@@ -98,7 +98,7 @@ public sealed partial class OpenCodeClient
     }
 
     private async Task<JsonDocument?> StartSessionControlAsync(string sessionId, string suffix, HttpMethod method,
-        object? body, int expectedStatus, SessionControlKind kind, string? messageId, Func<Action, bool> tryStart, CancellationToken ct)
+        object? body, int expectedStatus, SessionControlKind kind, string? messageId, Func<Action, bool> tryStart, CancellationToken ct, string? directory = null)
     {
         ArgumentNullException.ThrowIfNull(tryStart);
         // Validate and serialize before entering the synchronous ownership/lease/source start guard.
@@ -111,7 +111,7 @@ public sealed partial class OpenCodeClient
             if (invoked) throw new InvalidOperationException("Session control starter invoked twice.");
             invoked = true;
             pending = SendSessionControlAsync(method, "api/session/" + Uri.EscapeDataString(sessionId) + suffix,
-                null, content, expectedStatus, kind, sessionId, messageId, ct);
+                null, content, expectedStatus, kind, sessionId, messageId, ct, directory);
         });
         if (!permitted || pending is null) throw new OperationCanceledException("Session control start rejected.", ct);
         return await pending.ConfigureAwait(false);
@@ -121,7 +121,7 @@ public sealed partial class OpenCodeClient
 
     private async Task<JsonDocument?> SendSessionControlAsync(HttpMethod method, string path,
         IReadOnlyList<KeyValuePair<string, string>>? query, HttpContent? content, int expectedStatus,
-        SessionControlKind? mutation, string? sessionId, string? messageId, CancellationToken ct)
+        SessionControlKind? mutation, string? sessionId, string? messageId, CancellationToken ct, string? directory = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(_timeout);
@@ -131,10 +131,16 @@ public sealed partial class OpenCodeClient
             int status = (int)response.StatusCode;
             if (!response.IsSuccessStatusCode)
             {
+                // The documented Basic-auth middleware can reject before the route with a plain-text
+                // 401 challenge rather than an API JSON error. This is a pre-effect interrupt rejection.
+                if (mutation is SessionControlKind.Interrupt or SessionControlKind.Background or SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot && status == 401)
+                    foreach (var challenge in response.Headers.WwwAuthenticate)
+                        if (string.Equals(challenge.Scheme, "Basic", StringComparison.OrdinalIgnoreCase))
+                            throw new OpenCodeSessionControlException(status, SessionControlErrorKind.Unauthorized, true);
                 // Only this dedicated path projects a bounded allowlist of error identity fields.
                 // Existing clients' no-error-body policy is unchanged. No server message is retained.
                 using var error = await ReadControlBodyAsync(response.Content, 16 * 1024, timeout.Token).ConfigureAwait(false);
-                throw ControlError(status, error.RootElement, mutation, sessionId, messageId);
+                throw ControlError(status, error.RootElement, mutation, sessionId, messageId, directory);
             }
             if (status != expectedStatus) throw SessionControlJson.Invalid();
             if (status == 204) return null; // Acceptance is independent of any later display GET.
@@ -163,7 +169,7 @@ public sealed partial class OpenCodeClient
     }
 
     private static OpenCodeSessionControlException ControlError(int status, JsonElement value,
-        SessionControlKind? mutation, string? sessionId, string? messageId)
+        SessionControlKind? mutation, string? sessionId, string? messageId, string? directory = null)
     {
         var kind = SessionControlErrorKind.Unclassified;
         bool verified = false;
@@ -177,6 +183,32 @@ public sealed partial class OpenCodeClient
             foreach (var property in value.EnumerateObject())
                 if (property.Name is not ("_tag" or "message" or "sessionID") && !(messageField && property.Name == "messageID")) return false;
             return true;
+        }
+        if (mutation is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot)
+        {
+            // Exact 2.0.32 management error schemas. No arbitrary fields or backend messages escape.
+            bool Keys(params string[] optional)
+            {
+                foreach (var property in value.EnumerateObject())
+                    if (property.Name is not ("_tag" or "message") && !System.Array.Exists(optional, key => key == property.Name)) return false;
+                return true;
+            }
+            bool NullableText(string key) => !value.TryGetProperty(key, out var field) || field.ValueKind is JsonValueKind.String or JsonValueKind.Null;
+            if (status == 400 && tag == "InvalidRequestError" && Keys("kind", "field") && NullableText("kind") && NullableText("field"))
+                return new(status, SessionControlErrorKind.InvalidRequest, true);
+            if (status == 401 && tag == "UnauthorizedError" && Keys()) return new(status, SessionControlErrorKind.Unauthorized, true);
+            if (status == 404 && tag == "SessionNotFoundError" && Keys("sessionID") && Matches("sessionID", sessionId))
+                return new(status, SessionControlErrorKind.SessionNotFound, true);
+            if (mutation == SessionControlKind.RenameRoot && status == 404 && tag == "LocationNotFoundError" && Keys("location")
+                && value.TryGetProperty("location", out var location) && location.ValueKind == JsonValueKind.Object)
+            {
+                SessionControlJson.Object(location);
+                bool exact = directory is not null;
+                foreach (var property in location.EnumerateObject()) if (property.Name != "directory") exact = false;
+                if (exact && location.TryGetProperty("directory", out var path) && path.ValueKind == JsonValueKind.String && path.GetString() == directory)
+                    return new(status, SessionControlErrorKind.LocationNotFound, true);
+            }
+            return new(status, SessionControlErrorKind.Unclassified, false);
         }
         if (status == 409 && tag == "SessionBusyError" && Shape(false) && Matches("sessionID", sessionId))
         {

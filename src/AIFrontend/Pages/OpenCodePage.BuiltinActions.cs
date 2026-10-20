@@ -376,7 +376,7 @@ public sealed partial class OpenCodePage
     partial void OnNativeSessionCreated(string sessionId, OpenCodeComposerBinding? binding, OpenCodeComposerToken? token);
 
     private async Task CreateNativeSessionAsync(OpenCodePageSource source, OpenCodeClient client,
-        Func<bool> canStart, Func<bool> ownsOperation, CancellationToken ct)
+        Func<bool> canStart, Func<bool> ownsOperation, CancellationToken ct, OpenCodeBlankDraftPreferences? preferences = null)
     {
         if (_newSessionOperation is not null) return;
         var operation = Guid.NewGuid();
@@ -387,10 +387,16 @@ public sealed partial class OpenCodePage
         {
             source.TryExecute(ct, () =>
             {
-                if (canStart()) pending = client.CreateSessionAsync(null, ct);
+                if (canStart())
+                {
+                    pending = preferences is null ? client.CreateSessionAsync(null, ct)
+                        : client.CreateSessionConfiguredAsync(preferences.Directory, preferences.Agent, preferences.Model, ct);
+                    if (preferences is not null) _blankCreationResults[(source.Identity, preferences.Draft)] = null;
+                }
             });
             if (pending is null) return;
             var session = await pending;
+            if (preferences is not null) _blankCreationResults[(source.Identity, preferences.Draft)] = session.Id;
             if (!ownsOperation() || source.IsRevoked || _newSessionOperation != operation) return;
             if (session.Id is { Length: > 0 } id)
             {
@@ -412,8 +418,10 @@ public sealed partial class OpenCodePage
                 }
             }
         }
-        catch (Exception)
+        catch (Exception error)
         {
+            if (preferences is not null && pending is not null && error is OpenCodeApiException { StatusCode: >= 400 and < 500 and not 408 })
+                _blankCreationResults.Remove((source.Identity, preferences.Draft)); // Known rejection permits an explicit corrected attempt.
             if (ownsOperation() && !source.IsRevoked)
                 ShowMessage(InfoBarSeverity.Warning, "创建会话未确认", pending is null
                     ? "未开始创建。" : "创建结果未确认；不会自动重试，请先检查会话列表。");

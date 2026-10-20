@@ -33,6 +33,8 @@
     <Page Include="Styles\**\*.xaml" />
     <Content Include="Assets\Brands\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\licenses\fluentui-system-icons-LICENSE.txt" Link="licenses\fluentui-system-icons-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\OpenCode\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="ThirdPartyNotices\OpenCode.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\Taskbar\**\*.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

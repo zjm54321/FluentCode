@@ -167,6 +167,17 @@ public sealed class SettingsService
         }
 
         AIFrontend.Services.Appearance.AppFontDefaults.Validate(settings.Fonts, errors);
+        if (settings.OpenCodeProjectDirectories is { } directories)
+        {
+            var keys = new HashSet<(string SourceId, string Directory)>();
+            foreach (var bookmark in directories)
+            {
+                if (bookmark is null || string.IsNullOrWhiteSpace(bookmark.SourceId) || string.IsNullOrWhiteSpace(bookmark.Directory))
+                    errors.Add("openCodeProjectDirectories 条目缺少 sourceId/directory");
+                else if (!keys.Add((bookmark.SourceId, bookmark.Directory)))
+                    errors.Add("openCodeProjectDirectories 含重复 sourceId/directory");
+            }
+        }
 
         if (settings.OpenCode is null)
         {

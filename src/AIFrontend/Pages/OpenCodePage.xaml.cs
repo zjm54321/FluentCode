@@ -165,6 +165,7 @@ public sealed partial class OpenCodePage : Page
         // 构造签名保留给既有宿主；本页不再用这两个服务读取设置或凭据（连接一律来自 App 发布的来源）。
         ArgumentNullException.ThrowIfNull(settingsService);
         ArgumentNullException.ThrowIfNull(secretStore);
+        _homeSettings = settingsService;
 
         this.InitializeComponent();
 
@@ -174,6 +175,7 @@ public sealed partial class OpenCodePage : Page
         MessageHost.Children.Add(_conversationView);
         InitializeAgentSelector();
         InitializeComposer();
+        InitializeHomePage();
         InitializeComposerOverlays();
         InitializeQuestionOverlay();
 
@@ -461,6 +463,7 @@ public sealed partial class OpenCodePage : Page
         _source = source;
         _sourceRevision = source.Revision;
         _client = client;
+        BeginHomeSource();
         StartEventSync();
         BindComposer();
         ShowWorkspace();
@@ -474,6 +477,7 @@ public sealed partial class OpenCodePage : Page
     /// </summary>
     private void InvalidateForSourceChange()
     {
+        ResetHomeSource();
         StopEventSync();
         _sourceGeneration++;
         ClearSessionReturnContext();
@@ -568,6 +572,7 @@ public sealed partial class OpenCodePage : Page
         // 刷新的旧首屏响应自此失效；仅当本次新首屏成功后才由 RestartSessionPagination 重建分页。
         var epoch = BeginSessionRefresh();
         RefreshSessionsButton.IsEnabled = false;
+        var homeReadAccepted = false;
 
         try
         {
@@ -629,6 +634,7 @@ public sealed partial class OpenCodePage : Page
 
             SetConnectionState(ConnectionState.Connected);
 
+            homeReadAccepted = true;
             var target = RebuildSessionList(response.Data ?? new List<OpenCodeSessionInfo>());
             _ = RefreshListedSessionStatusesAsync();
             RefreshSessionStateUi();
@@ -653,6 +659,8 @@ public sealed partial class OpenCodePage : Page
             if (_pageActive && epoch == _sessionListEpoch)
             {
                 RefreshSessionsButton.IsEnabled = true;
+                _homeSessionsMessage = homeReadAccepted ? null : "会话列表未能刷新；仅显示之前已加载的会话，可重试刷新。";
+                QueueHomeProjection();
             }
         }
     }
@@ -735,11 +743,11 @@ public sealed partial class OpenCodePage : Page
                 }
 
                 // 页面重新加载后（无会话级 CTS）需要重新拉取该会话的消息。
-                return _sessionCts is null ? selected : null;
+                return !_homeActive && _sessionCts is null ? selected : null;
             }
 
             // 空白“新会话”标签显示中：不自动选中（用户明确选择或创建后才进入会话）。
-            if (!_newSessionDraftActive &&
+            if (!_homeActive && !_newSessionDraftActive &&
                 SessionList.Items.Count > 0 &&
                 SessionList.Items[0] is ListViewItem { Tag: string firstId } &&
                 _sessionItems.TryGetValue(firstId, out var firstItem))
@@ -752,7 +760,7 @@ public sealed partial class OpenCodePage : Page
 
             // L2 跟进：没有可自动选中的会话（如首次启动零会话）→ 显示空白“新会话”标签，而不是旧空状态。
             // 用户明确关闭了空白标签（显示 NoOpenTabsPanel）时不自动重开；延后执行，不在列表重建中重入绑定。
-            if (!_newSessionDraftActive && _selectedSessionId is null && SessionList.Items.Count == 0 && !_noOpenTabsShown)
+            if (!_homeActive && !_newSessionDraftActive && _selectedSessionId is null && SessionList.Items.Count == 0 && !_noOpenTabsShown)
             {
                 RequestNewSessionTab();
             }
@@ -788,6 +796,7 @@ public sealed partial class OpenCodePage : Page
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Content = new StackPanel { Spacing = 2, Children = { title, subtitle } },
         };
+        HomeSessionMetadata.Add(item, session);
         AutomationProperties.SetName(item, title.Text + "（" + (session.Id ?? string.Empty) + "）");
         return item;
     }

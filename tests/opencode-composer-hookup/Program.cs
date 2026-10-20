@@ -106,6 +106,8 @@ internal static class Program
         await TerminalButtons();
         await BlankSessionDraft();
         await BlankSessionDelayedRefreshAba();
+        await BlankConfiguredPreferences();
+        BlankResolvedSelection();
         PermissionDismissalFocus();
         Console.WriteLine($"PASS: 5 production-linked page-partial groups, {checks} assertions ({first}/{second}/{third}/{fourth}/{checks-first-second-third-fourth}); real core/editor helpers, fake HTTP, WinUI/view/scheduler doubles; no live UI/service.");
     }
@@ -289,6 +291,91 @@ internal static class Program
                 "unchanged exact new binding still creates and auto-sends once; guard does not reject every handoff");
         }
         Console.WriteLine($"PASS blank-tab delayed-refresh ABA: {checks - before} assertions; actual create/handoff methods, fake HTTP/refresh.");
+    }
+
+    private static void BlankResolvedSelection()
+    {
+        using var f = new Fixture(); f.Page.OpenBlankTab();
+        var agent = new OpenCodeAgentInfo { Id = "catalog-agent", Name = "weAVER", Color = "#ab12cd", Mode = OpenCodeAgentModes.Primary,
+            Model = System.Text.Json.JsonDocument.Parse("{\"id\":\"agent-model\",\"providerID\":\"p\",\"variant\":\"reasoned\"}").RootElement.Clone() };
+        var agentModel = new OpenCodeModelInfo { Id = "agent-model", ProviderId = "p", Name = "Agent model", Enabled = true, Variants = new() { new() { Id = "reasoned" } } };
+        var configured = new OpenCodeModelInfo { Id = "config-model", ProviderId = "p", Name = "Config model", Enabled = true, Variants = new() { new() { Id = "listed-level" } } };
+        var directory = new OpenCodeModelInfo { Id = "directory-model", ProviderId = "p", Name = "Directory model", Enabled = true, Variants = new() };
+        var models = new[] { agentModel, configured, directory };
+        var configRef = new OpenCodeModelRef { Id = "config-model", ProviderId = "p" };
+        f.Page.ResolveBlankDefaults(new[] { agent }, models, "catalog-agent", configRef, directory);
+        var resolved = f.Page.BlankPreferences;
+        Check(resolved.Agent == "catalog-agent" && resolved.Model?.Id == "agent-model" && resolved.Model.Variant == "reasoned", "actual selected agent model/variant outranks both configured and directory defaults");
+        Check(OpenCodePage.AgentCaption(agent.Name!) == "WeAVER" && agent.Name == "weAVER" && agent.Id == "catalog-agent", "only first display letter is uppercase; full name and backend identity are retained");
+        Check(OpenCodePage.StrengthCaption(agentModel, resolved.Model!) == "reasoned", "actual offered selected variant is the only strength label");
+        var manual = resolved with { Model = configRef, Version = resolved.Version + 1 };
+        f.Page.UseBlankSelection(manual);
+        f.Page.ResolveBlankDefaults(new[] { agent }, models, "catalog-agent", configRef, directory, chosenModel: true);
+        var selected = f.Page.BlankPreferences;
+        Check(selected.Model?.Id == "config-model" && selected.Model.Variant is null, "explicit pending model outranks agent configuration and retains a real omitted variant");
+        Check(OpenCodePage.StrengthCaption(configured, selected.Model!) == string.Empty, "unspecified strength selected display stays empty, not default/unspecified/high text");
+        f.Page.ResolveBlankDefaults(new[] { agent }, models, "catalog-agent", configRef, directory, basis: resolved);
+        Check(f.Page.BlankPreferences == selected, "late captured-basis defaults cannot overwrite a later explicit selection/version");
+        Check(f.Http.Posts == 0 && f.Http.Gets == 0, "applying actual parsed directory metadata performs no creation or transport");
+    }
+
+    private static async Task BlankConfiguredPreferences()
+    {
+        using (var f = new Fixture())
+        {
+            f.Page.OpenBlankTab();
+            Check(f.Http.Posts == 0, "actual OpenNewSessionTab requests no creation; native placement/default-metadata reads are a boundary");
+            f.Page.Text("exact preferences");
+            f.Page.SetupBlankPreferences("/remote/worktree", "build", new() { Id = "catalog-id", ProviderId = "provider", Variant = "high" });
+            var respond = f.Http.Respond;
+            string? creation = null;
+            f.Http.Respond = (request, ct) =>
+            {
+                if (request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session")
+                {
+                    creation = request.Content!.ReadAsStringAsync(ct).GetAwaiter().GetResult();
+                    return Task.FromResult(Json("{\"data\":{\"id\":\"ses_test\"}}"));
+                }
+                return respond(request, ct);
+            };
+            await f.Page.CreateBlankSession();
+            using var body = System.Text.Json.JsonDocument.Parse(creation!);
+            Check(body.RootElement.GetProperty("location").GetProperty("directory").GetString() == "/remote/worktree", "actual first create captures exact remote directory");
+            Check(body.RootElement.GetProperty("agent").GetString() == "build" && body.RootElement.GetProperty("model").GetProperty("variant").GetString() == "high"
+                && body.RootElement.GetProperty("model").GetProperty("id").GetString() == "catalog-id"
+                && body.RootElement.GetProperty("model").GetProperty("providerID").GetString() == "provider", "actual first create includes immutable agent/model/variant atomically");
+            Check(f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft, "configured create once followed by ordinary guarded single submit, no post-create switch");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.OpenBlankTab(); f.Page.Text("keep unknown creation");
+            f.Http.Respond = (_, _) => throw new HttpRequestException("synthetic creation uncertainty");
+            await f.Page.CreateBlankSession();
+            Check(f.Http.Posts == 1 && f.Page.Snapshot.HasDraft, "uncertain actual creation preserves draft");
+            f.Page.Text("edited but same draft");
+            await f.Page.CreateBlankSession();
+            Check(f.Http.Posts == 1, "editing unknown-result draft cannot issue another create");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.OpenBlankTab(); f.Page.Text("stale source choice"); f.Page.StaleBlankSource();
+            await f.Page.CreateBlankSession();
+            Check(f.Http.Posts == 0 && f.Page.Snapshot.HasDraft, "stale runtime source preferences never create or discard draft");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.OpenBlankTab(); f.Page.Text("source ABA while creation held");
+            var started = Signal<bool>(); var held = Signal<HttpResponseMessage>();
+            f.Http.Respond = (_, _) => { started.TrySetResult(true); return held.Task; };
+            var create = f.Page.CreateBlankSession();
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            f.Page.BlankSourceAba();
+            held.SetResult(Json("{\"data\":{\"id\":\"ses_created_old\"}}"));
+            await create;
+            Check(f.Http.Posts == 1 && f.Page.Created is null && f.Page.Snapshot.HasDraft, "source A→B→A rejects old create handoff even when reference returns, preserving draft");
+            f.Page.SetupBlankPreferences(); await f.Page.CreateBlankSession();
+            Check(f.Http.Posts == 1, "explicitly reselecting directory after source ABA cannot create same draft twice at same stable source");
+        }
     }
 
     private static void PermissionDismissalFocus()
@@ -788,6 +875,7 @@ namespace AIFrontend.Pages
         {
             _newSessionDraftActive = true; _newSessionCreatePending = false;
             _selectedSessionId = null; _sessionGeneration++; BindComposer();
+            SetupBlankPreferences();
             _sessionCts?.Cancel(); _sessionCts = new(); _pendingAckIds.Clear(); UpdateComposerButtons();
             DrainView();
         }
@@ -861,6 +949,10 @@ namespace Microsoft.UI.Xaml.Controls
     public sealed class TextChangedEventArgs : EventArgs { }
     public sealed class TextBox { public string Text = ""; public bool IsEnabled; public FocusState FocusState; public int Focuses; public void Focus(FocusState state) { FocusState = state; Focuses++; } }
     public sealed class Button { public bool IsEnabled; public Visibility Visibility; }
+    public sealed class TabViewItem { public object? Tag; public object? Header; public object? IconSource; public bool IsClosable; }
+    public sealed class FontIconSource { public string? Glyph; }
+    public static class ToolTipService { public static void SetToolTip(object target, object text) { } }
+    public sealed class TabsStub { public List<object> TabItems { get; } = new(); }
     public sealed class ProgressRing { public bool IsActive; }
     public sealed class Panel { public List<object> Children = new(); public Visibility Visibility; }
 }

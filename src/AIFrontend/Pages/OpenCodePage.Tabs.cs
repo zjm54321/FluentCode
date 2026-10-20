@@ -234,6 +234,7 @@ public sealed partial class OpenCodePage
 
     private void MirrorSessionSelection(string sessionId, bool userInitiated)
     {
+        if (_homeActive && !userInitiated) return; // Background list rebuild/highlight must not navigate away from Home.
         // L2：从空白“新会话”页选中会话（新会话页列表 / 会话面板 / 新建成功）→ 空白标签原位变为该会话的标签；
         // 该会话已有标签则关闭空白标签并激活已有标签。从标签栏切到其他标签或通知导航时保留空白标签。
         var fromBlank = _newSessionDraftActive || string.Equals(_blankWasActiveFor, sessionId, StringComparison.Ordinal);
@@ -342,7 +343,7 @@ public sealed partial class OpenCodePage
         close.Click += (_, _) => CloseSessionTab(sessionId);
         var closeOthers = new MenuFlyoutItem { Text = "关闭其他标签" };
         closeOthers.Click += (_, _) => CloseOtherSessionTabs(sessionId);
-        var locate = new MenuFlyoutItem { Text = "在会话面板中定位", Icon = new FontIcon { Glyph = "\uE8A4" } };
+        var locate = new MenuFlyoutItem { Text = "在首页查看会话", Icon = new FontIcon { Glyph = "\uE8A4" } };
         locate.Click += (_, _) => LocateSessionInPane(sessionId);
         return new MenuFlyout { Items = { close, closeOthers, new MenuFlyoutSeparator(), locate } };
     }
@@ -395,6 +396,14 @@ public sealed partial class OpenCodePage
 
     private void ActivateSessionTab(string sessionId)
     {
+        if (_homeActive && SourceReady && !_sessionMissing && string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal))
+        {
+            // Return to the already accepted current session without reselecting an unchanged ListView item.
+            OnSessionContextSelected(sessionId);
+            MirrorSessionSelection(sessionId, userInitiated: false);
+            UpdateSessionTabsEmptyState();
+            return;
+        }
         if (_sessionItems.TryGetValue(sessionId, out var item))
         {
             // 唯一切换入口：与用户点击会话面板中的行完全相同（SessionList_SelectionChanged → SwitchToSessionAsync）。
@@ -416,7 +425,7 @@ public sealed partial class OpenCodePage
             ShowMessage(
                 InfoBarSeverity.Informational,
                 "无法切换到该会话",
-                "该会话不在当前已加载的会话列表中。请在会话面板中刷新或加载更多后再打开。");
+                "该会话不在当前已加载的会话列表中。请在首页刷新或加载更多后再打开。");
         }
 
         if (!string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)
@@ -566,6 +575,7 @@ public sealed partial class OpenCodePage
     partial void OnSessionUiStatesApplied(IReadOnlyDictionary<string, OpenCodeSessionUiState> states)
     {
         _sessionTabStates = states;
+        QueueHomeProjection();
         foreach (var entry in _sessionTabs.Values)
         {
             ApplySessionTabState(entry);
@@ -601,7 +611,7 @@ public sealed partial class OpenCodePage
 
     private void SessionPaneToggle_Click(object sender, RoutedEventArgs e)
     {
-        SessionPane.IsPaneOpen = !SessionPane.IsPaneOpen;
+        ShowHomePage();
     }
 
     /// <summary>“+”（L2）：打开或激活唯一的空白“新会话”标签（OpenCodeSessionTab.New）。</summary>
@@ -611,20 +621,12 @@ public sealed partial class OpenCodePage
 
     private void OpenSessionPane()
     {
-        SessionPane.IsPaneOpen = true;
-        if (SessionList.SelectedItem is { } selected)
-        {
-            SessionList.ScrollIntoView(selected);
-        }
+        ShowHomePage();
     }
 
     private void LocateSessionInPane(string sessionId)
     {
-        SessionPane.IsPaneOpen = true;
-        if (_sessionItems.TryGetValue(sessionId, out var item))
-        {
-            SessionList.ScrollIntoView(item);
-        }
+        ShowHomePage();
     }
 
     // ------------------------------------------------------------------

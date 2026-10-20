@@ -14,6 +14,22 @@
                  工作区 = 右侧概况面板 SplitView（宽窗 Inline、窄窗 Overlay）→ 状态行 / 进度 / InfoBar / 时间线 / 交互区 / 排队条 / 输入区
         全部为 WinUI 原生控件与内置样式、主题资源；不设置 RequestedTheme（跟随系统），窗口背景为 Mica（MainWindow）。
     -->
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerFillColorDefaultBrush" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerFillColorDefaultBrush" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="SystemColorWindowColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Page.Resources>
+
     <Grid x:Name="PageRoot" RowDefinitions="Auto,*">
         <VisualStateManager.VisualStateGroups>
             <!-- 右侧概况面板：宽窗推开内容，窄窗覆盖（§10）。 -->
@@ -40,16 +56,26 @@
                  输入区 ComposerCell 始终是 SessionLayoutRoot 的同一子元素，只改所在行与可见性，绝不换父元素。 -->
             <VisualStateGroup x:Name="SessionLayoutStates">
                 <VisualState x:Name="SessionLayout" />
+                <VisualState x:Name="HomeLayout">
+                    <VisualState.Setters>
+                        <Setter Target="InsightsPane.Visibility" Value="Collapsed" />
+                        <Setter Target="HomePageHost.Visibility" Value="Visible" />
+                    </VisualState.Setters>
+                </VisualState>
                 <VisualState x:Name="NewSessionLayout">
                     <VisualState.Setters>
                         <Setter Target="SessionStatusLine.Visibility" Value="Collapsed" />
-                        <Setter Target="SessionStatusHints.Visibility" Value="Collapsed" />
                         <Setter Target="TimelineGrid.Visibility" Value="Collapsed" />
                         <Setter Target="QueuedPromptsHost.Visibility" Value="Collapsed" />
                         <Setter Target="NewSessionHeader.Visibility" Value="Visible" />
-                        <Setter Target="NewSessionListHost.Visibility" Value="Visible" />
-                        <Setter Target="TimelineRow.Height" Value="*" />
-                        <Setter Target="NewSessionListRow.Height" Value="2*" />
+                        <Setter Target="BlankPreferencesHost.Visibility" Value="Visible" />
+                        <Setter Target="BlankToolbarChoices.Visibility" Value="Visible" />
+                        <!-- Do not squeeze a bottom-aligned brand stack into a shrinking star slot.
+                             The two empty star rows center the naturally measured brand/editor group. -->
+                        <Setter Target="SessionStatusRow.Height" Value="*" />
+                        <Setter Target="TimelineRow.Height" Value="Auto" />
+                        <Setter Target="NewSessionListRow.Height" Value="Auto" />
+                        <Setter Target="NewSessionBottomRow.Height" Value="*" />
                         <Setter Target="ComposerCell.MaxWidth" Value="{StaticResource OpenCodeNewSessionMaxWidth}" />
                         <Setter Target="SessionInsightsButton.IsEnabled" Value="False" />
                         <Setter Target="ContextRingHost.Visibility" Value="Collapsed" />
@@ -88,12 +114,9 @@
                     VerticalAlignment="Bottom"
                     Click="SessionPaneToggle_Click"
                     AutomationProperties.AutomationId="OpenCodeSessionPaneToggle"
-                    AutomationProperties.Name="会话面板"
-                    ToolTipService.ToolTip="打开会话面板：查看、新建或切换会话">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE700;" FontSize="16" />
-                        <TextBlock Text="会话" VerticalAlignment="Center" />
-                    </StackPanel>
+                    AutomationProperties.Name="OpenCode 首页"
+                    ToolTipService.ToolTip="首页：项目与会话">
+                    <FontIcon Glyph="&#xE80F;" FontSize="16" />
                 </Button>
             </TabView.TabStripHeader>
 
@@ -347,14 +370,15 @@
                             <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
                             <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition x:Name="SessionStatusRow" Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition x:Name="TimelineRow" Height="*" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition x:Name="NewSessionListRow" Height="Auto" />
+                                     <RowDefinition x:Name="NewSessionListRow" Height="Auto" />
+                                    <RowDefinition x:Name="NewSessionBottomRow" Height="0" />
                                 </Grid.RowDefinitions>
 
                                 <!-- Row 0 状态行（只读）：← 返回父会话 · Agent / 模型（L7 改为只读文本） · 等待提示 · 刷新 -->
@@ -488,22 +512,16 @@
                                     x:Name="NewSessionHeader"
                                     Grid.Row="3"
                                     Visibility="Collapsed"
-                                    Spacing="4"
-                                    Margin="0,0,0,16"
+                                    Spacing="0"
+                                    Margin="0,0,0,24"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Bottom"
                                     AutomationProperties.AutomationId="OpenCodeNewSessionPage"
                                     AutomationProperties.Name="新会话">
-                                    <TextBlock
-                                        Text="开始新的对话"
-                                        HorizontalAlignment="Center"
-                                        Style="{ThemeResource SubtitleTextBlockStyle}" />
-                                    <TextBlock
-                                        x:Name="NewSessionHeaderHint"
-                                        Text="输入第一条消息，按 Enter 创建会话并发送"
-                                        HorizontalAlignment="Center"
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <Viewbox MaxWidth="360" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Center">
+                                        <Image x:Name="NewConversationWordmark" Width="360" Height="64.6153846154" Stretch="Uniform"
+                                               AutomationProperties.Name="OpenCode" />
+                                    </Viewbox>
                                 </StackPanel>
 
                                 <!-- Row 4 待处理交互：未锚定提问 / 会话恢复（提交前由页面重新查询 pending 并比对指纹） -->
@@ -581,6 +599,18 @@
                                                     AutomationProperties.AutomationId="OpenCodeComposer"
                                                     AutomationProperties.Name="消息输入" />
 
+                                                 <!-- New landing only: same outside-editor toolbar, immediately after +. -->
+                                                 <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,*,Auto"
+                                                       ColumnSpacing="6" Visibility="Collapsed" VerticalAlignment="Center">
+                                                     <DropDownButton x:Name="BlankAgentButton" Content="加载中…" Click="BlankAgentButton_Click"
+                                                             AutomationProperties.AutomationId="OpenCodeBlankAgent" />
+                                                     <Button x:Name="BlankModelButton" Grid.Column="1" Content="模型未就绪" Click="BlankModelButton_Click"
+                                                             AutomationProperties.AutomationId="OpenCodeBlankModel" />
+                                                     <DropDownButton x:Name="BlankStrengthButton" Grid.Column="2" Content="强度未就绪" Click="BlankStrengthButton_Click"
+                                                                     MinWidth="40" AutomationProperties.Name="选择推理强度"
+                                                             AutomationProperties.AutomationId="OpenCodeBlankStrength" />
+                                                 </Grid>
+
                                                 <StackPanel
                                                     x:Name="ComposerActions"
                                                     Grid.Column="1"
@@ -632,6 +662,15 @@
                                         Visibility="Collapsed" />
                                 </Grid>
 
+                                <!-- Blank-draft choices are outside the original editor host; never global defaults. -->
+                                <StackPanel x:Name="BlankPreferencesHost" Grid.Row="7" Visibility="Collapsed"
+                                            MaxWidth="{StaticResource OpenCodeNewSessionMaxWidth}" Spacing="8" Margin="0,12,0,0">
+                                    <Button x:Name="BlankProjectButton" Content="选择项目目录" HorizontalAlignment="Left"
+                                            Click="BlankProjectButton_Click" AutomationProperties.AutomationId="OpenCodeBlankProject" />
+                                    <TextBlock x:Name="BlankPreferencesHint" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+
                                 <!-- Row 7（新标签页布局）：筛选 + 已有会话列表（L2 接线；与会话面板同源数据）。默认折叠。 -->
                                 <Grid
                                     x:Name="NewSessionListHost"
@@ -677,7 +716,7 @@
                                     HorizontalAlignment="Center"
                                     Style="{ThemeResource SubtitleTextBlockStyle}" />
                                 <TextBlock
-                                    Text="关闭标签不会删除或中断会话，可随时从会话面板重新打开。"
+                                    Text="关闭标签不会删除或中断会话，可随时从首页重新打开。"
                                     HorizontalAlignment="Center"
                                     TextAlignment="Center"
                                     TextWrapping="Wrap"
@@ -699,6 +738,7 @@
                             </StackPanel>
                         </Grid>
                     </SplitView>
+                    <Grid x:Name="HomePageHost" Visibility="Collapsed" />
                 </Grid>
             </Grid>
         </SplitView>

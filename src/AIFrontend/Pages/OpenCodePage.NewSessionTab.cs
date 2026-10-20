@@ -95,6 +95,8 @@ public sealed partial class OpenCodePage
             return;
         }
 
+        _homeActive = false;
+
         if (!_newSessionDraftActive)
         {
             _blankWasActiveFor = null;
@@ -110,6 +112,9 @@ public sealed partial class OpenCodePage
             RefreshComposerView();
         }
 
+        VisualStateManager.GoToState(this, "NewSessionLayout", false);
+        EnsureBlankPreferences();
+
         SelectNewSessionTabSilently();
         UpdateSessionTabsEmptyState();
         Composer.Focus(FocusState.Programmatic);
@@ -118,6 +123,8 @@ public sealed partial class OpenCodePage
     /// <summary>离开空白页布局（任何真实会话选中时；空白标签本身保留，除非镜像决定转换）。</summary>
     private void ExitNewSessionLayout()
     {
+        _homeActive = false;
+        VisualStateManager.GoToState(this, "SessionLayout", false);
         if (!_newSessionDraftActive)
         {
             return;
@@ -132,6 +139,8 @@ public sealed partial class OpenCodePage
 
     partial void OnSessionContextSelected(string sessionId)
     {
+        _homeActive = false;
+        VisualStateManager.GoToState(this, "SessionLayout", false);
         if (_newSessionDraftActive)
         {
             _blankWasActiveFor = sessionId;
@@ -193,7 +202,7 @@ public sealed partial class OpenCodePage
         }
 
         var index = NewSessionTabIndex();
-        var wasActive = _newSessionDraftActive;
+        var wasActive = _newSessionDraftActive && !_homeActive;
         RemoveNewSessionTab();
         if (!wasActive)
         {
@@ -471,9 +480,11 @@ public sealed partial class OpenCodePage
         var pageGeneration = _pageGeneration;
         var sessionGeneration = _sessionGeneration;
         var epoch = ++_newSessionCreateEpoch;
+        var preferences = CaptureBlankPreferences(token);
+        if (preferences is null) return;
 
         // Field comparisons only (may run inside Source.TryExecute): still this blank draft, page and source.
-        bool Owns() => _pageActive && _newSessionDraftActive && _selectedSessionId is null && _newSessionCreateEpoch == epoch
+        bool Owns() => _pageActive && !_homeActive && _newSessionDraftActive && _selectedSessionId is null && _newSessionCreateEpoch == epoch
             && ReferenceEquals(_source, source) && ReferenceEquals(_client, client) && revision == _sourceRevision
             && sourceGeneration == _sourceGeneration && pageGeneration == _pageGeneration && sessionGeneration == _sessionGeneration;
 
@@ -487,7 +498,7 @@ public sealed partial class OpenCodePage
         try
         {
             using var cancellation = CreateOperationToken(source);
-            await CreateNativeSessionAsync(source, client, Owns, Owns, cancellation.Token);
+            await CreateNativeSessionAsync(source, client, () => Owns() && OwnsBlankPreferences(preferences, token), Owns, cancellation.Token, preferences);
         }
         catch (Exception)
         {

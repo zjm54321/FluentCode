@@ -26,7 +26,7 @@ $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dl
 $openCode = @(
     'OpenCodeClient.cs', 'OpenCodeClient.Events.cs', 'OpenCodeEventReducer.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
     'OpenCodeClient.View.cs', 'OpenCodeClient.Usage.cs', 'OpenCodeClient.Capabilities.cs',
-    'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs',
+    'OpenCodeClient.SessionControls.cs', 'OpenCodeClient.SessionManagement.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
@@ -34,6 +34,8 @@ $openCode = @(
     'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs'
 ) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
 $sources = $openCode + @(
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodePageSource.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeExecutionProjection.cs'),
@@ -49,15 +51,22 @@ $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
 $ackPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'
 $extractions = @(@{ Path = $pagePath; Names = @('RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
+    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
+    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
-    @{ Path = $ackPath; Names = @('InvalidateViewAcknowledgement') })
+    @{ Path = $ackPath; Names = @('InvalidateViewAcknowledgement') },
+    @{ Path = $eventPath; Names = @('PrepareEventSnapshot', 'OnEventStreamConnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
     $text = [IO.File]::ReadAllText($extraction.Path)
     foreach ($name in $extraction.Names) {
-        $matches = [regex]::Matches($text, ('(?m)^    (?:private|internal) [^\r\n]*\b' + $name + '\('))
+        $matches = [regex]::Matches($text, ('(?m)^    (?:private|internal|partial) [^\r\n]*\b' + $name + '\('))
         if ($matches.Count -ne 1) { throw "Missing/ambiguous production member: $name" }
-        $block = [regex]::Match($text.Substring($matches[0].Index), '(?ms)\A.*?^    \}\r?$')
+        $start = $matches[0].Index
+        $opening = $text.IndexOf('{', $start); $arrow = $text.IndexOf('=>', $start)
+        $block = if ($opening -ge 0 -and ($arrow -lt 0 -or $opening -lt $arrow)) {
+            [regex]::Match($text.Substring($start), '(?ms)\A.*?^    \}\r?$')
+        } else { [regex]::Match($text.Substring($start), '(?ms)\A.*?=>[^;]*;') }
         if (!$block.Success) { throw "Extraction failed: $name" }; $members += $block.Value
     }
 }
@@ -65,6 +74,9 @@ $generated = Join-Path $output 'PageMembers.cs'
 @'
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;

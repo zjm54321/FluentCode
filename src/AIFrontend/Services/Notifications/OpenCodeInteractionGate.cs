@@ -8,7 +8,7 @@ namespace AIFrontend.Services.Notifications;
 public sealed record AgentSwitchProtection(Guid OperationId, string TargetAgentId);
 public enum ComposerSubmissionKind { Prompt, Command }
 public sealed record ComposerSubmissionProtection(Guid OperationId, ComposerSubmissionKind Kind);
-public enum SessionControlKind { SwitchModel, StageRevert, ClearRevert, RevertContinuation }
+public enum SessionControlKind { SwitchModel, StageRevert, ClearRevert, RevertContinuation, Interrupt, Background, DeleteRoot, RenameRoot }
 public sealed record SessionControlProtection(Guid OperationId, SessionControlKind Kind, string TargetFingerprint);
 
 /// <summary>Process-local shared page/toast arbitration. Hold a lease across recheck, mutation AND result.

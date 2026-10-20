@@ -80,7 +80,7 @@ $sources += Get-Item $generated
 # Actual blank-tab creation/handoff methods; UI list/layout members remain boundaries.
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
-$blankMembers = foreach ($name in @('CreateSessionAndSubmitAsync', 'OnNativeSessionCreating', 'OnNativeSessionCreated')) {
+$blankMembers = foreach ($name in @('OpenNewSessionTab', 'CreateSessionAndSubmitAsync', 'OnNativeSessionCreating', 'OnNativeSessionCreated')) {
     $m = [regex]::Matches($blank, ('(?m)^    (?:private|partial) [^\r\n]*\b' + $name + '\('))
     if ($m.Count -ne 1) { throw "Expected one production blank-tab member: $name" }
     $block = [regex]::Match($blank.Substring($m[0].Index), '(?ms)\A.*?^    \}\r?$')
@@ -88,7 +88,16 @@ $blankMembers = foreach ($name in @('CreateSessionAndSubmitAsync', 'OnNativeSess
     $block.Value
 }
 $blankGenerated = Join-Path $output 'BlankSessionMembers.cs'
-"using System; using System.Threading.Tasks; using AIFrontend.Pages.OpenCode; using Microsoft.UI.Xaml.Controls; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($blankMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $blankGenerated
+$blankChoicePath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
+$blankChoice = [IO.File]::ReadAllText($blankChoicePath)
+foreach ($name in @('CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSelectedAgent', 'ApplyBlankDefaults', 'ReadBlankAgentModel', 'BlankAgentName', 'BlankStrengthText')) {
+    $m = [regex]::Match($blankChoice, ('(?m)^    private [^\r\n]*\b' + $name + '\('))
+    if (!$m.Success) { throw "Missing production blank preference member: $name" }
+    $block = if ($name -in @('OwnsBlankPreferences', 'BlankAgentName', 'BlankStrengthText')) { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?;') }
+        else { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?^    \}\r?$') }
+    $blankMembers += $block.Value
+}
+"using System; using System.Linq; using System.Globalization; using System.Text.Json; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Pages.OpenCode; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($blankMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $blankGenerated
 $sources += Get-Item $blankGenerated
 $overlayPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerOverlays.cs"
 $overlay = [IO.File]::ReadAllText($overlayPath)

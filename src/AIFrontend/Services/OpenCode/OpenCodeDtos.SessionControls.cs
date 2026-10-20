@@ -31,7 +31,11 @@ public sealed record SessionControlRevert(string MessageId, string? PartId, bool
 }
 /// <summary>Model == null means ABSENT/inherited, never an explicit wire null.</summary>
 public sealed record SessionControlState(string SessionId, string Directory, SessionControlModelRef? Model,
-    SessionControlRevert? Revert, string Fingerprint);
+    SessionControlRevert? Revert, string Fingerprint)
+{
+    public string? Title { get; init; }
+    public string? ParentId { get; init; }
+}
 public sealed record SessionControlHistoryMessage(string Id, string Type, string? Text, bool HasFiles, bool HasAgents,
     bool HasSkills, bool ReferencesComplete, OpenCodeExecutionMessageEvidence Execution, string Fingerprint)
 {
@@ -39,7 +43,7 @@ public sealed record SessionControlHistoryMessage(string Id, string Type, string
 }
 public sealed record SessionControlHistoryPage(ImmutableArray<SessionControlHistoryMessage> Messages, string? Next);
 // SessionNotFound preserves the public tag; it can reflect session/location lookup, not a bad model.
-public enum SessionControlErrorKind { Unclassified, InvalidRequest, Unauthorized, SessionNotFound, MessageNotFound, SessionBusy }
+public enum SessionControlErrorKind { Unclassified, InvalidRequest, Unauthorized, SessionNotFound, MessageNotFound, SessionBusy, LocationNotFound }
 /// <summary>Allowlisted error identity only, never server message/body. Unknown post-start failures retain protection.</summary>
 public sealed class OpenCodeSessionControlException : OpenCodeException
 {
@@ -167,7 +171,11 @@ internal static class SessionControlJson
         var model = value.TryGetProperty("model", out var m) ? ModelRef(m) : null;
         var revert = value.TryGetProperty("revert", out var r) ? Revert(r) : null;
         var directory = Directory(value);
-        return new(sessionId, directory, model, revert, Hash(new { sessionId, directory, model, stage = revert?.Fingerprint }));
+        return new(sessionId, directory, model, revert, Hash(new { sessionId, directory, model, stage = revert?.Fingerprint }))
+        {
+            Title = value.TryGetProperty("title", out var title) && title.ValueKind != JsonValueKind.Null ? Text(title) : null,
+            ParentId = OptionalText(value, "parentID"),
+        };
     }
 
     internal static SessionControlHistoryPage History(JsonElement root, string sessionId, int limit)

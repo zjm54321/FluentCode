@@ -245,7 +245,46 @@ namespace AIFrontend.Pages
         private OpenCodeComposerBinding? _newSessionCreatedBinding;
         private OpenCodeComposerToken? _newSessionCreatedToken;
         private long _newSessionCreateEpoch;
-        private object? _newSessionTab => null;
+        private TabViewItem? _newSessionTab;
+        private static readonly object NewSessionTabTag = new();
+        private bool _suppressTabSelection;
+        private readonly TabsStub SessionTabs = new();
+        private void EnterNewSessionLayout() => EnterBlank(); // Native placement boundary, not the creation path.
+        internal void OpenBlankTab() => OpenNewSessionTab();
+        private bool _homeActive, _blankPickerPending;
+        private string _homeRuntimeSource = "synthetic-runtime";
+        private readonly Dictionary<string, OpenCodeHomeProject> _homeProjects = new(StringComparer.Ordinal)
+            { ["/synthetic"] = new(new("synthetic-runtime", "/synthetic"), "synthetic") };
+        private OpenCodeBlankDraftPreferences? _blankPreferences;
+        private IReadOnlyList<OpenCodeAgentInfo> _blankAgents = Array.Empty<OpenCodeAgentInfo>();
+        private IReadOnlyList<OpenCodeModelInfo> _blankModels = Array.Empty<OpenCodeModelInfo>();
+        private bool _blankModelChosen;
+        private string? _blankPreferenceError;
+        internal OpenCodeBlankDraftPreferences BlankPreferences => _blankPreferences!;
+        internal void UseBlankSelection(OpenCodeBlankDraftPreferences value) => _blankPreferences = value;
+        internal void ResolveBlankDefaults(IReadOnlyList<OpenCodeAgentInfo> agents, IReadOnlyList<OpenCodeModelInfo> models,
+            string? configuredAgent, OpenCodeModelRef? configuredModel, OpenCodeModelInfo? directoryModel,
+            bool chosenModel = false, OpenCodeBlankDraftPreferences? basis = null)
+        {
+            _blankAgents = agents; _blankModels = models; _blankModelChosen = chosenModel;
+            ApplyBlankDefaults(basis ?? _blankPreferences!, configuredAgent, configuredModel, directoryModel);
+        }
+        internal static string AgentCaption(string name) => BlankAgentName(name);
+        internal static string StrengthCaption(OpenCodeModelInfo model, OpenCodeModelRef selected) => BlankStrengthText(model, selected);
+        private readonly Dictionary<(string SourceIdentity, Guid Draft), string?> _blankCreationResults = new();
+        internal void SetupBlankPreferences(string directory = "/synthetic", string? agent = null, OpenCodeModelRef? model = null)
+        {
+            _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory);
+            _blankPreferences = new(_homeRuntimeSource, Snapshot.Token.Draft, directory, agent, model);
+        }
+        internal void StaleBlankSource() => _homeRuntimeSource = Guid.NewGuid().ToString("N");
+        internal void BlankSourceAba()
+        {
+            var source = _source;
+            _source = null; _sourceGeneration++; BindComposer();
+            _source = source; _sourceGeneration++; BindComposer();
+            _homeRuntimeSource = Guid.NewGuid().ToString("N");
+        }
         private string? _convertNewSessionTabTo { get; set; }
         private void SelectSessionItem(string id) { }
         internal Task CreateBlankSession() => CreateSessionAndSubmitAsync(Snapshot.Token);

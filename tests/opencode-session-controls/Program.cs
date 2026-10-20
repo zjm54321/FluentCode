@@ -30,7 +30,81 @@ internal static class Program
         await Wire(); Console.WriteLine("PASS group 1: strict wire, model alias/variant/default/null, typed errors, guarded zero HTTP.");
         await Controls(); Console.WriteLine("PASS group 2: authoritative history, preview/confirmation/source, acceptance vs refresh, fail-closed protection.");
         await GateAndContinuation(); Console.WriteLine("PASS group 3: exact lease and paired continuation, existing request isolation, one prompt/zero explicit commit.");
+        await RootManagement(); Console.WriteLine("PASS group 5: real V2 root delete/rename, exact guard, rejection/unknown and stale metadata.");
         Console.WriteLine($"PASS {_checks} assertions; headless fake HTTP only, not Page/native/live proof.");
+    }
+
+    private static async Task RootManagement()
+    {
+        foreach (var kind in new[] { SessionControlKind.DeleteRoot, SessionControlKind.RenameRoot })
+        {
+            using var server = new Server { Title = "actual title" }; using var client = server.Client();
+            Task Send(Func<Action, bool> start) => kind == SessionControlKind.DeleteRoot
+                ? client.DeleteSessionGuardedAsync("ses_control", start) : client.RenameSessionGuardedAsync("ses_control", "new title", "/work space", start);
+            await Throws<OperationCanceledException>(() => Send(_ => false), "root guard denied");
+            Check(server.Requests.Count == 0, "denied root guard has zero HTTP");
+            await Send(Start);
+            Check(server.Requests.Last().Method == (kind == SessionControlKind.DeleteRoot ? "DELETE" : "PATCH")
+                && server.Requests.Last().Path == "/api/session/ses_control" && server.Requests.Last().Query == ""
+                && server.LastBody == (kind == SessionControlKind.DeleteRoot ? "" : "{\"title\":\"new title\"}"), "exact V2 method/path/body/204 " + kind);
+            foreach (var rejection in new[] { (400, "InvalidRequestError"), (401, "UnauthorizedError"), (404, "SessionNotFoundError") })
+            {
+                server.OnMutation = _ => Task.FromResult(Server.Json(rejection.Item1, Error(rejection.Item2)));
+                Check((await Throws<OpenCodeSessionControlException>(() => Send(Start), "typed root rejection")).VerifiedPreEffect,
+                    "known root rejection releases exact slot " + rejection.Item1);
+            }
+            server.OnMutation = _ => Task.FromResult(Server.Json(400, "{\"_tag\":\"InvalidRequestError\",\"message\":\"PRIVATE\",\"kind\":null,\"field\":\"title\"}"));
+            Check((await Throws<OpenCodeSessionControlException>(() => Send(Start), "documented nullable error fields")).VerifiedPreEffect,
+                "root InvalidRequest accepts only documented optional typed kind/field");
+            server.OnMutation = _ => Task.FromResult(Server.Json(400, "{\"_tag\":\"InvalidRequestError\",\"message\":\"PRIVATE\",\"field\":123}"));
+            Check(!(await Throws<OpenCodeSessionControlException>(() => Send(Start), "malformed error field")).VerifiedPreEffect, "malformed root rejection cannot release protection");
+            if (kind == SessionControlKind.RenameRoot)
+            {
+                server.OnMutation = _ => Task.FromResult(Server.Json(404, "{\"_tag\":\"LocationNotFoundError\",\"message\":\"PRIVATE\",\"location\":{\"directory\":\"/work space\"}}"));
+                Check((await Throws<OpenCodeSessionControlException>(() => Send(Start), "documented rename location 404")).VerifiedPreEffect,
+                    "rename location rejection must match captured actual directory");
+                server.OnMutation = _ => Task.FromResult(Server.Json(404, "{\"_tag\":\"LocationNotFoundError\",\"message\":\"PRIVATE\",\"location\":{\"directory\":\"/foreign\"}}"));
+                Check(!(await Throws<OpenCodeSessionControlException>(() => Send(Start), "foreign location 404")).VerifiedPreEffect,
+                    "wrong-directory rejection retains protection");
+            }
+            server.OnMutation = _ => Task.FromResult(Server.Json(200, "{}"));
+            await Throws<OpenCodeProtocolException>(() => Send(Start), "root success must be exactly 204, no Session.Info assumed");
+        }
+        foreach (var kind in new[] { SessionControlKind.DeleteRoot, SessionControlKind.RenameRoot })
+        foreach (var outcome in new[] { "accepted", "rejected", "unknown" })
+        {
+            using var server = new Server { Title = "actual title" };
+            var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate); var origin = server.Origin();
+            var request = new SessionControlRequest(kind, Directory: "/work space", ExpectedTitle: "actual title", NewTitle: "new title");
+            var preview = await Preview(server, coordinator, origin, request);
+            server.OnMutation = _ => outcome switch
+            {
+                "accepted" => Task.FromResult(Server.Json(204, "")),
+                "rejected" => Task.FromResult(Server.Json(400, Error("InvalidRequestError"))),
+                _ => throw new HttpRequestException("PRIVATE transport"),
+            };
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current);
+            Check(server.Mutations == 1 && result.Status == (outcome == "accepted" ? SessionControlStatus.Accepted
+                : outcome == "rejected" ? SessionControlStatus.DefinitivelyRejected : SessionControlStatus.OutcomeUnknown), "single root mutation exact outcome " + kind + outcome);
+            using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            Check(lease.CanControlSession() == (outcome != "unknown") && lease.CanSubmitComposer() == (outcome != "unknown"), "root unknown protects composer; known settlement releases only its exact slot");
+            Check(outcome != "unknown" || lease.GetSessionControlProtection()?.Kind == kind, "distinct exact root protection kind");
+        }
+        using (var server = new Server { Title = "actual title" })
+        {
+            var coordinator = new OpenCodeSessionControlCoordinator(new()); var origin = server.Origin();
+            var request = new SessionControlRequest(SessionControlKind.DeleteRoot, Directory: "/work space", ExpectedTitle: "actual title");
+            var preview = await Preview(server, coordinator, origin, request);
+            server.Title = "foreign rename";
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current)).Status == SessionControlStatus.ConfirmationRequired
+                && server.Mutations == 0, "fresh server metadata must still match confirmed actual root title");
+            server.Title = "actual title"; server.HasInbox = true;
+            Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status == SessionControlStatus.Blocked, "root queued input preflight stays protected");
+            server.HasInbox = false; server.ParentId = "ses_parent";
+            Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status == SessionControlStatus.ConfirmationRequired, "root cannot become child while confirmation is open");
+            server.ParentId = null; origin.Source.Revoke();
+            Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status != SessionControlStatus.Ready && server.Mutations == 0, "revoked root origin never starts a mutation");
+        }
     }
 
     private static async Task Wire()
@@ -410,6 +484,7 @@ internal sealed class Server : HttpMessageHandler
     private readonly HttpClient _http;
     internal string Default = ModelInfo;
     internal string? Model, Stage;
+    internal string? Title, ParentId;
     internal bool FailRefresh, CursorBudget, HasInbox;
     internal int Mutations, HistoryReads;
     internal string LastBody = "";
@@ -450,6 +525,7 @@ internal sealed class Server : HttpMessageHandler
         {
             if (FailRefresh && Mutations != 0) return Json(500, "{}");
             return Json(200, "{\"data\":{\"id\":\"ses_control\",\"projectID\":\"project\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/work space\"}"
+                + (Title is null ? "" : ",\"title\":" + JsonSerializer.Serialize(Title)) + (ParentId is null ? "" : ",\"parentID\":" + JsonSerializer.Serialize(ParentId))
                 + (Model is null ? "" : ",\"model\":" + Model) + (Stage is null ? "" : ",\"revert\":" + Stage) + "}}");
         }
         if (uri.AbsolutePath.EndsWith("/message"))

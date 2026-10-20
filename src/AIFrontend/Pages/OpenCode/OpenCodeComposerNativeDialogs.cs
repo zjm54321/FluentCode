@@ -20,7 +20,7 @@ internal static class OpenCodeModelPickerDialog
     /// <param name="refresh">Optional read-only re-read, run only on an explicit click (single flight, never looped).
     /// Returning null keeps the current presentation.</param>
     internal static async Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot? owner, OpenCodeModelPickerPresentation presentation,
-        Func<Task<OpenCodeModelPickerPresentation?>>? refresh = null)
+        Func<Task<OpenCodeModelPickerPresentation?>>? refresh = null, bool allowVariantSelection = true)
     {
         ArgumentNullException.ThrowIfNull(presentation);
         if (owner is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
@@ -71,7 +71,7 @@ internal static class OpenCodeModelPickerDialog
             {
                 variants.Items.Clear();
                 var row = state.SelectedRow;
-                variantRow.Visibility = row is { Variants.Count: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+                variantRow.Visibility = allowVariantSelection && row is { Variants.Count: > 0 } ? Visibility.Visible : Visibility.Collapsed;
                 if (row is null) return;
                 variants.Items.Add(new RadioButton { Content = "默认", Tag = null });
                 foreach (var v in row.Variants) variants.Items.Add(new RadioButton { Content = v, Tag = v });

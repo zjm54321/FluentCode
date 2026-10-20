@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages;
+using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 
 internal static class Program
@@ -15,6 +16,170 @@ internal static class Program
     private const string Session = "ses_test";
 
     private static int _assertions;
+
+    private static async Task HomeRootActions()
+    {
+        foreach (var action in new[] { OpenCodeHomeSessionAction.Delete, OpenCodeHomeSessionAction.Rename })
+        {
+            var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
+            page.TestActivate("ses_unrelated", client, backend.CreateClient);
+            page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
+            if (action == OpenCodeHomeSessionAction.Delete) page.TestHomeSelected("ses_root");
+            backend.BeforeMutation = () => Check(page.TestHomeRootTitle("ses_root") == "actual root title" && page.MetadataApplications == 0,
+                "no optimistic row/title update before real management acceptance");
+            page.HomeConfirmation = () =>
+            {
+                Check(page.HomeDialogId == "ses_root" && page.HomeDialogTitle == "actual root title" && backend.Requests.Count == 0,
+                    "confirmation uses accepted actual row metadata, not the stale event DTO or hidden/current selection; opening does no network");
+                page.TestHomeCosmeticRefresh();
+                return Task.FromResult<string?>(action == OpenCodeHomeSessionAction.Delete ? "ses_root" : "confirmed new title");
+            };
+            await page.TestRunHomeAction(7, "/remote/worktree", "ses_root", action);
+            Check(backend.Mutations == 1 && backend.ListReads == 1 && page.MetadataApplications == 1 && page.HomeSwitchRequests.Count == 0,
+                "actual production consumer reaches one real target mutation and authoritative metadata refresh, never navigation");
+            Check(action == OpenCodeHomeSessionAction.Delete
+                ? page.TestHomeRootTitle("ses_root") is null && page.DeletedBindings == 1 && page.Bindings == 1 && page.RemovedTabs == 1
+                : page.TestHomeRootTitle("ses_root") == "confirmed new title" && page.DeletedBindings == 0,
+                "only accepted delete invalidates its normal binding; only refreshed server metadata publishes rename");
+            Check(page.UnrelatedDraft == "keep this draft" && !page.TestHomeBusy && !await page.TestHomeComposerProtected("ses_root"),
+                "unrelated draft retained and known exact management slot released");
+        }
+        foreach (var denial in new[] { "cancel", "stale revision", "foreign directory", "changed title", "changed source", "archive" })
+        {
+            var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
+            page.TestActivate("ses_other", client, backend.CreateClient); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
+            page.HomeConfirmation = () =>
+            {
+                if (denial == "changed title") page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "foreign rename");
+                if (denial == "changed source") page.TestHomeResetActionScope();
+                return Task.FromResult<string?>(denial == "cancel" ? null : "new title");
+            };
+            await page.TestRunHomeAction(denial == "stale revision" ? 6 : 7, denial == "foreign directory" ? "/wrong" : "/remote/worktree", "ses_root",
+                denial == "archive" ? OpenCodeHomeSessionAction.Archive : OpenCodeHomeSessionAction.Rename);
+            Check(backend.Requests.Count == 0 && page.HomeSwitchRequests.Count == 0 && page.MetadataApplications == 0,
+                "actual Home action denies without HTTP/navigation/optimism: " + denial);
+        }
+        {
+            var backend = new HomeBackend { Unknown = true }; using var client = backend.CreateClient(); var page = new OpenCodePage();
+            page.TestActivate("ses_other", client, backend.CreateClient); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
+            page.HomeConfirmation = () => Task.FromResult<string?>("new title");
+            await page.TestRunHomeAction(7, "/remote/worktree", "ses_root", OpenCodeHomeSessionAction.Rename);
+            Check(backend.Mutations == 1 && backend.ListReads == 1 && await page.TestHomeComposerProtected("ses_root")
+                && page.TestHomeStatus?.Contains("结果未知") == true && page.TestHomeRootTitle("ses_root") == "actual root title",
+                "ambiguous actual consumer retains protection/explanation and does metadata-only refresh, no optimistic rename/replay");
+        }
+        {
+            var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
+            page.TestActivate("ses_other", client, backend.CreateClient); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
+            var first = new TaskCompletionSource<string?>(); var second = new TaskCompletionSource<string?>();
+            page.HomeConfirmation = () => first.Task;
+            var old = page.TestRunHomeAction(7, "/remote/worktree", "ses_root", OpenCodeHomeSessionAction.Delete);
+            page.TestHomeResetActionScope(); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
+            page.HomeConfirmation = () => second.Task;
+            var fresh = page.TestRunHomeAction(8, "/remote/worktree", "ses_root", OpenCodeHomeSessionAction.Rename);
+            first.SetResult("ses_root"); await old;
+            Check(page.TestHomeBusy && backend.Requests.Count == 0, "foreign finally cannot clear a newer runtime action owner");
+            second.SetResult(null); await fresh;
+        }
+    }
+
+    private sealed class HomeBackend
+    {
+        internal readonly List<string> Requests = new();
+        internal int Mutations, ListReads;
+        internal bool Unknown;
+        internal Action? BeforeMutation;
+        private bool _deleted;
+        private string _title = "actual root title";
+        private string Info => "{\"id\":\"ses_root\",\"projectID\":\"p\",\"title\":" + JsonSerializer.Serialize(_title)
+            + ",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/remote/worktree\"}}";
+        private static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+        internal OpenCodeClient CreateClient() => new(new HttpClient(new Handler(async (request, ct) =>
+        {
+            var path = request.RequestUri!.AbsolutePath; Requests.Add(request.Method + " " + path);
+            if (request.Method != HttpMethod.Get)
+            {
+                Mutations++; BeforeMutation?.Invoke();
+                Check(path == "/api/session/ses_root", "consumer mutates actual context root, not selected/hidden session");
+                if (Unknown) throw new HttpRequestException("offline");
+                if (request.Method == HttpMethod.Delete) _deleted = true;
+                else { using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct)); _title = body.RootElement.GetProperty("title").GetString()!; }
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+            if (path == "/api/session") { ListReads++; return Json("{\"data\":[" + (_deleted ? "" : Info) + "],\"cursor\":{}}"); }
+            if (path == "/api/session/ses_root") return Json("{\"data\":" + Info + "}");
+            if (path.EndsWith("/message")) return Json("{\"data\":[{\"id\":\"msg_idle\",\"type\":\"idle\",\"time\":{\"created\":3},\"outcome\":\"succeeded\"}],\"cursor\":{}}");
+            if (path == "/api/session/active") return Json("{\"data\":{}}");
+            if (path.EndsWith("/permission") || path.EndsWith("/form") || path.EndsWith("/inbox")) return Json("{\"data\":[]}");
+            throw new InvalidOperationException("Unexpected Home control route " + path);
+        })), new() { BaseUrl = "https://home-actions.invalid", AuthenticationMode = OpenCodeAuthenticationMode.None }, true);
+    }
+
+    private static async Task HomeUnchangedSelectionClick()
+    {
+        var backend = new Backend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
+        page.TestActivate(Session, client);
+        var hiddenAlreadyTarget = page.TestPrepareHomeClick("ses_target", "/remote/worktree");
+        var rendered = new OpenCodeHomeSessionRow(new(new("runtime-a", "/remote/worktree"),
+            new() { Id = "ses_target", Location = new() { Directory = "/remote/worktree" } }), "SYNTHETIC", "SYNTHETIC",
+            OpenCodeHomeTone.Unknown, OpenCodeHomeDateGroup.Today, null);
+        var visualContent = new object(); // Native own-container ItemClick's Content, not a ListViewItem/data row.
+        Check(ReferenceEquals(OpenCodeHomeClick.Resolve(visualContent, null, rendered), rendered), "actual Home click producer resolves its content's bound row when native container cast/mapping are absent");
+        Check(OpenCodeHomeClick.Resolve(visualContent, null, null) is null, "producer never invents session metadata from untagged visual content");
+        Check(page.TestHiddenSelectionIs(hiddenAlreadyTarget) && page.HomeSwitchRequests.Count == 0, "regression setup: hidden native item already selected while page has no selected session");
+        var copies = Windows.ApplicationModel.DataTransfer.Clipboard.Writes;
+        page.TestHomeAction(7, "/remote/worktree", "ses_target", OpenCodeHomeSessionAction.CopyId);
+        Check(Windows.ApplicationModel.DataTransfer.Clipboard.Text == "ses_target" && Windows.ApplicationModel.DataTransfer.Clipboard.Writes == copies + 1
+            && page.HomeSwitchRequests.Count == 0, "actual Home copy route copies the real target ID without navigation or native selection changes; clipboard boundary doubled");
+        page.TestHomeAction(6, "/remote/worktree", "ses_target", OpenCodeHomeSessionAction.CopyId);
+        page.TestHomeAction(7, "/remote/worktree", "ses_target", OpenCodeHomeSessionAction.Delete);
+        Check(Windows.ApplicationModel.DataTransfer.Clipboard.Writes == copies + 1 && page.HomeSwitchRequests.Count == 0, "stale/unsupported context action cannot copy, navigate, or pretend a server mutation");
+        await page.TestOpenHome(7, "/remote/worktree", "ses_target");
+        Check(page.HomeSwitchRequests.SequenceEqual(new[] { "ses_target" }) && page.HomeMirrors == 1, "actual production Home router invokes existing switch exactly once and mirrors only the accepted binding");
+        Check(page.TestHiddenSelectionIs(hiddenAlreadyTarget), "navigation does not depend on changing the hidden native item");
+        await page.TestOpenHome(6, "/remote/worktree", "ses_target");
+        Check(page.HomeSwitchRequests.Count == 1, "stale Home event cannot invoke switch");
+        page.TestHomeUnavailable();
+        await page.TestOpenHome(7, "/remote/worktree", "ses_target");
+        Check(page.HomeSwitchRequests.Count == 1 && page.TestHomeUnavailableExplained, "genuinely unavailable source explains the blocked click instead of pretending to navigate");
+    }
+
+    private static Task BlankToSessionColumn()
+    {
+        var blank = OpenCodePage.ConversationColumn(1200, 1184, 1040, true);
+        var session = OpenCodePage.ConversationColumn(1200, 1184, 920, false);
+        Check(blank.Width == 1040 && blank.RightGutter == 0, "blank uses its own centered main-content width");
+        Check(session.Width == 920 && session.RightGutter == 16, "NEW to SESSION explicitly restores reading max width and actual viewport gutter");
+        Check((1200 - session.RightGutter) / 2 == 1184d / 2, "composer column center matches reading viewport, not screen/sidebar center");
+        return Task.CompletedTask;
+    }
+
+    private static Task HomeMetadataProjection()
+    {
+        var now = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var a = new OpenCodeHomeProjectKey("runtime-a", "/work/a");
+        var b = new OpenCodeHomeProjectKey("runtime-a", "/work/b");
+        OpenCodeSessionInfo Info(string id, string directory, string? outcome, DateTimeOffset time) => new()
+            { Id = id, Title = "Actual " + id, ProjectId = "same-git-id", Outcome = outcome,
+              Location = new() { Directory = directory }, Time = new() { Created = time.ToUnixTimeMilliseconds(), Updated = time.ToUnixTimeMilliseconds() } };
+        var success = new OpenCodeHomeSession(a, Info("ses_a", a.Directory, "succeeded", now));
+        var failed = new OpenCodeHomeSession(b, Info("ses_b", b.Directory, "failed", now.AddDays(-1)));
+        var unknown = new OpenCodeHomeSession(a, Info("ses_c", a.Directory, null, now.AddDays(-3)), new(Working: false));
+        var snapshot = new OpenCodeHomeSnapshot(7, new[] { new OpenCodeHomeProject(a, "A", "same-git-id"), new(b, "B", "same-git-id") }, new[] { unknown, failed, success });
+        var rows = OpenCodeHomeProjection.Rows(snapshot, null, null, now, TimeZoneInfo.Utc);
+        Check(rows.Count == 3 && rows.Select(row => row.Session.Project.Directory).Distinct().Count() == 2, "equal Git ID never merges exact worktree directories");
+        Check(rows[0].Tone == OpenCodeHomeTone.Succeeded && rows[1].Tone == OpenCodeHomeTone.Failed && rows[2].Tone == OpenCodeHomeTone.Unknown, "actual outcomes survive; inactive does not imply success");
+        Check(rows[0].DateGroup == OpenCodeHomeDateGroup.Today && rows[1].DateGroup == OpenCodeHomeDateGroup.Yesterday && rows[2].DateGroup == OpenCodeHomeDateGroup.Earlier, "today/yesterday/earlier use actual timestamps in supplied local zone");
+        Check(OpenCodeHomeProjection.Rows(snapshot, b, "actual SES_B", now, TimeZoneInfo.Utc).Single().Session.Info.Id == "ses_b", "search/project filter uses actual loaded titles and exact directory");
+        Check(OpenCodeHomeProjection.DateGroup(null, now, TimeZoneInfo.Utc) == OpenCodeHomeDateGroup.Unknown
+            && OpenCodeHomeProjection.DateGroup(now.AddDays(1), now, TimeZoneInfo.Utc) == OpenCodeHomeDateGroup.Future, "missing/future dates stay honest");
+        Check(OpenCodePage.RemoteChildDirectory("/remote/base", "../sibling") == "/remote/base/../sibling", "remote child path remains relative to response location, not local Windows or input browse path");
+        var backend = new Backend(); using var client = backend.CreateClient(); var page = new OpenCodePage(); page.TestActivate(Session, client); page.TestHomeDirectory(a.Directory);
+        Check(page.TestHomeEvent(7, a) && !page.TestHomeEvent(6, a), "actual adapter event check rejects stale projection revision");
+        page.TestReplaceHomeSource();
+        Check(!page.TestHomeEvent(8, a) && !page.TestHomeEvent(7, a), "actual adapter rejects old runtime source even with fresh numeric revision");
+        return Task.CompletedTask;
+    }
 
     private static async Task<int> Main()
     {
@@ -33,6 +198,9 @@ internal static class Program
                 ("same-session rollback epoch rejects latest/older and late finally", AcceptedHistoryRaces),
                 ("whole send deferral and authoritative effects refresh", SendHistoryWorkflow),
                 ("scroll-to-top auto-load is upward-only, single-flight and gated", ScrollTopAutoLoad),
+                ("Home metadata-only source/directory/date/outcome projection", HomeMetadataProjection),
+                ("Home click does not depend on hidden native selection changing", HomeUnchangedSelectionClick),
+                ("Home actual root action consumer, confirmation/current/source guards and metadata-only refresh", HomeRootActions),
             })
             {
                 var before = _assertions;

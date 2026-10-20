@@ -24,12 +24,28 @@ public sealed record OpenCodeModelInfo
     [JsonPropertyName("name")]
     public string? Name { get; init; }
 
+    /// <summary>真实 Model.Info 变体；仅公开选择所需的 id，不复制配置/headers/body。</summary>
+    [JsonPropertyName("variants")]
+    public List<OpenCodeModelVariant>? Variants { get; init; }
+
+    [JsonPropertyName("enabled")]
+    public bool? Enabled { get; init; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; init; }
+
     /// <summary>每项为同一模型的一个价格 tier；缺失/空列表不代表免费。</summary>
     [JsonPropertyName("cost")]
     public List<OpenCodeModelCost>? Cost { get; init; }
 
     [JsonPropertyName("limit")]
     public OpenCodeModelLimit? Limit { get; init; }
+}
+
+public sealed record OpenCodeModelVariant
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
 }
 
 /// <summary>所有价格均为 USD / 百万 token，非倍率；nullable 保留缺价。</summary>

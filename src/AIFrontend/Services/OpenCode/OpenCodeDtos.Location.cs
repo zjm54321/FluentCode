@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace AIFrontend.Services.OpenCode;
@@ -17,7 +18,7 @@ public sealed record OpenCodeLocationInfo
     public OpenCodeProjectInfo? Project { get; init; }
 }
 
-/// <summary>Location.PublicInfo.project。已核实必填：id、directory、canonical。</summary>
+/// <summary>项目身份；location 响应包含 directory，project.list 仅提供 canonical，不伪造 directory。</summary>
 public sealed record OpenCodeProjectInfo
 {
     /// <summary>项目 id。</summary>
@@ -31,6 +32,31 @@ public sealed record OpenCodeProjectInfo
     /// <summary>规范化目录。</summary>
     [JsonPropertyName("canonical")]
     public string? Canonical { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("sandboxes")]
+    public List<string>? Sandboxes { get; init; }
+
+    [JsonPropertyName("time")]
+    public OpenCodeProjectTime? Time { get; init; }
+}
+
+/// <summary>Project.Time；时间为 Unix 毫秒，archived 可选。</summary>
+public sealed record OpenCodeProjectTime
+{
+    [JsonPropertyName("created")]
+    public long? Created { get; init; }
+
+    [JsonPropertyName("updated")]
+    public long? Updated { get; init; }
+
+    [JsonPropertyName("active")]
+    public long? Active { get; init; }
+
+    [JsonPropertyName("archived")]
+    public long? Archived { get; init; }
 }
 
 /// <summary>

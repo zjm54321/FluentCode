@@ -28,6 +28,7 @@ internal static class Program
         SystemCatalog();
         LiveRefreshPlan();
         LiveRefreshCoalescing();
+        await ProjectBookmarkPersistence(Path.Combine(root, "home-project-bookmarks"));
 
         Console.WriteLine($"PASS: 10 font groups, {assertions} assertions; production-linked SettingsService/AppSettings/AppFontDefaults/SystemFontCatalog/AppFontRefreshPlan; temp data dir only.");
         return 0;
@@ -40,6 +41,59 @@ internal static class Program
         {
             throw new InvalidOperationException(message);
         }
+    }
+
+    private static async Task ProjectBookmarkPersistence(string dir)
+    {
+        var store = new SettingsService(dir);
+        var empty = await store.LoadAsync();
+        Check(empty.OpenCodeProjectDirectories is null && !File.Exists(store.SettingsFilePath), "Legacy/missing bookmarks default to null without creating settings.");
+        var initial = empty with
+        {
+            Theme = AppTheme.Dark, CodeTheme = AppCodeTheme.OneDarkPro, Fonts = new() { Body = "Inter" },
+            OpenCode = new() { BaseUrl = "http://localhost:4096/prefix", CredentialId = "existing-ref" },
+        };
+        await store.SaveAsync(initial);
+        Check(!(await File.ReadAllTextAsync(store.SettingsFilePath)).Contains("openCodeProjectDirectories", StringComparison.Ordinal), "Default bookmark node omitted from existing schema.");
+        var a = new OpenCodeProjectBookmark("source-A", "/remote/AIFrontend", "prj_same", "Original");
+        var b = a with { Directory = "/remote/AIFrontend-wave5-argon", DisplayName = "Copy" };
+        var c = a with { SourceId = "source-B" };
+        var bookmarks = OpenCodeProjectBookmarks.Upsert(OpenCodeProjectBookmarks.Upsert(OpenCodeProjectBookmarks.Upsert(initial, a), b), c);
+        bookmarks = OpenCodeProjectBookmarks.Upsert(bookmarks, a with { DisplayName = "Actual updated name" });
+        Check(initial.OpenCodeProjectDirectories is null && bookmarks.OpenCodeProjectDirectories!.Count == 3, "Pure upsert does not mutate input or merge same Git ID across directory/Source.");
+        Check(OpenCodeProjectBookmarks.ForSource(bookmarks, "source-A").Count == 2
+            && OpenCodeProjectBookmarks.ForSource(bookmarks, "source-B").Count == 1
+            && OpenCodeProjectBookmarks.ForSource(bookmarks, "SOURCE-A").Count == 0, "Source identity is opaque and ordinal, never cross-Source merged.");
+        bookmarks = OpenCodeProjectBookmarks.Upsert(bookmarks, a with { Directory = "/remote/aifrontend" });
+        Check(bookmarks.OpenCodeProjectDirectories!.Count == 4, "Remote directory comparison is ordinal with no Windows case folding.");
+        await store.SaveAsync(bookmarks);
+        var loaded = await new SettingsService(dir).LoadAsync();
+        Check(loaded.OpenCodeProjectDirectories!.SequenceEqual(bookmarks.OpenCodeProjectDirectories!), "Exact Source/directory/metadata survives atomic existing-store reload.");
+        Check(loaded.Theme == initial.Theme && loaded.CodeTheme == initial.CodeTheme && loaded.Fonts == initial.Fonts
+            && loaded.OpenCode == initial.OpenCode && loaded.Providers.SequenceEqual(initial.Providers)
+            && loaded.Models.SequenceEqual(initial.Models) && loaded.SelectedModel == initial.SelectedModel, "Bookmark save preserves fonts/code theme/source config and all other preferences.");
+        var json = await File.ReadAllTextAsync(store.SettingsFilePath);
+        Check(json.Contains("\"sourceId\": \"source-A\"", StringComparison.Ordinal)
+            && json.Contains("\"directory\": \"/remote/AIFrontend-wave5-argon\"", StringComparison.Ordinal), "Bookmark shape is sourceId/directory in existing settings JSON.");
+        foreach (var invalid in new[]
+        {
+            new OpenCodeProjectBookmark[] { a, a },
+            new[] { a with { SourceId = " " } },
+            new[] { a with { Directory = " " } },
+            new OpenCodeProjectBookmark[] { null! },
+        })
+        {
+            try { await store.SaveAsync(loaded with { OpenCodeProjectDirectories = invalid }); throw new Exception("missing bookmark validation"); }
+            catch (SettingsValidationException) { Check(await File.ReadAllTextAsync(store.SettingsFilePath) == json, "Invalid/duplicate bookmark rejected without overwriting settings."); }
+        }
+        var remaining = OpenCodeProjectBookmarks.Remove(loaded, a.SourceId, a.Directory);
+        Check(remaining.OpenCodeProjectDirectories!.Count == 3 && OpenCodeProjectBookmarks.ForSource(remaining, "source-B").Count == 1, "Remove affects only exact Source/directory.");
+        foreach (var bookmark in remaining.OpenCodeProjectDirectories!.ToArray())
+            remaining = OpenCodeProjectBookmarks.Remove(remaining, bookmark.SourceId, bookmark.Directory);
+        await store.SaveAsync(remaining);
+        Check(remaining.OpenCodeProjectDirectories is null
+            && !(await File.ReadAllTextAsync(store.SettingsFilePath)).Contains("openCodeProjectDirectories", StringComparison.Ordinal), "Removing final bookmark restores omitted default node.");
+        Check(remaining.Fonts == initial.Fonts && remaining.OpenCode == initial.OpenCode, "Removing bookmarks leaves unrelated preferences untouched.");
     }
 
     private static void Defaults()

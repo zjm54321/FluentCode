@@ -19,7 +19,8 @@ public sealed record SessionControlOrigin(OpenCodePageSource Source, long Revisi
 /// <summary>Caller-owned exact authoritative draft token/fingerprint, including command/files/IME state.
 /// Empty must mean empty text, command AND files. It is not permission to borrow a newer editor token.</summary>
 public sealed record SessionControlDraft(string Fingerprint, bool Empty);
-public sealed record SessionControlRequest(SessionControlKind Kind, SessionControlModelRef? Model = null, bool Files = false);
+public sealed record SessionControlRequest(SessionControlKind Kind, SessionControlModelRef? Model = null, bool Files = false,
+    string? Directory = null, string? ExpectedTitle = null, string? NewTitle = null);
 public enum SessionControlStatus { Ready, Accepted, Blocked, OriginLost, ConfirmationRequired, InsufficientHistory,
     NothingToUndo, NoStage, OutcomeUnknown, DefinitivelyRejected }
 
@@ -153,6 +154,10 @@ public sealed class OpenCodeSessionControlCoordinator
                         preview.Request.Files, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.ClearRevert:
                     await client.ClearRevertGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
+                case SessionControlKind.DeleteRoot:
+                    await client.DeleteSessionGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
+                case SessionControlKind.RenameRoot:
+                    await client.RenameSessionGuardedAsync(origin.SessionId, preview.Request.NewTitle!, preview.Request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
                 default: throw new InvalidOperationException("Continuation uses the already-held-lease seam.");
             }
             accepted = true;
@@ -161,7 +166,7 @@ public sealed class OpenCodeSessionControlCoordinator
                 () => lease.CompleteSessionControl(operationId, NotificationInteractionStatus.Succeeded)))
                 return Result(SessionControlStatus.OutcomeUnknown);
             SessionControlState? observed = null;
-            try { observed = await Read(origin, ownsOperation, linked.Token, () => client.GetSessionControlStateAsync(origin.SessionId, linked.Token)).ConfigureAwait(false); }
+            try { if (preview.Request.Kind != SessionControlKind.DeleteRoot) observed = await Read(origin, ownsOperation, linked.Token, () => client.GetSessionControlStateAsync(origin.SessionId, linked.Token)).ConfigureAwait(false); }
             catch (Exception e) when (ReadFailure(e) || e is Lost) { /* Accepted remains accepted; display refresh is separate. */ }
             SessionControlRestoration? restoration = null;
             if (acceptedStage is not null && observed?.Revert?.Fingerprint == acceptedStage.Fingerprint && preview.Target is { } target)
@@ -246,6 +251,10 @@ public sealed class OpenCodeSessionControlCoordinator
     {
         Task<T> Get<T>(Func<Task<T>> start) => Read(origin, current, ct, start);
         var state = await Get(() => client.GetSessionControlStateAsync(origin.SessionId, ct)).ConfigureAwait(false);
+        bool RootMatches(SessionControlState candidate) => candidate.ParentId is null && candidate.Directory == request.Directory
+            && candidate.Title == request.ExpectedTitle;
+        var rootAction = request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot;
+        if (rootAction && !RootMatches(state)) return new(SessionControlStatus.ConfirmationRequired, null);
         SessionControlModels? catalog = null; SessionControlDefaultModel? inherited = null;
         if (request.Kind == SessionControlKind.SwitchModel)
         {
@@ -305,7 +314,7 @@ public sealed class OpenCodeSessionControlCoordinator
         if (!execution.CanSwitchAgent) return new(SessionControlStatus.Blocked, null);
         // Reads aren't atomic. Detect changes noticed during this preflight, but never claim cross-client CAS.
         var last = await Get(() => client.GetSessionControlStateAsync(origin.SessionId, ct)).ConfigureAwait(false);
-        if (last.Fingerprint != state.Fingerprint) return new(SessionControlStatus.ConfirmationRequired, null);
+        if (last.Fingerprint != state.Fingerprint || rootAction && !RootMatches(last)) return new(SessionControlStatus.ConfirmationRequired, null);
         var fingerprint = SessionControlJson.Hash(new { state.Fingerprint, request, draft,
             target = target?.Fingerprint, history = history.Select(m => m.Fingerprint).ToArray(),
             selected = catalog?.Models.Single(m => m.Offers(request.Model!)).Fingerprint,
@@ -321,6 +330,11 @@ public sealed class OpenCodeSessionControlCoordinator
         if (!Enum.IsDefined(request.Kind) || string.IsNullOrWhiteSpace(draft.Fingerprint)
             || !origin.SessionId.StartsWith("ses", StringComparison.Ordinal) || !NotificationArgumentCodec.IsValidRequestId(origin.SessionId))
             throw new ArgumentException("Invalid session control context.");
+        if (request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(request.Directory);
+            if (request.Kind == SessionControlKind.RenameRoot) ArgumentException.ThrowIfNullOrWhiteSpace(request.NewTitle);
+        }
     }
     private static bool Fence(SessionControlOrigin origin, Func<SessionControlOrigin, bool> current, CancellationToken ct, Action action)
     {

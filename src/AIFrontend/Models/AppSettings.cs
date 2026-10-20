@@ -67,6 +67,10 @@ public sealed record AppSettings
     /// <summary>OpenCode 后端设置。</summary>
     public OpenCodeSettings OpenCode { get; init; } = new();
 
+    /// <summary>每个稳定 Source/profile 的已添加目录；null 为旧版/默认，省略序列化。</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public IReadOnlyList<OpenCodeProjectBookmark>? OpenCodeProjectDirectories { get; init; }
+
     /// <summary>聊天 provider 端点列表。</summary>
     public IReadOnlyList<ProviderEndpoint> Providers { get; init; } = Array.Empty<ProviderEndpoint>();
 
