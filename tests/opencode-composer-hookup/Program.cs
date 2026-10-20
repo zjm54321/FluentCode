@@ -1,0 +1,1019 @@
+// Test doubles are deliberately limited to WinUI/native APIs and existing timeline presentation.
+// Page.Composer.cs, Page.AgentIntegration.cs, extracted page members, controller/loader/gate/client
+// picker adapter and editor ledger/handoff/lifetime helpers are production sources. The view and
+// scheduler remain explicit doubles, not native event/dispatcher evidence. No live HTTP/private files.
+#pragma warning disable CS0067, CS0169, CS0414, CS0649
+using System;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using AIFrontend.Pages;
+using AIFrontend.Pages.OpenCode;
+using AIFrontend.Services.Notifications;
+using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.System;
+
+internal static class Program
+{
+    private static int checks;
+    internal static void Check(bool value, string note)
+    {
+        checks++;
+        if (!value) throw new InvalidOperationException(note);
+    }
+    internal static HttpResponseMessage Json(string value) => new(HttpStatusCode.OK) { Content = new StringContent(value, Encoding.UTF8, "application/json") };
+    internal static HttpResponseMessage Receipt(string session = "ses_test") => Json("{\"data\":{\"id\":\"msg_real\",\"sessionID\":\"" + session + "\",\"type\":\"user\",\"payload\":{\"text\":\"accepted\"}}}");
+    internal static TaskCompletionSource<T> Signal<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal sealed class Handler : HttpMessageHandler
+    {
+        internal int Posts, Gets, Interrupts;
+        internal bool NoStagePreflight;
+        internal string? Path, Body;
+        internal Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> Respond =
+            (r, _) => Task.FromResult(r.Method == HttpMethod.Get
+                ? r.RequestUri!.AbsolutePath == "/api/command"
+                    ? Json("{\"data\":[{\"name\":\"review\",\"description\":\"Review\"}]}")
+                    : throw new InvalidOperationException("Unexpected offline GET " + r.RequestUri.AbsolutePath)
+                : r.RequestUri!.AbsolutePath.EndsWith("/command", StringComparison.Ordinal)
+                    ? new(HttpStatusCode.NoContent) : r.RequestUri!.AbsolutePath.EndsWith("/interrupt", StringComparison.Ordinal)
+                        ? Json("{\"interrupted\":true}") : Receipt());
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            if (request.Method == HttpMethod.Get) Gets++; else Posts++;
+            if (request.RequestUri!.AbsolutePath.EndsWith("/interrupt", StringComparison.Ordinal)) Interrupts++;
+            Path = request.RequestUri!.AbsolutePath;
+            Body = request.Content?.ReadAsStringAsync(ct).GetAwaiter().GetResult();
+            // Legacy fixture callbacks below intentionally control mutation responses only.
+            // Give the current continuation preflight its own authoritative no-stage GET,
+            // without intercepting NativeTests' independently controlled stage/state reads.
+            if (NoStagePreflight && request.Method == HttpMethod.Get && Path is "/api/session/ses_test" or "/api/session/ses_other")
+                return Task.FromResult(Json("{\"data\":{\"id\":\"" + Path["/api/session/".Length..]
+                    + "\",\"projectID\":\"p\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/synthetic\"}}}"));
+            return Respond(request, ct);
+        }
+    }
+    internal sealed class Fixture : IDisposable
+    {
+        internal Handler Http = new();
+        internal readonly OpenCodeClient Client;
+        internal readonly OpenCodePageSource Source;
+        internal readonly OpenCodePage Page;
+        internal Fixture()
+        {
+            Http.NoStagePreflight = true;
+            OpenCodeClient Create() => new(new HttpClient(Http, false), new() { BaseUrl = "https://offline.invalid", Secret = "synthetic", Timeout = TimeSpan.FromSeconds(20) }, true);
+            Client = Create();
+            Source = new("endpoint_" + Guid.NewGuid().ToString("N"), 7, Create);
+            Page = new(Source, Client);
+            Page.CountStops = () => Http.Interrupts;
+        }
+        internal Task<OpenCodeInteractionGate.Lease> Lease(string session = "ses_test") => OpenCodeInteractionGate.Shared.EnterAsync(Source.Identity, session);
+        public void Dispose() { Page.UnloadFixture(); Client.Dispose(); }
+    }
+    // Controllable UI continuation queue: tests can navigate after settlement but before publication.
+    internal sealed class QueuedContext : SynchronizationContext
+    {
+        private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> queue = new();
+        internal readonly TaskCompletionSource<bool> Ready = Signal<bool>();
+        public override void Post(SendOrPostCallback d, object? state) { queue.Enqueue((d, state)); Ready.TrySetResult(true); }
+        internal void Drain()
+        {
+            var old = Current; SetSynchronizationContext(this);
+            try { while (queue.TryDequeue(out var next)) next.Callback(next.State); }
+            finally { SetSynchronizationContext(old); }
+        }
+    }
+    private static async Task Main(string[] args)
+    {
+        if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }
+        await RoutingAndProtection();
+        var first = checks;
+        await ReceiptsAndOwners();
+        var second = checks - first;
+        await LifecycleAndHooks(args[0]);
+        var third = checks - first - second;
+        await AcknowledgmentAndHandoffs();
+        var fourth = checks - first - second - third;
+        await TerminalButtons();
+        await BlankSessionDraft();
+        await BlankSessionDelayedRefreshAba();
+        PermissionDismissalFocus();
+        Console.WriteLine($"PASS: 5 production-linked page-partial groups, {checks} assertions ({first}/{second}/{third}/{fourth}/{checks-first-second-third-fourth}); real core/editor helpers, fake HTTP, WinUI/view/scheduler doubles; no live UI/service.");
+    }
+    private static async Task TerminalButtons()
+    {
+        var before = checks;
+        foreach (var outcome in new[] { OpenCodeSessionOutcomes.Succeeded, OpenCodeSessionOutcomes.Interrupted })
+        {
+            using var f = new Fixture();
+            f.Page.SetWorking();
+            Check(f.Page.StopMode && f.Page.SendEnabled, "accepted running turn exposes Stop: " + outcome);
+            Check(f.Page.SendMode == OpenCodeComposerSendMode.Working, "working without draft shows the Working (click = stop) state: " + outcome);
+            f.Page.Text("queued follow-up");
+            Check(f.Page.SendMode == OpenCodeComposerSendMode.Queue && f.Page.SendEnabled && !f.Page.StopMode,
+                "working with draft shows Queue through the existing send path: " + outcome);
+            f.Page.Text(string.Empty);
+            Check(f.Page.SendMode == OpenCodeComposerSendMode.Working && f.Page.StopMode, "clearing the draft returns to Working: " + outcome);
+            var terminal = new OpenCodeMessage { Id = "msg_terminal", Type = OpenCodeMessageTypes.Idle, Outcome = outcome };
+            f.Page.ObserveExecution(new() { terminal });
+            Check(!f.Page.StopMode && !f.Page.SendEnabled, "polling terminal immediately restores disabled Send: " + outcome);
+            Check(!f.Page.ShouldStop(), "idle handler and displayed button agree: " + outcome);
+            f.Page.ObserveExecution(new() { terminal });
+            Check(!f.Page.StopMode && !f.Page.SendEnabled, "duplicate idle keeps Send: " + outcome);
+            f.Page.Text("next prompt");
+            Check(!f.Page.StopMode && f.Page.SendEnabled, "next draft enables Send: " + outcome);
+            Check(f.Page.SendMode == OpenCodeComposerSendMode.Send, "idle with draft shows Send: " + outcome);
+            f.Page.CoveredByPermission = true;
+            Check(!f.Page.SendEnabled && !f.Page.ComposerEnabled && f.Page.Snapshot.Text == "next prompt",
+                "permission overlay disables input and Send but keeps the draft: " + outcome);
+            f.Page.CoveredByPermission = false;
+            Check(f.Page.SendEnabled && f.Page.ComposerEnabled, "uncovering restores input and Send: " + outcome);
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.SetWorking();
+            f.Page.RebaselineExecution("msg_real");
+            var historical = new OpenCodeMessage { Id = "msg_old_idle", Type = OpenCodeMessageTypes.Idle, Outcome = OpenCodeSessionOutcomes.Succeeded };
+            f.Page.ObserveExecution(new() { historical });
+            Check(f.Page.StopMode && f.Page.SendEnabled, "historical idle without accepted prompt witness cannot clear Working");
+            f.Page.ObserveExecution(new() { historical, new() { Id = "msg_real", Type = OpenCodeMessageTypes.User } });
+            Check(f.Page.StopMode, "accepted prompt after old idle still requires a later terminal");
+            f.Page.ObserveExecution(new() { new() { Id = "msg_fresh_idle", Type = OpenCodeMessageTypes.Idle, Outcome = OpenCodeSessionOutcomes.Interrupted } });
+            Check(!f.Page.StopMode && !f.Page.SendEnabled, "fresh ordered terminal also refreshes button after rebaseline");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("uncertain draft");
+            using (var pending = await f.Lease())
+            {
+                var operation = Guid.NewGuid();
+                pending.BeginComposerSubmission(operation, ComposerSubmissionKind.Command);
+                pending.CompleteComposerSubmission(operation, NotificationInteractionStatus.OutcomeUnknown);
+            }
+            f.Page.ObserveExecution(new() { new() { Id = "msg_unrelated_idle", Type = OpenCodeMessageTypes.Idle, Outcome = OpenCodeSessionOutcomes.Succeeded } });
+            using (var lease = await f.Lease())
+                Check(lease.GetComposerSubmissionProtection() is { Kind: ComposerSubmissionKind.Command }, "idle observation never settles an uncertain submission receipt");
+            await f.Page.Send();
+            Check(f.Http.Posts == 0 && !f.Page.StopMode && f.Page.Snapshot.HasDraft, "uncertain draft cannot retry after idle and is not cleared");
+        }
+        Console.WriteLine($"PASS terminal button regression: {checks - before} assertions; production idle observer and button policy, fake WinUI/gate fixtures.");
+    }
+    // L2 (redesign §3): the blank "新会话" tab edits the same draft UNBOUND. Enter only requests creation (never a
+    // transport); an armed one-shot handoff moves command/file drafts to exactly the created session; a missed
+    // handoff leaves the draft inactive (never lost, never sent elsewhere).
+    private static async Task BlankSessionDraft()
+    {
+        var before = checks;
+        using (var f = new Fixture())
+        {
+            f.Page.EnterBlank();
+            Check(f.Page.BindingUnbound, "blank tab binds an unbound composer binding");
+            f.Page.Text("first message");
+            Check(f.Page.Snapshot.Text == "first message" && f.Page.Snapshot.IsActive && !f.Page.Snapshot.IsProtected && f.Page.Snapshot.CanSubmit,
+                "unbound plain draft is editable and submittable (creation first)");
+            Check(f.Page.SendEnabled && !f.Page.StopMode, "blank tab shows Send, never Stop");
+            int unbound = 0, normal = 0;
+            f.Page.Controller.UnboundSubmitRequested += (_, _) => unbound++;
+            f.Page.Controller.SubmitRequested += (_, _) => normal++;
+            f.Page.PublicSubmit();
+            Check(unbound == 1 && normal == 0 && f.Http.Posts == 0, "Enter on blank tab requests creation only; zero POST");
+            await f.Page.SendLegacyDirect(); await f.Page.Send();
+            Check(f.Http.Posts == 0 && f.Page.Snapshot.Text == "first message", "legacy/enhanced senders refuse an unbound draft and keep it");
+            f.Page.Text("");
+            var actions = f.Page.Snapshot.ClientActions.ToDictionary(a => a.Kind, a => a.CanStage);
+            Check(!actions[OpenCodeComposerClientActionKind.ChooseAgent] && !actions[OpenCodeComposerClientActionKind.ChooseModel]
+                && !actions[OpenCodeComposerClientActionKind.Undo] && !actions[OpenCodeComposerClientActionKind.Redo]
+                && actions[OpenCodeComposerClientActionKind.NewSession] && actions[OpenCodeComposerClientActionKind.ChooseSession]
+                && actions[OpenCodeComposerClientActionKind.EditDraft], "session-dependent native actions unavailable before a session exists");
+            var blank = f.Page.Snapshot;
+            Check(blank.IsUnboundDraft, "blank-tab snapshot marks the unbound draft");
+            foreach (var kind in new[] { OpenCodeComposerClientActionKind.ChooseAgent, OpenCodeComposerClientActionKind.ChooseModel,
+                OpenCodeComposerClientActionKind.Undo, OpenCodeComposerClientActionKind.Redo })
+                Check(OpenCodeComposerCommandMenuSession.UnavailableReason(kind, blank) == "开始会话后可用", "blank-tab caption for " + kind);
+            Check(!OpenCodeComposerCommandMenuSession.RequiresSession(OpenCodeComposerClientActionKind.NewSession)
+                && !OpenCodeComposerCommandMenuSession.RequiresSession(OpenCodeComposerClientActionKind.ChooseSession)
+                && !OpenCodeComposerCommandMenuSession.RequiresSession(OpenCodeComposerClientActionKind.EditDraft), "session-free actions keep their own reasons");
+            f.Page.Text("carried text");
+            f.Page.LeaveBlankTo("ses_test");
+            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Text == "carried text", "plain text carries into the created session without handoff");
+            Check(!f.Page.Snapshot.IsUnboundDraft
+                && OpenCodeComposerCommandMenuSession.UnavailableReason(OpenCodeComposerClientActionKind.ChooseAgent, f.Page.Snapshot) != "开始会话后可用",
+                "bound session never shows the blank-tab caption");
+            await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith("/prompt", StringComparison.Ordinal) && f.Http.Path.Contains("ses_test", StringComparison.Ordinal),
+                "normal path sends exactly once to the created session");
+        }
+        foreach (var command in new[] { true, false })
+        {
+            using var f = new Fixture();
+            f.Page.EnterBlank();
+            if (command) await f.Page.Command("args"); else { f.Page.Text("with file"); await f.Page.File(); }
+            Check(f.Page.Snapshot.IsBoundDraft && f.Page.Snapshot.IsActive && f.Http.Posts == 0, "unbound command/file draft staged without POST");
+            var token = f.Page.Snapshot.Token;
+            Check(!f.Page.Controller.ArmUnboundHandoff(token, ""), "handoff requires a concrete created session");
+            Check(f.Page.Controller.ArmUnboundHandoff(token, "ses_test"), "handoff armed for the exact unchanged draft");
+            f.Page.LeaveBlankTo("ses_test");
+            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.HasDraft && (command ? f.Page.Snapshot.SelectedCommand == "review" : f.Page.Snapshot.Attachments.Count == 1),
+                "armed handoff moves the command/attachment draft to the created session without loss");
+            await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith(command ? "/command" : "/prompt", StringComparison.Ordinal), "handed-over draft sends once via the enhanced path");
+            Check(!f.Page.Snapshot.HasDraft, "accepted handed-over draft cleared once");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.EnterBlank(); f.Page.Text("unarmed"); await f.Page.File();
+            var token = f.Page.Snapshot.Token;
+            Check(f.Page.Controller.ArmUnboundHandoff(token, "ses_created"), "armed for a different session");
+            f.Page.LeaveBlankTo("ses_test");
+            Check(!f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 1, "handoff never retargets another session; draft retained inactive");
+            await f.Page.Send(); f.Page.PublicSubmit();
+            Check(f.Http.Posts == 0, "inactive unbound-origin draft cannot be sent to a different session");
+            f.Page.EnterBlank();
+            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 1, "returning to the blank tab reactivates the retained draft");
+            token = f.Page.Snapshot.Token;
+            Check(f.Page.Controller.ArmUnboundHandoff(token, "ses_test"), "re-armed");
+            f.Page.Text("edited after arm");
+            f.Page.LeaveBlankTo("ses_test");
+            Check(!f.Page.Snapshot.IsActive, "an edit after arming drops the handoff (no stale capture)");
+        }
+        Console.WriteLine($"PASS blank new-session draft: {checks - before} assertions; production controller/page partials, fake HTTP.");
+    }
+    private static async Task BlankSessionDelayedRefreshAba()
+    {
+        int before = checks;
+        foreach (var kind in new[] { "text", "command", "attachment" })
+        {
+            using var f = new Fixture();
+            f.Page.EnterBlank();
+            if (kind == "command") await f.Page.Command("retained args");
+            else { f.Page.Text("retained " + kind); if (kind == "attachment") await f.Page.File(); }
+            var draft = f.Page.Snapshot;
+            var held = Signal<bool>(); var bound = Signal<bool>();
+            f.Page.NewSessionRefresh = held.Task;
+            f.Page.NewSessionBound = () => bound.TrySetResult(true);
+            var respond = f.Http.Respond;
+            f.Http.Respond = (request, ct) => request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session"
+                ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_test\"}}")) : respond(request, ct);
+            var create = f.Page.CreateBlankSession();
+            await bound.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            var firstBinding = f.Page.Snapshot.Token;
+            Check(f.Page.Created == "ses_test" && f.Http.Posts == 1, kind + ": create accepted once while initial refresh held");
+            f.Page.Switch("ses_other"); f.Page.Switch("ses_test");
+            Check(f.Page.Snapshot.Token != firstBinding, kind + ": A→B→A installs a different exact token");
+            held.SetResult(true); await create;
+            var retained = f.Page.Snapshot;
+            Check(f.Http.Posts == 1, kind + ": delayed original refresh cannot auto-send after binding ABA");
+            Check(retained.HasDraft && retained.Text == draft.Text && retained.SelectedCommand == draft.SelectedCommand
+                && retained.Attachments.Count == draft.Attachments.Count, kind + ": draft retained intact for explicit submit");
+            Check(f.Page.Messages.Any(m => m.Contains("会话已创建，未发送", StringComparison.Ordinal)), kind + ": explains retained draft");
+            await f.Page.Send();
+            Check(f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft, kind + ": fresh explicit submit remains allowed exactly once");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.EnterBlank(); f.Page.Text("unchanged create and send");
+            var respond = f.Http.Respond;
+            f.Http.Respond = (request, ct) => request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session"
+                ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_test\"}}")) : respond(request, ct);
+            await f.Page.CreateBlankSession();
+            Check(f.Page.Created == "ses_test" && f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft,
+                "unchanged exact new binding still creates and auto-sends once; guard does not reject every handoff");
+        }
+        Console.WriteLine($"PASS blank-tab delayed-refresh ABA: {checks - before} assertions; actual create/handoff methods, fake HTTP/refresh.");
+    }
+
+    private static void PermissionDismissalFocus()
+    {
+        int before = checks;
+        foreach (bool focused in new[] { true, false })
+        {
+            using var f = new Fixture(); f.Page.Text("retained Chinese draft 中文");
+            f.Page.SetPermissionDismissal(focused);
+            Check(f.Page.DismissPermission() == 0, "last permission removed by Sync");
+            f.Page.DrainDispatcher();
+            Check(f.Page.ComposerFocuses == (focused ? 1 : 0), "restore only previously overlay-owned focus, captured before removal");
+            Check(f.Page.Snapshot.Text == "retained Chinese draft 中文", "dismissal never resets draft");
+        }
+        Console.WriteLine($"PASS permission dismissal focus: {checks - before} assertions; production Sync method, detaching presenter boundary.");
+    }
+
+    private static async Task RoutingAndProtection()
+    {
+        using (var f = new Fixture())
+        {
+            f.Page.Text("/review literal"); await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith("/prompt", StringComparison.Ordinal), "unselected slash uses real legacy sender");
+            Check(f.Http.Body!.Contains("/review literal", StringComparison.Ordinal), "legacy literal preserved");
+            Check(f.Page.Snapshot.Text == "" && f.Page.Receipts == 1 && f.Page.Tracked == 1 && f.Page.Working == 1, "legacy acceptance clears captured token and publishes real receipt");
+            f.Page.PublicSubmit(); Check(f.Http.Posts == 1 && f.Page.Composer.Text == "", "rapid next submit cannot re-push accepted legacy editor text before render");
+            using var lease = await f.Lease(); Check(lease.GetComposerSubmissionProtection() is null, "legacy acceptance writes no enhanced protection");
+        }
+        using (var f = new Fixture())
+        {
+            // Wave 3 Tab completion through the REAL page bridge: catalog-proven trigger edit only, never a send.
+            f.Page.Text("/r"); await f.Page.LoadMenu(); f.Page.DrainView();
+            var handle = f.Page.Snapshot.CatalogHandle!;
+            Check(!f.Page.ViewComplete(f.Page.Snapshot.Token, handle, "x"), "completion must extend the displayed trigger");
+            Check(!f.Page.ViewComplete(f.Page.Snapshot.Token, handle, "rzz"), "completion must be a catalog prefix");
+            var before = f.Page.Snapshot.Token;
+            Check(f.Page.ViewComplete(before, handle, "rev"), "page bridge accepts a catalog-proven completion");
+            f.Page.DrainView();
+            Check(f.Page.Snapshot.Text == "/rev" && f.Page.Composer.Text == "/rev" && f.Page.Snapshot.Token != before
+                && f.Page.Snapshot.CatalogHandle == handle && f.Page.Snapshot.SelectedCommand is null,
+                "completed text reaches the editor through guarded reconcile; same opening, nothing staged");
+            Check(!f.Page.ViewComplete(before, handle, "revi"), "stale token cannot complete");
+            Check(f.Http.Posts == 0, "completion never POSTs");
+        }
+        using (var f = new Fixture())
+        {
+            // Wave 3: clicking a catalog-declared argument-free server command goes through the REAL page submission bridge.
+            await f.Page.Command("");
+            Check(f.Http.Posts == 0 && f.Page.Snapshot.SelectedCommand == "review", "staged command, nothing sent yet");
+            f.Page.ClickFreeCommand();
+            for (var i = 0; i < 200 && f.Http.Posts == 0; i++) await Task.Delay(10);
+            Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith("/command", StringComparison.Ordinal), "argument-free click sends once via the ordinary command route");
+            f.Page.ClickFreeCommand();
+            await Task.Delay(50);
+            Check(f.Http.Posts == 1, "a repeated click with nothing staged sends nothing more");
+        }
+        foreach (var command in new[] { true, false })
+        {
+            using var f = new Fixture();
+            if (command) await f.Page.Command(""); else await f.Page.File();
+            Check(f.Page.Snapshot.HasDraft && f.Page.SendEnabled && !f.Page.StopMode, "command/file-only draft uses Send predicate");
+            await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith(command ? "/command" : "/prompt", StringComparison.Ordinal), "empty-text enhanced route performs one intended POST");
+            Check(!f.Page.Snapshot.HasDraft, "enhanced success cleared once by controller");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.Command("arguments"); f.Page.RemoveCommand();
+            Check(f.Page.Snapshot.IsBoundDraft && f.Page.Snapshot.SelectedCommand is null, "removing command retains bound text");
+            await f.Page.Send(); Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith("/prompt", StringComparison.Ordinal), "bound-only text still uses legacy route");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.Command("arguments");
+            f.Http.Respond = (_, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic disconnect"));
+            await f.Page.Send();
+            using (var lease = await f.Lease())
+            {
+                Check(lease.GetComposerSubmissionProtection() is { Kind: ComposerSubmissionKind.Command }, "unknown enhanced request retained typed command protection");
+                Check(!lease.CanSwitchAgent(), "actual gate blocks agent switch for typed composer protection");
+            }
+            f.Page.RemoveCommand();
+            await f.Page.SendLegacyDirect();
+            Check(f.Http.Posts == 1 && f.Page.Snapshot.Text == "arguments", "actual legacy sender rejects typed protection before zero additional POST");
+            f.Page.Discard(); f.Page.Text("another plain prompt"); await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Page.Snapshot.Text == "another plain prompt", "discard cannot bypass typed protection");
+        }
+        using (var f = new Fixture())
+        {
+            using (var lease = await f.Lease()) { lease.BeginMutation("form_1", NotificationNavigationKind.Form); lease.CompleteMutation(NotificationInteractionStatus.OutcomeUnknown); }
+            f.Page.Text("plain allowed"); await f.Page.Send();
+            Check(f.Http.Posts == 1, "legacy does not blanket replace policy with CanSwitchAgent");
+            using var result = await f.Lease();
+            Check(result.GetComposerSubmissionProtection() is null && result.GetProtectionStatus("form_1", NotificationNavigationKind.Form) == NotificationInteractionStatus.OutcomeUnknown, "plain send preserves preexisting form protection");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("keep on disconnect");
+            f.Http.Respond = (_, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic disconnect"));
+            await f.Page.Send(); using var lease = await f.Lease();
+            Check(f.Http.Posts == 1 && lease.GetComposerSubmissionProtection() is null && f.Page.Snapshot.Text == "keep on disconnect", "legacy failure keeps draft and exact no-new-protection policy");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("event send"); var events = 0;
+            f.Page.Controller.SubmitRequested += (_, _) => events++;
+            f.Page.PublicSubmit();
+            Check(events == 1 && f.Http.Posts == 1, "button bridge emits RequestSubmit/SubmitRequested once, page routes authoritatively");
+        }
+    }
+    private static async Task ReceiptsAndOwners()
+    {
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("sent");
+            var response = Signal<HttpResponseMessage>(); var refresh = Signal<bool>();
+            f.Http.Respond = (_, _) => response.Task; f.Page.RefreshPending = refresh.Task;
+            var send = f.Page.Send(); Check(f.Http.Posts == 1 && f.Page.Pending && f.Page.Sending, "owner lifetime begins once before POST");
+            Check(!f.Page.SendEnabled && !f.Page.ShouldStop(), "local send disables both Send and Stop");
+            f.Page.Text("later edit"); response.SetResult(Receipt());
+            await f.Page.Refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Check(f.Page.Snapshot.Text == "later edit", "later draft revision survives accepted receipt");
+            Check(f.Page.Receipts == 1 && f.Page.Tracked == 1 && f.Page.Working == 1 && f.Page.WaitingUpdates == 1, "receipt publication survives later text edit");
+            Check(f.Page.Pending && f.Page.Sending, "local agent owner lives through receipt publication and refresh");
+            using (var lease = await f.Lease()) Check(lease.GetComposerSubmissionProtection() is null, "lease released before receipt refresh");
+            refresh.SetResult(true); await send;
+            Check(!f.Page.Pending && !f.Page.Sending && f.Page.Begins == 1, "only owning finally clears local pending, one Begin");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.Command(""); await f.Page.Send();
+            Check(f.Page.Receipts == 0 && f.Page.Tracked == 0 && f.Page.Working == 0 && f.Page.Refreshes == 1 && f.Page.WaitingUpdates == 0, "204 acknowledgement creates no receipt/delivery/PromptSent/Working; exactly one read-only refresh");
+            Check(f.Page.Messages.Last().Contains("204", StringComparison.Ordinal) && !f.Page.Missing, "204 acknowledgement message is distinct, not completion");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.Command("keep");
+            f.Http.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            await f.Page.Send();
+            Check(!f.Page.Missing && f.Page.Snapshot.SelectedCommand == "review" && f.Page.Snapshot.Text == "keep", "command404 rejection is NOT generic session-missing");
+            Check(f.Page.Receipts == 0 && f.Page.Tracked == 0, "rejected command no receipt publication");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.File(); f.Page.Text("original");
+            var response = Signal<HttpResponseMessage>(); f.Http.Respond = (_, _) => response.Task;
+            var context = new QueuedContext(); var old = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(context); var send = f.Page.Send(); SynchronizationContext.SetSynchronizationContext(old);
+            response.SetResult(Receipt()); await context.Ready.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            f.Page.Switch("ses_other"); context.Drain(); await send;
+            Check(f.Page.Receipts == 0 && f.Page.Tracked == 0 && f.Page.Working == 0, "queued old UI after settlement cannot publish into new context");
+            Check(!f.Page.Sending && !f.Page.Pending, "navigation invalidates old local owner");
+        }
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("old");
+            var oldResponse = Signal<HttpResponseMessage>(); var newResponse = Signal<HttpResponseMessage>();
+            f.Http.Respond = (r, _) => r.RequestUri!.AbsolutePath.Contains("ses_other", StringComparison.Ordinal) ? newResponse.Task : oldResponse.Task;
+            var oldSend = f.Page.Send(); f.Page.Switch("ses_other"); if (enhanced) f.Page.Discard(); f.Page.Text("new");
+            var newSend = f.Page.Send(); oldResponse.SetResult(Receipt()); await oldSend;
+            Check(f.Page.Sending && f.Page.Pending && !f.Page.SendEnabled, "late old finally cannot clear newer submission owner/buttons");
+            Check(f.Page.Receipts == 0 && f.Page.Snapshot.Text == "new", "stale response never clears current editor or adds receipts");
+            newResponse.SetResult(Receipt("ses_other")); await newSend;
+            Check(!f.Page.Sending && f.Page.Receipts == 1 && f.Page.Tracked == 1, "new owner publishes and ends itself");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.File();
+            using var lease = await f.Lease(); var pending = f.Page.Send(); f.Page.Switch("ses_other"); lease.Dispose(); await pending;
+            Check(f.Http.Posts == 0 && !f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 1, "navigation while awaiting gate is NotStarted, retains inactive draft");
+        }
+    }
+    private static async Task LifecycleAndHooks(string repo)
+    {
+        using (var f = new Fixture())
+        {
+            await f.Page.Command("retained"); var token = f.Page.Snapshot.Token; f.Page.Switch("ses_other");
+            Check(!f.Page.Snapshot.IsActive && f.Page.Snapshot.Text == "retained", "binding switch retains inactive draft");
+            f.Page.Switch("ses_test"); Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Token != token, "exact return activates a new scope");
+            await f.Page.RouteToken(token); Check(f.Http.Posts == 0, "stale public submit token cannot send after A-B-A");
+            foreach (var field in new[] { "page", "sourceGeneration", "sessionGeneration", "revision", "client", "session", "source", "missing", "active" })
+                Check(f.Page.CheckBindingField(field), "pure owner rejects changed field: " + field);
+            f.Page.UnloadFixture(); Check(!f.Page.Snapshot.IsActive && f.Page.Snapshot.HasDraft, "Bind(null) on unload retains draft");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("snapshot old"); f.Page.Text("snapshot latest"); f.Page.DrainView();
+            Check(f.Page.ViewRenderedText == "snapshot latest", "page bridge with view double pulls latest snapshot rather than event payload");
+            Check(f.Page.ViewQueue == 0, "StateChanged/button refresh does not recurse into RequestRender");
+            f.Page.InitializeAgain(); f.Page.Text("one subscription"); f.Page.DrainView();
+            Check(f.Page.RenderRequestsForLastChange == 1, "initialization guard prevents duplicate snapshot subscriptions");
+        }
+        RealRenderOwnership();
+        using (var f = new Fixture())
+        {
+            f.Page.Text("queued submit"); f.Page.DispatcherQueue.HasThreadAccess = false;
+            f.Page.PublicSubmit(); f.Page.Switch("ses_other"); f.Page.DispatcherQueue.HasThreadAccess = true;
+            while (f.Page.DispatcherQueue.Queue.TryDequeue(out var callback)) callback();
+            Check(f.Http.Posts == 0, "queued SubmitRequested rejects token invalidated before UI dispatch");
+            await Task.Run(() => f.Page.Controller.SetText(f.Page.Snapshot.Token, "worker snapshot")); f.Page.DrainView();
+            Check(f.Page.ViewRenderedText == "worker snapshot", "worker SnapshotChanged through page bridge/view double queues latest snapshot");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("menu args"); await f.Page.LoadMenu();
+            f.Page.Key(VirtualKey.Enter); Check(f.Http.Posts == 0 && f.Page.Snapshot.SelectedCommand == "review", "actual page key hook accepts menu only");
+            f.Page.Key(VirtualKey.Enter); Check(f.Http.Posts == 0, "actual page latch consumes held Enter after menu accept");
+            f.Page.KeyUp(VirtualKey.Enter); f.Page.Key(VirtualKey.Enter); Check(f.Http.Posts == 1, "fresh eligible Enter submits selected command exactly once");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.SetWorking(); f.Page.Key(VirtualKey.Enter);
+            Check(f.Http.Posts == 0 && f.Page.Stops == 0 && f.Page.ShouldStop(), "Enter on empty working composer never Stop");
+            f.Page.Click(); Check(f.Page.Stops == 1, "explicit click alone invokes Stop");
+            f.Page.Text("not sent"); f.Page.Composing = true; f.Page.Key(VirtualKey.Enter); f.Page.Composing = false;
+            f.Page.Shift = true; f.Page.Key(VirtualKey.Enter); f.Page.Shift = false;
+            Check(f.Http.Posts == 1, "page hook preserves IME and Shift+Enter after the one explicit Stop");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.SetWorking(); AIFrontend.App.Owner = null; var before = Windows.Storage.Pickers.FileOpenPicker.Opens;
+            await f.Page.Pick(); Check(Windows.Storage.Pickers.FileOpenPicker.Opens == before && !f.Page.Snapshot.IsBusy, "missing owner opens no native dialog/ticket");
+            AIFrontend.App.Owner = new(); var files = Signal<IReadOnlyList<Windows.Storage.StorageFile>?>();
+            Windows.Storage.Pickers.FileOpenPicker.Next = () => files.Task;
+            var pick = f.Page.Pick(); Check(!f.Page.SendEnabled && !f.Page.ShouldStop() && f.Page.Snapshot.IsBusy, "actual page picker busy disables Send AND Stop");
+            var focusBeforeSwitch = f.Page.PickFocusAttempts;
+            f.Page.Switch("ses_other"); files.SetResult(Array.Empty<Windows.Storage.StorageFile>()); await pick;
+            Check(f.Page.PickFocusAttempts == focusBeforeSwitch && !f.Page.Snapshot.IsBusy && f.Http.Posts == 0, "late picker completion suppresses focus, completes ticket, never submits");
+            Windows.Storage.Pickers.FileOpenPicker.Next = () => throw new InvalidOperationException("synthetic native error");
+            await f.Page.Pick(); Check(!f.Page.Snapshot.IsBusy && f.Page.Snapshot.Attachments.Count == 0, "native error reaches adapter completion without attachments");
+            Windows.Storage.Pickers.FileOpenPicker.Next = () => Task.FromResult<IReadOnlyList<Windows.Storage.StorageFile>?>(new[] { new Windows.Storage.StorageFile("synthetic.txt") });
+            await f.Page.Pick(); Check(f.Page.Snapshot.Attachments.Count == 1 && f.Http.Posts == 0, "real adapter and bounded loader attach synthetic bytes only, never submit");
+        }
+        // Structural lifecycle supplement, explicitly not execution of the full WinUI page. Production
+        // methods above are compiled verbatim. These guards ensure actual mutation paths call binding.
+        var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml.cs"));
+        foreach (var method in new[] { "OnPageLoaded", "OnPageUnloaded", "ApplyCurrentSource", "InvalidateForSourceChange", "SwitchToSessionAsync", "NavigateToSessionAsync", "HandleApiException", "DisposeOwnClient" })
+        {
+            var body = Member(page, method);
+            Check(body.Contains("BindComposer();", StringComparison.Ordinal), "actual lifecycle hook binds: " + method);
+        }
+        var reset = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs"));
+        Check(reset.Contains("partial void OnMessageHistoryReset() => ResetSessionInsights();", StringComparison.Ordinal)
+            && !Member(reset, "ResetSessionInsights").Contains("DiscardDraft", StringComparison.Ordinal), "history reset does not discard composer");
+        Check(Member(page, "UpdateInteractionsSection").Contains("RefreshComposerView();", StringComparison.Ordinal), "gate protection refresh hook exists outside buttons");
+        Check(!Member(page, "UpdateComposerButtons").Contains("RefreshComposerView", StringComparison.Ordinal), "no button/render feedback loop");
+        var picker = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerFilePicker.cs"));
+        Check(picker.Split("await controller.AddFilesAsync(", StringSplitOptions.None).Length == 2, "adapter has exactly one ticket completion invocation site");
+        var view = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
+        // Static wiring proof only: the real WinUI view is not compiled by this harness. Match the
+        // deferred source read, not the old statement terminator (the callback is now an expression lambda).
+        // RealRenderOwnership executes the production lifetime/ledger with an explicit scheduler/editor seam.
+        Check(System.Text.RegularExpressions.Regex.IsMatch(view,
+            @"\b_lifetime\s*=\s*new\s+OpenCodeComposerViewLifetime\s*\(\s*new\s+DispatcherScheduler\s*\(\s*_dispatcher\s*\)\s*,\s*\(\s*\)\s*=>\s*Render\s*\(\s*_source\s*\(\s*\)\s*\)\s*\)\s*;"),
+            "static real-view wiring: lifetime callback reads current source at execution, not a captured snapshot");
+        Check(System.Text.RegularExpressions.Regex.IsMatch(view,
+            @"\binternal\s+void\s+RequestRender\s*\(\s*\)\s*=>\s*_lifetime\s*\.\s*RequestRender\s*\(\s*\)\s*;"),
+            "static real-view wiring: render requests delegate to production lifetime owner");
+        Check(!System.Text.RegularExpressions.Regex.IsMatch(view,
+            @"\b(?:OpenCodeClient|HttpClient|HttpMessageInvoker|OpenCodePageSource|OpenCodeInteractionGate|OpenCodeComposerBinding|OpenCodeComposerController)\b"),
+            "static real-view boundary: no transport/client/source/gate/binding/controller type dependency");
+        var composer = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        Check(composer.Split("TextEdited +=", StringSplitOptions.None).Length == 2
+            && composer.Contains("e.Acknowledgment =", StringComparison.Ordinal)
+            && !composer.Contains("_composerController.SetText(", StringComparison.Ordinal), "one acknowledged bridge; no parallel SetText or manual clear");
+        Check(!System.Text.RegularExpressions.Regex.IsMatch(composer + page, @"\bComposer\.Text\s*=(?!=)"), "all production Page editor assignments removed");
+        var button = Member(page, "SendStopButton_Click");
+        Check(button.Contains("PrepareSubmission()", StringComparison.Ordinal)
+            && button.IndexOf("PrepareSubmission()", StringComparison.Ordinal) < button.IndexOf("ShouldStopSelectedSession()", StringComparison.Ordinal), "actual button prepares before Send/Stop predicate");
+    }
+    private static void RealRenderOwnership()
+    {
+        // Executes REAL controller, ledger and lifetime. Only the queued scheduler, editor storage and
+        // render callback are test seams; this is not execution of OpenCodeComposerView/WinUI rendering.
+        using var f = new Fixture();
+        var before = checks;
+        var editor = string.Empty;
+        var renders = 0;
+        OpenCodeComposerSnapshot? rendered = null;
+        var sync = new OpenCodeComposerEditorSync(() => f.Page.Snapshot, () => editor,
+            text => editor = text, () => false, f.Page.Controller.TryApplyEditorInput);
+        var scheduler = new OpenCodeComposerView.HandoffScheduler { Hold = true };
+        var lifetime = new OpenCodeComposerViewLifetime(scheduler, () =>
+        {
+            sync.Reconcile();
+            rendered = f.Page.Snapshot;
+            renders++;
+        });
+        f.Page.Controller.SetText(f.Page.Snapshot.Token, "queued old");
+        lifetime.RequestRender();
+        f.Page.Controller.SetText(f.Page.Snapshot.Token, "queued latest");
+        lifetime.RequestRender();
+        Check(renders == 0 && editor == string.Empty, "real lifetime defers rendering/editor reconciliation until dispatch");
+        scheduler.Drain();
+        Check(renders == 1, "real lifetime coalesces multiple render requests");
+        Check(rendered?.Token == f.Page.Snapshot.Token && rendered.Text == "queued latest"
+            && editor == "queued latest" && sync.BaselineToken == rendered.Token,
+            "real lifetime callback and ledger read latest controller snapshot, not enqueue-time state");
+        scheduler.Hold = true;
+        f.Page.Controller.SetText(f.Page.Snapshot.Token, "after unload");
+        lifetime.RequestRender();
+        lifetime.OnUnloaded();
+        scheduler.Drain();
+        Check(renders == 1 && editor == "queued latest", "real lifetime rejects queued render from unloaded generation");
+        scheduler.Hold = true;
+        lifetime.OnLoaded();
+        scheduler.Drain();
+        Check(renders == 2 && editor == "after unload" && sync.BaselineToken == f.Page.Snapshot.Token,
+            "real lifetime resumes with current snapshot and ledger baseline");
+        Console.WriteLine($"PASS: real render-ownership helpers, {checks - before} assertions; scheduler/editor/render callback seams, not native view execution.");
+    }
+    private static string Member(string text, string name)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^    private [^\r\n]*\b" + name + @"\(");
+        if (!match.Success) throw new InvalidOperationException("Missing production method " + name);
+        var end = text.IndexOf("\n    }", match.Index, StringComparison.Ordinal);
+        return text.Substring(match.Index, end + 6 - match.Index);
+    }
+
+    private static async Task AcknowledgmentAndHandoffs()
+    {
+        using (var f = new Fixture())
+        {
+            f.Page.Text("cycle"); var basis = f.Page.Snapshot.Token;
+            f.Page.Text("cycle");
+            Check(f.Page.Snapshot.Token != basis && f.Page.InputState == OpenCodeComposerInputState.Clean,
+                "single synchronous page ACK accepts a same-string observed edit cycle");
+            Check(f.Page.LastEditorAck?.Token == f.Page.Snapshot.Token, "page returns exact controller acknowledgment");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.SetWorking(); f.Page.ObserveText("pending before button");
+            f.Page.Click();
+            Check(f.Http.Posts == 1 && f.Page.Stops == 0, "button prepares observed input before Send-versus-Stop decision");
+            Check(f.Http.Body!.Contains("pending before button", StringComparison.Ordinal), "button sends acknowledged observed text");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("old"); var stale = f.Page.Snapshot.Token;
+            f.Page.ObserveText("new before route"); await f.Page.RouteToken(stale);
+            Check(f.Http.Posts == 0 && f.Page.Snapshot.Text == "new before route", "routing prepares first and rejects token invalidated by ACK");
+            f.Page.PublicSubmit(); Check(f.Http.Posts == 1, "new public request captures token after preparation");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.ObserveText("pending legacy"); await f.Page.SendLegacyDirect();
+            Check(f.Http.Posts == 1 && f.Http.Body!.Contains("pending legacy", StringComparison.Ordinal), "direct legacy entry prepares before capturing submitted token/text");
+        }
+        using (var f = new Fixture())
+        {
+            await f.Page.Command("basis"); f.Page.ObserveText("held visible");
+            f.Page.Controller.SetText(f.Page.Snapshot.Token, "intervening controller edit");
+            f.Page.Click(); f.Page.PublicSubmit(); await f.Page.SendLegacyDirect();
+            Check(f.Http.Posts == 0 && f.Page.Stops == 0, "rejected pending ACK blocks all page submission and Stop routing");
+            Check(f.Page.InputState == OpenCodeComposerInputState.HeldStale && f.Page.Composer.Text == "held visible", "held input remains visible without fresh-token rebase");
+        }
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("submitted");
+            var submitted = f.Page.Snapshot.Token;
+            f.Page.HoldHandoff(); var send = f.Page.Send();
+            await f.Page.HandoffEntered.WaitAsync(TimeSpan.FromSeconds(10));
+            Check(f.Page.HandoffToken == submitted && f.Page.HandoffCalls == 1, "actual page passes captured token to one awaited view handoff");
+            Check(!send.IsCompleted && f.Page.Pending && f.Page.Sending && f.Page.Receipts == 0, "local owner spans handoff before receipt publication");
+            using (var lease = await f.Lease()) Check(lease.GetComposerSubmissionProtection() is null, "lease released and enhanced success settled before handoff");
+            f.Page.ObserveText("observed before clear"); // Deliberately withhold asynchronous TextChanged.
+            f.Page.ReleaseHandoff(); await send;
+            Check(f.Page.Snapshot.Text == "observed before clear" && f.Page.Composer.Text == "observed before clear", "handoff flushes early input before captured-token clear");
+            Check(f.Page.Snapshot.Attachments.Count == (enhanced ? 1 : 0), "later input retains the complete submitted draft");
+            Check(f.Page.Receipts == 1 && !f.Page.Pending && !f.Page.Sending, "valid receipt survives later revision; local owner ends afterward");
+            Check(f.Page.ReplayFinalizer() == OpenCodeComposerDraftFinalization.AlreadyFinalized, "closed finalizer cannot erase a later draft");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("retain on local cancellation"); f.Page.HoldHandoff(); var send = f.Page.Send();
+            await f.Page.HandoffEntered.WaitAsync(TimeSpan.FromSeconds(10));
+            f.Page.CancelPageLifetime(); await send;
+            Check(f.Page.Snapshot.Text == "retain on local cancellation" && f.Page.Receipts == 1, "local lifetime cancellation retains legacy draft without invalidating owned receipt");
+            Check(!f.Page.Pending && f.Page.Messages.Count == 0, "cancelled local clearing is not reported as a transport failure");
+            f.Page.ReleaseHandoff();
+            Check(f.Page.Snapshot.Text == "retain on local cancellation" && f.Http.Posts == 1, "late cancelled handoff neither clears nor retries");
+        }
+        using (var f = new Fixture())
+        {
+            f.Page.Text("old accepted"); f.Page.HoldHandoff(); var send = f.Page.Send();
+            await f.Page.HandoffEntered.WaitAsync(TimeSpan.FromSeconds(10));
+            f.Page.Switch("ses_other"); await send; f.Page.ReleaseHandoff();
+            Check(f.Page.Receipts == 0 && f.Page.Snapshot.Text == "old accepted", "legacy handoff lost origin cannot clear or publish receipt into new session");
+        }
+    }
+}
+
+namespace AIFrontend.Pages
+{
+    public sealed partial class OpenCodePage
+    {
+        // Existing page fields/services, not a replacement composer implementation.
+        private OpenCodePageSource? _source;
+        private OpenCodeClient? _client;
+        private long _sourceRevision;
+        private int _pageGeneration = 1, _sourceGeneration = 1, _sessionGeneration = 1;
+        private bool _pageActive = true, _sessionMissing, _isSending, _isComposing, _enterDown, _shiftDown;
+        private DateTimeOffset _lastCompositionEndedAt = DateTimeOffset.MinValue;
+        private string? _selectedSessionId = "ses_test";
+        private CancellationTokenSource? _pageCts = new(), _sessionCts = new();
+        private readonly List<string> _pendingAckIds = new();
+        private readonly HashSet<string> _workingSessions = new();
+        private void RaiseExecutionState(OpenCodeExecutionStateChangedEventArgs args) { }
+        private bool _deliveredNoticeShown;
+        private readonly OpenCodeConversationView _conversationView = new();
+        private enum ConnectionState { Connected, Failed }
+        internal readonly TextBox Composer = new();
+        internal readonly Button SendStopButton = new();
+        internal readonly ProgressRing SendProgress = new();
+        internal readonly Panel ComposerCompanionHost = new(), AgentSelectorHost = new();
+        internal readonly Dispatcher DispatcherQueue = new();
+        internal readonly List<string> Messages = new();
+        internal readonly TaskCompletionSource<bool> Refreshed = Program.Signal<bool>();
+        internal Task RefreshPending = Task.CompletedTask;
+        internal int Tracked, Working, Refreshes, WaitingUpdates;
+        internal Func<int> CountStops = () => 0;
+        internal int Stops => CountStops();
+        internal bool StopMode;
+        internal OpenCodeComposerSendMode SendMode;
+        // Production field lives in Pages/OpenCodePage.ComposerOverlays.cs (WinUI overlay glue, not compiled here).
+        private bool _composerCoveredByPermission;
+        internal bool CoveredByPermission { set { _composerCoveredByPermission = value; UpdateComposerButtons(); } }
+        // Production member lives in Pages/OpenCodePage.QuestionOverlay.cs (L13, WinUI overlay glue, not compiled here);
+        // the question overlay is not modelled by this harness, so only the permission cover contributes.
+        private bool ComposerCoveredByOverlay => _composerCoveredByPermission;
+        internal bool ComposerEnabled => Composer.IsEnabled;
+        internal OpenCodePage(OpenCodePageSource source, OpenCodeClient client)
+        {
+            _source = source; _sourceRevision = source.Revision; _client = client;
+            // This host starts after an explicit empty, authoritative no-stage history fixture.
+            // Initial unread selection is exercised via the actual latest-GET pagination harness.
+            _messageHistoryBoundaryKnown = true; _messageHistoryNeedsState = false;
+            InitializeAgentSelector(); InitializeComposer(); BindComposer();
+            _composerView!.StateChanged += (_, _) => { };
+            DrainView(); ConfigureAgentSelectorForSession("ses_test"); UpdateComposerButtons();
+        }
+        internal OpenCodeComposerController Controller => _composerController!;
+        internal OpenCodeComposerSnapshot Snapshot => GetComposerSnapshot();
+        internal bool Pending => _agentSelector.Pending;
+        internal bool Sending => _isSending;
+        internal bool SendEnabled => SendStopButton.IsEnabled;
+        internal bool Missing => _sessionMissing;
+        internal long Begins => _localSubmissionSequence;
+        internal int Receipts => _pendingAckIds.Count;
+        internal bool Composing { set => _isComposing = value; }
+        internal bool Shift { set => _shiftDown = value; }
+        internal int ViewQueue => _composerView!.QueueCount;
+        internal string? ViewRenderedText => _composerView!.Rendered?.Text;
+        internal int RenderRequestsForLastChange => _composerView!.RequestCount;
+        internal int PickFocusAttempts => _composerView!.FocusAttempts;
+        internal OpenCodeComposerInputState InputState => _composerView!.Sync.State;
+        internal OpenCodeComposerEditorAck? LastEditorAck => _composerView!.LastAck;
+        internal Task HandoffEntered => _composerView!.HandoffEntered.Task;
+        internal int HandoffCalls => _composerView!.HandoffCalls;
+        internal OpenCodeComposerToken HandoffToken => _composerView!.HandoffToken;
+        internal void HoldHandoff() => _composerView!.Scheduler.Hold = true;
+        internal void ReleaseHandoff() => _composerView!.Scheduler.Drain();
+        internal OpenCodeComposerDraftFinalization ReplayFinalizer() => _composerView!.CapturedFinalizer!();
+        internal void CancelPageLifetime() => _pageCts!.Cancel();
+        internal void DrainView() => _composerView!.Drain();
+        internal void InitializeAgain() { InitializeComposer(); _composerView!.RequestCount = 0; }
+        internal void ObserveText(string text) { Composer.Text = text; _composerView!.Evidence.RecordTextChanging(); }
+        internal void Text(string text) { ObserveText(text); Composer_TextChanged(Composer, new()); }
+        internal async Task Command(string args) { Text("/review " + args); await Controller.LoadCatalogAsync(Snapshot.Token, _composerView!.Lifetime); _composerView.Choose(Snapshot.Token, Snapshot.CatalogHandle!, new OpenCodeComposerCommandIdentity.Server("review")); DrainView(); UpdateComposerButtons(); }
+        internal async Task File() { var ticket = Controller.BeginPick(Snapshot.Token)!; await Controller.AddFilesAsync(ticket, new[] { new OpenCodeComposerFileSource("synthetic.txt", null, _ => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3 }))) }); DrainView(); UpdateComposerButtons(); }
+        internal void RemoveCommand() { Controller.RemoveCommand(Snapshot.Token); DrainView(); UpdateComposerButtons(); }
+        internal void Discard() { Controller.DiscardDraft(Snapshot.Token); _composerView!.Sync.ResolveDiscard(); UpdateComposerButtons(); }
+        internal Task Send() => RouteComposerSubmissionAsync(Snapshot.Token);
+        internal Task SendLegacyDirect() => SendPromptAsync();
+        internal Task RouteToken(OpenCodeComposerToken token) => RouteComposerSubmissionAsync(token);
+        internal void PublicSubmit() => RequestComposerSubmission();
+        internal void ClickFreeCommand() => _composerView!.ClickArgumentFreeCommand();
+        internal Task Pick() => PickComposerFilesAsync(Snapshot.Token);
+        internal Task LoadMenu() => Controller.LoadCatalogAsync(Snapshot.Token, _composerView!.Lifetime);
+        internal bool ViewComplete(OpenCodeComposerToken token, OpenCodeComposerCatalogHandle handle, string completion) => _composerView!.Complete(token, handle, completion);
+        internal void Key(VirtualKey key) { var e = new KeyRoutedEventArgs { Key = key }; Composer_PreviewKeyDown(Composer, e); Composer_KeyDown(Composer, e); }
+        internal void KeyUp(VirtualKey key) => Composer_KeyUp(Composer, new() { Key = key });
+        internal void Click() => SendStopButton_Click(SendStopButton, new());
+        internal bool ShouldStop() => ShouldStopSelectedSession();
+        internal void SetWorking() { _workingSessions.Add(_selectedSessionId!); UpdateComposerButtons(); }
+        internal void ObserveExecution(List<OpenCodeMessage> rows) => ObserveExecutionState(_selectedSessionId!, rows);
+        internal void RebaselineExecution(string acceptedId) { _historyExecutionRebaseline = true; _historyAcceptedPromptId = acceptedId; }
+        internal void Switch(string session)
+        {
+            _selectedSessionId = session; _sessionGeneration++; BindComposer();
+            _sessionCts?.Cancel(); _sessionCts = new(); ConfigureAgentSelectorForSession(session);
+            _pendingAckIds.Clear(); UpdateComposerButtons();
+            DrainView();
+        }
+        internal bool BindingUnbound => OpenCodeComposerController.IsUnbound(_composerBinding);
+        internal void EnterBlank()
+        {
+            _newSessionDraftActive = true; _newSessionCreatePending = false;
+            _selectedSessionId = null; _sessionGeneration++; BindComposer();
+            _sessionCts?.Cancel(); _sessionCts = new(); _pendingAckIds.Clear(); UpdateComposerButtons();
+            DrainView();
+        }
+        internal void LeaveBlankTo(string session)
+        {
+            _selectedSessionId = session; _sessionGeneration++; BindComposer(); // same order as SwitchToSessionAsync
+            _newSessionDraftActive = false; BindComposer();
+            _sessionCts?.Cancel(); _sessionCts = new(); ConfigureAgentSelectorForSession(session);
+            _pendingAckIds.Clear(); UpdateComposerButtons();
+            DrainView();
+        }
+        internal void UnloadFixture() { _pageActive = false; _pageGeneration++; _sessionGeneration++; BindComposer(); _pageCts?.Cancel(); _sessionCts?.Cancel(); ClearAgentSelector(); }
+        internal bool CheckBindingField(string field)
+        {
+            var b = _composerBinding!;
+            return field switch
+            {
+                "page" => !OwnsComposerBinding(b with { PageGeneration = b.PageGeneration + 1 }),
+                "sourceGeneration" => !OwnsComposerBinding(b with { SourceGeneration = b.SourceGeneration + 1 }),
+                "sessionGeneration" => !OwnsComposerBinding(b with { SessionGeneration = b.SessionGeneration + 1 }),
+                "revision" => !OwnsComposerBinding(b with { Revision = b.Revision + 1 }),
+                "client" => !OwnsComposerBinding(b with { Client = null! }),
+                "session" => !OwnsComposerBinding(b with { SessionId = "ses_other" }),
+                "source" => !OwnsComposerBinding(b with { Source = null! }),
+                "missing" => MissingOwnerCheck(b),
+                _ => ActiveOwnerCheck(b),
+            };
+        }
+        private bool MissingOwnerCheck(OpenCodeComposerBinding b) { _sessionMissing = true; var result = !OwnsComposerBinding(b); _sessionMissing = false; return result; }
+        private bool ActiveOwnerCheck(OpenCodeComposerBinding b) { _pageActive = false; var result = !OwnsComposerBinding(b); _pageActive = true; return result; }
+        private bool IsShiftDown() => _shiftDown;
+        private void UpdateComposerLayout() { }
+        private void SetSendStopMode(OpenCodeComposerSendMode mode, bool hasDraft) { SendMode = mode; StopMode = mode == OpenCodeComposerSendMode.Working; }
+        private Task RefreshMessagesAsync(bool forceFollow = false, bool explicitRefresh = false) { Refreshes++; Refreshed.TrySetResult(true); return RefreshPending; }
+        private void UpdateWaitingText() => WaitingUpdates++;
+        private void RaiseSessionTracked(string session, OpenCodeSessionTrackReason reason) => Tracked++;
+        private void MarkWorking(string session) { Working++; _workingSessions.Add(session); }
+        private void SetConnectionState(ConnectionState state) { }
+        private void ShowMessage(InfoBarSeverity severity, string title, string message) => Messages.Add(title + message);
+        private void HandleApiException(OpenCodeApiException ex, string operation) { if (ex.StatusCode == 404) { _sessionMissing = true; BindComposer(); } }
+        private void UpdateInteractionsSection() => RefreshComposerView();
+        private void OnSubagentSessionRequested(object? sender, EventArgs args) { }
+    }
+}
+namespace AIFrontend
+{
+    internal sealed class App : Application
+    {
+        internal static Window? Owner = new();
+        internal Window? OpenCodeOwnerWindow => Owner;
+    }
+}
+namespace Microsoft.UI.Xaml
+{
+    public enum Visibility { Visible, Collapsed }
+    public enum FocusState { Unfocused, Programmatic }
+    public class Window { }
+    public class XamlRoot { }
+    public class Application { public static Application Current { get; } = new AIFrontend.App(); }
+    public class RoutedEventArgs : EventArgs { }
+    public sealed class Dispatcher
+    {
+        internal bool HasThreadAccess = true;
+        internal readonly Queue<Action> Queue = new();
+        internal bool TryEnqueue(Action action) { Queue.Enqueue(action); return true; }
+    }
+}
+namespace Microsoft.UI.Xaml.Controls
+{
+    public enum InfoBarSeverity { Informational, Warning, Error, Success }
+    public sealed class TextChangedEventArgs : EventArgs { }
+    public sealed class TextBox { public string Text = ""; public bool IsEnabled; public FocusState FocusState; public int Focuses; public void Focus(FocusState state) { FocusState = state; Focuses++; } }
+    public sealed class Button { public bool IsEnabled; public Visibility Visibility; }
+    public sealed class ProgressRing { public bool IsActive; }
+    public sealed class Panel { public List<object> Children = new(); public Visibility Visibility; }
+}
+namespace Microsoft.UI.Xaml.Input { public sealed class KeyRoutedEventArgs : EventArgs { public VirtualKey Key; public bool Handled; } }
+namespace Microsoft.UI.Xaml.Automation { public static class AutomationProperties { public static void SetAutomationId(object value, string id) { } public static void SetName(object value, string name) { } } }
+namespace Windows.System { public enum VirtualKey { Enter, Shift, Up, Down, Escape, Divide } }
+namespace Windows.Storage
+{
+    public sealed class StorageFile(string name)
+    {
+        public string Name => name;
+        public Task<Stream> OpenStreamForReadAsync() => Task.FromResult<Stream>(new MemoryStream(new byte[] { 4, 5 }));
+    }
+}
+namespace Windows.Storage.Pickers
+{
+    public enum PickerViewMode { List }
+    public enum PickerLocationId { DocumentsLibrary }
+    public sealed class FileOpenPicker
+    {
+        internal static int Opens;
+        internal static Func<Task<IReadOnlyList<StorageFile>?>> Next = () => Task.FromResult<IReadOnlyList<StorageFile>?>(Array.Empty<StorageFile>());
+        public PickerViewMode ViewMode; public PickerLocationId SuggestedStartLocation; public string CommitButtonText = "";
+        public List<string> FileTypeFilter = new();
+        public Task<IReadOnlyList<StorageFile>?> PickMultipleFilesAsync() { Opens++; return Next(); }
+    }
+}
+namespace WinRT.Interop
+{
+    public static class WindowNative { public static IntPtr GetWindowHandle(Window owner) => new(1); }
+    public static class InitializeWithWindow { public static void Initialize(object picker, IntPtr handle) { } }
+}
+namespace AIFrontend.Pages.OpenCode
+{
+    public enum AgentSwitchStatus { Applied, Blocked, OriginLost, OutcomeUnknown, DefinitivelyRejected, ReconciliationRequired, Reconciled }
+    public sealed class OpenCodeConversationView {
+        public event EventHandler? SubagentSessionRequested;
+        public List<OpenCodeMessage> Last = new();
+        public void ApplyMessages(List<OpenCodeMessage> messages) => Last = messages;
+        public void ClearMessages() => Last.Clear();
+    }
+    public sealed class OpenCodeAgentSwitchReportedEventArgs : EventArgs { public AgentSwitchStatus Status; public string Message = ""; }
+    public sealed class OpenCodeAgentSelector
+    {
+        public event EventHandler<OpenCodeAgentSwitchReportedEventArgs>? SwitchReported;
+        internal bool Pending;
+        public void Clear() => Pending = false;
+        public void Configure(OpenCodePageSource source, long revision, string session, long generation) { }
+        public void SetLocalSubmissionPending(bool value) => Pending = value;
+        public int Opens;
+        internal bool OpenSelection() { Opens++; return true; }
+        internal int DisplayRefreshes;
+        internal void RefreshDisplay() => DisplayRefreshes++;
+    }
+    public sealed class OpenCodeComposerTokenEventArgs(OpenCodeComposerToken token) : EventArgs { public OpenCodeComposerToken Token => token; }
+    public sealed class OpenCodeComposerTextEditedEventArgs(OpenCodeComposerToken token, string text) : EventArgs
+    {
+        public OpenCodeComposerToken Token => token;
+        public string Text => text;
+        internal bool AllowUnboundCarry { get; init; }
+        internal OpenCodeComposerEditorAck? Acknowledgment { get; set; }
+    }
+    public sealed class OpenCodeComposerCommandSelectedEventArgs(OpenCodeComposerToken token, string name, string args) : EventArgs { public OpenCodeComposerToken Token => token; public string Name => name; public string RemainingArguments => args; }
+    public sealed class OpenCodeComposerAttachmentRemovedEventArgs(OpenCodeComposerToken token, Guid id) : EventArgs { public OpenCodeComposerToken Token => token; public Guid Id => id; }
+    internal sealed class OpenCodeComposerView(Func<OpenCodeComposerSnapshot> source,
+        Func<OpenCodeComposerCatalogLifetime>? begin = null, Action<OpenCodeComposerCatalogLifetime>? end = null)
+    {
+        // View/native scheduler double around REAL ledger/handoff/lifetime helpers. It does not emulate
+        // WinUI event delivery or rendering. Immediate scheduling is deliberate, with a hold seam below.
+        internal event EventHandler? StateChanged;
+        internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
+        internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, DiscardRequested, PickRequested;
+        internal event EventHandler<OpenCodeComposerCatalogOpenRequestedEventArgs>? CatalogOpenRequested;
+        internal event EventHandler<OpenCodeComposerCatalogDismissRequestedEventArgs>? CatalogDismissRequested;
+        internal event EventHandler<OpenCodeComposerCommandChosenEventArgs>? CommandChosen;
+        internal event EventHandler<OpenCodeComposerClientIntentEventArgs>? ClientIntentDismissed, ClientActionInvoked;
+        internal event EventHandler<OpenCodeComposerTriggerCompletionEventArgs>? CompletionRequested;
+        internal event EventHandler? SubmitRequested;
+        internal void ClickArgumentFreeCommand() => SubmitRequested?.Invoke(this, EventArgs.Empty);
+        internal bool Complete(OpenCodeComposerToken token, OpenCodeComposerCatalogHandle handle, string completion) {
+            var args = new OpenCodeComposerTriggerCompletionEventArgs(token, handle, completion); CompletionRequested?.Invoke(this, args); return args.Accepted;
+        }
+        internal OpenCodeComposerCatalogLifetime Lifetime = begin!();
+        internal void EndLifetime() => end!(Lifetime);
+        internal void OpenCatalog() => CatalogOpenRequested?.Invoke(this, new(source().Token, Lifetime, false));
+        internal bool Choose(OpenCodeComposerToken token, OpenCodeComposerCatalogHandle handle, OpenCodeComposerCommandIdentity identity) {
+            var args = new OpenCodeComposerCommandChosenEventArgs(token, handle, identity); CommandChosen?.Invoke(this, args); return args.Accepted;
+        }
+        internal bool Invoke(OpenCodeComposerClientActionKind displayKind) {
+            var s = source(); var args = new OpenCodeComposerClientIntentEventArgs(s.Token, s.ClientIntent!.Id, displayKind);
+            ClientActionInvoked?.Invoke(this, args); return args.Accepted;
+        }
+        internal void DismissIntent() { var s = source(); ClientIntentDismissed?.Invoke(this, new(s.Token, s.ClientIntent!.Id, s.ClientIntent.Kind)); }
+        internal void Dismiss(OpenCodeComposerCatalogHandle handle) => CatalogDismissRequested?.Invoke(this, new(handle));
+        internal event EventHandler<OpenCodeComposerAttachmentRemovedEventArgs>? AttachmentRemoved;
+        internal int RequestCount, QueueCount, FocusAttempts;
+        internal OpenCodeComposerSnapshot? Rendered;
+        private TextBox? editor;
+        private Func<bool> composing = () => false;
+        internal OpenCodeComposerEditorSync Sync = null!;
+        internal OpenCodeComposerInputEvidenceSource Evidence = null!;
+        internal OpenCodeComposerInputEvidence InputEvidence => Evidence.Current;
+        internal bool Live = true;
+        internal int LifetimeGeneration = 1;
+        private OpenCodeComposerAcceptedDraftHandoffs handoffs = null!;
+        internal readonly HandoffScheduler Scheduler = new();
+        internal readonly TaskCompletionSource<bool> HandoffEntered = Program.Signal<bool>();
+        internal int HandoffCalls;
+        internal OpenCodeComposerToken HandoffToken;
+        internal Func<OpenCodeComposerDraftFinalization>? CapturedFinalizer;
+        internal OpenCodeComposerEditorAck? LastAck;
+        internal sealed class HandoffScheduler : IOpenCodeComposerUiScheduler
+        {
+            internal bool Hold;
+            private readonly ConcurrentQueue<Action> queue = new();
+            public bool TryEnqueue(Action callback) { if (Hold) queue.Enqueue(callback); else callback(); return true; }
+            internal void Drain() { Hold = false; while (queue.TryDequeue(out var callback)) callback(); }
+        }
+        internal void AttachEditor(TextBox value, Func<bool> isComposing)
+        {
+            editor = value; composing = isComposing;
+            Sync = new(source, () => editor.Text, text => { editor.Text = text; Evidence?.RecordTextChanging(); },
+                composing, (token, text, carry) => {
+                    var e = new OpenCodeComposerTextEditedEventArgs(token, text) { AllowUnboundCarry = carry };
+                    TextEdited?.Invoke(this, e);
+                    return LastAck = e.Acknowledgment;
+                });
+            handoffs = new(new OpenCodeComposerViewLifetime(Scheduler, () => { }), () => Sync);
+            Evidence = new(() => Sync, () => Live, () => LifetimeGeneration, composing);
+            Evidence.LifetimeChanged();
+        }
+        internal void RequestRender() { RequestCount++; QueueCount = 1; }
+        internal void Drain() { if (QueueCount == 0) return; QueueCount = 0; Sync.Reconcile(); Evidence.Refresh(); Rendered = source(); StateChanged?.Invoke(this, EventArgs.Empty); }
+        internal void NotifyEditorTextChanged() { Sync.Flush(); Evidence.Refresh(); }
+        internal bool PrepareSubmission() { var clean = Sync.Prepare(); Evidence.Refresh(); return clean; }
+        internal bool PrepareClientTextApplication() => PrepareSubmission();
+        internal Task HandoffAcceptedDraftAsync(OpenCodeComposerToken submittedToken,
+            Func<OpenCodeComposerDraftFinalization> finalize, CancellationToken lifetimeToken)
+        {
+            HandoffCalls++; HandoffToken = submittedToken; CapturedFinalizer = finalize;
+            var task = handoffs.Begin(submittedToken, finalize, lifetimeToken);
+            HandoffEntered.TrySetResult(true);
+            return task;
+        }
+        internal void ReportPickOutcome(OpenCodeComposerPickOutcome outcome) { Rendered = source(); if (!composing()) FocusAttempts++; }
+        internal OpenCodeComposerKeyDecision HandleEditorKey(KeyRoutedEventArgs e, bool shift, bool ime, TimeSpan sinceIme, bool latched, bool busy)
+        {
+            var s = source(); var key = e.Key == VirtualKey.Enter ? OpenCodeComposerKey.Enter : OpenCodeComposerKey.Other;
+            var result = OpenCodeComposerInputPolicy.DecideKey(new(key, shift, false, ime, sinceIme, latched, s.CatalogState == OpenCodeComposerCatalogState.Ready, s.Commands.Count > 0, busy || s.IsBusy));
+            if (result.Handled) e.Handled = true;
+            if (result.Action == OpenCodeComposerKeyAction.MenuAccept && s.CatalogHandle is { } handle)
+                Choose(s.Token, handle, s.Commands.First(c => c.Name == "review").Identity);
+            return result;
+        }
+    }
+}

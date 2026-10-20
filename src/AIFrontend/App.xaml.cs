@@ -11,6 +11,9 @@ public partial class App : Application
 {
     private Window? _window;
 
+    // UI-thread picker ownership only; never expose or manufacture a different window/handle.
+    internal Window? OpenCodeOwnerWindow => _window;
+
     public App()
     {
         this.InitializeComponent();
