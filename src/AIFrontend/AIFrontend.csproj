@@ -31,5 +31,6 @@
     <Page Include="MainWindow.xaml" />
     <Page Include="Pages\**\*.xaml" />
     <Page Include="Styles\**\*.xaml" />
+    <Content Include="Assets\Brands\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
