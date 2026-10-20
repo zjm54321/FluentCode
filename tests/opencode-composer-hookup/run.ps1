@@ -96,10 +96,10 @@ $blankMembers = foreach ($name in @('OpenNewSessionTab', 'CreateSessionAndSubmit
 $blankGenerated = Join-Path $output 'BlankSessionMembers.cs'
 $blankChoicePath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
 $blankChoice = [IO.File]::ReadAllText($blankChoicePath)
-foreach ($name in @('CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSelectedAgent', 'ApplyBlankDefaults', 'ReadBlankAgentModel', 'BlankAgentName', 'BlankStrengthText')) {
+foreach ($name in @('CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSelectedAgent', 'IsBlankAgentSelectable', 'ApplyBlankDefaults', 'ReadBlankAgentModel', 'BlankAgentName', 'BlankStrengthText')) {
     $m = [regex]::Match($blankChoice, ('(?m)^    private [^\r\n]*\b' + $name + '\('))
     if (!$m.Success) { throw "Missing production blank preference member: $name" }
-    $block = if ($name -in @('OwnsBlankPreferences', 'BlankAgentName', 'BlankStrengthText')) { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?;') }
+    $block = if ($name -in @('OwnsBlankPreferences', 'IsBlankAgentSelectable', 'BlankAgentName', 'BlankStrengthText')) { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?;') }
         else { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?^    \}\r?$') }
     $blankMembers += $block.Value
 }

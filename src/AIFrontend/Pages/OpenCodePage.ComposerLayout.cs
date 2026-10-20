@@ -23,6 +23,8 @@ public sealed partial class OpenCodePage
         Composer.TextCompositionEnded += (_, _) => QueueComposerLayout();
         Composer.RegisterPropertyChangedCallback(Control.FontSizeProperty, (_, _) => QueueComposerLayout());
         Composer.RegisterPropertyChangedCallback(Control.FontFamilyProperty, (_, _) => QueueComposerLayout());
+        ComposerLeadingHost.SizeChanged += (_, _) => QueueComposerLayout();
+        ComposerActions.SizeChanged += (_, _) => QueueComposerLayout();
         QueueComposerLayout();
     }
 
@@ -73,6 +75,18 @@ public sealed partial class OpenCodePage
             ComposerLeadingHost.Margin = new Thickness(0, bottom ? 8 : 0, 8, 4);
             ComposerActions.Margin = new Thickness(8, bottom ? 8 : 0, 0, 4);
         }
+        ComposerLeadingHost.VerticalAlignment = _blankComposerPlacement ? VerticalAlignment.Center : VerticalAlignment.Bottom;
+        ComposerActions.VerticalAlignment = _blankComposerPlacement ? VerticalAlignment.Center : VerticalAlignment.Bottom;
+        if (_blankComposerPlacement)
+        {
+            // Account for fixed outer buttons and their margins; the three adjacent Auto columns
+            // have finite budgets, so long names cannot displace variant or the right-hand send button.
+            var widths = BlankToolbarWidths(ComposerInputLayout.ActualWidth - ComposerLeadingHost.ActualWidth
+                - ComposerActions.ActualWidth - 16);
+            BlankAgentButton.MaxWidth = widths.Agent;
+            BlankModelButton.MaxWidth = widths.Model;
+            BlankStrengthButton.MaxWidth = widths.Variant;
+        }
         var maximum = _blankComposerPlacement ? Math.Max(180, line * 8 + chrome) : OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
         // Reserve room for the naturally measured official brand and external preferences on short windows.
         // Normal-session five-line sizing is unchanged; this is only the empty centered host's initial height.
@@ -90,6 +104,12 @@ public sealed partial class OpenCodePage
         available = Math.Max(0, available);
         var gutter = !blank && viewport > 0 ? Math.Max(0, available - viewport) : 0;
         return (Math.Min(Math.Max(0, available - gutter), maximum), gutter);
+    }
+
+    internal static (double Agent, double Model, double Variant) BlankToolbarWidths(double available)
+    {
+        var content = Math.Max(0, available - 12); // Two 6-DIP gaps; unused space stays after Variant.
+        return (Math.Min(104, content * 0.25), Math.Min(260, content * 0.5), Math.Min(112, content * 0.25));
     }
 
     private void UpdateConversationColumns()

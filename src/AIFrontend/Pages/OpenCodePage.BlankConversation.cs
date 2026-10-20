@@ -103,7 +103,7 @@ public sealed partial class OpenCodePage
 
     private OpenCodeAgentInfo? BlankSelectedAgent(OpenCodeBlankDraftPreferences basis, string? configuredAgentId)
     {
-        var selectable = _blankAgents.Where(agent => !agent.Hidden && agent.Mode != OpenCodeAgentModes.Subagent).ToArray();
+        var selectable = _blankAgents.Where(IsBlankAgentSelectable).ToArray();
         return basis.Agent is { } explicitAgent ? selectable.FirstOrDefault(agent => agent.Id == explicitAgent)
             : selectable.FirstOrDefault(agent => agent.Id == configuredAgentId)
                 ?? selectable.FirstOrDefault(agent => agent.Id == "build") ?? selectable.FirstOrDefault();
@@ -155,6 +155,9 @@ public sealed partial class OpenCodePage
             BlankAgentButton.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = (byte)(rgb >> 16), G = (byte)(rgb >> 8), B = (byte)rgb });
     }
 
+    private static bool IsBlankAgentSelectable(OpenCodeAgentInfo agent)
+        => !agent.Hidden && agent.Mode != OpenCodeAgentModes.Subagent;
+
     private static string BlankStrengthText(OpenCodeModelInfo? model, OpenCodeModelRef? selected)
         => selected?.Variant is { } variant && (model?.Variants?.Any(offered => offered.Id == variant) ?? false) ? variant : string.Empty;
 
@@ -169,6 +172,7 @@ public sealed partial class OpenCodePage
         var model = metadata ? _blankModels.FirstOrDefault(model => model.Id == value!.Model?.Id && model.ProviderId == value.Model?.ProviderId) : null;
         BlankAgentButton.Content = agent?.Name is { Length: > 0 } name ? BlankAgentName(name) : _blankPickerPending ? "加载中…" : "未就绪";
         ApplyBlankAgentColor(agent?.Color);
+        ToolTipService.SetToolTip(BlankAgentButton, agent?.Description);
         BlankModelButton.Content = new TextBlock { Text = model?.Name ?? (_blankPickerPending ? "加载中…" : "模型未就绪"), TextTrimming = TextTrimming.CharacterEllipsis };
         ToolTipService.SetToolTip(BlankModelButton, model?.Name);
         var shownVariant = BlankStrengthText(model, value?.Model);
@@ -247,7 +251,8 @@ public sealed partial class OpenCodePage
             _blankAgents = response.Data!;
             void Add(OpenCodeAgentInfo agent)
             {
-                var item = new MenuFlyoutItem { Text = BlankAgentName(agent.Name!), IsEnabled = agent.Mode != OpenCodeAgentModes.Subagent };
+                var item = new MenuFlyoutItem { Text = BlankAgentName(agent.Name!) };
+                ToolTipService.SetToolTip(item, agent.Description);
                 item.Click += (_, _) =>
                 {
                     if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending) return;
@@ -258,7 +263,7 @@ public sealed partial class OpenCodePage
                 };
                 flyout.Items.Add(item);
             }
-            foreach (var agent in response.Data!.Where(agent => !agent.Hidden))
+            foreach (var agent in response.Data!.Where(IsBlankAgentSelectable))
                 Add(agent);
             flyout.ShowAt(BlankAgentButton);
         }

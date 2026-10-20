@@ -516,8 +516,8 @@
                                     VerticalAlignment="Bottom"
                                     AutomationProperties.AutomationId="OpenCodeNewSessionPage"
                                     AutomationProperties.Name="新会话">
-                                    <Viewbox MaxWidth="360" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Center">
-                                        <Image x:Name="NewConversationWordmark" Width="360" Height="64.6153846154" Stretch="Uniform"
+                                    <Viewbox MaxWidth="520" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Center">
+                                        <Image x:Name="NewConversationWordmark" Width="520" Height="93.3333333333" Stretch="Uniform"
                                                AutomationProperties.Name="OpenCode" />
                                     </Viewbox>
                                 </StackPanel>
@@ -616,14 +616,22 @@
                                                      AutomationProperties.Name="消息输入" />
 
                                                  <!-- New landing only: same outside-editor toolbar, immediately after +. -->
-                                                 <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,*,Auto"
-                                                       ColumnSpacing="6" Visibility="Collapsed" VerticalAlignment="Center">
+                                                 <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto"
+                                                       ColumnSpacing="6" Margin="0,8,0,4" HorizontalAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center">
                                                      <DropDownButton x:Name="BlankAgentButton" Content="加载中…" Click="BlankAgentButton_Click"
-                                                             AutomationProperties.AutomationId="OpenCodeBlankAgent" />
+                                                             Height="32" MinWidth="0" MaxWidth="104" Padding="8,0" VerticalAlignment="Center"
+                                                             AutomationProperties.AutomationId="OpenCodeBlankAgent">
+                                                         <DropDownButton.Style>
+                                                             <Style TargetType="DropDownButton">
+                                                                 <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                             </Style>
+                                                         </DropDownButton.Style>
+                                                     </DropDownButton>
                                                      <Button x:Name="BlankModelButton" Grid.Column="1" Content="模型未就绪" Click="BlankModelButton_Click"
+                                                             Height="32" MinWidth="0" MaxWidth="260" Padding="8,0" HorizontalContentAlignment="Stretch" VerticalAlignment="Center"
                                                              AutomationProperties.AutomationId="OpenCodeBlankModel" />
                                                      <DropDownButton x:Name="BlankStrengthButton" Grid.Column="2" Content="强度未就绪" Click="BlankStrengthButton_Click"
-                                                                     MinWidth="40" AutomationProperties.Name="选择推理强度"
+                                                                     Height="32" MinWidth="0" MaxWidth="112" Padding="8,0" VerticalAlignment="Center" AutomationProperties.Name="选择推理强度"
                                                              AutomationProperties.AutomationId="OpenCodeBlankStrength" />
                                                  </Grid>
 
