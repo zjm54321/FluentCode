@@ -12,6 +12,7 @@ public sealed class TaskbarStatusService : IDisposable
 {
     private readonly int _ownerThreadId = Environment.CurrentManagedThreadId;
     private ITaskbarList3? _taskbar;
+    private readonly TaskbarIconCache _icons = new();
     private bool _disposed;
 
     public TaskbarStatusService(IntPtr windowHandle)
@@ -20,6 +21,9 @@ public sealed class TaskbarStatusService : IDisposable
     }
 
     public IntPtr WindowHandle { get; }
+
+    /// <summary>固定诊断标记：系统任务栏主题来源或显式深色回退；不表示可见性保证。</summary>
+    public string IconThemeSource => _icons.ThemeSource;
 
     /// <summary>最后接受的有效快照；提交失败也保留意图，以供 Reapply。不是已显示状态。</summary>
     public TaskbarSnapshot CurrentSnapshot { get; private set; } = new(TaskbarStatus.Idle);
@@ -49,6 +53,13 @@ public sealed class TaskbarStatusService : IDisposable
         return contextError is null ? Submit(recreate: true) : Remember(contextError);
     }
 
+    /// <summary>同一 STA 上处理系统主题/高对比/DPI 变化；只刷新资产并重送原快照。</summary>
+    public TaskbarOperationResult RefreshAssets()
+    {
+        var contextError = CheckThread();
+        return contextError is null ? Submit(recreate: false, refreshIcons: true) : Remember(contextError);
+    }
+
     private TaskbarOperationResult? CheckThread()
     {
         if (_disposed) return new(TaskbarOperationStatus.Disposed, "CheckContext");
@@ -59,7 +70,7 @@ public sealed class TaskbarStatusService : IDisposable
         return null;
     }
 
-    private TaskbarOperationResult Submit(bool recreate)
+    private TaskbarOperationResult Submit(bool recreate, bool refreshIcons = false)
     {
         string operation = "ValidateWindow";
         try
@@ -72,6 +83,7 @@ public sealed class TaskbarStatusService : IDisposable
             if (threadId != TaskbarNative.GetCurrentThreadId())
                 return Remember(new(TaskbarOperationStatus.WrongThread, operation));
 
+            if (recreate || refreshIcons) _icons.Invalidate();
             if (recreate)
             {
                 operation = "ReleaseComForReapply";
@@ -91,13 +103,6 @@ public sealed class TaskbarStatusService : IDisposable
             }
 
             var snapshot = CurrentSnapshot;
-            int iconId = snapshot.Status switch
-            {
-                TaskbarStatus.NeedsAttention => TaskbarNative.WarningIcon,
-                TaskbarStatus.Completed => TaskbarNative.InformationIcon,
-                TaskbarStatus.Failed => TaskbarNative.ErrorIcon,
-                _ => 0,
-            };
             string? description = snapshot.Status switch
             {
                 TaskbarStatus.NeedsAttention => "AIFrontend：有任务需要处理",
@@ -105,15 +110,9 @@ public sealed class TaskbarStatusService : IDisposable
                 TaskbarStatus.Failed => "AIFrontend：任务失败",
                 _ => null,
             };
-            IntPtr icon = IntPtr.Zero;
-            if (iconId != 0)
-            {
-                operation = "LoadSystemIcon";
-                icon = TaskbarNative.LoadIcon(IntPtr.Zero, new IntPtr(iconId));
-                if (icon == IntPtr.Zero)
-                    return Remember(new(TaskbarOperationStatus.NativeError, operation,
-                        Win32Error: Marshal.GetLastWin32Error()));
-            }
+            operation = "LoadTaskbarAsset";
+            var iconError = _icons.GetIcon(snapshot.Status, WindowHandle, out IntPtr icon);
+            if (iconError is not null) return Remember(iconError);
 
             // Reset stale progress on every full snapshot. No invented 100% for completion/error.
             operation = "ClearProgress";
@@ -122,6 +121,9 @@ public sealed class TaskbarStatusService : IDisposable
             operation = "SetOverlayIcon";
             hr = _taskbar.SetOverlayIcon(WindowHandle, icon, description);
             if (hr < 0) return Remember(new(TaskbarOperationStatus.NativeError, operation, hr));
+            operation = "DestroyTaskbarAsset";
+            iconError = _icons.Commit(icon);
+            if (iconError is not null) return Remember(iconError);
 
             if (snapshot.Progress is { } progress)
             {
@@ -151,14 +153,14 @@ public sealed class TaskbarStatusService : IDisposable
     }
 
     /// <summary>
-    /// 只释放此实例私有 RCW；不清任务栏、不销毁 HWND/系统共享图标。
+    /// 只释放此实例私有 RCW/HICON；不清任务栏、不销毁 HWND/系统共享图标。
     /// 错线程返回而不释放，LastResult=WrongThread，调用方必须回所属 STA 线程再次 Dispose。
     /// </summary>
     public void Dispose()
     {
         if (_disposed) return;
-        // With no RCW (including unsupported platforms), disposal has no native side effect.
-        if (_taskbar is not null)
+        // With no owned native resources (including unsupported platforms), disposal has no native side effect.
+        if (_taskbar is not null || _icons.HasOwnedIcons)
         {
             var contextError = CheckThread();
             if (contextError is not null) { Remember(contextError); return; }
@@ -166,12 +168,17 @@ public sealed class TaskbarStatusService : IDisposable
         try
         {
             ReleaseOwnedCom();
+            if (_icons.HasOwnedIcons)
+            {
+                var iconError = _icons.ReleaseAll();
+                if (iconError is not null) { Remember(iconError); return; }
+            }
             _disposed = true;
             Remember(new(TaskbarOperationStatus.Released, "Dispose"));
         }
         catch (Exception ex)
         {
-            _disposed = true;
+            // Keep disposal retryable on the owner STA if native cleanup failed.
             Remember(new(TaskbarOperationStatus.NativeError, "Dispose", ex.HResult));
         }
     }

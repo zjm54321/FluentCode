@@ -32,5 +32,9 @@
     <Page Include="Pages\**\*.xaml" />
     <Page Include="Styles\**\*.xaml" />
     <Content Include="Assets\Brands\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\fluentui-system-icons-LICENSE.txt" Link="licenses\fluentui-system-icons-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\Taskbar\**\*.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

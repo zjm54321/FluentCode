@@ -6,6 +6,10 @@ namespace AIFrontend.Services.Taskbar;
 internal static class TaskbarWindowNative
 {
     internal const uint WmNcDestroy = 0x0082;
+    internal const uint WmSettingChange = 0x001A;
+    internal const uint WmThemeChanged = 0x031A;
+    internal const uint WmSysColorChange = 0x0015;
+    internal const uint WmDpiChanged = 0x02E0;
 
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     internal delegate IntPtr SubclassProc(IntPtr hwnd, uint message, UIntPtr wParam,

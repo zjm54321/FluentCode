@@ -16,10 +16,11 @@ public enum TaskbarTaskState
 public sealed record TaskbarTaskObservation(TaskbarTaskState State, bool IsObservationStale = false);
 
 /// <summary>
-/// Pure, caller-serialized state store. IDs identify executions, not sessions or windows.
+/// Pure, caller-serialized state store. Task IDs identify executions, not sessions or windows;
+/// replaceable endpoint/session observations are kept in a separate store.
 /// No transport, window-activation, elapsed-time, or percentage inference.
 /// </summary>
-public sealed class TaskbarStateAggregator
+public sealed partial class TaskbarStateAggregator
 {
     private readonly Dictionary<string, TaskbarTaskObservation> _tasks = new(StringComparer.Ordinal);
 
@@ -28,7 +29,7 @@ public sealed class TaskbarStateAggregator
         get
         {
             bool working = false, failed = false, completed = false;
-            foreach (var task in _tasks.Values)
+            foreach (var task in AllObservations())
             {
                 switch (task.State)
                 {

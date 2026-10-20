@@ -49,10 +49,19 @@ internal enum TaskbarProgressFlag : uint
 
 internal static class TaskbarNative
 {
-    // WinUser.h: IDI_ERROR / IDI_WARNING / IDI_INFORMATION aliases.
-    internal const int ErrorIcon = 32513;
-    internal const int WarningIcon = 32515;
-    internal const int InformationIcon = 32516;
+    internal const uint ImageIcon = 1;
+    internal const uint LoadFromFile = 0x0010; // Deliberately not LR_SHARED.
+    internal const uint SpiGetHighContrast = 0x0042;
+    internal const uint HighContrastOn = 0x00000001;
+    internal const int ColorWindow = 5;
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct HighContrast
+    {
+        internal uint Size;
+        internal uint Flags;
+        internal IntPtr DefaultScheme; // Borrowed system string; never read or released here.
+    }
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -64,8 +73,24 @@ internal static class TaskbarNative
     [DllImport("kernel32.dll", ExactSpelling = true)]
     internal static extern uint GetCurrentThreadId();
 
-    // hInstance=NULL + MAKEINTRESOURCE(system ID) returns a SHARED system HICON.
-    // It is borrowed, not owned; never call DestroyIcon or wrap it in an owning SafeHandle.
-    [DllImport("user32.dll", EntryPoint = "LoadIconW", ExactSpelling = true, SetLastError = true)]
-    internal static extern IntPtr LoadIcon(IntPtr instance, IntPtr iconName);
+    [DllImport("user32.dll", EntryPoint = "LoadImageW", ExactSpelling = true,
+        CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr LoadImage(IntPtr instance, string name, uint type,
+        int width, int height, uint flags);
+
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool DestroyIcon(IntPtr icon);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    internal static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", ExactSpelling = true,
+        SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetHighContrast(uint action, uint size,
+        ref HighContrast value, uint flags);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    internal static extern uint GetSysColor(int index);
 }

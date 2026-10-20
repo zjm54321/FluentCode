@@ -22,6 +22,7 @@ public sealed class TaskbarWindowHook : IDisposable
 
     public IntPtr WindowHandle { get; private set; }
     public bool IsDisposed => _disposed;
+    public string IconThemeSource => _service?.IconThemeSource ?? "NotRead";
     public TaskbarSnapshot CurrentSnapshot { get; private set; } = new(TaskbarStatus.Idle);
     public TaskbarOperationResult LastResult { get; private set; } =
         new(TaskbarOperationStatus.NotInitialized, "None");
@@ -87,6 +88,14 @@ public sealed class TaskbarWindowHook : IDisposable
         return Remember(_service?.Reapply() ?? new(TaskbarOperationStatus.NotInitialized, "ReapplyHook"));
     }
 
+    public TaskbarOperationResult RefreshAssets()
+    {
+        var error = CheckContext();
+        if (error is not null) return Remember(error);
+        return Remember(_service?.RefreshAssets() ??
+            new(TaskbarOperationStatus.NotInitialized, "RefreshAssetsHook"));
+    }
+
     public void Dispose()
     {
         if (_disposed) { Remember(new(TaskbarOperationStatus.Released, "DisposeHook")); return; }
@@ -106,6 +115,7 @@ public sealed class TaskbarWindowHook : IDisposable
 
     private bool Detach(bool destroying)
     {
+        bool released = true;
         try
         {
             if (_attached && !TaskbarWindowNative.RemoveWindowSubclass(WindowHandle, Callback, _subclassId)
@@ -118,20 +128,25 @@ public sealed class TaskbarWindowHook : IDisposable
         finally
         {
             // On destruction Windows removes the subclass even if explicit removal fails.
-            if (destroying) ReleaseProjection();
+            if (destroying) released = ReleaseProjection();
         }
-        if (!destroying) ReleaseProjection();
-        return true;
+        return destroying ? released : ReleaseProjection();
     }
 
-    private void ReleaseProjection()
+    private bool ReleaseProjection()
     {
         _attached = false;
         _service?.Dispose();
+        if (_service is not null && _service.LastResult.Status != TaskbarOperationStatus.Released)
+        {
+            Remember(_service.LastResult);
+            return false; // Retain ownership/root for explicit owner-thread cleanup retry.
+        }
         _service = null;
         WindowHandle = IntPtr.Zero;
         if (_root.IsAllocated) _root.Free();
         _subclassId = UIntPtr.Zero;
+        return true;
     }
 
     private TaskbarOperationResult? CheckContext()
@@ -155,9 +170,9 @@ public sealed class TaskbarWindowHook : IDisposable
             {
                 if (message == TaskbarWindowNative.WmNcDestroy)
                 {
-                    try { hook.Detach(destroying: true); }
-                    finally { hook._disposed = true; }
-                    hook.Remember(new(TaskbarOperationStatus.Released, "WindowDestroyed"));
+                    hook._disposed = hook.Detach(destroying: true);
+                    if (hook._disposed)
+                        hook.Remember(new(TaskbarOperationStatus.Released, "WindowDestroyed"));
                 }
                 else if (message == hook._taskbarButtonCreated)
                 {
@@ -171,8 +186,21 @@ public sealed class TaskbarWindowHook : IDisposable
                 hook.LastResult = new(TaskbarOperationStatus.NativeError, "SubclassCallback", ex.HResult);
         }
         // Always chain, including after our own processing fails. No managed exception crosses native code.
-        try { return TaskbarWindowNative.DefSubclassProc(hwnd, message, wParam, lParam); }
+        IntPtr result;
+        try { result = TaskbarWindowNative.DefSubclassProc(hwnd, message, wParam, lParam); }
         catch { return IntPtr.Zero; }
+        // Chain first, especially for DPI changes. Never dereference caller-controlled lParam strings.
+        if (hook is { _attached: true, _disposed: false } && message is
+            TaskbarWindowNative.WmSettingChange or TaskbarWindowNative.WmThemeChanged or
+            TaskbarWindowNative.WmSysColorChange or TaskbarWindowNative.WmDpiChanged)
+        {
+            try { hook.RefreshAssets(); }
+            catch (Exception ex)
+            {
+                hook.LastResult = new(TaskbarOperationStatus.NativeError, "RefreshAssetsHook", ex.HResult);
+            }
+        }
+        return result;
     }
 
     private TaskbarOperationResult Remember(TaskbarOperationResult result) => LastResult = result;

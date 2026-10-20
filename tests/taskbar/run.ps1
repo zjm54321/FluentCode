@@ -16,6 +16,7 @@ $source = Join-Path $repo 'src/AIFrontend/Services/Taskbar'
 $projection = $common + @('/target:library', ('/out:"' + (Join-Path $output 'TaskbarProjection.dll') + '"'))
 $projection += Get-ChildItem (Join-Path $source '*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 $projection += '"' + (Join-Path $repo 'src/AIFrontend/App.Taskbar.cs') + '"'
+$projection += '"' + (Join-Path $PSScriptRoot 'App.TestHost.cs') + '"'
 $projectionRsp = Join-Path $output 'projection.rsp'
 $projection | Set-Content -Encoding UTF8 $projectionRsp
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$projectionRsp"
@@ -27,6 +28,7 @@ $assembly = Join-Path $output 'TaskbarCoreTests.dll'
 $core = $common + @('/target:exe', ('/out:"' + $assembly + '"'))
 $core += '"' + (Join-Path $source 'TaskbarStatus.cs') + '"'
 $core += '"' + (Join-Path $source 'TaskbarStateAggregator.cs') + '"'
+$core += '"' + (Join-Path $source 'TaskbarStateAggregator.Sessions.cs') + '"'
 $core += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $coreRsp = Join-Path $output 'core.rsp'
 $core | Set-Content -Encoding UTF8 $coreRsp
