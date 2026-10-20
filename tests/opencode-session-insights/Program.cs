@@ -37,6 +37,10 @@ internal static partial class Program
         await DiscoveryFailures();
         await DiscoveryOwnership();
         Console.WriteLine($"PASS: 3 Billion-discovery groups, {_assertions - beforeDiscovery} assertions; total {_assertions}; source-linked fake HTTP only; no plugin/native/Page runtime proof.");
+        var beforeContext = _assertions;
+        await LiveContextRefresh();
+        await LiveContextRaces();
+        Console.WriteLine($"PASS: 2 live-context groups, {_assertions - beforeContext} assertions; total {_assertions}; real controller, fake HTTP, bounded catalog/no full automatic reads.");
     }
 
     private static void Check(bool condition, string label)

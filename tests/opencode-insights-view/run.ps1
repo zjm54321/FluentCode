@@ -57,6 +57,9 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/AIFrontend/Services/Billion/BillionContextDtos.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Billion/BillionTelemetryReader.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionInsights.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeClient.Events.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeEventReducer.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeCompletionCrashTrace.cs'),
     (Resolve-Path $ViewSource).ProviderPath,
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeInsightsAgentsSection.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeContextRing.cs'),
@@ -64,6 +67,8 @@ $sources = $openCode + @(
     (Resolve-Path $SessionInsightsSource).ProviderPath,
     (Join-Path $PSScriptRoot 'WinUiOwnershipShim.cs'),
     (Join-Path $PSScriptRoot 'PageHost.cs'),
+    (Join-Path $PSScriptRoot 'ContextPageHost.cs'),
+    (Join-Path $PSScriptRoot 'ContextPageTests.cs'),
     (Join-Path $PSScriptRoot 'PageOriginTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
 
@@ -90,15 +95,30 @@ $generated = Join-Path $Output 'PageMembers.cs'
     ($members -join "`n") + "`n}") | Set-Content -Encoding UTF8 $generated
 $sources += $generated
 
+# Actual accepted publication bodies, not copied test implementations. Surrounding cursor/UI services are labelled doubles.
+$publicationMembers = @()
+$publicationPaths = @((Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'), (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs'))
+foreach ($pair in @(@($publicationPaths[0], 'DrainEventQueue'), @($publicationPaths[0], 'StopEventSync'), @($publicationPaths[1], 'ApplyRefreshedMessages'))) {
+    $text = [IO.File]::ReadAllText($pair[0])
+    $found = [regex]::Matches($text, ('(?m)^    private [^\r\n]*\b' + $pair[1] + '\('))
+    if ($found.Count -ne 1) { throw "Expected one producer: $($pair[1])" }
+    $block = [regex]::Match($text.Substring($found[0].Index), '(?ms)\A.*?^    \}\r?$')
+    if (!$block.Success) { throw "Cannot extract producer: $($pair[1])" }
+    $publicationMembers += $block.Value
+}
+$publicationGenerated = Join-Path $Output 'ContextPublicationMembers.cs'
+("using System; using System.Linq; using System.Collections.Generic; using System.Diagnostics; using AIFrontend.Services.OpenCode;`nnamespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($publicationMembers -join "`n") + "`n}") | Set-Content -Encoding UTF8 $publicationGenerated
+$sources += $publicationGenerated
+
 $references = @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | Sort-Object FullName)
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-Get-FileHash -LiteralPath ($sources + @($PSCommandPath, $pagePath)) -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $Output 'source-hashes.json')
-@{ CompiledSources = @($sources); ExtractedFrom = $pagePath; ExtractedMembers = @('SourceReady', 'CreateOperationToken', 'InvalidateForSourceChange'); References = $references.Count } |
+Get-FileHash -LiteralPath ($sources + @($PSCommandPath, $pagePath) + $publicationPaths) -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $Output 'source-hashes.json')
+@{ CompiledSources = @($sources); ExtractedFrom = $pagePath; ExtractedMembers = @('SourceReady', 'CreateOperationToken', 'InvalidateForSourceChange'); PublicationExtractedFrom = $publicationPaths; PublicationExtractedMembers = @('DrainEventQueue', 'StopEventSync', 'ApplyRefreshedMessages'); References = $references.Count } |
     ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $Output 'input-membership.json')
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $responseFile = Join-Path $Output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
-$inputs = @($sources) + @($references.FullName) + @($compiler, $dotnet, $responseFile, $pagePath)
+$inputs = @($sources) + @($references.FullName) + @($compiler, $dotnet, $responseFile, $pagePath) + $publicationPaths
 $before = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
 $before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $Output 'compiled-inputs-before.json')
 & $dotnet exec $compiler "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $Output 'compile.log')

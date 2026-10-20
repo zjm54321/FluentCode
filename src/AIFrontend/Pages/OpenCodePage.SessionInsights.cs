@@ -21,7 +21,8 @@ namespace AIFrontend.Pages;
 /// <para>
 /// 读取时机：只在打开面板（且当前会话尚无结果）或点击面板内刷新时读取；Billion 只在单独点击
 /// “读取本机记录”时读取健康/详情；地址元数据在同次显式概况加载中经当前来源和已核实会话目录自动发现。
-/// 没有计时器、不随约 2 秒的消息轮询刷新、不在切换会话时自动读取（面板在切换标签时保持打开，
+    /// 没有计时器；费用/能力/Billion 不随消息刷新。页头上下文参考复用每次已接纳消息本地重算；
+    /// 模型/目录复用既有历史边界读取，每个绑定最多自动初始化一次模型目录。面板在切换标签时保持打开，
 /// 内容随即重置为新会话的“尚未读取”，由用户点刷新读取）。
 /// </para>
 /// <para>
@@ -100,13 +101,30 @@ public sealed partial class OpenCodePage
     /// 不改动已冻结的切换/导航方法体。
     /// </summary>
     partial void OnMessageHistoryReset() => ResetSessionInsights();
+
+    partial void CaptureContextMetadataVersion(ref long version) => version = _insights?.ContextMetadataVersion ?? -1;
+
     partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages)
     {
         OnRuntimeMessagesAccepted(messages);
+        if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
+            insights.UpdateContext(binding!, messages, IsLoadedMessageHistoryComplete());
     }
 
     partial void OnRuntimeMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
 
+    partial void OnContextSessionMetadata(OpenCodeModelRef? model, string directory, long version)
+    {
+        if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
+            _ = RefreshContextMetadataAsync(insights, binding!, model, directory, version);
+    }
+
+    private async Task RefreshContextMetadataAsync(OpenCodeSessionInsightsController insights, OpenCodeInsightsBinding binding,
+        OpenCodeModelRef? model, string directory, long version)
+    {
+        using var operation = CreateOperationToken(binding.Source);
+        await insights.UpdateContextMetadataAsync(binding, model, directory, version, operation.Token);
+    }
 
     private void ResetSessionInsights()
     {
@@ -200,7 +218,7 @@ public sealed partial class OpenCodePage
         }
     }
 
-    /// <summary>页头圆环 Flyout 打开：与 <see cref="OpenSessionInsightsPane"/> 相同的显式读取时机（不轮询、不随消息刷新）。</summary>
+    /// <summary>Flyout 打开才读取昂贵概况分区；常驻圆环的本地上下文参考不依赖点击。</summary>
     private void OpenContextDetails() => OpenSessionInsightsPane();
 
     private async Task LoadSessionInsightsAsync()

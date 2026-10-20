@@ -154,7 +154,8 @@ public sealed record OpenCodeSessionInsightsSnapshot(
 /// 整树费用、模型目录、MCP/插件目录；子会话与 active 仅在 OMO 服务器插件已核实时读取。
 /// 同次显式加载在已核实的会话目录发起一次 Billion 地址元数据 RPC；手动覆盖优先，不自动重试。
 /// Billion 只在 <see cref="ReadBillionAsync"/>（单独点击且已确认当前来源的地址）时读取 health + 单会话 detail。
-/// 本类没有计时器、后台轮询或缓存；上下文与 Todo 只复用调用方提供的、已按旧→新排列的已加载消息。
+    /// 上下文另由已接纳消息本地更新；每个绑定最多自动读取一次模型目录，不读取费用/能力/Billion。
+    /// 本类没有计时器或后台轮询；Todo 仍是显式读取快照。
 /// </para>
 /// <para>
 /// 代际：每次读取捕获 <see cref="OpenCodeInsightsBinding"/>，经来源 TryExecute 起发，await 后以
@@ -187,6 +188,26 @@ public sealed class OpenCodeSessionInsightsController
     private bool _originManuallyChosen;
     private OpenCodeBillionDiscoveryResult? _discovery;
     private bool _discoveryLoading;
+    private OpenCodeMessage[] _contextMessages = Array.Empty<OpenCodeMessage>();
+    private bool _contextHistoryComplete;
+    private bool _contextHasMessages;
+    private OpenCodeModelRef? _contextModel;
+    private string? _contextDirectory;
+    private OpenCodeModelInfo[]? _contextModels;
+    private OpenCodeModelInfo? _contextModelInfo;
+    private bool _contextCatalogStarted;
+    private CancellationTokenSource? _contextCts;
+    private long _contextCatalogVersion;
+    private long _contextModelVersion;
+    private double _contextSwitchCreated;
+    private string? _contextSwitchId;
+    private double _contextLatestModelCreated;
+    // A same-session accepted-history reset clears usage, not an already initialized catalog.
+    // Keep at most the last binding; switching source/session cannot reuse it.
+    private OpenCodeInsightsBinding? _retainedContextCatalogBinding;
+    private string? _retainedContextDirectory;
+    private OpenCodeModelInfo[]? _retainedContextModels;
+    private bool _retainedContextCatalogStarted;
 
     /// <param name="isCurrentFields">
     /// 纯字段比较（可在来源锁内调用，不得访问 App、不得 await）：页面存活、来源引用/Revision/来源代际、
@@ -214,6 +235,169 @@ public sealed class OpenCodeSessionInsightsController
     /// <summary>Metadata attempts only (unsupported local association may return without HTTP).</summary>
     public int BillionDiscoveryAttemptsStarted { get; private set; }
 
+    /// <summary>模型元数据读取起点的栅栏；晚于它的已接纳模型切换优先于旧响应。</summary>
+    public long ContextMetadataVersion => _contextModelVersion;
+
+    /// <summary>只更新本地上下文参考。调用方已核实 binding、历史投影及消息顺序；无网络/发现/费用读取。</summary>
+    public void UpdateContext(OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> orderedMessages, bool historyComplete)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(orderedMessages);
+        if (!IsCurrent(binding)) return;
+        AdoptBinding(binding);
+        bool changed = false;
+        binding.Source.TryExecute(CancellationToken.None, () =>
+        {
+            if (!OwnsContext(binding)) return;
+            CaptureContextMessages(orderedMessages, historyComplete);
+            changed = SetContextSnapshot();
+        });
+        if (changed) Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// 复用页面已有的权威 SessionControlState 模型/目录。每绑定最多一次模型目录初始化；后续消息更新为零 HTTP。
+    /// 显式概况加载仍可刷新缓存目录；目录/模型响应始终用最新已接纳消息重算，不恢复读取起点的 usage。
+    /// </summary>
+    public async Task UpdateContextMetadataAsync(OpenCodeInsightsBinding binding, OpenCodeModelRef? model, string directory,
+        long expectedVersion, CancellationToken outer)
+    {
+        if (outer.IsCancellationRequested || !IsCurrent(binding)) return;
+        AdoptBinding(binding);
+        bool changed = false;
+        binding.Source.TryExecute(outer, () =>
+        {
+            if (!OwnsContext(binding) || expectedVersion != _contextModelVersion) return;
+            SetContextModel(model, directory);
+            changed = SetContextSnapshot();
+        });
+        if (changed) Changed?.Invoke(this, EventArgs.Empty);
+        if (!OwnsContext(binding) || _contextCatalogStarted || string.IsNullOrWhiteSpace(_contextDirectory)) return;
+        _contextCatalogStarted = true; // Includes failed/cancelled attempts: no per-publication retries.
+        var location = _contextDirectory;
+        var version = _contextCatalogVersion;
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(outer, binding.Source.RevocationToken);
+        _contextCts = cts;
+        Task<OpenCodeModelsResponse>? pending = null;
+        try
+        {
+            binding.Source.TryExecute(cts.Token, () =>
+            {
+                if (OwnsContext(binding)) pending = binding.Client.ListModelsAsync(location, cts.Token);
+            });
+            if (pending is null) return;
+            OpenCodeReadsStarted++;
+            var models = await pending;
+            changed = false;
+            binding.Source.TryExecute(cts.Token, () =>
+            {
+                if (!OwnsContext(binding) || version != _contextCatalogVersion || location != _contextDirectory) return;
+                _contextModels = models.Data?.ToArray();
+                MatchContextModel();
+                changed = SetContextSnapshot();
+            });
+            if (changed) Changed?.Invoke(this, EventArgs.Empty);
+        }
+        catch (OperationCanceledException) { }
+        catch (OpenCodeException) { /* Keep a truthful limit-unavailable reference; explicit refresh may refine it. */ }
+        finally
+        {
+            if (ReferenceEquals(_contextCts, cts)) _contextCts = null;
+        }
+    }
+
+    private bool OwnsContext(OpenCodeInsightsBinding binding)
+        => _binding is { } owned && SameScope(owned, binding) && IsCurrent(binding);
+
+    private void CaptureContextMessages(IReadOnlyList<OpenCodeMessage> messages, bool complete)
+    {
+        OpenCodeMessage? latestSwitch = null;
+        double latestModelCreated = _contextLatestModelCreated;
+        foreach (var message in messages)
+        {
+            if (message?.Model is null || message.Time?.Created is not > 0) continue;
+            if (message.Type is OpenCodeMessageTypes.Assistant or OpenCodeMessageTypes.ModelSwitched)
+                latestModelCreated = Math.Max(latestModelCreated, message.Time.Created);
+            if (message.Type == OpenCodeMessageTypes.ModelSwitched
+                && (latestSwitch is null || message.Time.Created >= latestSwitch.Time!.Created)) latestSwitch = message;
+        }
+        if (latestSwitch is not null && latestSwitch.Time!.Created >= _contextSwitchCreated
+            && latestSwitch.Id != _contextSwitchId)
+        {
+            // The initial window may contain switches older than authoritative Session.Info.
+            if (_contextHasMessages && latestSwitch.Time.Created >= _contextLatestModelCreated)
+            {
+                _contextModel = latestSwitch.Model;
+                _contextModelVersion++;
+                MatchContextModel();
+            }
+            _contextSwitchCreated = latestSwitch.Time.Created;
+            _contextSwitchId = latestSwitch.Id;
+        }
+        _contextMessages = messages.ToArray();
+        _contextLatestModelCreated = latestModelCreated;
+        _contextHistoryComplete = complete;
+        _contextHasMessages = true;
+    }
+
+    private void SetContextModel(OpenCodeModelRef? model, string? directory)
+    {
+        _contextModel = model;
+        _contextModelVersion++;
+        if (_contextDirectory != directory)
+        {
+            _contextDirectory = directory;
+            _contextModels = null;
+            _contextCatalogVersion++;
+        }
+        MatchContextModel();
+    }
+
+    private void MatchContextModel()
+    {
+        var matches = _contextModels?.Where(model => model.Id == _contextModel?.Id
+            && model.ProviderId == _contextModel?.ProviderId).ToArray();
+        _contextModelInfo = matches is { Length: 1 } ? matches[0] : null;
+    }
+
+    private OpenCodeInsightSection<OpenCodeContextEstimateResult> BuildContext()
+    {
+        var estimate = OpenCodeContextEstimate.Estimate(_binding!.SessionId, _contextMessages,
+            _contextModel, _contextModelInfo, _contextHistoryComplete);
+        return new(estimate.ReferenceTokens is not null && !estimate.Stale ? OpenCodeInsightState.Loaded : OpenCodeInsightState.Partial,
+            estimate, estimate.Label);
+    }
+
+    private bool SetContextSnapshot()
+    {
+        var context = BuildContext();
+        var before = Snapshot.Context.Value;
+        var after = context.Value!;
+        if (Snapshot.Context.State == context.State && before is not null
+            && before.CurrentModel == after.CurrentModel && before.LatestAssistantUsage == after.LatestAssistantUsage
+            && before.ContextLimit == after.ContextLimit && before.StaleReasons.SequenceEqual(after.StaleReasons)
+            && Snapshot.HistoryComplete == _contextHistoryComplete) return false;
+        SetSnapshot(Snapshot with { Context = context, HistoryComplete = _contextHistoryComplete });
+        return true; // Text-only deltas retain inputs without rebuilding the header/flyout/insights view.
+    }
+
+    private void ClearContext()
+    {
+        CancelAndForget(ref _contextCts);
+        _contextCatalogVersion++;
+        _contextMessages = Array.Empty<OpenCodeMessage>();
+        _contextHasMessages = false;
+        _contextHistoryComplete = false;
+        _contextModel = null;
+        _contextDirectory = null;
+        _contextModels = null;
+        _contextModelInfo = null;
+        _contextCatalogStarted = false;
+        _contextSwitchCreated = 0;
+        _contextSwitchId = null;
+        _contextLatestModelCreated = 0;
+    }
+
     /// <summary>当前快照是否已属于该 binding 且已有采样结果或正在读取（打开概况时据此决定是否读取）。</summary>
     public bool HasResultFor(OpenCodeInsightsBinding binding)
         => _binding is { } owned && SameScope(owned, binding) && (Snapshot.Loading || Snapshot.SampledAt is not null);
@@ -225,6 +409,22 @@ public sealed class OpenCodeSessionInsightsController
     /// </param>
     public void Reset(string? sessionId = null, string? unavailableReason = null, bool clearBillionOrigin = false)
     {
+        if (_binding is not null && !clearBillionOrigin)
+        {
+            _retainedContextCatalogBinding = _binding;
+            _retainedContextDirectory = _contextDirectory;
+            _retainedContextModels = _contextModels;
+            _retainedContextCatalogStarted = _contextCatalogStarted;
+        }
+        else if (clearBillionOrigin)
+        {
+            _retainedContextCatalogBinding = null;
+            _retainedContextModels = null;
+            _retainedContextDirectory = null;
+            _retainedContextCatalogStarted = false;
+        }
+        _contextModelVersion++;
+        ClearContext();
         _loadId++;
         _billionId++;
         if (clearBillionOrigin)
@@ -312,6 +512,8 @@ public sealed class OpenCodeSessionInsightsController
         _loadCts = cts;
         var ct = cts.Token;
         var messages = orderedMessages.ToArray(); // 起发时快照：之后的轮询不改变本次投影输入。
+        CaptureContextMessages(messages, historyComplete);
+        var contextModelVersion = _contextModelVersion;
 
         // 刷新时保留上次结果（仍标注采样时间），只在从未读取过的分区显示“读取中”。
         Publish(Snapshot with
@@ -404,7 +606,7 @@ public sealed class OpenCodeSessionInsightsController
 
             var sampledAt = DateTimeOffset.UtcNow;
             var cost = BuildCost(binding.SessionId, root, ancestorReads, rootFailure, tree, sampledAt);
-            var (pricing, modelInfo) = BuildPricing(info, models, directory);
+            var (pricing, _) = BuildPricing(info, models, directory);
             var scope = new OpenCodeCapabilityScope(binding.Source.Identity, binding.Revision, directory, sampledAt);
             var capabilities = OpenCodeCapabilityStatus.Create(scope,
                 directory is null ? OpenCodeCapabilityRead<OpenCodeMcpServer>.NotObserved() : ToRead(mcp),
@@ -415,10 +617,15 @@ public sealed class OpenCodeSessionInsightsController
                     : capabilities.Complete ? "采样时刻的公开状态目录。" : "部分状态未能确认；未确认项不代表未安装或未连接。");
 
             // 4) 上下文参考 / Todo：只复用已加载消息；历史未取全时如实标记。
-            var estimate = OpenCodeContextEstimate.Estimate(binding.SessionId, messages, info?.Model, modelInfo, historyComplete);
-            var context = new OpenCodeInsightSection<OpenCodeContextEstimateResult>(
-                estimate.ReferenceTokens is not null && !estimate.Stale ? OpenCodeInsightState.Loaded : OpenCodeInsightState.Partial,
-                estimate, estimate.Label);
+            if (info is not null && contextModelVersion == _contextModelVersion) SetContextModel(info.Model, directory);
+            if (directory == _contextDirectory && models.Value?.Data is { } catalog)
+            {
+                _contextModels = catalog.ToArray();
+                MatchContextModel();
+                _contextCatalogStarted = true;
+                _contextCatalogVersion++; // An older automatic catalog completion cannot replace this explicit read.
+            }
+            var context = BuildContext(); // Latest accepted usage, never the old explicit-load input snapshot.
             var todoSnapshot = OpenCodeTodoReplay.Replay(binding.SessionId, messages, historyComplete, capabilities);
             var todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(
                 todoSnapshot.Capability.Availability switch
@@ -433,7 +640,7 @@ public sealed class OpenCodeSessionInsightsController
             Publish(Snapshot with
             {
                 SampledAt = sampledAt,
-                HistoryComplete = historyComplete,
+                HistoryComplete = _contextHistoryComplete,
                 Context = context,
                 Cost = cost,
                 Pricing = pricing,
@@ -892,6 +1099,17 @@ public sealed class OpenCodeSessionInsightsController
         // 新范围：旧会话/来源的任何结果与在途读取都不得残留。
         _loadId++;
         _billionId++;
+        ClearContext();
+        if (_retainedContextCatalogBinding is { } retained && SameScope(retained, binding))
+        {
+            _contextDirectory = _retainedContextDirectory;
+            _contextModels = _retainedContextModels;
+            _contextCatalogStarted = _retainedContextCatalogStarted;
+        }
+        _retainedContextCatalogBinding = null;
+        _retainedContextModels = null;
+        _retainedContextDirectory = null;
+        _retainedContextCatalogStarted = false;
         CancelDiscovery(clearResult: true);
         CancelAndForget(ref _loadCts);
         CancelAndForget(ref _billionCts);

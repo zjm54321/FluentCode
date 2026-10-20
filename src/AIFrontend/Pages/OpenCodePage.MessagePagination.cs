@@ -90,6 +90,8 @@ public sealed partial class OpenCodePage
 
     private async Task<MessageHistoryRead?> RefreshHistoryBoundaryAsync(MessageHistoryRead read, CancellationToken ct)
     {
+        long contextMetadataVersion = -1;
+        CaptureContextMetadataVersion(ref contextMetadataVersion);
         Task<SessionControlState>? pending = null;
         read.Source?.TryExecute(ct, () =>
         {
@@ -107,12 +109,20 @@ public sealed partial class OpenCodePage
             ResetAcceptedHistoryProjection(boundary);
             _historyAcceptedPromptId = acceptedPrompt;
             read = CaptureMessageHistoryRead(read.Client, read.SessionId);
+            CaptureContextMetadataVersion(ref contextMetadataVersion);
         }
         _messageRevertBoundary = boundary;
         _messageHistoryBoundaryKnown = true;
         _messageHistoryNeedsState = false;
+        OnContextSessionMetadata(state.Model is { } model ? new OpenCodeModelRef
+        {
+            Id = model.Id, ProviderId = model.ProviderId, Variant = model.Variant,
+        } : null, state.Directory, contextMetadataVersion);
         return read;
     }
+
+    partial void CaptureContextMetadataVersion(ref long version);
+    partial void OnContextSessionMetadata(OpenCodeModelRef? model, string directory, long version);
     partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
 
     private void BeginMessageHistoryWorkflow(long owner)

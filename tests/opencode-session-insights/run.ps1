@@ -81,5 +81,5 @@ if ($BaselineDirectory) {
     })
     Invoke-InsightsCheck 'baseline' $baseline
 }
-Invoke-InsightsCheck 'current' ($sources + @((Join-Path $PSScriptRoot 'OriginTests.cs'), (Join-Path $PSScriptRoot 'DiscoveryTests.cs')))
+Invoke-InsightsCheck 'current' ($sources + @((Join-Path $PSScriptRoot 'OriginTests.cs'), (Join-Path $PSScriptRoot 'DiscoveryTests.cs'), (Join-Path $PSScriptRoot 'ContextRefreshTests.cs')))
 Write-Output "Evidence directory: $EvidenceRoot"
