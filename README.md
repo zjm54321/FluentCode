@@ -1,0 +1,100 @@
+# AIFrontend
+
+原生 C# / WinUI 3 桌面端框架（Windows 11 x64），提供 Fluent 风格桌面外壳，整合网页端大模型、本地/直接协议模型（Local）、OpenCode 编程助手协作与任务看板。
+
+> **当前阶段与状态说明**：本项目处于功能整合与真机验证阶段，全工程全量 Debug 构建 exit 0。设置页既定导航崩溃路径已修复（本轮实测未再崩溃），设置页 5 个分类正常加载；已实测验证 OpenCode 本机测试服务 Basic 凭据安全保存、只读位置查询与单轮 Prompt 往返接收（idle=succeeded）；原生工具卡片已改为组合原生 Expander 并通过隔离渲染测试（38 检查点 0 失败），最新主程序经 UIA 观测 OpenCode 界面正常加载运行。当前版本尚未完成全链路验收，最新 UI 修正尚未提交 Git，不作为最终交付版本。详细测试事实与已知范围请参阅 [当前验证与验收状态文档](docs/current-validation-status.md)。
+
+---
+
+## 核心功能概览
+
+> 说明：以下为源码已包含的功能概览，源码接线存在不代表端到端实机验收已完成。
+
+### 1. 窗口外壳与自适应导航
+- **系统导航与自适应**：原生 WinUI NavigationView 控件（`PaneDisplayMode="Auto"`，默认 320/48 宽度）与页面返回历史机制。
+- **底端入口**：侧栏底端集成任务状态、账户头像与设置入口（含旋转动画）。
+
+### 2. OpenCode 客户端
+- **V2 后端配置与凭据安全**：支持配置后端根地址及 Basic 认证，凭据由 Windows DPAPI 加密持久化；同页支持一次性 V2 配对链接兑换（须显式保存）。
+- **交互与连通**：源码接入 native chat、原生权限审批与 Form 表单交互；已验证只读位置查询、会话列表读取及单轮 Prompt 往返完成（idle=succeeded）；工具卡片采用组合原生 Expander 架构，隔离渲染验证通过，原生端到端全量交互待验。
+
+### 3. Local 本地与直连协议
+- **协议适配**：支持 OpenAI Responses、ChatCompletions 及 Anthropic Messages 协议（离线通过 281 项协议断言）；严格按能力声明控制推理参数。
+- **离线渲染与存储**：内置安全 HTML 本地渲染器（198 项离线断言）与会话持久化；在线真实调用待验证。
+
+### 4. 网页端 AI (WebView2)
+- **多平台切换**：SelectorBar 支持 ChatGPT、Gemini 与 Claude 独立切换。
+- **独立环境**：为各官方网页提供独立的 WebView2 Profile 并隔离 Cookie（未做真实网页登录与独立 Cookie 清除端到端验收）。
+
+### 5. 系统通知与任务栏
+- **原生状态与通知**：源码对接 Windows 任务栏状态与 Fail-Closed 原生通知服务（跨进程实测待验）。
+
+### 6. 看板 (Board)
+- **主界面骨架**：提供 Scaffold 基础导航骨架；任务编排与 MCP 协议集成明确延期。
+
+---
+
+## 快速使用指南
+
+### 先决条件
+1. **操作系统**：Windows 11 (x64)（已实际验证，其他版本未声称测试）。
+2. **运行时环境**：依赖 .NET 10 Runtime (x64) 与 WebView2 Runtime。Windows App SDK 原生核心组件已随完整输出目录打包自带（`WindowsAppSDKSelfContained=true`），无需单独安装 App SDK。
+3. **外部服务依赖**：**本程序不会自动拉起外部服务**。使用前请确保自备的后端服务已启动：
+   - OpenCode 协作：需自行启动 OpenCode 兼容后端服务（如本机测试服务）；
+   - Local 模型：需自备并运行兼容 OpenAI / Anthropic 协议的本地网关或第三方 API 服务。
+
+### 配置与操作步骤
+
+1. **配置 OpenCode 服务**：
+   - 点击主界面左下角侧栏底部的 **设置** 图标；
+   - 进入 **OpenCode 后端** 分类：
+     - **手动配置**：在服务地址栏填写服务根地址（示例通用格式：`http://localhost:port`，路径不追加 `/api`），填入 Basic 认证用户名与服务密码，点击 **保存 (Save)**。保存后凭据由 DPAPI 加密持久化；可点击 **测试连接** 校验后端响应；
+     - **配对链接**：在同页下方的配对区域粘贴后端生成的一次性 V2 配对 URL 并点击兑换；**兑换后须显式点击保存**，粘贴或兑换不会自动连接；
+     - *注意*：**保存配置不等于已建立连接**，需测试连接或实际发起请求确认连通。
+
+2. **配置 Local 本地与协议模型**：
+   - 在 **设置 -> 聊天 provider** 中选择协议类型，填写自备的 API Endpoint 与 API Key；
+   - 在 **设置 -> 模型** 中配置并选择具体的 Model ID 并保存；
+   - 返回主界面，在 Normal / AI 页面顶部的 SelectorBar 中切换至 **Local** 即可使用对话（窄窗测量溢出已完成源码修正，真机运行待验）。
+
+3. **使用网页端 AI**：
+   - 在主界面普通模式下，通过顶部 SelectorBar 自由切换 ChatGPT、Gemini 或 Claude 视图浏览（登录受服务商内嵌策略限制）。
+
+---
+
+## 运行与构建
+
+### 常用命令（PowerShell，工程根目录下执行）
+```powershell
+# 编译 Debug 配置
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Debug
+
+# 运行 Debug 输出（启动脚本包含 20 秒窗口等待，无自动防重复杀进程，启动前请确保无残留的 AIFrontend.exe 进程）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Configuration Debug
+```
+
+> **重要部署说明**：
+> 本项目为依赖部署模式（`SelfContained=false`），构建输出位于：
+> `src\AIFrontend\bin\x64\<Configuration>\net10.0-windows10.0.26100.0\win-x64\`
+> **必须在完整输出目录中启动**，或完整拷贝整个 `win-x64` 目录，严禁单独拷贝单个 `AIFrontend.exe` 运行。
+
+---
+
+## 凭据安全说明
+
+- 配置文件持久化保存在用户本地目录：`%LOCALAPPDATA%\AIFrontend\settings.json`。
+- 敏感凭据（Basic 密码、Token、API Key 等）由 Windows DPAPI 加密保护，配置文件中仅存元数据与 CredentialId，绝不以明文形式保存密码或密钥。
+
+---
+
+## 详细验证状态
+
+### Billion 只读会话遥测契约与离线证据
+
+- 会话 detail 的 HTTP 200 响应必须含唯一的根级字符串 `id`，与请求的会话 ID 按 Ordinal 精确匹配；缺失、null、非字符串、非法、不匹配或重复 ID 均返回 `Malformed`，所有遥测清空为 Unknown，不回显错误 ID。请求 ID 仍支持 `ses` 前缀、4–256 个 ASCII 字母/数字/`_`/`-`；JSON 转义不改变身份比较结果。
+- 匹配 ID 但无遥测字段仍为 `Available` + Unknown；404 仍为 `NoRecord`，其他非 200、取消、超时与体积限制语义不变。只投影允许的遥测字段，不将忽略的 handoff/title/summary 内容解码成字符串，也不公开响应 ID。
+- 运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\billion-context\run.ps1`：Windows .NET 10 离线编译（nullable、warnings as errors）及 **680 项断言通过**，覆盖单字节分块、最大长度/转义 ID、重复/错误身份零遥测、数 MB 忽略内容及原有传输边界；仅假传输，无真实 Billion/OpenCode 请求。本次未做全应用构建或 UI/端到端验收。
+- 本次证据：`C:\Users\Zhang\AppData\Local\Temp\billion-context-a5c3a1d9487745078d633f21dae11347\results.txt`；WSL 日志及修改前限定文件副本：`/tmp/opencode/billion-identity-repair-h0kIEO/`。
+
+关于自动化断言数据、真机实测结果、已知待修事项与待验收范围，请查看完整记录：  
+👉 [当前验证与验收状态文档](docs/current-validation-status.md)

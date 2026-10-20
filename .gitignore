@@ -24,3 +24,15 @@ artifacts/
 # Private certificate bundles, never required as source.
 *.pfx
 *.p12
+
+# Local orchestration state.
+.slim/deepwork/
+
+# BEGIN oh-my-opencode-slim clonedeps
+.slim/clonedeps/repos/
+# END oh-my-opencode-slim clonedeps
+
+# BEGIN oh-my-opencode-slim worktrees
+.slim/worktrees/
+.slim/worktrees.json
+# END oh-my-opencode-slim worktrees

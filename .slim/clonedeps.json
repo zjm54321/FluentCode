@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-10-13T14:25:38.369Z",
+  "dependencies": [
+    {
+      "name": "billion-context",
+      "resolvedVersion": "0.1.196",
+      "repoUrl": "https://github.com/ranxianglei/billion-context.git",
+      "ref": "d64139f9cd2d64fdd4fb83fffced37cc2a0f57a7",
+      "path": ".slim/clonedeps/repos/ranxianglei__billion-context",
+      "packagePath": ".",
+      "reason": "Pinned read-only source reference for a plugin-owned OpenCode discovery RPC; implementation uses a separate worktree."
+    }
+  ]
+}
