@@ -1,0 +1,352 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using AIFrontend.Pages.OpenCode;
+using AIFrontend.Services.Notifications;
+using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
+
+namespace AIFrontend.Pages;
+
+/// <summary>
+/// 会话概况接线：标签栏右侧“概况”开关 + 右侧概况面板（重设计 v3 §10 + Wave 3 F10；SelectorBar 分区：概况 / Billion。
+/// 概况 = 上下文参考圆环（点击看当前上下文、用量计费、ACP/Billion 状态）+ 任务 + Agents；MCP/插件/LSP 由页头连接状态 Flyout 显示，
+/// 复用同一次读取结果）。读取与投影全部在
+/// <see cref="OpenCodeSessionInsightsController"/>，本文件只负责捕获页面绑定、生命周期与渲染。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 读取时机：只在打开面板（且当前会话尚无结果）或点击面板内刷新时读取；Billion 只在单独点击
+/// “读取本机记录”时读取健康/详情；地址元数据在同次显式概况加载中经当前来源和已核实会话目录自动发现。
+/// 没有计时器、不随约 2 秒的消息轮询刷新、不在切换会话时自动读取（面板在切换标签时保持打开，
+/// 内容随即重置为新会话的“尚未读取”，由用户点刷新读取）。
+/// </para>
+/// <para>
+/// Agents 分区“打开子会话”：只接受当前快照中、属于当前会话的子会话 ID，再经服务端祖先链复核（fail-closed）
+/// 后走与工具卡片“查看子会话”相同的切换路径（同步列表选中态 + 携带来源返回目标），与之共用防重入标记。
+/// </para>
+/// <para>
+/// 代际：绑定 = 来源引用 + Revision + 来源代际 + 页面客户端 + 页面/会话代际 + 选中会话 ID；
+/// 令牌经 <c>CreateOperationToken</c> 链接来源撤销、页面与会话令牌。换源 / 换会话 / 卸载时
+/// <see cref="ResetSessionInsights"/> 取消并清空，迟到结果不会重新出现。
+/// </para>
+/// <para>
+/// 页头的工作进度条、会话行 spinner 与提醒点保持 Gate 1 含义，本面板的读取状态只显示在面板内部。
+/// </para>
+/// <para>
+/// Billion 地址：面板事件携带渲染时的 <see cref="OpenCodeBillionContext"/>；这里只捕获当前完整绑定并与之一起
+/// 交给控制器，绝不调用 BindBillionContext 为到达的事件换取新授权。编辑在输入时立即转发（使旧确认/在途读取失效）。
+/// 真实换源（来源被移除，或来源代际/引用/Revision 变化）时即使没有选中会话也清除地址与确认；只换会话保留。
+/// 地址只在内存中，手动编辑是可选覆盖；发现地址不等于同意读取记录。不持久化、不扫描端口。
+/// </para>
+/// </remarks>
+public sealed partial class OpenCodePage
+{
+    private OpenCodeSessionInsightsController? _insights;
+    private readonly OpenCodeSessionInsightsView _insightsView = new();
+
+    // 上次在重置回调中观察到的来源生命周期标记（与是否选中会话无关）。
+    private OpenCodePageSource? _insightsObservedSource;
+    private long _insightsObservedRevision;
+    private int _insightsObservedSourceGeneration;
+
+    /// <summary>构造期接线（单次）。</summary>
+    private void InitializeSessionInsights()
+    {
+        _insights = new OpenCodeSessionInsightsController(IsCurrentInsightsBinding);
+        _insights.Changed += (_, _) => RenderSessionInsights();
+        _insightsView.RefreshRequested += (_, _) => _ = LoadSessionInsightsAsync();
+        _insightsView.BillionReadRequested += (_, context) => _ = ReadBillionInsightsAsync(context);
+        _insightsView.BillionOriginEdited += (_, edit) =>
+        {
+            // 在 TextChanging 内同步执行：只转发、不渲染（控制器发布的快照由视图排队显示）。
+            edit.Accepted = TryCaptureInsightsBinding(out var binding)
+                && _insights.SetBillionOrigin(binding!, edit.Context, edit.Candidate);
+        };
+        _insightsView.BillionConfirmationChanged += (_, request) =>
+        {
+            if (!TryCaptureInsightsBinding(out var binding)
+                || !_insights.SetBillionConfirmed(binding!, request.Confirmed, request.Context))
+            {
+                // 过期或无效：按控制器当前快照还原复选框。
+                RenderSessionInsights();
+            }
+        };
+        _insightsView.ChildSessionRequested += (_, childSessionId) => _ = OpenInsightsChildSessionAsync(childSessionId);
+        // wave5 G5：页头上下文圆环（“概况”按钮左侧）。打开其 Flyout 与打开概况面板同一读取时机：当前会话尚无结果才读取一次。
+        _insightsView.ContextDetailsOpening += (_, _) => OpenContextDetails();
+        // ACP 组“设置 Billion 地址”：视图已切到 Billion 分区，这里打开右侧面板（与点“概况”开关相同的路径）。
+        _insightsView.BillionSetupRequested += (_, _) =>
+        {
+            if (SessionInsightsButton.IsEnabled)
+            {
+                SessionInsightsButton.IsChecked = true;
+                InsightsPane.IsPaneOpen = true;
+                OpenSessionInsightsPane();
+            }
+        };
+        ContextRingHost.Child = _insightsView.ContextRing.Root;
+        // 视图只构造一次、只挂接一次到右侧面板宿主（此后不再换父元素：Billion 文本框焦点约束）。
+        InsightsPaneHost.Child = _insightsView;
+        RenderSessionInsights();
+    }
+
+    /// <summary>
+    /// 换源 / 换会话 / 卸载：取消在途读取、清空概况与 Billion 结果（右侧面板保持开关状态，内容回到“尚未读取”）。经
+    /// <c>ResetMessagePaginationState</c> 的分部扩展点触发（该方法在四个换代入口都会调用），
+    /// 不改动已冻结的切换/导航方法体。
+    /// </summary>
+    partial void OnMessageHistoryReset() => ResetSessionInsights();
+
+    private void ResetSessionInsights()
+    {
+        var clearOrigin = ObserveInsightsSourceLifetime();
+        if (clearOrigin)
+        {
+            _insightsView.ForgetBillionOriginDraft();
+        }
+
+        _insights?.Reset(clearBillionOrigin: clearOrigin);
+    }
+
+    /// <summary>
+    /// 记录来源生命周期标记并返回是否为真实换源/移除。顺序依据：InvalidateForSourceChange 先递增来源代际并清空
+    /// _source，再经 ResetMessagePaginationState 到达此处，新来源随后才安装；卸载清空 _source 但不递增代际。
+    /// 因此：来源为空 → 清除；代际变化 → 清除；同代际内由空变为已安装（换源后的首次重置）不重复清除；
+    /// 同代际内引用或 Revision 变化（未来可能的直接替换）→ 清除。只换会话时三者不变 → 保留。
+    /// </summary>
+    private bool ObserveInsightsSourceLifetime()
+    {
+        var source = _source;
+        var clear = source is null
+            || _sourceGeneration != _insightsObservedSourceGeneration
+            || (_insightsObservedSource is not null
+                && (!ReferenceEquals(_insightsObservedSource, source) || _insightsObservedRevision != _sourceRevision));
+        _insightsObservedSource = source;
+        _insightsObservedRevision = source is null ? 0 : _sourceRevision;
+        _insightsObservedSourceGeneration = _sourceGeneration;
+        return clear;
+    }
+
+    /// <summary>纯字段比较（可在来源锁内调用）：不访问 App、不 await。</summary>
+    private bool IsCurrentInsightsBinding(OpenCodeInsightsBinding binding)
+        => _pageActive
+        && ReferenceEquals(binding.Source, _source)
+        && binding.Revision == _sourceRevision
+        && binding.SourceGeneration == _sourceGeneration
+        && ReferenceEquals(binding.Client, _client)
+        && binding.PageGeneration == _pageGeneration
+        && binding.SessionGeneration == _sessionGeneration
+        && string.Equals(binding.SessionId, _selectedSessionId, StringComparison.Ordinal);
+
+    private bool TryCaptureInsightsBinding(out OpenCodeInsightsBinding? binding)
+    {
+        binding = null;
+        if (!_pageActive || !SourceReady || _source is not { } source || _client is not { } client
+            || _selectedSessionId is not { Length: > 0 } sessionId || _sessionMissing)
+        {
+            return false;
+        }
+
+        binding = new OpenCodeInsightsBinding(source, _sourceRevision, _sourceGeneration, client,
+            _pageGeneration, _sessionGeneration, sessionId);
+        return true;
+    }
+
+    private string DescribeInsightsUnavailable()
+        => !SourceReady ? "OpenCode 连接尚未就绪。"
+            : _selectedSessionId is null ? "请先选择一个会话。"
+            : _sessionMissing ? "当前会话已不存在。"
+            : "暂时无法读取。";
+
+    /// <summary>右侧面板被打开（概况开关）：沿用原 Flyout 打开时的读取时机。</summary>
+    private void OpenSessionInsightsPane()
+    {
+        if (_insights is null)
+        {
+            return;
+        }
+
+        if (!TryCaptureInsightsBinding(out var binding))
+        {
+            var clearOrigin = ObserveInsightsSourceLifetime();
+            if (clearOrigin)
+            {
+                _insightsView.ForgetBillionOriginDraft();
+            }
+
+            _insights.Reset(null, DescribeInsightsUnavailable(), clearOrigin);
+            return;
+        }
+
+        // 打开即显式读取；同一会话已有结果（或正在读取）时只显示，需要时由用户点刷新。
+        if (!_insights.HasResultFor(binding!))
+        {
+            _ = LoadSessionInsightsAsync();
+        }
+        else
+        {
+            RenderSessionInsights();
+        }
+    }
+
+    /// <summary>页头圆环 Flyout 打开：与 <see cref="OpenSessionInsightsPane"/> 相同的显式读取时机（不轮询、不随消息刷新）。</summary>
+    private void OpenContextDetails() => OpenSessionInsightsPane();
+
+    private async Task LoadSessionInsightsAsync()
+    {
+        if (_insights is not { } insights)
+        {
+            return;
+        }
+
+        if (!TryCaptureInsightsBinding(out var binding))
+        {
+            var clearOrigin = ObserveInsightsSourceLifetime();
+            if (clearOrigin) _insightsView.ForgetBillionOriginDraft();
+            insights.Reset(null, DescribeInsightsUnavailable(), clearOrigin);
+            return;
+        }
+
+        using var operation = CreateOperationToken(binding!.Source);
+        try
+        {
+            // 同次 LoadAsync 复用可信 Session.Info.Location 发起一次元数据发现；不会读取 Billion 健康/详情或代替确认。
+            // 复用已加载、已净化的消息（旧→新）；只有分页链正常结束且无缺口才算历史完整。
+            await insights.LoadAsync(binding, MergeMessageHistory(), IsLoadedMessageHistoryComplete(), operation.Token);
+        }
+        catch (Exception)
+        {
+            // 控制器已把未完成分区标为“无法确认”；不在页面弹出原始错误。
+        }
+    }
+
+    /// <param name="renderedContext">点击时界面显示的上下文；原样交给控制器，不用新绑定替换。</param>
+    private async Task ReadBillionInsightsAsync(OpenCodeBillionContext renderedContext)
+    {
+        if (_insights is not { } insights || !TryCaptureInsightsBinding(out var binding))
+        {
+            RenderSessionInsights();
+            return;
+        }
+
+        using var operation = CreateOperationToken(binding!.Source);
+        try
+        {
+            await insights.ReadBillionAsync(binding, operation.Token, renderedContext);
+        }
+        catch (Exception)
+        {
+            // 连接器只返回白名单状态；任何意外都不把原始信息带到界面。
+        }
+    }
+
+    private void RenderSessionInsights()
+    {
+        if (_insights is not { } insights)
+        {
+            return;
+        }
+
+        var snapshot = insights.Snapshot;
+        // Changed carries no saved payload: always render the latest snapshot, and reject a late source/session owner.
+        // LoadAsync/its discovery continuation preserve this UI caller's synchronization context; View owns queued visuals.
+        if (snapshot.BillionContext is { } context
+            && (!IsCurrentInsightsBinding(context.Binding) || context.Binding.Source.IsRevoked)) return;
+        _insightsView.PrimaryAgent = _agentSelector.CurrentAgentId;
+        _insightsView.Render(snapshot);
+        var description = OpenCodeSessionInsightsView.DescribeEntry(snapshot);
+        // wave5 G5：图标按钮的 Tooltip 固定为“概况”；采样说明只作为无障碍帮助文本。
+        AutomationProperties.SetHelpText(SessionInsightsButton, description);
+        OnSessionInsightsRendered();
+    }
+
+    /// <summary>概况渲染后的扩展点：页头连接详情 Flyout（OpenCodePage.ConnectionFlyout.cs）在打开时据最新快照重建 MCP / 插件。</summary>
+    partial void OnSessionInsightsRendered();
+
+    /// <summary>
+    /// Agents 分区“打开子会话”：仅当 ID 属于当前已显示快照、且快照属于当前会话时，经服务端祖先链复核
+    /// （<see cref="OpenCodeSessionAncestry.IsAncestorAsync"/>，fail-closed）后切换；每次 await 后复核概况绑定。
+    /// 失败保留当前会话并提示，取消静默返回。与工具卡片子会话导航共用 <c>_subagentNavigationBusy</c>。
+    /// </summary>
+    private async Task OpenInsightsChildSessionAsync(string childSessionId)
+    {
+        if (_subagentNavigationBusy || _insights is not { } insights || !TryCaptureInsightsBinding(out var captured))
+        {
+            return;
+        }
+
+        var binding = captured!;
+        var snapshot = insights.Snapshot;
+        if (!string.Equals(snapshot.SessionId, binding.SessionId, StringComparison.Ordinal)
+            || snapshot.Children.Value is not { } children
+            || !string.Equals(children.ParentSessionId, binding.SessionId, StringComparison.Ordinal)
+            || !children.Children.Any(child => string.Equals(child.SessionId, childSessionId, StringComparison.Ordinal)))
+        {
+            return; // 不是当前快照中当前会话的子会话：不导航。
+        }
+
+        _subagentNavigationBusy = true;
+        try
+        {
+            using var operation = CreateOperationToken(binding.Source);
+            var ct = operation.Token;
+            bool Current() => !ct.IsCancellationRequested && IsCurrentInsightsBinding(binding) && !binding.Source.IsRevoked;
+
+            if (!TryStartRead(binding.Source, binding.Revision, binding.SourceGeneration, binding.Client, binding.SessionGeneration, ct,
+                    () => OpenCodeSessionAncestry.IsAncestorAsync(binding.Client, childSessionId, binding.SessionId, ct),
+                    out var ancestryTask))
+            {
+                return; // 来源已撤销/已取消或上下文已变化：未起发任何请求。
+            }
+
+            bool isAncestor;
+            try
+            {
+                isAncestor = await ancestryTask!;
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+                if (Current())
+                {
+                    ShowMessage(InfoBarSeverity.Error, "无法复核子会话归属", "复核归属时发生未预期错误；已保留当前会话，未执行导航。");
+                }
+
+                return;
+            }
+
+            if (!Current())
+            {
+                return;
+            }
+
+            if (!isAncestor)
+            {
+                ShowMessage(InfoBarSeverity.Warning, "无法确认子会话归属",
+                    "服务端父子链复核未确认该子会话属于当前会话；已保留当前会话，未执行导航。");
+                return;
+            }
+
+            SelectSessionItem(childSessionId);
+            await SwitchToSessionAsync(childSessionId, new SessionReturnTarget(binding.SessionId, SessionReturnKind.VisitedOrigin));
+        }
+        catch (OperationCanceledException)
+        {
+            // 取消不报错误。
+        }
+        catch (Exception)
+        {
+            ShowMessage(InfoBarSeverity.Error, "子会话导航失败", "子会话导航过程中发生未预期错误。");
+        }
+        finally
+        {
+            _subagentNavigationBusy = false;
+        }
+    }
+}

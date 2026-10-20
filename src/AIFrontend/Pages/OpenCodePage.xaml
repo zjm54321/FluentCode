@@ -1,0 +1,706 @@
+<Page
+    x:Class="AIFrontend.Pages.OpenCodePage"
+    AutomationProperties.AutomationId="OpenCodePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!--
+        重设计 v3 §2 页面骨架（L1）：
+          Row 0  TabView（会话切换器；标签无内容，只有一套时间线/输入区，见 OpenCodePage.Tabs.cs）
+          Row 1  左侧会话面板 SplitView（Overlay，默认关闭）→ 内容区：未配置面板 / 工作区
+                 工作区 = 右侧概况面板 SplitView（宽窗 Inline、窄窗 Overlay）→ 状态行 / 进度 / InfoBar / 时间线 / 交互区 / 排队条 / 输入区
+        全部为 WinUI 原生控件与内置样式、主题资源；不设置 RequestedTheme（跟随系统），窗口背景为 Mica（MainWindow）。
+    -->
+    <Grid x:Name="PageRoot" RowDefinitions="Auto,*">
+        <VisualStateManager.VisualStateGroups>
+            <!-- 右侧概况面板：宽窗推开内容，窄窗覆盖（§10）。 -->
+            <VisualStateGroup x:Name="InsightsPaneWidthStates">
+                <VisualState x:Name="InsightsPaneWide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1200" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="InsightsPane.DisplayMode" Value="Inline" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="InsightsPaneNarrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="InsightsPane.DisplayMode" Value="Overlay" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+
+            <!-- 会话布局 / 空白新标签页布局（§3，L2 经 VisualStateManager.GoToState(this, …) 切换）。
+                 输入区 ComposerCell 始终是 SessionLayoutRoot 的同一子元素，只改所在行与可见性，绝不换父元素。 -->
+            <VisualStateGroup x:Name="SessionLayoutStates">
+                <VisualState x:Name="SessionLayout" />
+                <VisualState x:Name="NewSessionLayout">
+                    <VisualState.Setters>
+                        <Setter Target="SessionStatusLine.Visibility" Value="Collapsed" />
+                        <Setter Target="SessionStatusHints.Visibility" Value="Collapsed" />
+                        <Setter Target="TimelineGrid.Visibility" Value="Collapsed" />
+                        <Setter Target="QueuedPromptsHost.Visibility" Value="Collapsed" />
+                        <Setter Target="NewSessionHeader.Visibility" Value="Visible" />
+                        <Setter Target="NewSessionListHost.Visibility" Value="Visible" />
+                        <Setter Target="TimelineRow.Height" Value="*" />
+                        <Setter Target="NewSessionListRow.Height" Value="2*" />
+                        <Setter Target="ComposerCell.MaxWidth" Value="{StaticResource OpenCodeNewSessionMaxWidth}" />
+                        <Setter Target="SessionInsightsButton.IsEnabled" Value="False" />
+                        <Setter Target="ContextRingHost.Visibility" Value="Collapsed" />
+                        <Setter Target="InsightsPane.IsPaneOpen" Value="False" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <!-- ============================================================
+             Row 0：会话标签（原生 TabView；不并入窗口标题栏）
+             ============================================================ -->
+        <TabView
+            x:Name="SessionTabs"
+            Grid.Row="0"
+            TabWidthMode="Equal"
+            CanReorderTabs="True"
+            CanDragTabs="False"
+            AllowDropTabs="False"
+            IsAddTabButtonVisible="True"
+            Loaded="SessionTabs_Loaded"
+            AddTabButtonClick="SessionTabs_AddTabButtonClick"
+            TabCloseRequested="SessionTabs_TabCloseRequested"
+            SelectionChanged="SessionTabs_SelectionChanged"
+            AutomationProperties.AutomationId="OpenCodeSessionTabs"
+            AutomationProperties.Name="已打开的会话">
+            <!-- wave5 H12：页头两侧不再用 CommandBar（其固有高度把标签栏撑高、标签下沉）。两侧都是 32px 高的原生透明按钮，
+                 底对齐到标签所在的 8..40 区间，与标签同一中线；标签栏高度只由 TabView 自身决定。 -->
+            <TabView.TabStripHeader>
+                <Button
+                    x:Name="SessionPaneToggle"
+                    Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
+                    Height="32"
+                    Padding="10,0,10,0"
+                    Margin="4,0,4,0"
+                    VerticalAlignment="Bottom"
+                    Click="SessionPaneToggle_Click"
+                    AutomationProperties.AutomationId="OpenCodeSessionPaneToggle"
+                    AutomationProperties.Name="会话面板"
+                    ToolTipService.ToolTip="打开会话面板：查看、新建或切换会话">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE700;" FontSize="16" />
+                        <TextBlock Text="会话" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </TabView.TabStripHeader>
+
+            <TabView.TabStripFooter>
+                <StackPanel
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,8,0"
+                    Spacing="4">
+                    <!-- 服务连接状态（只在可确定时显示；可达性来自真实请求结果）。F10b：原生透明按钮，点击打开连接详情 Flyout
+                         （服务状态 / MCP / 插件 / LSP）；打开时读取一次服务版本，MCP/插件复用会话概况的显式读取，不轮询。 -->
+                    <Button
+                        x:Name="ConnectionStatusButton"
+                        Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
+                        Height="32"
+                        Padding="10,0,10,0"
+                        Margin="8,0,4,0"
+                        VerticalAlignment="Bottom"
+                        AutomationProperties.AutomationId="OpenCodeConnectionStatus"
+                        AutomationProperties.Name="连接状态">
+                        <Button.Flyout>
+                            <Flyout
+                                x:Name="ConnectionFlyout"
+                                Placement="BottomEdgeAlignedRight"
+                                Opening="ConnectionFlyout_Opening"
+                                Closed="ConnectionFlyout_Closed" />
+                        </Button.Flyout>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse
+                                x:Name="ConnectionDot"
+                                Width="8"
+                                Height="8"
+                                VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="ConnectionStatusText"
+                                Text="尚未连接"
+                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <!-- wave5 G5：上下文参考圆环（OpenCodeContextRing.Root，32×32 原生透明按钮 + 确定进度环 + Flyout），
+                         紧挨在“概况”按钮左侧；由页面代码挂入一次。新标签页布局时隐藏。 -->
+                    <Border
+                        x:Name="ContextRingHost"
+                        VerticalAlignment="Bottom"
+                        AutomationProperties.AutomationId="OpenCodeContextRingHost" />
+                    <!-- 会话概况：开关右侧面板（§10）。wave5 G5：只有图标（Tooltip + 无障碍名称“概况”），与圆环按钮同为 32×32。
+                         读取时机不变：打开面板且当前会话无结果时读取一次，或点面板内刷新。 -->
+                    <ToggleButton
+                        x:Name="SessionInsightsButton"
+                        Width="32"
+                        Height="32"
+                        MinWidth="0"
+                        Padding="0"
+                        VerticalAlignment="Bottom"
+                        Click="SessionInsightsButton_Click"
+                        AutomationProperties.AutomationId="OpenCodeSessionInsightsButton"
+                        AutomationProperties.Name="概况"
+                        ToolTipService.ToolTip="概况">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                                <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                            </Style>
+                        </ToggleButton.Style>
+                        <FontIcon Glyph="&#xE9D2;" FontSize="16" />
+                    </ToggleButton>
+                </StackPanel>
+            </TabView.TabStripFooter>
+        </TabView>
+
+        <!-- ============================================================
+             Row 1：内容区。背景与选中标签相同（TabView 内置资源），标签与内容连成一体。
+             ============================================================ -->
+        <SplitView
+            x:Name="SessionPane"
+            Grid.Row="1"
+            DisplayMode="Overlay"
+            PanePlacement="Left"
+            IsPaneOpen="False"
+            OpenPaneLength="{StaticResource OpenCodeSessionPaneLength}"
+            Background="{ThemeResource TabViewItemHeaderBackgroundSelected}"
+            PaneBackground="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+            AutomationProperties.AutomationId="OpenCodeSessionPane"
+            AutomationProperties.Name="会话面板">
+
+            <!-- 左：会话面板（原会话栏，全部 x:Name / AutomationId 保留；关闭时仍在可视树中） -->
+            <SplitView.Pane>
+                <Grid RowDefinitions="Auto,*,Auto" Padding="12,12,12,8">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="4,0,0,8">
+                        <TextBlock
+                            Text="会话"
+                            Style="{ThemeResource SubtitleTextBlockStyle}"
+                            VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <Button
+                                x:Name="NewSessionButton"
+                                Click="NewSessionButton_Click"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                AutomationProperties.AutomationId="OpenCodeNewSessionButton"
+                                AutomationProperties.Name="新会话"
+                                ToolTipService.ToolTip="在服务端默认位置创建新会话">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                    <TextBlock Text="新会话" />
+                                </StackPanel>
+                            </Button>
+                            <Button
+                                x:Name="RefreshSessionsButton"
+                                Click="RefreshSessionsButton_Click"
+                                AutomationProperties.AutomationId="OpenCodeRefreshSessionsButton"
+                                AutomationProperties.Name="刷新会话列表"
+                                ToolTipService.ToolTip="刷新会话列表">
+                                <FontIcon Glyph="&#xE72C;" FontSize="12" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <ListView
+                        x:Name="SessionList"
+                        Grid.Row="1"
+                        SelectionMode="Single"
+                        SelectionChanged="SessionList_SelectionChanged"
+                        AutomationProperties.AutomationId="OpenCodeSessionList"
+                        AutomationProperties.Name="会话列表" />
+
+                    <!-- 会话列表分页：加载更多（仅追加、不切换选中；游标语义见 OpenCodePage.SessionPagination.cs） -->
+                    <StackPanel Grid.Row="2" Spacing="8" Margin="4,8,4,0">
+                        <TextBlock
+                            x:Name="SessionsHint"
+                            TextWrapping="Wrap"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <Button
+                            x:Name="LoadMoreSessionsButton"
+                            Visibility="Collapsed"
+                            HorizontalAlignment="Stretch"
+                            Click="LoadMoreSessionsButton_Click"
+                            AutomationProperties.AutomationId="OpenCodeLoadMoreSessionsButton"
+                            AutomationProperties.Name="加载更多会话"
+                            ToolTipService.ToolTip="按分页游标加载更早的会话（仅追加，不切换当前会话）">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                <TextBlock x:Name="LoadMoreSessionsText" Text="加载更多" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </SplitView.Pane>
+
+            <Grid>
+                <!-- 未配置 / 设置不可用面板：替代工作区显示，不虚构连接状态 -->
+                <Border
+                    x:Name="NotConfiguredPanel"
+                    Visibility="Collapsed"
+                    Margin="24,20"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{ThemeResource OverlayCornerRadius}"
+                    Padding="24,20"
+                    MaxWidth="720"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    AutomationProperties.AutomationId="OpenCodeNotConfiguredPanel">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon
+                                Glyph="&#xE7BA;"
+                                FontSize="16"
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                            <TextBlock
+                                x:Name="NotConfiguredTitle"
+                                Text="OpenCode 后端未配置"
+                                Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock
+                            x:Name="NotConfiguredDetail"
+                            TextWrapping="Wrap"
+                            Style="{ThemeResource BodyTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button
+                                x:Name="SettingsRequestButton"
+                                Click="SettingsRequestButton_Click"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                AutomationProperties.AutomationId="OpenCodeSettingsRequestButton"
+                                AutomationProperties.Name="打开设置">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE713;" FontSize="12" />
+                                    <TextBlock Text="打开设置" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock
+                            Text="本页不会自动创建或修改设置文件；设置入口由宿主接线（事件 OpenCodePage.SettingsRequested）。"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 工作区（未配置时由页面代码整体折叠） -->
+                <Grid x:Name="WorkspaceGrid">
+                    <!-- 右侧概况面板宿主（§10，L8 填充分区）。Inline/Overlay 由 InsightsPaneWidthStates 切换。 -->
+                    <SplitView
+                        x:Name="InsightsPane"
+                        DisplayMode="Inline"
+                        PanePlacement="Right"
+                        IsPaneOpen="False"
+                        OpenPaneLength="{StaticResource OpenCodeInsightsPaneLength}"
+                        PaneBackground="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                        PaneClosed="InsightsPane_PaneClosed"
+                        AutomationProperties.AutomationId="OpenCodeSessionInsightsPane"
+                        AutomationProperties.Name="会话概况面板">
+                        <SplitView.Pane>
+                            <Border
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1,0,0,0">
+                                <Grid RowDefinitions="Auto,*">
+                                    <Grid ColumnDefinitions="*,Auto" Padding="16,8,8,8">
+                                        <TextBlock
+                                            Text="会话概况"
+                                            Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                            VerticalAlignment="Center" />
+                                        <Button
+                                            x:Name="InsightsPaneCloseButton"
+                                            Grid.Column="1"
+                                            Click="InsightsPaneCloseButton_Click"
+                                            AutomationProperties.AutomationId="OpenCodeInsightsPaneClose"
+                                            AutomationProperties.Name="关闭会话概况"
+                                            ToolTipService.ToolTip="关闭">
+                                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                                        </Button>
+                                    </Grid>
+                                    <!-- L8：SelectorBar（OpenCodeInsightsSections）与各分区放入此宿主。 -->
+                                    <ScrollViewer
+                                        Grid.Row="1"
+                                        Padding="16,0,16,16"
+                                        VerticalScrollBarVisibility="Auto"
+                                        HorizontalScrollBarVisibility="Disabled">
+                                        <Border x:Name="InsightsPaneHost" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </Border>
+                        </SplitView.Pane>
+
+                        <Grid>
+                            <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
+                            <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition x:Name="TimelineRow" Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition x:Name="NewSessionListRow" Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Row 0 状态行（只读）：← 返回父会话 · Agent / 模型（L7 改为只读文本） · 等待提示 · 刷新 -->
+                                <Grid
+                                    x:Name="SessionStatusLine"
+                                    Grid.Row="0"
+                                    ColumnDefinitions="Auto,Auto,*,Auto"
+                                    ColumnSpacing="8"
+                                    Margin="0,0,0,4">
+                                    <Button
+                                        x:Name="SessionReturnButton"
+                                        Visibility="Collapsed"
+                                        IsEnabled="False"
+                                        VerticalAlignment="Center"
+                                        Click="SessionReturnButton_Click"
+                                        AutomationProperties.AutomationId="OpenCodeSessionReturnButton" />
+                                    <!-- L7 宿主：Agent（OpenCodeAgentSelectorCurrent）与模型（新 OpenCodeCurrentModel）只读显示。 -->
+                                    <StackPanel
+                                        x:Name="AgentSelectorHost"
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
+                                    <TextBlock
+                                        x:Name="WaitingText"
+                                        Grid.Column="2"
+                                        Visibility="Collapsed"
+                                        TextWrapping="Wrap"
+                                        VerticalAlignment="Center"
+                                        Style="{ThemeResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        AutomationProperties.AutomationId="OpenCodeWaitingText" />
+                                    <Button
+                                        x:Name="RefreshMessagesButton"
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        Click="RefreshMessagesButton_Click"
+                                        AutomationProperties.AutomationId="OpenCodeRefreshMessagesButton"
+                                        AutomationProperties.Name="刷新消息"
+                                        ToolTipService.ToolTip="立即刷新当前会话消息（另有约 2 秒的定时刷新）">
+                                        <FontIcon Glyph="&#xE72C;" FontSize="12" />
+                                    </Button>
+                                </Grid>
+
+                                <!-- Row 1 会话状态说明（F6：横向工作进度线已移除，工作状态由标签栏着色工作环表示） -->
+                                <StackPanel x:Name="SessionStatusHints" Grid.Row="1" Spacing="4">
+                                    <TextBlock
+                                        x:Name="SessionStateHint"
+                                        Visibility="Collapsed"
+                                        TextWrapping="Wrap"
+                                        Style="{ThemeResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        AutomationProperties.AutomationId="OpenCodeSessionStateHint" />
+                                </StackPanel>
+
+                                <!-- Row 2 提示条（按需） -->
+                                <StackPanel Grid.Row="2" Spacing="8" Margin="0,4,0,0">
+                                    <InfoBar
+                                        x:Name="PermissionBar"
+                                        Severity="Warning"
+                                        IsOpen="False"
+                                        IsClosable="True"
+                                        AutomationProperties.AutomationId="OpenCodePermissionBar" />
+                                    <InfoBar
+                                        x:Name="MessageBar"
+                                        Severity="Informational"
+                                        IsOpen="False"
+                                        IsClosable="True"
+                                        AutomationProperties.AutomationId="OpenCodeMessageBar" />
+                                </StackPanel>
+
+                                <!-- Row 3 时间线（居中，最大宽度见 OpenCodeTimelineMaxWidth）；新标签页布局时换为标题区 -->
+                                <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*">
+                                    <ScrollViewer
+                                        x:Name="MessageScroll"
+                                        Grid.Row="1"
+                                        VerticalScrollBarVisibility="Auto"
+                                        ViewChanged="MessageScroll_ViewChanged"
+                                        AutomationProperties.AutomationId="OpenCodeMessageScroll">
+                                        <Grid
+                                            x:Name="MessageHost"
+                                            MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
+                                            Padding="0,0,12,0" />
+                                    </ScrollViewer>
+
+                                    <!-- F3 消息历史分页：滚动到顶部附近自动加载更早消息（单飞、预插保持阅读位置；
+                                         游标语义见 OpenCodePage.MessagePagination.cs）。加载中时在顶部显示小型进度环（叠放，不推动布局）。 -->
+                                    <ProgressRing
+                                        x:Name="LoadOlderMessagesProgress"
+                                        Grid.Row="1"
+                                        Width="20"
+                                        Height="20"
+                                        Margin="0,8,0,0"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Top"
+                                        IsActive="False"
+                                        IsHitTestVisible="False"
+                                        Visibility="Collapsed"
+                                        Loaded="LoadOlderMessagesProgress_Loaded"
+                                        AutomationProperties.AutomationId="OpenCodeLoadOlderMessagesProgress"
+                                        AutomationProperties.Name="正在加载更早的消息" />
+
+                                    <TextBlock
+                                        x:Name="EmptyStateText"
+                                        Grid.Row="1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        MaxWidth="420"
+                                        TextAlignment="Center"
+                                        TextWrapping="Wrap"
+                                        IsHitTestVisible="False"
+                                        Style="{ThemeResource BodyTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                                    <Button
+                                        x:Name="ScrollToBottomButton"
+                                        Grid.Row="1"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Visibility="Collapsed"
+                                        Margin="0,0,16,12"
+                                        Click="ScrollToBottomButton_Click"
+                                        AutomationProperties.AutomationId="OpenCodeScrollToBottomButton"
+                                        AutomationProperties.Name="回到底部"
+                                        ToolTipService.ToolTip="回到底部">
+                                        <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                    </Button>
+                                </Grid>
+
+                                <!-- Row 3（新标签页布局）：标题区，L2 使用；默认折叠 -->
+                                <StackPanel
+                                    x:Name="NewSessionHeader"
+                                    Grid.Row="3"
+                                    Visibility="Collapsed"
+                                    Spacing="4"
+                                    Margin="0,0,0,16"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Bottom"
+                                    AutomationProperties.AutomationId="OpenCodeNewSessionPage"
+                                    AutomationProperties.Name="新会话">
+                                    <TextBlock
+                                        Text="开始新的对话"
+                                        HorizontalAlignment="Center"
+                                        Style="{ThemeResource SubtitleTextBlockStyle}" />
+                                    <TextBlock
+                                        x:Name="NewSessionHeaderHint"
+                                        Text="输入第一条消息，按 Enter 创建会话并发送"
+                                        HorizontalAlignment="Center"
+                                        Style="{ThemeResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+
+                                <!-- Row 4 待处理交互：未锚定提问 / 会话恢复（提交前由页面重新查询 pending 并比对指纹） -->
+                                <StackPanel
+                                    x:Name="InteractionsSection"
+                                    Grid.Row="4"
+                                    Spacing="8"
+                                    Margin="0,8,0,0"
+                                    MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
+                                    Visibility="Collapsed"
+                                    AutomationProperties.AutomationId="OpenCodeInteractionsSection">
+                                    <TextBlock
+                                        x:Name="InteractionsHeader"
+                                        Text="待处理交互"
+                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                        AutomationProperties.AutomationId="OpenCodeInteractionsHeader" />
+                                    <ScrollViewer
+                                        x:Name="InteractionsScroll"
+                                        MaxHeight="320"
+                                        VerticalScrollBarVisibility="Auto"
+                                        HorizontalScrollBarVisibility="Disabled"
+                                        AutomationProperties.AutomationId="OpenCodeInteractionsScroll" />
+                                </StackPanel>
+
+                                <!-- Row 5 排队条宿主（L6：OpenCodeQueuedPromptsView 放入此处，有未投递条目时才显示） -->
+                                <Grid
+                                    x:Name="QueuedPromptsHost"
+                                    Grid.Row="5"
+                                    Margin="0,8,0,0"
+                                    MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
+                                    Visibility="Collapsed" />
+
+                                <!-- Row 6 输入区单元格：输入卡片 + 权限遮罩宿主（同一单元格，遮罩盖在输入区之上；L5 填充）。
+                                     输入框在任何布局/遮罩状态下都留在可视树中、不换父元素。 -->
+                                <Grid
+                                    x:Name="ComposerCell"
+                                    Grid.Row="6"
+                                    Margin="0,8,0,0"
+                                    MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}">
+                                    <Border
+                                        x:Name="ComposerCard"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{ThemeResource OverlayCornerRadius}"
+                                        Padding="12,10">
+                                        <StackPanel>
+                                            <!-- 命令 / 附件伴随视图宿主：页面代码挂入 OpenCodeComposerView 后设为可见；未挂入时折叠、不占位。 -->
+                                            <Grid
+                                                x:Name="ComposerCompanionHost"
+                                                Visibility="Collapsed"
+                                                AutomationProperties.AutomationId="OpenCodeComposerCompanionHost" />
+
+                                            <!-- 输入行（wave3 F1）：左侧唯一的“+”按钮宿主（OpenCodeComposerView.AddButton：原生 Button + MenuFlyout），
+                                                 右侧为原输入网格。内层网格结构不变：单行时发送按钮位于输入框右外侧（列 1）；多行增高时由代码
+                                                 移入框内右下角（列 0 右缘内侧覆盖 + 右侧内边距留白，绝不遮挡文字）。单/多行判定与几何见契约 §14。 -->
+                                            <Grid ColumnDefinitions="Auto,*">
+                                            <Grid
+                                                x:Name="ComposerLeadingHost"
+                                                Grid.Column="0"
+                                                Margin="0,0,8,4"
+                                                VerticalAlignment="Bottom" />
+                                            <Grid Grid.Column="1" ColumnDefinitions="*,40">
+                                                <TextBox
+                                                    x:Name="Composer"
+                                                    Grid.Column="0"
+                                                    AcceptsReturn="True"
+                                                    TextWrapping="Wrap"
+                                                    MinHeight="40"
+                                                    MaxHeight="160"
+                                                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                    PlaceholderText="给 OpenCode 发消息"
+                                                    KeyDown="Composer_KeyDown"
+                                                    KeyUp="Composer_KeyUp"
+                                                    AutomationProperties.AutomationId="OpenCodeComposer"
+                                                    AutomationProperties.Name="消息输入" />
+
+                                                <StackPanel
+                                                    x:Name="ComposerActions"
+                                                    Grid.Column="1"
+                                                    Orientation="Horizontal"
+                                                    Spacing="8"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Bottom"
+                                                    Margin="8,0,0,4">
+                                                    <ProgressRing
+                                                        x:Name="SendProgress"
+                                                        Width="16"
+                                                        Height="16"
+                                                        IsActive="False"
+                                                        Visibility="Collapsed"
+                                                        VerticalAlignment="Center"
+                                                        AutomationProperties.AutomationId="OpenCodeSendProgress" />
+                                                    <Button
+                                                        x:Name="SendStopButton"
+                                                        Width="32"
+                                                        Height="32"
+                                                        MinWidth="0"
+                                                        Padding="0"
+                                                        IsEnabled="False"
+                                                        Style="{ThemeResource AccentButtonStyle}"
+                                                        Click="SendStopButton_Click"
+                                                        AutomationProperties.AutomationId="OpenCodeSendStopButton"
+                                                        AutomationProperties.Name="发送"
+                                                        ToolTipService.ToolTip="发送（Enter）">
+                                                        <FontIcon
+                                                            x:Name="SendStopIcon"
+                                                            Glyph="&#xE724;"
+                                                            FontSize="14" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 权限遮罩宿主（L5：OpenCodePermissionOverlay 放入此处；显示时宽高不小于输入卡片，
+                                         输入框保持在可视树中，仅 IsEnabled=False）。默认折叠、无内容。 -->
+                                    <Grid
+                                        x:Name="PermissionOverlayHost"
+                                        Visibility="Collapsed" />
+                                    <!-- 提问遮罩宿主（重设计 wave3 F9：OpenCodeQuestionOverlay 放入此处，与权限遮罩同位置盖住输入卡片；
+                                         权限优先。默认折叠、无内容。） -->
+                                    <Grid
+                                        x:Name="QuestionOverlayHost"
+                                        Visibility="Collapsed" />
+                                </Grid>
+
+                                <!-- Row 7（新标签页布局）：筛选 + 已有会话列表（L2 接线；与会话面板同源数据）。默认折叠。 -->
+                                <Grid
+                                    x:Name="NewSessionListHost"
+                                    Grid.Row="7"
+                                    Visibility="Collapsed"
+                                    Margin="0,24,0,0"
+                                    MaxWidth="{StaticResource OpenCodeNewSessionMaxWidth}"
+                                    RowDefinitions="Auto,*"
+                                    RowSpacing="8">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                        <TextBlock
+                                            Text="或打开已有会话"
+                                            Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                            VerticalAlignment="Center" />
+                                        <AutoSuggestBox
+                                            x:Name="NewSessionSearch"
+                                            Grid.Column="1"
+                                            Width="240"
+                                            PlaceholderText="筛选会话"
+                                            QueryIcon="Find"
+                                            AutomationProperties.AutomationId="OpenCodeNewSessionSearch"
+                                            AutomationProperties.Name="筛选会话" />
+                                    </Grid>
+                                    <ListView
+                                        x:Name="NewSessionList"
+                                        Grid.Row="1"
+                                        SelectionMode="Single"
+                                        AutomationProperties.AutomationId="OpenCodeNewSessionList"
+                                        AutomationProperties.Name="已有会话" />
+                                </Grid>
+                            </Grid>
+
+                            <!-- 关闭全部标签后的空状态（§2.3）；L2 以空白新标签页替代。默认折叠。 -->
+                            <StackPanel
+                                x:Name="NoOpenTabsPanel"
+                                Visibility="Collapsed"
+                                Spacing="12"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AutomationId="OpenCodeNoOpenTabs">
+                                <TextBlock
+                                    Text="没有打开的会话"
+                                    HorizontalAlignment="Center"
+                                    Style="{ThemeResource SubtitleTextBlockStyle}" />
+                                <TextBlock
+                                    Text="关闭标签不会删除或中断会话，可随时从会话面板重新打开。"
+                                    HorizontalAlignment="Center"
+                                    TextAlignment="Center"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="420"
+                                    Style="{ThemeResource BodyTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Button
+                                    x:Name="NoOpenTabsOpenButton"
+                                    HorizontalAlignment="Center"
+                                    Style="{ThemeResource AccentButtonStyle}"
+                                    Click="NoOpenTabsOpenButton_Click"
+                                    AutomationProperties.AutomationId="OpenCodeNoOpenTabsOpen"
+                                    AutomationProperties.Name="打开或新建会话">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                        <TextBlock Text="打开或新建会话" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </SplitView>
+                </Grid>
+            </Grid>
+        </SplitView>
+    </Grid>
+</Page>
