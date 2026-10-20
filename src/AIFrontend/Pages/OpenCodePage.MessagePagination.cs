@@ -273,6 +273,7 @@ public sealed partial class OpenCodePage
     /// </summary>
     private void ResetMessagePaginationState()
     {
+        ResetConversationImages();
         ResetMessagePaginationCore();
         UpdateLoadOlderMessagesUi();
         OnMessageHistoryReset();
@@ -283,6 +284,8 @@ public sealed partial class OpenCodePage
     /// 据此取消并清空基于旧会话的结果（实现见 OpenCodePage.SessionInsights.cs；未实现时编译为空）。
     /// </summary>
     partial void OnMessageHistoryReset();
+    partial void EnsureConversationImages();
+    partial void ResetConversationImages();
 
     /// <summary>分页硬重置核心：清游标、链状态与全部缓存；递增链代际使在途续页失效；不动视图、不刷 UI。</summary>
     private void ResetMessagePaginationCore()
@@ -337,7 +340,9 @@ public sealed partial class OpenCodePage
 
         _latestMessages.Clear();
         _latestMessages.AddRange(latestAsc);
-        _conversationView.ApplyMessages(ProjectMessageHistory(MergeMessageHistory()));
+        var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
+        EnsureConversationImages();
+        _conversationView.ApplyMessages(acceptedHistory);
 
         if (latestAsc.Count == 0)
         {
@@ -864,6 +869,7 @@ public sealed partial class OpenCodePage
         var offsetBefore = MessageScroll.VerticalOffset;
         var heightBefore = MessageScroll.ScrollableHeight;
 
+        EnsureConversationImages();
         _conversationView.ApplyMessages(ProjectMessageHistory(MergeMessageHistory()));
 
         MessageScroll.UpdateLayout();

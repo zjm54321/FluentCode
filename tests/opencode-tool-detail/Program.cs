@@ -48,20 +48,42 @@ internal static class Program
             && tiny.X >= OpenCodeDetailPopupLayout.WindowMargin && tiny.Y >= OpenCodeDetailPopupLayout.WindowMargin, "large view stays inside a tiny window");
         Check(OpenCodeDetailPopupLayout.LargeViewFraction == 0.8, "large view fraction is 80%");
 
-        // Hover preview: small (well below the large view), adjacent to the row (gap 0) so the pointer can move into it.
-        var previewWidth = OpenCodeDetailPopupLayout.PreviewWidth(1600);
+        // Wave 7 explicitly supersedes the work-area cap: bounds come from the actual originating row.
+        var previewWidth = OpenCodeDetailPopupLayout.PreviewWidths(1000, 1600).Max;
         var previewHeight = OpenCodeDetailPopupLayout.PreviewHeightLimit(1000);
-        Check(previewWidth <= OpenCodeDetailPopupLayout.PreviewMaxWidth && previewHeight <= OpenCodeDetailPopupLayout.PreviewMaxHeight
-            && previewWidth < large.Width / 2 && previewHeight < large.Height / 2, "preview is small compared to the large view");
-        Check(OpenCodeDetailPopupLayout.PreviewWidth(400) <= 400 - 2 * OpenCodeDetailPopupLayout.WindowMargin, "preview fits a narrow window");
+        Check(OpenCodeDetailPopupLayout.PreviewWidths(1000, 1600) == (600, 1200) && previewHeight == 984, "preview bounds are 0.6A and 1.2A, not a percentage of the workspace");
+        Check(OpenCodeDetailPopupLayout.PreviewWidths(1000, 400) == (384, 384), "both row-based width bounds clamp to narrow viewport margins");
+        var measurements = 0;
+        var fitsNarrow = OpenCodeDetailPopupLayout.FitPreview(500, 1600, 500, width => { measurements++; return 96; });
+        Check(fitsNarrow == (300, 96, false) && measurements == 1, "short wrapped content keeps minimum row width and natural height without probing wider widths");
+        var adaptive = OpenCodeDetailPopupLayout.FitPreview(500, 1600, 500, width => 180000 / width);
+        Check(adaptive.Width >= 360 && adaptive.Width < 361 && adaptive.FullHeight <= 500 && !adaptive.Clipped, "expand only to the narrowest fitting wrapped width within one DIP");
+        var constrained = OpenCodeDetailPopupLayout.FitPreview(500, 1600, 500, width => 1000000 / width);
+        Check(constrained.Width == 600 && constrained.Clipped, "only content still too tall at maximum row width requires vertical scrolling and full-detail hint");
         var below = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 1500, 32, previewWidth, 300, 1600, 1000);
-        Check(below.X == 40 && below.Y == 232, "wide row: preview directly below the row (no gap)");
+        Check(below.Y == 240, "wide row: preview below with 8px gap");
         var above = OpenCodeDetailPopupLayout.PreviewPlacement(40, 900, 1500, 32, previewWidth, 300, 1600, 1000);
-        Check(above.Y + 300 == 900, "row near bottom: preview directly above the row (no gap)");
+        Check(above.Y + above.Height == 892, "row near bottom: preview above with 8px gap");
         var right = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 300, 32, previewWidth, 300, 1600, 1000);
-        Check(right.X == 340 && right.Y == 200, "narrow row: preview flush to the right, top aligned");
+        Check(right.Y == 240, "narrow row also opens below, NEVER right even with available space");
         var clamped = OpenCodeDetailPopupLayout.PreviewPlacement(1400, 980, 150, 16, previewWidth, 300, 1600, 1000);
-        Check(clamped.X + previewWidth <= 1600 - OpenCodeDetailPopupLayout.WindowMargin && clamped.Y + 300 <= 1000 - OpenCodeDetailPopupLayout.WindowMargin, "preview clamped inside window");
+        Check(clamped.X + clamped.Width <= 1592 && clamped.Y + clamped.Height <= 992, "preview clamped inside window");
+        var shortPreview = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 300, 32, 220, 96, 1600, 1000);
+        Check(shortPreview.Width == 220 && shortPreview.Height == 96 && shortPreview.Y == 240, "short measured content keeps its natural size, not the maximum empty surface");
+        var longPreview = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 300, 32, 1200, 5000, 1600, 1000);
+        Check(longPreview.Height == 752 && longPreview.Width == 1200, "long measured content clamps to roomier side for scrolling");
+        foreach (var (w, h) in new[] { (1600d, 1000d), (800d, 600d), (300d, 200d), (120d, 80d) })
+        foreach (var y in new[] { 8d, h / 2, h - 40 })
+        foreach (var x in new[] { 0d, w - 20 })
+        {
+            var r = OpenCodeDetailPopupLayout.PreviewPlacement(x, y, 20, 24,
+                OpenCodeDetailPopupLayout.PreviewWidths(20, w).Max, OpenCodeDetailPopupLayout.PreviewHeightLimit(h), w, h);
+            Check(r.X >= 8 && r.X + r.Width <= w - 8 && r.Y >= 8 && r.Y + r.Height <= h - 8,
+                "edge/small viewport width AND height clamp");
+            Check(r.Y >= y + 24 + 8 || r.Y + r.Height <= y - 8, "edge placement is exclusively above or below with gap");
+            var room = Math.Max(y - 16, h - y - 40);
+            Check(r.Height == Math.Max(0, room), "height fills roomier vertical side instead of a fixed cap");
+        }
 
         // Hide on leave: leaving the row hides unless the pointer is in the preview; leaving both hides.
         var hover = new OpenCodeDetailHoverTracker();
@@ -76,7 +98,7 @@ internal static class Program
         hover.EnterAnchor();
         hover.Reset();
         Check(hover.ShouldHide && !hover.InAnchor && !hover.InPreview, "reset clears pointer state");
-        Check(OpenCodeDetailPopupLayout.HoverLeaveGraceMs <= 100, "leave grace is below perception (hides immediately)");
+        Check(OpenCodeDetailPopupLayout.HoverLeaveGraceMs == 240, "bounded leave grace allows pointer to cross the 8px gap");
 
         // G8 / no truncation: chunks reassemble to the full text (no dropped lines), wrap is default-on.
         Check(OpenCodeDetailTextPolicy.WrapByDefault, "detail text wraps by default");
@@ -95,7 +117,10 @@ internal static class Program
         var dir = System.IO.Path.Combine(args[0], "src", "AIFrontend", "Pages", "OpenCode");
         var popup = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolDetailPopup.cs"));
         var content = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolDetailContent.cs"));
-        Check(popup.Contains("internal const int HoverOpenDelayMs = 1200;") && popup.Contains("internal const int HoverSwitchDelayMs = 300;"), "hover delays unchanged (1200 / 300 ms)");
+        Check(popup.Contains("internal const int HoverOpenDelayMs = 800;") && popup.Contains("internal const int HoverSwitchDelayMs = 0;"), "confirmed initial 800ms / open-preview row switch 0ms contract");
+        Check(popup.Contains("_previewPresenter.Measure(new Size(width, double.PositiveInfinity))") && popup.Contains("FitPreview(anchor.ActualWidth")
+            && popup.Contains("_previewPresenter.MaxHeight = double.PositiveInfinity") && !popup.Contains("PreviewWidth("), "native preview measures full wrapped content and every opening path uses the new row-based fitter, not the superseded workspace cap");
+        Check(popup.Contains("_previewPresenter.MaxHeight = capacity.Height") && !popup.Contains("_previewPresenter.Height = rect.Height"), "preview retains natural automatic height as streaming text/images grow, bounded only by side capacity");
         Check(!popup.Contains("OpenCodeToolDetailWrap") && !popup.Contains("\"换行\"") && !popup.Contains("_wrapButton"), "no wrap toggle in the popup");
         Check(popup.Contains("\"OpenCodeToolDetailPreview\"") && popup.Contains("\"OpenCodeToolDetailPopup\"") && popup.Contains("\"OpenCodeToolDetailOverlay\""), "preview / large view / overlay AutomationIds");
         Check(popup.Contains("_dialogChrome.Actions.Children.Add(_closeButton)") && !popup.Contains("_previewChrome.Actions.Children.Add("), "close button only in the large view (preview has none)");
@@ -106,7 +131,7 @@ internal static class Program
         Check(popup.Contains("new FlyoutPresenter") && !popup.Contains("Color.FromArgb") && !popup.Contains("TryBrush"), "native FlyoutPresenter chrome, no hand-rolled colors");
         Check(popup.Contains("interface IOpenCodeDetailContentSource") && popup.Contains("OpenCodeToolDetailView BuildDetailContent();")
             && popup.Contains("OpenCodeDetailHeader DetailHeader { get; }") && popup.Contains("void OnDetailStateChanged(bool shown, bool pinned);"), "IOpenCodeDetailContentSource API stable");
-        Check(!content.Contains("TextWrapping.NoWrap") && !content.Contains("TextTrimming.CharacterEllipsis") && !content.Contains("ScrollMode.Auto"), "content view always wraps (no NoWrap / ellipsis / horizontal scroll)");
+        Check(!content.Contains("TextWrapping.NoWrap") && !content.Replace("preview.TextTrimming = TextTrimming.CharacterEllipsis;", string.Empty).Contains("TextTrimming.CharacterEllipsis") && !content.Contains("ScrollMode.Auto"), "full content always wraps without ellipsis/horizontal scroll; only explicitly collapsed code preview can elide");
         Check(!content.Contains("仅显示前") && content.Contains("OpenCodeDetailTextPolicy.ChunkLines"), "code blocks are not truncated");
         var child = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeChildChatWindow.cs"));
         Check(child.Contains("OpenCodeConversationView _timeline = new()") && child.Contains("_timeline.ApplyMessages(OpenCodeChildChatReadSession.OrderMessages(response.Data))")
@@ -116,9 +141,33 @@ internal static class Program
         Check(child.Contains("SetSuppressDetails(_timeline, true)") && popup.Contains("DetailsSuppressed(AnchorOf(source))"),
             "nested child tool details cannot replace the global parent popup or recurse");
         Check(!child.Contains("960") && child.Contains("_root.Size.Width * 0.9") && child.Contains("HorizontalScrollMode = ScrollMode.Disabled"), "child uses wide rectangular viewport without artificial cap or sideways panning");
+        Check(child.Contains("EnforceWrapping(_timeline, width)") && content.Contains("VisualTreeHelper.GetChild(root, i)") && content.Contains("rich.TextWrapping = TextWrapping.Wrap"), "actual nested timeline including rich text/code is wrapped, not just outer scrollbar hidden");
+        Check(child.Contains("_timeline.Width = width") && child.Contains("_scroller.Width = Math.Max")
+            && child.Contains("ScrollViewer.SetHorizontalScrollMode(_surface, ScrollMode.Disabled)") && content.Contains("element.MaxWidth = width"),
+            "finite child body/timeline/descendant measure plus presenter-template scroll mode prevent sideways panning");
+        Check(popup.Contains("_previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed")
+            && content.Contains("IsTruncated = false") && popup.Contains("OnPreviewContentLayoutUpdated"), "hint only for actual overflow/row truncation; extent changes remeasure asynchronous content");
+        Check(popup.Contains("model.Kind == OpenCodeToolKind.Shell ? string.Empty : model.Target") && content.Contains("CodeBlock(\"$ \" + (model.Command ?? model.Target))"),
+            "terminal command occurs once in body, never duplicated as popup header target; output path unchanged");
         Check(child.Contains("Action<OpenCodeConversationView>? initializeTimeline = null")
             && child.IndexOf("initializeTimeline?.Invoke(_timeline)", StringComparison.Ordinal) < child.IndexOf("body.Children.Add(_scroller)", StringComparison.Ordinal),
             "optional child-only context initialization precedes attachment and message rendering without parent fallback");
+        var presenter = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
+        var codeFactory = presenter[presenter.IndexOf("private static UIElement CreateCodeBlock", StringComparison.Ordinal)..presenter.IndexOf("private static UIElement? CreateTable", StringComparison.Ordinal)];
+        Check(!codeFactory.Contains("ScrollViewer") && !codeFactory.Contains("MaxHeight") && codeFactory.Contains("TextWrapping.Wrap"), "code block has no nested wheel/height trap and wraps");
+        var tableFactory = presenter[presenter.IndexOf("private static UIElement? CreateTable", StringComparison.Ordinal)..presenter.IndexOf("private static UIElement CreateDefinitionList", StringComparison.Ordinal)];
+        Check(!tableFactory.Contains("ScrollViewer") && !tableFactory.Contains("MaxHeight") && !tableFactory.Contains("wrap: false") && tableFactory.Contains("GridUnitType.Star"), "table columns wrap inside finite width with no inner scrolling or height cap");
+        Check(presenter.Contains("_root.SizeChanged += (_, _) => ConstrainBlocks()") && presenter.Contains("EnforceWrapping(block, _root.ActualWidth)"), "all Markdown block descendants receive actual finite width on resizing");
+        var frame = content[content.IndexOf("internal static FrameworkElement CodeBlockFrame", StringComparison.Ordinal)..content.IndexOf("internal static OpenCodeToolDetailView TextView", StringComparison.Ordinal)];
+        Check(!frame.Contains("RowDefinitions") && !frame.Contains("Grid.SetRow") && frame.Contains("VerticalAlignment = VerticalAlignment.Top") && frame.Contains("layout.Children.Add(controls)"), "copy/toggle float in code cell without a dedicated header row");
+        Check(frame.Contains("OpenCodeCodeBlockExpand") && frame.Contains("preview.MaxLines = OpenCodeDetailTextPolicy.CodePreviewLines") && frame.Contains("content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed"), "local native toggle keeps six-line wrapped preview and expands full content");
+        Check(frame.Contains("copy.Tapped += (_, args) => args.Handled = true") && frame.Contains("toggle.Tapped += (_, args) => args.Handled = true"), "code controls consume taps rather than opening parent details");
+        Check(content.Contains("OpenCodeCodeBlockCopy") && content.Contains("data.SetText(source)") && content.Contains("ToolTipService.SetToolTip(copy"), "native accessible per-block copy captures exact source");
+        const string exact = "let x = 1;\r\n\r\n";
+        Check(OpenCodeDetailTextPolicy.CodeDisplayText(exact) == "let x = 1;" && exact.EndsWith("\r\n\r\n", StringComparison.Ordinal), "display removes trailing empty line without mutating copied source");
+        Check(OpenCodeDetailTextPolicy.CodePreviewLines == 6 && !OpenCodeDetailTextPolicy.CanCollapseCode("a\nb\nc\nd\ne\nf\n"), "short six-line code remains completely visible without toggle");
+        Check(OpenCodeDetailTextPolicy.CodePreview("a\r\nb\r\nc\r\nd\r\ne\r\nf\r\ng\r\n") == "a\r\nb\r\nc\r\nd\r\ne\r\nf", "collapsed preview retains exactly first six source lines and internal CRLF");
+        Check(OpenCodeDetailTextPolicy.CanCollapseCode("a\nb\nc\nd\ne\nf\ng") && OpenCodeDetailTextPolicy.CanCollapseCode(new string('x', 241)), "multiline and very long single-line code offer expansion without an inner viewport");
     }
 
     private static int Main(string[] args)

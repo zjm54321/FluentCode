@@ -110,6 +110,10 @@ public sealed partial class OpenCodePage
             && IsSubagentNavigationCurrent(source, revision, sourceGeneration, client, pageGeneration,
                 sessionGeneration, selectedSessionId, view, parentMessageId, ct);
         var childAuthorized = false;
+        var childIdentity = new OpenCodeImageScopeIdentity(source, client, revision,
+            sourceGeneration, pageGeneration, sessionGeneration, childSessionId);
+        window.InitializeImages((timeline, token) =>
+            BindMarkdownImages(timeline, childIdentity, () => childAuthorized && Current(), token));
         if (!OpenCodeSubagentPresentation.IsOpaqueSessionId(childSessionId))
             window.ShowError("子会话尚未创建或未提供有效的会话编号。");
         else await OpenCodeChildChatReadSession.LoadAsync(Current,

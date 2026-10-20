@@ -30,7 +30,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
     'OpenCodeInteractionUi.cs', 'OpenCodeComposerActivityPolicy.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
-@('Program.cs', 'ConversationLifecycle.cs', 'ConversationView.TestHost.cs', 'RedesignRegression.cs', 'Wave5Timeline.cs') | ForEach-Object {
+@('Program.cs', 'ConversationLifecycle.cs', 'ConversationView.TestHost.cs', 'RedesignRegression.cs', 'Wave5Timeline.cs', 'Wave6Timeline.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path $PSScriptRoot $_) + '"'
 }
 $responseFile = Join-Path $output 'compile.rsp'

@@ -872,6 +872,7 @@ public sealed partial class OpenCodePage : Page
 
         _conversationView.ClearMessages();
         ResetMessagePaginationState();
+        EnsureConversationImages();
         _interactionsView.ClearAll();
         // 切换会话即切换整会话恢复的归属：清除旧会话的提示、确认快照与确认面板（并复位面板忙碌态），
         // 防止旧确认残留被用于当前会话；即使面板异步回调迟到，也因快照绑定不符而不生效。
@@ -4421,6 +4422,7 @@ public sealed partial class OpenCodePage : Page
 
         _conversationView.ClearMessages();
         ResetMessagePaginationState();
+        EnsureConversationImages();
         _interactionsView.ClearAll();
         // 同 SwitchToSessionAsync：切换会话即清除旧会话的恢复提示、确认快照与确认面板。
         _sessionProtectionHint = false;

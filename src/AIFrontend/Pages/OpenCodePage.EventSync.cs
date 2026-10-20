@@ -235,7 +235,9 @@ public sealed partial class OpenCodePage
             var follow = IsScrolledToBottom();
             _latestMessages.Clear();
             _latestMessages.AddRange(_eventReducer.Messages);
-            _conversationView.ApplyMessages(ProjectMessageHistory(MergeMessageHistory()));
+            var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
+            EnsureConversationImages();
+            _conversationView.ApplyMessages(acceptedHistory);
             var window = ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
             ObserveExecutionState(selected, window);
             NotifyViewAcknowledgementRendered(window, _hostWindowVisible);

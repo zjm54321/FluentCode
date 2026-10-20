@@ -20,6 +20,7 @@ internal static class Program
     private static int _assertions;
     private static async Task Main()
     {
+        await ImageBindings();
         await ChildPreviewLifecycle();
         await CardReturnAndFailures();
         await NotificationParentAndFences();
@@ -350,6 +351,42 @@ internal static class Program
         }
     }
 
+    private static async Task ImageBindings()
+    {
+        using var f = new Fixture("endpoint-images");
+        await f.Page.Switch("ses_root");
+        var main = f.Page.Images!;
+        Check(main.IsCurrent && main.Identity.SessionId == "ses_root" && f.Http.Paths.Count == 0,
+            "images.main-bound-before-first-render-without-eager-fetch");
+        f.Page.RebindImages(); f.Page.ReplaceHistoryToken(); f.Page.RebindImages();
+        Check(ReferenceEquals(main, f.Page.Images) && main.IsCurrent, "images.same-session-keeps-scope-across-history-operation-token");
+        await main.ReadAsync("main.png", CancellationToken.None);
+        Check(f.Http.ImageQueries.Single().Contains("%2Ffixture%2Fses_root", StringComparison.OrdinalIgnoreCase),
+            "images.main-real-factory-fetches-exact-session-directory");
+
+        RenderTool(f.Page, "msg_parent");
+        var held = f.Http.Hold("ses_child");
+        var preview = f.Page.Preview("msg_parent", "ses_child");
+        await held.Started.Task;
+        var window = OpenCodeChildChatWindow.Latest!;
+        var child = window.Images!;
+        Check(!child.IsCurrent && child.Identity.SessionId == "ses_child", "images.child-captures-child-id-but-not-authorized-before-ancestry");
+        held.Release(f.Http.Sessions["ses_child"]);
+        await window.ContentReady.Task;
+        Check(child.IsCurrent, "images.existing-ancestry-success-authorizes-child-before-publication");
+        await child.ReadAsync("child.png", CancellationToken.None);
+        Check(f.Http.ImageQueries.Last().Contains("%2Ffixture%2Fses_child", StringComparison.OrdinalIgnoreCase),
+            "images.child-real-factory-fetches-own-directory-never-parent");
+        window.Close(); await preview;
+        Check(!child.IsCurrent && main.IsCurrent, "images.child-close-revokes-only-child-scope");
+        await f.Page.Switch("ses_other");
+        Check(!main.IsCurrent && f.Page.Images is { IsCurrent: true } replacement && replacement.Identity.SessionId == "ses_other",
+            "images.actual-session-switch-disposes-and-rebinds-main");
+        var current = f.Page.Images!;
+        f.Page.Unload();
+        Check(!current.IsCurrent && f.Page.Images is null, "images.unload-disposes-and-unbinds-main");
+    }
+
     private sealed class Fixture : IDisposable
     {
         internal string Endpoint { get; }
@@ -361,9 +398,9 @@ internal static class Program
         {
             Endpoint = endpoint;
             _http = new HttpClient(Http) { Timeout = Timeout.InfiniteTimeSpan };
-            Http.Sessions["ses_root"] = Session("ses_root");
+            Http.Sessions["ses_root"] = Session("ses_root") with { Location = new() { Directory = "/fixture/ses_root" } };
             Http.Sessions["ses_mid"] = Session("ses_mid", "ses_root");
-            Http.Sessions["ses_child"] = Session("ses_child", "ses_mid");
+            Http.Sessions["ses_child"] = Session("ses_child", "ses_mid") with { Location = new() { Directory = "/fixture/ses_child" } };
             Http.Sessions["ses_second"] = Session("ses_second", "ses_other");
             Http.Sessions["ses_other"] = Session("ses_other");
             Application.Current = App;
@@ -389,6 +426,7 @@ internal static class Program
     {
         internal readonly Dictionary<string, OpenCodeSessionInfo> Sessions = new(StringComparer.Ordinal);
         internal readonly List<string> Paths = new();
+        internal readonly List<string> ImageQueries = new();
         private readonly Dictionary<string, Queue<HeldResponse>> _held = new(StringComparer.Ordinal);
         internal HeldResponse Hold(string id)
         {
@@ -402,6 +440,12 @@ internal static class Program
             if (request.Method != HttpMethod.Get) throw new InvalidOperationException("http.unexpected-non-get");
             var path = request.RequestUri!.AbsolutePath;
             Paths.Add(path);
+            if (path.StartsWith("/api/fs/read/", StringComparison.Ordinal))
+            {
+                ImageQueries.Add(request.RequestUri.Query);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    { Content = new ByteArrayContent(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) });
+            }
             if (path == "/api/session") return Task.FromResult(Json(new { data = Sessions.Values.ToArray() }));
             var id = path["/api/session/".Length..];
             if (_held.TryGetValue(id, out var queue) && queue.Count > 0)

@@ -78,6 +78,21 @@ internal static class Wave6Timeline
             && bubbleSource.Contains("OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke)")
             && bubbleSource.Contains("surface.Children.Add(layout)") && !bubbleSource.Contains("FromArgb"),
             "wave8.delivered-only-native-accent-tint-over-opaque-theme-neutral-base-without-content-opacity-or-hardcoded-colors");
+        var markdownSource = File.ReadAllText(Path.Combine(root, "OpenCodeRichTextPresenter.cs"));
+        var codeStart = markdownSource.IndexOf("private static UIElement CreateCodeBlock", StringComparison.Ordinal);
+        var codeFactory = markdownSource[codeStart..markdownSource.IndexOf("private static UIElement? CreateTable", codeStart, StringComparison.Ordinal)];
+        Check(codeFactory.Contains("TextWrapping = TextWrapping.Wrap") && codeFactory.Contains("Text = source")
+            && codeFactory.Contains("CodeBlockFrame(code, source, language)") && !codeFactory.Contains("new ScrollViewer")
+            && !codeFactory.Contains("MaxHeight") && !codeFactory.Contains("TrimEnd"),
+            "wave7.markdown-code-wraps-full-content-without-inner-scroll-trap-or-copy-source-trimming");
+        var detailSource = File.ReadAllText(Path.Combine(root, "OpenCodeToolDetailContent.cs"));
+        var frameStart = detailSource.IndexOf("internal static FrameworkElement CodeBlockFrame", StringComparison.Ordinal);
+        var codeFrame = detailSource[frameStart..detailSource.IndexOf("internal static OpenCodeToolDetailView TextView", frameStart, StringComparison.Ordinal)];
+        Check(codeFrame.Contains("OpenCodeCodeBlockCopy") && codeFrame.Contains("HorizontalAlignment = HorizontalAlignment.Right")
+            && codeFrame.Contains("data.SetText(source)") && codeFrame.Contains("Clipboard.SetContent(data)")
+            && !codeFrame.Contains("new ScrollViewer") && !codeFrame.Contains("MaxHeight")
+            && detailSource.Contains("return CodeBlockFrame(panel, text)"),
+            "wave7.shared-code-frame-has-native-upper-right-exact-full-source-copy-and-only-outer-body-scroll");
         Console.WriteLine($"PASS wave6 timeline: {_checks} assertions; real renderer/policies with inert presenters; native wiring source guards, no UI.");
     }
 }

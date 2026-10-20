@@ -64,7 +64,7 @@ if (!$page.Contains('|| !string.Equals(_selectedSessionId, target.SessionId, Str
 }
 $production = @()
 @('OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.View.cs',
-    'OpenCodeClient.SessionInfo.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
+    'OpenCodeClient.SessionInfo.cs', 'OpenCodeClient.ImageFiles.cs', 'OpenCodeImageFile.cs', 'OpenCodeAttachment.cs', 'OpenCodeDtos.Commands.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
     'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeSessionAncestry.cs',
     'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Inbox.cs',
     'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Sessions.cs') | ForEach-Object {
@@ -75,12 +75,12 @@ $production = @()
     $production += Join-Path "$repo/src/AIFrontend/Services/Notifications" $_
 }
 @('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SessionReturn.Ui.cs', 'OpenCodePage.SubagentNavigation.cs',
-    'OpenCodePage.ViewAcknowledgement.cs') | ForEach-Object {
+    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.MarkdownImages.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages" $_
 }
 @('OpenCodeConversationView.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs',
-    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs') | ForEach-Object {
+    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.

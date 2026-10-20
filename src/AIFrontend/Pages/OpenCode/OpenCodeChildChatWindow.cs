@@ -33,6 +33,7 @@ internal sealed class OpenCodeChildChatWindow
     private readonly CancellationTokenRegistration _cancellation;
     private readonly UIElement? _restoreFocus;
     private readonly OpenCodeChildChatActions _actions;
+    private OpenCodeMarkdownImageScope? _imageScope;
     private bool _constrainingViewport;
 
     internal OpenCodeChildChatWindow(XamlRoot root, CancellationToken bindingToken, Func<bool> bindingCurrent, Func<Task> maximize,
@@ -73,6 +74,11 @@ internal sealed class OpenCodeChildChatWindow
         OpenCodeToolTheme.Apply(_scroller, OpenCodeToolTheme.ScrollSurface(OpenCodeToolTheme.SolidBase));
         // Keep group expansion/scrolling; suppress detail popups in this nested renderer.
         OpenCodeToolDetailPopup.SetSuppressDetails(_timeline, true);
+        // Integration supplies explicit CHILD/session image context here; never inherit the parent's resolver.
+        // Runs before the timeline is attached or any child messages are rendered.
+        initializeTimeline?.Invoke(_timeline);
+        _timeline.LayoutUpdated += (_, _) => ConstrainTimelineViewport();
+        _scroller.SizeChanged += (_, _) => ConstrainTimelineViewport();
         var body = new Grid { RowSpacing = 12 };
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -115,6 +121,14 @@ internal sealed class OpenCodeChildChatWindow
     internal CancellationToken Token => _token;
     internal bool IsOpen => !_actions.IsClosed && !Token.IsCancellationRequested;
 
+    /// <summary>Bind after construction/before messages; callback gets the child root and its close-canceled token.</summary>
+    internal void InitializeImages(Func<OpenCodeConversationView, CancellationToken, OpenCodeMarkdownImageScope> initialize)
+    {
+        if (!IsOpen) return;
+        _imageScope?.Dispose();
+        _imageScope = initialize(_timeline, Token);
+    }
+
     internal void ShowMessages(OpenCodeSessionMessagesResponse response)
     {
         if (!IsOpen) return;
@@ -144,6 +158,9 @@ internal sealed class OpenCodeChildChatWindow
     private void CloseCore()
     {
         _lifetime.Cancel();
+        _imageScope?.Dispose();
+        _imageScope = null;
+        OpenCodeImageContext.Unbind(_timeline);
         _cancellation.Unregister();
         _lifetime.Dispose();
         _root.Changed -= OnRootChanged;
@@ -165,6 +182,25 @@ internal sealed class OpenCodeChildChatWindow
         var size = OpenCodeDetailPopupLayout.LargeView(_root.Size.Width, _root.Size.Height);
         _surface.Width = Math.Max(0, Math.Min(_root.Size.Width - 16, _root.Size.Width * 0.9));
         _surface.Height = size.Height;
+        // FlyoutPresenter has its own ScrollViewer template. Give the body a finite measure before
+        // descendants (notably horizontal tool rows and Markdown tables) can request infinite width.
+        _scroller.Width = Math.Max(0, _surface.Width - _surface.Padding.Left - _surface.Padding.Right);
+        ConstrainTimelineViewport();
+    }
+
+    private void ConstrainTimelineViewport()
+    {
+        if (_constrainingViewport) return;
+        _constrainingViewport = true;
+        try
+        {
+            var width = Math.Max(0, _scroller.Width - _scroller.Padding.Left - _scroller.Padding.Right - 16);
+            if (_scroller.ViewportWidth > 0) width = Math.Min(width, _scroller.ViewportWidth);
+            if (_timeline.Width != width) _timeline.Width = width;
+            OpenCodeToolDetailContent.EnforceWrapping(_timeline, width);
+            if (_scroller.HorizontalOffset > 0) _scroller.ChangeView(0, null, null, true);
+        }
+        finally { _constrainingViewport = false; }
     }
 
     private static Button ChromeButton(string glyph, string name, string id)

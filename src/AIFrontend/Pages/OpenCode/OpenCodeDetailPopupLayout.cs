@@ -23,7 +23,7 @@ internal readonly record struct OpenCodeDetailRect(double X, double Y, double Wi
 /// <summary>
 /// 详情弹出层的纯几何与悬停判定（G7，无 WinUI 依赖，headless 测试直接编译本文件）。
 /// 大视图 = 应用窗口的 <see cref="LargeViewFraction"/>（居中，随窗口改变）；
-/// 悬停预览 = 小浮层（宽 ≤ <see cref="PreviewMaxWidth"/>、高 ≤ <see cref="PreviewMaxHeight"/>），紧贴来源行（间距 0）以便鼠标移入。
+/// 悬停预览 = 来源行 0.6–1.2 倍宽，优先最窄且无需纵向滚动的宽度，只在行上/下方。
 /// </summary>
 internal static class OpenCodeDetailPopupLayout
 {
@@ -38,21 +38,15 @@ internal static class OpenCodeDetailPopupLayout
     /// <summary>浮层与窗口边缘的最小距离。</summary>
     internal const double WindowMargin = 8;
 
-    /// <summary>悬停预览最大宽度 / 最小宽度 / 最大高度。</summary>
-    internal const double PreviewMaxWidth = 520;
+    internal const double PreviewMinRowFraction = 0.6;
+    internal const double PreviewMaxRowFraction = 1.2;
 
-    internal const double PreviewMinWidth = 280;
-
-    internal const double PreviewMaxHeight = 320;
-
-    /// <summary>预览最多占窗口宽/高的比例（小窗口时仍保持“小”）。</summary>
-    internal const double PreviewWindowFraction = 0.6;
+    internal const double PreviewGap = 8;
 
     /// <summary>
-    /// 鼠标离开行 / 预览后的过渡宽限（毫秒）：只用于跨过行与预览之间的指针事件次序（先 Exited 后 Entered），
-    /// 低于感知阈值，用户看到的是“离开即隐藏”。
+    /// 鼠标离开行 / 预览后的过渡宽限（毫秒），允许安全跨越 8px 间距。
     /// </summary>
-    internal const int HoverLeaveGraceMs = 80;
+    internal const int HoverLeaveGraceMs = 240;
 
     /// <summary>大视图矩形：窗口的 80%，居中；窗口很小时不小于最小尺寸但绝不超出窗口（减去边距）。</summary>
     internal static OpenCodeDetailRect LargeView(double rootWidth, double rootHeight)
@@ -66,24 +60,43 @@ internal static class OpenCodeDetailPopupLayout
         return new OpenCodeDetailRect((rootWidth - width) / 2, (rootHeight - height) / 2, width, height);
     }
 
-    /// <summary>预览宽度：不超过 <see cref="PreviewMaxWidth"/> 与窗口的 60%，不低于最小宽度（窗口足够时）。</summary>
-    internal static double PreviewWidth(double rootWidth)
+    /// <summary>来源行宽度范围；视口边距优先于行比例。</summary>
+    internal static (double Min, double Max) PreviewWidths(double anchorWidth, double rootWidth)
     {
         var available = Math.Max(0, rootWidth - (2 * WindowMargin));
-        var width = Math.Min(PreviewMaxWidth, Math.Max(PreviewMinWidth, rootWidth * PreviewWindowFraction));
-        return Math.Min(width, available);
+        var row = Math.Max(0, anchorWidth);
+        return (Math.Min(row * PreviewMinRowFraction, available), Math.Min(row * PreviewMaxRowFraction, available));
     }
 
-    /// <summary>预览最大高度：不超过 <see cref="PreviewMaxHeight"/> 与窗口的 60%。</summary>
+    /// <summary>Measure the full wrapped height, not a ScrollViewer's constrained viewport. Search to one DIP.</summary>
+    internal static (double Width, double FullHeight, bool Clipped) FitPreview(double anchorWidth, double rootWidth,
+        double availableHeight, Func<double, double> measureFullHeight)
+    {
+        var (min, max) = PreviewWidths(anchorWidth, rootWidth);
+        var height = measureFullHeight(min);
+        if (height <= availableHeight) return (min, height, false);
+        height = measureFullHeight(max);
+        if (height > availableHeight) return (max, height, true);
+        var low = min;
+        var high = max;
+        for (var i = 0; i < 16 && high - low > 1; i++)
+        {
+            var middle = (low + high) / 2;
+            if (measureFullHeight(middle) <= availableHeight) high = middle;
+            else low = middle;
+        }
+        return (high, measureFullHeight(high), false);
+    }
+
+    /// <summary>实际高度由来源行上/下可用空间进一步限制。</summary>
     internal static double PreviewHeightLimit(double rootHeight)
     {
         var available = Math.Max(0, rootHeight - (2 * WindowMargin));
-        return Math.Min(available, Math.Min(PreviewMaxHeight, Math.Max(120, rootHeight * PreviewWindowFraction)));
+        return available;
     }
 
     /// <summary>
-    /// 预览位置：行右侧有空间时贴右侧、与行顶对齐；否则贴行下方（下方不足时贴上方）。
-    /// 与行之间间距为 0（鼠标可直接移入预览），并夹在窗口边距内。
+    /// 预览只在行上方或下方，选择空间更大的一侧，保留 8px 间距并夹紧宽高。
     /// </summary>
     internal static OpenCodeDetailRect PreviewPlacement(
         double anchorX,
@@ -95,26 +108,16 @@ internal static class OpenCodeDetailPopupLayout
         double rootWidth,
         double rootHeight)
     {
-        double x;
-        double y;
-        var right = anchorX + anchorWidth;
-        if (right + previewWidth <= rootWidth - WindowMargin)
-        {
-            x = right;
-            y = anchorY;
-        }
-        else
-        {
-            x = anchorX;
-            y = anchorY + anchorHeight;
-            if (y + previewHeight > rootHeight - WindowMargin && anchorY - previewHeight >= WindowMargin)
-            {
-                y = anchorY - previewHeight;
-            }
-        }
-
-        x = Math.Max(WindowMargin, Math.Min(x, rootWidth - previewWidth - WindowMargin));
-        y = Math.Max(WindowMargin, Math.Min(y, rootHeight - previewHeight - WindowMargin));
+        previewWidth = Math.Min(Math.Max(0, previewWidth), Math.Max(0, rootWidth - 2 * WindowMargin));
+        var top = Math.Clamp(anchorY, WindowMargin, Math.Max(WindowMargin, rootHeight - WindowMargin));
+        var bottom = Math.Clamp(anchorY + anchorHeight, WindowMargin, Math.Max(WindowMargin, rootHeight - WindowMargin));
+        var above = Math.Max(0, top - WindowMargin - PreviewGap);
+        var below = Math.Max(0, rootHeight - WindowMargin - bottom - PreviewGap);
+        var useBelow = below >= above;
+        previewHeight = Math.Min(Math.Max(0, previewHeight), useBelow ? below : above);
+        var x = Math.Max(WindowMargin, Math.Min(anchorX + (anchorWidth - previewWidth) / 2, rootWidth - previewWidth - WindowMargin));
+        var y = useBelow ? bottom + PreviewGap : top - PreviewGap - previewHeight;
+        y = Math.Max(Math.Min(WindowMargin, rootHeight / 2), Math.Min(y, rootHeight - WindowMargin - previewHeight));
         return new OpenCodeDetailRect(x, y, previewWidth, previewHeight);
     }
 }
@@ -130,6 +133,33 @@ internal static class OpenCodeDetailTextPolicy
 
     /// <summary>等宽块每段行数。</summary>
     internal const int CodeBlockChunkLines = 400;
+
+    internal const int CodePreviewLines = 6;
+    internal const int CodePreviewCharacters = 240;
+
+    // Display only: remove terminal line endings which otherwise render an empty bottom line.
+    // Copy always retains the original source, never this display projection.
+    internal static string CodeDisplayText(string source) => source.TrimEnd('\r', '\n');
+
+    internal static bool CanCollapseCode(string source)
+    {
+        var display = CodeDisplayText(source);
+        return display.Length > CodePreviewCharacters || CodePreview(source).Length < display.Length;
+    }
+
+    internal static string CodePreview(string source)
+    {
+        var display = CodeDisplayText(source);
+        var offset = 0;
+        for (var line = 0; line < CodePreviewLines; line++)
+        {
+            var end = display.IndexOf('\n', offset);
+            if (end < 0) return display;
+            if (line == CodePreviewLines - 1) return display[..end].TrimEnd('\r');
+            offset = end + 1;
+        }
+        return display;
+    }
 
     /// <summary>把文本按行分段（去掉末尾换行与每行的 \r）；空文本返回一个空段。拼接各段（以 \n）即得完整原文。</summary>
     internal static IReadOnlyList<string> ChunkLines(string? text, int chunkLines = CodeBlockChunkLines)

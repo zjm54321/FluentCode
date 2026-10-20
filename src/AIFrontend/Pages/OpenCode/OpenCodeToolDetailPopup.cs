@@ -72,11 +72,11 @@ internal interface IOpenCodeDetailContentSource
 /// </summary>
 internal sealed class OpenCodeToolDetailPopup
 {
-    /// <summary>首次悬停到弹出预览的延迟（毫秒）；用户要求约 1–2 秒，避免鼠标划过即弹出。</summary>
-    internal const int HoverOpenDelayMs = 1200;
+    /// <summary>首次悬停到弹出预览的延迟（毫秒）；800ms 避免鼠标划过即弹出。</summary>
+    internal const int HoverOpenDelayMs = 800;
 
     /// <summary>预览已打开时悬停切换到另一行的延迟（毫秒）。</summary>
-    internal const int HoverSwitchDelayMs = 300;
+    internal const int HoverSwitchDelayMs = 0;
 
     private const string SmokeBrushKey = "SmokeFillColorDefaultBrush";
 
@@ -111,13 +111,20 @@ internal sealed class OpenCodeToolDetailPopup
     private XamlRoot? _observedRoot;
     private UIElement? _restoreFocus;
     private bool _updatingToggles;
+    private bool _placingPreview;
+    private readonly TextBlock _previewHint;
+    private bool _previewTruncated;
+    private bool _previewRelayoutQueued;
+    private double _previewExtentHeight = -1;
+    private double _previewViewportWidth = -1;
 
     private OpenCodeToolDetailPopup()
     {
         // ---------------- 悬停预览 ----------------
         _previewChrome = new Chrome(large: false);
-        var hint = OpenCodeInteractionUi.StyledText("点击查看完整内容", OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
-        hint.TextWrapping = TextWrapping.Wrap;
+        _previewHint = OpenCodeInteractionUi.StyledText("点击查看完整内容", OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
+        _previewHint.TextWrapping = TextWrapping.Wrap;
+        _previewHint.Visibility = Visibility.Collapsed;
         var previewLayout = new Grid { RowSpacing = 8 };
         previewLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         previewLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -126,7 +133,7 @@ internal sealed class OpenCodeToolDetailPopup
         AddRow(previewLayout, _previewChrome.TitleBar, 0);
         AddRow(previewLayout, _previewChrome.Target, 1);
         AddRow(previewLayout, _previewChrome.ContentHost, 2);
-        AddRow(previewLayout, hint, 3);
+        AddRow(previewLayout, _previewHint, 3);
 
         _previewPresenter = CreatePresenter(previewLayout, new Thickness(12, 10, 12, 10), 32);
         AutomationProperties.SetAutomationId(_previewPresenter, "OpenCodeToolDetailPreview");
@@ -326,6 +333,7 @@ internal sealed class OpenCodeToolDetailPopup
         var previous = _source;
         _source = null;
         _mode = OpenCodeDetailPopupMode.None;
+        if (_scroller is { } scroll) scroll.LayoutUpdated -= OnPreviewContentLayoutUpdated;
         _scroller = null;
         _previewAnchor = null;
         _previewChrome.ContentHost.Child = null;
@@ -370,7 +378,14 @@ internal sealed class OpenCodeToolDetailPopup
             return;
         }
 
-        // 用户要求（wave3 反馈）：鼠标停留约 1–2 秒才弹出预览；已有预览打开时切换到相邻行仍较快。
+        if (_mode == OpenCodeDetailPopupMode.Preview && HoverSwitchDelayMs == 0)
+        {
+            timer.Stop();
+            _pendingSource = null;
+            Show(source, OpenCodeDetailPopupMode.Preview);
+            return;
+        }
+
         timer.Interval = TimeSpan.FromMilliseconds(_mode == OpenCodeDetailPopupMode.Preview ? HoverSwitchDelayMs : HoverOpenDelayMs);
         timer.Stop();
         timer.Start();
@@ -520,13 +535,10 @@ internal sealed class OpenCodeToolDetailPopup
             _hover.Reset();
             _hover.EnterAnchor();
             _previewAnchor = anchor;
-            UpdateTitle(source);
-            Rebuild(keepScroll: false);
             _previewPopup.XamlRoot = root;
-            var width = OpenCodeDetailPopupLayout.PreviewWidth(root.Size.Width);
-            _previewPresenter.Width = width;
-            _previewPresenter.MaxHeight = OpenCodeDetailPopupLayout.PreviewHeightLimit(root.Size.Height);
-            PlacePreview();
+            ObserveRoot(root);
+            UpdateTitle(source);
+            Rebuild(keepScroll: false); // Rebuild performs the row-based fit before opening.
             if (!_previewPopup.IsOpen)
             {
                 _previewPopup.IsOpen = true;
@@ -581,7 +593,9 @@ internal sealed class OpenCodeToolDetailPopup
             statusKey = OpenCodeToolTheme.Critical;
         }
 
-        chrome.Set(OpenCodeToolPartView.KindGlyph(model.Kind), model.Name, model.Target, status, statusKey, model.DurationText);
+        // The terminal body contains the complete command once; don't repeat its first line in chrome.
+        chrome.Set(OpenCodeToolPartView.KindGlyph(model.Kind), model.Name,
+            model.Kind == OpenCodeToolKind.Shell ? string.Empty : model.Target, status, statusKey, model.DurationText);
 
         // 并排 / 统一视图只在大视图中提供（diff）；没有“换行”开关——详情文字总是换行（G8）。
         _viewModeButton.Visibility = OpenCodeToolRowPresentation.IsDiffKind(model.Kind) && model.DiffFiles.Count > 0
@@ -626,8 +640,18 @@ internal sealed class OpenCodeToolDetailPopup
             view = new OpenCodeToolDetailView(OpenCodeToolDetailContent.Caption("无法显示该项的详情内容。"), null);
         }
 
+        // Popups are separate visual roots: carry only the originating anchor's explicit session scope.
+        // This is not a selected-session/global resolver fallback.
+        if (OpenCodeImageContext.Find(AnchorOf(_source)) is { } imageScope)
+            OpenCodeImageContext.Bind(view.Root, imageScope);
         ActiveChrome.ContentHost.Child = view.Root;
+        if (_scroller is { } previousScroller) previousScroller.LayoutUpdated -= OnPreviewContentLayoutUpdated;
         _scroller = view.Scroller;
+        _previewExtentHeight = -1;
+        _previewViewportWidth = -1;
+        if (_scroller is { } currentScroller) currentScroller.LayoutUpdated += OnPreviewContentLayoutUpdated;
+        _previewTruncated = view.IsTruncated;
+        if (_mode == OpenCodeDetailPopupMode.Preview) PlacePreview();
         if (_scroller is { } scroller && (offset is not null || follow))
         {
             void OnLoaded(object sender, RoutedEventArgs e)
@@ -653,10 +677,23 @@ internal sealed class OpenCodeToolDetailPopup
         _dialogPopup.VerticalOffset = 0;
     }
 
-    /// <summary>预览：紧贴来源行（右侧或下/上方），按实际高度夹在窗口内。</summary>
+    /// <summary>预览：自然内容尺寸，只在来源行上/下方，最大不超过较宽裕一侧。</summary>
+    private void OnPreviewContentLayoutUpdated(object? sender, object e)
+    {
+        if (_mode != OpenCodeDetailPopupMode.Preview || _placingPreview || _scroller is not { } scroll) return;
+        if (Math.Abs(scroll.ExtentHeight - _previewExtentHeight) < 0.5
+            && Math.Abs(scroll.ViewportWidth - _previewViewportWidth) < 0.5) return;
+        _previewExtentHeight = scroll.ExtentHeight;
+        _previewViewportWidth = scroll.ViewportWidth;
+        if (_previewRelayoutQueued) return;
+        _previewRelayoutQueued = true;
+        if (!scroll.DispatcherQueue.TryEnqueue(() => { _previewRelayoutQueued = false; PlacePreview(); }))
+            _previewRelayoutQueued = false;
+    }
+
     private void PlacePreview()
     {
-        if (_mode != OpenCodeDetailPopupMode.Preview || _previewAnchor is not { XamlRoot: { } root } anchor)
+        if (_placingPreview || _mode != OpenCodeDetailPopupMode.Preview || _previewAnchor is not { XamlRoot: { } root } anchor)
         {
             return;
         }
@@ -671,12 +708,37 @@ internal sealed class OpenCodeToolDetailPopup
             origin = new Point(0, 0);
         }
 
-        var width = _previewPresenter.Width;
-        var height = _previewPresenter.ActualHeight > 0 ? _previewPresenter.ActualHeight : _previewPresenter.MaxHeight;
+        _placingPreview = true;
+        try
+        {
+        var (_, maxWidth) = OpenCodeDetailPopupLayout.PreviewWidths(anchor.ActualWidth, root.Size.Width);
+        var height = OpenCodeDetailPopupLayout.PreviewHeightLimit(root.Size.Height);
+        var capacity = OpenCodeDetailPopupLayout.PreviewPlacement(
+            origin.X, origin.Y, anchor.ActualWidth, anchor.ActualHeight, maxWidth, height, root.Size.Width, root.Size.Height);
+        _previewHint.Visibility = Visibility.Collapsed;
+        double MeasureFullHeight(double width)
+        {
+            _previewPresenter.Width = width;
+            _previewPresenter.Height = double.NaN;
+            _previewPresenter.MaxWidth = maxWidth;
+            _previewPresenter.MaxHeight = double.PositiveInfinity;
+            _previewPresenter.InvalidateMeasure();
+            _previewPresenter.Measure(new Size(width, double.PositiveInfinity));
+            return _previewPresenter.DesiredSize.Height;
+        }
+        var fit = OpenCodeDetailPopupLayout.FitPreview(anchor.ActualWidth, root.Size.Width, capacity.Height, MeasureFullHeight);
+        _previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed;
+        var fullHeight = MeasureFullHeight(fit.Width);
         var rect = OpenCodeDetailPopupLayout.PreviewPlacement(
-            origin.X, origin.Y, anchor.ActualWidth, anchor.ActualHeight, width, height, root.Size.Width, root.Size.Height);
+            origin.X, origin.Y, anchor.ActualWidth, anchor.ActualHeight, fit.Width, fullHeight, root.Size.Width, root.Size.Height);
+        _previewPresenter.Width = rect.Width;
+        // Keep height automatic so streamed text / decoded images can grow naturally up to this side's capacity.
+        _previewPresenter.Height = double.NaN;
+        _previewPresenter.MaxHeight = capacity.Height;
         _previewPopup.HorizontalOffset = rect.X;
         _previewPopup.VerticalOffset = rect.Y;
+        }
+        finally { _placingPreview = false; }
     }
 
     private void ObserveRoot(XamlRoot? root)
@@ -703,6 +765,10 @@ internal sealed class OpenCodeToolDetailPopup
         if (_mode == OpenCodeDetailPopupMode.Large)
         {
             LayoutLarge(sender.Size);
+        }
+        else if (_mode == OpenCodeDetailPopupMode.Preview)
+        {
+            PlacePreview();
         }
     }
 
@@ -806,19 +872,26 @@ internal sealed class OpenCodeToolDetailPopup
             Target.TextWrapping = TextWrapping.Wrap;
             Status = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey, false);
             Status.VerticalAlignment = VerticalAlignment.Center;
+            Status.TextWrapping = TextWrapping.Wrap;
+            Status.TextAlignment = TextAlignment.Right;
             Duration = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
             Duration.VerticalAlignment = VerticalAlignment.Center;
+            Duration.TextWrapping = TextWrapping.Wrap;
             Actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
             ContentHost = new Border();
+            OpenCodeToolTheme.Apply(ContentHost, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase));
 
             TitleBar = new Grid { ColumnSpacing = large ? 12 : 8 };
-            foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
+            foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), large ? GridLength.Auto : new GridLength(1, GridUnitType.Star), GridLength.Auto })
             {
                 TitleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
             }
 
-            var statusLine = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var statusLine = new Grid { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            statusLine.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            statusLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             statusLine.Children.Add(Status);
+            Grid.SetColumn(Duration, 1);
             statusLine.Children.Add(Duration);
             Grid.SetColumn(Icon, 0);
             Grid.SetColumn(Name, 1);

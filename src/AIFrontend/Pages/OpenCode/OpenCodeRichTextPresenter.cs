@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using AIFrontend.Services.Appearance;
 using AIFrontend.Services.Rendering;
 using AngleSharp.Dom;
@@ -12,6 +14,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Automation;
+using Windows.Storage.Streams;
 using HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment;
 using VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment;
 using Visibility = Microsoft.UI.Xaml.Visibility;
@@ -46,8 +51,9 @@ public enum OpenCodeRichTextStyle
 /// <c>SafeContentRenderer.RenderMarkdown</c> 的 <c>DisableHtml</c> 语义之外的<strong>本 helper 局部管线</strong>，
 /// 用于保留安全 inline HTML；<strong>未修改</strong>共享渲染器的 <c>DisableHtml</c> 语义。</item>
 /// <item>随后<strong>必定</strong>经共享 <see cref="SafeContentRenderer.SanitizeHtml"/> 清洗：移除全部属性
-/// （含 href/src/style/on*）、资源元素（img 等）、script/style/form/iframe/object 等；因此模型输出
-/// 不能执行脚本、加载外部资源或产生可导航链接。</item>
+/// （含 href/src/style/on*）、资源元素（HTML img 等）、script/style/form/iframe/object 等；因此模型输出
+/// 不能执行脚本、加载任意外部资源或产生可导航链接。</item>
+/// <item>真正 Markdown AST 图片另经显式会话作用域与受限栅格文件传输，HTML img 永不进入图片加载路径。</item>
 /// <item>只解析<strong>已清洗</strong>后的 fragment（AngleSharp 仅作为解析器，不做净化）；遍历 DOM 时
 /// 只读取标签名与文本，忽略一切属性，不注入任何 URL 或可执行内容。</item>
 /// <item>Markdig/清洗/解析任一步抛异常（如超过 256K 输入）→ 降级为<strong>可选择的明示纯文本</strong>，
@@ -58,7 +64,7 @@ public enum OpenCodeRichTextStyle
 /// 支持的常用富文本：标题（h1–h6）、段落、粗体/斜体/下划线、有序/无序列表（含嵌套）、引用、
 /// 围栏/缩进代码块（等宽、长行水平滚动）、行内代码、表格（水平滚动、限高）、分隔线、定义列表。
 /// 有意<strong>不</strong>支持（降级为纯文本，见合同）：删除线（s/del）、上/下标（sub/sup）、
-/// 链接跳转（<c>a</c> 仅保留文字、不保留 href、不可点击）、图片、外部资源、任意网页完整 HTML 布局。
+/// 链接跳转（<c>a</c> 仅保留文字、不保留 href、不可点击）、HTML 图片、外部资源、任意网页完整 HTML 布局。
 /// </para>
 /// </remarks>
 public sealed class OpenCodeRichTextPresenter
@@ -85,6 +91,10 @@ public sealed class OpenCodeRichTextPresenter
         Spacing = 6,
         HorizontalAlignment = HorizontalAlignment.Stretch,
     };
+    private readonly OpenCodeImageRenderLifetime _renderLifetime = new();
+    private readonly List<Func<Task>> _pendingImageLoads = new();
+    private string? _lastSource;
+    private OpenCodeRichTextStyle _lastStyle;
 
     /// <summary>承载原生控件子树的根元素（构造时创建，同一实例；由调用方入树）。</summary>
     public FrameworkElement Element => _root;
@@ -95,6 +105,19 @@ public sealed class OpenCodeRichTextPresenter
     /// <summary>创建空的呈现器；通过 <see cref="Render"/> 填充内容。</summary>
     public OpenCodeRichTextPresenter()
     {
+        _root.SizeChanged += (_, _) => ConstrainBlocks();
+        _root.Unloaded += (_, _) => _renderLifetime.Cancel();
+        _root.Loaded += async (_, _) =>
+        {
+            ConstrainBlocks();
+            var scope = OpenCodeImageContext.Find(_root);
+            if (_renderLifetime.IsCanceled) Render(_lastSource, _lastStyle);
+            // Child Loaded can precede the presenter's own Loaded. Start those images
+            // only now, with the original generation/token and all scope fences intact.
+            var pending = _pendingImageLoads.ToArray();
+            _pendingImageLoads.Clear();
+            foreach (var load in pending) await load();
+        };
     }
 
     /// <summary>
@@ -104,6 +127,10 @@ public sealed class OpenCodeRichTextPresenter
     /// <param name="style">正文或思考样式。</param>
     public void Render(string? source, OpenCodeRichTextStyle style)
     {
+        _lastSource = source;
+        _lastStyle = style;
+        var (generation, renderToken) = _renderLifetime.Begin();
+        _pendingImageLoads.Clear();
         _root.Opacity = style == OpenCodeRichTextStyle.Reasoning ? 0.75 : 1.0;
 
         if (string.IsNullOrWhiteSpace(source))
@@ -119,9 +146,18 @@ public sealed class OpenCodeRichTextPresenter
         List<UIElement> blocks;
         try
         {
-            var html = Markdown.ToHtml(source, Pipeline);
-            var safe = Renderer.SanitizeHtml(html);
-            blocks = BuildBlocks(safe, style);
+            blocks = new List<UIElement>();
+            foreach (var segment in OpenCodeMarkdownImagePlan.Build(source))
+            {
+                if (segment.IsImage)
+                    blocks.Add(CreateMarkdownImage(segment.Text, segment.Alt, segment.Title, generation, renderToken));
+                else
+                {
+                    var html = Markdown.ToHtml(segment.Text, Pipeline);
+                    var safe = Renderer.SanitizeHtml(html);
+                    blocks.AddRange(BuildBlocks(safe, style));
+                }
+            }
 
             // 成功解析但清洗后无任何可渲染内容（如整段仅含被移除的 img/script）：
             // 仍以明示纯文本展示完整原文，避免消息“凭空消失”。
@@ -146,6 +182,91 @@ public sealed class OpenCodeRichTextPresenter
         foreach (var block in blocks)
         {
             _root.Children.Add(block);
+        }
+        ConstrainBlocks();
+    }
+
+    private void ConstrainBlocks()
+    {
+        // A finite viewport reaches tables, inline code and nested quotes/lists, not just the outer scrollbar.
+        // Do not cap the root to its old width: it must grow again when the conversation is resized.
+        if (_root.ActualWidth <= 0) return;
+        foreach (var block in _root.Children)
+            OpenCodeToolDetailContent.EnforceWrapping(block, _root.ActualWidth);
+    }
+
+    private FrameworkElement CreateMarkdownImage(string reference, string alt, string? title, int generation, CancellationToken renderToken)
+    {
+        var label = string.IsNullOrWhiteSpace(alt) ? "图片" : alt;
+        var status = new TextBlock { Text = label + " · 正在加载…", TextWrapping = TextWrapping.Wrap };
+        AppFonts.Apply(status, AppFontSlot.Body);
+        var image = new Image { Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Top, Visibility = Visibility.Collapsed };
+        AutomationProperties.SetName(image, label);
+        var panel = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Stretch };
+        panel.Children.Add(image);
+        panel.Children.Add(status);
+        var surface = new Border { Child = panel, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 4) };
+        AutomationProperties.SetAutomationId(surface, "OpenCodeMarkdownImage");
+        AutomationProperties.SetName(surface, label);
+        ToolTipService.SetToolTip(surface, string.IsNullOrWhiteSpace(title) ? label : title);
+        // Image is loaded only after entering the explicitly bound subtree, never from a selected/global source.
+        surface.Loaded += async (_, _) =>
+        {
+            Task Load() => LoadMarkdownImageAsync(image, status, reference, label, generation, renderToken);
+            if (!_root.IsLoaded)
+            {
+                _pendingImageLoads.Add(Load);
+                return;
+            }
+            await Load();
+        };
+        return surface;
+    }
+
+    private async Task LoadMarkdownImageAsync(Image image, TextBlock status, string reference, string alt,
+        int generation, CancellationToken renderToken)
+    {
+        var scope = OpenCodeImageContext.Find(_root);
+        bool Current() => _renderLifetime.IsCurrent(generation, renderToken) && _root.IsLoaded
+            && scope is { IsCurrent: true } && ReferenceEquals(scope, OpenCodeImageContext.Find(_root));
+        if (!Current())
+        {
+            AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("markdown-image.context.rejected",
+                $"presenter={System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_root)};generation={generation};rootLoaded={_root.IsLoaded};renderCurrent={_renderLifetime.IsCurrent(generation, renderToken)};scopeBound={scope is not null};scopeCurrent={scope is { IsCurrent: true }};sameScope={ReferenceEquals(scope, OpenCodeImageContext.Find(_root))}");
+            status.Text = alt + " · 图片上下文不可用";
+            status.Visibility = Visibility.Visible;
+            return;
+        }
+        status.Text = alt + " · 正在加载…";
+        status.Visibility = Visibility.Visible;
+        try
+        {
+            var file = await scope!.ReadAsync(reference, renderToken);
+            if (!Current()) return;
+            using var stream = new InMemoryRandomAccessStream();
+            using (var writer = new DataWriter(stream.GetOutputStreamAt(0)))
+            {
+                writer.WriteBytes(file.Bytes);
+                await writer.StoreAsync();
+            }
+            if (!Current()) return;
+            stream.Seek(0);
+            var bitmap = new BitmapImage { DecodePixelWidth = 1920 };
+            await bitmap.SetSourceAsync(stream);
+            if (!Current()) return;
+            image.Source = bitmap;
+            image.Visibility = Visibility.Visible;
+            status.Visibility = Visibility.Collapsed;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            if (Current())
+            {
+                status.Text = alt + " · 图片无法加载（仅支持会话目录内的栅格图片）";
+                status.Visibility = Visibility.Visible;
+            }
         }
     }
 
@@ -409,12 +530,13 @@ public sealed class OpenCodeRichTextPresenter
 
     private static UIElement CreateCodeBlock(IElement pre)
     {
+        var source = pre.TextContent ?? string.Empty;
         var code = new TextBlock
         {
-            Text = (pre.TextContent ?? string.Empty).TrimEnd('\n'),
+            Text = source,
             FontFamily = MonospaceFont,
             FontSize = 12,
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             IsTextSelectionEnabled = true,
         };
         AppFonts.Apply(code, AppFontSlot.Monospace);
@@ -427,14 +549,8 @@ public sealed class OpenCodeRichTextPresenter
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
-        return new Border
-        {
-            Style = TryStyle("OpenCodeSubtleSurfaceStyle"),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(10, 8, 10, 8),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Child = scroller,
-        };
+        // No inner viewport: wheel gestures and vertical extent belong to the conversation/popup body.
+        return OpenCodeToolDetailContent.CodeBlockFrame(code, source);
     }
 
     private static UIElement? CreateTable(IElement table, OpenCodeRichTextStyle style, int depth)
@@ -471,7 +587,7 @@ public sealed class OpenCodeRichTextPresenter
         var grid = new Grid();
         for (var c = 0; c < columns; c++)
         {
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         }
 
         for (var r = 0; r < cellRows.Count; r++)
@@ -488,28 +604,19 @@ public sealed class OpenCodeRichTextPresenter
             }
         }
 
-        var scroller = new ScrollViewer
-        {
-            Content = grid,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            MaxHeight = 360,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-
         return new Border
         {
             Style = TryStyle("OpenCodeSubtleSurfaceStyle"),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(2),
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Child = scroller,
+            Child = grid,
         };
     }
 
     private static Border CreateTableCell(IElement cell, bool header, OpenCodeRichTextStyle style, int depth)
     {
-        var block = CreateRichTextBlock(style, wrap: false);
+        var block = CreateRichTextBlock(style);
         if (header)
         {
             block.FontWeight = FontWeights.SemiBold;

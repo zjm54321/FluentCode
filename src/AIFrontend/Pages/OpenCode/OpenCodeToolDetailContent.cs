@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Markup;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -48,6 +49,7 @@ internal static class OpenCodeToolTheme
 
     /// <summary>Grid 背景样式。</summary>
     internal static Style? Grid(string backgroundKey) => Get("Grid", null, ("Background", backgroundKey));
+    internal static Style? ScrollSurface(string backgroundKey) => Get("ScrollViewer", null, ("Background", backgroundKey));
 
     /// <summary>
     /// ProgressRing 前景色样式（只含 Foreground 的 ThemeResource Setter；模板仍来自控件默认样式）。
@@ -121,7 +123,7 @@ internal sealed class OpenCodeToolDetailOptions
 }
 
 /// <summary>构建结果：根元素 + 主滚动区（用于运行中刷新时保持/跟随滚动位置）。</summary>
-internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewer? Scroller);
+internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewer? Scroller, bool IsTruncated = false);
 
 /// <summary>
 /// 工具详情弹出层的内容构建（§6.3）：read 带行号全文；edit/patch/write/multiedit 并排 diff（可切统一视图），
@@ -290,10 +292,12 @@ internal static class OpenCodeToolDetailContent
         }
 
         ScrollViewer? scroller = null;
+        var isTruncated = false;
         if (body is null)
         {
             if (!options.ShowAll && rows.Count > MaxRows)
             {
+                isTruncated = true;
                 var total = rows.Count;
                 rows.RemoveRange(MaxRows, rows.Count - MaxRows);
                 rows.Add(new ActionLine(
@@ -326,7 +330,7 @@ internal static class OpenCodeToolDetailContent
         AutomationProperties.SetAutomationId(scroller, "OpenCodeToolDetailScroller");
         Grid.SetRow(scroller, 2);
         root.Children.Add(scroller);
-        return new OpenCodeToolDetailView(root, scroller);
+        return new OpenCodeToolDetailView(root, scroller, isTruncated);
     }
 
     private static void BuildRead(OpenCodeToolRowModel model, List<object> rows, StackPanel top)
@@ -356,6 +360,78 @@ internal static class OpenCodeToolDetailContent
             {
                 rows.Add(new CodeLine(null, line.TrimEnd('\r')));
             }
+        }
+    }
+
+
+    /// <summary>Scope wrapping to the embedded file/child tree, including native Markdown code blocks and tables.</summary>
+    private sealed class WidthLimit
+    {
+        internal double Original;
+        internal double Applied;
+        internal WidthLimit(double original) { Original = original; Applied = original; }
+    }
+    // Native DP storage survives recreated managed projections of the same WinUI element.
+    private static readonly DependencyProperty WidthLimitProperty = DependencyProperty.RegisterAttached(
+        "DetailWidthLimit", typeof(object), typeof(OpenCodeToolDetailContent), new PropertyMetadata(null));
+
+    internal static void EnforceWrapping(DependencyObject root, double availableWidth = double.PositiveInfinity)
+    {
+        if (root is FrameworkElement element && double.IsFinite(availableWidth))
+        {
+            if (element.GetValue(WidthLimitProperty) is not WidthLimit limit)
+            {
+                limit = new WidthLimit(element.MaxWidth);
+                element.SetValue(WidthLimitProperty, limit);
+            }
+            if (element.MaxWidth != limit.Applied) limit.Original = element.MaxWidth;
+            var width = Math.Max(0, Math.Min(limit.Original, availableWidth));
+            if (element.MaxWidth != width) element.MaxWidth = width;
+            limit.Applied = width;
+        }
+        if (root is TextBlock text && text.TextWrapping != TextWrapping.Wrap) text.TextWrapping = TextWrapping.Wrap;
+        if (root is RichTextBlock rich && rich.TextWrapping != TextWrapping.Wrap) rich.TextWrapping = TextWrapping.Wrap;
+        if (root is ScrollViewer scroll)
+        {
+            if (scroll.HorizontalScrollMode != ScrollMode.Disabled) scroll.HorizontalScrollMode = ScrollMode.Disabled;
+            if (scroll.HorizontalScrollBarVisibility != ScrollBarVisibility.Disabled) scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            if (scroll.HorizontalOffset > 0) scroll.ChangeView(0, null, null, true);
+        }
+        if (root is Grid grid && grid.ColumnDefinitions.Count > 1)
+        {
+            var table = true;
+            foreach (var column in grid.ColumnDefinitions) table &= column.Width.IsAuto;
+            if (table)
+                foreach (var column in grid.ColumnDefinitions) column.Width = new GridLength(1, GridUnitType.Star);
+        }
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            var childWidth = availableWidth;
+            if (root is Border border) childWidth -= border.Padding.Left + border.Padding.Right;
+            if (root is Grid columns && child is FrameworkElement gridChild && columns.ColumnDefinitions.Count > 0)
+            {
+                var first = Grid.GetColumn(gridChild);
+                var last = Math.Min(columns.ColumnDefinitions.Count, first + Grid.GetColumnSpan(gridChild));
+                var measured = 0d;
+                for (var column = first; column < last; column++) measured += columns.ColumnDefinitions[column].ActualWidth;
+                if (measured > 0) childWidth = Math.Min(childWidth, measured);
+            }
+            if (root is StackPanel { Orientation: Orientation.Horizontal } horizontal && child is FrameworkElement item)
+            {
+                var fixedWidth = Math.Max(0, horizontal.Children.Count - 1) * horizontal.Spacing;
+                var flexible = 0;
+                foreach (var sibling in horizontal.Children)
+                    if (sibling is FrameworkElement other)
+                    {
+                        if (other is FontIcon || double.IsFinite(other.Width)) fixedWidth += double.IsFinite(other.Width) ? other.Width : other.DesiredSize.Width;
+                        else flexible++;
+                    }
+                if (item is not FontIcon && !double.IsFinite(item.Width) && flexible > 0)
+                    childWidth = Math.Max(0, availableWidth - fixedWidth) / flexible;
+            }
+            if (child is FrameworkElement margins) childWidth -= margins.Margin.Left + margins.Margin.Right;
+            EnforceWrapping(child, Math.Max(0, childWidth));
         }
     }
 
@@ -751,22 +827,98 @@ internal static class OpenCodeToolDetailContent
         return list;
     }
 
-    /// <summary>等宽代码块（浅填充底 + 控件圆角），自动换行，完整显示（长内容分段，不截断），不可选择。</summary>
+    /// <summary>Wrapped code with a short local preview; expanding displays all chunks without an inner scroller.</summary>
     internal static FrameworkElement CodeBlock(string text)
     {
         var panel = new StackPanel();
         foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(text))
         {
-            var block = OpenCodeInteractionUi.StyledText(chunk, OpenCodeInteractionUi.CodeStyleKey, false);
+            var block = OpenCodeInteractionUi.StyledText(chunk, OpenCodeInteractionUi.CodeStyleKey, true);
             block.TextWrapping = TextWrapping.Wrap;
             panel.Children.Add(block);
         }
 
+        return CodeBlockFrame(panel, text);
+    }
+
+    /// <summary>One wrapped, uncapped block; the containing conversation/detail owns scrolling.
+    /// Copy captures the original full string, never reconstructed chunks, rendered line numbers or highlights.</summary>
+    internal static FrameworkElement CodeBlockFrame(FrameworkElement content, string source, string? language = null)
+    {
+        var excerpt = OpenCodeDetailTextPolicy.CodePreview(source);
+        var canCollapse = OpenCodeDetailTextPolicy.CanCollapseCode(source);
+        var preview = Mono(excerpt);
+        preview.MaxLines = OpenCodeDetailTextPolicy.CodePreviewLines;
+        preview.TextTrimming = TextTrimming.CharacterEllipsis;
+        preview.Visibility = canCollapse ? Visibility.Visible : Visibility.Collapsed;
+        content.Visibility = canCollapse ? Visibility.Collapsed : Visibility.Visible;
+        // A narrow right gutter keeps the floating controls off selectable code. No header row.
+        content.Margin = new Thickness(0, 0, canCollapse ? 68 : 34, 0);
+        preview.Margin = new Thickness(0, 0, 68, 0);
+        var copy = new Button
+        {
+            Content = new FontIcon { Glyph = "\uE8C8", FontSize = 12 },
+            HorizontalAlignment = HorizontalAlignment.Right,
+            MinWidth = 28, MinHeight = 28, Padding = new Thickness(5),
+        };
+        AutomationProperties.SetAutomationId(copy, "OpenCodeCodeBlockCopy");
+        AutomationProperties.SetName(copy, "复制完整代码");
+        ToolTipService.SetToolTip(copy, "复制完整代码");
+        copy.Click += (_, _) =>
+        {
+            try
+            {
+                var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                data.SetText(source);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+                ToolTipService.SetToolTip(copy, "已复制完整代码");
+            }
+            catch (Exception)
+            {
+                ToolTipService.SetToolTip(copy, "复制失败，请选择代码复制");
+                AutomationProperties.SetHelpText(copy, "复制失败，请选择代码复制");
+            }
+        };
+        copy.Tapped += (_, args) => args.Handled = true;
+        copy.DoubleTapped += (_, args) => args.Handled = true;
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Horizontal, Spacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+        };
+        if (canCollapse)
+        {
+            var glyph = new FontIcon { Glyph = "\uE70D", FontSize = 12 };
+            var toggle = new ToggleButton { Content = glyph, MinWidth = 28, MinHeight = 28, Padding = new Thickness(5), IsChecked = false };
+            AutomationProperties.SetAutomationId(toggle, "OpenCodeCodeBlockExpand");
+            void UpdateExpansion()
+            {
+                var expanded = toggle.IsChecked == true;
+                content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+                preview.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+                glyph.Glyph = expanded ? "\uE70E" : "\uE70D";
+                var label = expanded ? "收起代码（保留前 6 行）" : "展开全部代码";
+                ToolTipService.SetToolTip(toggle, label);
+                AutomationProperties.SetName(toggle, label);
+            }
+            toggle.Click += (_, _) => UpdateExpansion();
+            toggle.Tapped += (_, args) => args.Handled = true;
+            toggle.DoubleTapped += (_, args) => args.Handled = true;
+            UpdateExpansion();
+            controls.Children.Add(toggle);
+        }
+        controls.Children.Add(copy);
+        var layout = new Grid();
+        layout.Children.Add(content);
+        layout.Children.Add(preview);
+        // Last in the same Grid cell: the native controls float over the top-right surface.
+        layout.Children.Add(controls);
         var border = new Border
         {
-            Child = panel,
+            Child = layout,
             Padding = new Thickness(10, 6, 10, 6),
             CornerRadius = ControlCornerRadius(),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         OpenCodeToolTheme.Apply(border, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
         return border;

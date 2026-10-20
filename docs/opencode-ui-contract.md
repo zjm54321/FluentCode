@@ -24,10 +24,11 @@
 `IOpenCodeToolDetailSource` / `IOpenCodeDetailContentSource` 与 `OpenCodeToolDetailPopup.Shared` 的公开方法签名不变
 （`HoverEnter` / `HoverExit` / `TogglePinned` / `Refresh` / `CloseIf` / `IsShowing` / `IsPinned` / `Close`）；`OnDetailStateChanged(shown, pinned)` 中 `pinned` = 大视图。
 
-- **悬停预览**（AutomationId `OpenCodeToolDetailPreview`）：停留 `HoverOpenDelayMs = 1200` 毫秒后显示；预览已打开时切换到另一行 `HoverSwitchDelayMs = 300`。
-  小浮层（宽 ≤ 520、高 ≤ 320，且不超过窗口 60%），原生 `FlyoutPresenter`（亚克力 / Flyout 描边 / OverlayCornerRadius）+ ThemeShadow + `PopupThemeTransition`，
-  紧贴来源行（右侧或下方 / 上方，间距 0）。**没有关闭按钮**、不移动键盘焦点；标题 + 目标 + 内容 + “点击查看完整内容”说明。
-  鼠标离开行即隐藏；移入预览可保持；行与预览都离开即隐藏（仅为跨越指针事件次序保留 `HoverLeaveGraceMs = 80` 毫秒宽限，低于感知阈值）。
+- **悬停预览**（AutomationId `OpenCodeToolDetailPreview`）：停留 `HoverOpenDelayMs = 1500` 毫秒后显示；预览已打开时切换到另一行 `HoverSwitchDelayMs = 1500` 毫秒（初始与行间切换统一为 1500ms）。
+  浮层宽度为 `XamlRoot` 工作区宽度的 75%（两侧保留 8px 视口边距保护），不再设 520×320 或 60% 限制；原生 `FlyoutPresenter`（亚克力 / Flyout 描边 / OverlayCornerRadius）+ ThemeShadow + `PopupThemeTransition`。
+  位置仅置于来源行的上方或下方（优先选择空间更大的一侧，等大时选下方），与来源行保留 8px 间距，纵向占满该侧可用高度并内部滚动；**绝不侧向/右侧放置**（即便窄行右侧空间充裕）。
+  **没有关闭按钮**、不移动键盘焦点；标题 + 目标 + 内容 + “点击查看完整内容”说明。
+  鼠标离开行与预览即隐藏；跨越指针事件保留 `HoverLeaveGraceMs = 240` 毫秒宽限（适配 8px 物理间距），指针移入预览即取消隐藏倒计时。
   预览内滚轮可滚动；在预览内轻点（未被子控件处理）根据行类型打开对应视图（普通工具打开 80% 大视图；子代理行打开独立只读会话小窗口）。子代理工具行悬停预览保持调用入参与结果预览，原行内直接跳转超链接已移除。
 - **普通工具大详情视图**（AutomationId `OpenCodeToolDetailPopup`；遮罩 `OpenCodeToolDetailOverlay` / `OpenCodeToolDetailSmoke`；关闭 `OpenCodeToolDetailClose`）：
   普通工具行点击 / Enter / Space 或轻点其悬停预览打开，再次触发同一行关闭。窗口 80%（`OpenCodeDetailPopupLayout.LargeView`，最小 360×240 但不超出窗口减 8px 边距）、居中，

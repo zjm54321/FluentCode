@@ -455,6 +455,8 @@
                                         x:Name="MessageScroll"
                                         Grid.Row="1"
                                         HorizontalContentAlignment="Center"
+                                        HorizontalScrollMode="Disabled"
+                                        HorizontalScrollBarVisibility="Disabled"
                                         VerticalScrollBarVisibility="Auto"
                                         ViewChanged="MessageScroll_ViewChanged"
                                         AutomationProperties.AutomationId="OpenCodeMessageScroll">

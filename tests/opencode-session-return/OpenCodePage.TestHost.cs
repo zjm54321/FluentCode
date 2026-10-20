@@ -196,7 +196,12 @@ namespace AIFrontend.Pages
         private void RaiseNavigationHandled(OpenCodeNavigationStatus status, string detail, NotificationNavigationTarget? target)
             => NavigationStatuses.Add(status);
         private void EnqueueNavigation(NotificationNavigationTarget target, NotificationInteractionResult? result) => QueuedNavigations++;
-        private void ResetMessagePaginationState() { }
+        private void ResetMessagePaginationState() => ResetConversationImages();
+        partial void EnsureConversationImages();
+        partial void ResetConversationImages();
+        internal OpenCodeMarkdownImageScope? Images => _conversationImages;
+        internal void RebindImages() => EnsureConversationImages();
+        internal void ReplaceHistoryToken() { CancelSessionOperations(); _sessionCts = new(); }
         private void ResetSessionPaginationState() { }
         private void UpdateWaitingText() { }
         private void UpdateEmptyState() { }
