@@ -113,6 +113,7 @@ public sealed partial class OpenCodePage
         }
 
         VisualStateManager.GoToState(this, "NewSessionLayout", false);
+        SetBlankComposerPlacement(true);
         EnsureBlankPreferences();
 
         SelectNewSessionTabSilently();
@@ -125,6 +126,7 @@ public sealed partial class OpenCodePage
     {
         _homeActive = false;
         VisualStateManager.GoToState(this, "SessionLayout", false);
+        SetBlankComposerPlacement(false);
         if (!_newSessionDraftActive)
         {
             return;
@@ -141,6 +143,7 @@ public sealed partial class OpenCodePage
     {
         _homeActive = false;
         VisualStateManager.GoToState(this, "SessionLayout", false);
+        SetBlankComposerPlacement(false);
         if (_newSessionDraftActive)
         {
             _blankWasActiveFor = sessionId;

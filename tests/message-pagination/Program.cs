@@ -11,7 +11,7 @@ using AIFrontend.Pages;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 
-internal static class Program
+internal static partial class Program
 {
     private const string Session = "ses_test";
 
@@ -198,9 +198,13 @@ internal static class Program
                 ("same-session rollback epoch rejects latest/older and late finally", AcceptedHistoryRaces),
                 ("whole send deferral and authoritative effects refresh", SendHistoryWorkflow),
                 ("scroll-to-top auto-load is upward-only, single-flight and gated", ScrollTopAutoLoad),
+                ("held SSE readiness does not block REST paint; bounded first-ready/reconnect repair", FirstPaintAndRepair),
+                ("inflight deltas beat snapshot; stale readiness ignored; workflow reconciliation deferred", SnapshotAndReadinessFences),
+                ("authoritative SSE/active REST publish composer activity without stale overwrite", ActivityPublication),
                 ("Home metadata-only source/directory/date/outcome projection", HomeMetadataProjection),
                 ("Home click does not depend on hidden native selection changing", HomeUnchangedSelectionClick),
                 ("Home actual root action consumer, confirmation/current/source guards and metadata-only refresh", HomeRootActions),
+                ("blank to session restores one finite centered content column", BlankToSessionColumn),
             })
             {
                 var before = _assertions;

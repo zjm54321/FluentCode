@@ -128,12 +128,14 @@ internal static class Program
             && Find<CheckBox>(card, "OpenCodeFormField_frm2_m_c").IsChecked == true, "multiselect default checks by value");
         Check(Find<CheckBox>(card, "OpenCodeFormField_frm2_m_a").StandInAttached("HelpText") as string == "first", "option description as help text");
         var ccRadios = Find<RadioButtons>(card, "OpenCodeFormField_frm2_cc");
-        Check(ccRadios.Items.Count == 2 && ccRadios.SelectedIndex == 1 && Find<TextBox>(card, "OpenCodeFormField_frm2_cc_Custom").Text == "zz",
-            "custom-choice non-option default goes to custom text with “其他” selected (last item)");
+        var ccCustom = Find<TextBox>(card, "OpenCodeFormField_frm2_cc_Custom");
+        Check(ccRadios.Items.Count == 2 && ccRadios.SelectedIndex == 1 && ccCustom.Text == "zz" && ccCustom.Visibility == Visibility.Visible,
+            "custom-choice non-option default goes to custom text with “其他” selected (last item) and custom TextBox visible (G2)");
         Check(Texts((UIElement)((RadioButton)ccRadios.Items[1]).Content!).SequenceEqual(new[] { "其他（自己输入）" }), "custom item is last and labelled");
         var cvRadios = Find<RadioButtons>(card, "OpenCodeFormField_frm2_cv");
-        Check(cvRadios.SelectedIndex == 0 && Find<TextBox>(card, "OpenCodeFormField_frm2_cv_Custom").Text.Length == 0,
-            "custom-choice option default selects option");
+        var cvCustom = Find<TextBox>(card, "OpenCodeFormField_frm2_cv_Custom");
+        Check(cvRadios.SelectedIndex == 0 && cvCustom.Text.Length == 0 && cvCustom.Visibility == Visibility.Collapsed,
+            "custom-choice option default selects option and keeps custom TextBox collapsed (G2)");
         Check(Texts(card).Contains("已选 2 项"), "multiselect shows selected count");
         var captions = Texts(card);
         Check(captions.Any(t => t.Contains("取值范围 1.5 至 3.5", StringComparison.Ordinal)), "number range guidance");
@@ -324,18 +326,24 @@ internal static class Program
         var radios = Find<RadioButtons>(card, "OpenCodeFormField_frm5_q0");
         var custom = Find<TextBox>(card, "OpenCodeFormField_frm5_q0_Custom");
         Check(radios.Items.Count == 3 && radios.SelectedIndex == -1, "two options + 其他, nothing preselected");
+        Check(custom.Visibility == Visibility.Collapsed, "G2: custom TextBox is hidden when 其他 is not selected initially");
+        radios.SelectedIndex = 0;
+        Check(custom.Visibility == Visibility.Collapsed, "G2: custom TextBox stays hidden when an ordinary option is selected");
         radios.SelectedIndex = 2;
+        Check(custom.Visibility == Visibility.Visible, "G2: custom TextBox becomes visible when 其他 is selected");
         Submit(card);
         Check(calls.Count == 0 && Find<TextBlock>(card, "OpenCodeFormFieldError_frm5_q0").Text == "选择了“其他”，请填写内容。",
             "empty 其他 blocked with message under question");
         radios.SelectedIndex = 0;
+        Check(custom.Visibility == Visibility.Collapsed, "G2: custom TextBox collapses again when switching back to an ordinary option");
         custom.Text = "我自己的想法";
-        Check(radios.SelectedIndex == 2, "typing selects 其他 (mutually exclusive with options)");
+        Check(radios.SelectedIndex == 2 && custom.Visibility == Visibility.Visible, "typing selects 其他 (mutually exclusive with options) and reveals custom TextBox");
         radios.SelectedIndex = 1;
-        Check(custom.Text == "我自己的想法", "switching to another option keeps typed text");
+        Check(custom.Text == "我自己的想法" && custom.Visibility == Visibility.Collapsed, "switching to another option keeps typed text while hiding custom TextBox");
         Submit(card);
         Check(calls.Count == 1 && calls[0]["q0"].GetString() == "B", "selected option wins when 其他 not selected");
         radios.SelectedIndex = 2;
+        Check(custom.Visibility == Visibility.Visible, "G2: re-selecting 其他 reveals custom TextBox with retained text");
         Submit(card);
         Check(calls.Count == 2 && calls[0]["q0"].GetString() == "B" && calls[1]["q0"].GetString() == "我自己的想法", "custom text submitted when 其他 selected");
 
@@ -369,27 +377,29 @@ internal static class Program
         var api = Find<CheckBox>(card, "OpenCodeFormField_frm6_q0_api");
         var other = Find<CheckBox>(card, "OpenCodeFormField_frm6_q0_Other");
         var custom = Find<TextBox>(card, "OpenCodeFormField_frm6_q0_Custom");
-        Check(other.IsChecked == false && custom.Text.Length == 0
-            && Texts((UIElement)other.Content!).SequenceEqual(new[] { "其他（自己输入）" }), "其他 checkbox labelled, unticked, empty");
+        Check(other.IsChecked == false && custom.Text.Length == 0 && custom.Visibility == Visibility.Collapsed
+            && Texts((UIElement)other.Content!).SequenceEqual(new[] { "其他（自己输入）" }), "其他 checkbox labelled, unticked, empty, and custom TextBox hidden (G2)");
         Check(other.StandInAttached("Name") as string == "其他（自己输入）" && custom.StandInAttached("Name") is string { Length: > 0 },
             "其他 checkbox and text box have accessible names");
 
         Submit(card);
         Check(calls.Count == 0, "required: nothing ticked and no custom → blocked");
         other.IsChecked = true;
+        Check(custom.Visibility == Visibility.Visible, "G2: ticking 其他 reveals custom TextBox");
         Submit(card);
         Check(calls.Count == 0 && Find<TextBlock>(card, "OpenCodeFormFieldError_frm6_q0").Text == "选择了“其他”，请填写内容。",
             "ticked empty 其他 blocked with message under question");
         other.IsChecked = false;
+        Check(custom.Visibility == Visibility.Collapsed, "G2: unticking 其他 hides custom TextBox");
         api.IsChecked = true;
         custom.Text = "  还有文档  ";
-        Check(other.IsChecked == true && api.IsChecked == true, "typing ticks 其他 without unticking options (not exclusive)");
+        Check(other.IsChecked == true && api.IsChecked == true && custom.Visibility == Visibility.Visible, "typing ticks 其他 without unticking options (not exclusive) and reveals custom TextBox");
         Check(Texts(card).Contains("已选 2 项"), "selected count includes 其他");
         Submit(card);
         Check(calls.Count == 1 && calls[0]["q0"].EnumerateArray().Select(e => e.GetString()).SequenceEqual(new[] { "api", "还有文档" }),
             "custom text appended (trimmed) after ticked options");
         other.IsChecked = false;
-        Check(custom.Text == "  还有文档  ", "unticking 其他 keeps typed text");
+        Check(custom.Text == "  还有文档  " && custom.Visibility == Visibility.Collapsed, "unticking 其他 keeps typed text while hiding custom TextBox (G2)");
         ui.IsChecked = true;
         Submit(card);
         Check(calls.Count == 2 && calls[1]["q0"].EnumerateArray().Select(e => e.GetString()).SequenceEqual(new[] { "ui", "api" }),

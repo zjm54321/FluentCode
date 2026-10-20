@@ -141,7 +141,10 @@ public sealed partial class OpenCodePage
             _historyAcceptedPromptId = null;
         }
         _messageHistoryWorkflowOwner = null;
+        OnMessageHistoryWorkflowEnded();
     }
+
+    partial void OnMessageHistoryWorkflowEnded();
 
     private List<OpenCodeMessage> ProjectMessageHistory(List<OpenCodeMessage> ordered)
     {

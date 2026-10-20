@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 
@@ -106,6 +108,17 @@ internal static class Program
             && popup.Contains("OpenCodeDetailHeader DetailHeader { get; }") && popup.Contains("void OnDetailStateChanged(bool shown, bool pinned);"), "IOpenCodeDetailContentSource API stable");
         Check(!content.Contains("TextWrapping.NoWrap") && !content.Contains("TextTrimming.CharacterEllipsis") && !content.Contains("ScrollMode.Auto"), "content view always wraps (no NoWrap / ellipsis / horizontal scroll)");
         Check(!content.Contains("仅显示前") && content.Contains("OpenCodeDetailTextPolicy.ChunkLines"), "code blocks are not truncated");
+        var child = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeChildChatWindow.cs"));
+        Check(child.Contains("OpenCodeConversationView _timeline = new()") && child.Contains("_timeline.ApplyMessages(OpenCodeChildChatReadSession.OrderMessages(response.Data))")
+            && !child.Contains("WebView") && !child.Contains("TextBox") && !child.Contains("SendPrompt"), "child window uses the actual timeline and has no composer/send surface");
+        Check(child.Contains("new FlyoutPresenter") && child.Contains("new ThemeShadow()")
+            && child.Contains("OpenCodeChildChatMaximize") && child.Contains("OpenCodeChildChatClose"), "child window has native Fluent chrome and accessible maximize/X actions");
+        Check(child.Contains("SetSuppressDetails(_timeline, true)") && popup.Contains("DetailsSuppressed(AnchorOf(source))"),
+            "nested child tool details cannot replace the global parent popup or recurse");
+        Check(!child.Contains("960") && child.Contains("_root.Size.Width * 0.9") && child.Contains("HorizontalScrollMode = ScrollMode.Disabled"), "child uses wide rectangular viewport without artificial cap or sideways panning");
+        Check(child.Contains("Action<OpenCodeConversationView>? initializeTimeline = null")
+            && child.IndexOf("initializeTimeline?.Invoke(_timeline)", StringComparison.Ordinal) < child.IndexOf("body.Children.Add(_scroller)", StringComparison.Ordinal),
+            "optional child-only context initialization precedes attachment and message rendering without parent fallback");
     }
 
     private static int Main(string[] args)
@@ -161,6 +174,7 @@ internal static class Program
             Check(unknown.RawState is not null && unknown.RawStateProperties.Any(r => r.Key == "detail" && r.Kind == OpenCodeToolPropertyKind.Group), "unrecognized state rendered as properties");
 
             DetailPopupContract(args);
+            ChildChatLifecycle().GetAwaiter().GetResult();
 
             Console.WriteLine($"PASS: tool detail property list + detail popup (G7/G8), {_assertions} assertions; real OpenCodeToolRowPresentation + OpenCodeDetailPopupLayout, no UI.");
             return 0;
@@ -170,5 +184,85 @@ internal static class Program
             Console.WriteLine(ex.Message);
             return 1;
         }
+    }
+
+    private static async Task ChildChatLifecycle()
+    {
+        // Execute the exact production helper called by native ShowMessages, not the fake page window.
+        // Deliberately non-monotonic timestamps ensure server sequence, not timestamp sorting, is authoritative.
+        var latest = new OpenCodeMessage { Id = "msg_latest", Type = "user", Text = "latest", Time = new() { Created = 10 } };
+        var middle = new OpenCodeMessage { Id = "msg_middle", Type = "user", Text = "middle", Time = new() { Created = 900 } };
+        var oldest = new OpenCodeMessage { Id = "msg_oldest", Type = "user", Text = "oldest", Time = new() { Created = 80 } };
+        var descending = new List<OpenCodeMessage> { latest, middle, oldest };
+        var ordered = OpenCodeChildChatReadSession.OrderMessages(descending);
+        Check(ordered.Select(m => m.Id).SequenceEqual(new[] { "msg_oldest", "msg_middle", "msg_latest" }),
+            "native child ordering helper reverses server-desc sequence to oldest-first without timestamp sorting");
+        Check(ReferenceEquals(ordered[^1], latest) && ReferenceEquals(ordered[0], oldest),
+            "native child final rendered item is latest; message instances are preserved");
+        Check(descending.SequenceEqual(new[] { latest, middle, oldest }) && !ReferenceEquals(descending, ordered),
+            "native child ordering copies without mutating the server response list");
+        Check(OpenCodeChildChatReadSession.OrderMessages(null).Count == 0
+            && OpenCodeChildChatReadSession.OrderMessages(Array.Empty<OpenCodeMessage>()).Count == 0,
+            "native child ordering handles null/empty response data");
+        var payload = new OpenCodeSessionMessagesResponse { Data = new() { new OpenCodeMessage { Id = "msg_child", Type = "user", Text = "真实子消息" } } };
+        var current = true;
+        var reads = 0;
+        var errors = 0;
+        OpenCodeSessionMessagesResponse? published = null;
+        Task Read(Func<CancellationToken, Task<bool>> verify, CancellationToken token = default,
+            Func<CancellationToken, Task<OpenCodeSessionMessagesResponse>>? fetch = null)
+            => OpenCodeChildChatReadSession.LoadAsync(() => current, verify,
+                fetch ?? (_ => { reads++; return Task.FromResult(payload); }),
+                value => published = value, _ => errors++, token);
+        await Read(_ => Task.FromResult(true));
+        Check(ReferenceEquals(published, payload) && reads == 1, "verified read publishes the actual response instance, no mock projection/fallback");
+        published = null; reads = 0;
+        await Read(_ => Task.FromResult(false));
+        Check(reads == 0 && published is null && errors == 1, "unrelated child never fetches or displays messages");
+        current = false;
+        var verifies = 0;
+        await Read(_ => { verifies++; return Task.FromResult(true); });
+        Check(verifies == 0 && reads == 0, "invalid source binding starts NO reads");
+        current = true;
+        var ancestry = new TaskCompletionSource<bool>();
+        var pending = Read(_ => ancestry.Task);
+        current = false; ancestry.SetResult(true); await pending;
+        Check(reads == 0 && published is null, "binding change during ancestry blocks child fetch");
+        current = true;
+        using var close = new CancellationTokenSource();
+        var response = new TaskCompletionSource<OpenCodeSessionMessagesResponse>();
+        pending = Read(_ => Task.FromResult(true), close.Token, _ => response.Task);
+        close.Cancel(); response.SetResult(payload); await pending;
+        Check(published is null, "close/navigation cancellation blocks late response publication even if transport ignores cancellation");
+        response = new();
+        pending = Read(_ => Task.FromResult(true), default, _ => response.Task);
+        current = false; response.SetResult(payload); await pending;
+        Check(published is null, "source/session change blocks stale message response");
+        current = true;
+        await Read(_ => Task.FromResult(true), default, _ => Task.FromException<OpenCodeSessionMessagesResponse>(new InvalidOperationException("read failed")));
+        Check(errors == 2 && published is null, "fetch failure reports truthfully without fallback content");
+        await Read(_ => Task.FromException<bool>(new InvalidOperationException("ancestry failed")));
+        Check(errors == 3 && published is null, "ancestry exception fails closed");
+
+        var parentSelection = "ses_parent";
+        var closes = 0;
+        var navigations = 0;
+        OpenCodeChildChatActions Actions() => new(() => current, () => closes++, () =>
+        {
+            Check(closes > 0, "maximize closes the small window before full navigation");
+            navigations++; parentSelection = "ses_child"; return Task.CompletedTask;
+        });
+        var actions = Actions();
+        await actions.MaximizeAsync();
+        Check(closes == 0 && navigations == 0, "loading/unverified window cannot maximize");
+        actions.MarkLoaded(); actions.Close(); actions.Close();
+        await actions.MaximizeAsync();
+        Check(closes == 1 && navigations == 0 && parentSelection == "ses_parent", "X is idempotent, cancels/dismisses only and preserves parent selection");
+        actions = Actions(); actions.MarkLoaded(); current = false;
+        await actions.MaximizeAsync();
+        Check(navigations == 0, "stale binding blocks maximize");
+        current = true;
+        await actions.MaximizeAsync(); await actions.MaximizeAsync();
+        Check(closes == 2 && navigations == 1 && parentSelection == "ses_child", "only maximize navigates, once");
     }
 }

@@ -14,8 +14,9 @@ internal sealed partial class OpenCodeComposerController
     private readonly ConditionalWeakTable<OpenCodeComposerDraftBasis, object> _draftBases = new();
     private readonly ConditionalWeakTable<SessionControlOrigin, object> _legacyStarts = new();
 
-    internal OpenCodeComposerDraftBasis? CaptureDraft(OpenCodeComposerToken expected)
+    internal OpenCodeComposerDraftBasis? CaptureDraft(OpenCodeComposerToken expected, string? delivery = null)
     {
+        if (delivery is not null and not "steer" and not "queue") throw new ArgumentException("Invalid delivery.", nameof(delivery));
         OpenCodeComposerBinding binding;
         lock (_sync)
         {
@@ -28,7 +29,7 @@ internal sealed partial class OpenCodeComposerController
             lock (_sync)
             {
                 if (!Current(expected) || !Equals(_binding, binding)) return;
-                basis = new(binding, Token, _text, _command, _files.Count != 0, DescribeDraft());
+                basis = new(binding, Token, _text, _command, _files.Count != 0, DescribeDraft(delivery), delivery);
                 _draftBases.Add(basis, new());
             }
         });
@@ -37,15 +38,20 @@ internal sealed partial class OpenCodeComposerController
 
     // Only called under the controller lock. Persistent ordered IDs identify immutable private bytes;
     // the canonical document contains byte COUNTS, never raw payloads or logging of draft content.
-    private SessionControlDraft DescribeDraft() => new(SessionControlJson.Hash(new
+    private SessionControlDraft DescribeDraft(string? delivery = null)
     {
-        version = 1, scope = _scope, draftId = _draft, edit = _edit, text = _text, command = _command,
-        files = _files.Select(f => new { id = f.Id, name = f.Name, mime = f.Mime, bytes = f.Bytes.Length }).ToArray()
-    }), _text.Length == 0 && _command is null && _files.Count == 0);
+        var hash = SessionControlJson.Hash(new
+        {
+            version = 1, scope = _scope, draftId = _draft, edit = _edit, text = _text, command = _command,
+            files = _files.Select(f => new { id = f.Id, name = f.Name, mime = f.Mime, bytes = f.Bytes.Length }).ToArray()
+        });
+        return new(delivery is null ? hash : SessionControlJson.Hash(new { draft = hash, delivery }),
+            _text.Length == 0 && _command is null && _files.Count == 0);
+    }
 
     private bool MatchesBasis(OpenCodeComposerDraftBasis basis) => _draftBases.TryGetValue(basis, out _)
         && Equals(_binding, basis.Binding) && Current(basis.Token) && basis.Text == _text
-        && basis.ServerCommand == _command && basis.HasFiles == (_files.Count != 0) && basis.Draft == DescribeDraft();
+        && basis.ServerCommand == _command && basis.HasFiles == (_files.Count != 0) && basis.Draft == DescribeDraft(basis.Delivery);
 
     private static bool ValidContext(OpenCodeComposerSendContext? context) => context is
         { Origin: { Source: not null }, Basis: { Binding: { Source: not null }, Draft: not null }, CanStart: not null, OwnsOperation: not null }

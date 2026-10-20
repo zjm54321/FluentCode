@@ -652,6 +652,9 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
 
         /// <summary>“其他（自己输入）”已选但内容为空时返回 true（单独提示）。</summary>
         public Func<bool>? OtherEmpty { get; init; }
+
+        /// <summary>“其他（自己输入）”为空时的聚焦目标（已展开的自定义文本框）。</summary>
+        public Control? OtherFocusTarget { get; init; }
     }
 
     private readonly string _formId;
@@ -814,7 +817,10 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                 ShowPage(_slots.IndexOf(firstError));
             }
 
-            TryFocus(firstError.FocusTarget);
+            var target = firstError.OtherEmpty?.Invoke() == true && firstError.OtherFocusTarget is { Visibility: Visibility.Visible } otherBox
+                ? otherBox
+                : firstError.FocusTarget;
+            TryFocus(target);
             return false;
         }
 
@@ -850,20 +856,23 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
 
     private UIElement BuildField(OpenCodeFormFieldPlan field, bool separated)
     {
-        var section = new StackPanel { Spacing = 6 };
+        var section = new StackPanel { Spacing = 8 };
         if (separated)
         {
-            // 多题之间的分隔：内置分隔线画刷的 1px 顶边。
+            // 多题之间的分隔。
             section.Margin = new Thickness(0, 4, 0, 0);
         }
 
-        section.Children.Add(OpenCodeInteractionUi.StyledText(
+        var header = new StackPanel { Spacing = 2 };
+        header.Children.Add(OpenCodeInteractionUi.StyledText(
             field.Label + (field.Required ? "（必答）" : string.Empty), OpenCodeInteractionUi.BodyStrongStyleKey, true));
 
         if (!string.IsNullOrWhiteSpace(field.Description))
         {
-            section.Children.Add(OpenCodeInteractionUi.StyledText(field.Description!, OpenCodeInteractionUi.BodyStyleKey, true));
+            header.Children.Add(OpenCodeInteractionUi.StyledText(field.Description!, OpenCodeInteractionUi.BodyStyleKey, true));
         }
+
+        section.Children.Add(header);
 
         var error = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.QuestionErrorStyleKey, true);
         error.Visibility = Visibility.Collapsed;
@@ -908,6 +917,12 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                 var initialCustom = OpenCodeFormFieldPresentation.InitialCustomText(field);
                 box.Text = initialCustom ?? string.Empty;
                 radios.SelectedIndex = initialIndex >= 0 ? initialIndex : !string.IsNullOrEmpty(initialCustom) ? otherIndex : -1;
+                // G2：只有选中“其他（自己输入）”时才展开自定义文本框；未选中时折叠隐藏（已输入文字仍保留在控件中）。
+                box.Visibility = radios.SelectedIndex == otherIndex ? Visibility.Visible : Visibility.Collapsed;
+                radios.SelectionChanged += (_, _) =>
+                {
+                    box.Visibility = radios.SelectedIndex == otherIndex ? Visibility.Visible : Visibility.Collapsed;
+                };
                 // 输入即选中“其他”；切到其他选项时保留已输入文字，但不会作为答案提交。
                 box.TextChanged += (_, _) =>
                 {
@@ -923,6 +938,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                     Field = field,
                     Error = error,
                     FocusTarget = radios,
+                    OtherFocusTarget = box,
                     Read = () => radios.SelectedIndex == otherIndex
                         ? new OpenCodeFormFieldInput(Text: box.Text)
                         : new OpenCodeFormFieldInput(Choice: ReadChoice(radios, field)),
@@ -971,7 +987,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
 
             case OpenCodeFormFieldKind.MultiSelect:
             {
-                var optionsPanel = new StackPanel { Spacing = 2 };
+                var optionsPanel = new StackPanel { Spacing = 6 };
                 AutomationProperties.SetAutomationId(optionsPanel, FieldAutomationId(field.Key));
                 SetFieldAccessibility(optionsPanel, field);
                 var boxes = new List<(string Value, CheckBox Box)>(field.Options.Count);
@@ -997,6 +1013,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                     {
                         Content = CreateOptionContent(option.Label, option.Description),
                         IsChecked = OpenCodeFormFieldPresentation.IsInitiallySelected(field, option.Value),
+                        Padding = new Thickness(8, 2, 0, 2),
                     };
                     AutomationProperties.SetAutomationId(check, OptionAutomationId(field.Key, option.Value));
                     AutomationProperties.SetName(check, option.Label);
@@ -1016,7 +1033,11 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                 TextBox? otherBox = null;
                 if (field.AllowsCustom)
                 {
-                    otherCheck = new CheckBox { Content = CreateOptionContent(OpenCodeFormFieldPresentation.OtherChoiceLabel, null) };
+                    otherCheck = new CheckBox
+                    {
+                        Content = CreateOptionContent(OpenCodeFormFieldPresentation.OtherChoiceLabel, null),
+                        Padding = new Thickness(8, 2, 0, 2),
+                    };
                     AutomationProperties.SetAutomationId(otherCheck, FieldAutomationId(field.Key) + "_Other");
                     AutomationProperties.SetName(otherCheck, OpenCodeFormFieldPresentation.OtherChoiceLabel);
                     optionsPanel.Children.Add(otherCheck);
@@ -1026,11 +1047,22 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                     otherBox.Margin = new Thickness(28, 0, 0, 0);
                     var initialCustom = OpenCodeFormFieldPresentation.InitialCustomText(field);
                     otherBox.Text = initialCustom ?? string.Empty;
-                    otherCheck.IsChecked = !string.IsNullOrEmpty(initialCustom);
+                    var initiallyChecked = !string.IsNullOrEmpty(initialCustom);
+                    otherCheck.IsChecked = initiallyChecked;
+                    // G2：只有勾选“其他（自己输入）”时才展开自定义文本框；未勾选时折叠隐藏（已输入文字仍保留在控件中）。
+                    otherBox.Visibility = initiallyChecked ? Visibility.Visible : Visibility.Collapsed;
                     var check = otherCheck;
                     var box = otherBox;
-                    check.Checked += (_, _) => RefreshCount();
-                    check.Unchecked += (_, _) => RefreshCount();
+                    check.Checked += (_, _) =>
+                    {
+                        box.Visibility = Visibility.Visible;
+                        RefreshCount();
+                    };
+                    check.Unchecked += (_, _) =>
+                    {
+                        box.Visibility = Visibility.Collapsed;
+                        RefreshCount();
+                    };
                     // 输入即勾选“其他”；取消勾选时保留已输入文字，但不会作为答案提交。
                     box.TextChanged += (_, _) =>
                     {
@@ -1050,6 +1082,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                     Field = field,
                     Error = error,
                     FocusTarget = boxes.Count > 0 ? boxes[0].Box : new CheckBox(),
+                    OtherFocusTarget = otherBox,
                     Read = () =>
                     {
                         var selections = new List<string>();
@@ -1101,7 +1134,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
     /// <summary>选项内容：标签（Body）+ 较小说明（Caption 次要色）。</summary>
     private static UIElement CreateOptionContent(string label, string? description)
     {
-        var panel = new StackPanel { Spacing = 0 };
+        var panel = new StackPanel { Spacing = 2 };
         panel.Children.Add(OpenCodeInteractionUi.StyledText(label, OpenCodeInteractionUi.BodyStyleKey));
         if (!string.IsNullOrWhiteSpace(description))
         {
@@ -1113,7 +1146,11 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
 
     private static RadioButton CreateRadioItem(string label, string? description)
     {
-        var item = new RadioButton { Content = CreateOptionContent(label, description) };
+        var item = new RadioButton
+        {
+            Content = CreateOptionContent(label, description),
+            Padding = new Thickness(8, 2, 0, 2),
+        };
         AutomationProperties.SetName(item, label);
         if (!string.IsNullOrWhiteSpace(description))
         {

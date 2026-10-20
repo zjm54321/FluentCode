@@ -27,7 +27,7 @@ public sealed class OpenCodeSubagentSessionRequestedEventArgs : EventArgs
     /// <summary>父消息 id（只读；不参与授权判断）。</summary>
     public string ParentMessageId { get; }
 
-    /// <summary>子会话 id（只读；已通过不透明会话 ID 校验）。</summary>
+    /// <summary>子会话 id（只读；尚未创建时为空串，由消费方再次校验并如实提示）。</summary>
     public string ChildSessionId { get; }
 }
 

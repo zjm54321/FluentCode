@@ -15,6 +15,7 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
+    private bool _blankComposerPlacement;
     private OpenCodeBlankDraftPreferences? _blankPreferences;
     private readonly Dictionary<(string SourceIdentity, Guid Draft), string?> _blankCreationResults = new();
     private bool _blankPickerPending;
@@ -25,6 +26,14 @@ public sealed partial class OpenCodePage
     private string? _blankMetadataRuntime, _blankMetadataDirectory;
     private Guid _blankMetadataDraft;
     private bool _blankModelChosen;
+
+    private void SetBlankComposerPlacement(bool centered)
+    {
+        _blankComposerPlacement = centered;
+        if (!centered) Composer.MinHeight = 40; // Restore normal chrome immediately, before the queued native measure.
+        UpdateConversationColumns();
+        QueueComposerLayout(); // The only height writer remains UpdateComposerLayout.
+    }
 
     private void EnsureBlankPreferences()
     {

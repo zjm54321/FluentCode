@@ -248,8 +248,10 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed class OpenCodeUserBubbleView
     {
         internal FrameworkElement Element { get; }
-        internal OpenCodeUserBubbleView(FrameworkElement content)
+        internal bool Delivered { get; }
+        internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true)
         {
+            Delivered = delivered;
             Element = new Border { Child = content };
             ConversationViewTestProbe.Record("Construct", this, Element, content);
         }
@@ -496,6 +498,15 @@ namespace Microsoft.UI.Xaml.Controls
     {
         public string Glyph { get; set; } = string.Empty;
         public double FontSize { get; set; }
+
+    // Inert menu boundary for the existing pending-message view tests; no native rendering claim.
+    public class MenuFlyout : Flyout
+    {
+        public List<MenuFlyoutItem> Items { get; } = new();
+    }
+    public class MenuFlyoutItem : Button
+    {
+        public string Text { get; set; } = string.Empty;
     }
 
     public static class ToolTipService

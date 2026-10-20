@@ -1,6 +1,7 @@
 # Headless only: installed .NET 10 SDK/reference packs, no restore, no new packages, no UI, no live server.
 # Fake HttpMessageHandler and inert UI/presenter probes only. Production sources compile read-only.
 # The in-progress OpenCodeSessionUiState*.cs lane and the WinUI pairing service are excluded here.
+param([switch]$QueueOnly)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -26,7 +27,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
 # Explicit list excludes all four replaced presenters and every other WinUI test host.
 @('OpenCodeConversationView.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeQueuedPromptsView.cs',
-    'OpenCodeInteractionUi.cs') | ForEach-Object {
+    'OpenCodeInteractionUi.cs', 'OpenCodeComposerActivityPolicy.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
 @('Program.cs', 'ConversationLifecycle.cs', 'ConversationView.TestHost.cs', 'RedesignRegression.cs', 'Wave5Timeline.cs') | ForEach-Object {
@@ -38,6 +39,6 @@ $arguments | Set-Content -Encoding UTF8 $responseFile
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeInstructionNoticeTests.runtimeconfig.json')
 Write-Output 'Headless compilation passed (warnings treated as errors).'
-& $dotnet $assembly
+& $dotnet $assembly $QueueOnly.IsPresent $repo
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
 Write-Output "Evidence directory: $output"

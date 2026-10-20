@@ -20,12 +20,13 @@ internal static class Program
     private static int _assertions;
     private static async Task Main()
     {
+        await ChildPreviewLifecycle();
         await CardReturnAndFailures();
         await NotificationParentAndFences();
         await ReturnRacesGateAndAcknowledgements();
         BlankTabRebuild();
-        Console.WriteLine($"PASS: 3 session-return scenario groups, {_assertions} assertions; real linked navigation/client/ancestry/gate/ACK helper; fake HTTP/inert UI.");
-        Console.WriteLine("BOUNDARIES: message-load body, agent/recovery widgets and App ACK transport are stubs; real XAML layout and App POST reconciliation are not tested.");
+        Console.WriteLine($"PASS: session-return + child-chat lifecycle, {_assertions} assertions; real linked page glue/navigation/client/ancestry/gate/ACK helper; fake HTTP/inert UI.");
+        Console.WriteLine("BOUNDARIES: native child popup, parent message-load body, agent/recovery widgets and App ACK transport are stubs; real XAML layout and App POST reconciliation are not tested.");
     }
     // L2: a list rebuild never auto-selects a session while the blank "新会话" tab is shown; otherwise unchanged.
     private static void BlankTabRebuild()
@@ -285,6 +286,70 @@ internal static class Program
         }
     }
 
+    private static async Task ChildPreviewLifecycle()
+    {
+        using (var f = new Fixture("endpoint-child-preview"))
+        {
+            await f.Page.Switch("ses_root");
+            RenderTool(f.Page, "msg_parent");
+            var pending = f.Page.Preview("msg_parent", "ses_child");
+            var window = OpenCodeChildChatWindow.Latest!;
+            await window.ContentReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(f.Page.Viewed == "ses_root" && window.Messages?.Data?.Single().Text == "CHILD_CONVERSATION_BODY",
+                "preview.real-client-child-content-without-parent-navigation");
+            Check(f.Http.Paths.SequenceEqual(new[] { "/api/session/ses_child", "/api/session/ses_mid", "/api/session/ses_child/message" }),
+                "preview.ancestry-before-child-message-endpoint");
+            window.Close(); await pending.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(f.Page.Viewed == "ses_root", "preview.close-preserves-parent-selection");
+
+            pending = f.Page.Preview("msg_parent", "ses_child");
+            window = OpenCodeChildChatWindow.Latest!;
+            await window.ContentReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var before = f.Http.Paths.Count;
+            await window.Maximize();
+            await pending.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(f.Page.Viewed == "ses_child" && f.Page.ReturnTarget == "ses_root" && !window.IsOpen,
+                "preview.maximize-closes-and-enters-full-child-with-origin");
+            Check(f.Http.Paths.Skip(before).SequenceEqual(new[] { "/api/session/ses_child", "/api/session/ses_mid" }),
+                "preview.maximize-revalidates-server-ancestry");
+        }
+        using (var f = new Fixture("endpoint-unrelated-preview"))
+        {
+            await f.Page.Switch("ses_root"); RenderTool(f.Page, "msg_parent");
+            var pending = f.Page.Preview("msg_parent", "ses_second");
+            var window = OpenCodeChildChatWindow.Latest!;
+            await window.ContentReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(window.Messages is null && window.Error is not null && !f.Http.Paths.Any(p => p.EndsWith("/message", StringComparison.Ordinal)),
+                "preview.unrelated-child-fails-closed-without-message-fetch");
+            window.Close(); await pending.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        using (var f = new Fixture("endpoint-preview-missing-child"))
+        {
+            await f.Page.Switch("ses_root"); RenderTool(f.Page, "msg_parent");
+            var pending = f.Page.Preview("msg_parent", "");
+            var window = OpenCodeChildChatWindow.Latest!;
+            await window.ContentReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(window.Error is not null && window.Messages is null && f.Http.Paths.Count == 0,
+                "preview.pending-child-shows-truthful-empty-state-without-any-request");
+            window.Close(); await pending.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        using (var f = new Fixture("endpoint-preview-source-revoke"))
+        {
+            await f.Page.Switch("ses_root"); RenderTool(f.Page, "msg_parent");
+            var held = f.Http.Hold("ses_child");
+            var pending = f.Page.Preview("msg_parent", "ses_child");
+            await held.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var window = OpenCodeChildChatWindow.Latest!;
+            f.Page.ChangeSource(f.NewSource(2));
+            Check(held.Token.IsCancellationRequested && window.Token.IsCancellationRequested,
+                "preview.source-change-cancels-ancestry-and-window-lifetime");
+            held.Release(Session("ses_child", "ses_root"));
+            await pending.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(window.Messages is null && !window.IsOpen && !f.Http.Paths.Any(p => p.EndsWith("/message", StringComparison.Ordinal)),
+                "preview.late-old-source-response-cannot-publish-or-fetch");
+        }
+    }
+
     private sealed class Fixture : IDisposable
     {
         internal string Endpoint { get; }
@@ -346,6 +411,10 @@ internal static class Program
                 held.Started.TrySetResult(true);
                 return held.Response.Task;
             }
+            if (id == "ses_child/message") return Task.FromResult(Json(new { data = new[]
+            {
+                new OpenCodeMessage { Id = "msg_child_body", Type = OpenCodeMessageTypes.User, Text = "CHILD_CONVERSATION_BODY" },
+            } }));
             if (Sessions.TryGetValue(id, out var session)) return Task.FromResult(Json(new { data = session }));
             throw new InvalidOperationException("http.unexpected-session");
         }

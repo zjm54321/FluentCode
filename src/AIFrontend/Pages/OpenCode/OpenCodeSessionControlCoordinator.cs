@@ -327,7 +327,8 @@ public sealed class OpenCodeSessionControlCoordinator
     {
         ArgumentNullException.ThrowIfNull(origin); ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(draft); ArgumentNullException.ThrowIfNull(current);
-        if (!Enum.IsDefined(request.Kind) || string.IsNullOrWhiteSpace(draft.Fingerprint)
+        // Running-session controls are not model/history preview operations.
+        if (!Enum.IsDefined(request.Kind) || request.Kind is SessionControlKind.Interrupt or SessionControlKind.Background || string.IsNullOrWhiteSpace(draft.Fingerprint)
             || !origin.SessionId.StartsWith("ses", StringComparison.Ordinal) || !NotificationArgumentCodec.IsValidRequestId(origin.SessionId))
             throw new ArgumentException("Invalid session control context.");
         if (request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot)

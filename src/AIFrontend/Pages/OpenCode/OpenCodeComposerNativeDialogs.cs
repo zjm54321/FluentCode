@@ -331,11 +331,13 @@ internal sealed class OpenCodeDraftEditorDialog
     private bool _allowClose;
 
     internal bool IsOpen => _dialog is not null;
+    internal int SelectionStart { get; private set; }
+    internal int SelectionLength { get; private set; }
 
     /// <param name="initialText">The authoritative draft text read by the page AFTER flushing the main editor.</param>
     /// <param name="apply">Page seam: re-check ownership, <c>TryApplyClientText(ticket, text)</c>, render the main editor.</param>
     internal async Task<OpenCodeDraftEditorResult> ShowAsync(XamlRoot? owner, string initialText,
-        Func<string, OpenCodeDraftEditorApplyOutcome> apply)
+        Func<string, OpenCodeDraftEditorApplyOutcome> apply, int selectionStart = 0, int selectionLength = 0)
     {
         ArgumentNullException.ThrowIfNull(initialText);
         ArgumentNullException.ThrowIfNull(apply);
@@ -356,6 +358,10 @@ internal sealed class OpenCodeDraftEditorDialog
         AutomationProperties.SetAutomationId(box, "OpenCodeDraftEditorBuffer");
         AutomationProperties.SetName(box, "草稿内容");
         session.Write(() => box.Text = initialText); // Initialization echo is not a user edit.
+        SelectionStart = Math.Clamp(selectionStart, 0, initialText.Length);
+        SelectionLength = Math.Clamp(selectionLength, 0, initialText.Length - SelectionStart);
+        box.Select(SelectionStart, SelectionLength);
+        box.SelectionChanged += (_, _) => { SelectionStart = box.SelectionStart; SelectionLength = box.SelectionLength; };
         box.TextChanging += (sender, _) => { session.OnTextChanging(sender.Text); Update(); };
         box.TextCompositionStarted += (_, _) => { session.OnCompositionStarted(); Update(); };
         box.TextCompositionEnded += (_, _) => { session.OnCompositionEnded(DateTimeOffset.UtcNow); Update(); };

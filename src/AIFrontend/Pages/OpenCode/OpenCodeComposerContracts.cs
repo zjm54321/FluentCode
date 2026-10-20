@@ -23,7 +23,7 @@ internal readonly record struct OpenCodeComposerEditorAck(OpenCodeComposerToken 
 
 internal sealed record OpenCodeComposerDraftBasis(
     OpenCodeComposerBinding Binding, OpenCodeComposerToken Token,
-    string Text, string? ServerCommand, bool HasFiles, SessionControlDraft Draft);
+    string Text, string? ServerCommand, bool HasFiles, SessionControlDraft Draft, string? Delivery = null);
 internal sealed record OpenCodeComposerSendContext(
     SessionControlOrigin Origin, OpenCodeComposerDraftBasis Basis,
     SessionControlContinuationConsent? Consent,
@@ -117,9 +117,10 @@ public sealed class OpenCodeComposerSnapshotChangedEventArgs(OpenCodeComposerSna
 {
     public OpenCodeComposerSnapshot Snapshot { get; } = snapshot;
 }
-public sealed class OpenCodeComposerSubmitRequestedEventArgs(OpenCodeComposerToken token) : EventArgs
+public sealed class OpenCodeComposerSubmitRequestedEventArgs(OpenCodeComposerToken token, string? delivery = null) : EventArgs
 {
     public OpenCodeComposerToken Token { get; } = token;
+    public string? Delivery { get; } = delivery;
 }
 internal abstract record OpenCodeComposerSubmitOutcome
 {

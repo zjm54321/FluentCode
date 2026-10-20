@@ -25,20 +25,24 @@ public sealed partial class OpenCodePage
     private string? ComposerBindingSessionId
         => _selectedSessionId ?? (_newSessionDraftActive ? OpenCodeComposerController.UnboundSessionId : null);
     partial void OnUnboundComposerSubmitRequested(OpenCodeComposerToken token);
+    // Only durable server admission is published; presentation may deduplicate by receipt.Id.
+    partial void OnComposerPromptAdmitted(string sessionId, OpenCodeInboxUser receipt);
 
     private void InitializeComposer()
     {
         if (_composerController is not null) return;
+        ConfigureComposerDelivery(true);
         _composerController = new(OwnsComposerBinding);
         _composerView = new(GetComposerSnapshot, _composerController.BeginCatalogLifetime, _composerController.EndCatalogLifetime);
         _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || !_pageActive);
+        InitializeComposerLayout();
         ComposerCompanionHost.Children.Add(_composerView);
         ComposerCompanionHost.Visibility = Visibility.Visible;
         // Subscribed once for this page's lifetime, not once per load/session. Both ends are page-owned.
         _composerController.SnapshotChanged += OnComposerSnapshotChanged;
         _composerController.SubmitRequested += OnComposerSubmitRequested;
         _composerController.UnboundSubmitRequested += (_, e) => OnUnboundComposerSubmitRequested(e.Token);
-        _composerView.StateChanged += (_, _) => { if (_pageActive) UpdateComposerButtons(); };
+        _composerView.StateChanged += (_, _) => { if (_pageActive) { UpdateComposerButtons(); TryRestoreExpandedComposerSelection(); } };
         _composerView.TextEdited += (_, e) => e.Acknowledgment =
             _composerController.TryApplyEditorInput(e.Token, e.Text, e.AllowUnboundCarry);
         _composerView.CatalogOpenRequested += (_, e) =>
@@ -109,6 +113,27 @@ public sealed partial class OpenCodePage
         _composerView.RequestRender();
     }
 
+    private (OpenCodeComposerBinding Binding, OpenCodeComposerToken Token, string Text, int Start, int Length)? _expandedComposerSelection;
+
+    private void RestoreExpandedComposerSelection(OpenCodeComposerBinding binding, int start, int length)
+    {
+        var snapshot = _composerController!.Snapshot;
+        _expandedComposerSelection = (binding, snapshot.Token, snapshot.Text, start, length);
+        TryRestoreExpandedComposerSelection();
+    }
+
+    private void TryRestoreExpandedComposerSelection()
+    {
+        if (_expandedComposerSelection is not { } restore) return;
+        if (!OwnsComposerBinding(restore.Binding) || _composerController?.Snapshot.Token != restore.Token)
+        { _expandedComposerSelection = null; return; }
+        if (_isComposing || _suppressComposerFocus || Composer.Text != restore.Text) return;
+        var start = Math.Clamp(restore.Start, 0, restore.Text.Length);
+        Composer.Select(start, Math.Clamp(restore.Length, 0, restore.Text.Length - start));
+        _expandedComposerSelection = null;
+        Composer.Focus(FocusState.Programmatic);
+    }
+
     private async Task PickComposerFilesAsync(OpenCodeComposerToken token)
     {
         if (_composerController is null || _composerView is null) return;
@@ -147,22 +172,24 @@ public sealed partial class OpenCodePage
     }
 
     // Both button and eligible Enter use this one event bridge. Enter never invokes Stop.
-    private void RequestComposerSubmission()
+    private void RequestComposerSubmission(string? delivery = null)
     {
         if (!_pageActive || _composerController is null || _composerView is null
             || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
         var snapshot = GetComposerSnapshot();
         if (!snapshot.IsActive || snapshot.IsBusy || !snapshot.HasDraft) return;
-        _composerController.RequestSubmit(snapshot.Token);
+        if (delivery == OpenCodeDeliveryModes.Queue && snapshot.SelectedCommand is not null) return;
+        _composerController.RequestSubmit(snapshot.Token, delivery ?? RequestedComposerDelivery);
     }
 
     private void OnComposerSubmitRequested(object? sender, OpenCodeComposerSubmitRequestedEventArgs e)
     {
-        if (DispatcherQueue.HasThreadAccess) _ = RouteComposerSubmissionAsync(e.Token);
-        else DispatcherQueue.TryEnqueue(() => _ = RouteComposerSubmissionAsync(e.Token));
+        var delivery = e.Delivery ?? RequestedComposerDelivery;
+        if (DispatcherQueue.HasThreadAccess) _ = RouteComposerSubmissionAsync(e.Token, delivery);
+        else DispatcherQueue.TryEnqueue(() => _ = RouteComposerSubmissionAsync(e.Token, delivery));
     }
 
-    private async Task RouteComposerSubmissionAsync(OpenCodeComposerToken token)
+    private async Task RouteComposerSubmissionAsync(OpenCodeComposerToken token, string? delivery)
     {
         if (_composerController is null || _composerView is null || !_pageActive
             || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
@@ -170,8 +197,9 @@ public sealed partial class OpenCodePage
         if (snapshot.Token != token || !snapshot.IsActive || snapshot.IsBusy || !snapshot.HasDraft) return;
         // IsBoundDraft intentionally does NOT choose transport: removing command/files leaves text bound.
         var route = OpenCodeComposerInputPolicy.Route(snapshot.SelectedCommand is not null, snapshot.Attachments.Count, snapshot.Text);
-        if (route == OpenCodeComposerSubmitRoute.LegacyText) await SendPromptAsync();
-        else if (route == OpenCodeComposerSubmitRoute.Enhanced) await SubmitEnhancedComposerAsync(token);
+        if (delivery == OpenCodeDeliveryModes.Queue && snapshot.SelectedCommand is not null) return;
+        if (route == OpenCodeComposerSubmitRoute.LegacyText) await SendPromptAsync(delivery);
+        else if (route == OpenCodeComposerSubmitRoute.Enhanced) await SubmitEnhancedComposerAsync(token, delivery);
     }
 
     private bool OwnsComposerSubmission(OpenCodeComposerBinding binding, long localOwner)
@@ -196,10 +224,10 @@ public sealed partial class OpenCodePage
     private static bool HasLiveComposerSendOrigin(OpenCodeComposerSendContext context)
         => !context.Origin.Source.IsRevoked && context.OwnsOperation(context.Origin);
 
-    private Task SubmitEnhancedComposerAsync(OpenCodeComposerToken token)
-        => RunComposerSendWorkflowAsync(token, enhanced: true);
+    private Task SubmitEnhancedComposerAsync(OpenCodeComposerToken token, string? delivery = null)
+        => RunComposerSendWorkflowAsync(token, enhanced: true, delivery);
 
-    private async Task RunComposerSendWorkflowAsync(OpenCodeComposerToken token, bool enhanced)
+    private async Task RunComposerSendWorkflowAsync(OpenCodeComposerToken token, bool enhanced, string? delivery = null)
     {
         var controller = _composerController;
         var view = _composerView;
@@ -213,7 +241,7 @@ public sealed partial class OpenCodePage
         OpenCodeComposerSubmitOutcome outcome = new OpenCodeComposerSubmitOutcome.NotStarted();
         try
         {
-            var basis = controller.CaptureDraft(token);
+            var basis = controller.CaptureDraft(token, delivery ?? RequestedComposerDelivery);
             if (basis is null) return;
             var binding = basis.Binding;
             if ((basis.ServerCommand is not null || basis.HasFiles) != enhanced) return;
@@ -335,7 +363,7 @@ public sealed partial class OpenCodePage
                 || lease.GetSessionControlProtection() is not null) return outcome;
             try
             {
-                var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.Text, null, Start, ct);
+                var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.Text, null, Start, ct, basis.Delivery);
                 outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
             }
             catch (OpenCodeApiException error) when (started && error.StatusCode is 400 or 401 or 403 or 404 or 409)
@@ -378,7 +406,7 @@ public sealed partial class OpenCodePage
             Effects = OpenCodeComposerController.DescribeSendEffects(permit, started, outcome, settled, retained) };
     }
 
-    private Task SendPromptAsync()
+    private Task SendPromptAsync(string? delivery = null)
     {
         if (!SourceReady || _selectedSessionId is null || _isSending || _sessionMissing || _composerController is null
             || _composerView is null || _composerPickerPending || HasPendingNativeAction() || !_composerView.PrepareSubmission())
@@ -392,11 +420,12 @@ public sealed partial class OpenCodePage
             Composer.Focus(FocusState.Programmatic);
             return Task.CompletedTask;
         }
-        return RunComposerSendWorkflowAsync(submitted.Token, enhanced: false);
+        return RunComposerSendWorkflowAsync(submitted.Token, enhanced: false, delivery);
     }
 
     private void PublishComposerReceipt(string sessionId, OpenCodeInboxUser receipt)
     {
+        OnComposerPromptAdmitted(sessionId, receipt);
         if (_historyExecutionRebaseline) _historyAcceptedPromptId = receipt.Id;
         if (receipt.Id is { Length: > 0 } id && !_pendingAckIds.Contains(id))
         {

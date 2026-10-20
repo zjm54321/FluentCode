@@ -22,14 +22,20 @@ public sealed partial class OpenCodePage
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new(StringComparer.Ordinal);
     private long _liveStatusVersion;
     private bool _statusRefreshRunning;
+    private bool _eventSnapshotBeforeReady;
+    private bool _eventReconciliationPending;
 
     private void StopEventSync()
     {
         _eventCts?.Cancel();
         _eventCts = null;
         _eventReady = null;
+        _eventSnapshotBeforeReady = false;
+        _eventReconciliationPending = false;
         while (_eventQueue.TryDequeue(out _)) { }
         _liveSessionStatuses.Clear();
+        RefreshSessionStateUi();
+        RefreshComposerSessionActivity();
     }
 
     private void StartEventSync()
@@ -40,6 +46,8 @@ public sealed partial class OpenCodePage
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_pageCts.Token, source.RevocationToken);
         _eventCts = cts;
         _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _eventSnapshotBeforeReady = false;
+        _eventReconciliationPending = false;
         var ready = _eventReady;
         _ = Task.Run(() => RunEventSyncAsync(client, source, cts, ready));
     }
@@ -51,15 +59,43 @@ public sealed partial class OpenCodePage
     }
 
     partial void OnEventMessageHistoryReset()
-        => _eventReducer = _selectedSessionId is { } id ? new(id) : null;
-
-    private async Task WaitForEventSubscriptionAsync(CancellationToken ct)
     {
-        if (_eventReady is not { } ready) return;
-        // A failed/offline stream must not prevent the initial REST fallback from loading.
-        await Task.WhenAny(ready.Task, Task.Delay(TimeSpan.FromSeconds(2), ct));
-        ct.ThrowIfCancellationRequested();
-        DrainEventQueue(); // Include everything received before the initial snapshot request.
+        ResetRuntimeFeedback();
+        _eventReducer = _selectedSessionId is { } id ? new(id) : null;
+    }
+
+    /// <summary>REST may paint before the SSE handshake. Remember the uncovered interval for one late-ready repair.</summary>
+    private void PrepareEventSnapshot()
+    {
+        DrainEventQueue(); // Caller captures the pre-drain version so buffered events also beat a stale snapshot.
+        if (_eventCts is null) return;
+        if (_eventReady?.Task.IsCompleted != true) _eventSnapshotBeforeReady = true;
+        if (_eventReconciliationPending)
+        {
+            _eventReconciliationPending = false;
+            _messageHistoryNeedsState = true; // Gap may contain a model/revert boundary, not just text.
+        }
+    }
+
+    private void OnEventStreamConnected(CancellationTokenSource owner, bool reconnect)
+    {
+        if (owner.IsCancellationRequested || !ReferenceEquals(owner, _eventCts) || !_pageActive || !SourceReady) return;
+        var repair = reconnect || _eventSnapshotBeforeReady;
+        _eventSnapshotBeforeReady = false;
+        if (repair)
+        {
+            _eventReconciliationPending = true;
+            // Preserve the existing reconnect boundary fence. First readiness must NOT hide the initial paint.
+            if (reconnect) _messageHistoryNeedsState = true;
+            if (_messageHistoryWorkflowOwner is null) _ = RefreshMessagesAsync();
+        }
+        _ = RefreshListedSessionStatusesAsync();
+    }
+
+    partial void OnMessageHistoryWorkflowEnded()
+    {
+        if (_eventReconciliationPending && _eventCts is { IsCancellationRequested: false }
+            && _pageActive && SourceReady) _ = RefreshMessagesAsync();
     }
 
     private static async IAsyncEnumerable<OpenCodeEvent> ReadSourceEventsAsync(OpenCodeClient client,
@@ -87,22 +123,17 @@ public sealed partial class OpenCodePage
             {
                 try
                 {
+                    var readyInConnection = false;
                     await foreach (var item in ReadSourceEventsAsync(client, source, ct).ConfigureAwait(false))
                     {
                         if (item.Type == "server.connected")
                         {
+                            if (readyInConnection) continue; // Duplicate readiness frames are not reconnects.
+                            readyInConnection = true;
                             ready.TrySetResult();
                             backoff = 1;
-                            if (connectedOnce)
-                                DispatcherQueue.TryEnqueue(() =>
-                                {
-                                    if (!ct.IsCancellationRequested && ReferenceEquals(owner, _eventCts))
-                                    {
-                                        _messageHistoryNeedsState = true;
-                                        _ = RefreshMessagesAsync();
-                                        _ = RefreshListedSessionStatusesAsync();
-                                    }
-                                });
+                            var reconnect = connectedOnce;
+                            DispatcherQueue.TryEnqueue(() => OnEventStreamConnected(owner, reconnect));
                             connectedOnce = true;
                             continue;
                         }
@@ -192,7 +223,11 @@ public sealed partial class OpenCodePage
                 || item.Type.StartsWith("inbox.", StringComparison.Ordinal) || item.Type.StartsWith("todo.", StringComparison.Ordinal))) refetch = true;
             if (item.Type is "session.updated" or "session.revert.staged" or "session.revert.cleared" or "session.revert.committed") _messageHistoryNeedsState = true;
         }
-        if (statusesChanged) RefreshSessionStateUi();
+        if (statusesChanged)
+        {
+            RefreshSessionStateUi();
+            RefreshComposerSessionActivity();
+        }
         if (refreshSessionList) _ = RefreshSessionsAsync();
         if (changed && _eventReducer is not null && _selectedSessionId is { } selected
             && _messageHistoryWorkflowOwner is null && !_messageHistoryNeedsState && !_sessionMissing)
@@ -242,14 +277,17 @@ public sealed partial class OpenCodePage
             source.TryExecute(ct, () => pending = client.GetActiveSessionsAsync(ct));
             if (pending is null) return;
             var response = await pending;
-            if (ct.IsCancellationRequested || generation != _pageGeneration || !ReferenceEquals(client, _client)) return;
-            foreach (var id in _sessionItems.Keys.Concat(response.Data!.Keys).Distinct(StringComparer.Ordinal))
+            if (ct.IsCancellationRequested || generation != _pageGeneration || !ReferenceEquals(client, _client)
+                || !ReferenceEquals(source, _source) || source.Revision != _sourceRevision || !_pageActive) return;
+            foreach (var id in _sessionItems.Keys.Concat(response.Data!.Keys)
+                .Concat(_selectedSessionId is { } selected ? new[] { selected } : Array.Empty<string>()).Distinct(StringComparer.Ordinal))
             {
                 if (_liveSessionStatuses.TryGetValue(id, out var live) && live.Version > version) continue;
                 if (response.Data.TryGetValue(id, out var active) && active.Type != "running") continue;
                 _liveSessionStatuses[id] = (response.Data.ContainsKey(id), ++_liveStatusVersion);
             }
             RefreshSessionStateUi();
+            RefreshComposerSessionActivity();
         }
         catch (OperationCanceledException) { }
         catch (OpenCodeException) { /* Keep last successful foreground observation; retry at fallback. */ }

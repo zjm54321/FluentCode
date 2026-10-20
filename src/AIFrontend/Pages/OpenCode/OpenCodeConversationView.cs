@@ -1,10 +1,12 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 using AIFrontend.Services.Appearance;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
@@ -40,7 +42,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// </para>
 /// <para>
 /// subagent 子任务（见 <see cref="OpenCodeSubagentPresentation"/>）：工具部件
-/// （<c>name == "subagent"</c>）悬停详情显示子会话预览，固定详情时的「打开子会话」链接经 <see cref="SubagentSessionRequested"/>
+/// （<c>name == "subagent"</c>）悬停详情显示调用预览，点击经 <see cref="SubagentSessionRequested"/>
 /// 向上转发导航提示；带 <c>metadata.source == "subagent"</c> 完成 metadata 的
 /// assistant / synthetic / system 消息显示「子任务结果」标记。事件只含不透明 ID，不授权、不发起请求；
 /// 部件被移除、替换或清空时退订并 Dispose，不产生 stale callbacks。
@@ -48,6 +50,154 @@ namespace AIFrontend.Pages.OpenCode;
 /// </remarks>
 public sealed class OpenCodeConversationView : StackPanel
 {
+    internal event EventHandler? BindingCleared;
+    private sealed class SteerRow
+    {
+        internal required OpenCodeInboxItem Item;
+        internal readonly StackPanel Element = new() { Spacing = 4, Margin = new Thickness(0, 6, 0, 6) };
+        internal readonly StackPanel Content = new() { Spacing = 4 };
+        internal readonly StackPanel Actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+        internal readonly OpenCodeRichTextPresenter Presenter = new();
+        internal readonly List<Button> Buttons = new();
+        internal string Signature = string.Empty;
+        internal JsonElement? RenderedPayload;
+    }
+    private readonly Dictionary<string, SteerRow> _steerRows = new(StringComparer.Ordinal);
+    private readonly List<string> _steerOrder = new();
+    private readonly HashSet<string> _renderedUserMessageIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _deliveredSteerIds = new(StringComparer.Ordinal);
+    private string? _steerSession;
+    private bool _steerBusy;
+    private Func<OpenCodeInboxItem, bool>? _canWithdrawSteer;
+    private Func<OpenCodeInboxItem, bool>? _canChangeSteerDelivery;
+    internal event EventHandler<string>? PendingSteerWithdrawRequested;
+    internal event EventHandler<OpenCodePendingDeliveryRequest>? PendingSteerDeliveryChangeRequested;
+
+    /// <summary>View-only projection of a fenced, accepted inbox snapshot. Never creates/adopts a history DTO or sends a prompt.
+    /// Only exact user/steer entries of the supplied selected session appear; durable IDs deduplicate against actual user history.</summary>
+    public void ApplyAdmittedSteer(string? sessionId, IReadOnlyList<OpenCodeInboxItem>? items,
+        Func<OpenCodeInboxItem, bool>? canWithdraw = null, Func<OpenCodeInboxItem, bool>? canChangeDelivery = null)
+    {
+        if (_steerSession != sessionId) _deliveredSteerIds.Clear();
+        _steerSession = sessionId;
+        _canWithdrawSteer = canWithdraw;
+        _canChangeSteerDelivery = canChangeDelivery;
+        var retained = new HashSet<string>(StringComparer.Ordinal);
+        _steerOrder.Clear();
+        if (sessionId is not null && items is not null)
+            foreach (var item in items)
+            {
+                if (item.SessionId != sessionId || !OpenCodeQueuedPromptsView.IsSteerUser(item) || item.Id is not { Length: > 0 } id || !retained.Add(id)) continue;
+                _steerOrder.Add(id);
+                if (!_steerRows.TryGetValue(id, out var row))
+                {
+                    row = new SteerRow { Item = item };
+                    row.Content.Children.Add(row.Presenter.Element);
+                    var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false);
+                    row.Element.Children.Add(bubble.Element);
+                    row.Element.Children.Add(row.Actions);
+                    AutomationProperties.SetAutomationId(row.Element, "OpenCodeAdmittedSteer." + id);
+                    _steerRows[id] = row;
+                }
+                row.Item = item;
+                UpdateSteerRow(row);
+            }
+        var stale = new List<string>();
+        foreach (var pair in _steerRows) if (!retained.Contains(pair.Key)) { Children.Remove(pair.Value.Element); stale.Add(pair.Key); }
+        foreach (var id in stale) _steerRows.Remove(id);
+        ReconcileSteerRows();
+    }
+
+    public void SetPendingSteerBusy(bool busy)
+    {
+        _steerBusy = busy;
+        foreach (var row in _steerRows.Values) foreach (var button in row.Buttons) button.IsEnabled = !busy;
+    }
+
+    private bool CurrentSteer(SteerRow row) => !_steerBusy && row.Item.SessionId == _steerSession
+        && row.Item.Id is { } id && _steerRows.TryGetValue(id, out var current) && ReferenceEquals(current, row)
+        && !_renderedUserMessageIds.Contains(id) && !_deliveredSteerIds.Contains(id) && ReferenceEquals(row.Element.Parent, this);
+
+    private void UpdateSteerRow(SteerRow row)
+    {
+        var item = row.Item;
+        var withdraw = _canWithdrawSteer?.Invoke(item) == true;
+        var change = _canChangeSteerDelivery?.Invoke(item) == true;
+        var signature = withdraw + "|" + change;
+        var samePayload = row.RenderedPayload is { } previous && item.Payload is { } current
+            ? JsonElement.DeepEquals(previous, current) : row.RenderedPayload is null && item.Payload is null;
+        if (signature == row.Signature && samePayload) return;
+        row.Signature = signature;
+        row.RenderedPayload = item.Payload;
+        var rawText = OpenCodeQueuedPromptsView.ReadText(item.Payload);
+        row.Presenter.Render(rawText, OpenCodeRichTextStyle.Body);
+        while (row.Content.Children.Count > 1) row.Content.Children.RemoveAt(1);
+        if (item.Payload is { ValueKind: JsonValueKind.Object } payload)
+            foreach (var attachmentKind in new[] { "files", "agents", "skills" })
+                if (payload.TryGetProperty(attachmentKind, out var attachments) && attachments.ValueKind == JsonValueKind.Array)
+                {
+                    var index = 0;
+                    foreach (var attachment in attachments.EnumerateArray())
+                    {
+                        index++;
+                        var name = attachment.ValueKind == JsonValueKind.Object && attachment.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
+                        var label = attachmentKind == "files" ? "附件" : attachmentKind == "agents" ? "智能体附件" : "技能附件";
+                        row.Content.Children.Add(OpenCodeInteractionUi.StyledText(label + "：" + (string.IsNullOrWhiteSpace(name) ? index.ToString(CultureInfo.InvariantCulture) : name), OpenCodeInteractionUi.CaptionStyleKey, selectable: true));
+                    }
+                }
+        if (string.IsNullOrEmpty(rawText) && row.Content.Children.Count == 1)
+            row.Content.Children.Add(OpenCodeInteractionUi.StyledText("（空消息）", OpenCodeInteractionUi.CaptionStyleKey));
+        row.Actions.Children.Clear(); row.Buttons.Clear();
+        if (change)
+        {
+            var button = new Button { Content = "投递方式", IsEnabled = !_steerBusy };
+            var menu = new MenuFlyout();
+            var queue = new MenuFlyoutItem { Text = "当前回合结束后发送" };
+            queue.Click += (_, _) => { if (CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true)
+                PendingSteerDeliveryChangeRequested?.Invoke(this, new(row.Item.Id!, OpenCodeDeliveryModes.Queue)); };
+            menu.Items.Add(queue); button.Flyout = menu;
+            AutomationProperties.SetAutomationId(button, "OpenCodeAdmittedSteerDelivery." + item.Id);
+            row.Actions.Children.Add(button); row.Buttons.Add(button);
+        }
+        if (withdraw)
+        {
+            var button = new Button { Content = "撤回", IsEnabled = !_steerBusy };
+            button.Click += (_, _) => { if (CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true) PendingSteerWithdrawRequested?.Invoke(this, row.Item.Id!); };
+            AutomationProperties.SetAutomationId(button, "OpenCodeAdmittedSteerWithdraw." + item.Id);
+            row.Actions.Children.Add(button); row.Buttons.Add(button);
+        }
+        row.Actions.Visibility = withdraw || change ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ReconcileSteerRows()
+    {
+        var projected = new HashSet<UIElement>();
+        foreach (var row in _steerRows.Values) projected.Add(row.Element);
+        foreach (var id in _steerOrder)
+        {
+            if (_renderedUserMessageIds.Contains(id)) _deliveredSteerIds.Add(id);
+            if (_deliveredSteerIds.Contains(id)) Children.Remove(_steerRows[id].Element);
+        }
+        var index = 0;
+        foreach (var element in Children) if (!projected.Contains(element)) index++;
+        foreach (var id in _steerOrder)
+        {
+            var element = _steerRows[id].Element;
+            if (_deliveredSteerIds.Contains(id)) continue;
+            if (index >= Children.Count || !ReferenceEquals(Children[index], element))
+            {
+                Children.Remove(element);
+                Children.Insert(Math.Min(index, Children.Count), element);
+            }
+            index++;
+        }
+    }
+
+    private bool IsViewProjection(UIElement element)
+    {
+        foreach (var row in _steerRows.Values) if (ReferenceEquals(element, row.Element)) return true;
+        return false;
+    }
     private sealed class Entry
     {
         public required string Key { get; init; }
@@ -195,7 +345,7 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     /// <summary>
-    /// 用户点击某工具部件（<c>name == "subagent"</c>）固定详情时的「打开子会话」链接（或子任务完成卡片的「查看子会话」）时触发。
+    /// 用户点击某工具部件（<c>name == "subagent"</c>）或子任务完成行时请求只读子会话窗口。
     /// 参数只含父消息 id 与通过不透明校验的子会话 id，属纯导航提示：不授权、不直接发起任何
     /// HTTP 或子会话查询。消费方须先确认来源 / 选中代际，并以 GET child info.parentID（或祖先链）
     /// 复核归属后才加载子会话消息。
@@ -231,6 +381,9 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>清空全部已渲染消息（切换会话或卸载时调用）；同时退订并停用全部子部件回调。</summary>
     public void ClearMessages()
     {
+        BindingCleared?.Invoke(this, EventArgs.Empty);
+        ApplyAdmittedSteer(null, null);
+        _renderedUserMessageIds.Clear();
         foreach (var entry in _entries)
         {
             entry.Dispose?.Invoke();
@@ -292,6 +445,7 @@ public sealed class OpenCodeConversationView : StackPanel
         var newEntries = new List<Entry>(messages.Count);
         var seenKeys = new HashSet<string>(StringComparer.Ordinal);
         var renderedIds = new HashSet<string>(StringComparer.Ordinal);
+        var renderedUserIds = new HashSet<string>(StringComparer.Ordinal);
 
         for (var i = 0; i < messages.Count; i++)
         {
@@ -300,6 +454,7 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 // 仅收真实 id；匿名兜底 key 与重复 id 序号兜底 key 不进入归属索引。
                 renderedIds.Add(messageId);
+                if (message.Type == OpenCodeMessageTypes.User) renderedUserIds.Add(messageId);
             }
 
             var key = BuildKey(message, i);
@@ -381,10 +536,8 @@ public sealed class OpenCodeConversationView : StackPanel
             Children.Insert(Math.Min(i, Children.Count), element);
         }
 
-        while (Children.Count > newEntries.Count)
-        {
-            Children.RemoveAt(Children.Count - 1);
-        }
+        for (var index = Children.Count - 1; index >= newEntries.Count; index--)
+            if (!IsViewProjection(Children[index])) Children.RemoveAt(index);
 
         _entries.Clear();
         _entries.AddRange(newEntries);
@@ -392,6 +545,8 @@ public sealed class OpenCodeConversationView : StackPanel
         // 真实 id 索引按本次快照整体重建，始终与已渲染条目对应（不在循环中半更新）。
         _renderedMessageIds.Clear();
         _renderedMessageIds.UnionWith(renderedIds);
+        _renderedUserMessageIds.Clear();
+        _renderedUserMessageIds.UnionWith(renderedUserIds);
         ApplyStepChains();
         RaiseQuestionAnchorsChangedIfNeeded();
     }
@@ -697,7 +852,8 @@ public sealed class OpenCodeConversationView : StackPanel
         presenter.Render(message.Text, OpenCodeRichTextStyle.Body);
 
         // 默认最多两行，更长时用 chevron 展开 / 收起（H14）；呈现器实例与 key 跨更新保持。
-        var bubble = new OpenCodeUserBubbleView(presenter.Element);
+        var bubble = new OpenCodeUserBubbleView(presenter.Element, delivered: true);
+        bubble.Element.Margin = new Thickness(0, 6, 0, 6);
 
         return new Entry
         {
@@ -1332,6 +1488,7 @@ public sealed class OpenCodeConversationView : StackPanel
             var visible = state.HasBoundary || state.CompletionShown || hasVisibleRun;
             element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         }
+        ReconcileSteerRows();
     }
 
     private static void AlignChildren(Panel panel, List<UIElement> elements)

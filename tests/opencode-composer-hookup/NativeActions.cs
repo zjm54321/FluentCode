@@ -337,6 +337,9 @@ namespace AIFrontend.Pages.OpenCode
         internal static Func<OpenCodeDraftEditorDialog, Func<string, OpenCodeDraftEditorApplyOutcome>, Task<OpenCodeDraftEditorResult>> Next = null!;
         internal bool Stale;
         internal void MarkStale() => Stale = true;
-        internal Task<OpenCodeDraftEditorResult> ShowAsync(XamlRoot root, string initial, Func<string, OpenCodeDraftEditorApplyOutcome> apply) => Next(this, apply);
+        internal int SelectionStart { get; private set; }
+        internal int SelectionLength { get; private set; }
+        internal Task<OpenCodeDraftEditorResult> ShowAsync(XamlRoot root, string initial, Func<string, OpenCodeDraftEditorApplyOutcome> apply, int selectionStart = 0, int selectionLength = 0)
+        { SelectionStart = selectionStart; SelectionLength = selectionLength; return Next(this, apply); }
     }
 }

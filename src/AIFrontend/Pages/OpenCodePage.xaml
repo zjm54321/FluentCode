@@ -454,13 +454,15 @@
                                     <ScrollViewer
                                         x:Name="MessageScroll"
                                         Grid.Row="1"
+                                        HorizontalContentAlignment="Center"
                                         VerticalScrollBarVisibility="Auto"
                                         ViewChanged="MessageScroll_ViewChanged"
                                         AutomationProperties.AutomationId="OpenCodeMessageScroll">
                                         <Grid
                                             x:Name="MessageHost"
                                             MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
-                                            Padding="0,0,12,0" />
+                                            HorizontalAlignment="Center"
+                                            Padding="6,0,6,0" />
                                     </ScrollViewer>
 
                                     <!-- F3 消息历史分页：滚动到顶部附近自动加载更早消息（单飞、预插保持阅读位置；
@@ -492,19 +494,6 @@
                                         Style="{ThemeResource BodyTextBlockStyle}"
                                         Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
 
-                                    <Button
-                                        x:Name="ScrollToBottomButton"
-                                        Grid.Row="1"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Bottom"
-                                        Visibility="Collapsed"
-                                        Margin="0,0,16,12"
-                                        Click="ScrollToBottomButton_Click"
-                                        AutomationProperties.AutomationId="OpenCodeScrollToBottomButton"
-                                        AutomationProperties.Name="回到底部"
-                                        ToolTipService.ToolTip="回到底部">
-                                        <FontIcon Glyph="&#xE70D;" FontSize="12" />
-                                    </Button>
                                 </Grid>
 
                                 <!-- Row 3（新标签页布局）：标题区，L2 使用；默认折叠 -->
@@ -552,13 +541,33 @@
                                     Grid.Row="5"
                                     Margin="0,8,0,0"
                                     MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
-                                    Visibility="Collapsed" />
+                                     Visibility="Collapsed" />
+
+                                <Button
+                                    x:Name="ScrollToBottomButton"
+                                    Grid.Row="5"
+                                    Grid.RowSpan="2"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Top"
+                                    Visibility="Collapsed"
+                                    Margin="0,-40,0,0"
+                                    Canvas.ZIndex="10"
+                                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                    BorderBrush="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    Click="ScrollToBottomButton_Click"
+                                    AutomationProperties.AutomationId="OpenCodeScrollToBottomButton"
+                                    AutomationProperties.Name="回到底部"
+                                    ToolTipService.ToolTip="回到底部">
+                                    <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                </Button>
 
                                 <!-- Row 6 输入区单元格：输入卡片 + 权限遮罩宿主（同一单元格，遮罩盖在输入区之上；L5 填充）。
                                      输入框在任何布局/遮罩状态下都留在可视树中、不换父元素。 -->
                                 <Grid
                                     x:Name="ComposerCell"
                                     Grid.Row="6"
+                                    HorizontalAlignment="Center"
                                     Margin="0,8,0,0"
                                     MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}">
                                     <Border
@@ -568,36 +577,34 @@
                                         BorderThickness="1"
                                         CornerRadius="{ThemeResource OverlayCornerRadius}"
                                         Padding="12,10">
-                                        <StackPanel>
+                                         <StackPanel>
                                             <!-- 命令 / 附件伴随视图宿主：页面代码挂入 OpenCodeComposerView 后设为可见；未挂入时折叠、不占位。 -->
                                             <Grid
                                                 x:Name="ComposerCompanionHost"
                                                 Visibility="Collapsed"
                                                 AutomationProperties.AutomationId="OpenCodeComposerCompanionHost" />
 
-                                            <!-- 输入行（wave3 F1）：左侧唯一的“+”按钮宿主（OpenCodeComposerView.AddButton：原生 Button + MenuFlyout），
-                                                 右侧为原输入网格。内层网格结构不变：单行时发送按钮位于输入框右外侧（列 1）；多行增高时由代码
-                                                 移入框内右下角（列 0 右缘内侧覆盖 + 右侧内边距留白，绝不遮挡文字）。单/多行判定与几何见契约 §14。 -->
-                                            <Grid ColumnDefinitions="Auto,*">
+                                             <!-- 固定外侧操作列：单行、换行和滚动时 + / 发送都不进入 TextBox；不预留覆盖按钮的空槽。
+                                                  编辑器保持同一父元素与主题内边距，保留原生 IME、增高和滚动。 -->
+                                             <Grid x:Name="ComposerInputLayout" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                                             <Grid
                                                 x:Name="ComposerLeadingHost"
                                                 Grid.Column="0"
                                                 Margin="0,0,8,4"
                                                 VerticalAlignment="Bottom" />
-                                            <Grid Grid.Column="1" ColumnDefinitions="*,40">
-                                                <TextBox
+                                                 <TextBox
                                                     x:Name="Composer"
-                                                    Grid.Column="0"
+                                                     Grid.Column="1"
                                                     AcceptsReturn="True"
                                                     TextWrapping="Wrap"
                                                     MinHeight="40"
-                                                    MaxHeight="160"
+                                                     MaxHeight="140"
                                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
                                                     PlaceholderText="给 OpenCode 发消息"
                                                     KeyDown="Composer_KeyDown"
                                                     KeyUp="Composer_KeyUp"
                                                     AutomationProperties.AutomationId="OpenCodeComposer"
-                                                    AutomationProperties.Name="消息输入" />
+                                                     AutomationProperties.Name="消息输入" />
 
                                                  <!-- New landing only: same outside-editor toolbar, immediately after +. -->
                                                  <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,*,Auto"
@@ -613,7 +620,7 @@
 
                                                 <StackPanel
                                                     x:Name="ComposerActions"
-                                                    Grid.Column="1"
+                                                     Grid.Column="2"
                                                     Orientation="Horizontal"
                                                     Spacing="8"
                                                     HorizontalAlignment="Right"
@@ -626,7 +633,27 @@
                                                         IsActive="False"
                                                         Visibility="Collapsed"
                                                         VerticalAlignment="Center"
-                                                        AutomationProperties.AutomationId="OpenCodeSendProgress" />
+                                                         AutomationProperties.AutomationId="OpenCodeSendProgress" />
+                                                    <Button
+                                                        x:Name="ComposerExpandButton"
+                                                        Width="32" Height="32" MinWidth="0" Padding="0"
+                                                        Visibility="Collapsed"
+                                                        Click="ComposerExpandButton_Click"
+                                                        AutomationProperties.AutomationId="OpenCodeComposerExpand"
+                                                        AutomationProperties.Name="展开输入框"
+                                                        ToolTipService.ToolTip="展开输入框">
+                                                        <FontIcon Glyph="&#xE70E;" FontSize="14" />
+                                                    </Button>
+                                                    <Button
+                                                        x:Name="ComposerQueueButton"
+                                                        Width="32" Height="32" MinWidth="0" Padding="0"
+                                                        Visibility="Collapsed" IsEnabled="False"
+                                                        Click="ComposerQueueButton_Click"
+                                                        AutomationProperties.AutomationId="OpenCodeComposerQueue"
+                                                        AutomationProperties.Name="当前回合结束后发送"
+                                                        ToolTipService.ToolTip="当前回合结束后发送">
+                                                        <FontIcon Glyph="&#xE823;" FontSize="14" />
+                                                    </Button>
                                                     <Button
                                                         x:Name="SendStopButton"
                                                         Width="32"
@@ -645,8 +672,7 @@
                                                             FontSize="14" />
                                                     </Button>
                                                 </StackPanel>
-                                            </Grid>
-                                            </Grid>
+                                             </Grid>
                                         </StackPanel>
                                     </Border>
 

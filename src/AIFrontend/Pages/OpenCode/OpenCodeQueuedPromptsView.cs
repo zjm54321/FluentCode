@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// 排队条（重设计 v3 §9.1）：列出本会话尚未投递的 inbox 条目及其投递方式，位于输入区上方。
+/// 输入区上方的待投递消息平铺列表：保留 inbox 顺序，明确区分插入当前回合与回合结束后发送。
 /// </summary>
 /// <remarks>
 /// 数据来自页面已有的 <c>GET /api/session/{id}/inbox</c> 读取（条目仍在 inbox = 尚未投递）。
@@ -19,40 +19,36 @@ namespace AIFrontend.Pages.OpenCode;
 /// </remarks>
 internal sealed class OpenCodeQueuedPromptsView : Grid
 {
-    private const int PreviewLength = 120;
-
-    // Expander is a WinUI library control, not a composable native base class.
-    // Inheriting it creates a ContentControl native peer: its Expander template then
-    // throws XAML HRESULT 0x800F1000 as soon as the first queued row becomes visible.
-    private readonly Expander _expander = new();
+    private readonly ScrollViewer _scroll = new()
+    {
+        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        HorizontalScrollMode = ScrollMode.Disabled,
+        MaxHeight = 240,
+    };
     private readonly StackPanel _list = new() { Spacing = 6 };
-    private readonly TextBlock _header;
     private readonly List<Button> _withdrawButtons = new();
+    private readonly List<Button> _deliveryButtons = new();
     private string _signature = string.Empty;
     private bool _withdrawBusy;
 
     /// <summary>用户点击某行“撤回”（参数为 inbox 条目 id）。</summary>
     internal event EventHandler<string>? WithdrawRequested;
+    internal event EventHandler<OpenCodePendingDeliveryRequest>? DeliveryChangeRequested;
+    internal event EventHandler? BusyChanged;
+    internal void RequestWithdraw(string id) { if (!_withdrawBusy) WithdrawRequested?.Invoke(this, id); }
+    internal void RequestDeliveryChange(OpenCodePendingDeliveryRequest request) { if (!_withdrawBusy) DeliveryChangeRequested?.Invoke(this, request); }
+    internal static bool IsSteerUser(OpenCodeInboxItem item)
+        => item.Type == OpenCodeInboxItemTypes.User && item.Delivery == OpenCodeDeliveryModes.Steer;
 
     internal OpenCodeQueuedPromptsView()
     {
-        AutomationProperties.SetAutomationId(_expander, "OpenCodeQueuedPrompts");
+        AutomationProperties.SetAutomationId(this, "OpenCodeQueuedPrompts");
+        AutomationProperties.SetName(this, "待投递消息");
         HorizontalAlignment = HorizontalAlignment.Stretch;
-        _expander.HorizontalAlignment = HorizontalAlignment.Stretch;
-        _expander.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        _expander.IsExpanded = true;
         Visibility = Visibility.Collapsed;
-
-        var icon = new FontIcon { Glyph = "\uE823", FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
-        AutomationProperties.SetAccessibilityView(icon, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-        _header = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.BodyStyleKey);
-        _header.VerticalAlignment = VerticalAlignment.Center;
-        var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        header.Children.Add(icon);
-        header.Children.Add(_header);
-        _expander.Header = header;
-        _expander.Content = _list;
-        Children.Add(_expander);
+        _scroll.Content = _list;
+        Children.Add(_scroll);
     }
 
     /// <summary>是否有可显示的排队条目。</summary>
@@ -69,6 +65,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
             {
                 button.IsEnabled = !value;
             }
+            foreach (var button in _deliveryButtons) button.IsEnabled = !value;
+            BusyChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -76,9 +74,10 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     /// 用最新 inbox 快照重绘；null 或空表示无排队条目（视图折叠）。
     /// <paramref name="canWithdraw"/> 判定某条目是否显示“撤回”（页面只对本页发出的用户输入返回 true）。
     /// </summary>
-    internal void Apply(IReadOnlyList<OpenCodeInboxItem>? items, Func<OpenCodeInboxItem, bool>? canWithdraw = null)
+    internal void Apply(IReadOnlyList<OpenCodeInboxItem>? items, Func<OpenCodeInboxItem, bool>? canWithdraw = null,
+        Func<OpenCodeInboxItem, bool>? canChangeDelivery = null)
     {
-        var rows = new List<(string Id, string Text, string Delivery, bool Withdrawable)>();
+        var rows = new List<(string Id, string Text, string Delivery, bool Withdrawable, bool Changeable)>();
         if (items is not null)
         {
             foreach (var item in items)
@@ -87,13 +86,15 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
                 {
                     continue;
                 }
+                if (IsSteerUser(item)) continue; // Admitted steer is projected as chat by ConversationView, not a lower pending row.
 
                 var withdrawable = item.Type == OpenCodeInboxItemTypes.User && canWithdraw?.Invoke(item) == true;
-                rows.Add((id, DescribeContent(item), DescribeDelivery(item.Delivery), withdrawable));
+                rows.Add((id, DescribeContent(item), item.Delivery ?? string.Empty, withdrawable,
+                    item.Type == OpenCodeInboxItemTypes.User && canChangeDelivery?.Invoke(item) == true));
             }
         }
 
-        var signature = string.Join("\u001f", rows.ConvertAll(static r => r.Id + "\u001e" + r.Text + "\u001e" + r.Delivery + "\u001e" + r.Withdrawable));
+        var signature = string.Join("\u001f", rows.ConvertAll(static r => r.Id + "\u001e" + r.Text + "\u001e" + r.Delivery + "\u001e" + r.Withdrawable + "\u001e" + r.Changeable));
         if (signature == _signature)
         {
             return;
@@ -102,20 +103,18 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         _signature = signature;
         _list.Children.Clear();
         _withdrawButtons.Clear();
-        foreach (var (id, text, delivery, withdrawable) in rows)
+        _deliveryButtons.Clear();
+        foreach (var (id, text, delivery, withdrawable, changeable) in rows)
         {
-            _list.Children.Add(CreateRow(id, text, delivery, withdrawable));
+            _list.Children.Add(CreateRow(id, text, delivery, withdrawable, changeable));
         }
-
-        _header.Text = "排队中 " + rows.Count + " 条";
-        AutomationProperties.SetName(_expander, "排队中的消息（" + rows.Count + " 条，尚未投递）");
         Visibility = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>投递方式的用户可读说明（steer = 插入当前回合；queue = 当前回合结束后发送）。</summary>
     internal static string DescribeDelivery(string? delivery) => delivery switch
     {
-        OpenCodeDeliveryModes.Steer => "将插入当前回合",
+        OpenCodeDeliveryModes.Steer => "插入当前回合",
         OpenCodeDeliveryModes.Queue => "当前回合结束后发送",
         null or "" => "等待投递",
         _ => "等待投递（" + delivery + "）",
@@ -130,7 +129,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
                 var text = ReadText(item.Payload);
                 if (text is { Length: > 0 })
                 {
-                    return Preview(text);
+                    return text;
                 }
 
                 return item.Type == OpenCodeInboxItemTypes.User ? "（仅附件）" : "（系统输入）";
@@ -143,7 +142,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         }
     }
 
-    private static string? ReadText(JsonElement? payload)
+    internal static string? ReadText(JsonElement? payload)
     {
         try
         {
@@ -151,7 +150,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
                 && p.TryGetProperty("text", out var text)
                 && text.ValueKind == JsonValueKind.String)
             {
-                return text.GetString()?.Trim();
+                return text.GetString();
             }
         }
         catch (InvalidOperationException)
@@ -162,13 +161,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         return null;
     }
 
-    private static string Preview(string text)
-    {
-        var singleLine = text.ReplaceLineEndings(" ");
-        return singleLine.Length <= PreviewLength ? singleLine : singleLine[..PreviewLength] + "…";
-    }
-
-    private FrameworkElement CreateRow(string id, string text, string delivery, bool withdrawable)
+    private FrameworkElement CreateRow(string id, string text, string delivery, bool withdrawable, bool changeable)
     {
         var grid = new Grid { ColumnSpacing = 12 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -185,7 +178,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
                 IsEnabled = !_withdrawBusy,
             };
             AutomationProperties.SetAutomationId(withdraw, "OpenCodeQueuedPromptWithdraw." + id);
-            AutomationProperties.SetName(withdraw, "撤回排队消息：" + text);
+            AutomationProperties.SetName(withdraw, "撤回待投递消息：" + text);
             ToolTipService.SetToolTip(withdraw, "撤回这条尚未发送的消息；确认未发送后放回输入框");
             withdraw.Click += (_, _) =>
             {
@@ -200,21 +193,38 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         }
 
         var body = OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey, selectable: true);
-        body.TextWrapping = TextWrapping.NoWrap;
-        body.TextTrimming = TextTrimming.CharacterEllipsis;
-        body.MaxLines = 1;
+        body.TextWrapping = TextWrapping.Wrap;
         body.VerticalAlignment = VerticalAlignment.Center;
         ToolTipService.SetToolTip(body, text);
         grid.Children.Add(body);
 
-        var mode = OpenCodeInteractionUi.StyledText(delivery, OpenCodeInteractionUi.CaptionSubtleStyleKey);
+        var mode = OpenCodeInteractionUi.StyledText(DescribeDelivery(delivery), OpenCodeInteractionUi.CaptionSubtleStyleKey);
         mode.VerticalAlignment = VerticalAlignment.Center;
-        mode.TextWrapping = TextWrapping.NoWrap;
-        Grid.SetColumn(mode, 1);
-        grid.Children.Add(mode);
+        mode.TextWrapping = TextWrapping.Wrap;
+        FrameworkElement deliveryControl = mode;
+        if (changeable)
+        {
+            var change = new Button { Content = mode, IsEnabled = !_withdrawBusy };
+            var menu = new MenuFlyout();
+            foreach (var target in new[] { OpenCodeDeliveryModes.Steer, OpenCodeDeliveryModes.Queue })
+            {
+                var choice = new MenuFlyoutItem { Text = DescribeDelivery(target), IsEnabled = target != delivery };
+                choice.Click += (_, _) => { if (!_withdrawBusy) DeliveryChangeRequested?.Invoke(this, new(id, target)); };
+                menu.Items.Add(choice);
+            }
+            change.Flyout = menu;
+            AutomationProperties.SetAutomationId(change, "OpenCodePendingDelivery." + id);
+            AutomationProperties.SetName(change, "修改投递方式：" + DescribeDelivery(delivery));
+            _deliveryButtons.Add(change);
+            deliveryControl = change;
+        }
+        Grid.SetColumn(deliveryControl, 1);
+        grid.Children.Add(deliveryControl);
 
         AutomationProperties.SetAutomationId(grid, "OpenCodeQueuedPrompt." + id);
-        AutomationProperties.SetName(grid, text + "，" + delivery);
+        AutomationProperties.SetName(grid, text + "，" + DescribeDelivery(delivery));
         return grid;
     }
 }
+
+internal sealed record OpenCodePendingDeliveryRequest(string InboxId, string Delivery);

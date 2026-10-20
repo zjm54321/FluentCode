@@ -77,6 +77,16 @@ public sealed partial class OpenCodeClient
             new { model = modelRef }, 204, SessionControlKind.SwitchModel, null, tryStart, ct).ConfigureAwait(false);
     }
 
+    /// <summary>Selected-session interrupt using the same bounded typed rejection path as other protected controls.</summary>
+    public async Task<bool> InterruptGuardedAsync(string sessionId, Func<Action, bool> tryStart, CancellationToken ct = default)
+    {
+        ValidateInteractionId(sessionId, "ses", nameof(sessionId));
+        using var document = await StartSessionControlAsync(sessionId, "/interrupt", HttpMethod.Post,
+            null, 200, SessionControlKind.Interrupt, null, tryStart, ct).ConfigureAwait(false)
+            ?? throw SessionControlJson.Invalid();
+        return SessionControlJson.Boolean(SessionControlJson.Required(document.RootElement, "interrupted"));
+    }
+
     public async Task<SessionControlRevert> StageRevertGuardedAsync(string sessionId, string messageId, bool files,
         Func<Action, bool> tryStart, CancellationToken ct = default)
     {
@@ -223,8 +233,18 @@ public sealed partial class OpenCodeClient
             // Official stage may capture a Git snapshot BEFORE looking up the boundary. Typed 404 is
             // useful feedback, but is not a promise that even preparatory filesystem effects were absent.
         }
-        else if (status == 400 && tag == "InvalidRequestError") kind = SessionControlErrorKind.InvalidRequest;
-        else if (status == 401 && tag == "UnauthorizedError") kind = SessionControlErrorKind.Unauthorized;
+        else if (status == 400 && tag == "InvalidRequestError")
+        {
+            kind = SessionControlErrorKind.InvalidRequest;
+            verified = mutation is SessionControlKind.Interrupt or SessionControlKind.Background && Shape(false)
+                && (!value.TryGetProperty("sessionID", out _) || Matches("sessionID", sessionId));
+        }
+        else if (status == 401 && tag == "UnauthorizedError")
+        {
+            kind = SessionControlErrorKind.Unauthorized;
+            verified = mutation is SessionControlKind.Interrupt or SessionControlKind.Background && Shape(false)
+                && (!value.TryGetProperty("sessionID", out _) || Matches("sessionID", sessionId));
+        }
         // No speculative LocationNotFound payload validator: unverified variants remain unknown/protected.
         return new(status, kind, verified);
     }

@@ -83,6 +83,9 @@ namespace AIFrontend.Pages
     public sealed class OpenCodeConversationView
     {
         public List<IReadOnlyList<OpenCodeMessage>> Applied { get; } = new();
+        public bool? TurnActivity { get; private set; }
+        public int ActivityPublications { get; private set; }
+        public void SetCurrentTurnActivity(bool? active) { TurnActivity = active; ActivityPublications++; }
 
         public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) => Applied.Add(messages);
 
@@ -91,8 +94,7 @@ namespace AIFrontend.Pages
 
     public sealed partial class OpenCodePage
     {
-        private OpenCodeEventReducer? _eventReducer = null; // This suite exercises REST pagination; event reducer has its own suite.
-        private Task WaitForEventSubscriptionAsync(CancellationToken ct) => Task.CompletedTask;
+        private OpenCodeEventReducer? _eventReducer = null; // Real reducer is enabled by the controlled readiness cases.
         // ---- 替代 OpenCodePage.xaml.cs（未参与本测试编译）的最小页面面 ----
         private readonly OpenCodeConversationView _conversationView = new();
         // F3: no "load older" button; the production partial reports its presentation state through this hook.
@@ -252,8 +254,9 @@ namespace AIFrontend.Pages
             && string.Equals(sessionId, _selectedSessionId, StringComparison.Ordinal);
 
         // ---- 测试钩子（仅本测试编译可见） ----
-        internal void TestActivate(string sessionId, OpenCodeClient client)
+        internal void TestActivate(string sessionId, OpenCodeClient client, Func<OpenCodeClient>? clientFactory = null)
         {
+            StopEventSync();
             // 镜像 xaml.cs：进入页面 / 选中会话各自的代际递增（测试中仅一次）。
             _pageGeneration++;
             _sessionGeneration++;
@@ -261,7 +264,7 @@ namespace AIFrontend.Pages
             _client = client;
             _sourceRevision++;
             _sourceGeneration++;
-            _source = new OpenCodePageSource("pagination-" + Guid.NewGuid(), _sourceRevision, () => client);
+            _source = new OpenCodePageSource("pagination-" + Guid.NewGuid(), _sourceRevision, clientFactory ?? (() => client));
             _pageActive = true;
             _sessionMissing = false;
             _selectedSessionId = sessionId;
@@ -280,6 +283,8 @@ namespace AIFrontend.Pages
         internal void TestAcceptedHistory(string? boundary) => ResetAcceptedHistoryProjection(boundary);
         internal long TestEpoch => _messageHistoryEpoch;
         internal int TestAppliedCount => _conversationView.Applied.Count;
+        internal IReadOnlyList<string> TestAppliedTexts => _conversationView.Applied.ConvertAll(rows =>
+            rows.Count == 1 && rows[0].Content is { Count: > 0 } parts ? parts[0].Text ?? "" : "");
         internal bool TestOlderBusy => _isLoadingOlderMessages;
         internal void TestBeginSend(long owner) => BeginMessageHistoryWorkflow(owner);
         internal void TestEndSend(long owner, bool reset) => EndMessageHistoryWorkflow(owner, reset);

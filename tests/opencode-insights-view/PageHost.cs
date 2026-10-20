@@ -30,9 +30,11 @@ namespace AIFrontend.Pages
         private bool _sessionMissing;
         private string? _selectedSessionId;
 
-        // Redesign §10: the view is hosted once in the right insights pane (no Flyout any more).
+        // Redesign §10 + Wave 5 G5: the view is hosted once in the right insights pane; the context ring is hosted once in the header.
+        private readonly Border ContextRingHost = new();
         private readonly Border InsightsPaneHost = new();
-        private readonly Button SessionInsightsButton = new();
+        private readonly SplitView InsightsPane = new();
+        private readonly ToggleButton SessionInsightsButton = new();
 
         // ---- doubles for the Agents-section child navigation (OpenCodePage.SessionInsights.cs) ----
         private sealed class AgentSelectorDouble { public string? CurrentAgentId { get; set; } = "build"; }
@@ -69,7 +71,7 @@ namespace AIFrontend.Pages
 
         // ---- doubles for unrelated services referenced by the extracted InvalidateForSourceChange ----
         private enum ConnectionState { Unknown }
-        private sealed class Clearable { public void ClearMessages() { } public void ClearAll() { } public void Clear() { } }
+        private sealed class Clearable { public void ClearMessages() { } public void ClearAll() { } public void Clear() { } public void ApplyMessages(List<OpenCodeMessage> messages) { } }
         private sealed class Hideable { public void HideConfirm() { } public void HideEntry() { } }
         private sealed class Bar { public bool IsOpen { get; set; } }
         private sealed class ListDouble { public Clearable Items { get; } = new(); }
@@ -105,8 +107,8 @@ namespace AIFrontend.Pages
 
         private void ResetMessagePaginationState() => OnMessageHistoryReset();
         partial void OnMessageHistoryReset();
-        private List<OpenCodeMessage> MergeMessageHistory() => new();
-        private bool IsLoadedMessageHistoryComplete() => false;
+        private List<OpenCodeMessage> MergeMessageHistory() { MergeCalls++; return new(_latestMessages); }
+        private bool IsLoadedMessageHistoryComplete() => _messageChainState == MessagePaginationChainState.Exhausted;
 
         // ---- test surface ----
         internal OpenCodePage() => InitializeSessionInsights();

@@ -544,7 +544,8 @@ internal static class OpenCodeComposerSendPresentation
     {
         if (buttons.ShowProgress) return OpenCodeComposerSendMode.Submitting;
         if (buttons.StopMode) return OpenCodeComposerSendMode.Working;
-        if (buttons.CanSend) return isWorking ? OpenCodeComposerSendMode.Queue : OpenCodeComposerSendMode.Send;
+        // Working does not change the primary action: direct steer. Queue has its own clock button.
+        if (buttons.CanSend) return OpenCodeComposerSendMode.Send;
         return OpenCodeComposerSendMode.Unavailable;
     }
 

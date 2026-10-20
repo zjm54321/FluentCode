@@ -71,15 +71,19 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private Guid _handoffDraft;
     private long _handoffEdit;
     public void RequestSubmit(OpenCodeComposerToken token)
+        => RequestSubmit(token, null);
+
+    internal void RequestSubmit(OpenCodeComposerToken token, string? delivery)
     {
+        if (delivery is not (null or OpenCodeDeliveryModes.Steer or OpenCodeDeliveryModes.Queue)) return;
         bool unbound;
         lock (_sync)
         {
             if (!Current(token) || Busy || !HasDraft || HasClientAction) return;
             unbound = IsUnbound(_binding);
         }
-        if (unbound) UnboundSubmitRequested?.Invoke(this, new(token));
-        else SubmitRequested?.Invoke(this, new(token));
+        if (unbound) UnboundSubmitRequested?.Invoke(this, new(token, delivery));
+        else SubmitRequested?.Invoke(this, new(token, delivery));
     }
 
     // Arms the ONLY rebasing of a command/attachment draft's origin: from this exact unbound binding to the one
@@ -473,6 +477,32 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     }
     private bool CurrentClientAction(OpenCodeComposerClientActionTicket ticket) => ReferenceEquals(_clientAction, ticket)
         && ReferenceEquals(_catalogLifetime, ticket.Lifetime) && Equals(_binding, ticket.Binding) && Current(ticket.Token);
+
+    // Direct expand-button capability: the same local editor ticket, without inventing a slash
+    // command or changing the draft. Source/ABA, view lifetime, busy and existing intent guards remain.
+    internal OpenCodeComposerClientActionTicket? TryTakeDraftEditorAction(OpenCodeComposerToken expected)
+    {
+        OpenCodeComposerBinding binding;
+        lock (_sync)
+        {
+            if (!Current(expected)) return null;
+            binding = _binding!;
+        }
+        OpenCodeComposerClientActionTicket? ticket = null;
+        binding.Source.TryExecute(CancellationToken.None, () =>
+        {
+            lock (_sync)
+            {
+                if (!Current(expected) || Busy || HasClientAction || _catalogLifetime is null
+                    || !ClientEligible(OpenCodeComposerClientActionKind.EditDraft, _text)) return;
+                _clientAction = ticket = new(binding, Token, OpenCodeComposerClientActionKind.EditDraft,
+                    Guid.NewGuid(), _catalogLifetime);
+                CloseCatalog();
+            }
+        });
+        if (ticket is not null) Publish();
+        return ticket;
+    }
     internal bool OwnsClientAction(OpenCodeComposerClientActionTicket ticket)
     {
         ArgumentNullException.ThrowIfNull(ticket);
@@ -694,7 +724,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                     {
                         if (command is null)
                         {
-                            var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token).ConfigureAwait(false);
+                            var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token, context.Basis.Delivery).ConfigureAwait(false);
                             outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
                         }
                         else

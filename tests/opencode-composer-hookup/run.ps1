@@ -30,6 +30,11 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Noti
     $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
 }
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.Composer.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SteerChat.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SessionActivityIntegration.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerActivityPolicy.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs"
+$sources += Get-Item (Join-Path $PSScriptRoot 'ComposerActivity.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.AgentIntegration.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs"
@@ -101,6 +106,31 @@ foreach ($name in @('CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSel
 $sources += Get-Item $blankGenerated
 $overlayPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerOverlays.cs"
 $overlay = [IO.File]::ReadAllText($overlayPath)
+$activityMembers = foreach ($name in @('IsComposerSessionWorking', 'RefreshComposerSessionActivity')) {
+    $pattern = '(?ms)^    private [^\r\n]*\b' + $name + '\([^\r\n]*\).*?;'
+    $m = [regex]::Match($overlay, $pattern)
+    if (!$m.Success) { throw "Missing production composer activity member: $name" }
+    $m.Value
+}
+$activityGenerated = Join-Path $output 'ComposerActivityMembers.cs'
+"using System; using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($activityMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $activityGenerated
+$sources += Get-Item $activityGenerated
+$layoutPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"
+$layout = [IO.File]::ReadAllText($layoutPath)
+$layoutMembers = foreach ($name in @('UpdateComposerSecondaryActions', 'ComposerQueueButton_Click', 'ComposerExpandButton_Click')) {
+    $m = [regex]::Match($layout, ('(?ms)^    private [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))
+    if (!$m.Success) { throw "Missing production composer layout action: $name" }
+    $m.Value
+}
+$deliveryPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerDelivery.cs"
+$delivery = [IO.File]::ReadAllText($deliveryPath)
+$deliveryMembers = @([regex]::Match($delivery, '(?m)^    private bool _composerDeliverySupported;').Value,
+    [regex]::Match($delivery, '(?m)^    internal string\? RequestedComposerDelivery =>[^;]*;').Value,
+    [regex]::Match($delivery, '(?ms)^    internal void ConfigureComposerDelivery\(bool supported\).*?^    \}\r?$').Value)
+if ($deliveryMembers | Where-Object { !$_ }) { throw 'Missing actual composer delivery configuration member.' }
+$layoutGenerated = Join-Path $output 'ComposerLayoutActions.cs'
+"using AIFrontend.Pages.OpenCode; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + (($layoutMembers + $deliveryMembers) -join "`n") + "`n}" | Set-Content -Encoding UTF8 $layoutGenerated
+$sources += Get-Item $layoutGenerated
 $focusMember = [regex]::Match($overlay, '(?ms)^    private int SyncPermissionOverlay\(\).*?^    \}\r?$')
 if (!$focusMember.Success) { throw 'Missing production SyncPermissionOverlay member.' }
 $focusGenerated = Join-Path $output 'PermissionFocusMember.cs'
@@ -113,7 +143,7 @@ $arguments | Set-Content -Encoding UTF8 $rsp
 $runtime = Join-Path $output 'OpenCodeComposerHookupTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
 # Preserve actual compile/extraction membership and source hashes before compilation, including untracked inputs.
-$guardSources = @("$repo/src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs")
+$guardSources = @("$repo/src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs", $layoutPath, $deliveryPath, "$repo/src/AIFrontend/Pages/OpenCodePage.xaml", "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs")
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll')).FullName
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $inputs = @($sources.FullName + $pagePath + $blankPath + $overlayPath + $PSCommandPath + $guardSources + $references + @($dotnet, $compiler, $rsp, $runtime)) | Sort-Object -Unique

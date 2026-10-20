@@ -18,7 +18,7 @@
 - 左列表以 `GET /api/session/active` 全体快照和原生执行生命周期显示真实 foreground 运行态；保留原有 attention/未读来源。idle 无额外文字；不为未打开会话绘制“未观测”提示。不把 foreground inactive 当成后台任务完成。
 - 调试输出 `OpenCode.SSE apply … latency_ms=… events=…` 记录接收至实际 `ApplyMessages` 返回的耗时（无正文/凭据）。真实 App 的视觉延迟、跨客户端排队、切换/卸载、断线恢复仍需宿主验收；lane 不启动/关闭 App。无新增 AutomationId。
 
-## W5-P：详情弹出层（G7 悬停预览 / 点击大视图，G8 默认换行；2026-10-18）
+## W5-P：详情弹出层与子代理只读窗口（G7 悬停预览 / 点击大视图，G8 默认换行；2026-10-18，2026-10-19 增补）
 
 适用于工具行、子代理行、思考行、提示条以及经 `IOpenCodeDetailContentSource` 提供内容的所有行（如 W5-T 的提问工具、「指令」行）。
 `IOpenCodeToolDetailSource` / `IOpenCodeDetailContentSource` 与 `OpenCodeToolDetailPopup.Shared` 的公开方法签名不变
@@ -28,20 +28,37 @@
   小浮层（宽 ≤ 520、高 ≤ 320，且不超过窗口 60%），原生 `FlyoutPresenter`（亚克力 / Flyout 描边 / OverlayCornerRadius）+ ThemeShadow + `PopupThemeTransition`，
   紧贴来源行（右侧或下方 / 上方，间距 0）。**没有关闭按钮**、不移动键盘焦点；标题 + 目标 + 内容 + “点击查看完整内容”说明。
   鼠标离开行即隐藏；移入预览可保持；行与预览都离开即隐藏（仅为跨越指针事件次序保留 `HoverLeaveGraceMs = 80` 毫秒宽限，低于感知阈值）。
-  预览内滚轮可滚动；在预览内轻点（未被链接等子控件处理）= 打开大视图。
-- **大详情视图**（AutomationId `OpenCodeToolDetailPopup`；遮罩 `OpenCodeToolDetailOverlay` / `OpenCodeToolDetailSmoke`；关闭 `OpenCodeToolDetailClose`）：
-  点击行 / Enter / Space 打开，再次触发同一行关闭。窗口 80%（`OpenCodeDetailPopupLayout.LargeView`，最小 360×240 但不超出窗口减 8px 边距）、居中，
+  预览内滚轮可滚动；在预览内轻点（未被子控件处理）根据行类型打开对应视图（普通工具打开 80% 大视图；子代理行打开独立只读会话小窗口）。子代理工具行悬停预览保持调用入参与结果预览，原行内直接跳转超链接已移除。
+- **普通工具大详情视图**（AutomationId `OpenCodeToolDetailPopup`；遮罩 `OpenCodeToolDetailOverlay` / `OpenCodeToolDetailSmoke`；关闭 `OpenCodeToolDetailClose`）：
+  普通工具行点击 / Enter / Space 或轻点其悬停预览打开，再次触发同一行关闭。窗口 80%（`OpenCodeDetailPopupLayout.LargeView`，最小 360×240 但不超出窗口减 8px 边距）、居中，
   系统遮罩 `SmokeFillColorDefaultBrush`（与 ContentDialog 相同）+ 原生 `FlyoutPresenter` 表面（24px 内边距、ThemeShadow、`EntranceThemeTransition`）。
   ✕ 按钮 / Esc / 点击遮罩关闭；`XamlRoot.Changed` 时随窗口重新计算大小；打开时焦点移入（`TabFocusNavigation = Cycle`），关闭后还给打开前的焦点元素。
   内容完整显示：`OpenCodeToolDetailOptions.ShowAll = true`（不显示“显示全部”截断行，长列表由 ItemsRepeater 虚拟化），纵向滚动。
-  diff 的「并排 / 统一视图」开关（`OpenCodeToolDetailViewMode`）只在大视图标题栏中。子代理大视图保留「打开子会话」（`OpenCodeToolDetailOpenChild`）。
+  diff 的「并排 / 统一视图」开关（`OpenCodeToolDetailViewMode`）只在大视图标题栏中。
+  注：子代理工具行点击已分流至独立只读小窗口，不再打开普通工具属性卡片大视图；原有概况面板 Agents 列表（H7）直接导航与时间线异步完成（G4）链接保持原样，不被全局替换。
 - **G8 默认换行**：代码、diff（并排与统一）、read、shell 输出、搜索结果、属性键与值、标题目标全部 `TextWrapping.Wrap`，内容区无横向滚动；
   「换行」开关（原 `OpenCodeToolDetailWrap`）已移除，`OpenCodeToolDetailOptions.Wrap` 恒为 true。等宽块不再截断为前 2000 行，
   而按 `OpenCodeDetailTextPolicy.CodeBlockChunkLines = 400` 行分段为多个 TextBlock 完整显示。
-- 纯几何 / 悬停判定 / 分段在 `Pages/OpenCode/OpenCodeDetailPopupLayout.cs`（无 WinUI 依赖），由 `tests/opencode-tool-detail` 直接编译断言；
+- 纯几何 / 悬停判定 / 分段在 `Pages/OpenCode/OpenCodeDetailPopupLayout.cs`（无 WinUI 依赖），由 `tests/opencode-tool-detail`（149 项断言通过）直接编译断言；
   WinUI 部分以源码契约断言（延迟常量、无换行开关、关闭按钮仅在大视图、遮罩 / Esc / 外部点击、随窗口变化、焦点循环与还原、接口签名）。
-- 已知限制：点击「打开子会话」后由来源行卸载时的 `CloseIf` 关闭大视图（链接本身在 `OpenCodeToolPartView`，不属本 lane）；真实 App 中的悬停跨越、
-  遮罩外观与窗口缩放仍需宿主验收。
+- 验证现状与未决项：`tests/opencode-tool-detail`（149 pass）、`tests/opencode-session-return`（159 pass）、`tests/opencode-instruction-notice`（185 pass）与 Debug|x64 编译通过。
+  旧有的“点击打开子会话后由来源行卸载时 CloseIf 关闭大视图”限制已随子代理小窗口独立分流与生命周期管理而废弃。
+  真实 WinUI 环境下的原生指针跨越、布局尺寸、悬停与小窗口视觉渲染、滚动以及 live UIA 验收挂起（PENDING，由宿主执行）；App 原生完成崩溃（completion crash）未解决但暂缓处理（deferred）。
+  本文档不包含且未完成新的上下文圆环（ContextRing）或 EventSync/延迟优化工作。
+
+### 子代理只读会话小窗口（2026-10-19）
+
+- **触发方式与分流**：子代理工具行（`OpenCodeToolPartView`，支持子会话 ID pending 态识别）点击行 / Enter / Space 或轻点悬停预览，直接请求打开独立子会话只读小窗口（`OpenCodeChildChatWindow`），不再展示属性键值卡片大视图。悬停预览保持调用入参/结果展示，旧行尾直接导航超链接已移除。
+- **窗口尺寸与外观**：原生 `FlyoutPresenter` + `ThemeShadow` + 应用程序主题资源；尺寸为宽度上限 960 DIP，高度为可用高度 80%（居中展示）。标题栏标明 `子会话 · 只读`，包含最大化按钮（AutomationId `OpenCodeChildChatMaximize`）与关闭按钮（AutomationId `OpenCodeChildChatClose`，窗口根 AutomationId 为 `OpenCodeChildChatWindow`）。
+- **真实渲染器与只读快照**：承载真实独立的生产环境 `OpenCodeConversationView.ApplyMessages` 渲染，完全复用现有时间线与消息视觉呈现；无输入框（Composer）、无发送/停止动作、无 Web 视图或 Mock 数据。
+- **时序校正与快照语义**：拉取只读快照最新 100 条消息（`Order = OpenCodeSessionOrders.Desc, Limit = 100`，与正常进入子会话一致）。服务端降序序列通过 `OpenCodeChildChatReadSession.OrderMessages` 逆序拷贝转换为**从旧到新的显示顺序**（oldest→latest），保持消息实例引用不变，不依赖时间戳重排，不修改原始响应。初始布局滚动至最新（末尾）消息。存在更多消息游标（Cursor）时显式提示仅显示最近消息，最大化后查看完整历史。小窗口内不执行后台消息轮询。
+- **关闭与最大化导航契约**：
+  - 点击 ✕、按 Esc 或点击外部遮罩：仅关闭小窗口并还原焦点，**绝不触发会话导航**，保留当前父会话选中态。
+  - 最大化按钮：在内容成功加载且当前会话绑定有效前保持禁用；点击后先关闭小窗口，再经由完整祖先链复核（`OpenCodeSessionAncestry.IsAncestorAsync`）与返回原点机制执行全量会话导航（`NavigateToSubagentSessionAsync`）。已修复关闭与导航之间提前释放 CancellationTokenSource 的竞态。
+- **生命周期与防串线保护**：读取全程持有单调 `Revision` 绑定的操作令牌（`TryStartRead` / `CreateOperationToken`）。小窗口关闭、数据源撤销、父页面卸载或当前会话切换时原子取消旧读取并丢弃滞后响应，绝不发布过期会话数据。窗口存活期间每 200ms 检测父消息存活性（不发网络请求）。子会话 ID 缺失/pending、无关联 ID 或读取失败显示如实说明，绝不回退展示其他会话内容。
+- **嵌套隔离**：小窗口内时间线分组支持正常展开折叠与滚动选择，但在小窗口时间线根节点完全抑制嵌套详情弹出层（nested detail popups），且不挂载父级导航、提问遮罩或输入框事件处理器，子行绝不顶替父弹出层或意外导航父级。
+- **实现与验证证据**：生产代码位于 `OpenCodeDetailPopupLayout.cs`、`OpenCodeToolDetailPopup.cs`、`OpenCodeToolPartView.cs`、`OpenCodeChildChatWindow.cs`、`OpenCodeChildChatReadSession.cs`、`OpenCodePage.SubagentNavigation.cs`。自动化验证：`tests/opencode-tool-detail`（149 pass）、`tests/opencode-session-return`（159 pass）、`tests/opencode-instruction-notice`（185 pass）；独立 MSBuild Debug|x64 编译通过。原生指针/布局/窗口真机验收挂起（PENDING）。
+- **非全局替换说明**：既有概况面板 Agents 列表（H7）直接导航行为与时间线异步完成卡片（G4）维持不变，不被本窗口替代。
 
 ## W5-T：时间线（2026-10-18）
 
@@ -55,6 +72,16 @@
 - **H14 用户消息气泡**：`OpenCodeUserBubbleView` 默认最多显示两行（40 px）。内容更长时，右侧出现原生 chevron 按钮（AutomationId `OpenCodeUserMessageToggle`，“展开消息 / 收起消息”）。折叠只限制可见高度，不截断文本；同一气泡更新时保留展开状态。
 - 插件内部自动消息（`OpenCodeInternalInitiator`）同样改为左对齐的工具样式行（之前是居中胶囊）。
 - 验证：`tests/opencode-instruction-notice`（新增 `Wave5Timeline.cs`，覆盖 H1/H2/S2/G3/G4/H5/H14）、`opencode-form-view`、`opencode-tool-detail`。真实 App 的视觉效果（计数颜色、两行折叠测量、提问行与遮罩配合）需要宿主验收。
+
+## W5-H：页头、概况、连接详情与发送按钮（G5/G6/H6–H12/D2；2026-10-19）
+
+- **G5 + H12 页头与上下文圆环**：`TabView.TabStripHeader` / `TabStripFooter` 移除 `CommandBar`，改为 32px 高、底对齐（`VerticalAlignment="Bottom"`）的原生透明按钮，使页头与标签处于同一高度。上下文参考圆环 `OpenCodeContextRing.Root`（`OpenCodeInsightsContext` / `OpenCodeInsightsContextRingButton` / `OpenCodeInsightsContextRing`，32×32 原生透明按钮 + 确定进度环 + Flyout）从概况面板移到页头 `ContextRingHost`（`OpenCodeContextRingHost`），紧挨在「概况」开关按钮左侧；「概况」按钮（`OpenCodeSessionInsightsButton`）改为 32×32 仅图标 ToggleButton（Tooltip 与 `AutomationProperties.Name` 均为“概况”）。空白新标签页布局隐藏 `ContextRingHost`。
+- **G6 发送按钮运行态**：`OpenCodeComposerSendMode.Working` 使用原生强调色停止按钮（`AccentButtonStyle` + 停止方块 `\uE71A`，`ShowsProgress(Working) == false`，不再用进度环环绕停止方块）；小进度环只在 `Submitting`（防重复提交、按钮禁用）时显示。发送 / 停止 / 工作中 / 排队语义与 AutomationId（`OpenCodeSendStopButton`、`OpenCodeSendProgress`）不变。
+- **H6 连接详情 Flyout（`OpenCodeConnectionFlyout` / `OpenCodePage.ConnectionFlyout.cs`）**：列表页按「服务 / MCP / 插件 / LSP」分组，每行是原生按钮（名称在左，状态圆点 / 连接中 `ProgressRing` 在右），内置插件（`source.type == "builtin"`）静默隐藏，列表页移除“状态未观测”“已隐藏内置插件”等元说明。点击任意行进入同一 Flyout 内的详情页（返回按钮 `OpenCodeConnectionDetailBack`）：MCP 详情显示状态与错误并提供连接 / 断开 / 重新连接（`OpenCodeClient.ControlMcpServerAsync` → `POST api/experimental/mcp/{server}/connect|disconnect`，单飞 + 完成后重新读取）；插件详情显示运行状态、来源、包目标/路径、版本、更新标记、声明功能与错误。
+- **H7 概况 → Agents（`OpenCodeInsightsAgentsSection` / `OpenCodeSubagentStatus`）**：概况面板内保留「任务」与「Agents」。子会话行标题显示 `Session.Info.title`（缺省为“未命名子会话”，不回退到会话 ID，不写“前台运行中/未运行”字样，不显示 ID 行；如实区分保留在 Tooltip 与无障碍名称中）。新增原生 `SelectorBar`（`OpenCodeInsightsAgentsFilter`：“运行中 / 全部”）。点击子会话行直接触发 `ChildSessionRequested` 经页面祖先链复核后切换，不再经过面板内二级详情页。
+- **H8 新会话空白页（`OpenCodePage.NewSessionTab.cs`）**：已有会话列表行、Tooltip 与无障碍名称只显示会话标题（无标题时“未命名会话”），不显示会话 ID（搜索框仍可按 ID 匹配）。
+- **H9 + D2 任务列表（`OpenCodeTodoReplay` / `OpenCodeSessionInsightsView`）**：保持服务端 `todowrite` 原始顺序（不按状态分组），每行左侧显示只读状态图标（`\uE739` / `\uE73C` / `\uE73A` / `\uE711`）。`priority` 为可选字段（省略或 `null` 时保留任务且不显示优先级徽标；若提供无效值仍整表拒绝）。
+- **H10 + H11 上下文 Flyout 紧凑数字与 ACP 块列表**：`OpenCodeSessionInsightsView.Compact` 统一将 token 与计数格式化为 `82.3K` / `1M` / `10.2M`。`BillionTelemetryReader` 从 `/__bili/sessions/{id}/detail` 的 `blockDetails` 增量投影白名单元数据（`blockId` / `tier` / `compressedTokens` / `active`，上限 200，绝不解码 `topic` / `summary`），Flyout 的「ACP / Billion 状态」组以与任务列表一致的“图标 + 块 ID·Tier + 紧凑 token 数”行展示压缩块（`OpenCodeInsightsAcpBlocks` / `OpenCodeInsightsAcpBlock.{i}`），并提供显式「读取 / 重新读取」（`OpenCodeInsightsAcpRead`）或「设置 Billion 地址」（`OpenCodeInsightsAcpSetup`）。
 
 ## 1. 文件清单（本 lane 写入范围）
 
@@ -355,3 +382,9 @@ await page.NavigateToNotificationAsync(target, result);   // result 可为 null�
 - **有界 settle**：滚动目标为同步 `UpdateLayout()` 后读取的真实 `ScrollableHeight`（不依赖 `double.MaxValue` 钳制；`UpdateLayout` 已按本机 SDK 元数据核实存在）；下一帧复核可滚动范围是否继续增长（迟到布局），至多补滚 `MaxScrollSettlePasses`（3）次，无计时器、无无限循环。
 - **回到底部按钮**：`ScrollToBottomButton` 保留（原生 Button，仅在有内容且非底端时显示；点击无动画定位），不扩展产品面。
 - **刷新排队意图保留**：`RefreshMessagesAsync` 不重叠排队时保留 `initial`/`forceFollow` 意图（切换会话后的首次加载滚底不因排队丢失）。
+  - 在 `MainWindow.OpenCode.cs`（`HandlePendingSnapshot`）中，观测到会话有待处理权限或表单请求时，仅更新会话级待处理快照集合，**不再弹出 `ShellNoticeBar`“有等待处理的请求”提示条**（待处理状态已由输入区权限/提问遮罩、会话标签栏注意色工作环与左侧导航栏 `InfoBadge` 直接呈现）。
+  - **错误与不确定保护提示完整保留**：凡请求失败、HTTP 4xx/5xx、网络断开、超时、契约不符、快照指纹变化（需重新核对）或结果未知（`OutcomeUnknown` / 共享仲裁保护生效），仍照常通过 `ShowMessage` / `ShowShellNotice` 与遮罩内 `InfoBar` 显式提示，绝不静默吞掉错误或自动重发。
+- **G2：自定义输入（“其他（自己输入）”）按需展开与提问遮罩 Fluent 排版**：
+  - 在 `OpenCodeFormCard.cs`（`OpenCodeFormAnswerEditor`）中，单选带自定义（`ChoiceWithCustom`，`RadioButtons` 末项“其他（自己输入）”）与多选带自定义（`MultiSelect` + `AllowsCustom`，末项“其他（自己输入）”`CheckBox`）的自定义文本框（`OpenCodeFormField_{formId}_{key}_Custom`）**仅在“其他（自己输入）”被选中/勾选时显示（`Visibility.Visible`）**；未选中或切回普通选项时立即折叠隐藏（`Visibility.Collapsed`），不在普通选项下方悬空显示空白输入框。
+  - 保留已输入文字与双向联动：用户在自定义框内输入非空文本会自动选中/勾选“其他”并保持文本框可见；切回普通选项或取消勾选“其他”时，自定义文本框折叠隐藏但保留已输入的文字（再次选中“其他”时原样恢复，未选中时不作为答案提交）；选中“其他”但未填内容时仍在题目下方显示校验错误并聚焦该展开的自定义文本框。
+  - 提问遮罩（`OpenCodeQuestionOverlay.cs`）采用原生 Fluent 卡片与对话框布局：16px 卡片内边距、题目标题与说明紧凑分组（`BodyStrongTextBlockStyle` + `BodyTextBlockStyle`）、选项间舒适间距与内边距、底部操作栏顶部分隔线（`DividerStrokeColorDefaultBrush`）与 `ContentDialog` 风格按钮顺序（次要按钮“不回答 / 返回”在左，主按钮 `AccentButtonStyle`“提交 / 确认不回答”在最右）。所有 `AutomationId`、分页切换与单飞/指纹校验语义保持不变。

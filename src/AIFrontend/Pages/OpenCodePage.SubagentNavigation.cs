@@ -11,16 +11,16 @@ using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages;
 
 /// <summary>
-/// OpenCode 页 subagent 子会话导航（工具卡片「查看子会话」）：以服务端真实祖先链复核归属，
-/// 仅复核通过才切换到子会话；失败保留当前会话并提示，取消不报错误。
+/// OpenCode 页 subagent 只读子会话小窗与最大化导航：先以服务端真实祖先链复核归属再读取消息，
+/// 仅最大化才重新复核并切换到子会话；关闭或失败保留当前会话，取消不报错误。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 事件来源：<see cref="OpenCodeConversationView.SubagentSessionRequested"/>（工具部件
-/// <see cref="OpenCodeToolPartView"/> 经会话视图转发）。参数只含父消息 id 与已通过不透明校验的
-/// 子会话 id，属纯导航提示、不构成授权。本文件只提供处理器（订阅由页面主文件接线，本文件不订阅
-/// 任何事件），不新增 UI、不新增依赖、不新增请求通道：仅经既有客户端发起 GET 单会话信息
-/// （仅用于祖先链复核，不为 sidebar 追加子会话而额外读取）。
+/// <see cref="OpenCodeToolPartView"/> 经会话视图转发）。参数只含父消息 id 与子会话 id（尚未创建时为空），
+/// 属展示请求、不构成授权。处理器打开独立只读会话窗口；通过既有客户端 GET 单会话信息核验祖先链，
+/// 再 GET 该子会话最近消息。每次请求与显示都复核来源/会话绑定；不为 sidebar 追加子会话。
+/// 窗口的关闭/切换取消在途读取，最大化复用既有导航路径；事件订阅仍由页面主文件接线。
 /// </para>
 /// <para>
 /// 归属复核：以点击时刻捕获的选中会话为“期望父会话”，调用
@@ -52,10 +52,11 @@ public sealed partial class OpenCodePage
     /// <summary>子会话导航在途标记：同一时刻至多一次导航，防止重复点击。</summary>
     private bool _subagentNavigationBusy;
 
+    private OpenCodeChildChatWindow? _childChatWindow;
+
     /// <summary>
     /// <see cref="OpenCodeConversationView.SubagentSessionRequested"/> 的处理器：先校验 sender 正是本页
-    /// 持有的会话视图实例（否则不导航），再防重复点击并转交
-    /// <see cref="NavigateToSubagentSessionAsync"/>；本方法不发起任何请求、不做任何 UI 变更。
+    /// 持有的会话视图实例，再打开只读子会话小窗；只有小窗最大化才转交既有校验导航路径。
     /// </summary>
     private async void OnSubagentSessionRequested(object? sender, OpenCodeSubagentSessionRequestedEventArgs e)
     {
@@ -66,7 +67,79 @@ public sealed partial class OpenCodePage
             return;
         }
 
-        await NavigateToSubagentSessionAsync(view, e.ParentMessageId, e.ChildSessionId);
+        try
+        {
+            await ShowSubagentChatAsync(view, e.ParentMessageId, e.ChildSessionId);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            if (_pageActive) ShowMessage(InfoBarSeverity.Error, "无法打开子会话", "子会话窗口加载失败，请重试。");
+        }
+    }
+
+    private async Task ShowSubagentChatAsync(OpenCodeConversationView view, string parentMessageId, string childSessionId)
+    {
+        var source = _source;
+        var client = _client;
+        var selectedSessionId = _selectedSessionId;
+        if (source is null || client is null || selectedSessionId is not { Length: > 0 }
+            || !_pageActive || source.IsRevoked || parentMessageId.Length == 0
+            || !view.ContainsRenderedMessage(parentMessageId)
+            || view.XamlRoot is not { } root) return;
+
+        _childChatWindow?.Close();
+        OpenCodeToolDetailPopup.Shared.Close();
+        var revision = _sourceRevision;
+        var sourceGeneration = _sourceGeneration;
+        var pageGeneration = _pageGeneration;
+        var sessionGeneration = _sessionGeneration;
+        using var operation = CreateOperationToken(source);
+        var bindingToken = operation.Token;
+        bool BindingCurrent() => IsSubagentNavigationCurrent(source, revision, sourceGeneration, client, pageGeneration,
+            sessionGeneration, selectedSessionId, view, parentMessageId, bindingToken);
+        var window = new OpenCodeChildChatWindow(root, bindingToken, BindingCurrent, async () =>
+        {
+            if (IsSubagentNavigationCurrent(source, revision, sourceGeneration, client, pageGeneration,
+                sessionGeneration, selectedSessionId, view, parentMessageId, bindingToken))
+                await NavigateToSubagentSessionAsync(view, parentMessageId, childSessionId);
+        });
+        _childChatWindow = window;
+        var ct = window.Token;
+        bool Current() => window.IsOpen && ReferenceEquals(window, _childChatWindow)
+            && IsSubagentNavigationCurrent(source, revision, sourceGeneration, client, pageGeneration,
+                sessionGeneration, selectedSessionId, view, parentMessageId, ct);
+        var childAuthorized = false;
+        if (!OpenCodeSubagentPresentation.IsOpaqueSessionId(childSessionId))
+            window.ShowError("子会话尚未创建或未提供有效的会话编号。");
+        else await OpenCodeChildChatReadSession.LoadAsync(Current,
+            async token =>
+            {
+                if (!TryStartRead(source, revision, sourceGeneration, client, sessionGeneration, token,
+                    () => OpenCodeSessionAncestry.IsAncestorAsync(client, childSessionId, selectedSessionId, token), out var task))
+                    throw new OperationCanceledException(token);
+                var authorized = await task!;
+                childAuthorized = authorized && Current();
+                return childAuthorized;
+            },
+            token =>
+            {
+                if (!TryStartRead(source, revision, sourceGeneration, client, sessionGeneration, token,
+                    () => client.GetMessagesAsync(childSessionId, new OpenCodeMessageQuery { Order = OpenCodeSessionOrders.Desc, Limit = 100 }, token), out var task))
+                    throw new OperationCanceledException(token);
+                return task!;
+            }, window.ShowMessages, window.ShowError, ct);
+        // Keep the binding token alive and observe rendered-message removal after the initial read.
+        try
+        {
+            while (Current()) await Task.Delay(200, ct);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            window.Close();
+            if (ReferenceEquals(_childChatWindow, window)) _childChatWindow = null;
+        }
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// 时间线中工具样式的紧凑单行（F8 / wave5 G4 / H5）：指令（“指令”）、异步完成（“终端完成”“子任务完成”“后台任务完成”）、
 /// 插件内部自动消息等。外观与工具行一致（高 32、左对齐）：状态图标（可无）| 类别字形 | 名称（BodyStrong）| 目标（等宽、省略号）| 右侧摘要。
 /// 完整内容只在悬停片刻（延迟见 OpenCodeToolDetailPopup.HoverOpenDelayMs）后于共享的 <see cref="OpenCodeToolDetailPopup"/> 中显示；
-/// 点击 / Enter / Space 固定，Esc 关闭。详情：键值列表 + 可选链接（如“打开子会话”）+ 可选正文（纯文本或 Markdown）。
+/// 子代理点击直接打开真实子会话小窗，其余点击固定详情，Esc 关闭。调用/结果属性与正文留在悬停详情中。
 /// 普通 sealed 业务类（不是控件子类）：原生 Button（透明工具按钮样式）+ 内置文本样式与主题画刷。
 /// </summary>
 internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
@@ -32,6 +32,14 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     private OpenCodeTimelineRowContent _content = new(string.Empty, string.Empty, string.Empty, null, string.Empty, string.Empty, Array.Empty<OpenCodeToolProperty>(), null);
     private Action? _linkInvoked;
     private bool _disposed;
+    private readonly ChildSource _childSource;
+    private FrameworkElement? _detailAnchorOverride;
+    internal void SetDetailAnchor(FrameworkElement? anchor) => _detailAnchorOverride = anchor;
+    internal void OpenDetail() => OpenCodeToolDetailPopup.Shared.TogglePinned(Source);
+    internal void HoverEnter() => OpenCodeToolDetailPopup.Shared.HoverEnter(Source);
+    internal void HoverExit() => OpenCodeToolDetailPopup.Shared.HoverExit(Source);
+    internal OpenCodeTimelineRowContent Content => _content;
+    internal string Glyph => EffectiveGlyph;
 
     /// <param name="automationId">行按钮的 AutomationId。</param>
     /// <param name="glyph">Segoe Fluent Icons 字形。</param>
@@ -39,6 +47,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     internal OpenCodeTimelineChipView(string automationId, string glyph, string? labelAutomationId = null)
     {
         _glyph = glyph ?? "\uE946";
+        _childSource = new ChildSource(this);
         _statusIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         _progress = new ProgressRing
         {
@@ -107,11 +116,11 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         };
         AutomationProperties.SetAutomationId(_chip, automationId ?? string.Empty);
         AutomationProperties.SetHelpText(_chip, "悬停或按 Enter 查看完整内容，Esc 关闭");
-        _chip.Click += (_, _) => OpenCodeToolDetailPopup.Shared.TogglePinned(this);
-        _chip.PointerEntered += (_, _) => OpenCodeToolDetailPopup.Shared.HoverEnter(this);
-        _chip.PointerExited += (_, _) => OpenCodeToolDetailPopup.Shared.HoverExit(this);
+        _chip.Click += (_, _) => OpenCodeToolDetailPopup.Shared.TogglePinned(Source);
+        _chip.PointerEntered += (_, _) => OpenCodeToolDetailPopup.Shared.HoverEnter(Source);
+        _chip.PointerExited += (_, _) => OpenCodeToolDetailPopup.Shared.HoverExit(Source);
         _chip.KeyDown += OnKeyDown;
-        _chip.Unloaded += (_, _) => OpenCodeToolDetailPopup.Shared.CloseIf(this);
+        _chip.Unloaded += (_, _) => { OpenCodeToolDetailPopup.Shared.CloseIf(this); OpenCodeToolDetailPopup.Shared.CloseIf(_childSource); };
 
         _rowChrome = new Border { Child = _chip, CornerRadius = new CornerRadius(4) };
 
@@ -139,7 +148,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     /// <summary>当前名称。</summary>
     internal string Label => _label.Text;
 
-    FrameworkElement IOpenCodeDetailContentSource.DetailAnchor => _chip;
+    FrameworkElement IOpenCodeDetailContentSource.DetailAnchor => _detailAnchorOverride ?? _chip;
 
     OpenCodeDetailHeader IOpenCodeDetailContentSource.DetailHeader
     {
@@ -164,7 +173,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             panel.Children.Add(OpenCodeToolDetailContent.PropertyList(_content.Properties));
         }
 
-        if (!_disposed && _linkInvoked is { } invoke && !string.IsNullOrEmpty(_content.LinkText))
+        if (!_disposed && ReferenceEquals(Source, this) && _linkInvoked is { } invoke && !string.IsNullOrEmpty(_content.LinkText))
         {
             var link = new HyperlinkButton
             {
@@ -236,6 +245,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     internal void UpdateRow(OpenCodeTimelineRowContent content, Action? linkInvoked = null)
     {
         ArgumentNullException.ThrowIfNull(content);
+        var previousSource = Source;
         _content = content;
         _linkInvoked = linkInvoked;
 
@@ -281,7 +291,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
 
         if (!_disposed)
         {
-            OpenCodeToolDetailPopup.Shared.Refresh(this);
+            OpenCodeToolDetailPopup.Shared.Refresh(Source);
         }
     }
 
@@ -295,14 +305,24 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _disposed = true;
         _linkInvoked = null;
         OpenCodeToolDetailPopup.Shared.CloseIf(this);
+        OpenCodeToolDetailPopup.Shared.CloseIf(_childSource);
     }
 
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Escape && OpenCodeToolDetailPopup.Shared.IsShowing(this))
+        if (e.Key == VirtualKey.Escape && OpenCodeToolDetailPopup.Shared.IsShowing(Source))
         {
             OpenCodeToolDetailPopup.Shared.Close();
             e.Handled = true;
         }
+    }
+
+    private sealed class ChildSource(OpenCodeTimelineChipView owner) : IOpenCodeDetailContentSource, IOpenCodeChildChatSource
+    {
+        public FrameworkElement DetailAnchor => owner._detailAnchorOverride ?? owner._chip;
+        public OpenCodeDetailHeader DetailHeader => ((IOpenCodeDetailContentSource)owner).DetailHeader;
+        public OpenCodeToolDetailView BuildDetailContent() => ((IOpenCodeDetailContentSource)owner).BuildDetailContent();
+        public void OnDetailStateChanged(bool shown, bool pinned) => ((IOpenCodeDetailContentSource)owner).OnDetailStateChanged(shown, pinned);
+        public void OpenChildChat() { if (!owner._disposed) owner._linkInvoked?.Invoke(); }
     }
 }

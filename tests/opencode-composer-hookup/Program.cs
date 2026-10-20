@@ -94,6 +94,7 @@ internal static class Program
     }
     private static async Task Main(string[] args)
     {
+        await ComposerActivityTests.Run();
         if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }
         await RoutingAndProtection();
         var first = checks;
@@ -114,6 +115,13 @@ internal static class Program
     private static async Task TerminalButtons()
     {
         var before = checks;
+        Check(OpenCodeComposerSendPresentation.Name(OpenCodeComposerSendMode.Working) == "停止"
+            && OpenCodeComposerSendPresentation.Glyph(OpenCodeComposerSendMode.Working) == "\uE71A"
+            && !OpenCodeComposerSendPresentation.ShowsProgress(OpenCodeComposerSendMode.Working)
+            && OpenCodeComposerSendPresentation.UsesAccent(OpenCodeComposerSendMode.Working)
+            && OpenCodeComposerSendPresentation.ShowsProgress(OpenCodeComposerSendMode.Submitting)
+            && !OpenCodeComposerSendPresentation.UsesAccent(OpenCodeComposerSendMode.Submitting),
+            "G6: Working is a native accent stop button without ProgressRing; only Submitting shows progress");
         foreach (var outcome in new[] { OpenCodeSessionOutcomes.Succeeded, OpenCodeSessionOutcomes.Interrupted })
         {
             using var f = new Fixture();
@@ -121,8 +129,8 @@ internal static class Program
             Check(f.Page.StopMode && f.Page.SendEnabled, "accepted running turn exposes Stop: " + outcome);
             Check(f.Page.SendMode == OpenCodeComposerSendMode.Working, "working without draft shows the Working (click = stop) state: " + outcome);
             f.Page.Text("queued follow-up");
-            Check(f.Page.SendMode == OpenCodeComposerSendMode.Queue && f.Page.SendEnabled && !f.Page.StopMode,
-                "working with draft shows Queue through the existing send path: " + outcome);
+            Check(f.Page.SendMode == OpenCodeComposerSendMode.Send && f.Page.SendEnabled && !f.Page.StopMode,
+                "working with draft keeps primary direct Send through the existing send path: " + outcome);
             f.Page.Text(string.Empty);
             Check(f.Page.SendMode == OpenCodeComposerSendMode.Working && f.Page.StopMode, "clearing the draft returns to Working: " + outcome);
             var terminal = new OpenCodeMessage { Id = "msg_terminal", Type = OpenCodeMessageTypes.Idle, Outcome = outcome };
@@ -210,7 +218,11 @@ internal static class Program
             Check(!f.Page.Snapshot.IsUnboundDraft
                 && OpenCodeComposerCommandMenuSession.UnavailableReason(OpenCodeComposerClientActionKind.ChooseAgent, f.Page.Snapshot) != "开始会话后可用",
                 "bound session never shows the blank-tab caption");
-            await f.Page.Send();
+            var queuedBasis = f.Page.Controller.CaptureDraft(f.Page.Snapshot.Token, "queue")!;
+            var steerBasis = f.Page.Controller.CaptureDraft(f.Page.Snapshot.Token, "steer")!;
+            Check(queuedBasis.Draft != steerBasis.Draft && queuedBasis.Delivery == "queue", "immutable delivery participates in submission fingerprint");
+            await f.Page.Send("queue");
+            Check(f.Http.Body!.Contains("\"delivery\":\"queue\"", StringComparison.Ordinal), "plain guarded prompt sends selected queue delivery");
             Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith("/prompt", StringComparison.Ordinal) && f.Http.Path.Contains("ses_test", StringComparison.Ordinal),
                 "normal path sends exactly once to the created session");
         }
@@ -228,6 +240,7 @@ internal static class Program
                 "armed handoff moves the command/attachment draft to the created session without loss");
             await f.Page.Send();
             Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith(command ? "/command" : "/prompt", StringComparison.Ordinal), "handed-over draft sends once via the enhanced path");
+            if (!command) Check(f.Http.Body!.Contains("\"delivery\":\"steer\"", StringComparison.Ordinal) && f.Http.Body.Contains("\"files\"", StringComparison.Ordinal), "enhanced guarded prompt preserves files and selected steer delivery");
             Check(!f.Page.Snapshot.HasDraft, "accepted handed-over draft cleared once");
         }
         using (var f = new Fixture())
@@ -490,6 +503,20 @@ internal static class Program
     {
         foreach (var enhanced in new[] { false, true })
         {
+            using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("steer now");
+            f.Http.Respond = (_, _) => Task.FromResult(Json("{\"data\":{\"id\":\"msg_admitted\",\"sessionID\":\"ses_test\",\"type\":\"user\",\"delivery\":\"steer\",\"payload\":{\"text\":\"  admitted\\nraw  \",\"files\":[{\"name\":\"image.png\"}]}}}"));
+            await f.Page.Send();
+            Check(f.Page.SteerProjection is { Count: 1 } && f.Page.SteerProjection[0].Id == "msg_admitted"
+                && f.Page.SteerProjection[0].Payload!.Value.GetProperty("text").GetString() == "  admitted\nraw  ",
+                "actual plain/enhanced durable steer receipt immediately projects exact admitted payload before inbox refresh");
+            f.Page.ReprojectSteer(null);
+            Check(f.Page.SteerProjection is { Count: 1 } && f.Http.Posts == 1,
+                "absent not-yet-observed inbox retains admitted chat without resending");
+            f.Page.Switch("ses_other"); f.Page.Switch("ses_test"); f.Page.ReprojectSteer(null);
+            Check(f.Page.SteerProjection is null, "steer receipt binding fences session ABA");
+        }
+        foreach (var enhanced in new[] { false, true })
+        {
             using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("sent");
             var response = Signal<HttpResponseMessage>(); var refresh = Signal<bool>();
             f.Http.Respond = (_, _) => response.Task; f.Page.RefreshPending = refresh.Task;
@@ -645,6 +672,33 @@ internal static class Program
         var button = Member(page, "SendStopButton_Click");
         Check(button.Contains("PrepareSubmission()", StringComparison.Ordinal)
             && button.IndexOf("PrepareSubmission()", StringComparison.Ordinal) < button.IndexOf("ShouldStopSelectedSession()", StringComparison.Ordinal), "actual button prepares before Send/Stop predicate");
+        var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
+        System.Xml.Linq.XNamespace xn = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var editor = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "Composer");
+        var actions = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "ComposerActions");
+        var leading = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "ComposerLeadingHost");
+        var actionNames = actions.Elements().Select(e => (string?)e.Attribute(xn + "Name")).ToArray();
+        Check(editor.Parent == actions.Parent && editor.Parent == leading.Parent
+            && (string?)editor.Parent!.Attribute(xn + "Name") == "ComposerInputLayout"
+            && actionNames[^2] == "ComposerQueueButton" && actionNames[^1] == "SendStopButton"
+            && !xaml.Descendants().Any(e => (string?)e.Attribute(xn + "Name") == "ComposerDeliveryMode"),
+            "actual XAML: same-grid external controls, clock immediately left of primary, no persistent mode selector");
+        var layout = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"));
+        Check(layout.Contains("measure.Measure(new Size(inlineWidth") && layout.Contains("ActualWidth - 128")
+            && layout.Contains("Grid.SetColumnSpan(Composer, bottom ? 3 : 1)")
+            && layout.Contains("Grid.SetRow(ComposerLeadingHost, bottom ? 1 : 0)")
+            && layout.Contains("Grid.SetRow(ComposerActions, bottom ? 1 : 0)")
+            && layout.Contains("Composer.TextCompositionEnded +=") && layout.Contains("if (_isComposing")
+            && !layout.Contains("new TextBox") && !layout.Contains("Children.Remove") && !layout.Contains("Composer.Text ="),
+            "native measurement layout source: stable inline-width wrap policy; full upper editor/bottom toolbar; IME-deferred attached properties only");
+        Check(layout.Contains("ViewportHeight(line, chrome)") && layout.Contains("CanExpand(measure.DesiredSize.Height, line)")
+            && (string?)editor.Attribute("ScrollViewer.VerticalScrollBarVisibility") == "Auto"
+            && composer.Contains("InitializeComposerLayout();") && composer.Contains("TryRestoreExpandedComposerSelection();"),
+            "actual five visual-line native scrolling/expand hooks and token-fenced selection restoration remain wired");
+        var dialog = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs"));
+        Check(dialog.Contains("box.Select(SelectionStart, SelectionLength)")
+            && dialog.Contains("box.SelectionChanged +=") && dialog.Contains("box.TextCompositionStarted +=")
+            && dialog.Contains("TryApply(apply)"), "expanded editor reuses existing guarded apply/cancel/IME surface with native selection tracking");
     }
     private static void RealRenderOwnership()
     {
@@ -772,6 +826,9 @@ namespace AIFrontend.Pages
 {
     public sealed partial class OpenCodePage
     {
+        internal IReadOnlyList<OpenCodeInboxItem>? SteerProjection;
+        private void UpdateQueuedPrompts() => SteerProjection = ProjectSteerReceipts(null);
+        internal void ReprojectSteer(IReadOnlyList<OpenCodeInboxItem>? items) => SteerProjection = ProjectSteerReceipts(items);
         // Existing page fields/services, not a replacement composer implementation.
         private OpenCodePageSource? _source;
         private OpenCodeClient? _client;
@@ -789,6 +846,10 @@ namespace AIFrontend.Pages
         private enum ConnectionState { Connected, Failed }
         internal readonly TextBox Composer = new();
         internal readonly Button SendStopButton = new();
+        internal readonly Button ComposerQueueButton = new(), ComposerExpandButton = new();
+        private bool _composerOverFiveLines = false;
+        private void InitializeComposerLayout() { }
+        private void QueueComposerLayout() { }
         internal readonly ProgressRing SendProgress = new();
         internal readonly Panel ComposerCompanionHost = new(), AgentSelectorHost = new();
         internal readonly Dispatcher DispatcherQueue = new();
@@ -848,10 +909,11 @@ namespace AIFrontend.Pages
         internal async Task File() { var ticket = Controller.BeginPick(Snapshot.Token)!; await Controller.AddFilesAsync(ticket, new[] { new OpenCodeComposerFileSource("synthetic.txt", null, _ => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3 }))) }); DrainView(); UpdateComposerButtons(); }
         internal void RemoveCommand() { Controller.RemoveCommand(Snapshot.Token); DrainView(); UpdateComposerButtons(); }
         internal void Discard() { Controller.DiscardDraft(Snapshot.Token); _composerView!.Sync.ResolveDiscard(); UpdateComposerButtons(); }
-        internal Task Send() => RouteComposerSubmissionAsync(Snapshot.Token);
+        internal Task Send(string? delivery = null) => RouteComposerSubmissionAsync(Snapshot.Token, delivery ?? RequestedComposerDelivery);
         internal Task SendLegacyDirect() => SendPromptAsync();
-        internal Task RouteToken(OpenCodeComposerToken token) => RouteComposerSubmissionAsync(token);
-        internal void PublicSubmit() => RequestComposerSubmission();
+        internal Task RouteToken(OpenCodeComposerToken token) => RouteComposerSubmissionAsync(token, RequestedComposerDelivery);
+        internal void PublicSubmit(string? delivery = null) => RequestComposerSubmission(delivery);
+        internal void ClickQueue() => ComposerQueueButton_Click(ComposerQueueButton, new());
         internal void ClickFreeCommand() => _composerView!.ClickArgumentFreeCommand();
         internal Task Pick() => PickComposerFilesAsync(Snapshot.Token);
         internal Task LoadMenu() => Controller.LoadCatalogAsync(Snapshot.Token, _composerView!.Lifetime);
@@ -865,6 +927,7 @@ namespace AIFrontend.Pages
         internal void RebaselineExecution(string acceptedId) { _historyExecutionRebaseline = true; _historyAcceptedPromptId = acceptedId; }
         internal void Switch(string session)
         {
+            _sessionMissing = false; // Real SwitchToSessionAsync clears the previous session's missing flag.
             _selectedSessionId = session; _sessionGeneration++; BindComposer();
             _sessionCts?.Cancel(); _sessionCts = new(); ConfigureAgentSelectorForSession(session);
             _pendingAckIds.Clear(); UpdateComposerButtons();
@@ -947,7 +1010,7 @@ namespace Microsoft.UI.Xaml.Controls
 {
     public enum InfoBarSeverity { Informational, Warning, Error, Success }
     public sealed class TextChangedEventArgs : EventArgs { }
-    public sealed class TextBox { public string Text = ""; public bool IsEnabled; public FocusState FocusState; public int Focuses; public void Focus(FocusState state) { FocusState = state; Focuses++; } }
+    public sealed class TextBox { public string Text = ""; public bool IsEnabled; public FocusState FocusState; public int Focuses; public int SelectionStart, SelectionLength; public void Select(int start, int length) { SelectionStart = start; SelectionLength = length; } public void Focus(FocusState state) { FocusState = state; Focuses++; } }
     public sealed class Button { public bool IsEnabled; public Visibility Visibility; }
     public sealed class TabViewItem { public object? Tag; public object? Header; public object? IconSource; public bool IsClosable; }
     public sealed class FontIconSource { public string? Glyph; }
@@ -991,6 +1054,7 @@ namespace AIFrontend.Pages.OpenCode
     public sealed class OpenCodeConversationView {
         public event EventHandler? SubagentSessionRequested;
         public List<OpenCodeMessage> Last = new();
+        public bool ContainsRenderedMessage(string id) => Last.Any(message => message.Id == id);
         public void ApplyMessages(List<OpenCodeMessage> messages) => Last = messages;
         public void ClearMessages() => Last.Clear();
     }

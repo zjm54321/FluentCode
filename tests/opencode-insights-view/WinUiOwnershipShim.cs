@@ -66,10 +66,14 @@ namespace Microsoft.UI.Xaml
     public enum VerticalAlignment { Top, Center, Bottom, Stretch }
     public enum HorizontalAlignment { Left, Center, Right, Stretch }
     public enum TextWrapping { NoWrap, Wrap }
+    public enum TextTrimming { None, CharacterEllipsis, WordEllipsis }
     public enum TextAlignment { Left, Center, Right }
     public enum GridUnitType { Auto, Pixel, Star }
 
-    public readonly record struct Thickness(double Left, double Top, double Right, double Bottom);
+    public readonly record struct Thickness(double Left, double Top, double Right, double Bottom)
+    {
+        public Thickness(double uniform) : this(uniform, uniform, uniform, uniform) { }
+    }
     public readonly record struct CornerRadius(double Uniform);
     public readonly record struct GridLength(double Value, GridUnitType GridUnitType)
     {
@@ -84,6 +88,7 @@ namespace Microsoft.UI.Xaml
     {
         internal Controls.Panel? Owner;
         public Visibility Visibility { get; set; }
+        public bool IsHitTestVisible { get; set; } = true;
         public double Opacity { get; set; } = 1;
         public FocusState FocusState => ReferenceEquals(ShimTree.Focused, this) ? FocusState.Programmatic : FocusState.Unfocused;
         public Microsoft.UI.Dispatching.DispatcherQueue? DispatcherQueue => Microsoft.UI.Dispatching.DispatcherQueue.Shared;
@@ -301,6 +306,16 @@ namespace Microsoft.UI.Xaml.Controls
         public void SimulateClick() => Click?.Invoke(this, new RoutedEventArgs());
     }
 
+    public sealed class ToggleButton : Button
+    {
+        public bool? IsChecked { get; set; } = false;
+    }
+
+    public sealed class SplitView : Control
+    {
+        public bool IsPaneOpen { get; set; }
+    }
+
     public sealed class CheckBox : Button
     {
         private bool? _isChecked = false;
@@ -438,8 +453,10 @@ namespace Microsoft.UI.Xaml.Controls
     public sealed class Flyout : Primitives.FlyoutBase
     {
         public UIElement? Content { get; set; }
+        public event EventHandler<object>? Opening;
         public int HideCalls { get; private set; }
         public void Hide() => HideCalls++;
+        public void SimulateOpening() => Opening?.Invoke(this, new object());
     }
 
     public class TextBlock : FrameworkElement
@@ -449,6 +466,7 @@ namespace Microsoft.UI.Xaml.Controls
         public FontWeight FontWeight { get; set; }
         public double FontSize { get; set; }
         public TextWrapping TextWrapping { get; set; }
+        public TextTrimming TextTrimming { get; set; }
         public TextAlignment TextAlignment { get; set; }
         public bool IsTextSelectionEnabled { get; set; }
     }

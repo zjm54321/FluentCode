@@ -85,7 +85,7 @@ $production = @()
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
 $commonHost = Join-Path $repo 'tests/opencode-instruction-notice/ConversationView.TestHost.cs'
-$tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'))
+$tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'))
 Get-FileHash -LiteralPath ($production + $tests + @($pagePath, $PSCommandPath)) -Algorithm SHA256 |
     Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'

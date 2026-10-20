@@ -34,13 +34,19 @@ public sealed partial class OpenCodeClient
     }
 
     internal async Task<OpenCodeInboxUser> SendPromptGuardedAsync(string sessionId, string text,
-        IReadOnlyList<PromptFileAttachment>? files, Func<Action, bool> starter, CancellationToken cancellationToken)
+        IReadOnlyList<PromptFileAttachment>? files, Func<Action, bool> starter, CancellationToken cancellationToken,
+        string? delivery = null)
     {
         ValidateSessionId(sessionId);
         ArgumentNullException.ThrowIfNull(text);
+        if (delivery is not null and not "steer" and not "queue")
+            throw new ArgumentException("Delivery must be steer or queue.", nameof(delivery));
         var validated = OpenCodeAttachment.ValidateFiles(files);
         object body = validated is null || validated.Count == 0
             ? new PromptBody(text) : new OpenCodeAttachedPromptBody(text, validated);
+        if (delivery is not null)
+            body = validated is null || validated.Count == 0
+                ? (object)new { text, delivery } : new { text, files = validated, delivery };
         OpenCodeAttachment.ValidateRequestSize(body);
         cancellationToken.ThrowIfCancellationRequested();
         using var content = CreateJsonContent(body);

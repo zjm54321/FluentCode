@@ -309,9 +309,12 @@ public sealed partial class OpenCodePage
         try
         {
             result = await dialog.ShowAsync(XamlRoot, initial, text => TryApplyNativeText(owner, text)
-                ? OpenCodeDraftEditorApplyOutcome.Applied : OpenCodeDraftEditorApplyOutcome.Stale);
+                ? OpenCodeDraftEditorApplyOutcome.Applied : OpenCodeDraftEditorApplyOutcome.Stale,
+                Composer.SelectionStart, Composer.SelectionLength);
         }
         finally { _nativeDialogPending = false; _nativeEditor = null; _nativeEditorTicket = null; }
+        if (result.Outcome == OpenCodeDraftEditorOutcome.Applied && OwnsComposerBinding(owner.Ticket.Binding))
+            RestoreExpandedComposerSelection(owner.Ticket.Binding, dialog.SelectionStart, dialog.SelectionLength);
         if (result.RetainedText is { } retained)
         {
             _nativeTextCandidate = new(owner.Ticket.Binding, retained);

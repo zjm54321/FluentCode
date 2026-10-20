@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -240,6 +241,21 @@ internal sealed class OpenCodeToolDetailPopup
 
     internal static OpenCodeToolDetailPopup Shared => _shared ??= new OpenCodeToolDetailPopup();
 
+    private static readonly ConditionalWeakTable<DependencyObject, object> SuppressedRoots = new();
+
+    internal static void SetSuppressDetails(DependencyObject element, bool value)
+    {
+        SuppressedRoots.Remove(element);
+        if (value) SuppressedRoots.Add(element, new object());
+    }
+
+    private static bool DetailsSuppressed(DependencyObject element)
+    {
+        for (DependencyObject? node = element; node is not null; node = VisualTreeHelper.GetParent(node))
+            if (SuppressedRoots.TryGetValue(node, out _)) return true;
+        return false;
+    }
+
     /// <summary>当前形态（预览 / 大视图 / 未显示）。</summary>
     internal OpenCodeDetailPopupMode Mode => _mode;
 
@@ -334,6 +350,7 @@ internal sealed class OpenCodeToolDetailPopup
 
     private void HoverEnterCore(object source)
     {
+        if (DetailsSuppressed(AnchorOf(source))) return;
         if (_mode == OpenCodeDetailPopupMode.Large)
         {
             return;
@@ -436,6 +453,14 @@ internal sealed class OpenCodeToolDetailPopup
 
     private void Show(object source, OpenCodeDetailPopupMode mode)
     {
+        if (DetailsSuppressed(AnchorOf(source))) return;
+        if (mode == OpenCodeDetailPopupMode.Large && source is IOpenCodeChildChatSource child)
+        {
+            Close();
+            child.OpenChildChat();
+            return;
+        }
+
         var anchor = AnchorOf(source);
         if (anchor.XamlRoot is not { } root)
         {

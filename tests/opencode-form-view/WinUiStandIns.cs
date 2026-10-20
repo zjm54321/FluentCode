@@ -183,6 +183,7 @@ namespace Microsoft.UI.Xaml.Controls
     public class Control : FrameworkElement
     {
         public bool IsEnabled { get; set; } = true;
+        public Thickness Padding { get; set; }
     }
 
     public class ContentControl : Control
@@ -219,10 +220,14 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class RadioButton : ContentControl { }
 
+    public delegate void SelectionChangedEventHandler(object sender, SelectionChangedEventArgs e);
+    public sealed class SelectionChangedEventArgs : RoutedEventArgs { }
+
     public class RadioButtons : Control
     {
         private int _selectedIndex = -1;
         public List<object> Items { get; } = new();
+        public event SelectionChangedEventHandler? SelectionChanged;
 
         public int SelectedIndex
         {
@@ -230,7 +235,9 @@ namespace Microsoft.UI.Xaml.Controls
             set
             {
                 if (value < -1 || value >= Items.Count) throw new ArgumentException("stand-in: SelectedIndex out of range");
+                if (_selectedIndex == value) return;
                 _selectedIndex = value;
+                SelectionChanged?.Invoke(this, new SelectionChangedEventArgs());
             }
         }
     }

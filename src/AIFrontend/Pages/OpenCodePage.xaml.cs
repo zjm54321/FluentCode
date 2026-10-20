@@ -82,9 +82,6 @@ public sealed partial class OpenCodePage : Page
     /// <summary>滚动到真实底部后的有界复核次数：吸收迟到的异步布局增高（富文本/工具部件）；绝不使用计时器循环。</summary>
     private const int MaxScrollSettlePasses = 3;
 
-    /// <summary>多行态为覆盖按钮预留的输入框右侧内边距（按钮容器 56 宽 + 右侧间距，按列布局推导）。</summary>
-    private const double ComposerOverlayReserve = 64;
-
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(12);
 
     private readonly OpenCodeConversationView _conversationView = new();
@@ -136,8 +133,6 @@ public sealed partial class OpenCodePage : Page
     private bool _isComposing;
     private bool _shiftDown;
     private bool _enterDown;
-    private bool _composerMultiLine;
-    private Thickness? _composerBasePadding;
     private bool _sessionMissing;
     private bool _deliveredNoticeShown;
     private bool _interactionBusy;
@@ -208,7 +203,6 @@ public sealed partial class OpenCodePage : Page
 
         // 单按钮与单/多行布局：内容变化刷新按钮模式；高度变化（行数/窗口宽度）切换按钮位置。
         Composer.TextChanged += Composer_TextChanged;
-        Composer.SizeChanged += Composer_SizeChanged;
 
         this.Loaded += OnPageLoaded;
         this.Unloaded += OnPageUnloaded;
@@ -971,11 +965,12 @@ public sealed partial class OpenCodePage : Page
         var sessionId = _selectedSessionId;
         var historyRead = CaptureMessageHistoryRead(client, sessionId);
         var ct = _sessionCts?.Token ?? CancellationToken.None;
-        var eventVersion = _eventReducer?.Version ?? 0;
 
         try
         {
-            await WaitForEventSubscriptionAsync(ct);
+            var eventReducer = _eventReducer;
+            var eventVersion = eventReducer?.Version ?? 0;
+            PrepareEventSnapshot(); // Buffered events drained here must win along with subsequent inflight events.
             OpenCodeSessionMessagesResponse response;
             try
             {
@@ -1046,7 +1041,10 @@ public sealed partial class OpenCodePage : Page
             // 折叠工具/富文本、窗宽变化不经此路径，不触碰用户阅读位置。
             var followBottom = initial || forceFollow || IsScrolledToBottom();
             var orderedMessages = OrderMessages(response.Data);
-            orderedMessages = _eventReducer?.MergeSnapshot(orderedMessages, eventVersion) ?? orderedMessages;
+            // A same-session authoritative boundary read can reset the reducer without losing this
+            // valid history read. Every event in that replacement reducer is newer than its reset.
+            var mergeVersion = ReferenceEquals(eventReducer, _eventReducer) ? eventVersion : 0;
+            orderedMessages = _eventReducer?.MergeSnapshot(orderedMessages, mergeVersion) ?? orderedMessages;
             ApplyRefreshedMessages(orderedMessages, response.Cursor?.Next, explicitRefresh);
             if (!IsCurrentMessageHistoryRead(historyRead)) return;
             RetainHistoryChildEvidence(sessionId, MergeMessageHistory());
@@ -1227,7 +1225,7 @@ public sealed partial class OpenCodePage : Page
         // Flush observed input before choosing Send versus Stop, not merely in the send branch.
         // Clean empty drafts remain eligible for explicit Stop; held/composing input cannot route.
         if (!_pageActive || _composerView is null || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
-        // 单按钮：仅“无草稿且当前选中会话确有本页观察到的 Working”执行停止；其余一律走发送
+        // 单按钮：仅“无草稿且当前选中会话确有权威活动状态（包括其他终端）”执行停止；其余一律走发送
         // （空白输入由既有入口拒绝；Enter 路径同样不经过停止分支）。
         if (ShouldStopSelectedSession())
         {
@@ -1249,12 +1247,13 @@ public sealed partial class OpenCodePage : Page
             && _pageActive
             && !_isSending
             && !_composerPickerPending
+            && _messageHistoryWorkflowOwner is null
             && NativeSendStopDisplayAllowed()
             && _selectedSessionId is { } selected
             && _composerController is not null
             && !GetComposerSnapshot().HasDraft
             && !GetComposerSnapshot().IsBusy
-            && _workingSessions.Contains(selected);
+            && IsComposerSessionWorking(selected);
     }
 
 
@@ -1277,6 +1276,8 @@ public sealed partial class OpenCodePage : Page
         }
 
         var sessionId = binding.SessionId;
+        if (!string.Equals(sessionId, _selectedSessionId, StringComparison.Ordinal)) return;
+        var historyEpoch = _messageHistoryEpoch;
         var submitted = _composerController.Snapshot.Token;
         var input = _composerView.InputEvidence;
         if (!input.IsClean) return;
@@ -1285,23 +1286,39 @@ public sealed partial class OpenCodePage : Page
         _isSending = true;
         var owner = BeginLocalAgentSubmission();
         bool Owns() => OwnsComposerSubmission(binding, owner);
+        bool CanStart() => Owns() && historyEpoch == _messageHistoryEpoch
+            && _messageHistoryWorkflowOwner is null && IsComposerSessionWorking(sessionId);
+        var operationId = Guid.NewGuid();
+        var fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(sessionId + ":" + binding.Revision + ":" + historyEpoch)));
         SendStopButton.IsEnabled = false;
+        OpenCodeInteractionGate.Lease? interruptLease = null;
         try
         {
-            using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(binding.Source.Identity, sessionId, ct);
-            if (!Owns() || lease.GetSessionControlProtection() is not null
-                || lease.GetComposerSubmissionProtection() is not null || lease.GetAgentSwitchProtection() is not null) return;
+            var lease = interruptLease = await OpenCodeInteractionGate.Shared.EnterAsync(binding.Source.Identity, sessionId, ct);
+            if (!CanStart() || !lease.CanControlSession()) return;
             Task<bool>? pending = null;
             binding.Source.TryExecute(ct, () =>
             {
-                if (Owns() && !HasPendingNativeAction() && _composerController.Snapshot.Token == submitted
+                if (CanStart() && !HasPendingNativeAction() && _composerController.Snapshot.Token == submitted
                     && OpenCodeComposerInputEvidence.StillCurrent(input, _composerView.InputEvidence)
                     && !_composerController.Snapshot.HasDraft && !_isComposing
-                    && lease.GetSessionControlProtection() is null)
-                    pending = client.InterruptAsync(sessionId, ct);
+                    && lease.CanControlSession())
+                {
+                    var protectedMutation = false;
+                    BeginComposerInterruptProtection(lease, operationId, fingerprint, ref protectedMutation);
+                    if (!protectedMutation) return;
+                    pending = client.InterruptGuardedAsync(sessionId, start => { start(); return true; }, ct);
+                }
             });
             if (pending is null) return;
             var interrupted = await pending;
+            // Only a verified boolean response settles the exact operation. Cancellation, transport errors,
+            // source/session loss and malformed responses leave gate protection intact (no automatic retry).
+            binding.Source.TryExecute(CancellationToken.None, () =>
+            {
+                if (Owns()) lease.CompleteSessionControl(operationId, NotificationInteractionStatus.Succeeded);
+            });
             lease.Dispose();
             if (!Owns() || binding.Source.IsRevoked)
             {
@@ -1324,6 +1341,20 @@ public sealed partial class OpenCodePage : Page
         }
         catch (OperationCanceledException)
         {
+        }
+        catch (OpenCodeSessionControlException ex)
+        {
+            if (ex.VerifiedPreEffect && interruptLease is { } lease)
+            {
+                binding.Source.TryExecute(CancellationToken.None, () =>
+                {
+                    if (Owns() && lease.GetSessionControlProtection() is { } protection
+                        && protection.OperationId == operationId && protection.Kind == SessionControlKind.Interrupt)
+                        lease.CompleteSessionControl(operationId, NotificationInteractionStatus.Failed);
+                });
+            }
+            if (Owns() && !binding.Source.IsRevoked)
+                HandleApiException(new OpenCodeApiException(ex.StatusCode, null, null, "Session interrupt request failed."), "中断");
         }
         catch (OpenCodeApiException ex)
         {
@@ -1363,6 +1394,7 @@ public sealed partial class OpenCodePage : Page
         }
         finally
         {
+            interruptLease?.Dispose();
             if (EndLocalAgentSubmission(owner))
             {
                 _isSending = false;
@@ -3606,51 +3638,6 @@ public sealed partial class OpenCodePage : Page
         UpdateComposerButtons();
     }
 
-    private void Composer_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateComposerMultiLineLayout();
-    }
-
-    /// <summary>
-    /// 单/多行判定：以 TextBox 实际高度超过单行基准（MinHeight）判定多行（SizeChanged 时机；
-    /// 行高离散：单行=MinHeight、两行≈MinHeight+行高；0.5 容差避免浮点抖动）。
-    /// 切换只改按钮所在列与输入框右侧内边距，TextBox 宽度与列结构恒定（固定列），
-    /// 与自动换行之间不存在互相反馈的振荡；判定绝不触发任何滚动。
-    /// </summary>
-    private void UpdateComposerMultiLineLayout()
-    {
-        var multiLine = Composer.ActualHeight > Composer.MinHeight + 0.5;
-        if (multiLine == _composerMultiLine)
-        {
-            return;
-        }
-
-        _composerMultiLine = multiLine;
-        if (multiLine)
-        {
-            // 首次进入多行时捕获主题默认内边距（此时控件已应用样式），此后只扩展右侧留白。
-            var basePadding = _composerBasePadding ?? Composer.Padding;
-            _composerBasePadding = basePadding;
-            Composer.Padding = new Thickness(
-                basePadding.Left,
-                basePadding.Top,
-                basePadding.Right + ComposerOverlayReserve,
-                basePadding.Bottom);
-            Grid.SetColumn(ComposerActions, 0);
-            ComposerActions.Margin = new Thickness(0, 0, 4, 4);
-        }
-        else
-        {
-            if (_composerBasePadding is { } basePadding)
-            {
-                Composer.Padding = basePadding;
-            }
-
-            Grid.SetColumn(ComposerActions, 1);
-            ComposerActions.Margin = new Thickness(8, 0, 0, 4);
-        }
-    }
-
     // ------------------------------------------------------------------
     // 滚动
     // ------------------------------------------------------------------
@@ -3869,7 +3856,7 @@ public sealed partial class OpenCodePage : Page
         // The blank "新会话" tab has no session yet; its Send creates one first (no Stop: never Working).
         var hasSession = _pageActive && hasClient && (_selectedSessionId is not null || _newSessionDraftActive) && !_sessionMissing;
         var snapshot = GetComposerSnapshot();
-        var isWorking = hasSession && _selectedSessionId is { } selected && _workingSessions.Contains(selected);
+        var isWorking = hasSession && _selectedSessionId is { } selected && IsComposerSessionWorking(selected);
 
         // 权限遮罩盖住输入区时输入框仍留在可视树中（保留草稿/输入法状态），仅禁用（重设计 v3 §5）。
         Composer.IsEnabled = _pageActive && hasClient && !ComposerCoveredByOverlay;
@@ -3883,6 +3870,7 @@ public sealed partial class OpenCodePage : Page
             && !ComposerCoveredByOverlay;
         SendProgress.IsActive = buttons.ShowProgress;
         SetSendStopMode(OpenCodeComposerSendPresentation.Map(buttons, isWorking), snapshot.HasDraft);
+        UpdateComposerSecondaryActions(isWorking, buttons.CanSend && SendStopButton.IsEnabled, snapshot);
     }
 
     private void UpdateEmptyState()

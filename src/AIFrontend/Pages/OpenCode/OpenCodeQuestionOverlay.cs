@@ -205,20 +205,26 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _backButton = new Button { Content = "返回", MinWidth = 88, Visibility = Visibility.Collapsed };
         _backButton.Click += (_, _) => EndCancel();
 
+        // ContentDialog 风格底部按钮行：次要操作在左（不回答 / 返回），主操作（AccentButtonStyle 提交 / 确认不回答）在最右。
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
         buttons.Children.Add(_progress);
-        buttons.Children.Add(_submitButton);
-        buttons.Children.Add(_confirmButton);
         buttons.Children.Add(_cancelButton);
         buttons.Children.Add(_backButton);
+        buttons.Children.Add(_submitButton);
+        buttons.Children.Add(_confirmButton);
         var footer = new Grid { ColumnSpacing = 12 };
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Place(footer, _pagerPanel, 0);
         Place(footer, buttons, 1);
 
+        var footerBar = OpenCodeThemedXaml.Load<Border>("Border",
+            "BorderBrush=\"{ThemeResource DividerStrokeColorDefaultBrush}\" BorderThickness=\"0,1,0,0\" Padding=\"0,12,0,0\" Margin=\"0,4,0,0\"")
+            ?? new Border { BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 12, 0, 0), Margin = new Thickness(0, 4, 0, 0) };
+        footerBar.Child = footer;
+
         var layout = new StackPanel { Spacing = 12 };
-        var headerBlock = new StackPanel { Spacing = 2 };
+        var headerBlock = new StackPanel { Spacing = 4 };
         headerBlock.Children.Add(header);
         headerBlock.Children.Add(_summaryText);
         layout.Children.Add(headerBlock);
@@ -229,7 +235,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         layout.Children.Add(_errorBar);
         layout.Children.Add(_editorScroll);
         layout.Children.Add(_confirmText);
-        layout.Children.Add(footer);
+        layout.Children.Add(footerBar);
 
         // 呈现根可聚焦（遮罩出现时焦点落在这里，而不是任何输入或提交按钮，防止正在输入时的 Enter 误提交）。
         _presenter = new ContentControl
@@ -244,8 +250,8 @@ internal sealed class OpenCodeQuestionOverlay : Grid
 
         var card = OpenCodeThemedXaml.Load<Border>("Border",
             "Background=\"{ThemeResource CardBackgroundFillColorDefaultBrush}\" BorderBrush=\"{ThemeResource CardStrokeColorDefaultBrush}\"" +
-            " BorderThickness=\"1\" CornerRadius=\"{ThemeResource OverlayCornerRadius}\" Padding=\"16,14,16,12\"")
-            ?? new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(16, 14, 16, 12) };
+            " BorderThickness=\"1\" CornerRadius=\"{ThemeResource OverlayCornerRadius}\" Padding=\"16\"")
+            ?? new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(16) };
         card.Child = _presenter;
         Children.Add(card);
 

@@ -46,13 +46,17 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationInteractions.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs'),
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),
+    (Join-Path $PSScriptRoot 'EventLatencyHost.cs'),
+    (Join-Path $PSScriptRoot 'EventLatencyTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
 $ackPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'
+$eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
 $extractions = @(@{ Path = $pagePath; Names = @('RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
+    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
     @{ Path = $ackPath; Names = @('InvalidateViewAcknowledgement') },
     @{ Path = $eventPath; Names = @('PrepareEventSnapshot', 'OnEventStreamConnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
@@ -80,6 +84,9 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
+using OpenCodePageSource = AIFrontend.Services.Notifications.OpenCodePageSource;
+using SessionControlKind = AIFrontend.Services.Notifications.SessionControlKind;
+using Windows.ApplicationModel.DataTransfer;
 using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages;
@@ -93,7 +100,7 @@ $runtime = Join-Path $output 'MessagePaginationTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $references = @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll')).FullName
-$inputs = @($sources + $references + @($PSCommandPath, $dotnet, $compiler, $responseFile, $pagePath, $builtinPath, $ackPath, $runtime)) | Sort-Object -Unique
+$inputs = @($sources + $references + @($extractions.Path) + @($PSCommandPath, $dotnet, $compiler, $responseFile, $pagePath, $builtinPath, $ackPath, $eventPath, $runtime)) | Sort-Object -Unique
 @{ CompiledSources = $sources; Extractions = $extractions; Compiler = $compiler; Host = $dotnet; References = $references; Rsp = $responseFile; RuntimeConfig = $runtime } | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
 Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')

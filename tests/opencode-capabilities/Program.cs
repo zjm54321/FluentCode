@@ -23,7 +23,8 @@ internal static class Program
         TodoReplay();
         PluginGatesAndCoreChildren();
         await ServerInfo();
-        Console.WriteLine($"PASS: 4 capability groups, {assertions} assertions; fake HTTP only; Billion/LSP/private storage/RPC requests: 0.");
+        await McpControl();
+        Console.WriteLine($"PASS: 5 capability groups, {assertions} assertions; fake HTTP only; Billion/LSP/private storage/RPC requests: 0.");
     }
 
     private static void Check(bool condition, string label)
@@ -264,6 +265,31 @@ internal static class Program
         await Expect<OpenCodeProtocolException>(() => client.GetServerInfoAsync());
         Check(requests == 2, "no retry");
         Check(client.DisplayBaseUrl == "https://offline.invalid/prefix" && !client.DisplayBaseUrl.Contains("synthetic-token"), "display URL is the configured base without credentials");
+    }
+
+    private static async Task McpControl()
+    {
+        var seen = new List<(HttpMethod Method, string Path, string Query)>();
+        using var http = new HttpClient(new Handler((request, _) =>
+        {
+            Check(request.Content is null, "MCP control POST has no body");
+            Check(request.Headers.Authorization?.ToString() == "Bearer synthetic-token", "MCP control uses existing authorization");
+            seen.Add((request.Method, request.RequestUri!.AbsolutePath, Uri.UnescapeDataString(request.RequestUri.Query)));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+        }));
+        using var client = Client(http);
+        await client.ControlMcpServerAsync("my server/1", OpenCodeMcpControlAction.Connect, "/work & 汉字");
+        await client.ControlMcpServerAsync("files", OpenCodeMcpControlAction.Disconnect);
+        Check(seen.Count == 2
+            && seen[0] == (HttpMethod.Post, "/prefix/api/experimental/mcp/my%20server%2F1/connect", "?location[directory]=/work & 汉字")
+            && seen[1] == (HttpMethod.Post, "/prefix/api/experimental/mcp/files/disconnect", ""),
+            "H6: MCP connect/disconnect POST routes, name escaping and optional location[directory]");
+        foreach (var bad in new[] { "", " ", ".", "..", "a\nb", new string('x', 257) })
+        {
+            await Expect<ArgumentException>(() => client.ControlMcpServerAsync(bad, OpenCodeMcpControlAction.Connect));
+        }
+
+        Check(seen.Count == 2, "invalid MCP names send nothing");
     }
 
     private static void PluginGatesAndCoreChildren()

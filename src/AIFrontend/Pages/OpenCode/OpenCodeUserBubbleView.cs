@@ -25,7 +25,7 @@ internal sealed class OpenCodeUserBubbleView
     private bool _overflows;
 
     /// <param name="content">要承载的内容元素（实例不重建；由本视图入树）。</param>
-    internal OpenCodeUserBubbleView(FrameworkElement content)
+    internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true)
     {
         ArgumentNullException.ThrowIfNull(content);
 
@@ -67,16 +67,26 @@ internal sealed class OpenCodeUserBubbleView
         layout.Children.Add(_clip);
         layout.Children.Add(_toggle);
 
+        // A low-opacity native accent layer over an OPAQUE theme surface gives delivered
+        // messages a light accent tint without changing body/code/image opacity or contrast.
+        var surface = new Grid();
+        if (delivered)
+        {
+            var tint = new Border { Opacity = 0.12, IsHitTestVisible = false, CornerRadius = new CornerRadius(7) };
+            OpenCodeToolTheme.Apply(tint, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
+            surface.Children.Add(tint);
+        }
+        surface.Children.Add(layout);
         _bubble = new Border
         {
-            Child = layout,
+            Child = surface,
             MaxWidth = 640,
             HorizontalAlignment = HorizontalAlignment.Right,
             CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12, 8, 8, 8),
             BorderThickness = new Thickness(1),
         };
-        OpenCodeConversationView.ApplyStyle(_bubble, "OpenCodeSubtleCardChromeStyle");
+        layout.Padding = new Thickness(12, 8, 8, 8);
+        OpenCodeToolTheme.Apply(_bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke));
         ApplyToggleText();
     }
 

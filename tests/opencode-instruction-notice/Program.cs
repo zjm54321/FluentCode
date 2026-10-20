@@ -16,7 +16,11 @@ internal static class Program
 {
     private static int assertions;
 
-    private static void Main() => Run().GetAwaiter().GetResult();
+    private static void Main(string[] args)
+    {
+        if (args.Length > 0 && args[0] == "True") { RedesignRegression.Run(queueOnly: true); return; }
+        Run().GetAwaiter().GetResult();
+    }
 
     private static async Task Run()
     {

@@ -7,6 +7,7 @@
 # (PageHost.cs), and records complete compiled-input hashes (sources, references, compiler, host, response file)
 # before and after. -ViewSource with a pre-origin view no longer compiles against the Page partial (new events).
 param(
+    [string]$SourceRoot,
     [string]$ViewSource,
     [string]$SessionInsightsSource,
     [string]$Output
@@ -19,7 +20,7 @@ $env:DOTNET_NOLOGO = '1'
 $env:DOTNET_ADD_GLOBAL_TOOLS_TO_PATH = 'false'
 $env:DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE = 'true'
 
-$repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).ProviderPath
+$repo = if ($SourceRoot) { (Resolve-Path $SourceRoot).ProviderPath } else { (Resolve-Path (Join-Path $PSScriptRoot '../..')).ProviderPath }
 if (!$SessionInsightsSource) { $SessionInsightsSource = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs' }
 if (!$ViewSource) { $ViewSource = Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionInsightsView.cs' }
 if (!$Output) { $Output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-insights-view-' + [guid]::NewGuid().ToString('N')) }

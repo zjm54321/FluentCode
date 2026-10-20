@@ -27,8 +27,8 @@ namespace AIFrontend.Pages.OpenCode;
 /// <para>
 /// subagent 工具（<c>name == "subagent"</c>，F7）：行内不再显示摘要卡片与按钮；悬停详情显示子会话预览
 /// （智能体 / 任务 / 模型 / 方式 / 记录状态 / 子会话 id + 工具输入与结果，均来自已有部件数据，不发起请求）。
-/// 详情固定时行尾出现「打开子会话」链接（仅当子会话 id 通过不透明校验），点击经 <see cref="SubagentSessionRequested"/>
-/// 仅向上转发导航提示，由页面既有的校验导航路径处理；不授权、不发起请求。
+/// 点击经 <see cref="SubagentSessionRequested"/> 向页面请求只读子会话小窗；小窗最大化才走校验导航路径。
+/// 行本身不授权、不发起请求。
 /// 增量移除 / 替换时由 <see cref="Dispose"/> 退订、关闭弹出层并停用回调，不产生 stale callbacks。
 /// </para>
 /// </remarks>
@@ -46,7 +46,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private readonly TextBlock _summaryText;
     private readonly TextBlock _additionsText;
     private readonly TextBlock _deletionsText;
-    private readonly HyperlinkButton _openChildLink;
 
     private OpenCodeToolRowModel _model = new();
 
@@ -65,12 +64,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private string? _parentMessageId;
 
     private bool _disposed;
+    private FrameworkElement? _detailAnchorOverride;
+    internal void SetDetailAnchor(FrameworkElement? anchor) => _detailAnchorOverride = anchor;
 
     /// <summary>承载 UI 的根元素（构造时创建，同一实例；本类不是控件子类）。</summary>
     public FrameworkElement Element => _root;
 
     /// <summary>
-    /// 用户点击固定详情时行尾的「打开子会话」链接时触发（仅 subagent 工具且子会话 id 通过不透明校验时链接可见）。
+    /// 用户点击 subagent 工具行（或其悬停预览）时请求只读子会话小窗。
     /// 只含父消息 id 与子会话 id 的导航提示；不授权、不直接发起任何查询或 HTTP。
     /// <see cref="OpenCodeConversationView"/> 将其转发为自己的同名公开事件。
     /// </summary>
@@ -169,35 +170,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         OpenCodeToolTheme.Apply(_selectionBar, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
         _selectionBar.VerticalAlignment = VerticalAlignment.Stretch;
 
-        // 固定详情时行尾的「打开子会话」链接（原生 HyperlinkButton；不嵌套在行按钮内）。
-        _openChildLink = new HyperlinkButton
-        {
-            Content = "打开子会话",
-            VerticalAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(8, 2, 8, 2),
-            Visibility = Visibility.Collapsed,
-        };
-        AutomationProperties.SetName(_openChildLink, "打开子会话");
-        _openChildLink.Click += (_, _) =>
-        {
-            if (_childSessionId is { } childId)
-            {
-                // 先关闭详情（含 80% 大视图），避免其遮住随后打开的子会话。
-                OpenCodeToolDetailPopup.Shared.Close();
-                RaiseSubagentSessionRequested(childId);
-            }
-        };
-
         _root = new Grid { ColumnSpacing = 2 };
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_selectionBar, 0);
         Grid.SetColumn(_rowChrome, 1);
-        Grid.SetColumn(_openChildLink, 2);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_rowChrome);
-        _root.Children.Add(_openChildLink);
     }
 
     /// <summary>当前行模型（供分组摘要与详情弹出层使用）。</summary>
@@ -205,19 +185,13 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     OpenCodeToolRowModel IOpenCodeToolDetailSource.DetailModel => _detailModel;
 
-    FrameworkElement IOpenCodeToolDetailSource.DetailAnchor => _row;
+    FrameworkElement IOpenCodeToolDetailSource.DetailAnchor => _detailAnchorOverride ?? _row;
 
     void IOpenCodeToolDetailSource.OnDetailStateChanged(bool shown, bool pinned)
     {
         _pinned = shown && pinned;
         _selectionBar.Visibility = _pinned ? Visibility.Visible : Visibility.Collapsed;
-        UpdateOpenChildLink();
     }
-
-    private void UpdateOpenChildLink()
-        => _openChildLink.Visibility = _pinned && !_disposed && _childSessionId is not null
-            ? Visibility.Visible
-            : Visibility.Collapsed;
 
     /// <summary>
     /// 就地更新展示内容（详情弹出层若正为本行显示，则同步刷新并保持滚动位置）。
@@ -234,11 +208,11 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion);
         ApplyModel(_model);
 
-        // subagent 预览：严格按已核准形状识别（name == "subagent"）；missing/malformed 时按普通工具详情显示。
+        // subagent 严格按已核准名称识别；尚未提供 child id 时，小窗如实提示而不显示属性卡冒充对话。
         OpenCodeSubagentToolInfo? subagent = null;
         try
         {
-            if (OpenCodeSubagentPresentation.TryReadToolPart(part, out var info) && info.HasAnyDetail)
+            if (OpenCodeSubagentPresentation.TryReadToolPart(part, out var info))
             {
                 subagent = info;
             }
@@ -262,8 +236,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             OpenCodeToolDetailPopup.Shared.CloseIf(_subagentSource!);
             _subagentSource = null;
         }
-        AutomationProperties.SetAutomationId(_openChildLink, "OpenCodeToolRow.OpenChild." + _model.PartId);
-        UpdateOpenChildLink();
 
         if (!_disposed)
         {
@@ -295,7 +267,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _disposed = true;
         CloseDetailIfShowing();
         _childSessionId = null;
-        UpdateOpenChildLink();
         SubagentSessionRequested = null;
     }
 
@@ -397,7 +368,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         OpenCodeToolKind.Grep or OpenCodeToolKind.WebSearch => "\uE721",
         OpenCodeToolKind.Glob or OpenCodeToolKind.List => "\uE8B7",
         OpenCodeToolKind.WebFetch => "\uE774",
-        OpenCodeToolKind.Subagent => "\uE99A",
+        OpenCodeToolKind.Subagent => OpenCodeStepRunPresentation.SubagentGlyph,
         OpenCodeToolKind.Question => "\uE897",
         OpenCodeToolKind.Todo => "\uE9D5",
         _ => "\uE90F",
@@ -518,7 +489,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             new OpenCodeSubagentSessionRequestedEventArgs(_parentMessageId, childSessionId));
     }
 
-    private void HoverEnterDetail()
+    internal void HoverEnterDetail()
     {
         if (_subagentSource is { } preview)
         {
@@ -530,7 +501,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         }
     }
 
-    private void HoverExitDetail()
+    internal void HoverExitDetail()
     {
         if (_subagentSource is { } preview)
         {
@@ -542,7 +513,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         }
     }
 
-    private void TogglePinnedDetail()
+    internal void TogglePinnedDetail()
     {
         if (_subagentSource is { } preview)
         {
@@ -564,18 +535,22 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     }
 
     /// <summary>
-    /// subagent 工具的详情来源（F7）：沿用工具详情的通用内容（子会话预览键值 / 输入 / 结果 / 错误），
-    /// 顶部附「打开子会话」链接（仅子会话 id 通过不透明校验时显示；点击只转发既有导航事件）。
-    /// 弹出层内按下鼠标即转为固定，因此链接在固定的弹出层中使用。
+    /// subagent 悬停仍显示调用详情；点击独立请求真实子会话只读窗口，不复用大属性详情。
     /// </summary>
-    private sealed class SubagentPreviewSource : IOpenCodeDetailContentSource
+    private sealed class SubagentPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource
     {
         private readonly OpenCodeToolPartView _owner;
         private readonly OpenCodeToolDetailOptions _options = new();
 
         internal SubagentPreviewSource(OpenCodeToolPartView owner) => _owner = owner;
 
-        public FrameworkElement DetailAnchor => _owner._row;
+        public void OpenChildChat()
+        {
+            if (!_owner._disposed)
+                _owner.RaiseSubagentSessionRequested(_owner._childSessionId ?? string.Empty);
+        }
+
+        public FrameworkElement DetailAnchor => _owner._detailAnchorOverride ?? _owner._row;
 
         public OpenCodeDetailHeader DetailHeader
         {
@@ -605,34 +580,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
                 _owner._detailModel,
                 _options,
                 () => OpenCodeToolDetailPopup.Shared.Refresh(this));
-            if (_owner._childSessionId is not { } childId || _owner._disposed)
-            {
-                return inner;
-            }
-
-            var link = new HyperlinkButton
-            {
-                Content = "打开子会话",
-                Padding = new Thickness(0, 2, 0, 2),
-                HorizontalAlignment = HorizontalAlignment.Left,
-            };
-            AutomationProperties.SetAutomationId(link, "OpenCodeToolDetailOpenChild");
-            AutomationProperties.SetName(link, "打开子会话");
-            link.Click += (_, _) =>
-            {
-                // 先关闭大详情视图，避免其停留在子会话之上。
-                OpenCodeToolDetailPopup.Shared.Close();
-                _owner.RaiseSubagentSessionRequested(childId);
-            };
-
-            var root = new Grid { RowSpacing = 8 };
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            Grid.SetRow(link, 0);
-            Grid.SetRow(inner.Root, 1);
-            root.Children.Add(link);
-            root.Children.Add(inner.Root);
-            return new OpenCodeToolDetailView(root, inner.Scroller);
+            return inner;
         }
 
         public void OnDetailStateChanged(bool shown, bool pinned)

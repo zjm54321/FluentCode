@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
+using AIFrontend.Services.Notifications;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -34,11 +35,31 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerSendMode? _sendMode;
     private bool _sendHasDraft;
 
+    /// <summary>EventSync owner calls after publishing/resetting foreground activity. Never changes draft/editor state.</summary>
+    private void RefreshComposerSessionActivity() => UpdateComposerButtons();
+
+    private bool IsComposerSessionWorking(string sessionId)
+        => OpenCodeComposerActivityPolicy.IsWorking(
+            _pageActive && SourceReady && !_sessionMissing
+                && string.Equals(sessionId, _selectedSessionId, System.StringComparison.Ordinal),
+            _liveSessionStatuses.TryGetValue(sessionId, out var live) ? live.Working : null,
+            _workingSessions.Contains(sessionId));
+
+    // Integration seam: the gate owner adds SessionControlKind.Interrupt and starts that exact slot.
+    // No implementation means fail closed, NEVER send an unprotected mutation. Settlement uses the same lease/operation.
+    partial void BeginComposerInterruptProtection(OpenCodeInteractionGate.Lease lease, System.Guid operationId,
+        string fingerprint, ref bool started);
+
     private void InitializeComposerOverlays()
     {
         PermissionOverlayHost.Children.Add(_permissionOverlay);
         QueuedPromptsHost.Children.Add(_queuedPromptsView);
         InitializeQueuedWithdraw();
+        InitializePendingDeliveryActions();
+        _conversationView.BindingCleared += (_, _) => ClearSteerReceipts();
+        _conversationView.PendingSteerWithdrawRequested += (_, id) => _queuedPromptsView.RequestWithdraw(id);
+        _conversationView.PendingSteerDeliveryChangeRequested += (_, request) => _queuedPromptsView.RequestDeliveryChange(request);
+        _queuedPromptsView.BusyChanged += (_, _) => _conversationView.SetPendingSteerBusy(_queuedPromptsView.IsWithdrawBusy);
 
         // 发送按钮内容：原图标 + 进度环叠放于同一 32×32 按钮内（几何契约 §14 不变）。
         var icon = SendStopIcon;
@@ -121,7 +142,13 @@ public sealed partial class OpenCodePage
             && _queuedInbox is { Count: > 0 }
             && _selectedSessionId is { } selected
             && string.Equals(_queuedInboxSessionId, selected, System.StringComparison.Ordinal);
-        _queuedPromptsView.Apply(show ? _queuedInbox : null, CanWithdrawQueued);
+        ReconcilePendingDeliveryUpdates(show ? _queuedInbox : null);
+        // Keep the accepted snapshot intact for ownership/PATCH/withdrawal reconciliation; partition only the UI.
+        var accepted = show ? _queuedInbox!.Where(item => item.SessionId == _selectedSessionId).ToArray() : null;
+        var steer = ProjectSteerReceipts(accepted);
+        _conversationView.ApplyAdmittedSteer(_pageActive && SourceReady ? _selectedSessionId : null, steer, CanWithdrawQueued, CanUpdatePendingDelivery);
+        _conversationView.SetPendingSteerBusy(_queuedPromptsView.IsWithdrawBusy);
+        _queuedPromptsView.Apply(accepted, CanWithdrawQueued, CanUpdatePendingDelivery);
         QueuedPromptsHost.Visibility = _queuedPromptsView.HasItems ? Visibility.Visible : Visibility.Collapsed;
         if (!show)
         {

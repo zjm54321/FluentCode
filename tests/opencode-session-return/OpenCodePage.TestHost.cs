@@ -137,8 +137,7 @@ namespace AIFrontend.Pages
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
         public Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; } = new();
         public bool IsLoaded => true;
-        public object XamlRoot { get; } = new();
-        public double ActualWidth => 800;
+        public new double ActualWidth => 800;
         public double ActualHeight => 600;
         internal readonly Queue<Task> MessageLoads = new();
         internal TaskCompletionSource<string> LoadEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -178,6 +177,7 @@ namespace AIFrontend.Pages
         internal Task Switch(string id) => SwitchToSessionAsync(id);
         internal Task<int> Navigate(string id) => NavigateToSessionAsync(id);
         internal Task Card(string messageId, string childId) => NavigateToSubagentSessionAsync(_conversationView, messageId, childId);
+        internal Task Preview(string messageId, string childId) => ShowSubagentChatAsync(_conversationView, messageId, childId);
         internal Task Notify(NotificationNavigationTarget target, NotificationInteractionResult? result = null)
             => ProcessNavigationTargetAsync(target, result);
         internal string? Rebuild(List<OpenCodeSessionInfo> sessions) => RebuildSessionList(sessions);
@@ -211,5 +211,7 @@ namespace AIFrontend.Pages
         private void UnsubscribeAppSourceChanged() { }
         private void OpenCodePage_TrustedEndpointIdentityChanged(object? sender, EventArgs e) { }
         private void SetConnectionState(ConnectionState state) { }
+        private void RestartSessionEventSync(string id) { }
+        private void StopEventSync() { }
     }
 }
