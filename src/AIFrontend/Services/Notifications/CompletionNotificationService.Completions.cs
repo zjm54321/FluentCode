@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 
@@ -18,20 +19,46 @@ public sealed partial class CompletionNotificationService
         NotificationNavigationTarget? Target, DateTimeOffset ExpiresAt);
     private readonly Dictionary<string, CompletionBinding> _completionTargets = new(StringComparer.Ordinal);
     private readonly TimeProvider _completionClock;
-    private readonly Action<NotificationSource, string> _submitCompletion;
+    private readonly Func<NotificationSource, string, NotificationCompletionText?, NotificationNativeReceipt> _submitCompletion;
 
     public CompletionNotificationService()
     {
         _completionClock = TimeProvider.System;
         _submitCompletion = ShowCompletion;
+        _submitInteraction = plan => ShowNativeNotification(BuildInteractionNotification(plan));
+        _removeNotification = RemoveNativeNotificationAsync;
+        _displayLedger = new(_completionClock);
     }
 
     // Offline delivery seam only. Production always uses the public constructor + Initialize/Register.
     // Real service/coordinator code remains under test; no fake WinRT projection or reflection is needed.
     internal CompletionNotificationService(TimeProvider clock, Action<NotificationSource, string> submitCompletion)
+        : this(clock, (source, token) =>
+        {
+            submitCompletion(source, token);
+            return new(0, string.Empty, string.Empty);
+        }, _ => throw new InvalidOperationException("No offline interaction delivery configured."), _ => Task.CompletedTask)
+    {
+        ArgumentNullException.ThrowIfNull(submitCompletion);
+    }
+
+    internal CompletionNotificationService(TimeProvider clock,
+        Func<NotificationSource, string, NotificationNativeReceipt> submitCompletion,
+        Func<NotificationInteractionPlan, NotificationNativeReceipt> submitInteraction, Func<uint, Task> removeNotification)
+        : this(clock, (source, token, _) => submitCompletion(source, token), submitInteraction, removeNotification)
+    {
+        ArgumentNullException.ThrowIfNull(submitCompletion);
+    }
+
+    internal CompletionNotificationService(TimeProvider clock,
+        Func<NotificationSource, string, NotificationCompletionText?, NotificationNativeReceipt> submitCompletion,
+        Func<NotificationInteractionPlan, NotificationNativeReceipt> submitInteraction, Func<uint, Task> removeNotification)
     {
         _completionClock = clock ?? throw new ArgumentNullException(nameof(clock));
         _submitCompletion = submitCompletion ?? throw new ArgumentNullException(nameof(submitCompletion));
+        _submitInteraction = submitInteraction ?? throw new ArgumentNullException(nameof(submitInteraction));
+        _removeNotification = removeNotification ?? throw new ArgumentNullException(nameof(removeNotification));
+        _displayLedger = new(clock);
         _status = NotificationServiceStatus.Initialized;
     }
 
@@ -44,16 +71,14 @@ public sealed partial class CompletionNotificationService
             sessionId, requestId, NotificationNavigationKind.Completion));
     }
 
-    private static void ShowCompletion(NotificationSource source, string token)
+    private static NotificationNativeReceipt ShowCompletion(NotificationSource source, string token, NotificationCompletionText? text)
     {
-        var notification = new AppNotificationBuilder()
+        var builder = new AppNotificationBuilder()
             .AddArgument(NotificationArgumentCodec.ActionKey, NotificationArgumentCodec.CompletionActionValue)
             .AddArgument(NotificationArgumentCodec.SourceKey, NotificationSourceLabels.GetArgumentTag(source))
-            .AddArgument(NotificationArgumentCodec.RequestIdKey, token)
-            .AddText(NotificationSourceLabels.GetDisplayName(source))
-            .AddText(BodyText)
-            .BuildNotification();
-        AppNotificationManager.Default.Show(notification);
+            .AddArgument(NotificationArgumentCodec.RequestIdKey, token);
+        foreach (string line in NotificationText.CompletionLines(source, text)) builder.AddText(line);
+        return ShowNativeNotification(builder.BuildNotification());
     }
 
     /// <summary>
@@ -82,8 +107,8 @@ public sealed partial class CompletionNotificationService
                 RaiseNavigation(new NotificationActivationInfo(true, binding.Source, binding.RequestId, string.Empty));
                 return binding.Target; // The legacy two-argument API may focus, but cannot invent a session.
             }
-            PublishInteraction(new(NotificationInteractionStatus.NeedsApp,
-                "通知未知、过期或来源已改变；请在应用选择会话。本次激活未提交任何决定。"));
+            // Duplicate lifecycle delivery may arrive after navigation ACK/invalidation. It is not
+            // a failed interaction and must never publish NeedsApp or focus the window.
             return null;
         }
     }

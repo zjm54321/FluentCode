@@ -155,3 +155,131 @@ public sealed record OpenCodeNotificationObservation(
 - 历史/断线/pending：未初始化不读、Track 去重、初始历史不报、断线保留锚点并补页、cursor 不与 order 同传、重复 idle 不报、pending 失败保留旧集合且不重复准备、NeedsApp 返回可消费、锚点丢失/预算耗尽产生 Gap 且无旧完成、Untrack 停止读取。
 
 尚需父会话：App/页面实际采用新接口和 gate、完整工程编译、真实 Windows 通知/激活及真实服务分页行为验收。未验证跨进程竞争、冷启动 registry 恢复、系统静默通知、服务器中途删除消息/稳定排序以外行为。没有把 bounded headless 通过宣称为 UI 闭环。
+
+## 6. 2026-10-07 新增：显示 ledger、精确会话 ACK 与后台结算
+
+```csharp
+public sealed record NotificationScope(NotificationSource Source, string EndpointIdentity, string SessionId);
+public sealed record NotificationItemKey(NotificationScope Scope, NotificationNavigationKind Kind, string ItemId);
+public sealed record NotificationRemovalResult(int AcknowledgedCount, int RemovalAttemptCount,
+    int RemovedCount, int FailedCount, int MissingNativeIdCount);
+// CompletionNotificationService:
+public Task<NotificationRemovalResult> AcknowledgeSessionAsync(
+    NotificationSource source, string endpointIdentity, string sessionId);
+// 仅 Notifications 内部，非页面任意清理 API：
+internal Task<NotificationRemovalResult> ReconcilePendingAsync(TrustedOpenCodeNotificationSource source,
+    string sessionId, NotificationNavigationKind kind, IReadOnlySet<string> pendingIds);
+internal Task<NotificationRemovalResult> ReconcileSettledAsync(TrustedOpenCodeNotificationSource source,
+    string sessionId, NotificationNavigationKind kind, string itemId);
+```
+
+- 显示账本与 nonce/navigation/gate 分开。每次成功 Show 后读取 `AppNotification.Id`（uint），保留精确 scope/kind/真实 request/form/idle ID、随机 Tag/Group、source generation、unread、单调序号与过期时间。Tag/Group 仅随机值，不含 endpoint、正文、ID 或秘密。账本 256 项/10 分钟、仅运行期；淘汰账本不是撤销授权，也不持久化未知 Gate 状态。
+- ACK 在锁内把**当前 exact scope**条目标为 read 并快照，在锁外逐 `RemoveByIdAsync`。不 ACK 子会话/root family，不移除导航绑定，不退休 mutation nonce，不改 Gate，不 POST `/view` 或任何 read receipt。失败只增加计数，不回滚 read；后续显式 ACK 可重试失败 ID，但 AcknowledgedCount 只计新标 read 项。原生 ID 为 0 单独计 MissingNativeIdCount，不假称移除成功。ACK 开始后到达的新通知不在旧快照中。
+- RemovedCount 仅表示 Notification Center 移除调用成功；**不保证横幅消失**，不是投递确认，也不能撤回已执行 activation。绝不 `RemoveAll`。Local endpoint 使用既有 `LocalCompletionEndpointIdentity == "local"`，空字符串不是 ACK endpoint。旧两参数 Local NotifyCompleted 没有可信 session，仅在 ledger 保存空 session 的不可会话 ACK 显示条目，仍不伪造导航；应使用既有三参数重载获得 session ACK。
+- monitor 构造时绑定同一个 `TrustedOpenCodeNotificationSource` 实例（内部随机 generation）；同 identity 的不同实例必须先显式 invalidate 旧来源，再绑定新来源；已撤销 client 不能复用。监控 readiness、消息应用、pending 结算均重查当前 source 实例，旧来源迟到返回不能应用到新来源。旧公开 string-only `ObserveOpenCodeMessages` 保留兼容，仍由调用方承担完整 current-origin 校验；monitor 改用内部 trusted-source 入口。未绑定来源的兼容完成记录 generation 使用 Guid.Empty sentinel，失效仍按 endpoint 精确快照。
+- 仅同 owner 成功**完整** pending 查询可 reconcile；现有 Permission/Form endpoint 返回经 client 校验的 owner-scoped 完整数组，不从消息分页猜测 pending。查询失败、message gap/分页预算耗尽、pending 超 256 均保留旧集合，不用空集合清理。保守策略：message 观察失败/gap 时该 session 本轮不查询/清理 pending；恢复完整锚点后再做。最终 monitor Active 与 service current-source 检查后，先退休消失条目的 action 能力，再移除 native ID。fresh Form.Detail answered/cancelled 或已确认交互结算可走单项通路，不构造“全列表为空”。
+- 后台结算和 source invalidation **不清除任何 Gate OutcomeUnknown/whole-session reject/agent 槽**。同步 `InvalidateOpenCodeSource` 先完成能力 fence，再异步移除旧 ledger 快照的 native ID；兼容原安全栅栏，不等待 native cleanup。旧 generation 删除不会选中新 generation 后来的条目。App 生命周期接续不在本轮实现。
+- body nonce 在未过期、source 未撤销、runtime binding 仍可信时可反复导航，包括 action 已 settled/retired 后；按钮仍要经过 action 状态、fresh pending 与原子 claim。导航没有被无条件挪到所有检查之前；过期、撤销、冷进程/未知 nonce 仍拒绝。ACK/移除都不构成授权。
+- Toast 支持矩阵、全部 labels、native input mapping 不变：3 Permission 按钮和既有简单 Form 输入；没有新增 Question route 或 ContentDialog。
+
+## 7. 2026-10-07 新增：Agent switch 独立 Gate 槽
+
+```csharp
+public sealed record AgentSwitchProtection(Guid OperationId, string TargetAgentId);
+// OpenCodeInteractionGate.Lease:
+public AgentSwitchProtection? GetAgentSwitchProtection();
+public bool CanSwitchAgent();
+public void BeginAgentSwitch(Guid operationId, string targetAgentId);
+public void CompleteAgentSwitch(NotificationInteractionStatus status);
+public void CompleteAgentSwitch(Guid operationId, NotificationInteractionStatus status);
+public void ResolveAgentSwitchUnknown(Guid operationId, bool allowRetry);
+```
+
+- 不扩展 NotificationNavigationKind，不伪造 frm/per IDs。专用 nullable agent-switch unknown slot 使用原 endpoint/session semaphore；GetProtectionStatus/CanSubmit 同时尊重此槽。CanSwitchAgent 检查 whole-session Permission unknown、agent 槽、任一未协调 per-request OutcomeUnknown 及在途操作。
+- Begin 校验非空 Guid 与不透明非空 agent ID，在发起调用前置 unknown；未 Complete 就 Dispose 保留 unknown。Complete 仅接受 Succeeded/Expired/Failed/OutcomeUnknown；其它枚举值（包括非法强转）抛异常且不清保护。无 ID 重载仅使用本 lease 捕获的 operation；显式 ID 重载检查当前 lease 与当前槽均属于该 operation，迟到旧 operation 不能清新槽。
+- **调用方契约冻结**：持有同一个 lease，通过捕获 source 的 `TryExecute` 与完整 endpoint/revision/page/session/operation origin 校验来 Begin+同步起发；锁外 await；结算/显式恢复也必须经同 source TryExecute 重查完整 origin。source 已撤销不能将迟到结果当新来源成功，保留 unknown。Gate 不替调用方发 HTTP 或验证 source。每个新明确操作必须生成新 Guid。
+- Resolve 仅允许无在途操作、精确 nonempty operation ID、用户驱动完整权威重查后调用；allowRetry=true 需要明确接受可能重复效果，false 关闭该未知操作且不重试。两者仅关闭本 operation 的 unknown slot；未来新 switch 仍须新明确 Begin/新 Guid。旧 Permission ResolveUnknown/ResolveSessionUnknown 不能清此槽；后台 pending/ACK/source invalidation 不解锁它。
+- **本轮未实现 headless SwitchAgent coordinator，也未调用 client SwitchAgent**；由父在 client API 冻结后另行接续，不由 UI 偷改旧接口。
+
+## 8. 本轮限定离线证据
+
+目录 `artifacts/validation/notification-ack-agentgate-20261007/`：32 份真实 Notifications/OpenCode 源码快照，真实 Windows App SDK 1.8.260803002 通知/Builder projection 与 Windows SDK 10.0.26100.57 projection；`NativeCompile.csproj` 隔离编译，主工程/csproj 不动。命令为 `python3 snapshot.py`、`bash run-dotnet.sh build NativeCompile.csproj --configfile NuGet.Config`、`bash run-dotnet.sh bin/Debug/net10.0/NativeCompile.dll`。`source-hashes.json` / `final-hashes.json` 记录源码匹配，`build.log` / `test-results.json` 为结果。仅三组核心 mock：精确 ACK/快照/失败 read 保留/重复导航；完整 fresh settled/失败与 gap/旧来源/unknown 不解锁；agent 专槽与旧 recovery 隔离。没有真实 HTTP、Register、Show、nativeRemove、GUI、生产 backend mutation。
+
+初次核心 mock 实际发现 pending permission 迟到返回后仍起发下一 Form GET，已在 PendingAsync 入口补 Active/cancellation fence；保留 `test-run-initial.log`。另一次 Form answered fixture 缺必须的 Answer，被真实 client 严格协议校验拒绝，修正 fixture（未放宽生产校验），保留 `test-run-invalid-fixture.log`。最终结果以本目录 `test-results.json` 为准；不将初次失败或未运行的旧 suite 冒充 PASS。父仍是整体 validation owner；本证据不声称原生横幅撤回或 UI 闭环。
+
+最终隔离编译 **0 warnings / 0 errors**；三组 **56 assertions（22/15/19）通过**，20 次 mock GET、0 mutation，源码与编译快照 **32/32 SHA-256 匹配**。未重复全部旧 suite，未运行主工程或真实原生通知。
+
+## 9. 2026-10-07 续接：headless AgentSwitchCoordinator（新 API 冻结）
+
+本节接续 §7 当时尚未实现的 coordinator；不更改旧 Gate/Toast/ACK 签名，不接 UI、App 或新的 monitor 轮询。
+
+```csharp
+public sealed record AgentSwitchOrigin(OpenCodePageSource Source, long Revision,
+    string SessionId, long SelectionGeneration);
+public enum AgentSwitchStatus {
+    Applied, Blocked, OriginLost, OutcomeUnknown, DefinitivelyRejected,
+    ReconciliationRequired, Reconciled
+}
+public sealed record AgentSwitchResult(Guid OperationId, AgentSwitchStatus Status,
+    string? ObservedAgentId, bool MutationStarted, bool UnknownProtectionRetained);
+public AgentSwitchCoordinator(OpenCodeInteractionGate gate);
+public Task<AgentSwitchResult> SwitchAsync(AgentSwitchOrigin origin, Guid operationId,
+    string targetAgentId, Func<AgentSwitchOrigin, bool> isOriginCurrent,
+    CancellationToken cancellationToken = default);
+public Task<AgentSwitchResult> ReconcileAsync(AgentSwitchOrigin origin, Guid operationId,
+    bool allowNewOperation, Func<AgentSwitchOrigin, bool> isOriginCurrent,
+    CancellationToken cancellationToken = default);
+```
+
+- 构造只注入**同一共享 Gate**，不注入任意 client。先 await endpoint/session lease，再用 origin.Source 创建本次独占、最终 Dispose 的 client。持有 lease 横跨所有 recheck/POST/结算。linked token 同时包含调用方取消和 Source.RevocationToken。
+- **线程契约**：调用方用 `Interlocked.Exchange` 发布不可变选择 snapshot，callback 只 `Volatile.Read`，比较 source **引用**、revision、精确 session ID 和 SelectionGeneration。切走切回也必须增加 generation。callback 在 source 锁内运行，不能读取 XAML/control、同步 Dispatcher、App.CurrentSource 或获取 App 锁，也不能阻塞/发起异步工作。每次 GET 起发、POST Begin+起发、Complete、Resolve 均在短 `Source.TryExecute` 内重核完整 origin；锁内仅拿 Task，锁外 await，每次 await 后再核。返回后 UI 仍需核 origin，不能根据返回值自行清 Gate。
+- **本地提交前提**：所有本地 prompt/Permission/Form/其它 mutation writer 必须持有同一个 endpoint/session lease 至结算，不能绕开 Gate。这样 coordinator 自检时不存在并行本地提交。纯投影另有 LocalSubmissionInProgress 输入用于页面尚未取得 lease 的本地排队状态；页面若已处于这种状态，不应发起 SwitchAsync。API 不读取 UI enabled，不把 UI enabled 当权威远程证据。
+- 对尚未持 lease 的本地排队提交，caller 还须在入队时原子发布新的 selection generation，使已经开始 preflight 的旧 switch origin 失效；新的 switch origin 不能在本地提交 pending 期间产生。否则仅靠共享 semaphore 不能知道 UI 内尚未入 Gate 的排队状态。此项是父 UI/composer 接线依赖，本轮没有擅自读写 UI 或扩展 client。
+- 实际当前 client **没有 `GetSessionAsync`**；在本 scope 内采用 `ListSessionsAsync`（All，不筛 root/child）有界精确 ID 查找。最多 4 页×100 条，找不到、超预算、重复匹配、session 必需的 location/time/project/tokens 缺失均 Blocked。不修改 Services/OpenCode，也不伪造精确 GET endpoint。
+- 每次显式 Switch/Reconcile 自己重查 session、该精确 directory 的 agents、完整消息历史、完整同 owner pending Permission/Form、inbox、foreground active。目标必须是 fresh agents 内唯一精确 ID 且非 hidden，location 必须相等；未知 Mode 保留、不施加 root/child 或 mode 额外限制，不改全局 agent 配置。
+- 消息从 desc 最新页沿 cursor.next 续页，最多 4×100；首最新页不得带 newer/previous cursor；响应须有 cursor 对象，页不超 limit，无 cursor 循环，必须到完整末尾，再倒序为 chronological。不是“last100 就全历史”；预算不足/缺字段/重复 ID/时间倒序/协议错误均不 Begin。pending/inbox 上限各 256。无额外常驻 polling 或跨 session 调用；仅用户明确操作内，最多 13 次 GET（session4+agents1+messages4+pending2+inbox1+active1）及至多一次 POST。
+- 允许条件来自 §10 同一纯投影：自身可信 Idle，pending/inbox 空，无 Gate 保护、已知未决 background child、并行本地提交。active **只是最近一次 foreground drain snapshot**；缺席不证明没有后台任务。串行 GET 非后端事务，无法消除远端在最后核验与 POST 间改变状态的竞态，不声称 busy-safe、全树 idle 或百分比。
+- Begin 先置 exact Guid unknown，再起发唯一 `SwitchAgentAsync`。仅严格 204 **且完整 origin 仍有效**才 CompleteSucceeded/Applied。Begin 后取消、transport、5xx、旧 origin 的迟到 204 或不能证明未发出的异常均保留 unknown，无自动重试。现 client 无“无副作用拒绝”的已证语义，所以包括 400/404 均保守 OutcomeUnknown；DefinitivelyRejected 为保留值，目前不产生。
+- Reconcile 必须由用户明确确认 exact retained operation 后调用；允许新有效 source/revision/selection 对同 endpoint/session 旧操作协调。它重新完整读取并保守要求同样的 idle/no-pending/no-background 条件，然后在 origin fence 内 Resolve exact Guid，**不 POST**。ObservedAgentId 只是配置观察，不是旧 POST 成功因果证据；两个 allowNewOperation 值都结束本次 unknown，不宣称成功，不永久禁止未来操作，true 表示接受将来新操作可能重复效果。未来用户操作必须新 Guid 再全部重查；caller 不得复用旧操作 ID或自动调用 Reconcile。
+- UnknownProtectionRetained 表示本次持 lease 时看到的 agent 槽仍存在，不是“本次新 OperationId 就是现有槽 ID”；新调用遇到他操作保护时，应另在同 Gate lease 下读取 GetAgentSwitchProtection 的 exact ID 用于用户确认。未取得 lease 就取消时不能据 false 推断其它 Gate 已清空。旧 Permission recovery 仍不能清 agent 槽。
+
+## 10. UI 与 monitor 共用的纯 execution 投影（输入输出冻结）
+
+所有类型在 `AIFrontend.Services.Notifications`；集合使用 `System.Collections.Immutable.ImmutableArray<T>`，输入 DTO 通过 CreateWindow 拷贝成仅含明确执行证据的不可变值，不保存正文/原始 provider blob。
+
+```csharp
+public enum OpenCodeExecutionState { Unknown, Idle, Working }
+public sealed record OpenCodeExecutionChildEvidence(string ChildSessionId, bool Terminal);
+public sealed record OpenCodeExecutionToolEvidence(string ToolId, bool Terminal);
+public sealed record OpenCodeExecutionMessageEvidence(string Id, string Type, double Created,
+    string? Outcome, ImmutableArray<OpenCodeExecutionChildEvidence> Children,
+    ImmutableArray<OpenCodeExecutionToolEvidence> Tools);
+public sealed record OpenCodeExecutionWindow(string SessionId, bool IsFresh, bool IsComplete,
+    bool IsChronological, ImmutableArray<OpenCodeExecutionMessageEvidence> Messages);
+public sealed record OpenCodeExecutionInput(string SessionId, OpenCodeExecutionWindow Window,
+    bool ActiveIsFresh, bool ForegroundRunning, bool PendingIsFresh, bool HasPending,
+    bool InboxIsFresh, bool HasInbox, bool LocalSubmissionInProgress, bool HasGateProtection,
+    ImmutableArray<string> PreviouslyKnownUnresolvedChildSessionIds = default);
+public sealed record OpenCodeExecutionProjectionResult(OpenCodeExecutionState State,
+    bool Waiting, bool WaitingKnown, bool KnownUnresolvedBackground, bool CanSwitchAgent,
+    ImmutableArray<string> KnownUnresolvedChildSessionIds);
+// public static class OpenCodeExecutionProjection:
+public static OpenCodeExecutionWindow CreateWindow(string sessionId,
+    IReadOnlyList<OpenCodeMessage> messages, bool isFresh, bool isComplete, bool isChronological);
+public static OpenCodeExecutionProjectionResult Evaluate(OpenCodeExecutionInput input);
+```
+
+- caller 为每个输入的 active/pending/inbox 证明**同 source/同 owner/新鲜完整**；false freshness 不是空列表。Window 必须完整新鲜历史或维护完整累计历史，不能以最新100、单个最新回合或一个 anchored delta 假称 Complete。CreateWindow 不替 caller 获取/证明这些标记；它额外检查明确字段。Evaluate 额外拒绝 owner 错配、重复 ID、非有限/倒序时间。相同 created 时间只在 caller 已确认可靠列表顺序时可用，不按 ID 猜排序。
+- Working 仅 fresh positive foreground active 或完整新鲜窗口中最新回合仍有未终止 tool execution；历史 subagent running 不用于宣称自身实时 Working。active positive 可与独立 fresh Waiting 同时成立。active absence、assistant.time.completed、tool completed 或 inbox 消失都不能单独产生 Idle。
+- Idle 需要最新回合明确 `idle` outcome=succeeded/failed/interrupted，后续无新执行消息且 fresh inbox 空；或尚未执行过的完整新鲜 history（真正为空，或只含 agent/model/location-switched 配置消息）与 fresh active 无运行、fresh inbox 空一致。配置消息不启动新执行回合，也不结算已开始的执行；已有执行消息后仍须明确 idle。读失败/gap/字段不可解释/尚无上述证据均 Unknown；无百分比。CanSwitchAgent 还检查 pending、本地提交、Gate 和已知 background。
+- 当前 raw metadata extractor **只识别平面明确结构** `metadata.source == "subagent"`、`metadata.childID`、`metadata.state == running|completed|failed|interrupted`；另识别 tool `state.metadata.sessionID` + `state.input.background == true`。不猜 opaque provider metadata，不把历史状态当实时 active。已识别 source 缺 child/state、background 类型错误或 launch 缺可用 child ID使窗口 Unknown。其它后端形状应由有契约的 caller 生成上述不可变 evidence，不擅自扩大解析。
+- 背景工具的 completed/error **不等于 child 终态**；背景 child 始终单独标记，须同 owner、可靠 chronological 窗口里的匹配 child terminal 才清除。caller 将 KnownUnresolvedChildSessionIds 按 exact owner 带入下一次 PreviouslyKnownUnresolvedChildSessionIds；gap/failure/窗口中消失不能清除旧已知项。父 idle 可以同时 KnownUnresolvedBackground=true，此时仍阻止 switch。不要求证明不存在所有无法枚举的未知后台任务。
+- 本轮**只提供共用纯接口**；未新增 monitor 聚合、全树读取或 UI 状态绑定。父下一 lane 负责按 owner 保存 child 证据、全树监控预算、原子选择 snapshot、shared Gate 接线、读取 agent Name 显示及最终 UI origin 核验。既有 Toast/Question 支持矩阵完全不变。
+
+## 11. 本轮 isolated compile / 三组核心 mock
+
+目录 `artifacts/validation/agent-switch-execution-20261007/`，不覆盖旧 56 assertions。命令 `python3 snapshot.py`、`bash run-dotnet.sh build NativeCompile.csproj --configfile NuGet.Config`、`bash run-dotnet.sh bin/Debug/net10.0/NativeCompile.dll`。同真实 Windows App SDK/Windows SDK projection，生产主 csproj 不动，无新生产测试依赖。
+
+三组分别覆盖 execution idle/active/background/gap/owner/未知字段，GET 途中选择 ABA/Begin 后取消与旧204/同 Gate 两入口串行，explicit reconcile exact ID/源换代/无 POST/配置观察非因果。`test-results.json`、`build.log` 与 `source-hashes.json`/`final-hashes.json` 为最终证据；测试唯一 POST 为 mock SwitchAgent，无真实 HTTP、Register、Show、Remove、GUI 或主进程操作。曾新增 fixture 使用 params 数组的 target-typed new 导致 CS8752/CS0117，修正为显式 OpenCodeMessage，错误日志保留 `build-fixture-error.log`，不冒充一次性全绿。父仍为最终 validation owner；不重复旧 ACK suite、不运行主工程或原生通知。
+
+最终 isolated compile **0 warnings / 0 errors**，三组 **49 assertions（22/16/11）通过**；69 次 mock request（其中5次 mock POST），源码/编译快照 **35/35 SHA-256 匹配**。上述通过不替代父最终主工程/UI/真实后端验收。

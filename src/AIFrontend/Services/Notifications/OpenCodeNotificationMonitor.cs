@@ -24,23 +24,45 @@ internal interface IOpenCodeNotificationSink
 {
     bool IsReady { get; }
     IReadOnlyList<NotificationDispatchResult> Observe(string endpoint, string session, IReadOnlyList<OpenCodeMessage> messages, bool historical);
+    IReadOnlyList<NotificationDispatchResult> ObserveContext(string endpoint, string session, IReadOnlyList<OpenCodeMessage> delta,
+        IReadOnlyList<OpenCodeMessage> history, string? title)
+        => Observe(endpoint, session, delta, false);
     Task<NotificationInteractionResult> NotifyAsync(TrustedOpenCodeNotificationSource source, string session, string request, bool form, CancellationToken token);
+    Task ReconcileAsync(TrustedOpenCodeNotificationSource source, string session, NotificationNavigationKind kind, IReadOnlySet<string> ids)
+        => Task.CompletedTask;
+    Task ReconcileViewAsync(TrustedOpenCodeNotificationSource source, string session, double viewed, IReadOnlyList<OpenCodeMessage> messages)
+        => Task.CompletedTask;
 }
 
 /// <summary>App-owned, explicitly tracked sessions only. Does not own client/service, register Windows,
 /// read settings, resolve uncertain mutations, or infer completion of an individual prompt.</summary>
-public sealed class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
+public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
 {
-    private sealed class Sink(CompletionNotificationService service) : IOpenCodeNotificationSink
+    private sealed class Sink : IOpenCodeNotificationSink
     {
-        public bool IsReady => service.Status == NotificationServiceStatus.Initialized;
+        private readonly CompletionNotificationService? service;
+        private readonly TrustedOpenCodeNotificationSource source;
+        internal Sink(CompletionNotificationService? service, TrustedOpenCodeNotificationSource source)
+        {
+            this.service = service;
+            this.source = source;
+            service?.TryBindNotificationSource(source); // Delivery failure must not disable observation.
+        }
+        public bool IsReady => service?.IsCurrentNotificationSource(source) == true;
         public IReadOnlyList<NotificationDispatchResult> Observe(string endpoint, string session, IReadOnlyList<OpenCodeMessage> messages, bool historical)
-            => service.ObserveOpenCodeMessages(endpoint, session, messages, historical);
+            => IsReady ? service!.ObserveTrustedOpenCodeMessages(source, session, messages, historical) : [];
+        public IReadOnlyList<NotificationDispatchResult> ObserveContext(string endpoint, string session, IReadOnlyList<OpenCodeMessage> delta,
+            IReadOnlyList<OpenCodeMessage> history, string? title)
+            => IsReady ? service!.ObserveTrustedOpenCodeMessages(source, session, delta, false, title, history) : [];
         public Task<NotificationInteractionResult> NotifyAsync(TrustedOpenCodeNotificationSource source, string session, string request, bool form, CancellationToken token)
-            => form ? service.NotifyFormAsync(source, session, request, token) : service.NotifyPermissionAsync(source, session, request, token);
+            => form ? service!.NotifyFormAsync(source, session, request, token) : service!.NotifyPermissionAsync(source, session, request, token);
+        public Task ReconcileAsync(TrustedOpenCodeNotificationSource source, string session, NotificationNavigationKind kind, IReadOnlySet<string> ids)
+            => service!.ReconcilePendingAsync(source, session, kind, ids);
+        public Task ReconcileViewAsync(TrustedOpenCodeNotificationSource source, string session, double viewed, IReadOnlyList<OpenCodeMessage> messages)
+            => service!.ReconcileViewedCompletionsAsync(source, session, viewed, messages);
     }
 
-    private sealed class StreamState
+    private sealed partial class StreamState
     {
         internal bool Baseline;
         internal string? Anchor;
@@ -60,9 +82,9 @@ public sealed class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
     private Task? _run;
     private bool _disposed;
 
-    public OpenCodeNotificationMonitor(CompletionNotificationService service, TrustedOpenCodeNotificationSource source,
+    public OpenCodeNotificationMonitor(CompletionNotificationService? service, TrustedOpenCodeNotificationSource source,
         TimeSpan? pollInterval = null, int pageSize = 100, int pageBudget = 8)
-        : this(new Sink(service ?? throw new ArgumentNullException(nameof(service))), source, pollInterval, pageSize, pageBudget) { }
+        : this(new Sink(service, source ?? throw new ArgumentNullException(nameof(source))), source, pollInterval, pageSize, pageBudget) { }
 
     internal OpenCodeNotificationMonitor(IOpenCodeNotificationSink sink, TrustedOpenCodeNotificationSource source,
         TimeSpan? pollInterval = null, int pageSize = 100, int pageBudget = 8)
@@ -94,13 +116,12 @@ public sealed class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
 
     public bool UntrackSession(string sessionId) { lock (_sync) return _tracked.Remove(sessionId); }
 
-    /// <summary>Returns false until notification initialization succeeds. No automatic initialization.</summary>
+    /// <summary>Observation runs independently of notification availability. No automatic initialization.</summary>
     public bool Start()
     {
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (!_sink.IsReady) return false;
             if (_run is { IsCompleted: false }) return true;
             _runCancellation?.Dispose();
             _runCancellation = new();
@@ -134,14 +155,18 @@ public sealed class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
         try
         {
             KeyValuePair<string, StreamState>[] streams;
-            lock (_sync) { if (_disposed || !_sink.IsReady) return; streams = _tracked.ToArray(); }
+            lock (_sync) { if (_disposed) return; streams = _tracked.ToArray(); }
             foreach (var pair in streams)
             {
                 token.ThrowIfCancellationRequested();
                 if (!Active(pair.Key, pair.Value)) continue;
+                // Retain still-valid evidence during refresh. App expires it using its original evidence time.
                 await MessagesAsync(pair.Key, pair.Value, token).ConfigureAwait(false);
                 await PendingAsync(pair.Key, pair.Value, false, token).ConfigureAwait(false);
                 await PendingAsync(pair.Key, pair.Value, true, token).ConfigureAwait(false);
+                try { await ExecutionAsync(pair.Key, pair.Value, token).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch { PublishUnknown(pair.Key, pair.Value); }
             }
         }
         finally { _poll.Release(); }
@@ -149,75 +174,88 @@ public sealed class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
 
     private bool Active(string session, StreamState state)
     {
-        lock (_sync) return !_disposed && _sink.IsReady && _tracked.TryGetValue(session, out var current) && ReferenceEquals(state, current);
+        lock (_sync) return !_disposed && _tracked.TryGetValue(session, out var current) && ReferenceEquals(state, current);
     }
 
-    private async Task MessagesAsync(string session, StreamState state, CancellationToken token)
+    private async Task<bool> MessagesAsync(string session, StreamState state, CancellationToken token)
     {
+        state.History = null;
         try
         {
-            var page = await _source.Client.GetMessagesAsync(session,
-                new() { Order = OpenCodeSessionOrders.Desc, Limit = _pageSize }, token).ConfigureAwait(false);
-            if (!Active(session, state)) return;
-            var initialMessages = page.Data ?? throw new InvalidOperationException("Missing message page.");
-            var newest = initialMessages.FirstOrDefault()?.Id;
-            if (initialMessages.Any(m => m is null || !NotificationArgumentCodec.IsValidRequestId(m.Id)))
-            { Emit(session, state, OpenCodeNotificationObservationKind.Gap, "invalid-message-id"); return; }
+            var started = DateTimeOffset.UtcNow;
+            var history = await OpenCodeMessageHistory.ReadAsync((query, ct) => _source.Client.GetMessagesAsync(session, query, ct),
+                _pageSize, _pageBudget, token).ConfigureAwait(false);
+            if (!Active(session, state)) return false;
+            state.History = history;
+            state.HistoryAt = started;
+            var messages = history.Messages; // chronological, including every bounded page
+            var newest = messages.LastOrDefault()?.Id;
+            if (!history.Complete) Emit(session, state, OpenCodeNotificationObservationKind.Gap, "history-incomplete");
+            if (!_sink.IsReady) return true;
             if (!state.Baseline)
             {
-                _sink.Observe(_source.Identity, session, initialMessages, true);
+                _sink.Observe(_source.Identity, session, messages, true);
                 state.Anchor = newest;
                 state.Baseline = true;
                 Emit(session, state, OpenCodeNotificationObservationKind.Baseline, "initial-history-suppressed");
-                return;
+                return true;
             }
-            var collected = new List<OpenCodeMessage>();
-            var cursors = new HashSet<string>(StringComparer.Ordinal);
-            for (int pages = 1; ; pages++)
+            int anchor = state.Anchor is null ? -1 : messages.FindIndex(m => m.Id == state.Anchor);
+            if (state.Anchor is not null && anchor < 0 || state.Anchor is null && !history.Complete)
             {
-                bool found = false;
-                foreach (var message in page.Data!)
-                {
-                    if (message is null || !NotificationArgumentCodec.IsValidRequestId(message.Id))
-                    { Emit(session, state, OpenCodeNotificationObservationKind.Gap, "invalid-message-id"); return; }
-                    if (message.Id == state.Anchor) { found = true; break; }
-                    collected.Add(message);
-                }
-                string? cursor = page.Cursor?.Next;
-                if (found || (state.Anchor is null && string.IsNullOrEmpty(cursor))) break;
-                if (string.IsNullOrEmpty(cursor) || pages >= _pageBudget || !cursors.Add(cursor))
-                {
-                    Emit(session, state, OpenCodeNotificationObservationKind.Gap,
-                        string.IsNullOrEmpty(cursor) ? "anchor-missing" : "page-budget-or-cursor-loop");
-                    return; // Preserve anchor and do not label any collected history as new completion.
-                }
-                page = await _source.Client.GetMessagesAsync(session,
-                    new() { Cursor = cursor, Limit = _pageSize }, token).ConfigureAwait(false); // Never cursor + order.
+                Emit(session, state, OpenCodeNotificationObservationKind.Gap, "anchor-missing");
+                return false; // No notification replay or anchor advance. Pending reads remain independent.
             }
             token.ThrowIfCancellationRequested();
-            if (!Active(session, state)) return;
-            collected.Reverse();
-            var results = _sink.Observe(_source.Identity, session, collected, false);
+            if (!Active(session, state)) return false;
+            var collected = messages.Skip(anchor + 1).ToArray();
+            string? title = null;
+            if (collected.Any(m => m.Type == "idle" && m.Outcome == "succeeded"))
+            {
+                try { title = (await _source.Client.GetSessionInfoAsync(session, token).ConfigureAwait(false)).Title; }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch { /* Metadata failure must not suppress a completion. */ }
+            }
+            if (!Active(session, state)) return false;
+            var results = _sink.ObserveContext(_source.Identity, session, collected, messages, title);
             state.Anchor = newest;
             Emit(session, state, OpenCodeNotificationObservationKind.Messages, "anchored", dispatches: results);
+            return true;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "messages-read-failed-anchor-retained"); }
+        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "messages-read-failed-anchor-retained"); return false; }
     }
 
     private async Task PendingAsync(string session, StreamState state, bool form, CancellationToken token)
     {
+        if (form) state.FormsAt = null; else state.PermissionsAt = null;
         try
         {
+            if (!Active(session, state)) return;
+            token.ThrowIfCancellationRequested();
+            var started = DateTimeOffset.UtcNow;
             var ids = form
                 ? (await _source.Client.GetPendingFormsAsync(session, token).ConfigureAwait(false)).Select(f => f.Id!).ToHashSet(StringComparer.Ordinal)
                 : (await _source.Client.GetPendingPermissionsAsync(session, token).ConfigureAwait(false)).Select(p => p.Id!).ToHashSet(StringComparer.Ordinal);
             if (!Active(session, state)) return;
             if (ids.Count > 256) { Emit(session, state, OpenCodeNotificationObservationKind.Gap, "pending-budget"); return; }
+            token.ThrowIfCancellationRequested();
+            // Pending endpoints return complete, validated owner-scoped arrays, not paginated message data.
+            // Initiation under the monitor lock excludes untrack/disposal between final Active and retirement.
+            Task reconcile;
+            lock (_sync)
+            {
+                if (!Active(session, state)) return;
+                reconcile = _sink.IsReady && Fresh(started) ? _sink.ReconcileAsync(_source, session,
+                    form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission, ids) : Task.CompletedTask;
+            }
+            await reconcile.ConfigureAwait(false);
+            if (!Active(session, state)) return;
             var old = form ? state.Forms : state.Permissions;
             if (form) state.Forms = ids; else state.Permissions = ids;
+            if (form) state.FormsAt = started; else state.PermissionsAt = started;
             Emit(session, state, OpenCodeNotificationObservationKind.PendingSnapshot, form ? "forms" : "permissions");
-            foreach (var id in ids.Except(old))
+            foreach (var id in _sink.IsReady && Fresh(started) ? ids.Except(old) : Enumerable.Empty<string>())
             {
                 token.ThrowIfCancellationRequested();
                 if (!Active(session, state)) return;

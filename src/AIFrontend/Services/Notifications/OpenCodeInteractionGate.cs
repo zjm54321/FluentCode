@@ -5,6 +5,12 @@ using System.Threading.Tasks;
 
 namespace AIFrontend.Services.Notifications;
 
+public sealed record AgentSwitchProtection(Guid OperationId, string TargetAgentId);
+public enum ComposerSubmissionKind { Prompt, Command }
+public sealed record ComposerSubmissionProtection(Guid OperationId, ComposerSubmissionKind Kind);
+public enum SessionControlKind { SwitchModel, StageRevert, ClearRevert, RevertContinuation }
+public sealed record SessionControlProtection(Guid OperationId, SessionControlKind Kind, string TargetFingerprint);
+
 /// <summary>Process-local shared page/toast arbitration. Hold a lease across recheck, mutation AND result.
 /// No automatic expiry/eviction of unknown outcomes. All writers must participate.</summary>
 public sealed class OpenCodeInteractionGate
@@ -17,6 +23,9 @@ public sealed class OpenCodeInteractionGate
         internal readonly SemaphoreSlim Mutex = new(1, 1);
         internal readonly Dictionary<(string, NotificationNavigationKind), NotificationInteractionStatus> Results = new();
         internal (string RequestId, NotificationNavigationKind Kind)? SessionUnknown;
+        internal AgentSwitchProtection? AgentSwitchUnknown;
+        internal ComposerSubmissionProtection? ComposerUnknown;
+        internal SessionControlProtection? ControlUnknown;
     }
 
     public async Task<Lease> EnterAsync(string endpointIdentity, string sessionId, CancellationToken cancellationToken = default)
@@ -33,7 +42,76 @@ public sealed class OpenCodeInteractionGate
             }
         }
         await state.Mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return new(state);
+        return new(state, endpointIdentity, sessionId);
+    }
+
+    /// <summary>
+    /// Display-only, non-blocking, read-only probe: reports whether an EXISTING session state currently carries
+    /// a whole-session protection. Returns false when the identities are illegal OR the session mutex is busy;
+    /// callers MUST NOT read false as "no protection". This neither creates session state nor consumes the 256
+    /// capacity, and it never mutates Results/unknown/gate state, so it is unusable for authorization or
+    /// reconciliation. Read under the mutex so a concurrent lease holder cannot produce a torn value.
+    /// </summary>
+    public bool TryPeekSessionProtection(string endpointIdentity, string sessionId,
+        out (string RequestId, NotificationNavigationKind Kind)? protection)
+    {
+        protection = null;
+        if (!NotificationArgumentCodec.IsValidRequestId(endpointIdentity)
+            || !NotificationArgumentCodec.IsValidRequestId(sessionId))
+        {
+            return false; // Illegal identity: unreadable, NOT unprotected.
+        }
+
+        SessionState? state = null;
+        lock (_sync)
+        {
+            // Read-only lookup: never add an entry, so the 256 capacity is untouched.
+            if (_sessions.TryGetValue((endpointIdentity, sessionId), out var found))
+            {
+                state = found;
+            }
+        }
+
+        if (state is null)
+        {
+            return true; // No existing state: truthfully "no protection" without creating one.
+        }
+
+        if (!state.Mutex.Wait(0))
+        {
+            return false; // Lease held: cannot read a coherent value; fail closed as "unknown".
+        }
+
+        try
+        {
+            protection = state.SessionUnknown;
+            return true;
+        }
+        finally
+        {
+            state.Mutex.Release();
+        }
+    }
+
+    // Display-only; busy/illegal identities are unreadable and must be rendered fail closed.
+    public bool TryPeekComposerSubmissionProtection(string endpointIdentity, string sessionId,
+        out ComposerSubmissionProtection? protection, out bool canSubmitComposer)
+    {
+        protection = null;
+        canSubmitComposer = false;
+        if (!NotificationArgumentCodec.IsValidRequestId(endpointIdentity) || !NotificationArgumentCodec.IsValidRequestId(sessionId)) return false;
+        SessionState? state;
+        lock (_sync) _sessions.TryGetValue((endpointIdentity, sessionId), out state);
+        if (state is null) { canSubmitComposer = true; return true; }
+        if (!state.Mutex.Wait(0)) return false;
+        try
+        {
+            protection = state.ComposerUnknown;
+            canSubmitComposer = state.ComposerUnknown is null && state.SessionUnknown is null
+                && state.AgentSwitchUnknown is null && state.ControlUnknown is null;
+            return true;
+        }
+        finally { state.Mutex.Release(); }
     }
 
     public sealed class Lease : IDisposable
@@ -41,12 +119,23 @@ public sealed class OpenCodeInteractionGate
         private SessionState? _state;
         private (string, NotificationNavigationKind)? _mutation;
         private bool _affectsSession;
-        internal Lease(SessionState state) => _state = state;
+        private Guid? _agentSwitch;
+        private Guid? _composerSubmission;
+        private Guid? _sessionControl;
+        private bool _pairedContinuation;
+        private readonly string _endpointIdentity;
+        private readonly string _sessionId;
+        internal Lease(SessionState state, string endpointIdentity, string sessionId)
+        { _state = state; _endpointIdentity = endpointIdentity; _sessionId = sessionId; }
         private SessionState State => _state ?? throw new ObjectDisposedException(nameof(Lease));
+
+        /// <summary>Already-held-lease adapters must verify the exact endpoint/session, never reacquire.</summary>
+        public bool MatchesScope(string endpointIdentity, string sessionId)
+            => _state is not null && _endpointIdentity == endpointIdentity && _sessionId == sessionId;
 
         public NotificationInteractionStatus? GetProtectionStatus(string requestId, NotificationNavigationKind kind)
         {
-            if (State.SessionUnknown is not null) return NotificationInteractionStatus.OutcomeUnknown;
+            if (State.SessionUnknown is not null || State.AgentSwitchUnknown is not null) return NotificationInteractionStatus.OutcomeUnknown;
             if (State.Results.TryGetValue((requestId, kind), out var status))
                 return status == NotificationInteractionStatus.Succeeded ? NotificationInteractionStatus.Duplicate : status;
             return State.Results.Count >= 256 ? NotificationInteractionStatus.NeedsApp : null;
@@ -56,12 +145,160 @@ public sealed class OpenCodeInteractionGate
 
         public (string RequestId, NotificationNavigationKind Kind)? GetSessionProtection() => State.SessionUnknown;
 
+        public AgentSwitchProtection? GetAgentSwitchProtection() => State.AgentSwitchUnknown;
+        public ComposerSubmissionProtection? GetComposerSubmissionProtection() => State.ComposerUnknown;
+        public SessionControlProtection? GetSessionControlProtection() => State.ControlUnknown;
+
+        public bool CanSubmitComposer() => _mutation is null && _agentSwitch is null && _composerSubmission is null
+            && _sessionControl is null && State.SessionUnknown is null && State.AgentSwitchUnknown is null
+            && State.ComposerUnknown is null && State.ControlUnknown is null;
+
+        public void BeginComposerSubmission(Guid operationId, ComposerSubmissionKind kind)
+        {
+            if (operationId == Guid.Empty) throw new ArgumentException("Operation ID must not be empty.", nameof(operationId));
+            if (kind is not (ComposerSubmissionKind.Prompt or ComposerSubmissionKind.Command)) throw new ArgumentOutOfRangeException(nameof(kind));
+            if (!CanSubmitComposer()) throw new InvalidOperationException("Session protected; explicit reconciliation required.");
+            State.ComposerUnknown = new(operationId, kind);
+            _composerSubmission = operationId;
+        }
+
+        public void CompleteComposerSubmission(Guid operationId, NotificationInteractionStatus status)
+        {
+            if (_pairedContinuation) throw new InvalidOperationException("Use exact paired continuation settlement.");
+            if (operationId == Guid.Empty || _composerSubmission != operationId || State.ComposerUnknown?.OperationId != operationId)
+                throw new InvalidOperationException("Composer operation mismatch.");
+            if (status is not (NotificationInteractionStatus.Succeeded or NotificationInteractionStatus.Expired
+                or NotificationInteractionStatus.Failed or NotificationInteractionStatus.OutcomeUnknown))
+                throw new ArgumentOutOfRangeException(nameof(status));
+            if (status != NotificationInteractionStatus.OutcomeUnknown) State.ComposerUnknown = null;
+            _composerSubmission = null;
+        }
+
+        public bool CanSwitchAgent()
+        {
+            var state = State;
+            if (_mutation is not null || _agentSwitch is not null || _sessionControl is not null
+                || state.SessionUnknown is not null || state.AgentSwitchUnknown is not null
+                || state.ComposerUnknown is not null || state.ControlUnknown is not null)
+                return false;
+            foreach (var status in state.Results.Values)
+                if (status == NotificationInteractionStatus.OutcomeUnknown) return false;
+            return true;
+        }
+
+        public bool CanControlSession() => CanSwitchAgent() && CanSubmitComposer();
+
+        public void BeginSessionControl(Guid operationId, SessionControlKind kind, string targetFingerprint)
+        {
+            ValidateControl(operationId, kind, targetFingerprint);
+            if (!CanControlSession()) throw new InvalidOperationException("Session control protected.");
+            State.ControlUnknown = new(operationId, kind, targetFingerprint);
+            _sessionControl = operationId;
+        }
+
+        public void CompleteSessionControl(Guid operationId, NotificationInteractionStatus status)
+        {
+            if (_pairedContinuation) throw new InvalidOperationException("Use exact paired continuation settlement.");
+            RequireControl(operationId);
+            ValidateSettlement(status);
+            if (status != NotificationInteractionStatus.OutcomeUnknown) State.ControlUnknown = null;
+            _sessionControl = null;
+        }
+
+        /// <summary>Atomic same-operation protection for enhanced prompt/command plus implicit revert effects.
+        /// Caller already holds this lease and enters captured Source.TryExecute. No self-bypass flag.</summary>
+        public void BeginComposerContinuation(Guid operationId, ComposerSubmissionKind kind, string stageFingerprint)
+        {
+            ValidateControl(operationId, SessionControlKind.RevertContinuation, stageFingerprint);
+            if (kind is not (ComposerSubmissionKind.Prompt or ComposerSubmissionKind.Command)) throw new ArgumentOutOfRangeException(nameof(kind));
+            if (!CanControlSession()) throw new InvalidOperationException("Session control protected.");
+            State.ControlUnknown = new(operationId, SessionControlKind.RevertContinuation, stageFingerprint);
+            State.ComposerUnknown = new(operationId, kind);
+            _sessionControl = _composerSubmission = operationId;
+            _pairedContinuation = true;
+        }
+
+        /// <summary>Command 204 alone can settle composer acceptance, not prove rollback commitment.
+        /// Keep continuationStatus OutcomeUnknown unless exact effects are established by the caller's contract.</summary>
+        public void CompleteComposerContinuation(Guid operationId, NotificationInteractionStatus composerStatus,
+            NotificationInteractionStatus continuationStatus)
+        {
+            RequireControl(operationId);
+            if (!_pairedContinuation || _composerSubmission != operationId || State.ComposerUnknown?.OperationId != operationId)
+                throw new InvalidOperationException("Paired continuation operation mismatch.");
+            ValidateSettlement(composerStatus);
+            ValidateSettlement(continuationStatus);
+            if (composerStatus != NotificationInteractionStatus.OutcomeUnknown) State.ComposerUnknown = null;
+            if (continuationStatus != NotificationInteractionStatus.OutcomeUnknown) State.ControlUnknown = null;
+            _sessionControl = _composerSubmission = null;
+            _pairedContinuation = false;
+        }
+
+        private static void ValidateControl(Guid operationId, SessionControlKind kind, string fingerprint)
+        {
+            ArgumentNullException.ThrowIfNull(fingerprint);
+            if (operationId == Guid.Empty || !Enum.IsDefined(kind)) throw new ArgumentException("Invalid session control operation.");
+            if (fingerprint.Length != 64) throw new ArgumentException("Expected SHA-256 target/stage fingerprint.", nameof(fingerprint));
+            foreach (var ch in fingerprint) if (!Uri.IsHexDigit(ch)) throw new ArgumentException("Invalid fingerprint.", nameof(fingerprint));
+        }
+
+        private void RequireControl(Guid operationId)
+        {
+            if (operationId == Guid.Empty || _sessionControl != operationId || State.ControlUnknown?.OperationId != operationId)
+                throw new InvalidOperationException("Session control operation mismatch.");
+        }
+
+        private static void ValidateSettlement(NotificationInteractionStatus status)
+        {
+            if (status is not (NotificationInteractionStatus.Succeeded or NotificationInteractionStatus.Expired
+                or NotificationInteractionStatus.Failed or NotificationInteractionStatus.OutcomeUnknown))
+                throw new ArgumentOutOfRangeException(nameof(status));
+        }
+
+        /// <summary>Caller holds this lease and uses captured Source.TryExecute with complete origin/context
+        /// validation to begin AND start the operation synchronously. Gate performs no backend/source validation.</summary>
+        public void BeginAgentSwitch(Guid operationId, string targetAgentId)
+        {
+            if (operationId == Guid.Empty) throw new ArgumentException("Operation ID must not be empty.", nameof(operationId));
+            if (!NotificationArgumentCodec.IsValidRequestId(targetAgentId)) throw new ArgumentException("Invalid agent ID.", nameof(targetAgentId));
+            if (!CanSwitchAgent()) throw new InvalidOperationException("Session protected; explicit reconciliation required.");
+            State.AgentSwitchUnknown = new(operationId, targetAgentId);
+            _agentSwitch = operationId;
+        }
+
+        public void CompleteAgentSwitch(NotificationInteractionStatus status)
+            => CompleteAgentSwitch(_agentSwitch ?? throw new InvalidOperationException("No agent switch started."), status);
+
+        /// <summary>Settle only the captured operation under Source.TryExecute after rechecking full origin.
+        /// If revoked, leave unknown. Transport/cancellation/uncertain results MUST use OutcomeUnknown.</summary>
+        public void CompleteAgentSwitch(Guid operationId, NotificationInteractionStatus status)
+        {
+            if (operationId == Guid.Empty || _agentSwitch != operationId || State.AgentSwitchUnknown?.OperationId != operationId)
+                throw new InvalidOperationException("Agent switch operation mismatch.");
+            if (status is not (NotificationInteractionStatus.Succeeded or NotificationInteractionStatus.Expired
+                or NotificationInteractionStatus.Failed or NotificationInteractionStatus.OutcomeUnknown))
+                throw new ArgumentOutOfRangeException(nameof(status));
+            if (status != NotificationInteractionStatus.OutcomeUnknown) State.AgentSwitchUnknown = null;
+            _agentSwitch = null;
+        }
+
+        /// <summary>Explicit user-driven complete authoritative reconciliation under captured Source.TryExecute
+        /// and full origin validation only; never polling. allowRetry requires consent to possible duplicate effects.
+        /// Both choices close this exact unknown operation; any later switch requires a new explicit Begin.</summary>
+        public void ResolveAgentSwitchUnknown(Guid operationId, bool allowRetry)
+        {
+            if (_mutation is not null || _agentSwitch is not null) throw new InvalidOperationException("Mutation in progress.");
+            if (operationId == Guid.Empty || State.AgentSwitchUnknown?.OperationId != operationId)
+                throw new InvalidOperationException("Agent switch protection source mismatch.");
+            State.AgentSwitchUnknown = null;
+        }
+
         /// <summary>Call immediately before the one POST/DELETE, after trusted fresh-state validation.</summary>
         public void BeginMutation(string requestId, NotificationNavigationKind kind, bool affectsSession = false)
         {
             if (affectsSession && kind != NotificationNavigationKind.Permission)
                 throw new InvalidOperationException("Only a Permission reject can protect the whole session.");
-            if (_mutation is not null || !CanSubmit(requestId, kind)) throw new InvalidOperationException("Request protected; explicit reconciliation required.");
+            if (_mutation is not null || _agentSwitch is not null || !CanSubmit(requestId, kind)) throw new InvalidOperationException("Request protected; explicit reconciliation required.");
             State.Results[(requestId, kind)] = NotificationInteractionStatus.OutcomeUnknown;
             _mutation = (requestId, kind);
             _affectsSession = affectsSession;
@@ -86,7 +323,7 @@ public sealed class OpenCodeInteractionGate
         /// affectsSession requires reconciliation of the entire session after an uncertain reject.</summary>
         public void ResolveUnknown(string requestId, NotificationNavigationKind kind, bool allowRetry, bool affectsSession = false)
         {
-            if (_mutation is not null) throw new InvalidOperationException("Mutation in progress.");
+            if (_mutation is not null || _agentSwitch is not null) throw new InvalidOperationException("Mutation in progress.");
             if (State.SessionUnknown is not null)
             {
                 if (!affectsSession) throw new InvalidOperationException("Whole-session reconciliation required.");
@@ -107,7 +344,7 @@ public sealed class OpenCodeInteractionGate
         /// </summary>
         public void ResolveSessionUnknown(string requestId, NotificationNavigationKind kind, bool allowRetry)
         {
-            if (_mutation is not null) throw new InvalidOperationException("Mutation in progress.");
+            if (_mutation is not null || _agentSwitch is not null) throw new InvalidOperationException("Mutation in progress.");
             var state = State;
             var key = (requestId, kind);
             if (kind != NotificationNavigationKind.Permission || state.SessionUnknown != key

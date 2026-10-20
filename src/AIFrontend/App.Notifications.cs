@@ -57,6 +57,7 @@ public partial class App
         {
             PostToApp(() =>
             {
+                if (_window?.AppWindow.Presenter is OverlappedPresenter presenter) presenter.Restore();
                 _window?.Activate();
                 RaiseAppEvent(LocalNavigationRequested, args);
             });
@@ -89,6 +90,7 @@ public partial class App
             try
             {
                 if (target.EndpointIdentity != OpenCodeEndpointIdentity) { RecordDiagnostic("navigation-stale-endpoint"); continue; }
+                if (_window?.AppWindow.Presenter is OverlappedPresenter presenter) presenter.Restore();
                 _window?.Activate();
                 RaiseAppEvent(OpenCodeNavigationRequested, new NotificationNavigationEventArgs(target));
             }
@@ -100,7 +102,6 @@ public partial class App
     {
         RecordDiagnostic("opencode-interaction", interaction: args.Result);
         if (args.Result.EndpointIdentity is { } endpoint && endpoint != OpenCodeEndpointIdentity) return;
-        if (args.Result.Status == NotificationInteractionStatus.NeedsApp) _window?.Activate();
         RaiseAppEvent(OpenCodeInteractionProcessed, args);
     });
 

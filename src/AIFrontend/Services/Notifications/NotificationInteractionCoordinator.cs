@@ -11,7 +11,11 @@ namespace AIFrontend.Services.Notifications;
 
 internal sealed record NotificationInteractionButton(string Label, string Nonce);
 internal sealed record NotificationInteractionPlan(string BodyNonce, string Title, string Body,
-    IReadOnlyList<NotificationInput> Inputs, IReadOnlyList<NotificationInteractionButton> Buttons);
+    IReadOnlyList<NotificationInput> Inputs, IReadOnlyList<NotificationInteractionButton> Buttons,
+    string? ExtraBody = null)
+{
+    internal IReadOnlyList<string> TextElements => string.IsNullOrEmpty(ExtraBody) ? [Title, Body] : [Title, Body, ExtraBody];
+}
 internal sealed record NotificationPreparation(NotificationInteractionResult Result, NotificationInteractionPlan? Plan = null);
 
 /// <summary>No Windows APIs, registration, polling, persisted secrets, UI or untrusted endpoint resolution.</summary>
@@ -49,6 +53,7 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
         internal readonly NotificationField[] Fields = fields;
         internal readonly DateTimeOffset Expires = expires;
         internal EntryState State;
+        internal bool NavigationTrustActive = true;
         internal NotificationInteractionStatus FinalStatus = NotificationInteractionStatus.Duplicate;
     }
 
@@ -78,14 +83,22 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
             string fingerprint;
             string title;
             string body;
+            string? extraBody = null;
             NotificationInput[] inputs = [];
             NotificationField[] fields = [];
             bool navigateOnly = false;
+            string? sessionTitle = null;
+            try { sessionTitle = (await source.Client.GetSessionInfoAsync(sessionId, linked.Token).ConfigureAwait(false)).Title; }
+            catch (OperationCanceledException) when (linked.IsCancellationRequested) { throw; }
+            catch { /* Session title is display-only; pending detail remains authoritative. */ }
             if (form)
             {
                 var pending = await source.Client.GetFormAsync(sessionId, requestId, linked.Token).ConfigureAwait(false);
                 if (pending.State?.Status != OpenCodeFormStatuses.Pending)
+                {
+                    RetireSettled(source, sessionId, NotificationNavigationKind.Form, requestId);
                     return new(new(NotificationInteractionStatus.Expired, "表单已结算。", source.Identity, sessionId, requestId));
+                }
                 if (!NotificationFormPolicy.TryCreate(pending, out inputs, out fields))
                 {
                     navigateOnly = true;
@@ -93,19 +106,23 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
                     fields = [];
                 }
                 fingerprint = Fingerprint(pending);
-                title = "OpenCode · " + pending.Title;
-                body = "请填写后点击提交。有选项且允许自定义时，非空自定义文本优先。";
+                title = NotificationText.SingleLine(sessionTitle, 80,
+                    NotificationFormPolicy.IsQuestion(pending) ? "OpenCode 提问" : "OpenCode 表单");
+                var lines = NotificationText.BodyLines(NotificationFormPolicy.Describe(pending));
+                body = lines.First;
+                extraBody = lines.Second;
             }
             else
             {
                 var pending = await source.Client.GetPendingPermissionAsync(sessionId, requestId, linked.Token).ConfigureAwait(false);
                 fingerprint = Fingerprint(pending);
-                title = "OpenCode · 权限请求";
-                body = $"动作：{pending.Action}\n资源：{string.Join(", ", pending.Resources!)}\nsave patterns：{string.Join(", ", pending.Save ?? [])}\n始终允许仅保存上述 patterns 对应的项目规则；拒绝还影响本会话其他待处理权限。";
-                // Never truncate a permission scope into a deceptively narrower grant.
-                if (body.Length > 1000 || body.Any(c => char.IsControl(c) && c != '\n')) navigateOnly = true;
+                title = "OpenCode · " + NotificationText.SingleLine(sessionTitle, 100, "OpenCode 会话");
+                body = "权限 · " + NotificationText.SingleLine(pending.Action, 35)
+                    + "：" + NotificationText.SingleLine(string.Join(", ", pending.Resources!), 80);
+                extraBody = "始终允许保存规则：" + NotificationText.SingleLine(string.Join(", ", pending.Save ?? []), 50, "无")
+                    + "。拒绝也影响其他待处理权限；点击正文查看完整范围。";
             }
-            if (navigateOnly) { title = "OpenCode · 待处理请求"; body = "请打开应用查看完整请求并处理；此通知不提交任何决定。"; }
+            if (navigateOnly) extraBody = "此表单超出通知输入能力，请点击正文在应用中处理。";
             lock (_gate)
             {
                 if (_disposed || linked.IsCancellationRequested || _revokedClients.Contains(source.Client))
@@ -118,13 +135,13 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
                 var entry = new Entry(source, sessionId, requestId, form, fingerprint, fields, _time.GetUtcNow() + Lifetime);
                 _entries.Add(key, entry);
                 string bodyNonce = Token(entry, ActionKind.Navigate);
-                NotificationInteractionButton[] buttons = navigateOnly ? [new("打开应用", bodyNonce)] : form
+                NotificationInteractionButton[] buttons = navigateOnly ? [new("在应用中处理", bodyNonce)] : form
                     ? [new("提交", Token(entry, ActionKind.Answer))]
                     : [new("允许一次", Token(entry, ActionKind.Once)), new("始终允许", Token(entry, ActionKind.Always)),
                         new("拒绝", Token(entry, ActionKind.Reject))];
                 return new(Result(entry, navigateOnly ? NotificationInteractionStatus.NeedsApp : NotificationInteractionStatus.Prepared,
                     navigateOnly ? "已准备仅导航降级通知；不提交答案或权限。" : "交互已准备；尚未提交通知。"),
-                    new(bodyNonce, title, body, inputs, buttons));
+                    new(bodyNonce, title, body, inputs, buttons, extraBody));
             }
         }
         catch (OpenCodeApiException ex)
@@ -156,10 +173,13 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
                 return new(NotificationInteractionStatus.NeedsApp, "未知或冷启动通知。请打开应用重新验证；未执行授权。");
             entry = binding.Entry;
             action = binding.Action;
-            if (entry.Expires <= _time.GetUtcNow() || entry.State == EntryState.Retired)
-                return Result(entry, ExistingStatus(entry), "请求已过期、已处理或结果未知；请在应用重新验证。");
+            if (entry.Expires <= _time.GetUtcNow() || !entry.NavigationTrustActive || !IsCurrentSourceLocked(entry.Source))
+                return Result(entry, action == ActionKind.Navigate ? NotificationInteractionStatus.Expired : ExistingStatus(entry),
+                    "通知已过期或来源已撤销；未执行授权。");
             if (action == ActionKind.Navigate)
                 return Result(entry, NotificationInteractionStatus.Navigate, "仅请求导航，不执行授权或回答。");
+            if (entry.State == EntryState.Retired)
+                return Result(entry, ExistingStatus(entry), "请求已过期、已处理或结果未知；请在应用重新验证。");
             if (entry.State != EntryState.Available)
                 return Result(entry, NotificationInteractionStatus.Duplicate, "同一请求正在处理，已拒绝重复点击。");
             if (userInput is null || (entry.Form
@@ -251,8 +271,12 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
             entry.State = EntryState.Retired;
             entry.FinalStatus = result.Status == NotificationInteractionStatus.Succeeded
                 ? NotificationInteractionStatus.Duplicate : result.Status;
-            // reject can settle other pending permissions, even when its network outcome is uncertain.
-            if (action == ActionKind.Reject && mutationStarted)
+            // Only a definitively accepted reject (HTTP 204) settles the session's other pending
+            // permissions. A rejected mutation (400/401/403), an unknown outcome or any other result
+            // must not fabricate sibling settlement: the gate's whole-session protection already
+            // fences siblings while the outcome is unknown, and the authoritative pending list
+            // reconciles them on the next poll.
+            if (action == ActionKind.Reject && result.Status == NotificationInteractionStatus.Succeeded)
                 foreach (var other in _entries.Values.Where(e => !e.Form && e.Source.Identity == entry.Source.Identity
                     && e.Session == entry.Session && !ReferenceEquals(e, entry)))
                 {
@@ -265,27 +289,95 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
         return result;
     }
 
+    internal TrustedOpenCodeNotificationSource? GetActivationSource(IReadOnlyDictionary<string, string> arguments)
+    {
+        lock (_gate) return arguments.TryGetValue(NonceKey, out var nonce) && nonce is not null
+            && _tokens.TryGetValue(nonce, out var binding) ? binding.Entry.Source : null;
+    }
+
     internal void Retire(NotificationInteractionPlan plan)
     {
         lock (_gate)
             if (_tokens.TryGetValue(plan.BodyNonce, out var binding))
             {
                 binding.Entry.State = EntryState.Retired;
+                binding.Entry.NavigationTrustActive = false; // No successful native submission.
                 binding.Entry.FinalStatus = NotificationInteractionStatus.NeedsApp;
             }
+    }
+
+    internal NotificationInteractionPlan? CreateFeedback(IReadOnlyDictionary<string, string> arguments, string detail)
+    {
+        lock (_gate)
+        {
+            if (!arguments.TryGetValue(NonceKey, out var nonce) || !_tokens.TryGetValue(nonce, out var binding)
+                || !binding.Entry.NavigationTrustActive || !IsCurrentSourceLocked(binding.Entry.Source)
+                || binding.Entry.Expires <= _time.GetUtcNow()) return null;
+            string bodyNonce = _tokens.First(p => ReferenceEquals(p.Value.Entry, binding.Entry) && p.Value.Action == ActionKind.Navigate).Key;
+            return new(bodyNonce, "OpenCode · 请检查回答",
+                NotificationText.SingleLine(detail, 180) + " 点击此通知在应用中继续。", [], []);
+        }
     }
 
     internal bool IsEligible(NotificationInteractionPlan plan)
     {
         lock (_gate) return !_disposed && _tokens.TryGetValue(plan.BodyNonce, out var binding)
+            && IsCurrentSourceLocked(binding.Entry.Source)
             && binding.Entry.State == EntryState.Available && binding.Entry.Expires > _time.GetUtcNow();
+    }
+
+    internal bool TryBindSource(TrustedOpenCodeNotificationSource source)
+    {
+        lock (_gate)
+        {
+            if (_disposed || _revokedClients.Contains(source.Client)) return false;
+            if (_sources.TryGetValue(source.Identity, out var current)) return ReferenceEquals(current, source.Client);
+            if (_sources.Count >= Capacity) return false;
+            _sources.Add(source.Identity, source.Client);
+            return true;
+        }
+    }
+
+    private bool IsCurrentSourceLocked(TrustedOpenCodeNotificationSource source)
+        => !_disposed && !_revokedClients.Contains(source.Client)
+            && _sources.TryGetValue(source.Identity, out var current) && ReferenceEquals(current, source.Client);
+
+    internal bool ReconcilePending(TrustedOpenCodeNotificationSource source, string sessionId,
+        NotificationNavigationKind kind, IReadOnlySet<string> pendingIds)
+    {
+        lock (_gate)
+        {
+            if (!IsCurrentSourceLocked(source)) return false;
+            foreach (var entry in _entries.Values.Where(e => ReferenceEquals(e.Source.Client, source.Client)
+                && e.Source.Identity == source.Identity && e.Session == sessionId
+                && e.Form == (kind == NotificationNavigationKind.Form) && !pendingIds.Contains(e.Request)))
+                RetireAction(entry);
+            return true;
+        }
+    }
+
+    internal void RetireSettled(TrustedOpenCodeNotificationSource source, string sessionId,
+        NotificationNavigationKind kind, string itemId)
+    {
+        lock (_gate)
+            if (IsCurrentSourceLocked(source)
+                && _entries.TryGetValue((source.Identity, sessionId, itemId, kind == NotificationNavigationKind.Form), out var entry)
+                && ReferenceEquals(entry.Source.Client, source.Client)) RetireAction(entry);
+    }
+
+    private static void RetireAction(Entry entry)
+    {
+        entry.State = EntryState.Retired;
+        if (entry.FinalStatus != NotificationInteractionStatus.OutcomeUnknown)
+            entry.FinalStatus = NotificationInteractionStatus.Expired;
+        // Keep navigation trust and all gate tombstones; removal cannot retract an in-flight mutation.
     }
 
     private void CheckBeforeMutation(Entry entry, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         lock (_gate)
-            if (_disposed || entry.State != EntryState.Claimed || entry.Expires <= _time.GetUtcNow())
+            if (_disposed || !IsCurrentSourceLocked(entry.Source) || entry.State != EntryState.Claimed || entry.Expires <= _time.GetUtcNow())
                 throw new OperationCanceledException(token);
     }
 
@@ -312,6 +404,7 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
             foreach (var entry in _entries.Values.Where(e => e.Source.Identity == endpointIdentity))
             {
                 entry.State = EntryState.Retired;
+                entry.NavigationTrustActive = false;
                 if (entry.FinalStatus != NotificationInteractionStatus.OutcomeUnknown)
                     entry.FinalStatus = NotificationInteractionStatus.Expired;
             }

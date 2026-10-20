@@ -17,6 +17,7 @@ public sealed class TrustedOpenCodeNotificationSource
 
     public string Identity { get; }
     internal OpenCodeClient Client { get; }
+    internal Guid Generation { get; } = Guid.NewGuid();
 }
 
 public enum NotificationInteractionStatus

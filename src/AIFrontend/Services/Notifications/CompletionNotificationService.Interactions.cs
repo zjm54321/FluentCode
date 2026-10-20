@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
 using Microsoft.Windows.AppNotifications;
-using Microsoft.Windows.AppNotifications.Builder;
 
 namespace AIFrontend.Services.Notifications;
 
@@ -19,11 +18,20 @@ public sealed partial class CompletionNotificationService
 
     public void InvalidateOpenCodeSource(string endpointIdentity)
     {
-        _interactions.InvalidateOpenCodeSource(endpointIdentity);
+        NotificationDisplayLedger.Entry[] entries;
         lock (_gate)
+        {
+            _interactions.InvalidateOpenCodeSource(endpointIdentity);
+            _notificationSources.Remove(endpointIdentity);
             foreach (var id in _completionTargets.Where(p => p.Value.Source == NotificationSource.OpenCode
                 && p.Value.Target?.EndpointIdentity == endpointIdentity).Select(p => p.Key).ToArray())
                 _completionTargets.Remove(id);
+            entries = _displayLedger.Snapshot(e => e.Key.Scope.Source == NotificationSource.OpenCode
+                && e.Key.Scope.EndpointIdentity == endpointIdentity, false).Entries;
+        }
+        // Capability fencing above is synchronous; native removal cannot undo an activation already sent.
+        // Scheduling also keeps native calls outside a reentrant SuspendInteractionsAsync service lock.
+        _ = Task.Run(() => RemoveSnapshotAsync(entries, 0));
     }
 
     private void RaiseNavigationTarget(NotificationNavigationTarget target)
@@ -54,11 +62,16 @@ public sealed partial class CompletionNotificationService
         string sessionId, string requestId, bool form, CancellationToken cancellationToken)
     {
         lock (_gate)
-            if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized)
+            if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized || !TryBindNotificationSource(source))
                 return new(NotificationInteractionStatus.Unavailable, "通知服务未就绪；未请求后端。");
         var prepared = await _interactions.PrepareAsync(source, sessionId, requestId, form, cancellationToken).ConfigureAwait(false);
         prepared = prepared with { Result = prepared.Result with { Kind = form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission } };
-        if (prepared.Plan is not { } plan) return prepared.Result;
+        if (prepared.Plan is not { } plan)
+        {
+            if (prepared.Result.Status == NotificationInteractionStatus.Expired)
+                await ReconcileSettledAsync(source, sessionId, form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission, requestId).ConfigureAwait(false);
+            return prepared.Result;
+        }
         lock (_gate)
         {
             if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized || cancellationToken.IsCancellationRequested || !_interactions.IsEligible(plan))
@@ -68,7 +81,9 @@ public sealed partial class CompletionNotificationService
             }
             try
             {
-                AppNotificationManager.Default.Show(BuildInteractionNotification(plan));
+                var receipt = _submitInteraction(plan);
+                RecordDisplayLocked(new(NotificationSource.OpenCode, source.Identity, sessionId, requestId,
+                    form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission), receipt, source.Generation);
                 return prepared.Result with { Status = prepared.Result.Status == NotificationInteractionStatus.NeedsApp
                     ? NotificationInteractionStatus.NeedsApp : NotificationInteractionStatus.Submitted,
                     Detail = prepared.Result.Status == NotificationInteractionStatus.NeedsApp
@@ -83,32 +98,7 @@ public sealed partial class CompletionNotificationService
     }
 
     private static AppNotification BuildInteractionNotification(NotificationInteractionPlan plan)
-    {
-        if (plan.Inputs.Count > NotificationFormPolicy.MaxInputs || plan.Buttons.Count > NotificationFormPolicy.MaxButtons)
-            throw new InvalidOperationException("Native interaction budget exceeded.");
-        var builder = new AppNotificationBuilder()
-            .AddArgument(NotificationInteractionCoordinator.NonceKey, plan.BodyNonce)
-            .AddText(plan.Title).AddText(plan.Body);
-        foreach (var input in plan.Inputs)
-        {
-            if (input.Choices is { } choices)
-            {
-                var combo = new AppNotificationComboBox(input.Id).SetTitle(input.Title);
-                foreach (var choice in choices) combo.AddItem(choice.Id, choice.Label);
-                builder.AddComboBox(combo);
-            }
-            else builder.AddTextBox(input.Id, "请输入", input.Title);
-        }
-        string? textId = plan.Inputs.FirstOrDefault(input => input.Choices is null)?.Id;
-        foreach (var action in plan.Buttons)
-        {
-            var button = new AppNotificationButton(action.Label)
-                .AddArgument(NotificationInteractionCoordinator.NonceKey, action.Nonce);
-            if (textId is not null) button.SetInputId(textId);
-            builder.AddButton(button);
-        }
-        return builder.BuildNotification();
-    }
+        => new AppNotification(NotificationInteractionXml.Build(plan));
 
     /// <summary>
     /// Future single-instance activation redirection may call this boundary. It trusts ONLY live nonce bindings.
@@ -119,6 +109,7 @@ public sealed partial class CompletionNotificationService
         CancellationToken cancellationToken = default)
     {
         NotificationInteractionResult result;
+        TrustedOpenCodeNotificationSource? activationSource = null;
         try
         {
             if (arguments is null || userInput is null || arguments.Count > 1 || userInput.Count > NotificationFormPolicy.MaxInputs)
@@ -131,6 +122,7 @@ public sealed partial class CompletionNotificationService
                 lock (_gate)
                     if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized)
                         return new(NotificationInteractionStatus.NeedsApp, "服务未就绪或已关闭，请在应用重新验证。");
+                activationSource = _interactions.GetActivationSource(argumentSnapshot);
                 result = await _interactions.ActivateAsync(argumentSnapshot, inputSnapshot, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -138,13 +130,41 @@ public sealed partial class CompletionNotificationService
         {
             result = new(NotificationInteractionStatus.Failed, "处理通知激活失败；请在应用重新验证。");
         }
+        if (result.Status is NotificationInteractionStatus.Succeeded or NotificationInteractionStatus.Expired
+            && result.EndpointIdentity is { } endpoint && result.SessionId is { } session
+            && result.RequestId is { } request && result.Kind is { } kind)
+        {
+            // Activate has already retired this action; fresh polling covers other settled items.
+            if (activationSource is not null && activationSource.Identity == endpoint)
+                await ReconcileSettledAsync(activationSource, session, kind, request).ConfigureAwait(false);
+        }
         PublishInteraction(result);
-        if (result.Status is NotificationInteractionStatus.Navigate or NotificationInteractionStatus.NeedsApp
+        if (result.Status == NotificationInteractionStatus.Navigate
             && result.NavigationTarget is { } target) RaiseNavigationTarget(target);
-        if (result.Status is NotificationInteractionStatus.Navigate or NotificationInteractionStatus.NeedsApp)
+        if (result.Status == NotificationInteractionStatus.Navigate)
             RaiseNavigation(new NotificationActivationInfo(false, result.EndpointIdentity is null ? null : NotificationSource.OpenCode,
                 result.RequestId, string.Empty));
+        else if (arguments is not null && result.Status is (NotificationInteractionStatus.InvalidInput or NotificationInteractionStatus.Failed
+            or NotificationInteractionStatus.NeedsApp or NotificationInteractionStatus.OutcomeUnknown or NotificationInteractionStatus.Cancelled))
+            ShowInteractionFeedback(arguments, result);
         return result;
+    }
+
+    private void ShowInteractionFeedback(IReadOnlyDictionary<string, string> arguments, NotificationInteractionResult result)
+    {
+        var plan = _interactions.CreateFeedback(arguments, result.Detail);
+        if (plan is null) return;
+        lock (_gate)
+        {
+            if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized) return;
+            try
+            {
+                var receipt = _submitInteraction(plan);
+                if (result.NavigationTarget is { } target && _notificationSources.TryGetValue(target.EndpointIdentity, out var source))
+                    RecordDisplayLocked(target, receipt, source.Generation);
+            }
+            catch { /* Feedback is best-effort; never retry a mutation or foreground the App. */ }
+        }
     }
 
     private void PublishInteraction(NotificationInteractionResult result)
@@ -178,7 +198,8 @@ public sealed partial class CompletionNotificationService
     /// Also pass isHistoricalSnapshot=true for all subsequent history/backfill pages. Only newly seen idle+succeeded ids notify.
     /// </summary>
     public IReadOnlyList<NotificationDispatchResult> ObserveOpenCodeMessages(string endpointIdentity, string sessionId,
-        IReadOnlyList<OpenCodeMessage> messages, bool isHistoricalSnapshot = false)
+        IReadOnlyList<OpenCodeMessage> messages, bool isHistoricalSnapshot = false, string? sessionTitle = null,
+        IReadOnlyList<OpenCodeMessage>? context = null)
     {
         var results = new List<NotificationDispatchResult>();
         if (!NotificationArgumentCodec.IsValidRequestId(endpointIdentity) || !NotificationArgumentCodec.IsValidRequestId(sessionId)
@@ -196,8 +217,9 @@ public sealed partial class CompletionNotificationService
                 _observedIdle.Add(key, seen = new(StringComparer.Ordinal));
                 isHistoricalSnapshot = true;
             }
-            foreach (var message in messages)
+            for (int index = 0; index < messages.Count; index++)
             {
+                var message = messages[index];
                 if (message is null || message.Type != "idle" || !NotificationArgumentCodec.IsValidRequestId(message.Id)) continue;
                 if (seen.Contains(message.Id!)) continue;
                 if (_observedIdle.Values.Sum(ids => ids.Count) >= MaxObservedIdleIds)
@@ -207,10 +229,27 @@ public sealed partial class CompletionNotificationService
                 // Tuple digest is only the internal dedupe key; the toast gets a fresh random token.
                 string requestId = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
                     new[] { endpointIdentity, sessionId, message.Id! })));
+                var summaryMessages = context ?? messages;
+                int summaryIndex = index;
+                if (context is not null)
+                {
+                    summaryIndex = 0;
+                    for (int i = 0; i < context.Count; i++)
+                        if (context[i].Id == message.Id) { summaryIndex = i; break; }
+                }
                 results.Add(NotifyCompletedCore(NotificationSource.OpenCode, requestId,
-                    new(NotificationSource.OpenCode, endpointIdentity, sessionId, message.Id!, NotificationNavigationKind.Completion)));
+                    new(NotificationSource.OpenCode, endpointIdentity, sessionId, message.Id!, NotificationNavigationKind.Completion),
+                    NotificationText.Completion(sessionTitle, summaryMessages, summaryIndex)));
             }
         }
         return results;
+    }
+
+    internal IReadOnlyList<NotificationDispatchResult> ObserveTrustedOpenCodeMessages(TrustedOpenCodeNotificationSource source,
+        string sessionId, IReadOnlyList<OpenCodeMessage> messages, bool historical, string? sessionTitle = null,
+        IReadOnlyList<OpenCodeMessage>? context = null)
+    {
+        lock (_gate) return IsCurrentNotificationSource(source)
+            ? ObserveOpenCodeMessages(source.Identity, sessionId, messages, historical, sessionTitle, context) : [];
     }
 }

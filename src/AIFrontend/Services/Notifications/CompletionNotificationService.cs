@@ -18,9 +18,8 @@ namespace AIFrontend.Services.Notifications;
 /// 交互由受信 OpenCodeClient 执行；不依据单独 idle / 静默 / HTTP 接受推断任务完成。</description></item>
 /// <item><description>按 (source, requestId) 去重：运行期有界缓存（窗口 <see cref="DedupeWindow"/>、
 /// 上限 <see cref="MaxDedupeEntries"/> 条），不持久化——进程重启后同一 requestId 可再次通知。</description></item>
-/// <item><description>通知内容固定：首行（标题）= 来源展示名（OpenCode / Local API），
-    /// 正文固定为 <see cref="BodyText"/>；参数仅含 action / source / requestId（随机完成 token），
-/// 不含聊天内容或密钥。</description></item>
+/// <item><description>OpenCode 完成通知展示会话标题和最新 assistant 文本摘要；Local API 使用固定文案。
+/// 激活参数仅含 action / source / requestId（随机完成 token），不含聊天内容或密钥。</description></item>
 /// <item><description>系统通过 <see cref="AppNotificationManager.NotificationInvoked"/> 在后台线程回调：
 /// 本服务不操作 UI、不开窗口；交互只解析 nonce，通过运行期受信 registry 再验证后执行。
 /// 导航经 <see cref="NotificationActivated"/> 暴露；订阅方同步异常被隔离。</description></item>
@@ -30,7 +29,7 @@ namespace AIFrontend.Services.Notifications;
 /// </remarks>
 public sealed partial class CompletionNotificationService : IDisposable
 {
-    /// <summary>通知正文固定文本（OpenCode / Local API 的差异仅体现在标题行）。</summary>
+    /// <summary>Local API 固定正文以及 OpenCode 无可用回复文本时的回退文案。</summary>
     public const string BodyText = "任务已完成";
 
     /// <summary>
@@ -165,7 +164,7 @@ public sealed partial class CompletionNotificationService : IDisposable
     }
 
     private NotificationDispatchResult NotifyCompletedCore(NotificationSource source, string requestId,
-        NotificationNavigationTarget? target = null)
+        NotificationNavigationTarget? target = null, NotificationCompletionText? text = null)
     {
         if (source is not (NotificationSource.OpenCode or NotificationSource.LocalApi))
         {
@@ -195,10 +194,17 @@ public sealed partial class CompletionNotificationService : IDisposable
             try
             {
                 string token = CreateCompletionTokenLocked();
-                _submitCompletion(source, token);
+                var receipt = _submitCompletion(source, token, text);
                 // Never install a navigable target before successful submission. The same lock excludes
                 // invalidation/disposal during Show + commit and prevents duplicate submissions/rebinding.
                 CommitCompletionTargetLocked(token, source, requestId, target);
+                if (target is not null)
+                    RecordDisplayLocked(target, receipt, source == NotificationSource.OpenCode
+                        && _notificationSources.TryGetValue(target.EndpointIdentity, out var bound) ? bound.Generation : Guid.Empty);
+                else
+                    // Legacy Local success has no trusted session. Track display only; never invent ACK routing.
+                    RecordDisplayLocked(new(source, LocalCompletionEndpointIdentity, string.Empty, requestId,
+                        NotificationNavigationKind.Completion), receipt, Guid.Empty);
                 return NotificationDispatchResult.Submitted(source, requestId);
             }
             catch (Exception)
@@ -239,6 +245,8 @@ public sealed partial class CompletionNotificationService : IDisposable
             _interactions.Dispose();
             _observedIdle.Clear();
             _completionTargets.Clear();
+            _displayLedger.Clear();
+            _notificationSources.Clear();
 
             if (_handlerSubscribed)
             {
