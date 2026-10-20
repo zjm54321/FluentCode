@@ -7,6 +7,8 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -117,6 +119,7 @@ internal sealed class OpenCodeToolDetailOptions
     public bool ShowAll { get; set; }
 
     public int SelectedFile { get; set; }
+    public bool ShowSource { get; set; }
 
     /// <summary>已展开的折叠段（按折叠行首行号标识）。</summary>
     public HashSet<string> ExpandedFolds { get; } = new(StringComparer.Ordinal);
@@ -135,7 +138,7 @@ internal static class OpenCodeToolDetailContent
 {
     internal const int MaxRows = 20000;
 
-    private sealed record CodeLine(int? Number, string Text);
+    private sealed record CodeLine(int? Number, string Text, string Language = "text");
 
     private sealed record PlainLine(string Text);
 
@@ -204,6 +207,12 @@ internal static class OpenCodeToolDetailContent
         {
             case OpenCodeToolKind.Read:
                 BuildRead(model, rows, top);
+                if (rows.Count > 0 && OpenCodeFileDetailPolicy.IsMarkdown(model.Target))
+                {
+                    var source = string.Join("\n", rows.ConvertAll(row => row is CodeLine line ? line.Text : string.Empty));
+                    body = BuildFileContent(model.Target, source, options, rebuild, top);
+                    rows.Clear();
+                }
                 break;
             case OpenCodeToolKind.Edit:
             case OpenCodeToolKind.MultiEdit:
@@ -211,7 +220,11 @@ internal static class OpenCodeToolDetailContent
             case OpenCodeToolKind.Write:
                 if (model.DiffFiles.Count > 0)
                 {
-                    BuildDiff(model, options, rebuild, rows, top);
+                    var file = model.DiffFiles[Math.Clamp(options.SelectedFile, 0, model.DiffFiles.Count - 1)];
+                    if (OpenCodeFileDetailPolicy.IsFullWrite(model.Kind, file))
+                        body = BuildFileContent(file.Path, file.After!, options, rebuild, top);
+                    else
+                        BuildDiff(model, options, rebuild, rows, top);
                 }
                 else
                 {
@@ -317,6 +330,12 @@ internal static class OpenCodeToolDetailContent
                 ItemTemplate = new LineFactory(data => BuildRow(data, unified)),
             };
             body = repeater;
+            if (model.Kind == OpenCodeToolKind.Read)
+            {
+                var surface = new Border { Child = body };
+                OpenCodeCodePalette.BindSurface(surface);
+                body = surface;
+            }
         }
 
         scroller = new ScrollViewer
@@ -349,7 +368,7 @@ internal static class OpenCodeToolDetailContent
         {
             if (OpenCodeToolRowPresentation.TrySplitNumberedLine(line, out var number, out var content))
             {
-                rows.Add(new CodeLine(number, content));
+                rows.Add(new CodeLine(number, content, OpenCodeFileDetailPolicy.Language(model.Target)));
             }
             else if (rows.Count == 0 && line.Length > 0)
             {
@@ -358,11 +377,61 @@ internal static class OpenCodeToolDetailContent
             }
             else if (line.Length > 0)
             {
-                rows.Add(new CodeLine(null, line.TrimEnd('\r')));
+                rows.Add(new CodeLine(null, line.TrimEnd('\r'), OpenCodeFileDetailPolicy.Language(model.Target)));
             }
         }
     }
 
+    private static FrameworkElement BuildFileContent(string path, string source, OpenCodeToolDetailOptions options, Action rebuild, StackPanel top)
+    {
+        top.Children.Add(Caption(path));
+        var copy = new Button { Content = "复制源码", HorizontalAlignment = HorizontalAlignment.Left };
+        AutomationProperties.SetAutomationId(copy, "OpenCodeFileCopySource");
+        copy.Click += (_, _) =>
+        {
+            try
+            {
+                var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                data.SetText(source);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+                copy.Content = "已复制源码";
+            }
+            catch (Exception) { copy.Content = "复制失败，请选择源码复制"; }
+        };
+        top.Children.Add(copy);
+        if (OpenCodeFileDetailPolicy.IsMarkdown(path))
+        {
+            var toggle = new ToggleSwitch { Header = "Markdown", OffContent = "预览", OnContent = "源码", IsOn = options.ShowSource };
+            AutomationProperties.SetAutomationId(toggle, "OpenCodeFileSourceToggle");
+            toggle.Toggled += (_, _) => { options.ShowSource = toggle.IsOn; rebuild(); };
+            top.Children.Add(toggle);
+            if (!options.ShowSource)
+            {
+                var markdown = new OpenCodeRichTextPresenter();
+                markdown.Render(source, OpenCodeRichTextStyle.Body);
+                EnforceWrapping(markdown.Element);
+                return markdown.Element;
+            }
+        }
+
+        var panel = new StackPanel();
+        AutomationProperties.SetAutomationId(panel, "OpenCodeFileSource");
+        var language = OpenCodeFileDetailPolicy.Language(path);
+        foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(source))
+        {
+            var block = Mono(string.Empty);
+            FillSyntax(block, chunk, language);
+            panel.Children.Add(block);
+        }
+        var surface = new Border { Child = panel };
+        OpenCodeCodePalette.BindSurface(surface);
+        return surface;
+    }
+
+    private static void FillSyntax(TextBlock block, string source, string language)
+    {
+        OpenCodeCodePalette.BindText(block, source, language);
+    }
 
     /// <summary>Scope wrapping to the embedded file/child tree, including native Markdown code blocks and tables.</summary>
     private sealed class WidthLimit
@@ -663,7 +732,11 @@ internal static class OpenCodeToolDetailContent
         switch (data)
         {
             case CodeLine code:
-                return LineGrid(code.Number, null, false, null, code.Text, null, null);
+            {
+                var line = (Grid)LineGrid(code.Number, null, false, null, code.Text, null, null);
+                if (line.Children[^1] is TextBlock block) FillSyntax(block, code.Text, code.Language);
+                return line;
+            }
             case PlainLine plain:
             {
                 var text = Mono(plain.Text.Length == 0 ? " " : plain.Text);
@@ -835,6 +908,7 @@ internal static class OpenCodeToolDetailContent
         {
             var block = OpenCodeInteractionUi.StyledText(chunk, OpenCodeInteractionUi.CodeStyleKey, true);
             block.TextWrapping = TextWrapping.Wrap;
+            OpenCodeCodePalette.BindText(block, chunk, "text");
             panel.Children.Add(block);
         }
 
@@ -850,6 +924,7 @@ internal static class OpenCodeToolDetailContent
         var preview = Mono(excerpt);
         preview.MaxLines = OpenCodeDetailTextPolicy.CodePreviewLines;
         preview.TextTrimming = TextTrimming.CharacterEllipsis;
+        OpenCodeCodePalette.BindText(preview, excerpt, language);
         preview.Visibility = canCollapse ? Visibility.Visible : Visibility.Collapsed;
         content.Visibility = canCollapse ? Visibility.Collapsed : Visibility.Visible;
         // A narrow right gutter keeps the floating controls off selectable code. No header row.
@@ -921,6 +996,7 @@ internal static class OpenCodeToolDetailContent
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         OpenCodeToolTheme.Apply(border, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        OpenCodeCodePalette.BindSurface(border);
         return border;
     }
 

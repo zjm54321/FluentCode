@@ -90,6 +90,7 @@ public sealed partial class SettingsView : UserControl
 
     // 主题
     private ComboBox _themeCombo = null!;
+    private ComboBox _codeThemeCombo = null!;
 
     // OpenCode
     private TextBox _openCodeUrlBox = null!;
@@ -724,6 +725,14 @@ public sealed partial class SettingsView : UserControl
         _themeCombo.SelectionChanged += OnThemeSelectionChanged;
         panel.Children.Add(_themeCombo);
 
+        _codeThemeCombo = new ComboBox { Header = "代码配色", MinWidth = 220 };
+        _codeThemeCombo.Items.Add("跟随应用（默认）");
+        _codeThemeCombo.Items.Add("One Dark Pro");
+        AutomationProperties.SetAutomationId(_codeThemeCombo, "SettingsCodeThemeCombo");
+        _codeThemeCombo.SelectionChanged += OnCodeThemeSelectionChanged;
+        panel.Children.Add(_codeThemeCombo);
+        panel.Children.Add(new TextBlock { Text = "仅更改代码与源码区域，不改变应用主题。", TextWrapping = TextWrapping.Wrap });
+
         // 字体（F11）：见 SettingsView.Fonts.cs。
         panel.Children.Add(BuildFontsSection());
 
@@ -739,6 +748,16 @@ public sealed partial class SettingsView : UserControl
             _ => 0,
         };
         _themeCombo.SelectedIndex = index;
+        _codeThemeCombo.SelectedIndex = _settings.CodeTheme == AppCodeTheme.OneDarkPro ? 1 : 0;
+    }
+
+    private async void OnCodeThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressUiEvents || _codeThemeCombo.SelectedIndex < 0) return;
+        var theme = _codeThemeCombo.SelectedIndex == 1 ? AppCodeTheme.OneDarkPro : AppCodeTheme.Fluent;
+        if (theme == _settings.CodeTheme) return;
+        if (!await SaveAsync(_settings with { CodeTheme = theme }, "已保存代码配色。"))
+            ApplySettingsToUi(preserveEdits: true);
     }
 
     private async void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)

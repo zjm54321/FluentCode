@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using AIFrontend.Models;
 using AIFrontend.Services.Appearance;
 using AIFrontend.Services.Configuration;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 internal static class Program
 {
@@ -28,9 +31,12 @@ internal static class Program
         SystemCatalog();
         LiveRefreshPlan();
         LiveRefreshCoalescing();
+        ExistingAndNewRootConsumers();
+        await TextSizePersistence(Path.Combine(root, "text-size"));
+        TextSizeConsumers();
         await ProjectBookmarkPersistence(Path.Combine(root, "home-project-bookmarks"));
 
-        Console.WriteLine($"PASS: 10 font groups, {assertions} assertions; production-linked SettingsService/AppSettings/AppFontDefaults/SystemFontCatalog/AppFontRefreshPlan; temp data dir only.");
+        Console.WriteLine($"PASS: 13 font groups, {assertions} assertions; production-linked SettingsService/AppSettings/AppFontDefaults/SystemFontCatalog/AppFontRefreshPlan/AppFonts; synthetic WinUI tree/dispatcher, temp data dir only.");
         return 0;
     }
 
@@ -162,7 +168,8 @@ internal static class Program
         AppSettings? observed = null;
         service.Changed += (_, e) => observed = e.Settings;
         var fonts = new AppFontSettings { Body = "微软雅黑", Serif = "Georgia", Monospace = "JetBrains Mono" };
-        await service.SaveAsync(initial with { Fonts = fonts, Theme = AppTheme.Dark });
+        await service.SaveAsync(initial with { Fonts = fonts, Theme = AppTheme.Dark, CodeTheme = AppCodeTheme.OneDarkPro });
+        Check(observed?.CodeTheme == AppCodeTheme.OneDarkPro, "Code preset change is published only after save.");
         Check(observed?.Fonts == fonts, "Changed event carries saved fonts (AppFonts subscribes to it).");
         Check(service.Current?.Fonts == fonts, "Current reflects saved fonts.");
 
@@ -173,6 +180,9 @@ internal static class Program
         AppSettings reloaded = await new SettingsService(dir).LoadAsync();
         Check(reloaded.Fonts == fonts, "Fonts survive reload in a fresh service.");
         Check(reloaded.Theme == AppTheme.Dark, "Other settings unaffected.");
+        Check(reloaded.CodeTheme == AppCodeTheme.OneDarkPro, "One Dark Pro code preset survives a fresh settings reload.");
+        await service.SaveAsync(reloaded with { CodeTheme = AppCodeTheme.Fluent });
+        Check((await new SettingsService(dir).LoadAsync()).CodeTheme == AppCodeTheme.Fluent, "Default code preset restores persistently.");
 
         var partial = new AppFontSettings { Monospace = "Consolas" };
         await service.SaveAsync(reloaded with { Fonts = partial });
@@ -348,5 +358,203 @@ internal static class Program
         plan.EndRefresh();
         Check(!plan.IsRefreshPending && plan.TryBeginRefresh(), "After the deferred run, a new change schedules again.");
         plan.EndRefresh();
+    }
+
+    // Execute the real AppFonts registration/Loaded/refresh code against a synthetic dispatcher/tree.
+    // A Frame page created after a setting change can reuse an older style FontFamily object;
+    // registration time is NOT evidence that the page's existing consumers were refreshed.
+    private static async Task TextSizePersistence(string dir)
+    {
+        var service = new SettingsService(dir);
+        var loaded = await service.LoadAsync();
+        Check(AppFontDefaults.ResolveTextSize(loaded.Fonts) == 14, "Old/no fonts default remains 14 DIP.");
+        Check(AppFontDefaults.ResolveTextSize(new AppFontSettings { Body = "DengXian" }) == 14, "Old family-only settings keep the default size.");
+        Check(AppFontDefaults.IsValidTextSize(14) && AppFontDefaults.IsValidTextSize(24) && AppFontDefaults.IsValidTextSize(16.5), "Supported finite endpoints and fractional size accepted.");
+        var plan = new AppFontRefreshPlan("Body", "Serif", "Mono");
+        Check(plan.Advance("Body", "Serif", "Mono", 18) && plan.Generation == 1, "Size-only change advances the cached-root generation.");
+        Check(plan.TryBeginRefresh() && plan.Advance("Body", "Serif", "Mono", 20) && !plan.TryBeginRefresh(), "Successive size changes coalesce on the existing deferred apply.");
+        plan.EndRefresh();
+        Check(!plan.Advance("Body", "Serif", "Mono", 20), "Unchanged size is a no-op.");
+        var custom = new AppFontSettings { Body = "DengXian", Monospace = "Consolas", TextSize = 18 };
+        await service.SaveAsync(loaded with { Fonts = custom });
+        Check((await new SettingsService(dir).LoadAsync()).Fonts == custom, "Text size and families survive a fresh-service reload.");
+        Check((await File.ReadAllTextAsync(service.SettingsFilePath)).Contains("\"textSize\": 18"), "Size is persisted as a JSON number.");
+        var reset = AppFontDefaults.WithTextSize(custom, null);
+        Check(reset is { Body: "DengXian", Monospace: "Consolas", TextSize: null }, "Size-only reset preserves family choices.");
+        Check(AppFontDefaults.With(custom, AppFontSlot.Body, null)?.TextSize == 18, "Family-only reset preserves size.");
+        await service.SaveAsync(loaded with { Fonts = reset });
+        Check(!(await File.ReadAllTextAsync(service.SettingsFilePath)).Contains("textSize"), "Default size omitted like default family slots.");
+        foreach (double bad in new[] { 13d, 25d, double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+        {
+            var previous = service.Current;
+            bool rejected = false;
+            try { await service.SaveAsync(loaded with { Fonts = custom with { TextSize = bad } }); }
+            catch (SettingsValidationException ex) { rejected = ex.Errors.Any(e => e.StartsWith("fonts.textSize")); }
+            Check(rejected && ReferenceEquals(previous, service.Current), $"Invalid size {bad} rejected without publishing state.");
+        }
+        foreach (string jsonValue in new[] { "\"18\"", "true", "{}", "13", "25", "1e999" })
+        {
+            string json = "{\"schemaVersion\":1,\"fonts\":{\"textSize\":" + jsonValue + "},\"openCode\":{},\"providers\":[],\"models\":[]}";
+            await File.WriteAllTextAsync(service.SettingsFilePath, json);
+            bool rejected = false;
+            try { await new SettingsService(dir).LoadAsync(); }
+            catch (SettingsCorruptedException) { rejected = true; }
+            Check(rejected, $"Reject persisted unsupported type/range {jsonValue}.");
+            Check(await File.ReadAllTextAsync(service.SettingsFilePath) == json, "Bad persisted file preserved.");
+        }
+        File.Delete(service.SettingsFilePath);
+        await service.SaveAsync(loaded with { Fonts = custom });
+        var before = service.Current;
+        int events = 0;
+        service.Changed += (_, _) => events++;
+        File.Delete(service.SettingsFilePath);
+        Directory.CreateDirectory(service.SettingsFilePath); // Deterministic failed atomic write, temp dir only.
+        bool failed = false;
+        try { await service.SaveAsync(loaded with { Fonts = custom with { TextSize = 20 } }); }
+        catch (Exception) { failed = true; }
+        Check(failed && ReferenceEquals(before, service.Current) && events == 0, "I/O save failure preserves current size/families and emits no apply event.");
+        Directory.Delete(service.SettingsFilePath);
+    }
+
+    private static void TextSizeConsumers()
+    {
+        var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        AppFonts.ApplySettings(null);
+        dispatcher.Drain();
+        var root = new FrameworkElement();
+        var caption = new TextBlock { Text = "说明", FontSize = 12, LineHeight = 18 };
+        var body = new TextBlock { Text = "正文", FontSize = 14 };
+        var titleStyle = new Style();
+        titleStyle.Setters.Add(new Setter { Property = TextBlock.FontSizeProperty, Value = 28d });
+        var title = new TextBlock { Text = "标题", Style = titleStyle };
+        var icon = new TextBlock { Text = "\uE700", FontSize = 16, FontFamily = new FontFamily("Segoe Fluent Icons") };
+        var tick = new TextBlock { Text = "✓", FontSize = 12 };
+        var button = new Control { FontSize = 14 };
+        var inherited = new TextBlock { Text = "继承" };
+        button.TestChildren.Add(inherited);
+        var code = new RichTextBlock { FontSize = 13, LineHeight = 20, FontFamily = AppFonts.Monospace };
+        var run = new Microsoft.UI.Xaml.Documents.Inline { FontSize = 20 };
+        var paragraph = new Microsoft.UI.Xaml.Documents.Paragraph { FontSize = 18, LineHeight = 24, Inlines = { run } };
+        code.Blocks.Add(paragraph);
+        root.TestChildren.AddRange(new DependencyObject[] { caption, body, title, icon, tick, button, code });
+        var popupText = new TextBlock { Text = "弹出详情", FontSize = 14 };
+        root.XamlRoot.Popups.Add(new Microsoft.UI.Xaml.Controls.Primitives.Popup { Child = popupText });
+        root.SetLoaded(true);
+        AppFonts.RegisterRoot(root);
+        dispatcher.Drain();
+        AppFonts.ApplySettings(new AppFontSettings { TextSize = 21 });
+        Check(body.FontSize == 14, "Size changes defer existing consumers until low-priority dispatch.");
+        dispatcher.Drain();
+        Check(caption.FontSize == 18 && body.FontSize == 21 && title.FontSize == 42, "Caption/body/title preserve their hierarchy at 150%.");
+        Check(caption.LineHeight == 27 && code.LineHeight == 30 && code.FontSize == 19.5, "Explicit text and code line heights scale, auto remains auto.");
+        Check(run.FontSize == 30, "Explicit inline headings scale with their host.");
+        Check(paragraph.FontSize == 27 && paragraph.LineHeight == 36, "Explicit markdown paragraph heading metrics scale alongside inline spans.");
+        Check(icon.FontSize == 16 && tick.FontSize == 12, "Icon fonts and glyph-only text keep authored sizes.");
+        Check(button.FontSize == 21 && inherited.FontSize == 21, "Inherited template text does not double-scale.");
+        Check(popupText.FontSize == 21, "Already open popup content refreshes live.");
+        root.UpdateLayout(); dispatcher.Drain(); root.UpdateLayout(); dispatcher.Drain();
+        Check(body.FontSize == 21 && title.FontSize == 42, "Repeated layout scans never compound text sizes.");
+        var fresh = new TextBlock { Text = "新内容", FontSize = 14 };
+        root.TestChildren.Add(fresh);
+        root.UpdateLayout(); dispatcher.Drain();
+        Check(fresh.FontSize == 21, "Newly rendered content picks up selected size without another settings change.");
+        root.SetLoaded(false);
+        AppFonts.ApplySettings(new AppFontSettings { TextSize = 18, Body = "DengXian" }); dispatcher.Drain();
+        Check(body.FontSize == 21, "Unloaded cached consumers are not touched.");
+        root.SetLoaded(true); dispatcher.Drain();
+        Check(body.FontSize == 18 && body.FontFamily.Source.StartsWith("DengXian"), "Cached page catches up family and size together on Loaded.");
+        // Native elements outlive the managed projections returned by VisualTreeHelper. Recreate
+        // those projections while retaining the native DP store: repeated 18 DIP must stay 18,
+        // not become 18*(18/14)^N as with the old wrapper-keyed ConditionalWeakTable cache.
+        for (int i = 0; i < 12; i++)
+        {
+            var nextBody = new TextBlock(body);
+            var nextTitle = new TextBlock(title);
+            var nextCaption = new TextBlock(caption);
+            root.TestChildren[root.TestChildren.IndexOf(body)] = nextBody;
+            root.TestChildren[root.TestChildren.IndexOf(title)] = nextTitle;
+            root.TestChildren[root.TestChildren.IndexOf(caption)] = nextCaption;
+            body = nextBody; title = nextTitle; caption = nextCaption;
+            AppFonts.ApplySettings(AppFonts.Current);
+            root.UpdateLayout(); dispatcher.Drain();
+            Check(body.FontSize == 18 && title.FontSize == 36 && caption.FontSize == 12 * (18d / 14)
+                && caption.LineHeight == 18 * (18d / 14), "18 DIP and authored style/line baselines survive repeated managed-wrapper recreation.");
+            Check(button.FontSize == 18 && inherited.FontSize == 18 && icon.FontSize == 16,
+                "Repeated refresh preserves inherited control text and excludes icons.");
+        }
+        AppFonts.ApplySettings(AppFontDefaults.WithTextSize(AppFonts.Current, 24)); dispatcher.Drain();
+        Check(body.FontSize == 24 && title.FontSize == 48 && caption.FontSize == 12 * (24d / 14)
+            && code.FontSize == 13 * (24d / 14) && run.FontSize == 20 * (24d / 14),
+            "18 -> 24 DIP uses original body/style/code/inline baselines, not the last effective size.");
+        AppFonts.ApplySettings(AppFontDefaults.WithTextSize(AppFonts.Current, null)); dispatcher.Drain();
+        Check(body.FontSize == 14 && caption.FontSize == 12 && title.FontSize == 28 && run.FontSize == 20, "Size reset restores exact authored hierarchy.");
+        Check(body.FontFamily.Source.StartsWith("DengXian"), "Size reset does not discard a chosen family.");
+        Check((double)Application.Current.Resources[AppFonts.TextSizeResourceKey] == 14, "Live appearance resource reports current default size.");
+        AppFonts.ApplySettings(null); dispatcher.Drain();
+        Check(body.FontFamily.Source == AppFontDefaults.BodyDefault && body.FontSize == 14, "Explicit all-reset restores both family and size.");
+    }
+
+    private static void ExistingAndNewRootConsumers()
+    {
+        var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        AppFonts.ApplySettings(new AppFontSettings { Body = "Source Han Sans SC" });
+        var cachedStyleFont = AppFonts.Body;
+        var window = new Microsoft.UI.Xaml.FrameworkElement();
+        window.SetLoaded(true);
+        AppFonts.RegisterRoot(window);
+        dispatcher.Drain();
+
+        AppFonts.ApplySettings(new AppFontSettings { Body = "DengXian" });
+        dispatcher.Drain(); // Window currently contains Settings, not the returning OpenCode page.
+        string dengXian = AppFonts.Body.Source;
+
+        var modelLabel = new Microsoft.UI.Xaml.Controls.TextBlock { FontFamily = cachedStyleFont };
+        var icon = new Microsoft.UI.Xaml.Controls.TextBlock
+        {
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
+        };
+        var returningPage = new Microsoft.UI.Xaml.FrameworkElement();
+        returningPage.TestChildren.Add(modelLabel);
+        returningPage.TestChildren.Add(icon);
+        window.TestChildren.Add(returningPage);
+        AppFonts.RegisterRoot(returningPage); // Registered at the current generation, before Loaded.
+        returningPage.SetLoaded(true);
+        Check(modelLabel.FontFamily.Source == cachedStyleFont.Source, "Loaded catch-up remains deferred, not a synchronous resource/theme mutation.");
+        dispatcher.Drain();
+        Check(modelLabel.FontFamily.Source == dengXian, "A returning/new page with an old cached style catches up on its FIRST Loaded at the current generation.");
+        Check(icon.FontFamily.Source == "Segoe Fluent Icons", "First-load catch-up leaves icon fonts untouched.");
+
+        returningPage.SetLoaded(false);
+        window.TestChildren.Clear();
+        AppFonts.ApplySettings(null);
+        dispatcher.Drain();
+        Check(modelLabel.FontFamily.Source == dengXian, "Unloaded consumers are not mutated while Settings is active.");
+        window.TestChildren.Add(returningPage);
+        returningPage.SetLoaded(true);
+        dispatcher.Drain();
+        Check(modelLabel.FontFamily.Source == AppFontDefaults.BodyDefault, "An existing cached page catches up to reset/default on reload.");
+
+        // RegisterRoot is also used with already-loaded roots, which will not emit another Loaded.
+        var lateLabel = new Microsoft.UI.Xaml.Controls.TextBlock { FontFamily = cachedStyleFont };
+        var lateRoot = new Microsoft.UI.Xaml.FrameworkElement();
+        lateRoot.TestChildren.Add(lateLabel);
+        lateRoot.SetLoaded(true);
+        AppFonts.RegisterRoot(lateRoot);
+        AppFonts.RegisterRoot(lateRoot); // Idempotent.
+        dispatcher.Drain();
+        Check(lateLabel.FontFamily.Source == AppFontDefaults.BodyDefault, "Already-loaded first registration schedules catch-up without requiring another Loaded.");
+
+        // Explicitly tracked consumers keep their slot even when they miss notifications unloaded.
+        var tracked = new Microsoft.UI.Xaml.Controls.TextBlock();
+        AppFonts.Apply(tracked, AppFontSlot.Monospace);
+        tracked.SetLoaded(true);
+        tracked.SetLoaded(false);
+        AppFonts.ApplySettings(new AppFontSettings { Monospace = "Maple Mono NF CN" });
+        dispatcher.Drain();
+        tracked.SetLoaded(true);
+        Check(tracked.FontFamily.Source == AppFonts.Monospace.Source, "ElementTracker reload still reapplies its explicitly assigned slot.");
+        tracked.SetLoaded(false);
+        AppFonts.ApplySettings(null);
+        dispatcher.Drain();
     }
 }

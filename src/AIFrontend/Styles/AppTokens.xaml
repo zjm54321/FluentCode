@@ -21,10 +21,12 @@
     <!--
         应用字体（F11，设置 → 外观 → 字体）。这里是启动前的默认值；Services/Appearance/AppFonts 在主窗口创建前
         与每次用户修改后，把同名键写入 Application.Resources 顶层（覆盖本字典）。界面一律用 {ThemeResource 键} 引用，
-        运行期修改经 AppFonts 的 RequestedTheme 往返即可实时生效（StaticResource 不会更新）。
+        运行期修改由 AppFonts 延迟刷新已登记根 / 缓存页面 / 弹出层；不翻转 RequestedTheme。
         ContentControlThemeFontFamily 覆盖 WinUI 内置同名键：内置控件模板与 App.xaml 中重定义的内置文字样式都引用它。
     -->
     <FontFamily x:Key="ContentControlThemeFontFamily">XamlAutoFontFamily</FontFamily>
+    <!-- 正文基准字号；字号刷新保留每个文字消费者原有比例，不覆盖框架字号 / 图标资源。 -->
+    <x:Double x:Key="AppTextSize">14</x:Double>
     <FontFamily x:Key="AppBodyFontFamily">XamlAutoFontFamily</FontFamily>
     <FontFamily x:Key="AppSerifFontFamily">Cambria, Noto Serif SC, Source Han Serif SC, SimSun</FontFamily>
     <FontFamily x:Key="AppMonospaceFontFamily">Cascadia Mono, Consolas</FontFamily>

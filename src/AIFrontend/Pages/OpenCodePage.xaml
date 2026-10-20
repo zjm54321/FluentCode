@@ -13,6 +13,12 @@
           Row 1  左侧会话面板 SplitView（Overlay，默认关闭）→ 内容区：未配置面板 / 工作区
                  工作区 = 右侧概况面板 SplitView（宽窗 Inline、窄窗 Overlay）→ 状态行 / 进度 / InfoBar / 时间线 / 交互区 / 排队条 / 输入区
         全部为 WinUI 原生控件与内置样式、主题资源；不设置 RequestedTheme（跟随系统），窗口背景为 Mica（MainWindow）。
+        H15：MainWindow 的 NavigationView 内容层（ContentGrid）已经提供半透明 LayerFillColorDefaultBrush；
+        SessionPane 不再设置 Background（避免双重叠加或被不透明画刷遮挡 Mica）。
+        同时在页面级 Resources.ThemeDictionaries 中将 TabViewItemHeaderBackgroundSelected 映射到
+        LayerFillColorDefaultBrush（高对比度为 SystemColorWindowColorBrush），因为元素级 Resources 优先于
+        Application.Resources.MergedDictionaries 中的 XamlControlsResources，不会被其默认的
+        SolidBackgroundFillColorTertiaryBrush（#FF282828 / #FFF9F9F9）遮蔽。
     -->
     <Page.Resources>
         <ResourceDictionary>
@@ -190,7 +196,7 @@
         </TabView>
 
         <!-- ============================================================
-             Row 1：内容区。背景与选中标签相同（TabView 内置资源），标签与内容连成一体。
+             Row 1：内容区。不设 Background，直接透出宿主 NavigationView 内容层的半透明 LayerFillColorDefaultBrush 与窗口 Mica（H15）。
              ============================================================ -->
         <SplitView
             x:Name="SessionPane"
@@ -199,7 +205,6 @@
             PanePlacement="Left"
             IsPaneOpen="False"
             OpenPaneLength="{StaticResource OpenCodeSessionPaneLength}"
-            Background="{ThemeResource TabViewItemHeaderBackgroundSelected}"
             PaneBackground="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
             AutomationProperties.AutomationId="OpenCodeSessionPane"
             AutomationProperties.Name="会话面板">
@@ -368,7 +373,9 @@
 
                         <Grid>
                             <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
-                            <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
+                            <!-- Opaque reading surface; outer tabs/panes/window retain their existing Mica/acrylic. -->
+                            <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16"
+                                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition x:Name="SessionStatusRow" Height="Auto" />
                                     <RowDefinition Height="Auto" />

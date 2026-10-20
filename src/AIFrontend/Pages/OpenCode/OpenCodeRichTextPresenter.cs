@@ -155,7 +155,7 @@ public sealed class OpenCodeRichTextPresenter
                 {
                     var html = Markdown.ToHtml(segment.Text, Pipeline);
                     var safe = Renderer.SanitizeHtml(html);
-                    blocks.AddRange(BuildBlocks(safe, style));
+                    blocks.AddRange(BuildBlocks(safe, style, html));
                 }
             }
 
@@ -272,13 +272,42 @@ public sealed class OpenCodeRichTextPresenter
 
     // ------------------------------------------------------------------ 解析（仅解析已清洗 fragment）
 
-    private static List<UIElement> BuildBlocks(string safeHtml, OpenCodeRichTextStyle style)
+    private sealed record CodeLanguage(string Name);
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<IElement, CodeLanguage> CodeLanguages = new();
+
+    private static List<UIElement> BuildBlocks(string safeHtml, OpenCodeRichTextStyle style, string generatedHtml)
     {
         var parser = new HtmlParser();
         var document = parser.ParseDocument("<body></body>");
         var context = document.Body ?? document.DocumentElement
             ?? throw new InvalidOperationException("无法建立 HTML 片段解析上下文。");
         var nodes = parser.ParseFragment(safeHtml, context);
+
+        // The sanitizer still removes ALL attributes. Recover only a normalized lexer hint
+        // from matching generated code text; no original DOM node or attribute is rendered.
+        var generated = parser.ParseDocument(generatedHtml);
+        var originals = generated.QuerySelectorAll("pre");
+        var index = 0;
+        void BindCodeLanguage(INode node, int depth)
+        {
+            if (depth > MaximumDepth) return;
+            if (node is IElement pre && pre.LocalName == "pre")
+            {
+                if (index < originals.Length && originals[index].TextContent == pre.TextContent)
+                {
+                    var originalCode = originals[index].QuerySelector("code");
+                    foreach (var name in (originalCode?.GetAttribute("class") ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        if (name.StartsWith("language-", StringComparison.OrdinalIgnoreCase))
+                        {
+                            CodeLanguages.Add(pre, new CodeLanguage(OpenCodeFileDetailPolicy.NormalizeLanguage(name[9..])));
+                            break;
+                        }
+                }
+                index++;
+            }
+            foreach (var child in node.ChildNodes) BindCodeLanguage(child, depth + 1);
+        }
+        foreach (var node in nodes) BindCodeLanguage(node, 0);
 
         var blocks = new List<UIElement>();
         AppendBlocks(blocks, nodes, style, 0);
@@ -541,16 +570,11 @@ public sealed class OpenCodeRichTextPresenter
         };
         AppFonts.Apply(code, AppFontSlot.Monospace);
 
-        var scroller = new ScrollViewer
-        {
-            Content = code,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
+        var language = CodeLanguages.TryGetValue(pre, out var hint) ? hint.Name : "text";
+        OpenCodeCodePalette.BindText(code, OpenCodeDetailTextPolicy.CodeDisplayText(source), language);
 
         // No inner viewport: wheel gestures and vertical extent belong to the conversation/popup body.
-        return OpenCodeToolDetailContent.CodeBlockFrame(code, source);
+        return OpenCodeToolDetailContent.CodeBlockFrame(code, source, language);
     }
 
     private static UIElement? CreateTable(IElement table, OpenCodeRichTextStyle style, int depth)

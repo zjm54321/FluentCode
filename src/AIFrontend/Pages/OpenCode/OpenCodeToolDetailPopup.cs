@@ -599,6 +599,7 @@ internal sealed class OpenCodeToolDetailPopup
 
         // 并排 / 统一视图只在大视图中提供（diff）；没有“换行”开关——详情文字总是换行（G8）。
         _viewModeButton.Visibility = OpenCodeToolRowPresentation.IsDiffKind(model.Kind) && model.DiffFiles.Count > 0
+            && !OpenCodeFileDetailPolicy.IsFullWrite(model.Kind, model.DiffFiles[Math.Clamp(_options.SelectedFile, 0, model.DiffFiles.Count - 1)])
             ? Visibility.Visible
             : Visibility.Collapsed;
         _updatingToggles = true;

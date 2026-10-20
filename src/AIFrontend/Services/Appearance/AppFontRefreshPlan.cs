@@ -26,6 +26,7 @@ public sealed class AppFontRefreshPlan
     private readonly Dictionary<AppFontSlot, string> _current = new();
     private readonly Dictionary<AppFontSlot, List<string>> _history = new();
     private bool _pending;
+    private double _textSize = AppFontDefaults.DefaultTextSize;
 
     /// <summary>以启动时生效的三个字体源创建。</summary>
     public AppFontRefreshPlan(string body, string serif, string monospace)
@@ -52,12 +53,14 @@ public sealed class AppFontRefreshPlan
     /// <summary>
     /// 记录一次新的字体源组合。返回是否有任一槽位实际变化（变化时代数 +1，旧值进入历史）。
     /// </summary>
-    public bool Advance(string body, string serif, string monospace)
+    public bool Advance(string body, string serif, string monospace, double textSize = AppFontDefaults.DefaultTextSize)
     {
         bool changed = false;
         changed |= AdvanceSlot(AppFontSlot.Body, body);
         changed |= AdvanceSlot(AppFontSlot.Serif, serif);
         changed |= AdvanceSlot(AppFontSlot.Monospace, monospace);
+        changed |= _textSize != textSize;
+        _textSize = textSize;
         if (changed)
         {
             Generation++;

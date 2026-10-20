@@ -17,6 +17,9 @@ public enum AppTheme
     Dark = 2,
 }
 
+/// <summary>Code surfaces only; independent of application theme and font settings.</summary>
+public enum AppCodeTheme { Fluent = 0, OneDarkPro = 1 }
+
 /// <summary>OpenCode 后端设置（独立于聊天 provider）。</summary>
 public sealed record OpenCodeSettings
 {
@@ -57,6 +60,9 @@ public sealed record AppSettings
 
     /// <summary>主题。</summary>
     public AppTheme Theme { get; init; } = AppTheme.System;
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public AppCodeTheme CodeTheme { get; init; } = AppCodeTheme.Fluent;
 
     /// <summary>
     /// 用户字体选择（正文 / 衬线 / 等宽）；null 表示全部跟随系统默认（不写入文件，兼容旧配置）。

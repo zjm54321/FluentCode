@@ -152,9 +152,13 @@ internal static class Program
         Check(child.Contains("Action<OpenCodeConversationView>? initializeTimeline = null")
             && child.IndexOf("initializeTimeline?.Invoke(_timeline)", StringComparison.Ordinal) < child.IndexOf("body.Children.Add(_scroller)", StringComparison.Ordinal),
             "optional child-only context initialization precedes attachment and message rendering without parent fallback");
+        Check(content.Contains("markdown.Render(source, OpenCodeRichTextStyle.Body)") && content.Contains("OpenCodeFileSourceToggle") && content.Contains("StyledText(text, OpenCodeInteractionUi.CodeStyleKey, true)"), "Markdown native safe renderer with selectable source access");
+        var palette = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeCodePalette.cs"));
         var presenter = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
+        Check(content.Contains("OpenCodeFileDetailPolicy.IsFullWrite") && content.Contains("OpenCodeCodePalette.BindText") && palette.Contains("OpenCodeFileDetailPolicy.Tokens") && palette.Contains("run.Text = text"), "file content routes to shared native syntax runs, real diff renderer retained");
         var codeFactory = presenter[presenter.IndexOf("private static UIElement CreateCodeBlock", StringComparison.Ordinal)..presenter.IndexOf("private static UIElement? CreateTable", StringComparison.Ordinal)];
         Check(!codeFactory.Contains("ScrollViewer") && !codeFactory.Contains("MaxHeight") && codeFactory.Contains("TextWrapping.Wrap"), "code block has no nested wheel/height trap and wraps");
+        Check(codeFactory.Contains("OpenCodeCodePalette.BindText(code, OpenCodeDetailTextPolicy.CodeDisplayText(source), language)") && presenter.Contains("NormalizeLanguage(name[9..])") && presenter.Contains("originals[index].TextContent == pre.TextContent"), "only normalized matching Markdown code language reaches shared lexical palette without relaxing sanitizer");
         var tableFactory = presenter[presenter.IndexOf("private static UIElement? CreateTable", StringComparison.Ordinal)..presenter.IndexOf("private static UIElement CreateDefinitionList", StringComparison.Ordinal)];
         Check(!tableFactory.Contains("ScrollViewer") && !tableFactory.Contains("MaxHeight") && !tableFactory.Contains("wrap: false") && tableFactory.Contains("GridUnitType.Star"), "table columns wrap inside finite width with no inner scrolling or height cap");
         Check(presenter.Contains("_root.SizeChanged += (_, _) => ConstrainBlocks()") && presenter.Contains("EnforceWrapping(block, _root.ActualWidth)"), "all Markdown block descendants receive actual finite width on resizing");
@@ -163,7 +167,22 @@ internal static class Program
         Check(frame.Contains("OpenCodeCodeBlockExpand") && frame.Contains("preview.MaxLines = OpenCodeDetailTextPolicy.CodePreviewLines") && frame.Contains("content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed"), "local native toggle keeps six-line wrapped preview and expands full content");
         Check(frame.Contains("copy.Tapped += (_, args) => args.Handled = true") && frame.Contains("toggle.Tapped += (_, args) => args.Handled = true"), "code controls consume taps rather than opening parent details");
         Check(content.Contains("OpenCodeCodeBlockCopy") && content.Contains("data.SetText(source)") && content.Contains("ToolTipService.SetToolTip(copy"), "native accessible per-block copy captures exact source");
+        Check(palette.Contains("service.Changed -= Changed") && palette.Contains("element.Loaded +=") && palette.Contains("Restore(surface, Border.BackgroundProperty, background)"), "cached surfaces repaint on load, detach on unload and restore caller's default background");
+        Check(content.Contains("OpenCodeFileCopySource") && content.Contains("data.SetText(source)") && content.Contains("Clipboard.SetContent(data)"), "copy preserves complete raw source including final newline in both preview/source modes");
+        var write = Model("write", "{\"status\":\"completed\",\"input\":{\"filePath\":\"a.cs\",\"content\":\"class A {}\"}}");
+        Check(write.DiffFiles.Count == 1 && OpenCodeFileDetailPolicy.IsFullWrite(write.Kind, write.DiffFiles[0]), "real write model is full file, not an all-green diff");
+        Check(!OpenCodeFileDetailPolicy.IsFullWrite(OpenCodeToolKind.Patch, new OpenCodeToolDiffFile { Path = "a.cs", After = "x" }), "patch never becomes full-file just because it has a path/after");
+        Check(!OpenCodeFileDetailPolicy.IsFullWrite(OpenCodeToolKind.Write, new OpenCodeToolDiffFile { Path = "a.cs", After = "x", Patch = "@@ -1 +1 @@\n-a\n+b" }), "explicit server patch retains semantic change marks even on write");
+        Check(OpenCodeFileDetailPolicy.IsMarkdown("README.MD") && !OpenCodeFileDetailPolicy.IsMarkdown("a.cs"), "Markdown preview eligibility follows extension");
+        var code = "public class A { // comment\n string s = \"safe\"; return 42; }";
+        var tokens = OpenCodeFileDetailPolicy.Tokens(code, OpenCodeFileDetailPolicy.Language("a.cs")).ToList();
+        Check(string.Concat(tokens.Select(t => t.Text)) == code, "syntax tokens preserve exact complete source for copy");
+        Check(tokens.Any(t => t.Kind == "keyword") && tokens.Any(t => t.Kind == "comment") && tokens.Any(t => t.Kind == "string") && tokens.Any(t => t.Kind == "number"), "code highlighting distinguishes keyword/comment/string/number");
+        Check(OpenCodeFileDetailPolicy.Tokens("<script>alert(1)</script>", "text").Single().Kind == "text", "unknown language source remains literal, never executable HTML");
+        var categories = OpenCodeFileDetailPolicy.Tokens("class Demo { string Name = \"ok\"; int count = 42; // note\n Run(count + 1); }", "csharp").ToList();
+        Check(new[] { "keyword", "type", "string", "number", "comment", "function", "operator" }.All(kind => categories.Any(token => token.Kind == kind)), "recognized code has differentiated lexical categories");
         const string exact = "let x = 1;\r\n\r\n";
+        Check(string.Concat(OpenCodeFileDetailPolicy.Tokens(exact, "typescript").Select(t => t.Text)) == exact, "lexical coloring preserves CRLF and trailing blank lines");
         Check(OpenCodeDetailTextPolicy.CodeDisplayText(exact) == "let x = 1;" && exact.EndsWith("\r\n\r\n", StringComparison.Ordinal), "display removes trailing empty line without mutating copied source");
         Check(OpenCodeDetailTextPolicy.CodePreviewLines == 6 && !OpenCodeDetailTextPolicy.CanCollapseCode("a\nb\nc\nd\ne\nf\n"), "short six-line code remains completely visible without toggle");
         Check(OpenCodeDetailTextPolicy.CodePreview("a\r\nb\r\nc\r\nd\r\ne\r\nf\r\ng\r\n") == "a\r\nb\r\nc\r\nd\r\ne\r\nf", "collapsed preview retains exactly first six source lines and internal CRLF");

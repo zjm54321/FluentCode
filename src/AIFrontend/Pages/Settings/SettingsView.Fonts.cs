@@ -23,9 +23,13 @@ public sealed partial class SettingsView
 
     private readonly Dictionary<AppFontSlot, FontSlotUi> _fontSlots = new();
     private Button _fontResetAllButton = null!;
+    private ComboBox _textSizeCombo = null!;
+    private Button _textSizeReset = null!;
+    private TextBlock _textSizeStatus = null!;
     private TextBlock _fontCatalogStatus = null!;
     private IReadOnlyList<SystemFontFamily>? _fontCatalog;
     private bool _fontCatalogLoading;
+    private bool _fontSaveInProgress;
 
     // 进程内共享一次枚举（设置页每次导航都会新建 SettingsView）；失败结果不缓存，下次进入重试。
     private static Task<IReadOnlyList<SystemFontFamily>>? s_fontCatalogTask;
@@ -56,12 +60,13 @@ public sealed partial class SettingsView
             "CaptionSubtleTextBlockStyle"));
         header.Children.Add(headerText);
 
-        _fontResetAllButton = new Button { Content = "全部恢复默认", VerticalAlignment = VerticalAlignment.Bottom };
+        _fontResetAllButton = new Button { Content = "字体与字号全部恢复默认", VerticalAlignment = VerticalAlignment.Bottom };
         AutomationProperties.SetAutomationId(_fontResetAllButton, "SettingsFontResetAll");
         _fontResetAllButton.Click += OnFontResetAllClick;
         Grid.SetColumn(_fontResetAllButton, 1);
         header.Children.Add(_fontResetAllButton);
         panel.Children.Add(header);
+        panel.Children.Add(BuildTextSizeCard());
 
         _fontCatalogStatus = Styled(new TextBlock { Text = "正在读取已安装字体…" }, "CaptionSubtleTextBlockStyle");
         AutomationProperties.SetAutomationId(_fontCatalogStatus, "SettingsFontCatalogStatus");
@@ -85,6 +90,44 @@ public sealed partial class SettingsView
 
         _ = LoadFontCatalogAsync();
         return panel;
+    }
+
+    private Border BuildTextSizeCard()
+    {
+        var content = new StackPanel { Spacing = 8, Padding = new Thickness(16) };
+        content.Children.Add(Styled(new TextBlock { Text = "文字大小" }, "BodyStrongTextBlockStyle"));
+        content.Children.Add(Styled(new TextBlock
+        {
+            Text = "按比例调整正文、标题、代码与说明文字；图标和按钮点击区域不缩放。默认正文基准为 14 DIP。",
+            TextWrapping = TextWrapping.Wrap,
+        }, "CaptionSubtleTextBlockStyle"));
+        _textSizeCombo = new ComboBox { MinWidth = 240, HorizontalAlignment = HorizontalAlignment.Left };
+        AutomationProperties.SetAutomationId(_textSizeCombo, "SettingsTextSizeCombo");
+        AutomationProperties.SetName(_textSizeCombo, "文字大小，正文基准字号");
+        foreach (double size in new double[] { 14, 15, 16, 18, 20, 22, 24 })
+        {
+            _textSizeCombo.Items.Add(new ComboBoxItem
+            {
+                Content = size == 14 ? "14 DIP · 100%（默认）" : $"{size:0} DIP · {size / 14:P0}",
+                Tag = size,
+            });
+        }
+        _textSizeCombo.SelectionChanged += async (_, _) =>
+        {
+            if (!_suppressUiEvents && _textSizeCombo.SelectedItem is ComboBoxItem { Tag: double value })
+                await SaveFontsAsync(AppFontDefaults.WithTextSize(_settings.Fonts, value));
+        };
+        _textSizeReset = new Button { Content = "仅恢复默认字号", HorizontalAlignment = HorizontalAlignment.Left };
+        AutomationProperties.SetAutomationId(_textSizeReset, "SettingsTextSizeReset");
+        _textSizeReset.Click += async (_, _) => await SaveFontsAsync(AppFontDefaults.WithTextSize(_settings.Fonts, null));
+        _textSizeStatus = Styled(new TextBlock { TextWrapping = TextWrapping.Wrap }, "CaptionSubtleTextBlockStyle");
+        AutomationProperties.SetAutomationId(_textSizeStatus, "SettingsTextSizeCurrent");
+        content.Children.Add(_textSizeCombo);
+        content.Children.Add(_textSizeStatus);
+        content.Children.Add(_textSizeReset);
+        var card = new Border { Child = content };
+        ApplyResourceStyle(card, "AppSettingsCardStyle");
+        return card;
     }
 
     private Border BuildFontSlotCard(AppFontSlot slot, string title, string description, string previewText)
@@ -263,6 +306,16 @@ public sealed partial class SettingsView
         }
 
         AppFontSettings? fonts = AppFontDefaults.Normalize(_settings.Fonts);
+        double size = AppFontDefaults.ResolveTextSize(fonts);
+        ComboBoxItem? selectedSize = _textSizeCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag is double value && value == size);
+        if (selectedSize is null)
+        {
+            selectedSize = new ComboBoxItem { Content = $"{size:0.##} DIP · {size / 14:P0}", Tag = size };
+            _textSizeCombo.Items.Add(selectedSize);
+        }
+        _textSizeCombo.SelectedItem = selectedSize;
+        _textSizeReset.IsEnabled = size != AppFontDefaults.DefaultTextSize;
+        _textSizeStatus.Text = $"当前正文基准：{size:0.##} DIP（{size / 14:P0}）；默认：14 DIP。恢复字号不会更改已选字体。";
         foreach (AppFontSlot slot in FontSlots)
         {
             if (!_fontSlots.TryGetValue(slot, out FontSlotUi? ui))
@@ -304,6 +357,9 @@ public sealed partial class SettingsView
     {
         string source = AppFontDefaults.Resolve(fonts, ui.Slot);
         ui.Preview.FontFamily = new FontFamily(source);
+        // Authored baselines: AppFonts' deferred metric pass applies the saved scale once.
+        ui.Preview.FontSize = ui.Slot == AppFontSlot.Monospace ? 13 : 15;
+        ui.Preview.LineHeight = ui.Slot == AppFontSlot.Monospace ? 20 : 24;
         ui.ResolvedText.Text = source == AppFontDefaults.BodyDefault
             ? "实际字体：系统默认（Segoe UI Variable，中文 Microsoft YaHei UI）"
             : $"实际字体：{source}";
@@ -329,6 +385,7 @@ public sealed partial class SettingsView
     /// <summary>即时保存字体选择；成功后由 AppFonts 经 SettingsService.Changed 应用，失败时界面回滚到已保存值。</summary>
     private async Task SaveFontsAsync(AppFontSettings? next)
     {
+        if (_fontSaveInProgress) return;
         AppFontSettings? normalized = AppFontDefaults.Normalize(next);
         if (Equals(normalized, AppFontDefaults.Normalize(_settings.Fonts)))
         {
@@ -336,15 +393,28 @@ public sealed partial class SettingsView
             return;
         }
 
-        // 先更新预览（保存成功后 SaveAsync 会再次统一刷新界面）。
+        _fontSaveInProgress = true;
+        _textSizeCombo.IsEnabled = false;
+        _textSizeReset.IsEnabled = false;
+        _fontResetAllButton.IsEnabled = false;
         foreach (FontSlotUi ui in _fontSlots.Values)
         {
-            UpdateFontPreview(ui, normalized);
+            ui.Combo.IsEnabled = false;
+            ui.ResetButton.IsEnabled = false;
         }
-
-        await SaveAsync(
-            _settings with { Fonts = normalized },
-            normalized is null ? "已恢复默认字体。" : "已保存字体。");
+        try
+        {
+            await SaveAsync(
+                _settings with { Fonts = normalized },
+                normalized is null ? "已恢复默认字体与字号。" : "已保存字体与字号。");
+        }
+        finally
+        {
+            _fontSaveInProgress = false;
+            _textSizeCombo.IsEnabled = true;
+            foreach (FontSlotUi ui in _fontSlots.Values) ui.Combo.IsEnabled = true;
+            ApplySettingsToUi(preserveEdits: true);
+        }
     }
 
     private static T Styled<T>(T element, string styleKey) where T : FrameworkElement

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace AIFrontend.Services.Appearance;
 
@@ -21,11 +22,15 @@ public enum AppFontSlot
 /// </summary>
 /// <remarks>
 /// 每个槽位保存<strong>一个</strong>已安装字体族名（不含逗号回退链）；<c>null</c> 表示“跟随系统/默认”。
-/// 三个槽位都为默认时整个节点为 <c>null</c>、不写入文件，旧配置文件与旧版本保持兼容。
+/// 三个槽位和字号都为默认时整个节点为 <c>null</c>、不写入文件；旧文件未指定字号时仍为 14 DIP。
 /// 回退链由 <see cref="AppFontDefaults.Resolve(AppFontSettings?, AppFontSlot)"/> 在运行时拼接。
 /// </remarks>
 public sealed record AppFontSettings
 {
+    /// <summary>正文基准字号（DIP）；null = 默认 14。严格 JSON 数值，不接受数字字符串。</summary>
+    [JsonNumberHandling(JsonNumberHandling.Strict)]
+    public double? TextSize { get; init; }
+
     /// <summary>正文字体族名；null = 系统默认（Segoe UI Variable + Microsoft YaHei UI 回退）。</summary>
     public string? Body { get; init; }
 
@@ -50,6 +55,20 @@ public sealed record AppFontSettings
 /// </summary>
 public static class AppFontDefaults
 {
+    public const double DefaultTextSize = 14;
+    public const double MinTextSize = 14;
+    public const double MaxTextSize = 24;
+
+    public static bool IsValidTextSize(double value)
+        => double.IsFinite(value) && value >= MinTextSize && value <= MaxTextSize;
+
+    public static double ResolveTextSize(AppFontSettings? settings)
+        => settings?.TextSize is double value && IsValidTextSize(value) ? value : DefaultTextSize;
+
+    /// <summary>只重置字号，不改变任何字体族选择。</summary>
+    public static AppFontSettings? WithTextSize(AppFontSettings? settings, double? value)
+        => Normalize((settings ?? new AppFontSettings()) with { TextSize = value });
+
     /// <summary>字体族名最大长度（与 DirectWrite 实际族名长度相比留有充足余量）。</summary>
     public const int MaxFamilyNameLength = 128;
 
@@ -123,7 +142,7 @@ public static class AppFontDefaults
         return true;
     }
 
-    /// <summary>规范化整组设置：三个槽位都为默认时返回 null（不写入文件）。</summary>
+    /// <summary>规范化整组设置：字体与字号都为默认时返回 null（不写入文件）。</summary>
     public static AppFontSettings? Normalize(AppFontSettings? settings)
     {
         if (settings is null)
@@ -136,9 +155,10 @@ public static class AppFontDefaults
             Body = NormalizeFamilyName(settings.Body),
             Serif = NormalizeFamilyName(settings.Serif),
             Monospace = NormalizeFamilyName(settings.Monospace),
+            TextSize = ResolveTextSize(settings) == DefaultTextSize ? null : ResolveTextSize(settings),
         };
 
-        return normalized.Body is null && normalized.Serif is null && normalized.Monospace is null
+        return normalized.Body is null && normalized.Serif is null && normalized.Monospace is null && normalized.TextSize is null
             ? null
             : normalized;
     }
@@ -170,6 +190,10 @@ public static class AppFontDefaults
         ValidateSlot(settings.Body, "fonts.body", errors);
         ValidateSlot(settings.Serif, "fonts.serif", errors);
         ValidateSlot(settings.Monospace, "fonts.monospace", errors);
+        if (settings.TextSize is double size && !IsValidTextSize(size))
+        {
+            errors.Add($"fonts.textSize 必须是 {MinTextSize}–{MaxTextSize} 之间的有限数值（DIP）");
+        }
     }
 
     private static void ValidateSlot(string? value, string field, List<string> errors)

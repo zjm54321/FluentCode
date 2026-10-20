@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using AIFrontend.Models;
 using AIFrontend.Services.Configuration;
@@ -65,6 +66,13 @@ public static class AppFonts
     private static FontFamily? _serif;
     private static FontFamily? _monospace;
     private static bool _applied;
+    private static double _textSize = AppFontDefaults.DefaultTextSize;
+    private static readonly AppTextSizeRefreshPlan TextMetrics = new();
+    private static readonly AppTextSizeRefreshPlan LineMetrics = new(lineHeight: true);
+    private static bool _layoutPending;
+
+    public const string TextSizeResourceKey = "AppTextSize";
+    public static double TextSize => _textSize;
 
     /// <summary>字体实际变化后在 UI 线程触发（资源已更新、根元素已刷新）。</summary>
     public static event EventHandler? Changed;
@@ -148,9 +156,17 @@ public static class AppFonts
             }
         }
 
-        var entry = new RootEntry(root, _plan?.Generation ?? 0);
+        // Registration does not prove the consumers have the current font: a newly recreated
+        // Frame page can reuse an older Style/ThemeResource FontFamily. Its first Loaded must
+        // catch up too, even when it was registered after the setting change.
+        var entry = new RootEntry(root, -1);
         Roots.Add(entry);
         root.Loaded += entry.OnLoaded;
+        root.LayoutUpdated += entry.OnLayoutUpdated;
+        if (SafeIsLoaded(root))
+        {
+            entry.OnLoaded(root, new RoutedEventArgs());
+        }
     }
 
     /// <summary>
@@ -187,6 +203,7 @@ public static class AppFonts
         string body = AppFontDefaults.Resolve(normalized, AppFontSlot.Body);
         string serif = AppFontDefaults.Resolve(normalized, AppFontSlot.Serif);
         string monospace = AppFontDefaults.Resolve(normalized, AppFontSlot.Monospace);
+        double textSize = AppFontDefaults.ResolveTextSize(normalized);
 
         bool initialized = _applied;
         _applied = true;
@@ -196,6 +213,8 @@ public static class AppFonts
         {
             SetSources(body, serif, monospace);
             _plan = new AppFontRefreshPlan(body, serif, monospace);
+            _textSize = textSize;
+            _plan.Advance(body, serif, monospace, textSize);
 
             // 首次应用发生在任何界面创建之前：资源已就位，无需刷新也无需通知。
             WriteApplicationResources();
@@ -203,12 +222,13 @@ public static class AppFonts
         }
 
         AppFontRefreshPlan plan = _plan ??= new AppFontRefreshPlan(_bodySource, _serifSource, _monospaceSource);
-        if (!plan.Advance(body, serif, monospace))
+        if (!plan.Advance(body, serif, monospace, textSize))
         {
             return;
         }
 
         SetSources(body, serif, monospace);
+        _textSize = textSize;
         ScheduleRefresh();
     }
 
@@ -248,6 +268,7 @@ public static class AppFonts
         resources[SerifResourceKey] = Serif;
         resources[MonospaceResourceKey] = Monospace;
         resources[LegacyOpenCodeMonospaceResourceKey] = Monospace;
+        resources[TextSizeResourceKey] = _textSize;
     }
 
     /// <summary>
@@ -346,11 +367,12 @@ public static class AppFonts
 
     /// <summary>
     /// 深度优先遍历：先改父元素（模板绑定 / 属性继承随之同步生效），再看子元素，因此只有显式持有旧字体源的元素
-    /// 才会被逐个赋值。只做 FontFamily 依赖属性赋值，不改主题、不替换样式。
+    /// 才会被逐个赋值。字号先快照再按元素自身保存的基线刷新，不改主题、不替换样式或框架字号资源。
     /// </summary>
     private static void RefreshTree(DependencyObject start, AppFontRefreshPlan plan, HashSet<DependencyObject> visited)
     {
         var stack = new Stack<DependencyObject>();
+        var sizeUpdates = new List<Action>();
         stack.Push(start);
         while (stack.Count > 0)
         {
@@ -362,6 +384,7 @@ public static class AppFonts
 
             try
             {
+                CaptureTextSize(node, sizeUpdates);
                 RefreshElement(node, plan);
                 int count = VisualTreeHelper.GetChildrenCount(node);
                 for (int i = count - 1; i >= 0; i--)
@@ -373,6 +396,124 @@ public static class AppFonts
             {
                 // 单个元素失效（窗口关闭中等）：跳过，不影响其余元素。
             }
+        }
+        // Capture the complete tree before changing any inherited parent metric.
+        foreach (Action update in sizeUpdates)
+        {
+            try { update(); } catch (Exception) { /* Closing consumer. */ }
+        }
+    }
+
+    private static bool IsIconFont(FontFamily? family)
+    {
+        string source = family?.Source ?? string.Empty;
+        return source.Contains("Icons", StringComparison.OrdinalIgnoreCase)
+            || source.Contains("MDL2", StringComparison.OrdinalIgnoreCase)
+            || source.Contains("Wingdings", StringComparison.OrdinalIgnoreCase)
+            || source.Contains("Symbol", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsGlyphOnly(string text)
+    {
+        bool glyph = false;
+        foreach (char c in text)
+        {
+            if (char.IsWhiteSpace(c)) continue;
+            UnicodeCategory category = char.GetUnicodeCategory(c);
+            if (category is not (UnicodeCategory.PrivateUse or UnicodeCategory.OtherSymbol or UnicodeCategory.MathSymbol)
+                && c is not ('✓' or '✔' or '✕' or '×' or '…' or '⋯')) return false;
+            glyph = true;
+        }
+        return glyph;
+    }
+
+    private static void CaptureTextSize(DependencyObject node, List<Action> updates)
+    {
+        switch (node)
+        {
+            case TextBlock text when !IsIconFont(text.FontFamily) && !IsGlyphOnly(text.Text):
+                CaptureMetric(text, TextBlock.FontSizeProperty, text.FontSize, v => text.FontSize = v, updates);
+                CaptureLine(text, text.LineHeight, v => text.LineHeight = v, updates);
+                CaptureInlines(text.Inlines, updates);
+                break;
+            case RichTextBlock rich when !IsIconFont(rich.FontFamily):
+                CaptureMetric(rich, RichTextBlock.FontSizeProperty, rich.FontSize, v => rich.FontSize = v, updates);
+                CaptureLine(rich, rich.LineHeight, v => rich.LineHeight = v, updates);
+                foreach (Block block in rich.Blocks)
+                {
+                    CaptureTextElement(block, updates);
+                    CaptureLine(block, block.LineHeight, v => block.LineHeight = v, updates);
+                    if (block is Paragraph paragraph) CaptureInlines(paragraph.Inlines, updates);
+                }
+                break;
+            case Control control when !IsIconFont(control.FontFamily):
+                CaptureMetric(control, Control.FontSizeProperty, control.FontSize, v => control.FontSize = v, updates);
+                break;
+            case ContentPresenter presenter when !IsIconFont(presenter.FontFamily):
+                CaptureMetric(presenter, ContentPresenter.FontSizeProperty, presenter.FontSize, v => presenter.FontSize = v, updates);
+                break;
+        }
+    }
+
+    private static void CaptureMetric(DependencyObject node, DependencyProperty property, double current,
+        Action<double> set, List<Action> updates)
+    {
+        // Inherited text follows its parent; local/style sizes keep their own hierarchy.
+        if (node.ReadLocalValue(property) == DependencyProperty.UnsetValue && !HasStyleSize(node))
+        {
+            DependencyObject? parent = VisualTreeHelper.GetParent(node);
+            while (parent is not null)
+            {
+                double? parentSize = parent switch
+                {
+                    TextBlock t => t.FontSize,
+                    RichTextBlock r => r.FontSize,
+                    Control c => c.FontSize,
+                    ContentPresenter p => p.FontSize,
+                    _ => null,
+                };
+                if (parentSize is double size)
+                {
+                    if (Math.Abs(size - current) < 0.001) return;
+                    break;
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+        }
+        double next = TextMetrics.Resolve(node, current, _textSize / AppFontDefaults.DefaultTextSize);
+        if (Math.Abs(next - current) > 0.001) updates.Add(() => set(next));
+    }
+
+    private static bool HasStyleSize(DependencyObject node)
+    {
+        for (Style? style = (node as FrameworkElement)?.Style; style is not null; style = style.BasedOn)
+            foreach (SetterBase item in style.Setters)
+                if (item is Setter setter && (setter.Property == TextBlock.FontSizeProperty
+                    || setter.Property == RichTextBlock.FontSizeProperty || setter.Property == Control.FontSizeProperty
+                    || setter.Property == ContentPresenter.FontSizeProperty)) return true;
+        return false;
+    }
+
+    private static void CaptureLine(DependencyObject node, double current, Action<double> set, List<Action> updates)
+    {
+        if (current <= 0) return;
+        double next = LineMetrics.Resolve(node, current, _textSize / AppFontDefaults.DefaultTextSize);
+        if (Math.Abs(next - current) > 0.001) updates.Add(() => set(next));
+    }
+
+    private static void CaptureTextElement(TextElement text, List<Action> updates)
+    {
+        if (IsIconFont(text.FontFamily) || text.ReadLocalValue(TextElement.FontSizeProperty) == DependencyProperty.UnsetValue) return;
+        double next = TextMetrics.Resolve(text, text.FontSize, _textSize / AppFontDefaults.DefaultTextSize);
+        if (Math.Abs(next - text.FontSize) > 0.001) updates.Add(() => text.FontSize = next);
+    }
+
+    private static void CaptureInlines(InlineCollection inlines, List<Action> updates)
+    {
+        foreach (Inline inline in inlines)
+        {
+            CaptureTextElement(inline, updates);
+            if (inline is Span span) CaptureInlines(span.Inlines, updates);
         }
     }
 
@@ -526,6 +667,20 @@ public static class AppFonts
         public WeakReference<FrameworkElement> Element { get; }
 
         public int Generation { get; set; }
+
+        public void OnLayoutUpdated(object? sender, object e)
+        {
+            // Includes newly rendered text and open popups without another setting change.
+            if (_layoutPending || _textSize == AppFontDefaults.DefaultTextSize ||
+                !Element.TryGetTarget(out FrameworkElement? element) || !SafeIsLoaded(element)) return;
+            _layoutPending = true;
+            DispatcherQueue? dispatcher = _dispatcher ?? DispatcherQueue.GetForCurrentThread();
+            if (dispatcher?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                _layoutPending = false;
+                RefreshRoots();
+            }) != true) _layoutPending = false;
+        }
 
         public void OnLoaded(object sender, RoutedEventArgs e)
         {

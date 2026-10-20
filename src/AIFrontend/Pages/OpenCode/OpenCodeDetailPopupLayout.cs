@@ -122,6 +122,62 @@ internal static class OpenCodeDetailPopupLayout
     }
 }
 
+/// <summary>File presentation decisions are independent of the visual tree and never infer a diff from a path.</summary>
+internal static class OpenCodeFileDetailPolicy
+{
+    internal static bool IsFullWrite(OpenCodeToolKind kind, OpenCodeToolDiffFile file)
+        => kind == OpenCodeToolKind.Write && file.After is not null && string.IsNullOrEmpty(file.Patch);
+
+    internal static bool IsMarkdown(string path)
+        => path.EndsWith(".md", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".mdown", StringComparison.OrdinalIgnoreCase);
+
+    internal static string Language(string path) => System.IO.Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".cs" => "csharp", ".js" or ".jsx" or ".ts" or ".tsx" => "javascript",
+        ".py" => "python", ".json" => "json", ".sh" or ".bash" => "shell",
+        ".go" => "go", ".rs" => "rust", ".java" => "java", ".cpp" or ".h" or ".c" => "c",
+        ".css" => "css", ".yaml" or ".yml" => "yaml", _ => "text",
+    };
+
+    // Bounded lexical styling only: all tokens preserve the exact source and never execute it.
+    internal static string NormalizeLanguage(string? language) => language?.Trim().ToLowerInvariant() switch
+    {
+        "cs" or "c#" or "csharp" => "csharp", "js" or "jsx" or "ts" or "tsx" or "javascript" or "typescript" => "javascript",
+        "py" or "python" => "python", "json" => "json", "sh" or "bash" or "shell" => "shell",
+        "go" or "golang" => "go", "rs" or "rust" => "rust", "java" => "java",
+        "c" or "cpp" or "c++" => "c", "css" => "css", "yaml" or "yml" => "yaml", _ => "text",
+    };
+
+    internal static IEnumerable<(string Text, string Kind)> Tokens(string source, string language)
+    {
+        language = NormalizeLanguage(language);
+        if (language == "text") { yield return (source, "text"); yield break; }
+        var hashComment = language is "python" or "shell" or "yaml" ? "#[^\\r\\n]*|" : string.Empty;
+        var pattern = "(//[^\\r\\n]*|/\\*[\\s\\S]*?\\*/|" + hashComment + "\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|\\b\\d+(?:\\.\\d+)?\\b|\\b[A-Za-z_][A-Za-z_0-9]*\\b|[+*/%=!<>|&?:-]+)";
+        var offset = 0;
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(source, pattern))
+        {
+            if (match.Index > offset) yield return (source[offset..match.Index], "text");
+            var value = match.Value;
+            var next = match.Index + match.Length;
+            while (next < source.Length && char.IsWhiteSpace(source[next])) next++;
+            var kind = value.StartsWith("//", StringComparison.Ordinal) || value.StartsWith("/*", StringComparison.Ordinal)
+                || (value.StartsWith('#') && language is "python" or "shell" or "yaml") ? "comment"
+                : value[0] is '\"' or '\'' ? "string"
+                : char.IsDigit(value[0]) ? "number"
+                : (" class public private internal static sealed void return if else for foreach while using namespace new var const let function async await import from def in is not None True False true false null export default interface type extends implements try catch throw switch case break continue package func fn struct impl pub use mut match self this "
+                     .Contains(" " + value + " ", StringComparison.Ordinal)) ? "keyword"
+                : "+*/%=!<>|&?:-".IndexOf(value[0]) >= 0 ? "operator"
+                : next < source.Length && source[next] == '(' ? "function"
+                : char.IsUpper(value[0]) || " int string bool double float long byte char decimal object short ".Contains(" " + value + " ", StringComparison.Ordinal) ? "type" : "text";
+            yield return (value, kind);
+            offset = match.Index + match.Length;
+        }
+        if (offset < source.Length) yield return (source[offset..], "text");
+    }
+}
+
 /// <summary>
 /// 详情文字策略（G7/G8，纯函数）：详情文字总是换行；等宽块完整显示，只按 <see cref="CodeBlockChunkLines"/> 行分段
 /// 为多个文本元素（不截断、不丢行）。
