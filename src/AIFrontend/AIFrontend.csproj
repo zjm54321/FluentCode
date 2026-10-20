@@ -31,7 +31,7 @@
     <Page Include="MainWindow.xaml" />
     <Page Include="Pages\**\*.xaml" />
     <Page Include="Styles\**\*.xaml" />
-    <Content Include="Assets\Brands\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Brands\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\licenses\fluentui-system-icons-LICENSE.txt" Link="licenses\fluentui-system-icons-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\OneDarkPro.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\OpenCode\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -190,11 +190,14 @@ public sealed partial class OpenCodePage
 
     private async Task ChooseNativeModelAsync(NativeActionOwner owner, CancellationToken ct)
     {
+        var sourceKey = owner.Ticket.Binding.Source.Identity;
         var presentation = await ReadNativeModelsAsync(owner, ct);
         if (presentation is null) return;
+        await OpenCodeRecentModels.Shared.LoadAsync();
+        if (ct.IsCancellationRequested || !CanPublishNativeOperation(owner) || !CanStartNativeAction(owner, owner.Origin)) return;
         _nativeDialogPending = true;
         OpenCodeModelPickerResult choice;
-        try { choice = await OpenCodeModelPickerDialog.ShowAsync(XamlRoot, presentation, () => ReadNativeModelsAsync(owner, ct)); }
+        try { choice = await OpenCodeModelPickerDialog.ShowAsync(XamlRoot, presentation, () => ReadNativeModelsAsync(owner, ct), sourceKey); }
         finally { _nativeDialogPending = false; }
         if (!CanStartNativeAction(owner, owner.Origin) || choice.Outcome != OpenCodeModelPickerOutcome.Confirmed
             || choice.Choice is not { } key || choice.Presentation?.Basis is not ModelPickerBasis basis

@@ -669,7 +669,8 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         => Task.FromResult<OpenCodeComposerSubmitOutcome>(new OpenCodeComposerSubmitOutcome.NotStarted());
 
     internal async Task<OpenCodeComposerSubmitOutcome> SubmitAsync(OpenCodeComposerSendContext context,
-        CancellationToken ct = default, OpenCodeComposerAcceptedDraftHandoff? acceptedDraftHandoff = null)
+        CancellationToken ct = default, OpenCodeComposerAcceptedDraftHandoff? acceptedDraftHandoff = null,
+        Action<SessionControlModelRef?>? promptAccepted = null)
     {
         if (!ValidContext(context) || IsUnbound(context.Basis.Binding)) return new OpenCodeComposerSubmitOutcome.NotStarted();
         var token = context.Basis.Token;
@@ -724,8 +725,12 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                     {
                         if (command is null)
                         {
+                            var sentModel = preparation.State?.Model;
                             var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token, context.Basis.Delivery).ConfigureAwait(false);
                             outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
+                            // Admission remains real even when settlement/UI ownership subsequently goes stale.
+                            try { promptAccepted?.Invoke(sentModel); }
+                            catch (Exception) { /* Local usage tracking cannot rewrite admission. */ }
                         }
                         else
                         {

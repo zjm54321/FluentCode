@@ -34,6 +34,7 @@ $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SteerChat.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SessionActivityIntegration.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerActivityPolicy.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'ComposerActivity.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.AgentIntegration.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs"

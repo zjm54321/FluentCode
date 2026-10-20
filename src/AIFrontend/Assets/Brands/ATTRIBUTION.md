@@ -60,3 +60,10 @@
 - **本 lane 不修改 `*.csproj`**；该复制需求仅报告给父会话统一处理。
 - 代码接入点：`src/AIFrontend/Pages/Web/ProviderBrandIcons.cs`（16 DIP；SVG/PNG 自适应；
   ChatGPT 按 `ActualTheme` 选浅/深变体）。
+
+## 5. OpenCode 模型选择器复用（2026-10-20）
+
+- `src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs` 复用上述原有官方资源，不下载新图片、不改写品牌几何。
+- Claude 使用官方橙色 SVG，Gemini 使用官方多色透明 PNG；OpenAI 家族使用官方白色 ChatGPT 几何（`chatgpt.dark.svg`），置于 `#10A37F` 绿色圆角产品底片上。底片仅为客户端呈现，不宣称它是新的官方 logo 文件。
+- 图像按 20 DIP 排版（绿色底片内的白色图像 16 DIP）；SVG 保持矢量，PNG 使用现有 512px 原图。图像通过本地流载入，不依赖 SVG CSS。未知模型显示中性 `AI`，不借用 provider 名称推断品牌。
+- 资源由 `AIFrontend.csproj` 同时复制到 build 和 publish 输出；所有商标归属仍如上。

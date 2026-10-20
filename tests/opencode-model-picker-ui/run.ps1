@@ -1,0 +1,52 @@
+# Offline A2 UI/selection checks; no WinUI application build, live HTTP, or user preference IO.
+param([string]$EvidenceRoot = '', [string]$SourceRoot = '')
+$ErrorActionPreference = 'Stop'
+$repo = if ($SourceRoot) { (Resolve-Path $SourceRoot).ProviderPath } else { (Resolve-Path (Join-Path $PSScriptRoot '../..')).ProviderPath }
+$dotnet = (Get-Command dotnet.exe).Source
+$root = Split-Path $dotnet
+$sdk = Get-ChildItem (Join-Path $root 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+$pack = Get-ChildItem (Join-Path $root 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+if (!$sdk -or !$pack) { throw '.NET 10 SDK/reference pack required.' }
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-model-picker-ui-' + [guid]::NewGuid().ToString('N')) }
+New-Item -ItemType Directory -Path $output | Out-Null
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+$env:DOTNET_NOLOGO = '1'
+$statePath = "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogModels.cs"
+$state = [IO.File]::ReadAllText($statePath)
+$end = $state.IndexOf('internal enum OpenCodeRollbackKind')
+if ($end -lt 0) { throw 'Missing model-state extraction boundary.' }
+$generated = Join-Path $output 'ModelState.cs'
+$state.Substring(0, $end) | Set-Content -Encoding UTF8 $generated
+$refPath = "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Sessions.cs"
+$wire = [regex]::Match([IO.File]::ReadAllText($refPath), '(?ms)^public sealed record OpenCodeModelRef\r?\n\{.*?^\}')
+if (!$wire.Success) { throw 'Missing wire model reference.' }
+$wirePath = Join-Path $output 'ModelRef.cs'
+"using System.Text.Json.Serialization; namespace AIFrontend.Services.OpenCode;`n" + $wire.Value | Set-Content -Encoding UTF8 $wirePath
+$blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
+$method = [regex]::Match([IO.File]::ReadAllText($blankPath), '(?ms)^    private async Task SetBlankVariantAsync\(.*?^    \}')
+$homePath = "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs"
+$preferences = [regex]::Match([IO.File]::ReadAllText($homePath), '(?ms)^internal sealed record OpenCodeBlankDraftPreferences\(.*?^\}')
+$tokenPath = "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerContracts.cs"
+$token = [regex]::Match([IO.File]::ReadAllText($tokenPath), '(?ms)^public readonly record struct OpenCodeComposerToken\r?\n\{.*?^\}')
+if (!$method.Success -or !$preferences.Success -or !$token.Success) { throw 'Missing variant selection production member/contracts.' }
+$variantPath = Join-Path $output 'VariantSelection.cs'
+"using System; using System.Linq; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + $method.Value + "`n} } namespace AIFrontend.Pages.OpenCode {`n" + $preferences.Value + "`n" + $token.Value + "`n}" | Set-Content -Encoding UTF8 $variantPath
+$sources = @($generated, $wirePath, $variantPath, (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'VariantSelection.cs'), "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeRecentModels.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Models.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
+$assembly = Join-Path $output 'ModelPickerUiTests.dll'
+$arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
+$arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
+$arguments += $sources | ForEach-Object { '"' + $_ + '"' }
+$rsp = Join-Path $output 'compile.rsp'
+$arguments | Set-Content -Encoding UTF8 $rsp
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ModelPickerUiTests.runtimeconfig.json')
+$inputs = @($sources + $statePath + $refPath + $blankPath + $homePath + $tokenPath + $PSCommandPath + "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs" + "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeVariantPickerDialog.cs" + "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs" + "$repo/src/AIFrontend/AIFrontend.csproj" + @(Get-ChildItem "$repo/src/AIFrontend/Assets/Brands/*" -File | ForEach-Object FullName))
+$before = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
+$before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs.json')
+New-Item -ItemType File -Path (Join-Path $output 'compile.log') | Out-Null
+& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
+if ($LASTEXITCODE -ne 0) { throw "Picker UI focused compile failed: $LASTEXITCODE" }
+& $dotnet $assembly $repo $output | Tee-Object -FilePath (Join-Path $output 'results.txt')
+if ($LASTEXITCODE -ne 0) { throw "Picker UI focused tests failed: $LASTEXITCODE" }
+$after = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
+if ($before -ne $after) { throw 'Picker UI inputs changed during validation.' }
+Write-Output "Evidence directory: $output"

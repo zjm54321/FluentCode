@@ -22,6 +22,11 @@ internal static class NativeTests
     private static void Check(bool value, string note) { checks++; if (!value) throw new Exception(note); }
     internal static async Task Run()
     {
+        // This process exercises the real asynchronous load queue, never the user's persisted history.
+        typeof(OpenCodeRecentModels).GetField("_path", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(OpenCodeRecentModels.Shared, System.IO.Path.Combine(System.IO.Path.GetTempPath(), "isolated-normal-picker-recents.json"));
+        typeof(OpenCodeRecentModels).GetField("_loaded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(OpenCodeRecentModels.Shared, true);
         await TypedAndModels(); var a = checks;
         await RestorationAndOwnership(); var b = checks - a;
         await GuardsAndEpoch();
@@ -100,6 +105,7 @@ internal static class NativeTests
             if (scenario == "explicit") f.Model = "{\"id\":\"unavailable\",\"providerID\":\"provider\",\"variant\":\"old\"}";
             if (scenario == "missing") f.Default = "null";
             OpenCodeModelPickerDialog.Next = p => {
+                Check(OpenCodeModelPickerDialog.LastSourceKey == f.Source.Identity, "normal picker receives captured stable source identity");
                 Check(p.Rows.Single().ModelId == "catalog-id" && p.Rows.Single().Variants.Single() == "fast", "canonical catalog key and exact variant presented");
                 Check(scenario == "explicit" ? p.Current is OpenCodeModelCurrent.Explicit { Available: false, Key.Variant: "old" }
                     : p.Current is OpenCodeModelCurrent.Inherited i && (i.Default is null) == (scenario == "missing"), "explicit unavailable/inherited/missing not substituted");
@@ -110,6 +116,80 @@ internal static class NativeTests
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseModel, "models"); await f.Page.RunNative();
             Check(f.Http.Posts == (scenario is "changed" or "later-edit" ? 0 : 1), $"changed displayed basis/draft cannot POST ({scenario}, posts={f.Http.Posts}, path={f.Http.Path}, notices={string.Join(";", f.Page.Messages)})");
             if (f.Http.Posts == 1) Check(f.LastMutationBody == "{\"model\":{\"id\":\"catalog-id\",\"providerID\":\"provider\",\"variant\":\"fast\"}}" && f.Page.Working == 0, "exact selection wire, acceptance not Working");
+        }
+        await ModelLoadOwnership();
+        await NormalVariantChoices();
+    }
+
+    private static async Task NormalVariantChoices()
+    {
+        // Independent strength dialog returns the existing model-choice contract. Exercise that
+        // contract through the REAL normal Page preview/fingerprint/confirm/transport path;
+        // native dialog gestures/rendering remain explicit doubles, not claimed as UI evidence.
+        foreach (var scenario in new[] { "opaque", "default", "withdrawn", "owner-token", "owner-source", "cancel" })
+        {
+            using var f = new Fixture();
+            f.Model = "{\"id\":\"catalog-id\",\"providerID\":\"provider\",\"variant\":\"high\"}";
+            f.Catalog = Fixture.ModelInfo.Replace("[{\"id\":\"fast\"}]", "[{\"id\":\"high\"},{\"id\":\"extra_high\"}]");
+            var wantedVariant = scenario == "default" ? null : "extra_high";
+            OpenCodeModelPickerDialog.Next = p =>
+            {
+                Check(OpenCodeModelPickerDialog.LastSourceKey == f.Source.Identity, "normal strength preserves captured MRU source key: " + scenario);
+                Check(p.Current is OpenCodeModelCurrent.Explicit { Key.ProviderId: "provider", Key.ModelId: "catalog-id", Key.Variant: "high" }, "normal strength starts from actual current model/provider/variant");
+                var row = OpenCodeModelPresentation.CurrentRow(p)!;
+                var strength = new OpenCodeModelPickerState(p);
+                Check(strength.SelectModel(row.ProviderId, row.ModelId) && strength.SelectVariant(wantedVariant), "strength choice uses catalog-only original opaque ID or null");
+                if (scenario == "withdrawn") f.Catalog = f.Catalog.Replace("extra_high", "xhigh");
+                if (scenario == "owner-token") f.Page.LoseNormalPickerOwnership("token");
+                if (scenario == "owner-source") f.Page.LoseNormalPickerOwnership("source");
+                return Task.FromResult(scenario == "cancel"
+                    ? new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null)
+                    : strength.TryFreezeConfirmation()!);
+            };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseModel, "models");
+            await f.Page.RunNative();
+            var accepted = scenario is "opaque" or "default";
+            Check(f.Http.Posts == (accepted ? 1 : 0), "normal strength fresh-catalog/owner/cancel fence prevents mutation: " + scenario);
+            if (accepted)
+            {
+                var expected = scenario == "default"
+                    ? "{\"model\":{\"id\":\"catalog-id\",\"providerID\":\"provider\"}}"
+                    : "{\"model\":{\"id\":\"catalog-id\",\"providerID\":\"provider\",\"variant\":\"extra_high\"}}";
+                Check(f.LastMutationPath == "/api/session/ses_test/model" && f.LastMutationBody == expected,
+                    "normal strength wire omits default/null and otherwise preserves exact variant spelling");
+                Check(f.Page.Working == 0, "strength selection is not a send/Working transition");
+            }
+        }
+    }
+
+    private static async Task ModelLoadOwnership()
+    {
+        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var history = OpenCodeRecentModels.Shared;
+        var queue = typeof(OpenCodeRecentModels).GetField("_queue", flags)!.GetValue(history)!;
+        var pending = typeof(OpenCodeRecentModels).GetField("_pending", flags)!;
+        foreach (var loss in new[] { "source", "client", "session", "token", "revoked" })
+        {
+            using var f = new Fixture();
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseModel, "models");
+            var release = Program.Signal<bool>();
+            lock (queue) pending.SetValue(history, release.Task);
+            var opens = 0;
+            OpenCodeModelPickerDialog.Next = p => {
+                opens++;
+                return Task.FromResult(new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Confirmed, new("provider", "catalog-id", "fast"), p));
+            };
+            var action = f.Page.RunNative();
+            try
+            {
+                lock (queue) Check(!ReferenceEquals(pending.GetValue(history), release.Task), "production LoadAsync entered real queue before opening: " + loss);
+                Check(!action.IsCompleted && opens == 0 && f.Http.Posts == 0, "picker waits for history load: " + loss);
+                if (loss == "revoked") f.Source.Revoke();
+                else f.Page.LoseNormalPickerOwnership(loss);
+            }
+            finally { release.TrySetResult(true); }
+            await action;
+            Check(opens == 0 && f.Http.Posts == 0, "load-await ownership loss cannot open or submit normal picker: " + loss);
         }
     }
     private static async Task RestorationAndOwnership()
@@ -262,6 +342,14 @@ namespace AIFrontend.Pages
             DrainView();
         }
         internal Task RunNative() { var s = Snapshot; var t = s.ClientIntent is { } i ? Controller.TryTakeClientAction(s.Token, i.Id) : null; return t is null ? Task.CompletedTask : RunClientActionAsync(t); }
+        internal void LoseNormalPickerOwnership(string loss)
+        {
+            if (loss == "source") _source = null;
+            else if (loss == "client") _client = null;
+            else if (loss == "session") Switch("ses_other");
+            else if (loss == "token") { DrainView(); Text("changed while loading recents"); }
+            else throw new ArgumentException(loss);
+        }
         internal bool InvokeNative(OpenCodeComposerClientActionKind forgedDisplayKind) => _composerView!.Invoke(forgedDisplayKind);
         internal void EndCatalogLifetime() => _composerView!.EndLifetime();
         internal Task StopDirect() => InterruptSelectedSessionAsync();
@@ -388,7 +476,9 @@ namespace AIFrontend.Pages.OpenCode
     internal static class OpenCodeModelPickerDialog
     {
         internal static Func<OpenCodeModelPickerPresentation, Task<OpenCodeModelPickerResult>> Next = null!;
-        internal static Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot root, OpenCodeModelPickerPresentation p, Func<Task<OpenCodeModelPickerPresentation?>> refresh) => Next(p);
+        internal static string? LastSourceKey;
+        internal static Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot root, OpenCodeModelPickerPresentation p, Func<Task<OpenCodeModelPickerPresentation?>> refresh, string? sourceKey = null)
+        { LastSourceKey = sourceKey; return Next(p); }
     }
     internal static class OpenCodeRollbackConfirmationDialog
     {

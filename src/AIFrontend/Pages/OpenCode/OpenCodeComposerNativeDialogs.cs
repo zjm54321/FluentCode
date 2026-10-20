@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AIFrontend.Services.Appearance;
+using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -20,13 +21,12 @@ internal static class OpenCodeModelPickerDialog
     /// <param name="refresh">Optional read-only re-read, run only on an explicit click (single flight, never looped).
     /// Returning null keeps the current presentation.</param>
     internal static async Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot? owner, OpenCodeModelPickerPresentation presentation,
-        Func<Task<OpenCodeModelPickerPresentation?>>? refresh = null, bool allowVariantSelection = true)
+        Func<Task<OpenCodeModelPickerPresentation?>>? refresh = null, string? sourceKey = null, bool allowStrengthSelection = true)
     {
         ArgumentNullException.ThrowIfNull(presentation);
         if (owner is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
         var state = new OpenCodeModelPickerState(presentation);
-        // Redesign §7 (look only): search box, rows grouped by provider, current-model check mark, variants as a
-        // horizontal radio group. Selection/confirmation semantics remain entirely in OpenCodeModelPickerState.
+        // Flat, searchable model choices. Variant is a separate composer control, never a dialog subtitle.
         var current = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
         var note = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         var search = new TextBox { PlaceholderText = "搜索模型或提供方" };
@@ -35,59 +35,51 @@ internal static class OpenCodeModelPickerDialog
         var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 340 };
         AutomationProperties.SetAutomationId(list, "OpenCodeModelPickerList");
         AutomationProperties.SetName(list, "可选模型");
-        var variantLabel = OpenCodeInteractionUi.StyledText("变体", OpenCodeInteractionUi.BodyStrongStyleKey);
-        var variants = new RadioButtons();
-        AutomationProperties.SetAutomationId(variants, "OpenCodeModelPickerVariant");
-        AutomationProperties.SetName(variants, "模型变体");
-        var variantRow = new StackPanel { Spacing = 4, Visibility = Visibility.Collapsed };
-        variantRow.Children.Add(variantLabel);
-        variantRow.Children.Add(variants);
-        var refreshButton = new HyperlinkButton { Content = "重新读取模型列表", Padding = new Thickness(0), Visibility = refresh is null ? Visibility.Collapsed : Visibility.Visible };
+        var refreshButton = new HyperlinkButton { Content = "刷新", Padding = new Thickness(8, 0, 0, 0), Visibility = refresh is null ? Visibility.Collapsed : Visibility.Visible };
         AutomationProperties.SetAutomationId(refreshButton, "OpenCodeModelPickerRefresh");
-        var body = new StackPanel { Spacing = 10, MinWidth = 380, MaxWidth = 540 };
+        AutomationProperties.SetName(refreshButton, "重新读取模型列表");
+        var searchRow = new Grid { ColumnSpacing = 8 };
+        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchRow.Children.Add(search);
+        Grid.SetColumn(refreshButton, 1);
+        searchRow.Children.Add(refreshButton);
+        var strengthButton = new HyperlinkButton { Content = "推理强度", Padding = new Thickness(8, 0, 0, 0),
+            Visibility = allowStrengthSelection ? Visibility.Visible : Visibility.Collapsed,
+            IsEnabled = OpenCodeModelPresentation.CurrentRow(presentation) is not null };
+        AutomationProperties.SetAutomationId(strengthButton, "OpenCodeCurrentStrengthEntry");
+        AutomationProperties.SetName(strengthButton, "修改当前模型的推理强度");
+        Grid.SetColumn(strengthButton, 2);
+        searchRow.Children.Add(strengthButton);
+        var body = new StackPanel { Spacing = 10, MinWidth = 240, MaxWidth = 540 };
         body.Children.Add(current);
-        body.Children.Add(search);
+        body.Children.Add(searchRow);
         body.Children.Add(list);
-        body.Children.Add(variantRow);
         body.Children.Add(note);
-        body.Children.Add(OpenCodeInteractionUi.StyledText("只对之后的回合生效，不影响已发送的内容。点“确认更改”前会重新检查一次。", OpenCodeInteractionUi.CaptionSubtleStyleKey));
-        body.Children.Add(refreshButton);
         var dialog = new ContentDialog
         {
             XamlRoot = owner,
             Title = "选择模型",
             Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            PrimaryButtonText = "确认更改",
+            PrimaryButtonText = "确认修改",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.None, // Enter in the list never confirms by accident.
             Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
         };
         var rendering = false;
-
-        void RenderVariants()
+        var editStrength = false;
+        strengthButton.Click += (_, _) =>
         {
-            rendering = true;
-            try
-            {
-                variants.Items.Clear();
-                var row = state.SelectedRow;
-                variantRow.Visibility = allowVariantSelection && row is { Variants.Count: > 0 } ? Visibility.Visible : Visibility.Collapsed;
-                if (row is null) return;
-                variants.Items.Add(new RadioButton { Content = "默认", Tag = null });
-                foreach (var v in row.Variants) variants.Items.Add(new RadioButton { Content = v, Tag = v });
-                variants.MaxColumns = Math.Max(1, variants.Items.Count); // Horizontal: one row of choices.
-                var index = 0;
-                for (var i = 1; i < variants.Items.Count; i++)
-                    if (variants.Items[i] is RadioButton { Tag: string tag } && tag == state.SelectedVariant) index = i;
-                variants.SelectedIndex = index;
-            }
-            finally { rendering = false; }
-        }
+            editStrength = true;
+            dialog.Hide(); // Native dialogs cannot stack; open the independent strength editor after ShowAsync returns.
+        };
 
         void RenderNote()
         {
             var p = state.Presentation;
-            note.Text = state.ChoiceWithdrawnNotice ?? p.Note ?? (p.Rows.Count == 0 ? "没有读取到可选模型。" : string.Empty);
+            note.Text = state.ChoiceWithdrawnNotice ?? OpenCodeModelPresentation.InformativeNote(p.Note)
+                ?? (p.Rows.Count == 0 ? "没有读取到可选模型。" : string.Empty);
             note.Visibility = note.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -97,22 +89,16 @@ internal static class OpenCodeModelPickerDialog
             try
             {
                 var p = state.Presentation;
-                current.Text = OpenCodeModelPickerState.Describe(p.Current, p.Rows);
+                current.Text = OpenCodeModelPresentation.CurrentName(p.Current, p.Rows);
                 RenderNote();
                 list.Items.Clear();
                 var filter = search.Text.Trim();
-                string? provider = null;
-                foreach (var row in p.Rows)
+                foreach (var row in OpenCodeModelPresentation.Order(p.Rows, sourceKey))
                 {
                     // Display filter only: a hidden row is not deselected in the state (confirmation is unaffected).
                     if (filter.Length > 0 && !(row.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase)
                         || row.ModelId.Contains(filter, StringComparison.OrdinalIgnoreCase)
                         || (row.ProviderName ?? row.ProviderId).Contains(filter, StringComparison.CurrentCultureIgnoreCase))) continue;
-                    if (!string.Equals(provider, row.ProviderId, StringComparison.Ordinal))
-                    {
-                        provider = row.ProviderId;
-                        list.Items.Add(GroupHeader(row.ProviderName ?? row.ProviderId));
-                    }
                     list.Items.Add(RowItem(row, p.Current));
                 }
                 if (list.Items.Count == 0)
@@ -123,8 +109,8 @@ internal static class OpenCodeModelPickerDialog
                         && r.ProviderId == s.ProviderId && r.ModelId == s.ModelId) list.SelectedIndex = i;
             }
             finally { rendering = false; }
-            RenderVariants();
             dialog.IsPrimaryButtonEnabled = state.CanConfirm;
+            strengthButton.IsEnabled = !state.IsRefreshing && OpenCodeModelPresentation.CurrentRow(state.Presentation) is not null;
         }
 
         list.SelectionChanged += (_, _) =>
@@ -133,15 +119,8 @@ internal static class OpenCodeModelPickerDialog
             if (list.SelectedItem is ListViewItem { Tag: OpenCodeModelPickerRow row } && state.SelectModel(row.ProviderId, row.ModelId))
             {
                 RenderNote(); // A fresh explicit choice clears the "choice withdrawn" notice.
-                RenderVariants();
             }
             else if (list.SelectedItem is not null) list.SelectedIndex = -1; // Unavailable rows cannot be chosen.
-            dialog.IsPrimaryButtonEnabled = state.CanConfirm;
-        };
-        variants.SelectionChanged += (_, _) =>
-        {
-            if (rendering || state.IsClosed) return;
-            if (variants.SelectedItem is RadioButton item) state.SelectVariant(item.Tag as string);
             dialog.IsPrimaryButtonEnabled = state.CanConfirm;
         };
         search.TextChanged += (_, _) =>
@@ -154,6 +133,7 @@ internal static class OpenCodeModelPickerDialog
         {
             if (refresh is null || state.BeginRefresh() is not { } ticket) return;
             refreshButton.IsEnabled = false;
+            strengthButton.IsEnabled = false;
             dialog.IsPrimaryButtonEnabled = false; // No confirmation while a refresh is outstanding.
             OpenCodeModelPickerPresentation? updated = null;
             var failed = false;
@@ -177,6 +157,16 @@ internal static class OpenCodeModelPickerDialog
         {
             var result = await dialog.ShowAsync();
             state.Close();
+            if (editStrength)
+            {
+                var basis = state.Presentation;
+                var currentRow = OpenCodeModelPresentation.CurrentRow(basis);
+                var fresh = refresh is null ? basis : await refresh();
+                var freshRow = fresh is null ? null : OpenCodeModelPresentation.CurrentRow(fresh);
+                if (currentRow is null || freshRow is null || currentRow.ProviderId != freshRow.ProviderId || currentRow.ModelId != freshRow.ModelId)
+                    return new(OpenCodeModelPickerOutcome.Cancelled, null, null); // Never retarget a changed current model.
+                return await OpenCodeVariantPickerDialog.ShowAsync(owner, fresh!);
+            }
             return result == ContentDialogResult.Primary && frozen is { } confirmed
                 ? confirmed : new(OpenCodeModelPickerOutcome.Cancelled, null, null);
         }
@@ -187,40 +177,15 @@ internal static class OpenCodeModelPickerDialog
         }
     }
 
-    private static ListViewItem GroupHeader(string provider)
-    {
-        var header = OpenCodeInteractionUi.StyledText(provider, OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        header.Margin = new Thickness(0, 8, 0, 0);
-        var item = new ListViewItem { Content = header, IsEnabled = false, IsTabStop = false, MinHeight = 28 };
-        AutomationProperties.SetName(item, "提供方：" + provider);
-        return item;
-    }
-
     private static ListViewItem RowItem(OpenCodeModelPickerRow row, OpenCodeModelCurrent current)
     {
         var isCurrent = current is OpenCodeModelCurrent.Explicit e && e.Key.ProviderId == row.ProviderId && e.Key.ModelId == row.ModelId;
-        var grid = new Grid { ColumnSpacing = 12, Padding = new Thickness(0, 4, 0, 5) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var check = new FontIcon { Glyph = "\uE73E", FontSize = 14, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 3, 0, 0),
-            Visibility = isCurrent ? Visibility.Visible : Visibility.Collapsed };
-        grid.Children.Add(check);
-        var stack = new StackPanel { Spacing = 1 };
-        var title = OpenCodeInteractionUi.StyledText(row.Name.Length > 0 ? row.Name : row.ModelId, OpenCodeInteractionUi.BodyStrongStyleKey);
-        title.TextWrapping = TextWrapping.NoWrap;
-        title.TextTrimming = TextTrimming.CharacterEllipsis;
-        stack.Children.Add(title);
-        var detail = row.ModelId
-            + (row.Variants.Count > 0 ? $" · {row.Variants.Count} 个变体" : string.Empty)
-            + (isCurrent ? " · 当前" : string.Empty)
-            + (row.Detail is { Length: > 0 } d ? " · " + d : string.Empty)
-            + (row.Available ? string.Empty : " · 不可用");
-        stack.Children.Add(OpenCodeInteractionUi.StyledText(detail, OpenCodeInteractionUi.CaptionSubtleStyleKey));
-        Grid.SetColumn(stack, 1);
-        grid.Children.Add(stack);
+        var grid = OpenCodeModelLogo.Label(row.ModelId, row.Name);
+        grid.Padding = new Thickness(0, 5, 0, 5);
+        if (grid.Children[1] is TextBlock title && isCurrent) title.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
         // Unavailable rows stay visible (and announced) but are disabled; selection is still rejected by the state.
-        var item = new ListViewItem { Content = grid, Tag = row, IsEnabled = row.Available };
-        AutomationProperties.SetName(item, $"{title.Text}，{row.ProviderName ?? row.ProviderId} · {detail}");
+        var item = new ListViewItem { Content = grid, Tag = row, IsEnabled = row.Available, MinHeight = 40, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        AutomationProperties.SetName(item, row.Name + (isCurrent ? "，当前模型" : string.Empty) + (row.Available ? string.Empty : "，不可用"));
         return item;
     }
 }

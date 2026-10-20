@@ -244,6 +244,7 @@ public sealed partial class OpenCodePage
             var basis = controller.CaptureDraft(token, delivery ?? RequestedComposerDelivery);
             if (basis is null) return;
             var binding = basis.Binding;
+            var recentSource = binding.Source.Identity;
             if ((basis.ServerCommand is not null || basis.HasFiles) != enhanced) return;
             context = CreateComposerSendContext(controller, view, basis, input, localOwner);
             var origin = context.Origin;
@@ -258,8 +259,10 @@ public sealed partial class OpenCodePage
             while (true)
             {
                 outcome = enhanced
-                    ? await controller.SubmitAsync(context, lifetime.Token, view.HandoffAcceptedDraftAsync)
-                    : await SendLegacyAttemptAsync(context, transportCancellation);
+                    ? await controller.SubmitAsync(context, lifetime.Token, view.HandoffAcceptedDraftAsync,
+                        model => _ = OpenCodeRecentModels.Shared.RecordSuccessfulUseAsync(recentSource, model?.ProviderId, model?.Id))
+                    : await SendLegacyAttemptAsync(context, transportCancellation,
+                        model => _ = OpenCodeRecentModels.Shared.RecordSuccessfulUseAsync(recentSource, model?.ProviderId, model?.Id));
                 if (!HasLiveComposerSendOrigin(context)) return;
                 if (outcome is not OpenCodeComposerSubmitOutcome.ConfirmationRequired required) break;
                 var question = required.Question;
@@ -337,7 +340,7 @@ public sealed partial class OpenCodePage
     }
 
     private async Task<OpenCodeComposerSubmitOutcome> SendLegacyAttemptAsync(
-        OpenCodeComposerSendContext context, CancellationToken ct)
+        OpenCodeComposerSendContext context, CancellationToken ct, Action<SessionControlModelRef?>? promptAccepted = null)
     {
         var origin = context.Origin;
         var basis = context.Basis;
@@ -363,8 +366,11 @@ public sealed partial class OpenCodePage
                 || lease.GetSessionControlProtection() is not null) return outcome;
             try
             {
+                var sentModel = prepared.State?.Model;
                 var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.Text, null, Start, ct, basis.Delivery);
                 outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
+                try { promptAccepted?.Invoke(sentModel); }
+                catch (Exception) { /* Local usage tracking cannot rewrite admission. */ }
             }
             catch (OpenCodeApiException error) when (started && error.StatusCode is 400 or 401 or 403 or 404 or 409)
             { outcome = new OpenCodeComposerSubmitOutcome.Rejected(); }

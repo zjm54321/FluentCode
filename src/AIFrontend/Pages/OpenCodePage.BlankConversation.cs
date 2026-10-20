@@ -159,7 +159,7 @@ public sealed partial class OpenCodePage
         => !agent.Hidden && agent.Mode != OpenCodeAgentModes.Subagent;
 
     private static string BlankStrengthText(OpenCodeModelInfo? model, OpenCodeModelRef? selected)
-        => selected?.Variant is { } variant && (model?.Variants?.Any(offered => offered.Id == variant) ?? false) ? variant : string.Empty;
+        => selected?.Variant is { } variant && (model?.Variants?.Any(offered => offered.Id == variant) ?? false) ? OpenCodeModelPresentation.VariantLabel(variant) : "默认";
 
     private void RefreshBlankPreferenceLabels()
     {
@@ -173,7 +173,7 @@ public sealed partial class OpenCodePage
         BlankAgentButton.Content = agent?.Name is { Length: > 0 } name ? BlankAgentName(name) : _blankPickerPending ? "加载中…" : "未就绪";
         ApplyBlankAgentColor(agent?.Color);
         ToolTipService.SetToolTip(BlankAgentButton, agent?.Description);
-        BlankModelButton.Content = new TextBlock { Text = model?.Name ?? (_blankPickerPending ? "加载中…" : "模型未就绪"), TextTrimming = TextTrimming.CharacterEllipsis };
+        BlankModelButton.Content = OpenCodeModelLogo.Label(model?.Id, model?.Name ?? (_blankPickerPending ? "加载中…" : "模型未就绪"));
         ToolTipService.SetToolTip(BlankModelButton, model?.Name);
         var shownVariant = BlankStrengthText(model, value?.Model);
         BlankStrengthButton.Content = model is null ? "强度未就绪" : shownVariant;
@@ -299,20 +299,14 @@ public sealed partial class OpenCodePage
             OwnBlankMetadata(basis);
             _blankModels = response.Data!;
             var flyout = new MenuFlyout();
-            foreach (var variant in model.Variants ?? new())
+            void AddVariant(string? variantId)
             {
-                var item = new ToggleMenuFlyoutItem { Text = variant.Id, IsChecked = variant.Id == basis.Model.Variant };
-                item.Click += (_, _) =>
-                {
-                    if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending) return;
-                    _blankPreferences = basis with { Model = basis.Model with { Variant = variant.Id }, Version = basis.Version + 1 };
-                    _blankModelChosen = true;
-                    _blankPreferenceError = null;
-                    RefreshBlankPreferenceLabels();
-                };
+                var item = new ToggleMenuFlyoutItem { Text = OpenCodeModelPresentation.VariantLabel(variantId), IsChecked = variantId == basis.Model.Variant };
+                item.Click += async (_, _) => await SetBlankVariantAsync(basis, token, variantId);
                 flyout.Items.Add(item);
             }
-            if (flyout.Items.Count == 0) flyout.Items.Add(new MenuFlyoutItem { Text = "没有可选强度", IsEnabled = false });
+            AddVariant(null);
+            foreach (var variant in model.Variants ?? new()) AddVariant(variant.Id);
             flyout.ShowAt(BlankStrengthButton);
         }
         catch (OperationCanceledException) { }
@@ -333,13 +327,16 @@ public sealed partial class OpenCodePage
             var response = await client.ListModelsAsync(basis.Directory, _homeCancellation.Token);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token)
                 || response.Location?.Directory != basis.Directory) return;
+            await OpenCodeRecentModels.Shared.LoadAsync();
+            if (operation != _blankPickerEpoch || !OwnsHome(source, client, basis.RuntimeSourceId)
+                || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending) return;
             var rows = response.Data!.Select(model => new OpenCodeModelPickerRow(model.ProviderId!, model.Id!, model.Name!, null,
                 model.Enabled != false, (model.Variants ?? new()).Select(variant => variant.Id!).ToArray(), model.Status)).ToArray();
             var current = basis.Model is { } selected ? (OpenCodeModelCurrent)new OpenCodeModelCurrent.Explicit(
                 new(selected.ProviderId!, selected.Id!, selected.Variant), rows.Any(row => row.Available && row.ProviderId == selected.ProviderId && row.ModelId == selected.Id))
                 : new OpenCodeModelCurrent.Unknown();
             var result = await OpenCodeModelPickerDialog.ShowAsync(XamlRoot,
-                new("新对话 · " + basis.Directory, rows, current, "仅用于此草稿首次创建；强度在输入卡工具栏单独选择。", basis), allowVariantSelection: false);
+                new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending
                 || result.Outcome != OpenCodeModelPickerOutcome.Confirmed || result.Choice is not { } choice) return;
             // Re-read metadata after confirmation. Never choose a withdrawn/disabled model or fabricated variant.
@@ -355,6 +352,32 @@ public sealed partial class OpenCodePage
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "模型列表未能读取；现有选择与草稿未变。"; }
+        finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
+    }
+
+    private async Task SetBlankVariantAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token, string? variantId)
+    {
+        if (_blankPickerPending || _newSessionCreatePending || basis.Model is null || _source is not { } source
+            || _client is not { } client || _homeCancellation is null || !OwnsBlankPreferences(basis, token)) return;
+        _blankPickerPending = true;
+        var operation = ++_blankPickerEpoch;
+        RefreshBlankPreferenceLabels();
+        try
+        {
+            var fresh = await client.ListModelsAsync(basis.Directory, _homeCancellation.Token);
+            if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token)
+                || _newSessionCreatePending || fresh.Location?.Directory != basis.Directory) return;
+            var model = fresh.Data!.SingleOrDefault(m => m.Id == basis.Model.Id && m.ProviderId == basis.Model.ProviderId);
+            if (!OpenCodeModelPresentation.VariantAvailable(model, variantId))
+            { _blankPreferenceError = "模型或强度已不再可选；当前选择未变，请重新选择。"; return; }
+            _blankPreferences = basis with { Model = basis.Model with { Variant = variantId }, Version = basis.Version + 1 };
+            OwnBlankMetadata(basis);
+            _blankModels = fresh.Data!;
+            _blankModelChosen = true;
+            _blankPreferenceError = null;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "强度信息未能读取；当前选择未变。"; }
         finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
     }
 }
