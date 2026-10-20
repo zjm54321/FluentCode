@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Microsoft.UI.Dispatching;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
@@ -50,6 +51,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// </remarks>
 public sealed class OpenCodeConversationView : StackPanel
 {
+    private readonly OpenCodeManualBackgroundIndex _manualBackground = new();
     internal event EventHandler? BindingCleared;
     private sealed class SteerRow
     {
@@ -195,12 +197,44 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private bool IsViewProjection(UIElement element)
     {
+        if (ReferenceEquals(element, _retryStatus)) return true;
         foreach (var row in _steerRows.Values) if (ReferenceEquals(element, row.Element)) return true;
         return false;
     }
+    // Not a Button/detail source: errors offer text selection/copy and a native tooltip only.
+    private sealed class AssistantErrorRow
+    {
+        private readonly FontIcon _icon = new() { Glyph = "\uEB90", FontSize = 16, Width = 16, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _text = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey, selectable: true);
+        internal Grid Element { get; } = new() { ColumnSpacing = 8, Height = 32, Margin = new Thickness(13, 0, 8, 0) };
+
+        internal AssistantErrorRow()
+        {
+            Element.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+            Element.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            _text.TextWrapping = TextWrapping.NoWrap;
+            _text.TextTrimming = TextTrimming.CharacterEllipsis;
+            _text.MaxLines = 1;
+            _text.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(_text, 1);
+            Element.Children.Add(_icon); Element.Children.Add(_text);
+            AutomationProperties.SetAutomationId(Element, "OpenCodeAssistantError");
+        }
+
+        internal void Apply(string rawText)
+        {
+            _text.Text = rawText;
+            _text.Foreground = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CriticalBrushKey);
+            _icon.Foreground = _text.Foreground;
+            AutomationProperties.SetName(Element, rawText);
+            ToolTipService.SetToolTip(_text, rawText);
+        }
+    }
+
     private sealed class Entry
     {
         public required string Key { get; init; }
+        public string? MessageType { get; set; }
         public string Fingerprint { get; set; } = string.Empty;
 
         /// <summary>该消息在本次快照中对应的子任务标题（用于完成卡片；无匹配为 null）。</summary>
@@ -216,6 +250,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
         /// <summary>该条目是否为异步完成通知行；呈现方式改变时据其整体替换旧条目。</summary>
         public bool IsAsyncCompletion { get; init; }
+        public bool IsManualBackgroundNotice { get; init; }
 
         /// <summary>assistant 条目中工具调用所关联异步完成通知的签名（变化时就地更新以刷新原始调用行）。</summary>
         public string AsyncSignature { get; set; } = string.Empty;
@@ -245,6 +280,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
         /// <summary>最近一次应用的关联异步完成通知（工具行摘要 / 分组计数据此计算）；无则 null。</summary>
         public OpenCodeAsyncCompletion? LastCompletion { get; set; }
+        public bool ManualBackground { get; set; }
 
         /// <summary>是否为可参与分组的工具行（含 question 工具：普通工具行 + 隐藏的提问锚点）。</summary>
         public bool IsGroupableTool { get; init; }
@@ -254,6 +290,16 @@ public sealed class OpenCodeConversationView : StackPanel
 
         /// <summary>reasoning 部件的“思考”行（连续思考合并时只有段首的行入树）；其他部件为 null。</summary>
         public OpenCodeReasoningRowView? Reasoning { get; init; }
+        public Action? OpenDetail { get; init; }
+        public Action? HoverEnter { get; init; }
+        public Action? HoverExit { get; init; }
+        public Action<FrameworkElement?>? SetDetailAnchor { get; init; }
+        public Func<OpenCodeToolRowModel>? Presentation { get; init; }
+        public Func<string>? OperationKey { get; init; }
+        public Func<string>? Glyph { get; init; }
+        public Action<Action<string, OpenCodeContentPart>?>? ConfigureBackground { get; init; }
+        public Func<Action?>? BackgroundAction { get; init; }
+        public bool InlinePresentation { get; init; }
 
         /// <summary>是否属于“处理过程”分组（思考或普通工具调用）。</summary>
         public bool IsStepPart => IsGroupableTool || Reasoning is not null;
@@ -267,6 +313,7 @@ public sealed class OpenCodeConversationView : StackPanel
         public required AssistantState Owner { get; init; }
 
         public List<OpenCodeToolRowModel> Tools { get; } = new();
+        public List<PartEntry> Leaves { get; } = new();
 
         public int ReasoningRows { get; set; }
 
@@ -282,6 +329,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
         /// <summary>本段是跨消息链的后续段（头部隐藏，跟随链首展开状态）。</summary>
         public bool IsFollower { get; set; }
+        public bool HasVisibleLeaves { get; set; } = true;
     }
 
     /// <summary>assistant 条目的分组状态（由 <see cref="LayoutParts"/> 产生，<see cref="ApplyStepChains"/> 消费）。</summary>
@@ -295,6 +343,7 @@ public sealed class OpenCodeConversationView : StackPanel
         public bool HasBoundary { get; set; }
 
         public bool CompletionShown { get; set; }
+        public bool IsProcessNotice { get; init; }
 
         public FrameworkElement? Element { get; set; }
     }
@@ -305,8 +354,106 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>上一次计算时处于“进行中”的链首组 ID（用于识别 进入运行 / 运行结束 的转换）。</summary>
     private readonly HashSet<string> _activeGroups = new(StringComparer.Ordinal);
 
-    /// <summary>用户在本次运行期间显式切换过的展开状态（运行结束时清除；运行期间优先于自动展开）。</summary>
-    private readonly Dictionary<string, bool> _runExpansion = new(StringComparer.Ordinal);
+    private bool? _currentTurnActivity;
+    private string? _observedTurnKey;
+    private bool _observedTurnActive;
+    private string? _terminalTurnKey;
+    private Action<string, OpenCodeContentPart>? _backgroundAction;
+    private DateTimeOffset? _retryDeadline;
+    private int _retryAttempt;
+    private string? _retryMessage;
+    private TextBlock? _retryStatus;
+    private DispatcherQueueTimer? _retryTimer;
+
+    /// <summary>Publish only the live selected-session retry state, not an arbitrary historical message.
+    /// V2 session.retry.scheduled.at is the absolute Unix-millisecond next-retry deadline. Null clears.</summary>
+    public void SetCurrentRetry(OpenCodeMessageRetry? retry)
+    {
+        if (retry?.Attempt is not { } attempt || attempt <= 0 || !OpenCodeStepRunPresentation.IsPlausibleTimestamp(retry.At))
+        {
+            ClearCurrentRetry();
+            return;
+        }
+        ShowCurrentRetry(attempt, DateTimeOffset.FromUnixTimeMilliseconds((long)retry.At!.Value), retry.Error?.Message);
+    }
+
+    private void ShowCurrentRetry(int attempt, DateTimeOffset nextRetryAt, string? message)
+    {
+        _retryAttempt = attempt;
+        _retryDeadline = nextRetryAt;
+        _retryMessage = message;
+        _retryStatus ??= new TextBlock
+        {
+            Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey),
+            Foreground = OpenCodeInteractionUi.TryBrush("SystemFillColorCautionBrush"),
+            TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(37, 4, 8, 4),
+        };
+        AutomationProperties.SetAutomationId(_retryStatus, "OpenCodeCurrentRetry");
+        UpdateRetryStatus();
+        if (!Children.Contains(_retryStatus)) Children.Add(_retryStatus);
+        StartRetryTimer();
+    }
+
+    public void ClearCurrentRetry()
+    {
+        _retryDeadline = null;
+        _retryMessage = null;
+        _retryTimer?.Stop();
+        if (_retryStatus is not null) { _retryStatus.Opacity = 1; Children.Remove(_retryStatus); }
+    }
+
+    private void UpdateRetryStatus()
+    {
+        if (_retryStatus is null || _retryDeadline is not { } deadline) return;
+        var now = DateTimeOffset.UtcNow;
+        var text = OpenCodeStepRunPresentation.FormatRetryCountdown(_retryAttempt, deadline, now);
+        if (_retryStatus.Text != text)
+        {
+            _retryStatus.Text = text;
+            AutomationProperties.SetName(_retryStatus, text);
+        }
+        // A gentle two-second amber pulse; text/meaning remain visible throughout.
+        _retryStatus.Opacity = 0.85 + 0.15 * Math.Cos(now.ToUnixTimeMilliseconds() * Math.PI / 1000);
+        ToolTipService.SetToolTip(_retryStatus, _retryStatus.Text + (string.IsNullOrWhiteSpace(_retryMessage) ? string.Empty : "：" + _retryMessage));
+    }
+
+    private void StartRetryTimer()
+    {
+        if (_retryDeadline is null) return;
+        if (_retryTimer is null && DispatcherQueue.GetForCurrentThread() is { } queue)
+        {
+            _retryTimer = queue.CreateTimer();
+            _retryTimer.Interval = TimeSpan.FromMilliseconds(200);
+            _retryTimer.IsRepeating = true;
+            _retryTimer.Tick += (_, _) => UpdateRetryStatus();
+        }
+        _retryTimer?.Start();
+    }
+
+    /// <summary>Register only after transport support and selected-session mutation gates are verified.
+    /// Callback receives the current parent message id and current tool snapshot; null hides all actions.
+    /// No local state is changed on click: only later server snapshots update the row.</summary>
+    public void SetBackgroundAction(Action<string, OpenCodeContentPart>? action)
+    {
+        _backgroundAction = action;
+        foreach (var entry in _entries)
+            if (entry.Assistant is { } owner)
+                foreach (var run in owner.Runs)
+                    foreach (var leaf in run.Leaves) leaf.ConfigureBackground?.Invoke(action);
+        ApplyStepChains();
+    }
+
+    /// <summary>Selected-session authoritative turn activity, not an individual message/tool completion.
+    /// Call after applying a snapshot; null restores message-based inference. ClearMessages resets the binding.</summary>
+    public void SetCurrentTurnActivity(bool? active)
+    {
+        if (active == false) ClearCurrentRetry();
+        _currentTurnActivity = active;
+        if (active == false) _terminalTurnKey = _observedTurnKey;
+        else if (active == true) _terminalTurnKey = null;
+        ApplyStepChains();
+    }
 
     /// <summary>当前已渲染的 question 工具锚点（key = 消息 id + “\n” + 部件 id）。</summary>
     private readonly Dictionary<string, OpenCodeQuestionAnchorHost> _questionAnchors = new(StringComparer.Ordinal);
@@ -340,8 +487,10 @@ public sealed class OpenCodeConversationView : StackPanel
     public OpenCodeConversationView()
     {
         Orientation = Orientation.Vertical;
-        Spacing = 12;
+        Spacing = 0;
         Padding = new Thickness(0, 4, 0, 4);
+        Unloaded += (_, _) => _retryTimer?.Stop();
+        Loaded += (_, _) => StartRetryTimer();
     }
 
     /// <summary>
@@ -381,9 +530,16 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>清空全部已渲染消息（切换会话或卸载时调用）；同时退订并停用全部子部件回调。</summary>
     public void ClearMessages()
     {
+        _manualBackground.Clear();
         BindingCleared?.Invoke(this, EventArgs.Empty);
         ApplyAdmittedSteer(null, null);
         _renderedUserMessageIds.Clear();
+        ClearCurrentRetry();
+        _backgroundAction = null;
+        _currentTurnActivity = null;
+        _observedTurnKey = null;
+        _observedTurnActive = false;
+        _terminalTurnKey = null;
         foreach (var entry in _entries)
         {
             entry.Dispose?.Invoke();
@@ -397,7 +553,6 @@ public sealed class OpenCodeConversationView : StackPanel
         _asyncCompletions = new Dictionary<string, OpenCodeAsyncCompletion>(StringComparer.Ordinal);
         _groupExpansion.Clear();
         _activeGroups.Clear();
-        _runExpansion.Clear();
         if (_questionAnchors.Count > 0)
         {
             _questionAnchors.Clear();
@@ -415,6 +570,8 @@ public sealed class OpenCodeConversationView : StackPanel
     public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        // Accepted raw order, before safe presentation copies and before any provisional chat rows.
+        _manualBackground.Update(messages);
 
         // 客户端安全化：不改动调用方集合，逐条投影为净化副本（顺序与数量不变）。
         var sanitizedMessages = new List<OpenCodeMessage>(messages.Count);
@@ -454,7 +611,7 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 // 仅收真实 id；匿名兜底 key 与重复 id 序号兜底 key 不进入归属索引。
                 renderedIds.Add(messageId);
-                if (message.Type == OpenCodeMessageTypes.User) renderedUserIds.Add(messageId);
+                if (message.Type == OpenCodeMessageTypes.User && !OpenCodeManualBackgroundIndex.TryReadNotice(message, out _)) renderedUserIds.Add(messageId);
             }
 
             var key = BuildKey(message, i);
@@ -471,10 +628,11 @@ public sealed class OpenCodeConversationView : StackPanel
             // Dispose，也不会因 _byKey.Remove(旧 key) 误删随后新建的同 key 条目。
             var isNotice = IsInstructionMessage(message);
             var isAsync = !isNotice && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out _);
-            var isInitiator = !isNotice && !isAsync && OpenCodeStepRunPresentation.IsInternalInitiator(message);
+            var isManual = !isNotice && !isAsync && OpenCodeManualBackgroundIndex.TryReadNotice(message, out _);
+            var isInitiator = !isNotice && !isAsync && !isManual && OpenCodeStepRunPresentation.IsInternalInitiator(message);
             if (_byKey.TryGetValue(key, out var replaced)
                 && (replaced.IsInstructionNotice != isNotice || replaced.IsInitiatorChip != isInitiator
-                    || replaced.IsAsyncCompletion != isAsync))
+                    || replaced.IsAsyncCompletion != isAsync || replaced.IsManualBackgroundNotice != isManual))
             {
                 replaced.Dispose?.Invoke();
                 Children.Remove(replaced.Element);
@@ -484,6 +642,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
             if (_byKey.TryGetValue(key, out var existing))
             {
+                existing.MessageType = message.Type;
                 // 变更检测同时比较消息指纹与「当前子任务标题」：两者任一变化都走就地更新，
                 // 保证完成卡片标题随前序工具描述变化而刷新。
                 var taskTitle = ResolveTaskTitle(message);
@@ -503,6 +662,7 @@ public sealed class OpenCodeConversationView : StackPanel
             else
             {
                 var entry = CreateEntry(key, message);
+                entry.MessageType = message.Type;
                 entry.Fingerprint = fingerprint;
                 entry.TaskTitle = ResolveTaskTitle(message);
                 entry.AsyncSignature = ComputeAsyncSignature(message);
@@ -646,7 +806,10 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>assistant 消息中全部工具调用所关联异步完成通知的签名（非 assistant 为空串）。</summary>
     private string ComputeAsyncSignature(OpenCodeMessage message)
     {
-        if (message.Type != OpenCodeMessageTypes.Assistant || message.Content is not { Count: > 0 } parts || _asyncCompletions.Count == 0)
+        if (OpenCodeManualBackgroundIndex.TryReadNotice(message, out var items))
+            return "manual-notice:" + string.Join(",", items.Select(item =>
+                _manualBackground.IsNoticeItemRepresented(message.Id, item.Kind, item.Title) ? "represented" : "notice"));
+        if (message.Type != OpenCodeMessageTypes.Assistant || message.Content is not { Count: > 0 } parts)
         {
             return string.Empty;
         }
@@ -654,6 +817,8 @@ public sealed class OpenCodeConversationView : StackPanel
         var builder = new System.Text.StringBuilder();
         foreach (var part in parts)
         {
+            if (part?.Id is { } id && message.Id is { } parent && _manualBackground.Contains(parent, id))
+                builder.Append("manual:").Append(id).Append(';');
             if (part is not null && ResolveCompletion(part) is { } completion)
             {
                 builder.Append(CompletionSignature(completion)).Append(';');
@@ -661,6 +826,16 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         return builder.ToString();
+    }
+
+    private static string CompletionBody(OpenCodeMessage message)
+    {
+        if (message.Text is { } text) return text;
+        var parts = new List<string>();
+        if (message.Content is { } content)
+            foreach (var part in content)
+                if (part is { Type: OpenCodePartTypes.Text, Text: { } body }) parts.Add(body);
+        return string.Join("\n\n", parts);
     }
 
     private static string BuildKey(OpenCodeMessage message, int index) =>
@@ -708,6 +883,9 @@ public sealed class OpenCodeConversationView : StackPanel
             return CreateAsyncCompletionEntry(key, message);
         }
 
+        if (OpenCodeManualBackgroundIndex.TryReadNotice(message, out _))
+            return CreateManualBackgroundNoticeEntry(key, message);
+
         // 插件内部触发消息（SLIM_INTERNAL_INITIATOR 等标记）：只显示一行紧凑提示，全文仅在悬停详情中。
         if (OpenCodeStepRunPresentation.IsInternalInitiator(message))
         {
@@ -737,30 +915,119 @@ public sealed class OpenCodeConversationView : StackPanel
             case OpenCodeMessageTypes.ModelSwitched:
                 return CreateCaptionEntry(key, message, DescribeModelSwitch);
             case OpenCodeMessageTypes.LocationSwitched:
-                return CreateCaptionEntry(key, message,
-                    m => "已切换目录：" + (m.Location?.Directory ?? "（未提供）"));
+                return CreateDirectoryEntry(key, message);
             default:
                 return CreateCaptionEntry(key, message,
                     m => "（未识别的消息类型：" + (m.Type ?? "未知") + "）");
         }
     }
 
-    /// <summary>构造仅显示安全投影的指令通知条目；无 Dispose 资源，Update 再次取安全 notice 就地刷新。</summary>
-    private static Entry CreateInstructionNoticeEntry(string key, OpenCodeInstructionNotice notice)
+    private Entry CreateDirectoryEntry(string key, OpenCodeMessage message)
     {
-        var view = new OpenCodeInstructionNoticeView(notice);
+        var chip = new OpenCodeTimelineChipView("OpenCodeDirectorySwitch", "\uE8B7");
+        void Apply(OpenCodeMessage m) => chip.UpdateRow(new OpenCodeTimelineRowContent(
+            "目录", m.Location?.Directory ?? "（未提供）", string.Empty, null,
+            "已切换目录：" + (m.Location?.Directory ?? "（未提供）"), "目录",
+            Array.Empty<OpenCodeToolProperty>(), m.Location?.Directory));
+        Apply(message);
+        return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
+            chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, chip.Dispose);
+    }
+
+    private Entry CreateManualBackgroundNoticeEntry(string key, OpenCodeMessage message)
+    {
+        var root = new StackPanel();
+        var group = new OpenCodeToolGroupView(key + "/manual-notice", OnStepGroupToggled);
+        root.Children.Add(group.Element);
+        var state = new AssistantState { Element = root, Message = message, IsProcessNotice = true };
+        var chips = new List<OpenCodeTimelineChipView>();
+        void Apply(OpenCodeMessage current)
+        {
+            foreach (var old in chips) old.Dispose();
+            chips.Clear();
+            group.ItemsHost.Children.Clear();
+            state.Runs.Clear();
+            state.Message = current;
+            if (!OpenCodeManualBackgroundIndex.TryReadNotice(current, out var items)) return;
+            var run = new StepRun { Group = group, Owner = state, StartsMessage = true, EndsMessage = true };
+            for (var index = 0; index < items.Count; index++)
+            {
+                var item = items[index];
+                // The exact existing call/real terminal owns that operation; never add a second one.
+                if (_manualBackground.IsNoticeItemRepresented(current.Id, item.Kind, item.Title)) continue;
+                var glyph = item.Kind == "shell" ? OpenCodeStepRunPresentation.TerminalGlyph : OpenCodeStepRunPresentation.SubagentGlyph;
+                var name = item.Kind == "shell" ? "终端（后台）" : "子代理（后台）";
+                var chip = new OpenCodeTimelineChipView("OpenCodeManualBackgroundNotice", glyph);
+                chip.UpdateRow(new OpenCodeTimelineRowContent(name, item.Title, "后台运行中", OpenCodeToolRowStatus.Running,
+                    name + " · " + item.Title + " · 后台运行中（通知时尚未完成）", name,
+                    Array.Empty<OpenCodeToolProperty>(), item.Title));
+                chips.Add(chip);
+                group.ItemsHost.Children.Add(chip.Element);
+                var itemKey = "notice:" + key + "/" + index.ToString(CultureInfo.InvariantCulture);
+                run.Leaves.Add(new PartEntry
+                {
+                    Key = itemKey, Kind = "process", Element = chip.Element, Update = (_, _, _) => { },
+                    OpenDetail = chip.OpenDetail, HoverEnter = chip.HoverEnter, HoverExit = chip.HoverExit,
+                    SetDetailAnchor = chip.SetDetailAnchor, Presentation = () => ChipModel(chip.Content),
+                    Glyph = () => chip.Glyph, OperationKey = () => itemKey, InlinePresentation = true,
+                });
+                run.Tools.Add(ChipModel(chip.Content));
+            }
+            root.Visibility = chips.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+            if (chips.Count > 0) state.Runs.Add(run);
+        }
+        Apply(message);
         return new Entry
         {
-            Key = key,
-            Element = view.Element,
-            Update = m =>
-            {
-                if (TryGetInstructionNotice(m, out var updated))
-                {
-                    view.Update(updated);
-                }
-            },
-            IsInstructionNotice = true,
+            Key = key, Element = root, Assistant = state, IsManualBackgroundNotice = true, Update = Apply,
+            Dispose = () => { foreach (var chip in chips) chip.Dispose(); group.Dispose(); },
+        };
+    }
+
+    /// <summary>构造仅显示安全投影的指令通知条目；无 Dispose 资源，Update 再次取安全 notice 就地刷新。</summary>
+    private Entry CreateInstructionNoticeEntry(string key, OpenCodeInstructionNotice notice)
+    {
+        var view = new OpenCodeInstructionNoticeView(notice);
+        return CreateProcessEntry(key, null, view.Element, m =>
+        {
+            if (TryGetInstructionNotice(m, out var updated)) view.Update(updated);
+        }, () => new OpenCodeToolRowModel { Name = "指令", Status = OpenCodeToolRowStatus.Unknown },
+            view.OpenDetail, view.HoverEnter, view.HoverExit, view.SetDetailAnchor, () => "\uE82D", view.Dispose, instruction: true, inline: true);
+    }
+
+    private static OpenCodeToolRowModel ChipModel(OpenCodeTimelineRowContent content) => new()
+    {
+        Name = content.Name, Status = content.Status ?? OpenCodeToolRowStatus.Unknown,
+        StatusText = content.Summary, Target = content.Target, AccessibleName = content.AccessibleName,
+        IsBackground = content.Name.EndsWith("（后台）", StringComparison.Ordinal),
+    };
+
+    // Non-body process notices use the same chain machinery as assistant tool/reasoning runs.
+    // The leaf controller remains the actual detail/child source, never a replacement properties card.
+    private Entry CreateProcessEntry(string key, OpenCodeMessage? message, FrameworkElement content,
+        Action<OpenCodeMessage> apply, Func<OpenCodeToolRowModel> presentation,
+        Action open, Action enter, Action exit, Action<FrameworkElement?> anchor, Func<string> glyph,
+        Action dispose, bool instruction = false, bool async = false, Func<string>? operationKey = null, bool inline = false)
+    {
+        var group = new OpenCodeToolGroupView(key + "/process", OnStepGroupToggled);
+        var state = new AssistantState { Element = group.Element, Message = message, IsProcessNotice = true };
+        var leaf = new PartEntry
+        {
+            Key = key, Kind = "process", Element = content, Update = (_, _, _) => { },
+            OpenDetail = open, HoverEnter = enter, HoverExit = exit, SetDetailAnchor = anchor,
+            Presentation = presentation, Glyph = glyph, OperationKey = operationKey ?? (() => "notice:" + key),
+            InlinePresentation = inline,
+        };
+        var run = new StepRun { Group = group, Owner = state, StartsMessage = true, EndsMessage = true };
+        run.Leaves.Add(leaf);
+        run.Tools.Add(presentation());
+        state.Runs.Add(run);
+        group.ItemsHost.Children.Add(content);
+        return new Entry
+        {
+            Key = key, Element = group.Element, Assistant = state, IsInstructionNotice = instruction, IsAsyncCompletion = async,
+            Update = m => { apply(m); state.Message = m; run.Tools.Clear(); run.Tools.Add(presentation()); },
+            Dispose = () => { dispose(); group.Dispose(); },
         };
     }
 
@@ -804,6 +1071,7 @@ public sealed class OpenCodeConversationView : StackPanel
         var chip = new OpenCodeTimelineChipView("OpenCodeAsyncCompletion", "\uE930");
         string? parentId = message.Id;
         string? childId = null;
+        var operationKey = "notice:" + key;
 
         void OpenChild()
         {
@@ -822,6 +1090,7 @@ public sealed class OpenCodeConversationView : StackPanel
             }
 
             childId = completion.ChildSessionId is { } child && OpenCodeSubagentPresentation.IsOpaqueSessionId(child) ? child : null;
+            operationKey = completion.Key.Length > 0 ? "async:" + completion.Key : "notice:" + key;
             var content = OpenCodeStepRunPresentation.DescribeAsyncCompletion(completion);
             if (childId is null && content.LinkText is not null)
             {
@@ -832,18 +1101,12 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         Apply(message);
-        return new Entry
-        {
-            Key = key,
-            Element = chip.Element,
-            Update = Apply,
-            IsAsyncCompletion = true,
-            Dispose = () =>
+        return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
+            chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, () =>
             {
                 childId = null;
                 chip.Dispose();
-            },
-        };
+            }, async: true, operationKey: () => operationKey);
     }
 
     private Entry CreateUserEntry(string key, OpenCodeMessage message)
@@ -867,24 +1130,21 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         var subagentMarker = CreateSubagentMarker(HorizontalAlignment.Left);
         var partsPanel = new StackPanel { Spacing = 8 };
-        var errorBar = new InfoBar
-        {
-            Severity = InfoBarSeverity.Error,
-            IsClosable = false,
-            IsOpen = false,
-        };
+        var errorRow = new AssistantErrorRow();
+        errorRow.Element.Visibility = Visibility.Collapsed;
         var retryText = new TextBlock
         {
-            FontSize = 12,
-            Opacity = 0.65,
-            TextWrapping = TextWrapping.Wrap,
+            Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey),
+            Foreground = OpenCodeInteractionUi.TryBrush("SystemFillColorCautionBrush"),
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
             Visibility = Visibility.Collapsed,
         };
 
         var root = new StackPanel
         {
-            Spacing = 8,
-            Children = { subagentMarker, partsPanel, errorBar, retryText },
+            Spacing = 0,
+            Children = { subagentMarker, partsPanel, errorRow.Element, retryText },
         };
 
         // 完成卡片控制器包裹原内容 root：Element 身份稳定，普通内容/卡片切换与折叠状态由控制器负责；
@@ -904,15 +1164,41 @@ public sealed class OpenCodeConversationView : StackPanel
         var partEntries = new List<PartEntry>();
         var groups = new Dictionary<string, OpenCodeToolGroupView>(StringComparer.Ordinal);
         var state = new AssistantState { Element = subagentCompletion.Element };
+        OpenCodeToolGroupView? completionGroup = null;
+        StepRun? completionRun = null;
 
         void Apply(OpenCodeMessage m)
         {
-            UpdateAssistant(m, partsPanel, partEntries, groups, state, subagentMarker, errorBar, retryText);
+            UpdateAssistant(m, partsPanel, partEntries, groups, state, subagentMarker, errorRow, retryText);
             // 旧消息级标记让位给完成卡片，避免重复展示；普通消息仍走完整原内容路径。
             subagentMarker.Visibility = Visibility.Collapsed;
             var completion = OpenCodeSubagentPresentation.TryReadCompletionMetadata(m.Metadata, out var info) ? info : null;
             state.CompletionShown = completion is not null;
-            subagentCompletion.Update(completion, ResolveTaskTitle(m));
+            subagentCompletion.Update(completion, ResolveTaskTitle(m), CompletionBody(m));
+            if (completion is not null && OpenCodeSubagentPresentation.IsOpaqueSessionId(completion.ChildSessionId))
+            {
+                if (completionGroup is null)
+                {
+                    completionGroup = new OpenCodeToolGroupView(key + "/completion", OnStepGroupToggled);
+                    completionRun = new StepRun { Group = completionGroup, Owner = state, StartsMessage = true, EndsMessage = true };
+                    completionRun.Leaves.Add(new PartEntry
+                    {
+                        Key = key, Kind = "process", Element = subagentCompletion.ProcessContent, Update = (_, _, _) => { },
+                        Presentation = () => ChipModel(subagentCompletion.ProcessPresentation),
+                        OperationKey = () => "async:" + (OpenCodeSubagentPresentation.TryReadCompletionMetadata(state.Message?.Metadata, out var current) ? current.ChildSessionId : key),
+                        Glyph = () => OpenCodeStepRunPresentation.SubagentGlyph,
+                        OpenDetail = subagentCompletion.OpenDetail, HoverEnter = subagentCompletion.HoverEnter, HoverExit = subagentCompletion.HoverExit,
+                        SetDetailAnchor = subagentCompletion.SetDetailAnchor,
+                    });
+                }
+                subagentCompletion.SetProcessGroup(completionGroup.Element);
+                if (completionGroup.ItemsHost.Children.Count == 0) completionGroup.ItemsHost.Children.Add(subagentCompletion.ProcessContent);
+                completionRun!.Tools.Clear();
+                completionRun.Tools.Add(ChipModel(subagentCompletion.ProcessPresentation));
+                state.Runs.Clear();
+                state.Runs.Add(completionRun);
+                state.HasBoundary = false;
+            }
         }
 
         Apply(message);
@@ -936,6 +1222,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
 
                 subagentCompletion.Dispose();
+                completionGroup?.Dispose();
             },
         };
     }
@@ -947,7 +1234,7 @@ public sealed class OpenCodeConversationView : StackPanel
         Dictionary<string, OpenCodeToolGroupView> groups,
         AssistantState state,
         TextBlock subagentMarker,
-        InfoBar errorBar,
+        AssistantErrorRow errorRow,
         TextBlock retryText)
     {
         ApplySubagentMarker(subagentMarker, message);
@@ -970,7 +1257,8 @@ public sealed class OpenCodeConversationView : StackPanel
             }
 
             var completion = ResolveCompletion(part);
-            var fingerprint = ComputeFingerprint(part) + "\n" + CompletionSignature(completion);
+            var manual = message.Id is { } parent && part.Id is { } manualPartId && _manualBackground.Contains(parent, manualPartId);
+            var fingerprint = ComputeFingerprint(part) + "\n" + CompletionSignature(completion) + "\nmanual:" + manual;
 
             PartEntry? existing = null;
             foreach (var candidate in partEntries)
@@ -990,6 +1278,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     existing.Fingerprint = fingerprint;
                     existing.LastPart = part;
                     existing.LastCompletion = completion;
+                    existing.ManualBackground = manual;
                 }
 
                 newEntries.Add(existing);
@@ -1008,6 +1297,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 entry.Fingerprint = fingerprint;
                 entry.LastPart = part;
                 entry.LastCompletion = completion;
+                entry.ManualBackground = manual;
                 newEntries.Add(entry);
             }
         }
@@ -1047,13 +1337,12 @@ public sealed class OpenCodeConversationView : StackPanel
                 text += "（" + string.Join(", ", meta) + "）";
             }
 
-            errorBar.Title = "助手错误";
-            errorBar.Message = text;
-            errorBar.IsOpen = true;
+            errorRow.Apply(text);
+            errorRow.Element.Visibility = Visibility.Visible;
         }
         else
         {
-            errorBar.IsOpen = false;
+            errorRow.Element.Visibility = Visibility.Collapsed;
         }
 
         // 重试信息：仅陈述服务端已记录的字段，不解释为最终状态。
@@ -1181,7 +1470,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
                 FlushReasoning(atRunEnd: false);
                 var snapshot = part.LastPart ?? new OpenCodeContentPart();
-                tools.Add(OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion));
+                tools.Add(OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground));
                 shown.Add(part);
                 if (snapshot.Time is { } time)
                 {
@@ -1223,6 +1512,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 StartsMessage = !boundary.Contains(true),
             };
             run.Tools.AddRange(tools);
+            run.Leaves.AddRange(shown);
 
             var items = new List<UIElement>(shown.Count);
             foreach (var part in shown)
@@ -1309,10 +1599,11 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void OnStepGroupToggled(string groupId, bool expanded)
     {
-        // 运行期间的手动切换只作用于本次运行（结束时仍自动收起）；结束后的切换跨刷新记住。
+        // Current-turn groups cannot collapse. Only independent historical choices are remembered.
         if (_activeGroups.Contains(groupId))
         {
-            _runExpansion[groupId] = expanded;
+            ApplyStepChains();
+            return;
         }
         else
         {
@@ -1323,8 +1614,7 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     /// <summary>
-    /// 展开状态规则：进入运行（该链首组 ID 上次不在进行中）时自动展开；运行期间用户手动切换后以用户为准；
-    /// 运行结束时自动收起（并清除本次运行的手动状态）；加载时已结束的历史分组默认收起，结束后的手动切换被记住。
+    /// 整轮运行期间保持展开；首次进入终态时收起一次。历史分组的独立手动选择跨刷新保留。
     /// </summary>
     private bool ResolveExpansion(string leaderId, bool active, HashSet<string> nowActive)
     {
@@ -1334,17 +1624,15 @@ public sealed class OpenCodeConversationView : StackPanel
             nowActive.Add(leaderId);
             if (!wasActive)
             {
-                _runExpansion.Remove(leaderId);
                 _groupExpansion.Remove(leaderId);
                 return true;
             }
 
-            return !_runExpansion.TryGetValue(leaderId, out var duringRun) || duringRun;
+            return true; // Active turns stay expanded; only historical groups have manual collapse choices.
         }
 
         if (wasActive)
         {
-            _runExpansion.Remove(leaderId);
             _groupExpansion.Remove(leaderId);
             return false;
         }
@@ -1362,7 +1650,6 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         var chains = new List<List<StepRun>>();
         List<StepRun>? open = null;
-        var openLastIndex = -1;
         for (var index = 0; index < _entries.Count; index++)
         {
             var state = _entries[index].Assistant;
@@ -1381,7 +1668,6 @@ public sealed class OpenCodeConversationView : StackPanel
                 else if (open is not null)
                 {
                     // 尚无可见内容的 assistant 消息（新步骤刚开始）：不打断链。
-                    openLastIndex = index;
                 }
 
                 continue;
@@ -1390,7 +1676,7 @@ public sealed class OpenCodeConversationView : StackPanel
             for (var r = 0; r < state.Runs.Count; r++)
             {
                 var run = state.Runs[r];
-                if (r == 0 && run.StartsMessage && !state.CompletionShown && open is not null)
+                if (r == 0 && run.StartsMessage && open is not null)
                 {
                     open.Add(run);
                 }
@@ -1400,34 +1686,71 @@ public sealed class OpenCodeConversationView : StackPanel
                     chains.Add(open);
                 }
 
-                openLastIndex = index;
             }
 
-            if (!state.Runs[^1].EndsMessage || state.CompletionShown)
+            if (!state.Runs[^1].EndsMessage)
             {
                 open = null;
             }
         }
 
-        // 回合仍在进行：链在快照末尾仍开放，且最后一条 assistant 消息尚未完成。
-        List<StepRun>? activeChain = null;
-        if (open is not null && openLastIndex == _entries.Count - 1
-            && _entries[openLastIndex].Assistant?.Message?.Time is { Completed: null })
+        // A completed assistant message is only a step boundary. Latch activity for the whole
+        // latest turn until idle/new user or an authoritative selected-session terminal signal.
+        var turnStart = 0;
+        var lastBoundaryIdle = false;
+        for (var index = 0; index < _entries.Count; index++)
         {
-            activeChain = open;
+            var type = _entries[index].MessageType;
+            if (type is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !_entries[index].IsManualBackgroundNotice)
+            {
+                turnStart = index + 1;
+                lastBoundaryIdle = type == OpenCodeMessageTypes.Idle;
+            }
         }
+        var turnKey = turnStart > 0 ? _entries[turnStart - 1].Key : (_entries.Count > 0 ? _entries[0].Key : string.Empty);
+        if (_observedTurnKey != turnKey) { _observedTurnKey = turnKey; _observedTurnActive = false; }
+        var currentOwners = new HashSet<AssistantState>();
+        for (var index = turnStart; index < _entries.Count; index++)
+            if (_entries[index].Assistant is { } owner)
+            {
+                currentOwners.Add(owner);
+                if (!owner.IsProcessNotice && !owner.CompletionShown && owner.Message?.Time is { Completed: null }) _observedTurnActive = true;
+                foreach (var run in owner.Runs)
+                    foreach (var tool in run.Tools)
+                        if (tool.IsActive && !tool.IsBackground) _observedTurnActive = true;
+            }
+        var wholeTurnActive = _currentTurnActivity ?? (_observedTurnActive && _terminalTurnKey != turnKey);
+        if (lastBoundaryIdle && currentOwners.Count == 0) wholeTurnActive = false;
 
         var now = (double)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var nowActive = new HashSet<string>(StringComparer.Ordinal);
         foreach (var chain in chains)
         {
-            var tools = new List<OpenCodeToolRowModel>();
+            var leaves = new List<PartEntry>();
+            var operations = new HashSet<string>(StringComparer.Ordinal);
+            var invocationKeys = new HashSet<string>(StringComparer.Ordinal);
             var reasoningRows = 0;
             double? startedAt = null;
             double? endedAt = null;
             foreach (var run in chain)
             {
-                tools.AddRange(run.Tools);
+                run.HasVisibleLeaves = false;
+                foreach (var part in run.Leaves)
+                {
+                    var operation = part.OperationKey?.Invoke();
+                    if (part.LastPart is { } snapshot && part.Reasoning is null)
+                    {
+                        // Distinct calls stay distinct even if they reuse one child session.
+                        operation = "call:" + (snapshot.Id ?? run.Group.GroupId + "/" + part.Key);
+                        foreach (var asyncKey in OpenCodeStepRunPresentation.AsyncKeys(snapshot))
+                            invocationKeys.Add("async:" + asyncKey);
+                        if (part.LastCompletion is { Key.Length: > 0 } completion) invocationKeys.Add("async:" + completion.Key);
+                    }
+                    operation ??= run.Group.GroupId + "/" + part.Key;
+                    var unique = !invocationKeys.Contains(operation) && operations.Add(operation);
+                    part.Element.Visibility = unique ? Visibility.Visible : Visibility.Collapsed;
+                    if (unique) { leaves.Add(part); run.HasVisibleLeaves = true; }
+                }
                 reasoningRows += run.ReasoningRows;
                 if (run.StartedAt is { } s)
                 {
@@ -1440,28 +1763,37 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
             }
 
+            var tools = new List<OpenCodeToolRowModel>();
+            foreach (var part in leaves)
+                if (part.Presentation is { } presentation) tools.Add(presentation());
+                else if (part.LastPart is { } snapshot && part.Reasoning is null)
+                    tools.Add(OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground));
+
             var summary = OpenCodeStepRunPresentation.Build(
                 tools,
                 reasoningRows,
                 startedAt,
                 endedAt,
-                ReferenceEquals(chain, activeChain),
-                now);
+                wholeTurnActive && currentOwners.Contains(chain[0].Owner),
+                now, authoritativeTurnState: true);
             var leaderId = chain[0].Group.GroupId;
             var expanded = ResolveExpansion(leaderId, summary.IsActive, nowActive);
+            foreach (var part in leaves) part.SetDetailAnchor?.Invoke(null);
             for (var k = 0; k < chain.Count; k++)
             {
                 chain[k].IsFollower = k > 0;
+                var leaf = leaves.Count == 1 && k == 0 ? leaves[0] : null;
+                leaf?.SetDetailAnchor?.Invoke(chain[k].Group.DetailAnchor);
+                var leafModel = leaf?.Presentation?.Invoke()
+                    ?? (leaf?.LastPart is { } snapshot && leaf.Reasoning is null ? OpenCodeToolRowPresentation.Build(snapshot, leaf.LastCompletion, leaf.ManualBackground) : null);
+                chain[k].Group.BindSingleLeaf(leaf?.OpenDetail, leaf?.HoverEnter, leaf?.HoverExit,
+                    leaf is null ? null : leafModel?.Name ?? "思考",
+                    leaf is null ? null : leaf.Glyph?.Invoke() ?? (leafModel is null ? "\uEA80" : leafModel.GlyphOverride ?? OpenCodeToolPartView.KindGlyph(leafModel.Kind)),
+                    leaf is null ? null : leafModel?.Status ?? leaf.Reasoning?.Status);
+                chain[k].Group.SetBackgroundAction(leaf?.BackgroundAction?.Invoke());
+                chain[k].Group.SetInlineLeaf(leaf?.InlinePresentation == true);
                 chain[k].Group.Update(summary, expanded, headerVisible: k == 0);
-            }
-        }
-
-        // 不再出现的进行中组（消息滑出窗口等）不保留运行状态。
-        foreach (var stale in _activeGroups)
-        {
-            if (!nowActive.Contains(stale))
-            {
-                _runExpansion.Remove(stale);
+                chain[k].Group.Element.Visibility = k == 0 || (leaves.Count > 1 && chain[k].HasVisibleLeaves) ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
@@ -1478,7 +1810,7 @@ public sealed class OpenCodeConversationView : StackPanel
             var hasVisibleRun = false;
             foreach (var run in state.Runs)
             {
-                if (!run.IsFollower || run.Group.IsExpanded)
+                if (!run.IsFollower || (run.HasVisibleLeaves && run.Group.IsExpanded))
                 {
                     hasVisibleRun = true;
                     break;
@@ -1487,7 +1819,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
             var visible = state.HasBoundary || state.CompletionShown || hasVisibleRun;
             element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            element.Margin = state.HasBoundary ? new Thickness(0, 6, 0, 6) : new Thickness(0);
         }
+        if (_retryDeadline is not null && _retryStatus is not null && !Children.Contains(_retryStatus)) Children.Add(_retryStatus);
         ReconcileSteerRows();
     }
 
@@ -1538,6 +1872,10 @@ public sealed class OpenCodeConversationView : StackPanel
                     Kind = kind,
                     Element = row.Element,
                     Reasoning = row,
+                    OpenDetail = row.OpenDetail,
+                    HoverEnter = row.HoverEnter,
+                    HoverExit = row.HoverExit,
+                    SetDetailAnchor = row.SetDetailAnchor,
                     // 文本由 LayoutParts 按合并结果写入（LastPart 已由调用方更新）。
                     Update = (_, _, _) => { },
                     Dispose = row.Dispose,
@@ -1550,7 +1888,8 @@ public sealed class OpenCodeConversationView : StackPanel
                 // 同时保留一个不可见的提问锚点：交互视图仍把匹配的待处理 Form 条目放入其中（不在时间线中显示独立卡片），
                 // 回答在输入区的提问遮罩中进行；提交 / 取消 / 重查路径不变。
                 var view = new OpenCodeToolPartView();
-                view.Update(part, parentMessageId, completion);
+                view.SetBackgroundAction(_backgroundAction);
+                view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id));
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> questionHandler =
                     (_, e) => SubagentSessionRequested?.Invoke(this, e);
                 view.SubagentSessionRequested += questionHandler;
@@ -1573,6 +1912,12 @@ public sealed class OpenCodeConversationView : StackPanel
                     Kind = kind,
                     IsGroupableTool = true,
                     Element = questionRoot,
+                    OpenDetail = view.TogglePinnedDetail,
+                    HoverEnter = view.HoverEnterDetail,
+                    HoverExit = view.HoverExitDetail,
+                    SetDetailAnchor = view.SetDetailAnchor,
+                    ConfigureBackground = view.SetBackgroundAction,
+                    BackgroundAction = () => view.BackgroundAction,
                     Update = (p, messageId, c) =>
                     {
                         view.Update(p, messageId, c);
@@ -1596,7 +1941,8 @@ public sealed class OpenCodeConversationView : StackPanel
             case OpenCodePartTypes.Tool:
             {
                 var view = new OpenCodeToolPartView();
-                view.Update(part, parentMessageId, completion);
+                view.SetBackgroundAction(_backgroundAction);
+                view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id));
                 // subagent 工具行固定详情时的「打开子会话」只向上转发；本视图在移除/替换时退订并 Dispose（无 stale callbacks）。
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> handler =
                     (_, e) => SubagentSessionRequested?.Invoke(this, e);
@@ -1608,7 +1954,13 @@ public sealed class OpenCodeConversationView : StackPanel
                     IsGroupableTool = true,
                     // 入树的是工具行根元素（同一实例）；控制器由 Update 闭包持有，节点身份跨轮询保持。
                     Element = view.Element,
-                    Update = (p, messageId, c) => view.Update(p, messageId, c),
+                    OpenDetail = view.TogglePinnedDetail,
+                    HoverEnter = view.HoverEnterDetail,
+                    HoverExit = view.HoverExitDetail,
+                    SetDetailAnchor = view.SetDetailAnchor,
+                    ConfigureBackground = view.SetBackgroundAction,
+                    BackgroundAction = () => view.BackgroundAction,
+                    Update = (p, messageId, c) => view.Update(p, messageId, c, messageId is { } parent && p.Id is { } id && _manualBackground.Contains(parent, id)),
                     Dispose = () =>
                     {
                         view.SubagentSessionRequested -= handler;
@@ -1692,12 +2044,12 @@ public sealed class OpenCodeConversationView : StackPanel
 
         void Apply(OpenCodeMessage m)
         {
-            text.Text = describe(m);
+            text.Text = m.Type is OpenCodeMessageTypes.Synthetic or OpenCodeMessageTypes.System && m.Text == OpenCodeNoticeDismissals.AutomaticRestartText ? OpenCodeNoticeDismissals.DisplayNoticeText(m.Text) : describe(m);
             // 旧消息级标记让位给完成卡片，避免重复展示。
             subagentMarker.Visibility = Visibility.Collapsed;
             subagentCompletion.Update(
                 OpenCodeSubagentPresentation.TryReadCompletionMetadata(m.Metadata, out var info) ? info : null,
-                ResolveTaskTitle(m));
+                ResolveTaskTitle(m), CompletionBody(m));
         }
 
         Apply(message);
@@ -1740,60 +2092,20 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private Entry CreateShellEntry(string key, OpenCodeMessage message)
     {
-        var caption = new TextBlock
-        {
-            FontSize = 12,
-            Opacity = 0.65,
-            TextWrapping = TextWrapping.Wrap,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            IsTextSelectionEnabled = true,
-        };
-        var outputText = new TextBlock
-        {
-            FontSize = 12,
-            TextWrapping = TextWrapping.Wrap,
-            IsTextSelectionEnabled = true,
-        };
-        // 等宽字体跟随“外观”设置（实时更新），不硬编码字体名。
-        AppFonts.Apply(outputText, AppFontSlot.Monospace);
-        var outputExpander = new Expander
-        {
-            Header = new TextBlock { Text = "输出", FontSize = 12, Opacity = 0.75 },
-            Content = new ScrollViewer
-            {
-                Content = outputText,
-                MaxHeight = 240,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            },
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Visibility = Visibility.Collapsed,
-        };
-
-        var root = new StackPanel
-        {
-            Spacing = 6,
-            Children = { caption, outputExpander },
-        };
-
+        var chip = new OpenCodeTimelineChipView("OpenCodeShell", OpenCodeStepRunPresentation.TerminalGlyph);
         void Apply(OpenCodeMessage m)
         {
-            caption.Text = DescribeShell(m);
-            var output = m.Output?.Output;
-            if (string.IsNullOrEmpty(output))
-            {
-                outputExpander.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                outputText.Text = output;
-                outputExpander.Visibility = Visibility.Visible;
-            }
+            var status = m.Status == OpenCodeShellStatuses.Running ? OpenCodeToolRowStatus.Running
+                : m.Status is OpenCodeShellStatuses.Killed or OpenCodeShellStatuses.Timeout ? OpenCodeToolRowStatus.Error
+                : m.Status == OpenCodeShellStatuses.Exited && m.Exit is { ValueKind: JsonValueKind.Number } exit && exit.TryGetInt32(out var code)
+                    ? code == 0 ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Error : OpenCodeToolRowStatus.Unknown;
+            chip.UpdateRow(new OpenCodeTimelineRowContent("终端", m.Command ?? string.Empty, string.Empty,
+                status, DescribeShell(m), "终端", new[] { new OpenCodeToolProperty(0, "命令", m.Command ?? "（未提供）", OpenCodeToolPropertyKind.Code) },
+                m.Output?.Output));
         }
-
         Apply(message);
-        return new Entry { Key = key, Element = root, Update = Apply };
+        return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
+            chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, chip.Dispose);
     }
 
     private Entry CreateCompactionEntry(string key, OpenCodeMessage message)
@@ -1950,7 +2262,7 @@ public sealed class OpenCodeConversationView : StackPanel
             var other => "未识别状态：" + other,
         };
 
-        var text = "Shell：" + (message.Command ?? "（无命令）") + "（" + status + "）";
+        var text = "终端：" + (message.Command ?? "（无命令）") + "（" + status + "）";
 
         // exit 的原始值可能是 number 或 "Infinity"/"-Infinity"/"NaN" 字符串，按原样展示。
         if (message.Exit is { } exit && exit.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))

@@ -379,8 +379,8 @@ public sealed partial class MainWindow
     }
 
     /// <summary>
-    /// pending 快照按会话比对：仅对新增的权限/表单请求提示，并把该会话“进行中”的执行映射为等待处理。
-    /// 消失项不做任何状态推断（结果未知不猜测）；无进行中执行的会话仅提示、不创建无主任务。
+    /// pending 快照按会话记录上次集合（G1：不再弹出“有等待处理的请求”顶部提示条；待处理状态已由输入区权限/提问遮罩、
+    /// 标签栏注意色工作环与左侧导航栏 InfoBadge 直接呈现）。
     /// </summary>
     private void HandlePendingSnapshot(OpenCodeNotificationObservation observation)
     {
@@ -392,28 +392,14 @@ public sealed partial class MainWindow
         var permissions = observation.PendingPermissionIds ?? Array.Empty<string>();
         var forms = observation.PendingFormIds ?? Array.Empty<string>();
 
-        if (!_lastPendingBySession.TryGetValue(observation.SessionId, out var previous))
+        if (!_lastPendingBySession.ContainsKey(observation.SessionId) && _lastPendingBySession.Count >= 64)
         {
-            if (_lastPendingBySession.Count >= 64)
-            {
-                _lastPendingBySession.Clear(); // 有界：超限重置基线（下一次快照重新建立）。
-            }
-
-            previous = (new HashSet<string>(StringComparer.Ordinal), new HashSet<string>(StringComparer.Ordinal));
+            _lastPendingBySession.Clear(); // 有界：超限重置基线（下一次快照重新建立）。
         }
 
         var nextPermissions = new HashSet<string>(permissions, StringComparer.Ordinal);
         var nextForms = new HashSet<string>(forms, StringComparer.Ordinal);
-        bool hasNew = nextPermissions.Except(previous.Permissions).Any() || nextForms.Except(previous.Forms).Any();
         _lastPendingBySession[observation.SessionId] = (nextPermissions, nextForms);
-
-        if (!hasNew)
-        {
-            return;
-        }
-
-        ShowShellNotice(InfoBarSeverity.Warning, "有等待处理的请求",
-            "OpenCode 会话有权限或表单请求等待处理；请在 OpenCode 页面查看并处理。");
     }
 
     // Page events may request tracking, but never create or settle execution IDs.

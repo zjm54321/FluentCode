@@ -30,6 +30,7 @@ internal static class Program
         await Wire(); Console.WriteLine("PASS group 1: strict wire, model alias/variant/default/null, typed errors, guarded zero HTTP.");
         await Controls(); Console.WriteLine("PASS group 2: authoritative history, preview/confirmation/source, acceptance vs refresh, fail-closed protection.");
         await GateAndContinuation(); Console.WriteLine("PASS group 3: exact lease and paired continuation, existing request isolation, one prompt/zero explicit commit.");
+        await Background(); Console.WriteLine("PASS group 4: session background wire, rejection/unknown gate and guarded origin.");
         await RootManagement(); Console.WriteLine("PASS group 5: real V2 root delete/rename, exact guard, rejection/unknown and stale metadata.");
         Console.WriteLine($"PASS {_checks} assertions; headless fake HTTP only, not Page/native/live proof.");
     }
@@ -105,6 +106,48 @@ internal static class Program
             server.ParentId = null; origin.Source.Revoke();
             Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status != SessionControlStatus.Ready && server.Mutations == 0, "revoked root origin never starts a mutation");
         }
+    }
+
+    private static async Task Background()
+    {
+        using var server = new Server();
+        using var client = server.Client();
+        var calls = server.Mutations;
+        await Throws<OperationCanceledException>(() => client.BackgroundGuardedAsync("ses_control", _ => false), "background denied guard");
+        Check(server.Mutations == calls, "background rejected guard sends zero requests");
+        await client.BackgroundGuardedAsync("ses_control", Start);
+        Check(server.Requests.Last().Method == "POST" && server.Requests.Last().Path == "/api/session/ses_control/background"
+            && server.LastBody == "" && server.Requests.Last().Query == "", "exact session-scoped bodyless background POST/204, no guessed tool or job ID");
+        foreach (var rejection in new[] { (400, "InvalidRequestError"), (401, "UnauthorizedError"), (404, "SessionNotFoundError") })
+        {
+            server.OnMutation = _ => Task.FromResult(Server.Json(rejection.Item1, Error(rejection.Item2)));
+            var error = await Throws<OpenCodeSessionControlException>(() => client.BackgroundGuardedAsync("ses_control", Start), "documented background rejection");
+            Check(error.VerifiedPreEffect && error.StatusCode == rejection.Item1 && !error.ToString().Contains("PRIVATE"), "bounded typed background rejection " + rejection.Item1);
+        }
+        server.OnMutation = _ => Task.FromResult(Server.Json(200, "{}"));
+        await Throws<OpenCodeProtocolException>(() => client.BackgroundGuardedAsync("ses_control", Start), "background requires exactly 204");
+        var gate = new OpenCodeInteractionGate();
+        var source = server.Origin().Source;
+        var operation = Guid.NewGuid();
+        using (var lease = await gate.EnterAsync(source.Identity, "ses_control"))
+        {
+            server.OnMutation = _ => throw new HttpRequestException("offline");
+            await Throws<OpenCodeTransportException>(() => client.BackgroundGuardedAsync("ses_control", action => source.TryExecute(CancellationToken.None, () =>
+            {
+                lease.BeginSessionControl(operation, SessionControlKind.Background, new string('A', 64));
+                action();
+            })), "background ambiguous transport");
+        }
+        using (var lease = await gate.EnterAsync(source.Identity, "ses_control"))
+        {
+            Check(!lease.CanControlSession() && !lease.CanSubmitComposer() && lease.GetSessionControlProtection()?.Kind == SessionControlKind.Background,
+                "ambiguous background retains distinct control protection; duplicate and composer cannot proceed");
+            Check(lease.CanSubmit("frm_other", NotificationNavigationKind.Form), "background protection does not suppress unrelated form responses");
+        }
+        source.Revoke();
+        calls = server.Mutations;
+        await Throws<OperationCanceledException>(() => client.BackgroundGuardedAsync("ses_control", action => source.TryExecute(CancellationToken.None, action)), "revoked source background");
+        Check(server.Mutations == calls, "revoked source starts zero background mutations");
     }
 
     private static async Task Wire()

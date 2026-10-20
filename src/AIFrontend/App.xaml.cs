@@ -22,7 +22,9 @@ public partial class App : Application
         {
             try
             {
-                File.AppendAllText(@"C:\Users\Zhang\source\repos\AIFrontend\artifacts\logs\crash.log",
+                string directory = Path.Combine(AppContext.BaseDirectory, "artifacts", "logs");
+                Directory.CreateDirectory(directory);
+                File.AppendAllText(Path.Combine(directory, "crash.log"),
                     $"{DateTime.Now:O}: {e.Exception.GetType().FullName}; HRESULT=0x{e.Exception.HResult:X8}\r\n" +
                     $"XAML: {e.Message}\r\n{e.Exception}\r\n");
             }

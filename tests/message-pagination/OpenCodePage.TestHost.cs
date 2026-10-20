@@ -143,6 +143,9 @@ namespace AIFrontend.Pages
         { LastAuxiliaryFence = historyCurrent; return Task.CompletedTask; }
 
         private bool SourceReady => _testSourceReady && _client is not null;
+        // Existing runtime-feedback visuals are an explicit native presentation boundary in this headless host.
+        private void RefreshCurrentRetry() { }
+        private void ResetRuntimeFeedback() { }
         private bool _homeActive = true;
         private string _homeRuntimeSource = "runtime-a";
         private long _homeRevision = 7;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -99,6 +100,13 @@ public sealed partial class OpenCodePage
     /// 不改动已冻结的切换/导航方法体。
     /// </summary>
     partial void OnMessageHistoryReset() => ResetSessionInsights();
+    partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages)
+    {
+        OnRuntimeMessagesAccepted(messages);
+    }
+
+    partial void OnRuntimeMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
+
 
     private void ResetSessionInsights()
     {

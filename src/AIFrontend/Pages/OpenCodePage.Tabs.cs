@@ -193,15 +193,24 @@ public sealed partial class OpenCodePage
         var visible = tone is SessionIndicatorTone.Working or SessionIndicatorTone.WorkingNeedsAction
             or SessionIndicatorTone.NeedsAction or SessionIndicatorTone.Failed;
         var spinning = tone is SessionIndicatorTone.Working or SessionIndicatorTone.WorkingNeedsAction;
+        string traceState = $"tone={tone};active={ring.IsActive};indeterminate={ring.IsIndeterminate}";
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.theme.before", traceState);
         OpenCodeToolTheme.Apply(ring, OpenCodeToolTheme.Ring(IndicatorBrushKey(tone)));
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.mode.before", traceState);
         ring.IsIndeterminate = spinning;
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.mode.after", traceState);
         if (!spinning)
         {
+            OpenCodeCompletionCrashTrace.Mark("tab-ring.value.before", traceState);
             ring.Value = ring.Maximum;
+            OpenCodeCompletionCrashTrace.Mark("tab-ring.value.after", traceState);
         }
 
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.active.before", traceState);
         ring.IsActive = visible;
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.visibility.before", traceState);
         ring.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.visibility.after", traceState);
         AutomationProperties.SetName(ring, tone switch
         {
             SessionIndicatorTone.WorkingNeedsAction => "会话工作中，等待你处理",

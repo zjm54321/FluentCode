@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.Json;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Xaml;
 
 // Executes the linked production renderer and algorithms against inert presenter/WinUI probes.
 // Reflection is read-only. Failure labels are fixed: never include captured message contents.
@@ -106,7 +107,7 @@ internal static class ConversationLifecycle
         Check(group.IsExpanded && group.HeaderVisible
               && group.Summary is { ActiveCount: 2, IsActive: true, ErrorCount: 0, SuccessCount: 3 }
               && group.Summary.HeaderText.StartsWith("处理中…", StringComparison.Ordinal)
-              && group.Summary.DetailText == "5 个工具调用 · read ×3 · edit · 提问",
+              && group.Summary.DetailText == "5 个工具调用 · 读取 ×3 · 编辑 · 提问",
             "group.running-auto-expanded-live-summary");
         var anchor = view.FindQuestionAnchor("msg_g", "part_q");
         Check(anchor is not null && anchorEvents == 1 && view.FindQuestionAnchor("msg_g", "part_t0") is null, "anchor.question-registered-once");
@@ -121,6 +122,8 @@ internal static class ConversationLifecycle
         view.ApplyMessages(new[] { Grouped("msg_g", 4) });
         Check(group.Summary is { IsActive: true, ActiveCount: 1 } && anchorEvents == 1, "group.pending-question-keeps-group-live");
         view.ApplyMessages(new[] { Grouped("msg_g", 4, questionStatus: "completed") });
+        Check(group.IsExpanded && group.Summary is { IsActive: true }, "group.step-completion-is-not-turn-terminal");
+        view.SetCurrentTurnActivity(false);
         Check(!group.IsExpanded && group.Summary is { IsActive: false, ActiveCount: 0, SuccessCount: 5, ErrorCount: 0 }
               && group.Summary.HeaderText == "已处理" && anchorEvents == 1, "group.finish-auto-collapses");
         group.ToggleForTest();
@@ -215,12 +218,12 @@ internal static class ConversationLifecycle
         Check(leader.IsExpanded && tail.IsExpanded && view.Children.Count == 2
               && view.Children.All(c => c.Visibility == Microsoft.UI.Xaml.Visibility.Visible), "chain.running-auto-expands-with-followers");
         leader.ToggleForTest();
-        Check(!leader.IsExpanded && !tail.IsExpanded
-              && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Collapsed, "chain.manual-collapse-during-run-hides-follower-entry");
+        Check(leader.IsExpanded && tail.IsExpanded
+              && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Visible, "wave6.active-turn-keeps-follower-expanded");
         var stepC2 = Step("msg_a3", T0 + 5_000, null, TimedTool("part_c", T0 + 6_000, null, "running"),
             new { id = "r_more", type = "reasoning", text = "MORE" });
         view.ApplyMessages(new[] { stepA, stepC2 });
-        Check(!leader.IsExpanded && !tail.IsExpanded && leader.Summary is { IsActive: true }, "chain.manual-toggle-respected-for-rest-of-run");
+        Check(leader.IsExpanded && tail.IsExpanded && leader.Summary is { IsActive: true }, "wave6.active-turn-cannot-collapse-on-refresh");
         leader.ToggleForTest();
         Check(leader.IsExpanded && tail.IsExpanded && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Visible,
             "chain.follower-entry-shown-when-expanded");
@@ -260,13 +263,15 @@ internal static class ConversationLifecycle
         view.ApplyMessages(new[] { Grouped("msg_h", 4, lastStatus: "running", withQuestion: false) });
         Check(group.IsExpanded && group.Summary is { IsActive: true }, "rules.transition-into-running-expands");
         group.ToggleForTest();
-        Check(!group.IsExpanded, "rules.manual-collapse-during-run");
+        Check(group.IsExpanded, "wave6.active-turn-collapse-is-ignored");
         view.ApplyMessages(new[] { Grouped("msg_h", 5, lastStatus: "running", withQuestion: false) });
-        Check(!group.IsExpanded && group.Summary is { IsActive: true }, "rules.no-re-expand-while-running");
+        Check(group.IsExpanded && group.Summary is { IsActive: true }, "wave6.whole-turn-remains-expanded");
         group.ToggleForTest();
         view.ApplyMessages(new[] { Grouped("msg_h", 5, lastStatus: "running", withQuestion: false) });
         Check(group.IsExpanded, "rules.manual-expand-during-run-respected");
         view.ApplyMessages(new[] { Grouped("msg_h", 5, withQuestion: false) });
+        Check(group.IsExpanded && group.Summary is { IsActive: true }, "wave6.ended-step-awaits-turn-terminal");
+        view.SetCurrentTurnActivity(false);
         Check(!group.IsExpanded && group.Summary is { IsActive: false }, "rules.finish-collapses-despite-manual-toggle");
 
         group.ToggleForTest();
@@ -274,9 +279,11 @@ internal static class ConversationLifecycle
         view.ApplyMessages(new[] { Grouped("msg_h", 5, withQuestion: false) });
         Check(group.IsExpanded, "rules.post-finish-toggle-remembered");
         group.ToggleForTest();
+        view.SetCurrentTurnActivity(true);
         view.ApplyMessages(new[] { Grouped("msg_h", 6, lastStatus: "running", withQuestion: false) });
         Check(group.IsExpanded, "rules.re-entering-running-expands-again");
         view.ApplyMessages(new[] { Grouped("msg_h", 6, withQuestion: false) });
+        view.SetCurrentTurnActivity(false);
         Check(!group.IsExpanded && group.DisposeCount == 0, "rules.second-finish-collapses");
         view.ClearMessages();
     }
@@ -424,7 +431,7 @@ internal static class ConversationLifecycle
         Check(!Field<IReadOnlyDictionary<string, string>>(view, "_subagentTaskTitles").ContainsKey("msg_notice"),
             "order.no-notice-task-title");
         Check(view.Children.Count == 2 && ReferenceEquals(view.Children[0], initialElement)
-            && ReferenceEquals(view.Children[1], presenter.Element), "order.stable-ordinary-and-notice-tree");
+            && ConversationViewTestProbe.IsAttachedTo(presenter.Element, view.Children[1]), "order.stable-ordinary-and-notice-process-tree");
         Check(notice.Text == Secret && notice.Content is { Count: 2 }, "order.caller-input-unchanged");
         view.ClearMessages();
     }
@@ -456,7 +463,7 @@ internal static class ConversationLifecycle
         Check(!ConversationViewTestProbe.IsAttachedTo(oldTool.Element, view)
             && !ConversationViewTestProbe.IsAttachedTo(oldCompletion.Element, view), "replace.old-elements-detached");
         Check(Recorded("Remove", oldCompletion.Element), "replace.old-root-removal-recorded");
-        Check(view.Children.Count == 1 && ReferenceEquals(view.Children[0], safeView.Element), "replace.notice-only-tree");
+        Check(view.Children.Count == 1 && ConversationViewTestProbe.IsAttachedTo(safeView.Element, view.Children[0]), "replace.notice-only-process-tree");
         oldTool.RaiseNavigationForTest("ses_conflict");
         oldCompletion.RaiseNavigationForTest("ses_conflict");
         Check(navigationCount == 2, "replace.no-stale-navigation");
@@ -464,7 +471,7 @@ internal static class ConversationLifecycle
         ConversationViewTestProbe.Reset();
         view.ApplyMessages(new[] { notice });
         Check(ReferenceEquals(Entry(view, "msg_swap"), safeEntry)
-            && ReferenceEquals(view.Children[0], safeView.Element), "replace.repeat-reuses-notice");
+            && ConversationViewTestProbe.IsAttachedTo(safeView.Element, view.Children[0]), "replace.repeat-reuses-notice");
         Check(!ConversationViewTestProbe.Records.Any(r => r.Operation is "Construct" or "Update" or "Remove"),
             "replace.repeat-no-work");
         view.ApplyMessages(new[] { Notice("msg_swap", "SECRET_PAYLOAD_CHANGED") });
@@ -478,7 +485,7 @@ internal static class ConversationLifecycle
         var restoredEntry = Entry(view, "msg_swap");
         Check(!ReferenceEquals(restoredEntry, safeEntry) && !Property<bool>(restoredEntry, "IsInstructionNotice"),
             "replace.new-ordinary-entry");
-        Check(!ConversationViewTestProbe.IsAttachedTo(safeView.Element, view) && Recorded("Remove", safeView.Element),
+        Check(!ConversationViewTestProbe.IsAttachedTo(safeView.Element, view) && Recorded("Remove", Property<FrameworkElement>(safeEntry, "Element")),
             "replace.notice-detached-without-dispose-contract");
         Check(!ReferenceEquals(oldTool, newTool) && !ReferenceEquals(oldCompletion, newCompletion), "replace.fresh-resources");
         Check(newTool.DisposeCount == 0 && newCompletion.DisposeCount == 0 && newTool.SubscriberCount == 1,

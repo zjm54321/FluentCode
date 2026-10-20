@@ -113,6 +113,7 @@ public sealed partial class OpenCodePage
         _messageHistoryNeedsState = false;
         return read;
     }
+    partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
 
     private void BeginMessageHistoryWorkflow(long owner)
     {
@@ -286,6 +287,7 @@ public sealed partial class OpenCodePage
     partial void OnMessageHistoryReset();
     partial void EnsureConversationImages();
     partial void ResetConversationImages();
+    partial void RefreshConversationSessionActivity();
 
     /// <summary>分页硬重置核心：清游标、链状态与全部缓存；递增链代际使在途续页失效；不动视图、不刷 UI。</summary>
     private void ResetMessagePaginationCore()
@@ -343,6 +345,7 @@ public sealed partial class OpenCodePage
         var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
         EnsureConversationImages();
         _conversationView.ApplyMessages(acceptedHistory);
+        RefreshConversationSessionActivity();
 
         if (latestAsc.Count == 0)
         {
@@ -356,6 +359,7 @@ public sealed partial class OpenCodePage
                 UpdateLoadOlderMessagesUi();
             }
 
+            OnContextMessagesAccepted(acceptedHistory);
             return;
         }
 
@@ -370,6 +374,7 @@ public sealed partial class OpenCodePage
         {
             RestartMessagePagination(nextCursor);
         }
+        OnContextMessagesAccepted(acceptedHistory);
     }
 
     /// <summary>
@@ -806,6 +811,7 @@ public sealed partial class OpenCodePage
             {
                 _isLoadingOlderMessages = false;
                 UpdateLoadOlderMessagesUi();
+                OnContextMessagesAccepted(ProjectMessageHistory(MergeMessageHistory()));
             }
         }
     }
@@ -871,6 +877,7 @@ public sealed partial class OpenCodePage
 
         EnsureConversationImages();
         _conversationView.ApplyMessages(ProjectMessageHistory(MergeMessageHistory()));
+        RefreshConversationSessionActivity();
 
         MessageScroll.UpdateLayout();
         var target = offsetBefore + (MessageScroll.ScrollableHeight - heightBefore);

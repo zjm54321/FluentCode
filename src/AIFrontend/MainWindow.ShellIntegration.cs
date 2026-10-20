@@ -1,5 +1,6 @@
 using System;
 using AIFrontend.Services.Notifications;
+using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -37,6 +38,11 @@ public sealed partial class MainWindow
         }
 
         _shellInitialized = true;
+        ShellNoticeBar.Closed += (_, args) =>
+        {
+            if (args.Reason == InfoBarCloseReason.CloseButton)
+                OpenCodeNoticeDismissals.RecordUserDismissal(ShellNoticeBar.Title, ShellNoticeBar.Message);
+        };
         _app = Application.Current as App;
         if (_app is null)
         {
@@ -199,6 +205,7 @@ public sealed partial class MainWindow
     /// <summary>显示/替换顶部提示条（产品文案；不含正文、凭据或内部协议细节）。</summary>
     private void ShowShellNotice(InfoBarSeverity severity, string title, string message)
     {
+        if (OpenCodeNoticeDismissals.IsDismissed(title, message)) return;
         if (_shellClosing)
         {
             return;

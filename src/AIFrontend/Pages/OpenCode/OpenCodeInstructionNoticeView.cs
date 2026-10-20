@@ -1,63 +1,104 @@
-using System.Collections.Generic;
-using System.Globalization;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>
-/// 指令通知（system <c>notice == "instructions"</c> 或 synthetic <c>metadata.instruction.paths</c>）的工具样式行
-/// （wave5 H5，AutomationId <c>OpenCodeInstructionNotice</c>）：字形 | “指令” | “AGENTS.md 等 3 项”；
-/// 详情只列出指令文件路径 / 来源 key（每项一行），不显示 “Instructions …” 原文或指令正文。
-/// 仅消费安全投影 <see cref="OpenCodeInstructionNotice"/>，不解释来源 key 或时间单位。
-/// </summary>
+/// <summary>Safe instruction file names only. The projection contains no file contents: no detail popup or filesystem reads.</summary>
 internal sealed class OpenCodeInstructionNoticeView
 {
-    /// <summary>指令行字形（Segoe Fluent Icons “Dictionary”）。</summary>
     internal const string Glyph = "\uE82D";
-
-    private readonly OpenCodeTimelineChipView _chip = new("OpenCodeInstructionNotice", Glyph, "OpenCodeInstructionNotice.Summary");
+    private readonly StackPanel _root = new() { Spacing = 0 };
+    private readonly Grid _header;
+    private readonly TextBlock _target;
+    private readonly FontIcon _chevron;
+    private readonly Button _toggle;
+    private readonly StackPanel _files = new() { Spacing = 2, Margin = new Thickness(37, 0, 8, 4), Visibility = Visibility.Collapsed };
+    private bool _expanded;
+    private bool _multiple;
+    private bool _pointerOver;
 
     internal OpenCodeInstructionNoticeView(OpenCodeInstructionNotice notice)
     {
+        var icon = new FontIcon { Glyph = Glyph, FontSize = 14, Width = 16, VerticalAlignment = VerticalAlignment.Center };
+        OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
+        var label = OpenCodeInteractionUi.StyledText("指令", OpenCodeInteractionUi.CaptionStyleKey);
+        label.VerticalAlignment = VerticalAlignment.Center;
+        _target = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey, selectable: true);
+        _target.VerticalAlignment = VerticalAlignment.Center;
+        _target.TextWrapping = TextWrapping.NoWrap;
+        _target.TextTrimming = TextTrimming.CharacterEllipsis;
+        AutomationProperties.SetAutomationId(_target, "OpenCodeInstructionNotice.Summary");
+        _chevron = new FontIcon { Glyph = "\uE76C", FontSize = 10, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(-4, 0, 0, 0), Opacity = 0, IsHitTestVisible = false };
+        OpenCodeToolTheme.Apply(_chevron, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
+        var titleCluster = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        titleCluster.Children.Add(label);
+        titleCluster.Children.Add(_chevron);
+        _header = new Grid { ColumnSpacing = 8, Height = 32, Padding = new Thickness(8, 0, 8, 0), Margin = new Thickness(5, 0, 0, 0) };
+        _header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        _header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(titleCluster, 1); Grid.SetColumn(_target, 2);
+        _header.Children.Add(icon); _header.Children.Add(titleCluster); _header.Children.Add(_target);
+        _toggle = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(0), BorderThickness = new Thickness(0),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
+        };
+        _toggle.Click += (_, _) => { _expanded = !_expanded; RefreshExpansion(); };
+        _root.PointerEntered += (_, _) => { _pointerOver = true; RefreshExpansion(); };
+        _root.PointerExited += (_, _) => { _pointerOver = false; RefreshExpansion(); };
+        _root.PointerCanceled += (_, _) => { _pointerOver = false; RefreshExpansion(); };
+        _root.Unloaded += (_, _) => { _pointerOver = false; RefreshExpansion(); };
+        AutomationProperties.SetAutomationId(_root, "OpenCodeInstructionNotice");
         Update(notice);
     }
 
-    internal FrameworkElement Element => _chip.Element;
+    internal FrameworkElement Element => _root;
+    // Compatibility with the common process-leaf seam: an instruction is inline, never a detail action.
+    internal void OpenDetail() { }
+    internal void HoverEnter() { }
+    internal void HoverExit() { }
+    internal void SetDetailAnchor(FrameworkElement? anchor) { }
+    internal void Dispose() { }
 
     internal void Update(OpenCodeInstructionNotice notice)
     {
-        var properties = new List<OpenCodeToolProperty>();
-        var target = OpenCodeStepRunPresentation.DescribeInstructionTarget(notice);
-        if (!notice.SourceKeys.IsDefaultOrEmpty)
+        _target.Text = OpenCodeStepRunPresentation.DescribeInstructionTarget(notice);
+        if (_target.Text.Length == 0) _target.Text = "来源未提供";
+        _multiple = !notice.SourceKeys.IsDefaultOrEmpty && notice.SourceKeys.Length > 1;
+        // Explicitly detach before switching between a static single-file row and the file-list toggle.
+        _toggle.Content = null;
+        _root.Children.Clear();
+        _files.Children.Clear();
+        if (_multiple)
         {
-            properties.Add(new OpenCodeToolProperty(
-                0,
-                "指令文件",
-                notice.SourceKeys.Length.ToString(CultureInfo.InvariantCulture) + " 项",
-                OpenCodeToolPropertyKind.Group));
-            for (var i = 0; i < notice.SourceKeys.Length; i++)
+            _toggle.Content = _header;
+            _root.Children.Add(_toggle);
+            foreach (var key in notice.SourceKeys)
             {
-                properties.Add(new OpenCodeToolProperty(
-                    1,
-                    (i + 1).ToString(CultureInfo.InvariantCulture),
-                    notice.SourceKeys[i],
-                    OpenCodeToolPropertyKind.Code));
+                var file = OpenCodeInteractionUi.StyledText(OpenCodeStepRunPresentation.ShortSourceName(key), OpenCodeInteractionUi.CaptionStyleKey, selectable: true);
+                file.TextWrapping = TextWrapping.Wrap;
+                ToolTipService.SetToolTip(file, key);
+                _files.Children.Add(file);
             }
+            _root.Children.Add(_files);
         }
-        else
-        {
-            properties.Add(new OpenCodeToolProperty(0, "说明", notice.Summary, OpenCodeToolPropertyKind.Text));
-        }
+        else _root.Children.Add(_header);
+        AutomationProperties.SetName(_root, "指令：" + _target.Text);
+        ToolTipService.SetToolTip(_target, notice.SourceKeys.IsDefaultOrEmpty ? notice.Summary : string.Join("\n", notice.SourceKeys));
+        RefreshExpansion();
+    }
 
-        _chip.UpdateRow(new OpenCodeTimelineRowContent(
-            "指令",
-            target,
-            string.Empty,
-            null,
-            target.Length > 0 ? "指令：" + target : "指令：" + notice.Summary,
-            "指令",
-            properties,
-            null));
+    private void RefreshExpansion()
+    {
+        // Reserve the caret's slot: hovering never moves the label or filename. Focus alone does not show it.
+        _chevron.Opacity = _multiple && _pointerOver ? 1 : 0;
+        _chevron.Glyph = _expanded ? "\uE70D" : "\uE76C";
+        _files.Visibility = _multiple && _expanded ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetName(_toggle, "指令：" + _target.Text + (_expanded ? "，收起文件列表" : "，展开文件列表"));
     }
 }

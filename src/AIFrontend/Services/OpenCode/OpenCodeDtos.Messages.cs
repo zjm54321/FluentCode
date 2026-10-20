@@ -243,6 +243,10 @@ public sealed record OpenCodeShellOutput
 /// </summary>
 public sealed record OpenCodeContentPart
 {
+    /// <summary>Explicit machine-generated text-part origin, when supplied; absent/false is not trusted.</summary>
+    [JsonPropertyName("synthetic")]
+    public bool? Synthetic { get; init; }
+
     /// <summary>部分类型：<see cref="OpenCodePartTypes"/> 之一。</summary>
     [JsonPropertyName("type")]
     public string? Type { get; init; }
@@ -425,7 +429,7 @@ public sealed record OpenCodeMessageRetry
     [JsonPropertyName("attempt")]
     public int? Attempt { get; init; }
 
-    /// <summary>重试时间（number，单位未核实）。</summary>
+    /// <summary>下一次重试的绝对 Unix 毫秒时间（Clock.currentTimeMillis + delay）。</summary>
     [JsonPropertyName("at")]
     public double? At { get; init; }
 

@@ -68,7 +68,7 @@
 - **S2 进行中的思考**：消息未完成，且思考部件 `time.completed` 缺失时，即使文本为空也立即显示 “思考中…” 行和进度环；部件没有 time 时，以“是否为消息最后一个部件”判断。已结束的空白思考（如只有加密状态）仍不显示。
 - **H4 思考详情使用 Markdown**：思考行详情使用与助手正文相同的 `OpenCodeRichTextPresenter`（Body 样式），支持标题、粗体、列表、代码块等。
 - **G3 / D3 提问工具**：question 工具是“处理过程”分组内的普通工具行（名称“提问”，字形 `\uE897`），会计入分组计数和进行中状态。详情是键值列表：问题 / 选项 / 回答（多题时按“问题 N”分组），不显示原始 JSON 和模型侧回执文本。每行旁边保留一个**不可见**的 `OpenCodeQuestionAnchorHost`，交互视图放置 Form 卡片的路径不变，但时间线中不再出现独立卡片；回答仍在输入区的提问遮罩中进行。占位文字去掉了 “❓”。
-- **G4 异步完成**：synthetic / system 的后台终端（`metadata.source == "shell"`）、后台子任务（`metadata.source == "subagent"` + childID）和插件后台任务（正文 `<task id=… state=…>`）都显示为工具样式的紧凑行（`OpenCodeTimelineChipView`，AutomationId `OpenCodeAsyncCompletion`）：“终端完成”/“子任务完成”/“后台任务完成”（失败时为“终端 · 失败”等）| 命令或任务 | 退出码。详情是键值列表加结果正文（子任务 / 插件任务正文按 Markdown 显示）。子任务的详情中有“打开子会话”（AutomationId `OpenCodeTimelineRowLink`），只转发通过不透明校验的 childID，并走原有子会话导航校验路径。对应的原始后台调用行按 `state.metadata` 中的 shellID / jobID / sessionID / childID / taskID 匹配：未完成时显示“后台运行中”，完成后显示“后台已完成 · 退出码 N”；完成通知状态为失败时，原始行显示为出错。assistant 消息上的子任务完成卡片（`OpenCodeSubagentCompletionView`）不变。
+- **G4 异步完成**：synthetic / system 的后台终端（`metadata.source == "shell"`）、后台子任务（`metadata.source == "subagent"` + childID）和插件后台任务（正文 `<task id=… state=…>`）都显示为工具样式的紧凑行（`OpenCodeTimelineChipView`，AutomationId `OpenCodeAsyncCompletion`）：“终端完成”/“子任务完成”/“后台任务完成”（失败时为“终端 · 失败”等）| 命令或任务 | 退出码。详情是键值列表加结果正文（子任务 / 插件任务正文按 Markdown 显示）。子任务的详情中有“打开子会话”（AutomationId `OpenCodeTimelineRowLink`），只转发通过不透明校验的 childID，并走原有子会话导航校验路径；点击时与 `OpenCodeToolPartView` 的「打开子会话」（`OpenCodeToolDetailOpenChild` / `OpenCodeToolRow.OpenChild.{partId}`）一样先调用 `OpenCodeToolDetailPopup.Shared.Close()` 关闭 80% 大详情视图再触发导航（承接 W5-P 交接）。对应的原始后台调用行按 `state.metadata` 中的 shellID / jobID / sessionID / childID / taskID 匹配：未完成时显示“后台运行中”，完成后显示“后台已完成 · 退出码 N”；完成通知状态为失败时，原始行显示为出错。assistant 消息上的子任务完成卡片（`OpenCodeSubagentCompletionView`）不变。
 - **H5 指令**：system 指令通知和 synthetic “Instructions from:” 消息（`metadata.instruction.paths`）都显示为工具样式的 “指令” 行（字形 `\uE82D`，AutomationId `OpenCodeInstructionNotice`，目标为 “AGENTS.md 等 N 项”）。详情逐行列出指令文件路径或来源 key。synthetic 指令消息在进入视图前会做客户端安全化，只保留 id / type / time.created / 路径；正文（指令全文）不会进入指纹、呈现或任何视图。
 - **H14 用户消息气泡**：`OpenCodeUserBubbleView` 默认最多显示两行（40 px）。内容更长时，右侧出现原生 chevron 按钮（AutomationId `OpenCodeUserMessageToggle`，“展开消息 / 收起消息”）。折叠只限制可见高度，不截断文本；同一气泡更新时保留展开状态。
 - 插件内部自动消息（`OpenCodeInternalInitiator`）同样改为左对齐的工具样式行（之前是居中胶囊）。
@@ -387,6 +387,11 @@ await page.NavigateToNotificationAsync(target, result);   // result 可为 null�
 - **有界 settle**：滚动目标为同步 `UpdateLayout()` 后读取的真实 `ScrollableHeight`（不依赖 `double.MaxValue` 钳制；`UpdateLayout` 已按本机 SDK 元数据核实存在）；下一帧复核可滚动范围是否继续增长（迟到布局），至多补滚 `MaxScrollSettlePasses`（3）次，无计时器、无无限循环。
 - **回到底部按钮**：`ScrollToBottomButton` 保留（原生 Button，仅在有内容且非底端时显示；点击无动画定位），不扩展产品面。
 - **刷新排队意图保留**：`RefreshMessagesAsync` 不重叠排队时保留 `initial`/`forceFollow` 意图（切换会话后的首次加载滚底不因排队丢失）。
+
+## 16. 提问遮罩与待处理交互反馈契约（2026-10-18 Wave 5 W5-Q：G1 / G2）
+
+- **G1：正常完成回答/权限决定后不显示瞬态确认提示条；待处理请求不再弹“有等待处理的请求”提示条**：
+  - 在 `OpenCodePage`（`SettleInteraction`、`RefreshAuxiliaryAsync`、`HandleProtectedPermissionAtSubmit`、`HandleProtectedFormAtSubmit`、`ApplyNavigationResult`）中，当用户完成提问回答、取消提问或提交权限决定并收到服务端明确接受（HTTP 204），或共享仲裁/通知回执确认请求已结算（`Succeeded` / `Duplicate` / `Expired`），或轮询快照发现待处理项已由其他入口移除时，页面直接移除/收敛对应交互卡片并刷新遮罩与时间线，**不再弹出 `OpenCodeMessageBar` 瞬态提示**（如“表单回答已提交 / 服务端已明确接受（HTTP 204）”、“权限决定已提交”、“服务器已接受该决定”、“待处理交互已更新”）。
   - 在 `MainWindow.OpenCode.cs`（`HandlePendingSnapshot`）中，观测到会话有待处理权限或表单请求时，仅更新会话级待处理快照集合，**不再弹出 `ShellNoticeBar`“有等待处理的请求”提示条**（待处理状态已由输入区权限/提问遮罩、会话标签栏注意色工作环与左侧导航栏 `InfoBadge` 直接呈现）。
   - **错误与不确定保护提示完整保留**：凡请求失败、HTTP 4xx/5xx、网络断开、超时、契约不符、快照指纹变化（需重新核对）或结果未知（`OutcomeUnknown` / 共享仲裁保护生效），仍照常通过 `ShowMessage` / `ShowShellNotice` 与遮罩内 `InfoBar` 显式提示，绝不静默吞掉错误或自动重发。
 - **G2：自定义输入（“其他（自己输入）”）按需展开与提问遮罩 Fluent 排版**：

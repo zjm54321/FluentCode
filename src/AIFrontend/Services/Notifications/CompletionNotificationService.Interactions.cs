@@ -237,9 +237,11 @@ public sealed partial class CompletionNotificationService
                     for (int i = 0; i < context.Count; i++)
                         if (context[i].Id == message.Id) { summaryIndex = i; break; }
                 }
+                AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("toast.completion.before");
                 results.Add(NotifyCompletedCore(NotificationSource.OpenCode, requestId,
                     new(NotificationSource.OpenCode, endpointIdentity, sessionId, message.Id!, NotificationNavigationKind.Completion),
                     NotificationText.Completion(sessionTitle, summaryMessages, summaryIndex)));
+                AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("toast.completion.after");
             }
         }
         return results;

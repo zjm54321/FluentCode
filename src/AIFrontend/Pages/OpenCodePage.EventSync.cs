@@ -27,6 +27,7 @@ public sealed partial class OpenCodePage
 
     private void StopEventSync()
     {
+        ResetRuntimeFeedback();
         _eventCts?.Cancel();
         _eventCts = null;
         _eventReady = null;
@@ -36,6 +37,7 @@ public sealed partial class OpenCodePage
         _liveSessionStatuses.Clear();
         RefreshSessionStateUi();
         RefreshComposerSessionActivity();
+        RefreshConversationSessionActivity();
     }
 
     private void StartEventSync()
@@ -54,6 +56,7 @@ public sealed partial class OpenCodePage
 
     private void RestartSessionEventSync(string sessionId)
     {
+        ResetRuntimeFeedback();
         _eventReducer = new(sessionId);
         StartEventSync();
     }
@@ -184,12 +187,14 @@ public sealed partial class OpenCodePage
             count++;
             if (item.ReceivedAt < first) first = item.ReceivedAt;
             var id = item.SessionId;
+            if (id == _selectedSessionId && item.Type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted"
+                && _eventReducer?.IsCurrentAssistantEvent(item) == false) continue;
             refreshSessionList |= item.Type is "session.created" or "session.deleted" or "session.renamed" or "session.updated";
             if (id is not null)
             {
                 var old = _liveSessionStatuses.GetValueOrDefault(id);
                 // V2 has native lifecycle events, NOT the legacy session.status API.
-                var runningEvent = item.Type is "session.execution.started" or "session.step.started"
+                var runningEvent = item.Type is "session.execution.started" or "session.step.started" or "session.retry.scheduled"
                     || item.Type.StartsWith("session.text.", StringComparison.Ordinal)
                     || item.Type.StartsWith("session.reasoning.", StringComparison.Ordinal)
                     || item.Type.StartsWith("session.tool.", StringComparison.Ordinal);
@@ -223,10 +228,14 @@ public sealed partial class OpenCodePage
                 || item.Type.StartsWith("inbox.", StringComparison.Ordinal) || item.Type.StartsWith("todo.", StringComparison.Ordinal))) refetch = true;
             if (item.Type is "session.updated" or "session.revert.staged" or "session.revert.cleared" or "session.revert.committed") _messageHistoryNeedsState = true;
         }
+        RefreshCurrentRetry();
         if (statusesChanged)
         {
+            OpenCodeCompletionCrashTrace.Mark("sse.status.before");
             RefreshSessionStateUi();
+            OpenCodeCompletionCrashTrace.Mark("sse.status.after");
             RefreshComposerSessionActivity();
+            RefreshConversationSessionActivity();
         }
         if (refreshSessionList) _ = RefreshSessionsAsync();
         if (changed && _eventReducer is not null && _selectedSessionId is { } selected
@@ -235,11 +244,17 @@ public sealed partial class OpenCodePage
             var follow = IsScrolledToBottom();
             _latestMessages.Clear();
             _latestMessages.AddRange(_eventReducer.Messages);
+            OpenCodeCompletionCrashTrace.Mark("sse.conversation.before");
             var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
             EnsureConversationImages();
             _conversationView.ApplyMessages(acceptedHistory);
+            RefreshConversationSessionActivity();
+            OpenCodeCompletionCrashTrace.Mark("sse.conversation.after");
+            OnContextMessagesAccepted(acceptedHistory);
             var window = ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
+            OpenCodeCompletionCrashTrace.Mark("sse.execution.before");
             ObserveExecutionState(selected, window);
+            OpenCodeCompletionCrashTrace.Mark("sse.execution.after");
             NotifyViewAcknowledgementRendered(window, _hostWindowVisible);
             UpdateEmptyState();
             if (follow) ScrollToBottom(animated: false);
@@ -256,6 +271,16 @@ public sealed partial class OpenCodePage
             states[id] = new(id, value.Working, previous?.PendingAction, previous?.MutationProtected ?? false,
                 previous?.Completion, previous?.ViewedWatermark, OpenCodeStateUnknownReason.None);
         }
+    }
+
+    partial void RefreshConversationSessionActivity()
+    {
+        if (!_pageActive || !SourceReady || _sessionMissing) return;
+        _conversationView.SetCurrentTurnActivity(_selectedSessionId is { } id
+            && _liveSessionStatuses.TryGetValue(id, out var live) ? live.Working : null);
+        if (_selectedSessionId is { } selected && _liveSessionStatuses.TryGetValue(selected, out var state) && !state.Working)
+            _eventReducer?.ClearCurrentRetry();
+        RefreshCurrentRetry();
     }
 
     partial void ApplyLiveSessionRowHint(string sessionId, ref string hint)
@@ -290,6 +315,7 @@ public sealed partial class OpenCodePage
             }
             RefreshSessionStateUi();
             RefreshComposerSessionActivity();
+            RefreshConversationSessionActivity();
         }
         catch (OperationCanceledException) { }
         catch (OpenCodeException) { /* Keep last successful foreground observation; retry at fallback. */ }

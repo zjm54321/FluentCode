@@ -190,6 +190,47 @@ internal static class NativeTests
             f.Page.AcceptHistory(null); f.Page.ApplyHistory(new() { new() { Id = "older" }, new() { Id = "newer" } });
             Check(f.Page.VisibleIds.SequenceEqual(new[] { "older", "newer" }), "redo epoch permits restored whole history");
         }
+        // Wave 5 G1: answering a question or replying to a permission (or settling via notification/gate)
+        // never shows transient informational ack notices like "表单回答已提交"/"权限决定已提交"/"服务器已接受该决定";
+        // genuine uncertain-outcome warnings and errors still show.
+        using (var f = new Fixture())
+        {
+            f.Page.TestSettleInteraction(true, "frm_1", "表单回答已提交", "服务端已明确接受（HTTP 204）。");
+            f.Page.TestSettleInteraction(false, "prm_1", "权限决定已提交", "服务端已明确接受（HTTP 204）：允许一次。");
+            f.Page.TestSettleInteraction(true, "frm_2", "表单已取消", "服务端已明确接受取消（HTTP 204）。");
+            Check(f.Page.Messages.Count == 0 && f.Page.RemovedInteractions == 3,
+                "G1: SettleInteraction removes settled form/permission without showing transient informational ack notice");
+
+            f.Page.TestHandleProtectedAtSubmit(isForm: true, "frm_dup", NotificationInteractionStatus.Duplicate, sessionProtected: false);
+            f.Page.TestHandleProtectedAtSubmit(isForm: true, "frm_exp", NotificationInteractionStatus.Expired, sessionProtected: false);
+            f.Page.TestHandleProtectedAtSubmit(isForm: false, "prm_dup", NotificationInteractionStatus.Duplicate, sessionProtected: false);
+            f.Page.TestHandleProtectedAtSubmit(isForm: false, "prm_exp", NotificationInteractionStatus.Expired, sessionProtected: false);
+            Check(f.Page.Messages.Count == 0 && f.Page.SuppressedInteractions == 4,
+                "G1: AlreadySettled Duplicate/Expired suppresses interaction silently without transient info notice");
+
+            f.Page.TestHandleProtectedAtSubmit(isForm: true, "frm_unk", NotificationInteractionStatus.OutcomeUnknown, sessionProtected: false);
+            Check(f.Page.Messages.Count == 1 && f.Page.Messages[0].Contains("该表单受共享保护", StringComparison.Ordinal),
+                "G1: genuine protection/uncertainty warning is still shown");
+            f.Page.Messages.Clear();
+
+            f.Page.TestApplyNavigationResult(
+                new NotificationNavigationTarget(NotificationSource.OpenCode, "ses_test", "frm_nav_ok", "msg_1", NotificationNavigationKind.Form),
+                new NotificationInteractionResult(NotificationInteractionStatus.Succeeded, "ok"));
+            f.Page.TestApplyNavigationResult(
+                new NotificationNavigationTarget(NotificationSource.OpenCode, "ses_test", "prm_nav_dup", "msg_1", NotificationNavigationKind.Permission),
+                new NotificationInteractionResult(NotificationInteractionStatus.Duplicate, "dup"));
+            f.Page.TestApplyNavigationResult(
+                new NotificationNavigationTarget(NotificationSource.OpenCode, "ses_test", "frm_nav_exp", "msg_1", NotificationNavigationKind.Form),
+                new NotificationInteractionResult(NotificationInteractionStatus.Expired, "exp"));
+            Check(f.Page.Messages.Count == 0 && f.Page.SuppressedInteractions == 7,
+                "G1: notification Succeeded/Duplicate/Expired suppresses interaction silently without '服务器已接受该决定' notice");
+
+            f.Page.TestApplyNavigationResult(
+                new NotificationNavigationTarget(NotificationSource.OpenCode, "ses_test", "frm_nav_unk", "msg_1", NotificationNavigationKind.Form),
+                new NotificationInteractionResult(NotificationInteractionStatus.OutcomeUnknown, "unk"));
+            Check(f.Page.Messages.Count == 1 && f.Page.Messages[0].Contains("提交结果未知", StringComparison.Ordinal),
+                "G1: notification OutcomeUnknown warning is still shown");
+        }
     }
 }
 
@@ -289,8 +330,18 @@ namespace AIFrontend.Pages
         private void SelectSessionItem(string id) { }
         internal Task CreateBlankSession() => CreateSessionAndSubmitAsync(Snapshot.Token);
         private readonly OpenCodePermissionOverlay _permissionOverlay = new();
-        private readonly Panel _interactionsView = new();
+        private readonly InteractionsViewStub _interactionsView = new();
         private readonly Panel PermissionOverlayHost = new();
+        private bool _sessionProtectionHint;
+        internal int RemovedInteractions => _interactionsView.Removed;
+        internal int SuppressedInteractions => _interactionsView.Suppressed;
+        internal void TestSettleInteraction(bool isForm, string id, string title, string message) => SettleInteraction(isForm, id, title, message);
+        internal void TestHandleProtectedAtSubmit(bool isForm, string id, AIFrontend.Services.Notifications.NotificationInteractionStatus protection, bool sessionProtected)
+        {
+            if (isForm) HandleProtectedFormAtSubmit(id, protection, sessionProtected);
+            else HandleProtectedPermissionAtSubmit(id, protection, sessionProtected);
+        }
+        internal void TestApplyNavigationResult(AIFrontend.Services.Notifications.NotificationNavigationTarget target, AIFrontend.Services.Notifications.NotificationInteractionResult result) => ApplyNavigationResult(result, target);
         internal int ComposerFocuses => Composer.Focuses;
         internal void SetPermissionDismissal(bool focused)
         {
@@ -310,6 +361,18 @@ namespace Microsoft.UI.Xaml.Controls
 namespace AIFrontend.Pages.OpenCode
 {
     internal sealed class OpenCodePermissionCard { }
+    internal sealed class InteractionsViewStub
+    {
+        public readonly List<object> Children = new();
+        internal int Removed;
+        internal int Suppressed;
+        internal void RemoveSettled(bool isForm, string id) => Removed++;
+        internal void Suppress(bool isForm, string id) => Suppressed++;
+        internal void MarkPermissionBlocked(string id, string detail) { }
+        internal void MarkFormBlocked(string id, string detail) { }
+        internal void FocusPermission(string id) { }
+        internal void FocusForm(string id) { }
+    }
     internal sealed class OpenCodePermissionOverlay
     {
         internal bool Focused;

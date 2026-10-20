@@ -15,10 +15,27 @@ public sealed class OpenCodeEventReducer
     private readonly Dictionary<string, long> _changed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<(string Field, string Text)>> _pending = new(StringComparer.Ordinal);
     private long _version;
+    private bool _executionTerminal;
+    public OpenCodeMessageRetry? CurrentRetry { get; private set; }
+    public string? CurrentRetryMessageId { get; private set; }
     public OpenCodeEventReducer(string sessionId) => _sessionId = sessionId;
     public long Version => _version;
 
     public List<OpenCodeMessage> Messages => _order.Select(id => _messages[id].Deserialize<OpenCodeMessage>(OpenCodeJson.Options)!).ToList();
+
+    public bool IsCurrentAssistantEvent(OpenCodeEvent item)
+        => !item.Data.TryGetProperty("assistantMessageID", out var id) || id.ValueKind != JsonValueKind.String
+            || id.GetString() is not { } messageId || IsCurrentMessage(messageId);
+
+    /// <summary>Checks live retry against the accepted order/boundary without materializing message DTOs.</summary>
+    public bool IsCurrentRetryVisible(string? revertBoundary)
+    {
+        if (CurrentRetry is null || CurrentRetryMessageId is not { } id) return false;
+        var index = _order.IndexOf(id);
+        if (index < 0 || !IsCurrentMessage(id)) return false;
+        if (revertBoundary is null) return true;
+        return _order.IndexOf(revertBoundary) > index;
+    }
 
     /// <summary>Changes since fetch start win over the snapshot; missing baseline fields/parts are filled.</summary>
     public List<OpenCodeMessage> MergeSnapshot(IReadOnlyList<OpenCodeMessage> ascending, long fetchVersion)
@@ -53,6 +70,40 @@ public sealed class OpenCodeEventReducer
         if (item.SessionId is { } session && session != _sessionId) return false;
         var data = JsonNode.Parse(item.Data.GetRawText())!.AsObject();
         var type = item.Type;
+        // Current retry is event-owned, never replayed from historical REST Retry records.
+        if (type == "session.retry.scheduled")
+        {
+            if (item.SessionId != _sessionId || String(data, "assistantMessageID") is not { } retryId
+                || _executionTerminal || !IsCurrentMessage(retryId)
+                || data["attempt"] is not JsonValue attemptValue || !attemptValue.TryGetValue<int>(out var attempt) || attempt <= 0
+                || data["at"] is not JsonValue atValue || !atValue.TryGetValue<double>(out var at) || !double.IsFinite(at)
+                || data["error"] is not JsonObject error) return false;
+            var retry = new JsonObject { ["attempt"] = attempt, ["at"] = at, ["error"] = error.DeepClone() };
+            CurrentRetry = retry.Deserialize<OpenCodeMessageRetry>(OpenCodeJson.Options);
+            CurrentRetryMessageId = retryId;
+            GetMessage(retryId)["retry"] = retry;
+            Touch(retryId);
+            return true;
+        }
+        if (item.SessionId == _sessionId && type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted" or "session.idle")
+        {
+            if (!IsCurrentAssistantEvent(item)) return false;
+            _executionTerminal = true;
+            ClearCurrentRetry();
+            return false;
+        }
+        var activityId = String(data, "assistantMessageID") ?? String(data, "messageID")
+            ?? (data["part"] is JsonObject activityPart ? String(activityPart, "messageID") : null);
+        var executionActivity = type == "session.execution.started" || type == "session.step.started"
+            || type.StartsWith("session.text.", StringComparison.Ordinal)
+            || type.StartsWith("session.reasoning.", StringComparison.Ordinal)
+            || type.StartsWith("session.tool.", StringComparison.Ordinal)
+            || type is "message.part.updated" or "message.part.delta";
+        if (item.SessionId == _sessionId && executionActivity && (activityId is null || IsCurrentMessage(activityId)))
+        {
+            if (type is "session.execution.started" or "session.step.started") _executionTerminal = false;
+            ClearCurrentRetry();
+        }
         if (type == "message.updated" && data["info"] is JsonObject info)
         {
             var id = String(info, "id");
@@ -143,6 +194,9 @@ public sealed class OpenCodeEventReducer
                 case "session.tool.failed":
                     state["status"] = type.EndsWith("success", StringComparison.Ordinal) ? "completed" : "error";
                     state["content"] = data["content"]?.DeepClone(); state["error"] = data["error"]?.DeepClone();
+                    // Native success may carry the authoritative detachment/background metadata.
+                    // Preserve progress metadata when this event does not supply a replacement.
+                    if (data["metadata"] is { } metadata) state["metadata"] = metadata.DeepClone();
                     tool["time"]!.AsObject()["completed"] = item.ReceivedAt.ToUnixTimeMilliseconds(); break;
             }
         }
@@ -161,6 +215,16 @@ public sealed class OpenCodeEventReducer
         if (_messages.TryGetValue(id, out var message)) return message;
         _order.Add(id);
         return _messages[id] = new JsonObject { ["id"] = id, ["type"] = "assistant", ["content"] = new JsonArray(), ["time"] = new JsonObject { ["created"] = 0 } };
+    }
+    private bool IsCurrentMessage(string id)
+    {
+        var index = _order.IndexOf(id);
+        return index < 0 || !_order.Skip(index + 1).Any(next => String(_messages[next], "type") is "assistant" or "user");
+    }
+    public void ClearCurrentRetry()
+    {
+        CurrentRetry = null;
+        CurrentRetryMessageId = null;
     }
     private void Touch(string id) => _changed[id] = ++_version;
     private static void StampOrdinals(JsonObject message)

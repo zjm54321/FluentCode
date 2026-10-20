@@ -10,7 +10,7 @@ namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
 /// 时间线中工具样式的紧凑单行（F8 / wave5 G4 / H5）：指令（“指令”）、异步完成（“终端完成”“子任务完成”“后台任务完成”）、
-/// 插件内部自动消息等。外观与工具行一致（高 32、左对齐）：状态图标（可无）| 类别字形 | 名称（BodyStrong）| 目标（等宽、省略号）| 右侧摘要。
+/// 插件内部自动消息等。外观与工具行一致（高 32、左对齐）：类别字形 | 名称（BodyStrong）| 目标 | 摘要 | 右侧状态字形。
 /// 完整内容只在悬停片刻（延迟见 OpenCodeToolDetailPopup.HoverOpenDelayMs）后于共享的 <see cref="OpenCodeToolDetailPopup"/> 中显示；
 /// 子代理点击直接打开真实子会话小窗，其余点击固定详情，Esc 关闭。调用/结果属性与正文留在悬停详情中。
 /// 普通 sealed 业务类（不是控件子类）：原生 Button（透明工具按钮样式）+ 内置文本样式与主题画刷。
@@ -40,6 +40,9 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     internal void HoverExit() => OpenCodeToolDetailPopup.Shared.HoverExit(Source);
     internal OpenCodeTimelineRowContent Content => _content;
     internal string Glyph => EffectiveGlyph;
+    private IOpenCodeDetailContentSource Source => OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name) && _linkInvoked is not null ? _childSource : this;
+    private string EffectiveGlyph => OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name) ? OpenCodeStepRunPresentation.SubagentGlyph
+        : _content.Name == "终端（后台）" ? OpenCodeStepRunPresentation.TerminalGlyph : _glyph;
 
     /// <param name="automationId">行按钮的 AutomationId。</param>
     /// <param name="glyph">Segoe Fluent Icons 字形。</param>
@@ -63,10 +66,10 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _statusCell.Children.Add(_statusIcon);
         _statusCell.Children.Add(_progress);
 
-        _icon = new FontIcon { Glyph = _glyph, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        _icon = new FontIcon { Glyph = _glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
 
-        _label = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.BodyStrongStyleKey);
+        _label = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _label.VerticalAlignment = VerticalAlignment.Center;
         _label.TextWrapping = TextWrapping.NoWrap;
         if (!string.IsNullOrEmpty(labelAutomationId))
@@ -74,7 +77,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             AutomationProperties.SetAutomationId(_label, labelAutomationId);
         }
 
-        _targetText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CodeStyleKey);
+        _targetText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _targetText.IsTextSelectionEnabled = false;
         _targetText.VerticalAlignment = VerticalAlignment.Center;
         _targetText.TextWrapping = TextWrapping.NoWrap;
@@ -87,16 +90,16 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _summaryText.Visibility = Visibility.Collapsed;
 
         var content = new Grid { ColumnSpacing = 8 };
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(_statusCell, 0);
-        Grid.SetColumn(_icon, 1);
-        Grid.SetColumn(_label, 2);
-        Grid.SetColumn(_targetText, 3);
-        Grid.SetColumn(_summaryText, 4);
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        Grid.SetColumn(_icon, 0);
+        Grid.SetColumn(_label, 1);
+        Grid.SetColumn(_targetText, 2);
+        Grid.SetColumn(_summaryText, 3);
+        Grid.SetColumn(_statusCell, 4);
         content.Children.Add(_statusCell);
         content.Children.Add(_icon);
         content.Children.Add(_label);
@@ -161,7 +164,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
                 OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming => ("运行中", (string?)null),
                 _ => (string.Empty, (string?)null),
             };
-            return new OpenCodeDetailHeader(_glyph, _content.DetailTitle, _content.Target, statusText, brush, AccessibleName: _content.AccessibleName);
+            return new OpenCodeDetailHeader(EffectiveGlyph, _content.DetailTitle, _content.Target, statusText, brush, AccessibleName: _content.AccessibleName);
         }
     }
 
@@ -248,6 +251,8 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         var previousSource = Source;
         _content = content;
         _linkInvoked = linkInvoked;
+        if (!ReferenceEquals(previousSource, Source)) OpenCodeToolDetailPopup.Shared.CloseIf(previousSource);
+        _icon.Glyph = EffectiveGlyph;
 
         _label.Text = content.Name;
         _targetText.Text = content.Target;

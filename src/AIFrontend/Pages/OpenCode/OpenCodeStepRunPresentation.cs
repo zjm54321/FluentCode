@@ -96,6 +96,16 @@ internal sealed record OpenCodeTimelineRowContent(
 /// </summary>
 internal static class OpenCodeStepRunPresentation
 {
+    internal const string SubagentLabel = "子代理";
+    internal const string SubagentGlyph = "\uE99A";
+    internal const string TerminalGlyph = "\uE756";
+    internal static bool IsSubagentLabel(string name) => name is SubagentLabel or "子代理（后台）";
+    internal static string FormatRetryCountdown(int attempt, DateTimeOffset deadline, DateTimeOffset now)
+    {
+        var seconds = Math.Max(0, Math.Floor((deadline - now).TotalSeconds + 0.5));
+        return "正在重试 · 第 " + attempt.ToString(CultureInfo.InvariantCulture) + " 次 · "
+            + (seconds > 0 ? seconds.ToString(CultureInfo.InvariantCulture) + " 秒后重试" : "即将重试");
+    }
     /// <summary>oh-my-opencode-slim 内部触发消息的机器标记。</summary>
     internal const string InternalInitiatorMarker = "SLIM_INTERNAL_INITIATOR";
 
@@ -152,14 +162,15 @@ internal static class OpenCodeStepRunPresentation
         double? startedAt,
         double? endedAt,
         bool turnActive,
-        double nowMilliseconds)
+        double nowMilliseconds,
+        bool authoritativeTurnState = false)
     {
         ArgumentNullException.ThrowIfNull(tools);
 
         var toolSummary = tools.Count > 0 ? OpenCodeToolRowPresentation.BuildGroupSummary(tools) : null;
         var errors = toolSummary?.ErrorCount ?? 0;
         var activeTools = toolSummary?.ActiveCount ?? 0;
-        var active = activeTools > 0 || turnActive;
+        var active = authoritativeTurnState ? turnActive : activeTools > 0 || turnActive;
         var reasoningOnly = tools.Count == 0 && reasoningRows > 0;
         var start = IsPlausibleTimestamp(startedAt) ? startedAt : null;
         var end = IsPlausibleTimestamp(endedAt) ? endedAt : null;
@@ -171,11 +182,11 @@ internal static class OpenCodeStepRunPresentation
         }
         else if (start is { } s && end is { } e && e >= s)
         {
-            header = (reasoningOnly ? "思考了 " : "已处理 ") + FormatDuration(e - s);
+            header = (reasoningOnly && reasoningRows == 1 ? "思考了 " : "已处理 ") + FormatDuration(e - s);
         }
         else
         {
-            header = reasoningOnly ? "已思考" : "已处理";
+            header = reasoningOnly && reasoningRows == 1 ? "已思考" : "已处理";
         }
 
         var detail = new List<string>(2);
@@ -322,20 +333,20 @@ internal static class OpenCodeStepRunPresentation
     {
         ArgumentNullException.ThrowIfNull(completion);
         var stateText = DescribeAsyncState(completion.State);
-        var verb = completion.IsSuccess || string.Equals(stateText, "已完成", StringComparison.Ordinal) ? "完成" : stateText;
         var noun = completion.Kind switch
         {
             OpenCodeAsyncCompletionKind.Shell => "终端",
-            OpenCodeAsyncCompletionKind.Subagent => "子任务",
+            OpenCodeAsyncCompletionKind.Subagent => SubagentLabel,
             _ => "后台任务",
         };
 
-        var name = noun + (verb == "完成" ? "完成" : " · " + verb);
+        var name = completion.Kind is OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Subagent ? noun + "（后台）" : noun;
         var target = completion.Kind == OpenCodeAsyncCompletionKind.Subagent && !string.IsNullOrWhiteSpace(completion.Agent)
             ? (completion.Agent + " " + completion.Target).Trim()
             : completion.Target;
         target = FirstLineOf(target);
-        var summary = completion.ExitCode is { } exit ? "退出码 " + exit.ToString(CultureInfo.InvariantCulture) : string.Empty;
+        var summary = completion.IsRunning ? "后台运行中" : stateText;
+        if (completion.ExitCode is { } exit) summary += " · 退出码 " + exit.ToString(CultureInfo.InvariantCulture);
         OpenCodeToolRowStatus status = completion.IsFailure || completion.ExitCode is { } e && e != 0
             ? OpenCodeToolRowStatus.Error
             : completion.IsRunning
@@ -372,7 +383,8 @@ internal static class OpenCodeStepRunPresentation
                 break;
         }
 
-        var accessible = name + (target.Length > 0 ? "，" + target : string.Empty) + (summary.Length > 0 ? "，" + summary : string.Empty);
+        var accessible = name + "，" + stateText
+            + (target.Length > 0 ? "，" + target : string.Empty) + (summary.Length > 0 ? "，" + summary : string.Empty);
         return new OpenCodeTimelineRowContent(
             name,
             target,

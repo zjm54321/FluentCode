@@ -49,10 +49,161 @@ internal static class Program
         native.Apply(Event("session.reasoning.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_n","ordinal":0,"text":"thought"}"""));
         Check(Text(native) == "thought" && native.Messages.Single().Content!.Single().Time?.Completed is not null, "native reasoning end replaces final text and completes");
 
+        RetryAndBackgroundProjection();
+        NoticeDismissal();
+        ManualBackgroundIndex();
+
         await Transport();
         await HomeDataContracts();
         await DefaultSelectionContracts();
         Console.WriteLine($"PASS event-sync: {checks} assertions (insert/replace, delta, out-of-order, fetch race, native reasoning, stream EOF/reconnect/cancel/auth).");
+    }
+
+    private static void RetryAndBackgroundProjection()
+    {
+        const string scheduled = """{"sessionID":"ses_test","assistantMessageID":"msg_live","attempt":2,"at":1900000000123,"error":{"name":"upstream_error","message":"retry"}}""";
+        var reducer = new OpenCodeEventReducer("ses_test");
+        reducer.MergeSnapshot(new[] { Message("msg_live", "baseline") with { Retry = new() { Attempt = 1, At = 1 } } }, 0);
+        Check(reducer.CurrentRetry is null, "REST historical retry never becomes current");
+        Check(!reducer.Apply(Event("session.retry.scheduled", scheduled.Replace("ses_test", "ses_other"))) && reducer.CurrentRetry is null, "retry owner session fenced");
+        Check(reducer.Apply(Event("session.retry.scheduled", scheduled)) && reducer.CurrentRetry?.At == 1900000000123
+            && reducer.CurrentRetryMessageId == "msg_live" && reducer.Messages.Single().Retry?.Attempt == 2, "real scheduled retry projects absolute Unix milliseconds and assistant identity");
+        Check(reducer.IsCurrentRetryVisible(null) && !reducer.IsCurrentRetryVisible("msg_live")
+            && !reducer.IsCurrentRetryVisible("missing_boundary"), "live retry currentness checks actual order and accepted revert boundary without DTO projection");
+        reducer.Apply(Event("server.heartbeat", "{}"));
+        reducer.Apply(Event("session.updated", """{"sessionID":"ses_test"}"""));
+        reducer.MergeSnapshot(new[] { Message("msg_live", "snapshot") }, reducer.Version);
+        Check(reducer.CurrentRetry?.Attempt == 2, "heartbeats unrelated updates and REST do not clear current retry");
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_other","assistantMessageID":"msg_live","ordinal":0,"delta":"other"}"""));
+        Check(reducer.CurrentRetry is not null, "unrelated execution cannot clear retry");
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"delta":"resumed"}"""));
+        Check(reducer.CurrentRetry is null, "new accepted execution activity clears retry");
+        Check(!reducer.IsCurrentRetryVisible(null), "cleared retry has no publishable currentness");
+        foreach (var terminal in new[] { "session.execution.succeeded", "session.execution.failed", "session.execution.interrupted", "session.idle" })
+        {
+            reducer.Apply(Event("session.execution.started", """{"sessionID":"ses_test"}"""));
+            reducer.Apply(Event("session.retry.scheduled", scheduled));
+            reducer.Apply(Event(terminal, """{"sessionID":"ses_test"}"""));
+            Check(reducer.CurrentRetry is null, "whole-turn terminal clears retry " + terminal);
+            Check(!reducer.Apply(Event("session.retry.scheduled", scheduled)), "terminal turn does not revive retry " + terminal);
+        }
+        reducer.MergeSnapshot(new[] { Message("msg_live", "old"), Message("msg_new", "new") }, reducer.Version);
+        reducer.Apply(Event("session.execution.started", """{"sessionID":"ses_test"}"""));
+        Check(!reducer.Apply(Event("session.retry.scheduled", scheduled)), "older assistant retry cannot become current");
+        reducer.Apply(Event("session.retry.scheduled", scheduled.Replace("msg_live", "msg_new")));
+        reducer.Apply(Event("session.tool.success", """{"sessionID":"ses_test","assistantMessageID":"msg_live","id":"old_tool","content":[]}"""));
+        Check(reducer.CurrentRetryMessageId == "msg_new", "older assistant leaf activity cannot clear current retry");
+
+        var tools = new OpenCodeEventReducer("ses_test");
+        tools.Apply(Event("session.tool.called", """{"sessionID":"ses_test","assistantMessageID":"msg_tool","id":"tool_1","name":"shell","input":{"command":"work"}}"""));
+        var before = tools.Version;
+        tools.Apply(Event("session.tool.progress", """{"sessionID":"ses_test","assistantMessageID":"msg_tool","id":"tool_1","metadata":{"background":true,"status":"running","asyncId":"actual_job"}}"""));
+        tools.Apply(Event("session.tool.success", """{"sessionID":"ses_test","assistantMessageID":"msg_tool","id":"tool_1","content":[],"metadata":{"background":true,"status":"running","asyncId":"actual_job"}}"""));
+        tools.MergeSnapshot(Array.Empty<OpenCodeMessage>(), before);
+        Check(tools.Messages.Single().Content!.Single().State?.GetProperty("metadata").GetProperty("status").GetString() == "running", "actual background metadata survives invocation return and stale REST");
+        tools.Apply(Event("session.tool.progress", """{"sessionID":"ses_test","assistantMessageID":"msg_tool","id":"tool_1","metadata":{"background":true,"status":"completed","asyncId":"actual_job"}}"""));
+        Check(tools.Messages.Single().Content!.Single().State?.GetProperty("metadata").GetProperty("status").GetString() == "completed", "actual later completion metadata reaches production projection");
+    }
+
+    private static void NoticeDismissal()
+    {
+        Check(!OpenCodeNoticeDismissals.IsDismissed("会话同步出现缺口", "same"), "notice initially visible");
+        OpenCodeNoticeDismissals.RecordUserDismissal("会话同步出现缺口", "same");
+        Check(OpenCodeNoticeDismissals.IsDismissed("会话同步出现缺口", "same"), "same exact sync error dismissed process-wide");
+        Check(!OpenCodeNoticeDismissals.IsDismissed("会话状态读取失败", "same") && OpenCodeNoticeDismissals.IsDismissed("会话同步出现缺口", "different"), "gap category remains dismissed despite changed details; other errors remain visible");
+        OpenCodeNoticeDismissals.RecordUserDismissal("权限决定结果未知", "protected");
+        Check(!OpenCodeNoticeDismissals.IsDismissed("权限决定结果未知", "protected"), "unknown permission protection cannot be suppressed");
+        var text = OpenCodeNoticeDismissals.AutomaticRestartText;
+        Check(OpenCodeNoticeDismissals.DisplayNoticeText(text) == "重启后继续", "exact known automatic notice translated for display");
+        Check(OpenCodeNoticeDismissals.DisplayNoticeText("```" + text + "```").Contains(text)
+            && OpenCodeNoticeDismissals.DisplayNoticeText("> " + text).Contains(text)
+            && OpenCodeNoticeDismissals.DisplayNoticeText("Please continue after a restart") == "Please continue after a restart", "code quotes and arbitrary restart prose unchanged");
+    }
+
+    private static void ManualBackgroundIndex()
+    {
+        const string shellTitle = "bun run /home/ming/opencode-imagegen/test-live-generation.ts";
+        const string childTitle = "Test image skill in child session";
+        const string prefix = "User requested that active blocking work be moved to the background.\n\nBackgrounded work:\n";
+        const string suffix = "\n\nThe backgrounded work is still unfinished. Move on to other work if you can. If there is nothing else useful to do, finish your response. Do not wait, sleep, poll, or report the backgrounded work as complete until a later completion notification is added to the conversation.";
+        static JsonElement Json(object value) => JsonSerializer.SerializeToElement(value);
+        static OpenCodeMessage Call(string messageId, string partId, string kind, string title, double? ran = 10,
+            string status = "running", object? metadata = null) => new()
+        {
+            Id = messageId, Type = "assistant", Time = new() { Created = 1 },
+            Content = new() { new() { Id = partId, Type = "tool", Name = kind,
+                Time = new() { Created = 1, Ran = ran }, State = Json(new { status,
+                    input = kind == "shell" ? (object)new { command = title } : new { description = title }, metadata }) } }
+        };
+        static OpenCodeMessage Notice(string id, string bullets) => new()
+            { Id = id, Type = "synthetic", Text = prefix + bullets + suffix, Time = new() { Created = 20 } };
+        var shell = Call("msg_shell", "part_shell", "shell", shellTitle);
+        var notice = Notice("msg_notice", "- shell: " + shellTitle);
+        var index = new OpenCodeManualBackgroundIndex();
+        Check(index.Update(new[] { shell, notice }) && index.Contains("msg_shell", "part_shell"), "entire real synthetic grammar binds exact shell IDs with actual ran-before-notice evidence");
+        Check(!index.Update(new[] { shell, notice }), "unchanged accepted input does not invalidate rows");
+        var returned = Call("msg_shell", "part_shell", "shell", shellTitle, status: "completed");
+        Check(!index.Update(new[] { returned, notice }) && index.Contains("msg_shell", "part_shell"), "completed invocation alone does not complete background job");
+        var terminal = Call("msg_shell", "part_shell", "shell", shellTitle, status: "completed", metadata: new { status = "completed", shellID = "sh_real" });
+        Check(index.Update(new[] { terminal, notice }) && !index.Contains("msg_shell", "part_shell"), "authoritative job metadata completion overrides association");
+        Check(!index.Update(new[] { returned, notice }) && !index.Contains("msg_shell", "part_shell"), "terminal association cannot revive from stale metadata-free invocation");
+        index.Clear();
+        var child = Call("msg_child", "part_child", "subagent", childTitle);
+        var childNotice = Notice("msg_child_notice", "- subagent: " + childTitle);
+        Check(index.Update(new[] { child, childNotice }) && index.Contains("msg_child", "part_child"), "real subagent description resolves independently");
+        index.Clear();
+        Check(!index.Contains("msg_child", "part_child"), "binding reset clears presentation and consumed notices");
+        Check(index.Update(new[] { shell, notice }), "reset permits same accepted IDs in replacement binding");
+        index.Clear();
+        Check(!index.Update(new[] { shell, notice with { Type = "user" } }), "ordinary user message with exact producer text never marks background");
+        Check(!index.Update(new[] { shell, notice with { Id = "quoted", Text = "```" + notice.Text + "```" } }), "code-wrapped producer text rejected");
+        Check(!index.Update(new[] { shell, notice with { Id = "partial", Text = prefix + "- shell: " + shellTitle } }), "partial producer grammar rejected");
+        Check(!index.Update(new[] { shell, notice with { Id = "extra", Text = notice.Text + "\nextra" } }), "extra suffix prose rejected");
+        Check(!index.Update(new[] { shell, Notice("unsupported", "- task: " + shellTitle) }), "unsupported bullet kind rejected");
+        Check(!index.Update(new[] { shell, Notice("case", "- shell: " + shellTitle.ToUpperInvariant()) }), "input matching is ordinal and exact");
+        index.Clear();
+        var duplicate = Call("msg_other", "part_other", "shell", shellTitle);
+        Check(!index.Update(new[] { shell, duplicate, notice }), "multiple eligible exact targets are ambiguous");
+        Check(!index.Update(new[] { shell, notice }), "ambiguous notice never retargets when candidate disappears");
+        index.Clear();
+        Check(!index.Update(new[] { notice }), "missing history leaves notice unresolved");
+        Check(!index.Update(new[] { shell, notice }), "old unmatched notice never adopts a later call even if timestamp predates it");
+        index.Clear();
+        var noRan = Call("msg_shell", "part_shell", "shell", shellTitle, ran: null);
+        Check(!index.Update(new[] { noRan, notice }), "assistant/part creation alone cannot establish call-before-notice order");
+        index.Clear();
+        Check(!index.Update(new[] { noRan }) && index.Update(new[] { noRan, notice }), "prior accepted live call appearance proves order when ran is unavailable");
+        index.Clear();
+        Check(!index.Update(new[] { Call("msg_shell", "part_shell", "shell", shellTitle, ran: 30), notice }), "call started after notice cannot bind despite old assistant container");
+        index.Clear();
+        Check(!index.Update(new[] { shell, new OpenCodeMessage { Id = "new_run", Type = "user" }, notice }), "intervening run boundary prevents historical call association");
+        index.Clear();
+        Check(!index.Update(new[] { shell, shell, notice }), "duplicate stable message IDs are unresolved");
+        index.Clear();
+        var metadataRunning = Call("msg_shell", "part_shell", "shell", shellTitle, metadata: new { status = "running", shellID = "sh_real" });
+        Check(!index.Update(new[] { metadataRunning, notice }), "real pending metadata already owns presentation");
+        var completion = new OpenCodeMessage { Id = "completion", Type = "synthetic",
+            Metadata = Json(new { source = "shell", shellID = "sh_real", state = "completed" }) };
+        Check(!index.Update(new[] { metadataRunning, notice, completion }) && !index.Contains("msg_shell", "part_shell"), "matching actual async completion takes precedence over notice");
+        index.Clear();
+        var returnedWithKey = Call("msg_shell", "part_shell", "shell", shellTitle, status: "completed", metadata: new { shellID = "sh_real" });
+        Check(index.Update(new[] { returnedWithKey, notice }), "returned invocation without job-terminal metadata remains background pending");
+        Check(index.Update(new[] { returnedWithKey, notice, completion }) && !index.Contains("msg_shell", "part_shell"), "later keyed async completion invalidates fallback association");
+        index.Clear();
+        Check(!index.Update(new[] { returnedWithKey, completion, notice }), "already completed keyed job cannot bind a later background notice");
+        index.Clear();
+        var childWithKey = Call("msg_child", "part_child", "subagent", childTitle, status: "completed", metadata: new { sessionID = "ses_real_child" });
+        var childCompletion = new OpenCodeMessage { Id = "child_done", Type = "synthetic",
+            Metadata = Json(new { source = "subagent", childID = "ses_real_child", state = "error" }) };
+        Check(index.Update(new[] { childWithKey, childNotice }) && index.Update(new[] { childWithKey, childNotice, childCompletion })
+            && !index.Contains("msg_child", "part_child"), "actual keyed subagent failure overrides returned-invocation association");
+        index.Clear();
+        var multiNotice = Notice("multi", "- shell: " + shellTitle + "\n- subagent: " + childTitle);
+        Check(index.Update(new[] { shell, child, multiNotice }) && index.Contains("msg_shell", "part_shell")
+            && index.Contains("msg_child", "part_child"), "entire supported multi-bullet producer grammar resolves each unique job");
+        index.Clear();
+        var duplicatePart = Call("msg_other", "part_shell", "shell", shellTitle);
+        Check(!index.Update(new[] { shell, duplicatePart, notice }), "duplicate stable tool IDs remain unresolved across assistant records");
     }
 
     private static async Task HomeDataContracts()

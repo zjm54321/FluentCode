@@ -167,7 +167,8 @@ internal static class Wave5Timeline
         view.ApplyMessages(new[] { origin });
         var shellRow = Constructed<OpenCodeToolPartView>().Single();
         var pending = OpenCodeToolRowPresentation.Build(origin.Content![0]);
-        Check(shellRow.AsyncCompletion is null && pending.Summary == "后台运行中", "g4.origin-pending-background");
+        Check(shellRow.AsyncCompletion is null && pending.Summary == "后台运行中" && pending.Status == OpenCodeToolRowStatus.Running
+            && pending.Name == "终端（后台）", "g4.origin-pending-background-not-success");
 
         var shellDone = Message(new
         {
@@ -198,16 +199,16 @@ internal static class Wave5Timeline
         var completed = OpenCodeToolRowPresentation.Build(origin.Content![0], shellRow.AsyncCompletion);
         Check(completed.Summary == "后台已完成 · 退出码 0" && completed.Status == OpenCodeToolRowStatus.Completed && completed.ExitCode == 0,
             "g4.origin-row-reflects-completed");
-        var chips = Constructed<OpenCodeTimelineChipView>();
+        var chips = Constructed<OpenCodeTimelineChipView>().Where(c => c.Content.Name.Length > 0).ToArray();
         Check(chips.Length == 3 && chips.All(c => c.Content is not null), "g4.completion-rows-constructed");
-        Check(chips[0].Label == "终端完成" && chips[0].Content!.Target == "build.py" && chips[0].Content!.Summary == "退出码 0"
+        Check(chips[0].Label == "终端（后台）" && chips[0].Content!.Target == "build.py" && chips[0].Content!.Summary == "已完成 · 退出码 0"
               && chips[0].Content!.Status == OpenCodeToolRowStatus.Completed && chips[0].DetailText == "BUILD OK"
               && chips[0].LinkInvoked is null, "g4.shell-completion-row");
-        Check(chips[1].Label == "子任务完成" && chips[1].Content!.Target == "fixer 构建" && chips[1].Content!.DetailMarkdown
+        Check(chips[1].Label == "子代理（后台）" && chips[1].Content!.Target == "fixer 构建" && chips[1].Content!.DetailMarkdown
               && chips[1].Content!.LinkText == "打开子会话" && chips[1].LinkInvoked is not null, "g4.subagent-completion-row");
         chips[1].LinkInvoked!();
         Check(navigation == 1, "g4.subagent-row-navigates-validated-child");
-        Check(chips[2].Label == "后台任务完成" && chips[2].Content!.Target == "视频修复", "g4.task-completion-row");
+        Check(chips[2].Label == "后台任务" && chips[2].Content!.Target == "视频修复", "g4.task-completion-row");
         // Only the assistant origin owns a completion-card wrapper; synthetic completions never construct one.
         Check(Constructed<OpenCodeSubagentCompletionView>().Length == 1 && view.Children.Count == 4,
             "g4.no-standalone-completion-card-for-synthetic");

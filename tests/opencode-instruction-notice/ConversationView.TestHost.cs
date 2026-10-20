@@ -54,6 +54,17 @@ namespace AIFrontend.Pages.OpenCode
 
     public sealed class OpenCodeToolPartView
     {
+        private Action<string, OpenCodeContentPart>? _backgroundAction;
+        private OpenCodeContentPart? _lastPart;
+        internal void SetBackgroundAction(Action<string, OpenCodeContentPart>? action) => _backgroundAction = action;
+        internal Action? BackgroundAction => _backgroundAction is not null && _lastPart is not null && OpenCodeToolRowPresentation.Build(_lastPart, AsyncCompletion, ManualBackground).CanMoveToBackground
+            ? () => { if (!IsDisposed && _parentMessageId is not null && _lastPart is not null) _backgroundAction?.Invoke(_parentMessageId, _lastPart); } : null;
+        internal FrameworkElement? DetailAnchorOverride { get; private set; }
+        internal void SetDetailAnchor(FrameworkElement? anchor) => DetailAnchorOverride = anchor;
+        internal void TogglePinnedDetail() => ConversationViewTestProbe.Record("OpenLeaf", this);
+        internal void HoverEnterDetail() => ConversationViewTestProbe.Record("HoverLeaf", this);
+        internal void HoverExitDetail() => ConversationViewTestProbe.Record("ExitLeaf", this);
+        internal static string KindGlyph(OpenCodeToolKind kind) => kind == OpenCodeToolKind.Subagent ? OpenCodeStepRunPresentation.SubagentGlyph : "tool";
         private EventHandler<OpenCodeSubagentSessionRequestedEventArgs>? _navigation;
         private string? _parentMessageId;
         public Expander Element { get; } = new();
@@ -82,12 +93,15 @@ namespace AIFrontend.Pages.OpenCode
 
         // Records the async completion (background shell / subagent) the renderer matched to this call.
         internal OpenCodeAsyncCompletion? AsyncCompletion { get; private set; }
+        internal bool ManualBackground { get; private set; }
         internal int UpdateCount { get; private set; }
 
-        internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion)
+        internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false)
         {
             _parentMessageId = parentMessageId;
+            _lastPart = part;
             AsyncCompletion = asyncCompletion;
+            ManualBackground = manualBackground;
             UpdateCount++;
             ConversationViewTestProbe.Record("Update", this, part, parentMessageId);
         }
@@ -113,6 +127,13 @@ namespace AIFrontend.Pages.OpenCode
     {
         private Action<string>? _navigation;
         public FrameworkElement Element { get; }
+        internal FrameworkElement ProcessContent { get; } = new StackPanel();
+        internal OpenCodeTimelineRowContent ProcessPresentation { get; private set; } = null!;
+        internal void OpenDetail() => ConversationViewTestProbe.Record("OpenLeaf", this);
+        internal void HoverEnter() => ConversationViewTestProbe.Record("HoverLeaf", this);
+        internal void HoverExit() => ConversationViewTestProbe.Record("ExitLeaf", this);
+        internal void SetDetailAnchor(FrameworkElement? anchor) { }
+        internal void SetProcessGroup(FrameworkElement group) { }
         internal int DisposeCount { get; private set; }
         internal bool IsDisposed { get; private set; }
 
@@ -123,8 +144,10 @@ namespace AIFrontend.Pages.OpenCode
             ConversationViewTestProbe.Record("Construct", this, Element, content);
         }
 
-        public void Update(OpenCodeSubagentCompletionInfo? info, string? taskTitle = null)
+        public void Update(OpenCodeSubagentCompletionInfo? info, string? taskTitle = null, string? body = null)
         {
+            if (info is not null) ProcessPresentation = OpenCodeStepRunPresentation.DescribeAsyncCompletion(new OpenCodeAsyncCompletion(
+                OpenCodeAsyncCompletionKind.Subagent, info.ChildSessionId, info.State ?? string.Empty, taskTitle ?? string.Empty, null, body ?? string.Empty, info.ChildSessionId, null));
             ConversationViewTestProbe.Record("Update", this, info, taskTitle);
         }
 
@@ -160,6 +183,19 @@ namespace AIFrontend.Pages.OpenCode
         }
         internal string GroupId { get; }
         internal FrameworkElement Element => _root;
+        internal FrameworkElement DetailAnchor => _root;
+        internal Action? OpenLeaf { get; private set; }
+        internal Action? EnterLeaf { get; private set; }
+        internal Action? ExitLeaf { get; private set; }
+        internal Action? BackgroundAction { get; private set; }
+        internal void SetBackgroundAction(Action? action) => BackgroundAction = action;
+        internal bool InlineLeaf { get; private set; }
+        internal void SetInlineLeaf(bool inline) => InlineLeaf = inline;
+        internal string? LeafName { get; private set; }
+        internal string? LeafGlyph { get; private set; }
+        internal OpenCodeToolRowStatus? LeafStatus { get; private set; }
+        internal void BindSingleLeaf(Action? open, Action? enter, Action? exit, string? name = null, string? glyph = null, OpenCodeToolRowStatus? status = null)
+            => (OpenLeaf, EnterLeaf, ExitLeaf, LeafName, LeafGlyph, LeafStatus) = (open, enter, exit, name, glyph, status);
         internal Panel ItemsHost => _items;
         internal bool IsExpanded { get; private set; }
         internal bool HeaderVisible { get; private set; } = true;
@@ -167,6 +203,7 @@ namespace AIFrontend.Pages.OpenCode
         internal int DisposeCount { get; private set; }
         internal void Update(OpenCodeStepRunSummary summary, bool expanded, bool headerVisible)
         {
+            if (Summary == summary && IsExpanded == expanded && HeaderVisible == headerVisible) return;
             Summary = summary;
             IsExpanded = expanded;
             HeaderVisible = headerVisible;
@@ -188,9 +225,15 @@ namespace AIFrontend.Pages.OpenCode
     // Inert stand-in for the real merged "思考" row (F4): records the merged text it was given.
     internal sealed class OpenCodeReasoningRowView
     {
+        internal FrameworkElement? DetailAnchorOverride { get; private set; }
+        internal void SetDetailAnchor(FrameworkElement? anchor) => DetailAnchorOverride = anchor;
+        internal void OpenDetail() => ConversationViewTestProbe.Record("OpenLeaf", this);
+        internal void HoverEnter() => ConversationViewTestProbe.Record("HoverLeaf", this);
+        internal void HoverExit() => ConversationViewTestProbe.Record("ExitLeaf", this);
         internal FrameworkElement Element { get; } = new StackPanel();
         internal string Text { get; private set; } = string.Empty;
         internal bool Streaming { get; private set; }
+        internal OpenCodeToolRowStatus Status => Streaming ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
         internal string RowKey { get; private set; } = string.Empty;
         internal int DisposeCount { get; private set; }
         internal OpenCodeReasoningRowView() => ConversationViewTestProbe.Record("Construct", this, Element);
@@ -211,10 +254,17 @@ namespace AIFrontend.Pages.OpenCode
     // Inert stand-in for the real tool-like timeline row (F8 / G4 / H5): name + hover-only detail.
     internal sealed class OpenCodeTimelineChipView
     {
+        private readonly string _glyph;
+        internal string Glyph => _glyph;
+        internal FrameworkElement? DetailAnchorOverride { get; private set; }
+        internal void SetDetailAnchor(FrameworkElement? anchor) => DetailAnchorOverride = anchor;
+        internal void OpenDetail() => ConversationViewTestProbe.Record("OpenLeaf", this);
+        internal void HoverEnter() => ConversationViewTestProbe.Record("HoverLeaf", this);
+        internal void HoverExit() => ConversationViewTestProbe.Record("ExitLeaf", this);
         internal FrameworkElement Element { get; } = new StackPanel();
         internal string Label { get; private set; } = string.Empty;
         internal string? DetailText { get; private set; }
-        internal OpenCodeTimelineRowContent? Content { get; private set; }
+        internal OpenCodeTimelineRowContent Content { get; private set; } = new(string.Empty, string.Empty, string.Empty, null, string.Empty, string.Empty, Array.Empty<OpenCodeToolProperty>(), null);
         internal Action? LinkInvoked { get; private set; }
         internal void UpdateRow(OpenCodeTimelineRowContent content, Action? linkInvoked = null)
         {
@@ -227,6 +277,7 @@ namespace AIFrontend.Pages.OpenCode
         internal int DisposeCount { get; private set; }
         internal OpenCodeTimelineChipView(string automationId, string glyph, string? labelAutomationId = null)
         {
+            _glyph = glyph;
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(Element, automationId);
             ConversationViewTestProbe.Record("Construct", this, Element);
         }
@@ -261,6 +312,11 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed class OpenCodeInstructionNoticeView
     {
         internal FrameworkElement Element { get; } = new StackPanel();
+        internal void OpenDetail() => ConversationViewTestProbe.Record("OpenLeaf", this);
+        internal void HoverEnter() => ConversationViewTestProbe.Record("HoverLeaf", this);
+        internal void HoverExit() => ConversationViewTestProbe.Record("ExitLeaf", this);
+        internal void SetDetailAnchor(FrameworkElement? anchor) { }
+        internal void Dispose() { }
 
         internal OpenCodeInstructionNoticeView(OpenCodeInstructionNotice notice)
         {
@@ -270,6 +326,24 @@ namespace AIFrontend.Pages.OpenCode
 
         internal void Update(OpenCodeInstructionNotice notice)
             => ConversationViewTestProbe.Record("Update", this, notice);
+    }
+}
+
+// Inert dispatcher only: no clock, background work or native animation is simulated.
+namespace Microsoft.UI.Dispatching
+{
+    public sealed class DispatcherQueue
+    {
+        public static DispatcherQueue? GetForCurrentThread() => null;
+        public DispatcherQueueTimer CreateTimer() => new();
+    }
+    public sealed class DispatcherQueueTimer
+    {
+        public TimeSpan Interval { get; set; }
+        public bool IsRepeating { get; set; }
+        public event Action<DispatcherQueueTimer, object>? Tick { add { } remove { } }
+        public void Start() { }
+        public void Stop() { }
     }
 }
 
@@ -327,6 +401,16 @@ namespace Microsoft.UI.Xaml
 
     public class FrameworkElement : UIElement
     {
+        public XamlRoot? XamlRoot { get; set; } = new(); // inert root identity, not native window evidence
+        public double ActualWidth { get; set; } = 700;
+        public double Width { get; set; }
+        public double Height { get; set; }
+        public double TestTop { get; set; } = 400;
+        public Microsoft.UI.Xaml.Media.GeneralTransform TransformToVisual(UIElement? target) => new(TestTop);
+        public event RoutedEventHandler? Unloaded;
+        public void RaiseUnloadedForTest() => Unloaded?.Invoke(this, new());
+        public event RoutedEventHandler? Loaded;
+        public void RaiseLoadedForTest() => Loaded?.Invoke(this, new());
         public HorizontalAlignment HorizontalAlignment { get; set; }
         public VerticalAlignment VerticalAlignment { get; set; }
         public Thickness Margin { get; set; }
@@ -336,6 +420,7 @@ namespace Microsoft.UI.Xaml
     }
 
     public class Style { }
+    public class XamlRoot { public Windows.Foundation.Size Size { get; set; } = new(800, 600); }
     public class ResourceDictionary : Dictionary<object, object> { }
     public class Application
     {
@@ -352,6 +437,7 @@ namespace Microsoft.UI.Xaml.Controls
     public enum Orientation { Vertical, Horizontal }
     public enum InfoBarSeverity { Informational, Success, Warning, Error }
     public enum ScrollBarVisibility { Disabled, Auto, Hidden, Visible }
+    public enum ScrollMode { Disabled, Enabled, Auto }
 
     // Only direct membership changes are recorded. Failed Remove calls produce no removal record.
     public sealed class UIElementCollection : Collection<UIElement>
@@ -489,6 +575,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class Button : ContentControl
     {
+        public Flyout? Flyout { get; set; }
         public bool IsEnabled { get; set; } = true;
         public event RoutedEventHandler? Click;
         internal void RaiseClickForTest() => Click?.Invoke(this, new RoutedEventArgs());
@@ -498,6 +585,8 @@ namespace Microsoft.UI.Xaml.Controls
     {
         public string Glyph { get; set; } = string.Empty;
         public double FontSize { get; set; }
+        public Brush? Foreground { get; set; }
+    }
 
     // Inert menu boundary for the existing pending-message view tests; no native rendering claim.
     public class MenuFlyout : Flyout
@@ -525,13 +614,38 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class ScrollViewer : ContentControl
     {
+        public ScrollMode HorizontalScrollMode { get; set; }
         public ScrollBarVisibility VerticalScrollBarVisibility { get; set; }
         public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }
     }
+    public class Flyout
+    {
+        public Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode Placement { get; set; }
+        public object? Content { get; set; }
+        public bool IsOpen { get; private set; }
+        public event EventHandler<object>? Opening;
+        public void OpenForTest() { Opening?.Invoke(this, new()); IsOpen = true; }
+        public void Hide() => IsOpen = false;
+    }
+}
+
+namespace Microsoft.UI.Xaml.Controls.Primitives
+{
+    public enum FlyoutPlacementMode { TopEdgeAlignedLeft }
+}
+
+namespace Windows.Foundation
+{
+    public readonly record struct Point(double X, double Y);
+    public readonly record struct Size(double Width, double Height);
 }
 
 namespace Microsoft.UI.Xaml.Media
 {
+    public sealed class GeneralTransform(double y)
+    {
+        public Windows.Foundation.Point TransformPoint(Windows.Foundation.Point p) => new(p.X, p.Y + y);
+    }
     public class Brush { }
     public class FontFamily
     {

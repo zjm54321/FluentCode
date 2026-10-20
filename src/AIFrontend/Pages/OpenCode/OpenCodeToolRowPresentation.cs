@@ -144,6 +144,10 @@ internal sealed class OpenCodeToolRowModel
 
     public string AccessibleName { get; init; } = string.Empty;
 
+    public bool IsBackground { get; init; }
+    public string? GlyphOverride { get; init; }
+    public bool CanMoveToBackground => IsActive && !IsBackground && Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent;
+
     public bool IsActive => Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
 }
 
@@ -211,6 +215,30 @@ internal static class OpenCodeToolRowPresentation
         _ => OpenCodeToolKind.Other,
     };
 
+    // Exact built-in names only: MCP/custom names keep their original display identity.
+    internal static string DisplayName(string? name) => name?.Trim().ToLowerInvariant() switch
+    {
+        "shell" or "bash" => "终端",
+        "read" or "view" => "读取",
+        "grep" => "搜索",
+        "glob" => "查找文件",
+        "list" or "ls" => "列出目录",
+        "edit" => "编辑",
+        "multiedit" => "批量编辑",
+        "patch" or "apply_patch" => "应用补丁",
+        "write" => "写入",
+        "webfetch" => "获取网页",
+        "websearch" => "搜索网页",
+        "question" => "提问",
+        "subagent" or "task" => OpenCodeStepRunPresentation.SubagentLabel,
+        "todowrite" => "更新待办",
+        "todoread" => "查看待办",
+        "acp_status" => "ACP状态",
+        "compress" => "压缩上下文",
+        "task_message" => "子代理消息",
+        _ => string.IsNullOrWhiteSpace(name) ? "工具" : name.Trim(),
+    };
+
     /// <summary>是否为 question 工具部件（时间线中不显示为工具行，而是提问锚点）。</summary>
     internal static bool IsQuestionTool(OpenCodeContentPart? part)
         => part is not null
@@ -239,13 +267,11 @@ internal static class OpenCodeToolRowPresentation
     /// 与该调用关联的异步完成通知（后台终端 / 子任务；由会话视图按 metadata 中的不透明 id 匹配），无则 null。
     /// 有完成通知时行摘要显示“后台已完成 / 失败”（失败时行状态为出错）；后台仍在运行（metadata.status = running）时显示“后台运行中”。
     /// </param>
-    internal static OpenCodeToolRowModel Build(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion = null)
+    internal static OpenCodeToolRowModel Build(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion = null, bool manualBackground = false)
     {
         ArgumentNullException.ThrowIfNull(part);
         var kind = Classify(part.Name);
-        var name = kind == OpenCodeToolKind.Question
-            ? "提问"
-            : string.IsNullOrWhiteSpace(part.Name) ? "工具" : part.Name!.Trim();
+        var name = DisplayName(part.Name);
         var state = TryReadState(part.State);
         var status = state?.Status switch
         {
@@ -422,6 +448,11 @@ internal static class OpenCodeToolRowPresentation
 
         // 异步（后台）调用：完成通知到达后原始行反映最终状态；尚未完成时如实标注“后台运行中”。
         string? asyncError = null;
+        // Exact accepted-history association is presentation-only. Actual job metadata/outcomes win.
+        var manualFallback = manualBackground && asyncCompletion is null && kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent
+            && FirstString(metadata, "status") is null && status != OpenCodeToolRowStatus.Error;
+        var background = manualFallback || asyncCompletion is not null || IsBackgroundPending(metadata)
+            || input is { } backgroundInput && backgroundInput.TryGetProperty("background", out var backgroundValue) && backgroundValue.ValueKind == JsonValueKind.True;
         if (asyncCompletion is { } completion)
         {
             var stateText = OpenCodeStepRunPresentation.DescribeAsyncState(completion.State);
@@ -432,21 +463,37 @@ internal static class OpenCodeToolRowPresentation
                 exitCode = completionExit;
             }
 
-            if (completion.IsFailure && status != OpenCodeToolRowStatus.Error)
+            status = completion.IsFailure || completion.ExitCode is { } asyncCode && asyncCode != 0
+                ? OpenCodeToolRowStatus.Error
+                : completion.IsRunning ? OpenCodeToolRowStatus.Running
+                : completion.IsSuccess ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Unknown;
+            if (status == OpenCodeToolRowStatus.Error)
             {
                 status = OpenCodeToolRowStatus.Error;
                 asyncError = "后台" + stateText;
             }
         }
-        else if (status == OpenCodeToolRowStatus.Completed && IsBackgroundPending(metadata))
+        else if ((manualFallback || IsBackgroundPending(metadata)) && status != OpenCodeToolRowStatus.Error)
         {
             summary = "后台运行中";
+            status = OpenCodeToolRowStatus.Running;
         }
+        else if (background && status == OpenCodeToolRowStatus.Completed)
+        {
+            // A returned background invocation is not itself a completed background job.
+            var recorded = FirstString(metadata, "status")?.ToLowerInvariant();
+            status = recorded is "completed" or "succeeded" or "success" or "done" ? OpenCodeToolRowStatus.Completed
+                : recorded is "error" or "failed" or "killed" or "cancelled" ? OpenCodeToolRowStatus.Error : OpenCodeToolRowStatus.Unknown;
+            summary = status == OpenCodeToolRowStatus.Completed ? "后台已完成" : status == OpenCodeToolRowStatus.Error ? "后台失败" : "后台状态未提供";
+        }
+
+        if (background && kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent)
+            name += "（后台）";
 
         var statusText = status switch
         {
             OpenCodeToolRowStatus.Streaming => "输入生成中",
-            OpenCodeToolRowStatus.Running => "运行中",
+            OpenCodeToolRowStatus.Running => background ? "后台运行中" : "运行中",
             OpenCodeToolRowStatus.Completed => "已完成",
             OpenCodeToolRowStatus.Error => "出错",
             _ => "状态未识别",
@@ -525,6 +572,8 @@ internal static class OpenCodeToolRowPresentation
             OutputProperties = outputProperties,
             RawStateProperties = rawStateProperties,
             AccessibleName = accessible.ToString(),
+            IsBackground = background,
+            GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph : null,
         };
     }
 

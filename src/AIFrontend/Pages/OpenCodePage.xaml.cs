@@ -163,6 +163,7 @@ public sealed partial class OpenCodePage : Page
         _homeSettings = settingsService;
 
         this.InitializeComponent();
+        InitializeNoticeDismissal();
 
         _conversationView.HorizontalAlignment = HorizontalAlignment.Stretch;
         AutomationProperties.SetAutomationId(_conversationView, "OpenCodeMessageList");
@@ -1146,20 +1147,8 @@ public sealed partial class OpenCodePage : Page
         }
 
         var externallyRemoved = _interactionsView.Apply(permissions, forms);
+        _ = externallyRemoved;
         UpdateInteractionsSection();
-        if (externallyRemoved.Count > 0)
-        {
-            var titles = new List<string>(externallyRemoved.Count);
-            foreach (var item in externallyRemoved)
-            {
-                titles.Add("“" + item.Title + "”");
-            }
-
-            ShowMessage(
-                InfoBarSeverity.Informational,
-                "待处理交互已更新",
-                string.Join("、", titles) + " 已不再处于待处理状态（可能已由其他客户端处理）。");
-        }
 
         try
         {
@@ -1559,12 +1548,13 @@ public sealed partial class OpenCodePage : Page
         _sessionRecoveryPanel.SetBusy(busy, label);
     }
 
-    /// <summary>移除一个由本页操作结算的交互卡片并提示结果。</summary>
+    /// <summary>移除一个由本页操作结算的交互卡片（G1：正常完成回答/权限决定后不再显示瞬态“服务器已接收…”提示条；真正错误仍走 ShowMessage）。</summary>
     private void SettleInteraction(bool isForm, string id, string title, string message)
     {
+        _ = title;
+        _ = message;
         _interactionsView.RemoveSettled(isForm, id);
         UpdateInteractionsSection();
-        ShowMessage(InfoBarSeverity.Informational, title, message);
     }
 
     private void UpdateInteractionsSection()
@@ -2007,16 +1997,9 @@ public sealed partial class OpenCodePage : Page
                 _ = RefreshMessagesAsync();
                 break;
             case NotificationInteractionStatus.Duplicate:
-                _interactionsView.Suppress(false, requestId);
-                UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "该请求已处理",
-                    "共享仲裁显示该权限请求已被接受过（HTTP 204）；本页未重复提交。");
-                break;
             case NotificationInteractionStatus.Expired:
                 _interactionsView.Suppress(false, requestId);
                 UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "该请求已结算",
-                    "共享仲裁显示该权限请求已结算或过期；本页未重复提交。");
                 break;
             default:
                 _interactionsView.MarkPermissionBlocked(requestId,
@@ -2053,16 +2036,9 @@ public sealed partial class OpenCodePage : Page
                 _ = RefreshMessagesAsync();
                 break;
             case NotificationInteractionStatus.Duplicate:
-                _interactionsView.Suppress(true, formId);
-                UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "该表单已处理",
-                    "共享仲裁显示该表单已被接受过（HTTP 204）；本页未重复提交。");
-                break;
             case NotificationInteractionStatus.Expired:
                 _interactionsView.Suppress(true, formId);
                 UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "该表单已结算",
-                    "共享仲裁显示该表单已结算或过期；本页未重复提交。");
                 break;
             default:
                 _interactionsView.MarkFormBlocked(formId,
@@ -3767,6 +3743,7 @@ public sealed partial class OpenCodePage : Page
 
     private void ShowMessage(InfoBarSeverity severity, string title, string message)
     {
+        if (IsRuntimeNoticeDismissed(title, message)) return;
         MessageBar.ActionButton = null; // 撤回“复制内容”等一次性操作按钮不跨消息残留。
         MessageBar.Severity = severity;
         MessageBar.Title = title;
@@ -4468,10 +4445,10 @@ public sealed partial class OpenCodePage : Page
         switch (result.Status)
         {
             case NotificationInteractionStatus.Succeeded:
+            case NotificationInteractionStatus.Expired:
+            case NotificationInteractionStatus.Duplicate:
                 _interactionsView.Suppress(isForm, target.RequestId);
                 UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "服务器已接受该决定",
-                    "通知入口的提交已被服务器接受（HTTP 204）。这不代表 AI 已完成回合；结果以时间线 idle 标记为准。");
                 break;
             case NotificationInteractionStatus.OutcomeUnknown:
                 if (isForm)
@@ -4487,16 +4464,6 @@ public sealed partial class OpenCodePage : Page
 
                 ShowMessage(InfoBarSeverity.Warning, "提交结果未知",
                     "通知入口的提交结果未知；本页不会自动重发，请在卡片中“重新查询状态”核实。");
-                break;
-            case NotificationInteractionStatus.Expired:
-                _interactionsView.Suppress(isForm, target.RequestId);
-                UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "请求已结算或过期", "通知入口的提交显示该请求已结算/过期。");
-                break;
-            case NotificationInteractionStatus.Duplicate:
-                _interactionsView.Suppress(isForm, target.RequestId);
-                UpdateInteractionsSection();
-                ShowMessage(InfoBarSeverity.Informational, "请求已处理", "该请求此前已被处理（重复）。");
                 break;
             case NotificationInteractionStatus.NeedsApp:
                 ShowMessage(InfoBarSeverity.Informational, "请在应用内处理",

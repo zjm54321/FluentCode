@@ -15,7 +15,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// <para>
 /// 普通 sealed 业务类（不是控件子类）：构造时创建同一实例的根元素，经 <see cref="Element"/> 暴露，
 /// 节点身份跨轮询保持。行本体是原生 <see cref="Button"/>（内置悬停/按下/焦点视觉与 Enter/Space 键盘行为），
-/// 高 32：状态图标 16 | 工具名（BodyStrong）| 目标（等宽、省略号）| 右侧摘要（Caption 次要色）。
+/// 高 32：类别图标 16 | 工具名（BodyStrong）| 目标（等宽、省略号）| 摘要 | 右侧状态图标 16。
 /// 完成 ✓ 成功色；出错 ✕ 危险色且行底为危险背景；运行中 / 输入生成中 = 16px ProgressRing；
 /// 状态严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值，无法识别时如实显示“状态未识别”。
 /// </para>
@@ -46,6 +46,25 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private readonly TextBlock _summaryText;
     private readonly TextBlock _additionsText;
     private readonly TextBlock _deletionsText;
+    private readonly Button _backgroundButton;
+    private Action<string, OpenCodeContentPart>? _backgroundAction;
+    private OpenCodeContentPart? _lastPart;
+    internal Action? BackgroundAction => _backgroundAction is not null && _model.CanMoveToBackground ? RequestBackground : null;
+    internal void SetBackgroundAction(Action<string, OpenCodeContentPart>? action)
+    {
+        _backgroundAction = action;
+        RefreshBackgroundAction();
+    }
+    private void RequestBackground()
+    {
+        if (!_disposed && _model.CanMoveToBackground && _lastPart is { Id.Length: > 0 } part && _parentMessageId is { Length: > 0 } parent)
+            _backgroundAction?.Invoke(parent, part);
+    }
+    private void RefreshBackgroundAction()
+    {
+        var visible = BackgroundAction is not null;
+        _backgroundButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private OpenCodeToolRowModel _model = new();
 
@@ -95,14 +114,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         statusCell.Children.Add(_statusIcon);
         statusCell.Children.Add(_progress);
 
-        _kindIcon = new FontIcon { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        _kindIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
 
-        _nameText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.BodyStrongStyleKey);
+        _nameText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _nameText.VerticalAlignment = VerticalAlignment.Center;
         _nameText.TextWrapping = TextWrapping.NoWrap;
 
-        _targetText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CodeStyleKey);
+        _targetText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _targetText.IsTextSelectionEnabled = false;
         _targetText.VerticalAlignment = VerticalAlignment.Center;
         _targetText.TextWrapping = TextWrapping.NoWrap;
@@ -125,15 +144,12 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(statusCell, 0);
-        Grid.SetColumn(_kindIcon, 1);
-        Grid.SetColumn(_nameText, 2);
-        Grid.SetColumn(_targetText, 3);
-        Grid.SetColumn(summaryPanel, 4);
-        content.Children.Add(statusCell);
+        Grid.SetColumn(_kindIcon, 0);
+        Grid.SetColumn(_nameText, 1);
+        Grid.SetColumn(_targetText, 2);
+        Grid.SetColumn(summaryPanel, 3);
         content.Children.Add(_kindIcon);
         content.Children.Add(_nameText);
         content.Children.Add(_targetText);
@@ -174,10 +190,27 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_selectionBar, 0);
         Grid.SetColumn(_rowChrome, 1);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_rowChrome);
+        _backgroundButton = new Button
+        {
+            Content = OpenCodeInteractionUi.StyledText("转后台", OpenCodeInteractionUi.CaptionStyleKey),
+            Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(0, 0, 6, 0),
+        };
+        AutomationProperties.SetAutomationId(_backgroundButton, "OpenCodeToolBackground");
+        AutomationProperties.SetName(_backgroundButton, "将本会话前台工具转入后台");
+        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子代理转入后台");
+        _backgroundButton.Click += (_, _) => RequestBackground();
+        Grid.SetColumn(_backgroundButton, 2);
+        _root.Children.Add(_backgroundButton);
+        Grid.SetColumn(statusCell, 3);
+        statusCell.Margin = new Thickness(0, 0, 8, 0);
+        _root.Children.Add(statusCell);
     }
 
     /// <summary>当前行模型（供分组摘要与详情弹出层使用）。</summary>
@@ -200,13 +233,15 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     /// <param name="part">assistant 消息中 type=tool 的内容部件。</param>
     /// <param name="parentMessageId">承载该部件的 assistant 消息 id（可为 null；仅随导航事件透传，不做校验/授权）。</param>
     /// <param name="asyncCompletion">与该调用关联的异步完成通知（后台终端 / 子任务）；无则 null（见 <see cref="OpenCodeToolRowPresentation.Build"/>）。</param>
-    internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion)
+    internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false)
     {
         ArgumentNullException.ThrowIfNull(part);
 
         _parentMessageId = parentMessageId;
-        _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion);
+        _lastPart = part;
+        _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground);
         ApplyModel(_model);
+        RefreshBackgroundAction();
 
         // subagent 严格按已核准名称识别；尚未提供 child id 时，小窗如实提示而不显示属性卡冒充对话。
         OpenCodeSubagentToolInfo? subagent = null;
@@ -265,6 +300,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         }
 
         _disposed = true;
+        _backgroundAction = null;
+        _lastPart = null;
         CloseDetailIfShowing();
         _childSessionId = null;
         SubagentSessionRequested = null;
@@ -331,7 +368,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         return new OpenCodeToolRowModel
         {
             PartId = model.PartId,
-            Name = string.IsNullOrWhiteSpace(info.Agent) ? model.Name : "子任务 · " + info.Agent,
+            Name = model.Name,
+            IsBackground = model.IsBackground,
+            GlyphOverride = model.GlyphOverride,
             Kind = model.Kind,
             Status = model.Status,
             StatusText = model.StatusText,
@@ -376,7 +415,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     private void ApplyModel(OpenCodeToolRowModel model)
     {
-        _kindIcon.Glyph = KindGlyph(model.Kind);
+        _kindIcon.Glyph = model.GlyphOverride ?? KindGlyph(model.Kind);
         _nameText.Text = model.Name;
         _targetText.Text = model.Target;
         _targetText.Visibility = model.Target.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
