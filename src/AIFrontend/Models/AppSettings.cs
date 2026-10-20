@@ -58,6 +58,12 @@ public sealed record AppSettings
     /// <summary>主题。</summary>
     public AppTheme Theme { get; init; } = AppTheme.System;
 
+    /// <summary>
+    /// 用户字体选择（正文 / 衬线 / 等宽）；null 表示全部跟随系统默认（不写入文件，兼容旧配置）。
+    /// 见 <see cref="AIFrontend.Services.Appearance.AppFontDefaults"/>。
+    /// </summary>
+    public AIFrontend.Services.Appearance.AppFontSettings? Fonts { get; init; }
+
     /// <summary>OpenCode 后端设置。</summary>
     public OpenCodeSettings OpenCode { get; init; } = new();
 

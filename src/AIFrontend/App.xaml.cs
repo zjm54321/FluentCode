@@ -20,7 +20,8 @@ public partial class App : Application
             try
             {
                 File.AppendAllText(@"C:\Users\Zhang\source\repos\AIFrontend\artifacts\logs\crash.log",
-                    $"{DateTime.Now:O}: {e.Exception.GetType().FullName}; HRESULT=0x{e.Exception.HResult:X8}\r\n");
+                    $"{DateTime.Now:O}: {e.Exception.GetType().FullName}; HRESULT=0x{e.Exception.HResult:X8}\r\n" +
+                    $"XAML: {e.Message}\r\n{e.Exception}\r\n");
             }
             catch { }
         };
@@ -33,6 +34,10 @@ public partial class App : Application
         {
             if (_window is not null) { _window.Activate(); return; }
             if (!await BecomePrimaryInstanceAsync()) { Exit(); return; }
+            if (_closing) return;
+            // 用户字体（F11）必须在任何界面创建前写入应用资源；失败时保持默认字体，不阻断启动。
+            try { await Services.Appearance.AppFonts.InitializeAsync(Pages.NormalPage.SharedSettingsService); }
+            catch (Exception ex) { RecordDiagnostic("app-fonts-initialize-failed", error: ex); }
             if (_closing) return;
             var window = new MainWindow();
             _window = window;

@@ -10,6 +10,81 @@
                 <ResourceDictionary Source="ms-appx:///Styles/AppTokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!--
+                用户可选正文字体（设置 → 外观 → 字体，F11）。WinUI 内置文字样式把 FontFamily 写死为 XamlAutoFontFamily，
+                不跟随 ContentControlThemeFontFamily；这里按框架原值（字号 / 字重 / 裁切 / 行距逐项一致）重定义本应用用到的
+                内置文字样式，只把 FontFamily 改为 {ThemeResource ContentControlThemeFontFamily}，使其随 AppFonts 运行期更新。
+                默认值仍是 XamlAutoFontFamily（见 Styles/AppTokens.xaml），未自选字体时外观与框架完全一致。
+                必须位于下方所有 BasedOn 这些键的派生样式之前（同一字典内 StaticResource 只能向前引用）。
+            -->
+            <Style x:Key="BaseTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="FontSize" Value="{StaticResource BodyTextBlockFontSize}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="LineStackingStrategy" Value="MaxHeight" />
+                <Setter Property="TextLineBounds" Value="Full" />
+            </Style>
+            <Style x:Key="BodyTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontWeight" Value="Normal" />
+            </Style>
+            <Style x:Key="BodyStrongTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource BodyStrongTextBlockFontSize}" />
+            </Style>
+            <Style x:Key="BodyLargeTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontSize" Value="{StaticResource BodyLargeTextBlockFontSize}" />
+                <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+            </Style>
+            <Style x:Key="CaptionTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource CaptionTextBlockFontSize}" />
+                <Setter Property="FontWeight" Value="Normal" />
+            </Style>
+            <Style x:Key="SubtitleTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource SubtitleTextBlockFontSize}" />
+                <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+            </Style>
+            <Style x:Key="TitleTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource TitleTextBlockFontSize}" />
+                <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+            </Style>
+            <Style x:Key="TitleLargeTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource TitleLargeTextBlockFontSize}" />
+                <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+            </Style>
+            <Style x:Key="DisplayTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource DisplayTextBlockFontSize}" />
+                <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+            </Style>
+
+            <!--
+                弹出层不在主视觉树内，不继承 NavView 的字体：给原生弹出宿主加隐式样式（BasedOn 框架默认样式，只补 FontFamily），
+                其内部无样式 TextBlock / 菜单项随之继承正文字体。显式指定了 FlyoutPresenterStyle 的弹出层不受影响，
+                但其中使用上方内置文字样式的文字仍跟随正文字体。
+            -->
+            <Style TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+            </Style>
+            <Style TargetType="MenuFlyoutPresenter" BasedOn="{StaticResource DefaultMenuFlyoutPresenterStyle}">
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+            </Style>
+            <Style TargetType="TeachingTip" BasedOn="{StaticResource DefaultTeachingTipStyle}">
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+            </Style>
+
+            <!-- 设置卡片（SettingsCard 式布局，原生画刷 + 内置圆角；设置页字体卡片使用）。 -->
+            <Style x:Key="AppSettingsCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+            </Style>
+            <Style x:Key="AppSettingsCardDividerStyle" TargetType="Border">
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+            </Style>
+
             <!-- WinUI provides the body style and secondary brush separately. -->
             <Style x:Key="BodySubtleTextBlockStyle"
                    TargetType="TextBlock"

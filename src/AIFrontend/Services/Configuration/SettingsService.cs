@@ -166,6 +166,8 @@ public sealed class SettingsService
             errors.Add($"theme 取值非法：{(int)settings.Theme}");
         }
 
+        AIFrontend.Services.Appearance.AppFontDefaults.Validate(settings.Fonts, errors);
+
         if (settings.OpenCode is null)
         {
             errors.Add("openCode 不能为 null");
