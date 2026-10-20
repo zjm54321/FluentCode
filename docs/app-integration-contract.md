@@ -69,7 +69,7 @@ public event EventHandler? OpenCodeSourceChanged;
 
 `public event EventHandler<NotificationNavigationEventArgs>? LocalNavigationRequested;` 在 App UI dispatcher 投递。MainWindow 应在存活期间订阅并在关闭时退订，从 **`e.Target.SessionId`** 选择/加载 Local 会话，可用 `e.Target.RequestId` 定位已完成请求；只能导航，不能自动发送/重试消息。`Source == LocalApi`、`Kind == Completion`，`EndpointIdentity == CompletionNotificationService.LocalCompletionEndpointIdentity`（固定 `"local"` 哨兵，**不是后端地址、client 或 gate 选择器**）。Local 不受 OpenCode 配置 generation/`SetOpenCodeNavigationReady` 影响。当前 App 直接投递 Local 事件、保留前置已有窗口行为，不额外缓存未订阅的 Local 事件。
 
-App 已将可信 `MainWindow.LocalTaskCompleted` 的 `SourceRequestId` **和 SessionId** 传给 `NotifyCompleted(NotificationSource.LocalApi, string requestId, string sessionId)`。同一服务在成功提交后才保存有界运行期绑定；原两参数 API 保留，但缺少 SessionId 时只能前置窗口，不能猜会话。**本轮未修改 MainWindow/Pages，尚未订阅此新事件，所以页面定位 UI 仍由父会话后续接线，不能宣称已完成定位闭环。**
+App 已将可信 `MainWindow.LocalTaskCompleted` 的 `SourceRequestId` **和 SessionId** 传给 `NotifyCompleted(NotificationSource.LocalApi, string requestId, string sessionId)`。同一服务在成功提交后才保存有界运行期绑定；原两参数 API 保留，但缺少 SessionId 时只能前置窗口，不能猜会话。**MainWindow 已在构造期订阅 `LocalNavigationRequested`（`MainWindow.ShellIntegration.cs`）并在关闭时退订，从 `e.Target.SessionId` 经 `NormalPage.TryActivateLocalSessionAsync` 等待 Local 设置/会话实际加载完成后定位（不逆解析摘要、不自动发送/重试消息），页面定位闭环已接线。**
 
 服务新公共同步入口：`NotificationNavigationTarget? HandleCompletionActivation(IReadOnlyDictionary<string, string> arguments, IReadOnlyDictionary<string, string> userInput)`。它既用于 native callback，也用于 App 的 SDK/IPC 转交路径；成功会引发同一 `NavigationRequested`，返回可信完整目标，不是需再手工发布一次的 DTO。UI 只订阅 App 对应 Source 的事件，不重复调用 resolver/不同时消费旧 `NotificationActivated` 做页面定位。未知/过期/被撤销/冷进程 token 仅 NeedsApp/前置现有窗口，不构造 SessionId，也不能 POST。
 

@@ -14,16 +14,6 @@ using Microsoft.UI.Dispatching;
 
 namespace AIFrontend;
 
-public sealed record AppIntegrationDiagnostic(DateTimeOffset AtUtc, string Code,
-    string? EndpointIdentity = null, string? ErrorType = null, int? HResult = null,
-    NotificationInteractionResult? Interaction = null,
-    OpenCodeNotificationObservation? Observation = null, TaskbarOperationResult? Taskbar = null);
-
-public sealed class AppIntegrationDiagnosticEventArgs(AppIntegrationDiagnostic diagnostic) : EventArgs
-{
-    public AppIntegrationDiagnostic Diagnostic { get; } = diagnostic;
-}
-
 public partial class App
 {
     private readonly object _integrationSync = new();
@@ -55,6 +45,9 @@ public partial class App
 
     /// <summary>UI thread. Call only for a session explicitly selected/created by this app on the current endpoint.</summary>
     public void TrackOpenCodeSession(string sessionId)
+        => TrackOpenCodeSessionCore(sessionId, publishUi: true);
+
+    private void TrackOpenCodeSessionCore(string sessionId, bool publishUi)
     {
         RequireAppThread();
         if (_closing) return;
@@ -62,7 +55,9 @@ public partial class App
         {
             if (_openCodeMonitor is null) { RecordDiagnostic("opencode-track-not-ready"); return; }
             if (_openCodeMonitor.TrackSession(sessionId)) _trackedOpenCodeSessions.Add(sessionId);
+            if (_openCodePageSource is { } source) SeedOpenCodeObservation(source, sessionId);
         }
+        if (publishUi) PublishSessionUiChanges();
     }
 
     private void StartOpenCodeOwnership()
@@ -96,6 +91,7 @@ public partial class App
         if (!force && _configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
         _configurationRequested = true;
         _requestedOpenCodeConfiguration = relevant;
+        ResetOpenCodeObservations();
         // Fence native/redirected activation synchronously, even while an older configuration holds the semaphore.
         int generation;
         lock (_integrationSync)
@@ -150,8 +146,9 @@ public partial class App
             var client = new OpenCodeClient(clientOptions); // Validates options before publishing a page factory.
             // Identity is endpoint-only so credential changes do NOT bypass unknown-result tombstones.
             string endpoint = CreateOpenCodeEndpointIdentity(options.BaseUrl);
-            var monitor = new OpenCodeNotificationMonitor(_completionNotifications!, new(endpoint, client));
+            var monitor = new OpenCodeNotificationMonitor(_completionNotifications, new(endpoint, client));
             monitor.Observed += OnOpenCodeObserved;
+            monitor.SessionObserved += OnOpenCodeSessionObserved;
             lock (_integrationSync)
             {
                 if (_closing || token.IsCancellationRequested || generation != _configurationGeneration)
@@ -164,11 +161,25 @@ public partial class App
                 if (_trackedEndpointIdentity != endpoint) _trackedOpenCodeSessions.Clear();
                 _trackedEndpointIdentity = endpoint;
                 foreach (string session in _trackedOpenCodeSessions) monitor.TrackSession(session);
-                _completionNotifications!.ResumeInteractions();
+                _completionNotifications?.ResumeInteractions();
             }
-            bool started = monitor.Start(); // Returns false unless the ONE notification service initialized successfully.
+            bool started = monitor.Start(); // State observation is independent of native notification registration.
             RecordDiagnostic(started ? "opencode-monitor-ready" : "opencode-monitor-notifications-unavailable");
-            PostToApp(() => { RaiseAppEvent(OpenCodeSourceChanged, EventArgs.Empty); FlushOpenCodeNavigation(); });
+            PostToApp(() =>
+            {
+                lock (_integrationSync)
+                {
+                    if (_closing || generation != _configurationGeneration || _openCodePageSource is not { } source
+                        || source.IsRevoked || !ReferenceEquals(monitor, _openCodeMonitor)
+                        || source.Revision != _openCodeSourceRevision) return;
+                    BindSessionUiStore(source);
+                    // Seed every retained session before its individual poll; absence is not an Idle result.
+                    foreach (var session in _trackedOpenCodeSessions) SeedOpenCodeObservation(source, session);
+                }
+                PublishSessionUiChanges();
+                RaiseAppEvent(OpenCodeSourceChanged, EventArgs.Empty);
+                FlushOpenCodeNavigation();
+            });
         }
         catch (OperationCanceledException) { /* Superseded configuration, not a credential or connectivity success. */ }
         catch (Exception ex) { RecordDiagnostic("opencode-configuration-failed", error: ex); }
@@ -186,30 +197,18 @@ public partial class App
         return "ep-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(uri.AbsoluteUri)));
     }
 
-    private void OnOpenCodeObserved(object? sender, OpenCodeNotificationObservationEventArgs args)
-    {
-        lock (_integrationSync) if (_closing || !ReferenceEquals(sender, _openCodeMonitor)) return;
-        RecordDiagnostic("opencode-observation", observation: args.Observation);
-        if (args.Observation.Interaction is { } result)
-            PostToApp(() =>
-            {
-                RecordDiagnostic("opencode-interaction", interaction: result);
-                if (result.EndpointIdentity is { } endpoint && endpoint != OpenCodeEndpointIdentity) return;
-                // Preparation NeedsApp is a visible diagnostic, NOT a user click: do not steal focus.
-                RaiseAppEvent(OpenCodeInteractionProcessed, new NotificationInteractionEventArgs(result));
-            });
-        // A session projection is not an execution ID. Do not fabricate taskbar progress/completion here.
-    }
-
     private void StopOpenCodeRequests()
     {
+        OpenCodePageSource? stoppedSource;
         lock (_integrationSync)
         {
+            stoppedSource = _openCodePageSource;
             _openCodePageSource?.Revoke();
             _openCodePageSource = null;
             Interlocked.Increment(ref _configurationGeneration);
             _ = _completionNotifications?.SuspendInteractionsAsync(_openCodeEndpointIdentity);
         }
+        PostToApp(() => InvalidateSessionUiStore(stoppedSource));
         if (_settingsService is not null) _settingsService.Changed -= OnAppSettingsChanged;
         _appLifetime.Cancel();
     }
@@ -226,16 +225,22 @@ public partial class App
         OpenCodeNotificationMonitor? monitor;
         OpenCodeClient? client;
         string? endpoint;
+        OpenCodePageSource? releasedSource;
         lock (_integrationSync)
         {
             monitor = _openCodeMonitor; client = _openCodeClient; endpoint = _openCodeEndpointIdentity;
+            releasedSource = _openCodePageSource;
             // Revoke before exposing an empty owner and before any monitor await.
             _openCodePageSource?.Revoke();
             _openCodePageSource = null;
             _ = _completionNotifications?.SuspendInteractionsAsync(endpoint);
             _openCodeMonitor = null; _openCodeClient = null; _openCodeEndpointIdentity = null;
         }
-        PostToApp(() => RaiseAppEvent(OpenCodeSourceChanged, EventArgs.Empty));
+        PostToApp(() =>
+        {
+            InvalidateSessionUiStore(releasedSource);
+            RaiseAppEvent(OpenCodeSourceChanged, EventArgs.Empty);
+        });
         try
         {
             if (monitor is not null) await monitor.StopAsync().ConfigureAwait(false);
@@ -249,6 +254,7 @@ public partial class App
                 if (monitor is not null)
                 {
                     monitor.Observed -= OnOpenCodeObserved;
+                    monitor.SessionObserved -= OnOpenCodeSessionObserved;
                     await monitor.DisposeAsync().ConfigureAwait(false);
                 }
             }
@@ -273,20 +279,6 @@ public partial class App
             });
         }
         catch { /* Dispatcher teardown cannot resurrect a closed window. */ }
-    }
-
-    private void RecordDiagnostic(string code, Exception? error = null, NotificationInteractionResult? interaction = null,
-        OpenCodeNotificationObservation? observation = null, TaskbarOperationResult? taskbar = null)
-    {
-        AppIntegrationDiagnostic diagnostic;
-        lock (_integrationSync)
-        {
-            diagnostic = new(DateTimeOffset.UtcNow, code, observation?.EndpointIdentity ?? interaction?.EndpointIdentity ?? _openCodeEndpointIdentity,
-                error?.GetType().FullName, error?.HResult, interaction, observation, taskbar);
-            if (_integrationDiagnostics.Count == 128) _integrationDiagnostics.Dequeue();
-            _integrationDiagnostics.Enqueue(diagnostic);
-        }
-        PostToApp(() => RaiseAppEvent(IntegrationDiagnosticChanged, new AppIntegrationDiagnosticEventArgs(diagnostic)));
     }
 
     private void RaiseAppEvent<T>(EventHandler<T>? handlers, T args) where T : EventArgs
