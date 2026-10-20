@@ -6,12 +6,18 @@ namespace AIFrontend.Services.OpenCode;
 
 /// <summary>
 /// GET api/session 的查询参数（已核实：limit、order、search、parentID、directory、
-/// project、subpath、cursor；本客户端仅暴露 directory、order、limit、cursor）。
+/// project、subpath、cursor；本客户端暴露 directory、parentID、order、limit、cursor）。
 /// </summary>
 public sealed record OpenCodeSessionListQuery
 {
     /// <summary>按目录过滤（明文 directory 查询参数）。</summary>
     public string? Directory { get; init; }
+
+    /// <summary>All 省略 parentID；Roots 发送字面量 null；Children 使用 ParentId。</summary>
+    public OpenCodeSessionParentFilter ParentFilter { get; init; }
+
+    /// <summary>仅 Children 时必填；All/Roots 时必须为 null。</summary>
+    public string? ParentId { get; init; }
 
     /// <summary>排序：<see cref="OpenCodeSessionOrders.Asc"/> 或 <see cref="OpenCodeSessionOrders.Desc"/>；null 用服务端默认。</summary>
     public string? Order { get; init; }
@@ -19,9 +25,12 @@ public sealed record OpenCodeSessionListQuery
     /// <summary>本页最大条数（服务端默认为最新 50 条）。必须为正数。</summary>
     public int? Limit { get; init; }
 
-    /// <summary>分页游标（来自上一响应的 cursor.previous / cursor.next，opaque）。</summary>
+    /// <summary>不透明分页游标；续页保留 Directory/ParentFilter/ParentId，不与 Order 同传。</summary>
     public string? Cursor { get; init; }
 }
+
+/// <summary>明确区分不筛父级、根会话、指定父级的直接子会话。</summary>
+public enum OpenCodeSessionParentFilter { All = 0, Roots = 1, Children = 2 }
 
 /// <summary>
 /// 会话信息（OpenAPI 组件 Session.Info；同时也是 SessionsResponse.data 的元素类型）。
@@ -43,7 +52,7 @@ public sealed record OpenCodeSessionInfo
     [JsonPropertyName("projectID")]
     public string? ProjectId { get; init; }
 
-    /// <summary>当前 agent 名。</summary>
+    /// <summary>当前 agent id（显示名从 Agent.Info.name 获取）。</summary>
     [JsonPropertyName("agent")]
     public string? Agent { get; init; }
 
@@ -66,7 +75,7 @@ public sealed record OpenCodeSessionInfo
     [JsonPropertyName("outcome")]
     public string? Outcome { get; init; }
 
-    /// <summary>时间戳（number，单位未在契约中说明）。created/updated 必填。</summary>
+    /// <summary>时间戳（有限 JSON number，Unix epoch 毫秒）。created/updated 必填。</summary>
     [JsonPropertyName("time")]
     public OpenCodeSessionTime? Time { get; init; }
 
@@ -138,23 +147,23 @@ public sealed record OpenCodeTokenCache
 /// <summary>会话时间戳（Session.Info.time）。created/updated 必填，其余可选。</summary>
 public sealed record OpenCodeSessionTime
 {
-    /// <summary>创建时间（number，单位未核实）。</summary>
+    /// <summary>创建时间（有限 JSON number，Unix epoch 毫秒）。</summary>
     [JsonPropertyName("created")]
     public double Created { get; init; }
 
-    /// <summary>更新时间（number，单位未核实）。</summary>
+    /// <summary>更新时间（有限 JSON number，Unix epoch 毫秒）。</summary>
     [JsonPropertyName("updated")]
     public double Updated { get; init; }
 
-    /// <summary>进入空闲的时间（number，单位未核实）。</summary>
+    /// <summary>进入空闲的时间（有限 JSON number，Unix epoch 毫秒）；可省略但 wire 非 null，保留小数。</summary>
     [JsonPropertyName("idle")]
     public double? Idle { get; init; }
 
-    /// <summary>被查看时间（number，单位未核实）。</summary>
+    /// <summary>已查看的 idle 水位（有限 JSON number，Unix epoch 毫秒）；可省略但 wire 非 null，保留小数。</summary>
     [JsonPropertyName("viewed")]
     public double? Viewed { get; init; }
 
-    /// <summary>归档时间（number，单位未核实）。</summary>
+    /// <summary>归档时间（有限 JSON number，Unix epoch 毫秒）。</summary>
     [JsonPropertyName("archived")]
     public double? Archived { get; init; }
 }

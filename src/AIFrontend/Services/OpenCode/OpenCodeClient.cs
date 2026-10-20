@@ -25,9 +25,9 @@ namespace AIFrontend.Services.OpenCode;
 /// <item><description>BaseUrl 是服务地址本身，不预先加 /api；仅 http/https、拒绝 userinfo/query/fragment，允许 path prefix。</description></item>
 /// <item><description>显式 None/Bearer/Basic 认证只按请求写入 Authorization 头，绝不写入 URL、默认头、日志或异常。</description></item>
 /// <item><description>自建 HttpClient 时禁止自动重定向；不自动重试任何请求（尤其 POST）。</description></item>
-/// <item><description>每次请求强制有限超时；调用方取消保留其 CancellationToken 并脱敏，超时抛 <see cref="OpenCodeTimeoutException"/>。</description></item>
+    /// <item><description>REST 强制有限超时；SSE 仅连接响应头限时，读取由调用方取消，断流由订阅者重连。</description></item>
 /// <item><description>异常不携带 token 或完整响应体。</description></item>
-/// <item><description>不实现 SSE、pairing、权限自动同意与工具执行。</description></item>
+    /// <item><description>GET api/event 提供可取消的 SSE；长连接由调用方重连，其他请求不自动重试。</description></item>
 /// </list>
 /// </remarks>
 public sealed partial class OpenCodeClient : IDisposable
@@ -124,7 +124,7 @@ public sealed partial class OpenCodeClient : IDisposable
 
     /// <summary>
     /// GET api/session：按顺序列出会话（响应 SessionsResponse = { data, cursor }）。
-    /// 客户端仅暴露已核实的 directory / order / limit / cursor 四个查询参数。
+    /// 暴露 directory / parentID / order / limit / cursor；cursor 与 order 互斥。
     /// </summary>
     /// <param name="query">可选查询参数；null 表示不带参数（服务端默认最新 50 条）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -135,13 +135,20 @@ public sealed partial class OpenCodeClient : IDisposable
 
         ValidateOrder(query?.Order, "query.Order");
         ValidateLimit(query?.Limit, "query.Limit");
+        ValidateSessionParentQuery(query);
 
-        var parameters = new List<KeyValuePair<string, string>>(4);
+        var parameters = new List<KeyValuePair<string, string>>(5);
         if (query is not null)
         {
             if (!string.IsNullOrEmpty(query.Directory))
             {
                 parameters.Add(new KeyValuePair<string, string>("directory", query.Directory));
+            }
+
+            if (query.ParentFilter != OpenCodeSessionParentFilter.All)
+            {
+                parameters.Add(new KeyValuePair<string, string>("parentID",
+                    query.ParentFilter == OpenCodeSessionParentFilter.Roots ? "null" : query.ParentId!));
             }
 
             if (query.Order is { } order)
@@ -292,6 +299,13 @@ public sealed partial class OpenCodeClient : IDisposable
         if (response.Data is null)
         {
             throw new OpenCodeProtocolException("响应缺少 data 字段（GET api/session/{sessionID}/message）。");
+        }
+
+        // 就地净化每条消息：命中指令通知的消息收敛为最小安全字段集，其余消息保持原引用；
+        // 列表实例、条目顺序与 cursor 均保持不变。
+        for (var index = 0; index < response.Data.Count; index++)
+        {
+            response.Data[index] = OpenCodeInstructionNoticeProjection.SanitizeForClient(response.Data[index]);
         }
 
         return response;

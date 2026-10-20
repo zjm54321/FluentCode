@@ -50,7 +50,7 @@ public sealed record OpenCodeFormState
     public string? Message { get; init; }
 }
 
-/// <summary>已核实核心字段；其余字段（when/default/边界/url 等）保留 JSON，不猜测或执行。</summary>
+/// <summary>核心字段与常用输入元数据；约束保留 JSON 类型，由输入策略验证，不静默忽略错误类型。</summary>
 public sealed record OpenCodeFormField
 {
     [JsonPropertyName("key")]
@@ -77,8 +77,30 @@ public sealed record OpenCodeFormField
     [JsonPropertyName("custom")]
     public bool? Custom { get; init; }
 
+    // 原始元数据仍在扩展数据中：保留指纹与其他消费者原有的 fail-closed 行为。
+    // Undefined 表示未提供；显式 Null 保留，由输入策略报错，而不是静默丢弃。
+    // 使用方法而非 JsonIgnore 属性，避免 Web/case-insensitive 反序列化吞掉同名扩展数据。
+    public JsonElement GetPlaceholder() => Property("placeholder");
+
+    public JsonElement GetDefault() => Property("default");
+
+    public JsonElement GetMinLength() => Property("minLength");
+
+    public JsonElement GetMaxLength() => Property("maxLength");
+
+    public JsonElement GetMinimum() => Property("minimum");
+
+    public JsonElement GetMaximum() => Property("maximum");
+
+    public JsonElement GetMinItems() => Property("minItems");
+
+    public JsonElement GetMaxItems() => Property("maxItems");
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? AdditionalProperties { get; init; }
+
+    private JsonElement Property(string name)
+        => AdditionalProperties is { } properties && properties.TryGetValue(name, out var value) ? value : default;
 }
 
 public sealed record OpenCodeFormOption
@@ -88,6 +110,9 @@ public sealed record OpenCodeFormOption
 
     [JsonPropertyName("label")]
     public string? Label { get; init; }
+
+    public JsonElement GetDescription()
+        => AdditionalProperties is { } properties && properties.TryGetValue("description", out var value) ? value : default;
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? AdditionalProperties { get; init; }

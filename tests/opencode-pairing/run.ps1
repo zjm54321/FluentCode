@@ -12,6 +12,10 @@ $assembly = Join-Path $output 'OpenCodePairingTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Services/OpenCode/*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
+# Include the WinUI-free dependency closure used by current OpenCode session controls.
+foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
+    $arguments += '"' + (Join-Path $repo "src/AIFrontend/Services/Notifications/$name") + '"'
+}
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

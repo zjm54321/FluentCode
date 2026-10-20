@@ -205,6 +205,7 @@ public sealed partial class OpenCodeClient
         var template = "api/session/{sessionID}/" + resource;
         if (segments.Length >= 5 && resource is "permission" or "form")
             template += resource == "permission" ? "/{requestID}" : "/{formID}";
+        if (segments.Length == 5 && resource == "inbox") template += "/{inboxID}";
         if (segments.Length == 6 && segments[5] == "reply") template += "/reply";
         return template;
     }

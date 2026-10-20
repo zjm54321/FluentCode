@@ -18,7 +18,7 @@
 
 ## 2. 范围
 
-**本轮实现（全部为可取消的逐次 HTTP 调用）：**
+**本轮实现（可取消的 HTTP 调用及 live-only SSE）：**
 
 - `GET api/location`、`GET api/session`、`POST api/session`、
   `POST api/session/{sessionID}/prompt`、`POST api/session/{sessionID}/interrupt`、
@@ -26,16 +26,28 @@
   `GET api/session/{sessionID}/inbox`、`GET api/session/{sessionID}/permission`。
 - 权限单项查询/回复与 Form 列表/详情/回复/取消，见第 13 节（新增完整调用签名）。
 - 粘贴已有配对链接的纯解析与显式 GET 兑换，见第 15 节；不创建配对码、不自行保存配置。
+- Agent 列表/切换、session parent 三态过滤和 active 查询，见第 16 节。
+- `GET api/event`：`SubscribeEventsAsync(CancellationToken)`，见下方 v2.0.30 实测补充。
 
 **明确不实现：**
 
-- SSE/事件流（官方文档：订阅 live-only、无重放、无自动重连；业务 payload 文档不完整）。
 - 创建配对码（`POST /api/pair`）及其他配对管理操作；仅支持第 15 节的已有链接兑换。
 - 权限自动同意、按钮或授权决策、通知发送。
 - 工具执行、shell 执行及未明确列出的写操作；新增回复/取消仅提供被上层显式调用的 HTTP 方法。
 - 自动重试（尤其 POST 绝不自动重发）。
-- 其他已存在但未暴露的查询参数（`search`、`parentID`、`project`、`subpath`、interrupt 的
+- 其他已存在但未暴露的查询参数（`search`、`project`、`subpath`、interrupt 的
   `resume`、prompt 的 `files/agents/skills/delivery/resume` 等，见第 9 节）。
+
+### v2.0.30 事件同步实测补充（W5-S，2026-10-18）
+
+- 使用服务发现文件 `~/.local/state/opencode/service-prod.json` 中的 URL 和密码，`curl -N -u opencode:<password> <base>/api/event` 实测（凭据未写入文档/日志）。HTTP 200 `text/event-stream`；原始记录 `/tmp/opencode/w5-s-curl-events.log`、`/tmp/opencode/w5-s-curl-events-long.log`。
+- SSE 帧 `event: session.reasoning.started` / `data: {"id":"evt_…","created":1792323825841,"type":"session.reasoning.started","location":{"directory":"…"},"data":{"sessionID":"ses_…","assistantMessageID":"msg_…","ordinal":0,"state":{"signature":""}},"durable":{"aggregateID":"ses_…","seq":88,"version":1}}`。业务负载位于 **data**，不是 v1 properties；原生消息流不是 `message.part.delta`。
+- 实测 `server.connected`（data={}）、`session.step.started`（sessionID, assistantMessageID, agent, model, started）、`session.text.started/delta/ended` 与 `session.reasoning.started/delta/ended`（sessionID, assistantMessageID, ordinal；delta 追加 `delta`；ended 的 `text` 是完整替换；reasoning 可有 provider `state`）、`session.step.ended`（finish, rawFinish, cost, tokens）、`session.tool.input.started/ended`、`session.tool.called/progress/success/failed`。reasoning.started 即使没有文本也立即建立未完成的 reasoning part；ended 写入 `time.completed`，与 V2 HTTP content 投影一致（不是旧版 time.end）。工具 id 即调用 id，文本/思考按各类型 ordinal 对应内容部分。
+- `message.updated`、`message.part.updated`、`message.part.delta` **未在该服务器的抓流中出现**；reducer 仍兼容它们：info.id 定位消息，part.messageID+part.id 定位插入/替换，delta 的 messageID+partID+field+delta 追加字段。先到的 delta 暂存至 part 到达。该兼容路径用确定性测试验证，不能当作 v2.0.30 的实测事件名。
+- 独立临时会话以 `resume:false` 排队、不运行模型，实测 `session.inbox.enqueued` 的 data={inboxID,sessionID,item:{type:"user",payload:{text},delivery:"steer"}}、`session.inbox.cancelled` 的 data={sessionID,inboxID}。随后删除该临时会话；记录 `/tmp/opencode/w5-s-inbox-events.log`。inbox 变化触发权威 GET inbox；是否查询/展示不再受本页 `_pendingAckIds` 限制。
+- `curl GET /api/session/active` 实测 `{data:{"ses_…":{type:"running"},…}}`。一次查询覆盖所有列表会话；缺席表示该进程的 foreground inactive，不表示后台工作完成。native `session.execution.started/succeeded/failed/interrupted`（data.sessionID；失败另有 error、中断另有 reason）及 session.step/text/reasoning/tool 生命周期维护列表运行状态。原生事件定义也在已安装 2.0.30 二进制的协议定义中核对；不存在 `GET /api/session/status`。
+- 页先发起并等待订阅握手，再读初始快照（离线 2 秒后允许 REST fallback）。后台读 SSE，约 50 ms 合并 UI 发布；消息/part 按稳定身份合并，抓取期间修改过的消息胜过旧 HTTP 内容。分页/回滚边界、来源和页面/会话代际校验保留。普通 fallback 改为 12 秒；断流 1/2/4/8/15 秒退避重连，重连后重读回滚边界、消息/交互/inbox 和 active。
+- stream 是易失 live-only、无断线 replay；`effect/http-api/stream/failure` 和 EOF 需要重连+refetch。页卸载、来源换代、会话切换取消旧连接；认证仍逐请求、禁止跳转，不记录消息正文或认证。`Debug.WriteLine` 的 `OpenCode.SSE apply received_utc=… applied_utc=… latency_ms=… events=…` 可供真实 App 测量 event→ApplyMessages；headless 50 ms 合并测试实测 63.6/53.1 ms（非 WinUI 渲染耗时）。
 
 ## 3. 连接与安全模型
 
@@ -51,7 +63,7 @@
   CR/LF 及密码 CR/LF。Bearer 仍拒绝空字符串、空白、控制字符和非 ASCII。
   `Secret` 优先，缺省时使用旧 `BearerToken` 别名；别名在 Basic 下也表示密码，便于复用现有
   token 解析回调。密码不会自动作为 Bearer 发送，也不根据 401 challenge 自动切换认证方式。
-  所有现有 HTTP 读/写/interaction 请求均共用 `SendAsync` 设置请求头；本客户端没有 SSE，
+  所有现有 HTTP 读/写/interaction/SSE 请求均共用 `SendAsync` 设置请求头；SSE 使用同一认证来源，
   不新增 SSE 协议。未来新增 SSE 必须沿用相同认证/重定向策略。
   凭据只写每个请求的 `Authorization`，绝不写 `DefaultRequestHeaders`、URL、日志或异常；
   options 的 `ToString()` 也脱敏。`OpenCodeClientOptions` 是运行时对象，禁止序列化持久化。
@@ -132,9 +144,11 @@ public sealed class OpenCodeClient : IDisposable
 public sealed record OpenCodeSessionListQuery
 {
     public string? Directory { get; init; }
+    public OpenCodeSessionParentFilter ParentFilter { get; init; } // All(default)/Roots/Children
+    public string? ParentId { get; init; } // 仅 Children 时必填
     public string? Order { get; init; }    // OpenCodeSessionOrders.Asc / .Desc
     public int? Limit { get; init; }       // > 0
-    public string? Cursor { get; init; }
+    public string? Cursor { get; init; } // 不与 Order 同传；保留 Directory/ParentFilter/ParentId
 }
 
 public sealed record OpenCodeMessageQuery
@@ -181,7 +195,7 @@ public sealed class OpenCodeProtocolException : OpenCodeException        // 响�
   未建模（保留原始 JSON 或忽略）：`fork`、`permissions`、`revert`、`metadata` 内部结构。
 - `OpenCodeTokenUsage`：`input`、`output`、`reasoning`、`cache{read,write}`（均必填，number）。
 - `OpenCodeSessionTime`：`created`、`updated`(必填)；`idle`、`viewed`、`archived`(可选)。
-  时间戳单位（秒/毫秒）**契约未说明**。
+  Session 时间戳已由 v2.0.24 源码确认是有限 JSON number、Unix epoch 毫秒（第 17 节）；保留 double 精度。
 - `OpenCodeInterruptResult`：`interrupted`(必填 bool)。
 
 **Message 投影（GET …/message）**
@@ -360,7 +374,7 @@ var waitingForPermission = permissions.Count > 0;   // 仅 UI 提示，不自动
 ## 11. 未验证点（明确列出）
 
 1. 最初客户端轮次仅静态核对；本次权限/Form 扩展已在纯 net10 隔离工程编译并 mock 验证（第 13 节）。从未据此声称真实后端已验证。
-2. 时间戳（`time.created` 等 number）的单位未在契约中说明。
+2. Session.Info.time 的 Unix epoch 毫秒编码已由 v2.0.24 源码确认（第 17 节）；不据此扩展其他未核实时间字段。
 3. deepObject 键使用 `%5B`/`%5D` 编码；真实部署解析行为未实测。
 4. 服务端对 `POST api/session` 空对象 `{}` 的实际行为仅按 schema（全字段可选）核实，未实测。
 5. `SessionBusyError` 在哪些端点/条件下返回未逐一定位；客户端仅按 HTTP 状态报告错误。
@@ -673,3 +687,103 @@ public sealed class OpenCodePairingResult
   反射核对真实自建 handler 的重定向/cookies/默认凭据禁用状态；所有请求由 fake handler 终结，无 socket。
 - 输出目录：`C:\Users\Zhang\AppData\Local\Temp\opencode-pairing-f2a5dfcc16964bfe9b04cfb4701d6800`。
   未操作真实 API/GUI/配置/凭据/Notifications，也未做全工程构建或 git 操作。
+
+## 16. Session parent / Agent / active（2026-10-07）
+
+本节采用父会话提供的官方 **v2.0.24** 冻结事实，没有重新 fetch 或真实 HTTP：
+
+- https://github.com/anomalyco/opencode/blob/v2.0.24/packages/schema/src/agent.ts
+- https://github.com/anomalyco/opencode/blob/v2.0.24/packages/protocol/src/groups/agent.ts
+- https://github.com/anomalyco/opencode/blob/v2.0.24/packages/schema/src/location.ts
+- https://github.com/anomalyco/opencode/blob/v2.0.24/packages/protocol/src/groups/session.ts
+
+### 冻结公开接口（供页面 owner 接续；本 lane 未接 UI）
+
+```csharp
+// AIFrontend.Services.OpenCode.OpenCodeClient
+Task<OpenCodeAgentsResponse> ListAgentsAsync(string directory, CancellationToken cancellationToken = default);
+Task SwitchAgentAsync(string sessionId, string agentId, CancellationToken cancellationToken = default);
+Task<OpenCodeActiveSessionsResponse> GetActiveSessionsAsync(CancellationToken cancellationToken = default);
+
+public enum OpenCodeSessionParentFilter { All = 0, Roots = 1, Children = 2 }
+// OpenCodeSessionListQuery 新增 init 属性：
+// OpenCodeSessionParentFilter ParentFilter; string? ParentId;
+```
+
+- `All`（默认）省略 `parentID`，列出所有会话；`Roots` 发送 **字面量 `parentID=null`**；
+  `Children` 发送 `parentID=<ParentId>`。Children 必须有合法 `ses` ID；All/Roots 必须不设 ParentId。
+  旧 `ListSessionsAsync(query, ct)` 签名保留；Directory 精确传递，不改大小写或归一化。
+- 不解析 opaque cursor；续页使用 `query with { Cursor = response.Cursor?.Next, Order = null }`，
+  保留 Directory/ParentFilter/ParentId；cursor 与 order 同传在发请求前拒绝。
+- `GET api/agent?location[directory]=<exact session directory>` 返回 `OpenCodeAgentsResponse`：
+  `OpenCodeLocationRef? Location`（仅 Directory，无 workspaceID），`List<OpenCodeAgentInfo>? Data`。
+  directory 必须显式传入当前 session 的 Location.Directory，不静默回退全局目录。
+- `OpenCodeAgentInfo`：必填 `string? Id/Name/Mode`、`bool Hidden`、`JsonElement Request/Permissions`；
+  可选 `JsonElement? Model`、`string? System/Description/Color`、`double? Steps`（正整数）。
+  必填字段缺失/null、optional 显式 null 被拒绝；optional 缺省保持省略。
+  Request/Permissions 和 Model 原样 JSON，不猜内部 schema；DTO ToString 固定脱敏。
+  **Id 用于切换，Name 用于显示**，两者均必填，不互相 fallback。
+  `OpenCodeAgentModes.Subagent/Primary/All` 为已知常量，Mode 为 string，未知值保留。
+- `POST api/session/{sid}/agent` 只发送 `{ "agent": "<id>" }`，**仅 204 成功**，不读响应体、不自动重试。
+  切换影响后续 provider turns；不是 per-prompt 选择或全局默认，不承诺 busy 时安全。
+  超时/取消/断连可能已应用，不能盲目自动重发。
+- `GET api/session/active` 返回 `OpenCodeActiveSessionsResponse.Data`：
+  `Dictionary<string, OpenCodeActiveSessionState>?`，每项 `string? Type`，已知 `running`，未知 type 保留。
+  只覆盖当前 server 的 **foreground session drains**；缺席只表示 foreground inactive，
+  **不证明后台 Job 完成**。Inbox 仍用于 queued 信息，无 Job 百分比 API、不增加假进度。
+- 已有 `OpenCodeSessionInfo.ParentId/Agent/Location/Outcome` 与 `OpenCodeSessionTime.Idle/Viewed` 保留。
+  Outcome 为 string，保留 succeeded/failed/interrupted 及未知值；时间仍保留原 numeric DTO。
+  后续已冻结 DateTimeUtcFromMillis 的有限 JSON number / epoch 毫秒编码，并实现显式 view（第 17 节）。
+  View 的语义是确认已观察 idle 水位，不表示 Form/Question/Permission 已读。
+
+所有新请求沿用原认证（含 Basic UTF-8）、prefix、禁 redirect/自动重试、30s 默认超时及取消。
+不记录 raw payload，不修改 prompt body、Form/permission、配置/安全 gate 或通知。
+
+### 隔离验证
+
+证据限定 `artifacts/validation/opencode-session-agents-20261007/`；由 Windows .NET 10
+Roslyn 直接编译 OpenCode 源码快照，无主工程/csproj 修改、无 restore、无 socket。
+仅运行三组新增 mock：parent+cursor/agent DTO；switch 严格 204/错误/取消/单次 POST；
+active envelope/unknown type/session outcome+time numeric 保留。完整 121 interaction 和旧 auth 不重跑。
+实际 Windows 隔离编译 **0 warnings / 0 errors**（warnings as errors），**3 组 / 106 断言通过**：
+parent/agent 53、switch 36、active/outcome/time 17。`sourceSnapshot/` 保存编译源码，
+`source-hashes.json` 记录 SHA-256，`hash-check.log` 确认编译后 live 源码仍匹配快照；
+`compile.log` / `test-run.log` 为编译和 mock 证据。运行 `run.ps1` 可复现；不代表 UI 或真实后端已验证。
+
+## 17. 显式确认已观察 idle 水位（view）
+
+按父会话内嵌的官方 v2.0.24 合同实现，无外部研究：
+
+- https://github.com/anomalyco/opencode/blob/v2.0.24/packages/protocol/src/groups/session.ts
+- https://github.com/anomalyco/opencode/blob/v2.0.24/packages/schema/src/session.ts
+
+`DateTimeUtcFromMillis` 使用 `Schema.Finite`、`decodeDateTime`、`encodeToEpochMillis`：
+wire 是 **有限 JSON number、Unix epoch 毫秒**，无额外 integer/min/max 约束，不接受 null，不是 ISO 日期字符串。
+Session.Time.Idle/Viewed 为 optional non-null；现有 `double?` 属性继续表示可缺省，不改 public type。
+
+```csharp
+// AIFrontend.Services.OpenCode.OpenCodeClient
+Task MarkSessionViewedAsync(
+    string sessionId, double idleMilliseconds, CancellationToken cancellationToken = default);
+
+// 调用 owner 已确认当前 source/session scope 且用户真正打开看到该会话后：
+if (freshInfo.Time?.Idle is { } observedIdle)
+    await client.MarkSessionViewedAsync(sessionId, observedIdle, cancellationToken);
+```
+
+- 仅发送 `POST api/session/{sid}/view`，JSON body `{ "idle": <number> }`；double 原值直传，
+  不转 long，不截断小数、不写 ISO、不用 DateTime.Now。非 nullable 参数不接受 null；NaN/±Infinity 在请求前拒绝。
+- 按已有 session ID 规则校验；只有 **204** 成功，其他 2xx 为协议错误、非 2xx 保留实际 HTTP 状态。
+- 复用原 base prefix/认证/禁 redirect/每请求 timeout/取消传递；不自动重试 POST，取消/超时后可能已应用。
+- helper 不自动 GET，也不被任何 GET 自动调用。这里只确认已观察 idle 水位，不表示 Permission/Form
+  已读、不是模型侧 ack；调用 owner 负责 source/session scope 和真正打开后的显式触发。UI 接线尚待 owner 完成。
+
+独立 view 证据在 `artifacts/validation/opencode-session-agents-20261007/view/`，
+不覆盖或重跑旧 106 断言证据。该目录保留 run.ps1、sourceSnapshot、SHA-256 与 compile/test 日志；
+仅运行新 helper 的一组 focused mock，不使用真实 HTTP 或 GUI，不构建主工程。
+
+实际验证：Windows SDK **10.0.401** / reference pack **10.0.12**，隔离编译 **0 warnings / 0 errors**，
+**1 组 / 87 断言通过**，编译后的 live 源码 SHA-256 与 sourceSnapshot 一致。
+覆盖数字/小数原值、非 nullable 参数、NaN/Infinity 拒绝、204-only、错误/取消/超时/无重试及单条 Basic 路径。
+首轮 mock 对预取消错误地要求 handler 不被调用；现按既有 transport 语义校验原 token 和至多一次调用，
+未为该测试改变生产 transport。旧 106 断言与旧认证 suite 未重跑、旧证据未覆盖。等待 UI owner 显式接线。
