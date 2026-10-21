@@ -257,6 +257,15 @@ namespace AIFrontend.Pages
         // No composer is constructed by this return-navigation host. Current extracted lifecycle methods
         // notify its binding boundary; composer/continuation behavior remains outside this harness's proof.
         private void BindComposer() { }
+        // This return/child fixture has NO controller/editor/slot payload. These represent the
+        // real Page's no-composer branches only; actual Prepare/CAS/IME/source-recovery gates run
+        // source-linked with the real core in opencode-draft-slots. Switch/generation guards below stay real.
+        private bool TryPrepareDraftSlotNavigation() => true;
+        private void RestoreDraftSlotTabSelection() { }
+        private void ForceSuspendDraftSlot(string reason) { }
+        private void SuspendDraftSlotForPageUnload() { } // No composer/editor exists in this navigation-only fixture; real helper covered in opencode-draft-slots.
+        private void InvalidateDraftSourceEpoch() { }
+        private void OnSessionContextSelected(string sessionId) => _homeActive = false;
         private void UpdateInteractionsSection() { }
         private void ConfigureAgentSelectorForSession(string id) { }
         private void ClearAgentSelector() { }

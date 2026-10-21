@@ -126,7 +126,9 @@ internal static partial class Program
         await BuiltinFoundation();
         var builtinChecks = checks - originalChecks - syncChecks - legacyChecks;
         await ContinuationAdapter();
-        Console.WriteLine($"PASS: original {originalChecks} + sync {syncChecks} + legacy {legacyChecks} + builtin {builtinChecks} + continuation {checks - originalChecks - syncChecks - legacyChecks - builtinChecks}, {checks} assertions; real Core/coordinator/gate/transport, fake HTTP only; ordinary Page/history/native not executed.");
+        var continuationChecks = checks - originalChecks - syncChecks - legacyChecks - builtinChecks;
+        await DraftSlots();
+        Console.WriteLine($"PASS: original {originalChecks} + sync {syncChecks} + legacy {legacyChecks} + builtin {builtinChecks} + continuation {continuationChecks} + slots {checks - originalChecks - syncChecks - legacyChecks - builtinChecks - continuationChecks}, {checks} assertions; real Core/EditorSync/coordinator/gate/transport, fake HTTP only; ordinary Page/history/native not executed.");
     }
 
     private static async Task Ownership()

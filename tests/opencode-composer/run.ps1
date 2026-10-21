@@ -26,13 +26,13 @@ $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enabl
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
 $arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
-foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeSessionControlCoordinator.cs')) {
+foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeSessionControlCoordinator.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
 }
-foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs')) {
+foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs')) {
     $sources += Get-Item (Join-Path "$repo/tests/opencode-composer" $name)
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }

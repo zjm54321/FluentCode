@@ -384,9 +384,14 @@ public sealed partial class OpenCodePage
     private async Task CreateNativeSessionAsync(OpenCodePageSource source, OpenCodeClient client,
         Func<bool> canStart, Func<bool> ownsOperation, CancellationToken ct, OpenCodeBlankDraftPreferences? preferences = null)
     {
-        if (_newSessionOperation is not null) return;
+        if (preferences is null && _newSessionOperation is not null) return;
+        if (preferences is not null && (preferences.BlankSlotId == Guid.Empty
+            || _blankCreationResults.ContainsKey((source.Identity, preferences.BlankSlotId)))) return;
         var operation = Guid.NewGuid();
         _newSessionOperation = operation;
+        var originBlank = preferences is not null && _blankTabs.TryGetValue(preferences.BlankSlotId, out var blank) ? blank : null;
+        var originSlot = originBlank?.Slot;
+        if (originSlot is not null) originSlot.CreateOperation = operation;
         NewSessionButton.IsEnabled = false;
         Task<OpenCodeSessionInfo>? pending = null;
         try
@@ -395,14 +400,21 @@ public sealed partial class OpenCodePage
             {
                 if (canStart())
                 {
+                    // Register BEFORE invoking transport. Draft edits, activation, close and epoch
+                    // changes must never re-issue an uncertain create for the same stable blank.
+                    if (preferences is not null) _blankCreationResults[(source.Identity, preferences.BlankSlotId)] = null;
                     pending = preferences is null ? client.CreateSessionAsync(null, ct)
                         : client.CreateSessionConfiguredAsync(preferences.Directory, preferences.Agent, preferences.Model, ct);
-                    if (preferences is not null) _blankCreationResults[(source.Identity, preferences.Draft)] = null;
                 }
             });
             if (pending is null) return;
             var session = await pending;
-            if (preferences is not null) _blankCreationResults[(source.Identity, preferences.Draft)] = session.Id;
+            if (preferences is not null)
+            {
+                _blankCreationResults[(source.Identity, preferences.BlankSlotId)] = session.Id;
+                if (originSlot is not null) originSlot.CreatedSessionId = session.Id;
+                RecordCreatedBlankSlot(source, preferences, session);
+            }
             if (!ownsOperation() || source.IsRevoked || _newSessionOperation != operation) return;
             if (session.Id is { Length: > 0 } id)
             {
@@ -419,21 +431,31 @@ public sealed partial class OpenCodePage
                     {
                         createdBinding = _composerBinding;
                         createdToken = _composerController?.Snapshot.Token;
-                    });
+                        if (preferences is not null) ConvertCreatedBlankTab(preferences.BlankSlotId, id, select: true);
+                    }, forceDraftTransition: preferences is not null);
                     OnNativeSessionCreated(id, createdBinding, createdToken);
+                    if (preferences is not null && _newSessionCreatedId is null && _pageActive
+                        && ReferenceEquals(source, _source) && ReferenceEquals(client, _client) && !source.IsRevoked
+                        && _selectedSessionId == id)
+                        ShowMessage(InfoBarSeverity.Informational, "会话已创建，未发送", "草稿已保留；原输入归属已变化，请检查后明确发送。");
                 }
             }
         }
         catch (Exception error)
         {
             if (preferences is not null && pending is not null && error is OpenCodeApiException { StatusCode: >= 400 and < 500 and not 408 })
-                _blankCreationResults.Remove((source.Identity, preferences.Draft)); // Known rejection permits an explicit corrected attempt.
+                _blankCreationResults.Remove((source.Identity, preferences.BlankSlotId)); // Known rejection permits an explicit corrected attempt.
             if (ownsOperation() && !source.IsRevoked)
                 ShowMessage(InfoBarSeverity.Warning, "创建会话未确认", pending is null
                     ? "未开始创建。" : "创建结果未确认；不会自动重试，请先检查会话列表。");
         }
         finally
         {
+            if (originSlot?.CreateOperation == operation)
+            {
+                originSlot.CreateOperation = null;
+                if (ReferenceEquals(_activeDraftSlot, originSlot)) _newSessionCreatePending = false;
+            }
             if (_newSessionOperation == operation)
             {
                 _newSessionOperation = null;

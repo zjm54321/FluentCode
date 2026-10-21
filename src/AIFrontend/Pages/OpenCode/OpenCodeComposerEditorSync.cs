@@ -20,6 +20,9 @@ internal enum OpenCodeComposerInputState
 /// <summary>Acknowledged user observation: <paramref name="Revision"/> is the submitted input revision (not a later one).</summary>
 internal readonly record struct OpenCodeComposerInputAcknowledgment(long Revision, OpenCodeComposerToken Token, string Text);
 
+// Read-only recovery data, never a pending input, token or edit authority. Selection belongs to the view.
+internal readonly record struct OpenCodeComposerEditorRecovery(string Text, OpenCodeComposerInputState State, bool IsComposing);
+
 /// <summary>
 /// WinUI-free editor ↔ controller input ledger (phase3-sync-protocol §3). Input is recorded from the editor's
 /// synchronous TextChanging only; nothing is inferred from "editor text differs from controller text".
@@ -33,7 +36,7 @@ internal readonly record struct OpenCodeComposerInputAcknowledgment(long Revisio
 /// <item>Carry is requested only for input recorded against an unbound baseline (no origin). A rejected carry
 /// input is held while there is no active snapshot and becomes <see cref="OpenCodeComposerInputState.HeldStale"/>
 /// once an active controller has refused it; bound input that is rejected is HeldStale immediately.</item>
-/// <item>All application writes go through <see cref="WriteSnapshot"/>: depth guard, assign, actual read-back.
+/// <item>Application writes use <see cref="WriteSnapshot"/> or readonly <see cref="TryPresentRecovery"/>: depth guard, assign, actual read-back.
 /// Changes raised during the write are ignored; the read-back is an alias of the controller text, not an edit.</item>
 /// <item>Rendering adopts a new token (even with identical text) only while <see cref="OpenCodeComposerInputState.Clean"/>.</item>
 /// </list>
@@ -54,6 +57,8 @@ internal sealed class OpenCodeComposerEditorSync
     private string _editorText = string.Empty;
     private PendingInput? _pending;
     private int _writeDepth;
+    private bool _suspendedForRecovery;
+    private long _recoveryEpoch;
 
     /// <param name="apply">Raises the view's TextEdited (single synchronous page handler) and returns its acknowledgment.</param>
     internal OpenCodeComposerEditorSync(Func<OpenCodeComposerSnapshot> source, Func<string?> readEditor,
@@ -82,6 +87,67 @@ internal sealed class OpenCodeComposerEditorSync
     /// <summary>Last actual editor read-back / recorded text (normalised native representation).</summary>
     internal string EditorText => _editorText;
     internal bool HasUnresolvedInput => State != OpenCodeComposerInputState.Clean;
+    internal bool IsSuspendedForRecovery => _suspendedForRecovery;
+
+    internal OpenCodeComposerEditorRecovery CaptureRecovery()
+        => new(_readEditor() ?? string.Empty, State, _isComposing());
+
+    internal OpenCodeComposerEditorRecovery SuspendForRecovery()
+    {
+        _recoveryEpoch++;
+        var recovery = CaptureRecovery();
+        _suspendedForRecovery = true;
+        _pending = null;
+        _baselineToken = default;
+        _baselineBound = true;
+        _controllerText = string.Empty;
+        _editorText = recovery.Text;
+        LastAcknowledgment = null;
+        State = OpenCodeComposerInputState.HeldStale;
+        return recovery;
+    }
+
+    // Presentation only: no snapshot/baseline/input authority is adopted, even from old-epoch saved text.
+    internal bool TryPresentRecovery(string text)
+    {
+        if (!_suspendedForRecovery) return false;
+        var epoch = _recoveryEpoch;
+        if (_isComposing() || !_suspendedForRecovery || epoch != _recoveryEpoch) return false;
+        epoch = ++_recoveryEpoch; // A nested presenter or a new forced hold wins over this presentation.
+        _writeDepth++;
+        try
+        {
+            _assignEditor(text);
+            if (!_suspendedForRecovery || epoch != _recoveryEpoch) return false;
+            var actual = _readEditor() ?? string.Empty;
+            if (_isComposing() || !_suspendedForRecovery || epoch != _recoveryEpoch) return false;
+            _editorText = actual;
+            return true;
+        }
+        finally { _writeDepth--; }
+    }
+
+    // Only after the user has copied recovery or explicitly discarded it. Does not write/adopt any snapshot.
+    internal void ResolveRecovery()
+    {
+        if (!_suspendedForRecovery) return;
+        _recoveryEpoch++;
+        _suspendedForRecovery = false;
+        _pending = null;
+        LastAcknowledgment = null;
+        State = OpenCodeComposerInputState.Clean;
+    }
+
+    internal bool TryActivateClean(OpenCodeComposerToken activated)
+    {
+        if (_suspendedForRecovery || State != OpenCodeComposerInputState.Clean || _isComposing()) return false;
+        var snapshot = _source();
+        if (snapshot.Token != activated || !snapshot.IsActive) return false;
+        LastAcknowledgment = null;
+        WriteSnapshot(snapshot);
+        return !_suspendedForRecovery && State == OpenCodeComposerInputState.Clean
+            && _baselineToken == activated && _source().Token == activated;
+    }
     /// <summary>
     /// Latest controller acknowledgment of RECORDED user input: the submitted input revision plus the accepted token/text.
     /// Guarded application writes never set it, so programmatic echoes are not user observations. Read-only presentation seam.
@@ -91,7 +157,7 @@ internal sealed class OpenCodeComposerEditorSync
     /// <summary>Editor TextChanging (synchronous; Text already holds the new value). Records only.</summary>
     internal void OnTextChanging()
     {
-        if (_writeDepth > 0) return; // Our own guarded assignment.
+        if (_writeDepth > 0 || _suspendedForRecovery) return; // No recovery text gets a new basis.
         Record(_readEditor() ?? string.Empty);
     }
 
@@ -113,11 +179,13 @@ internal sealed class OpenCodeComposerEditorSync
     /// <summary>Flush recorded input only (never inferred). Clears only the revision it submitted.</summary>
     internal OpenCodeComposerInputState Flush()
     {
+        if (_suspendedForRecovery) return State;
         for (var round = 0; round < 8; round++)
         {
             if (State is OpenCodeComposerInputState.Clean or OpenCodeComposerInputState.HeldStale) return State;
             var submitted = _pending!;
             var ack = _apply(submitted.Basis, submitted.Text, submitted.CarryAllowed);
+            if (_suspendedForRecovery) return State; // Forced invalidation may run reentrantly during publication.
             if (ack is not { } accepted)
             {
                 var pending = _pending!; // May have coalesced reentrantly; ownership is unchanged either way.
@@ -166,9 +234,11 @@ internal sealed class OpenCodeComposerEditorSync
     /// <summary>The single guarded application write: depth guard, assign, actual read-back, token association.</summary>
     internal void WriteSnapshot(OpenCodeComposerSnapshot snapshot)
     {
+        if (_suspendedForRecovery) return;
         _writeDepth++;
         try { _assignEditor(snapshot.Text); }
         finally { _writeDepth--; }
+        if (_suspendedForRecovery) return;
         _editorText = _readEditor() ?? string.Empty;
         _controllerText = snapshot.Text;
         _baselineToken = snapshot.Token;
@@ -178,7 +248,7 @@ internal sealed class OpenCodeComposerEditorSync
     /// <summary>UI-thread submission gate: no composition, all recorded input acknowledged, editor reconciled.</summary>
     internal bool Prepare()
     {
-        if (_isComposing()) return false;
+        if (_suspendedForRecovery || _isComposing()) return false;
         var deferred = Reconcile();
         return !deferred && State == OpenCodeComposerInputState.Clean && _source().Token == _baselineToken;
     }
@@ -189,6 +259,8 @@ internal sealed class OpenCodeComposerEditorSync
     /// </summary>
     internal void ResolveDiscard()
     {
+        _recoveryEpoch++;
+        _suspendedForRecovery = false; // Explicit user discard only, never an ordinary slot switch.
         _pending = null;
         State = OpenCodeComposerInputState.Clean;
         WriteSnapshot(_source());

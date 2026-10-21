@@ -8,7 +8,7 @@ using AIFrontend.Services.OpenCode;
 
 namespace AIFrontend.Pages.OpenCode;
 
-// Single enhanced draft, not a session cache. All events are raised outside source/gate/controller locks.
+// One active draft; Page owns inactive opaque slot data. Events are outside source/gate/controller locks.
 internal sealed partial class OpenCodeComposerController : IOpenCodeComposerController
 {
     private readonly object _sync = new();
@@ -89,14 +89,14 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     // Arms the ONLY rebasing of a command/attachment draft's origin: from this exact unbound binding to the one
     // session the Page just created, on the very next Bind, and only while the draft is unchanged (same draft id
     // and edit). Any other Bind, edit or discard drops the arm; a missed handoff leaves the draft inactive (never
-    // lost, never sent elsewhere). Plain text needs no handoff (it already carries across bindings).
+    // lost, never sent elsewhere). Only legacy no-Slot plain text may carry across legacy bindings.
     internal bool ArmUnboundHandoff(OpenCodeComposerToken expected, string sessionId)
     {
         ArgumentNullException.ThrowIfNull(sessionId);
         lock (_sync)
         {
-            if (sessionId.Length == 0 || !IsUnbound(_binding) || !Active || Busy
-                || expected.Draft != _draft || expected.Edit != _edit) return false;
+            if (sessionId.Length == 0 || !Current(expected) || !IsUnbound(_binding) || Busy
+                || _binding!.Slot is { } slot && (!ValidSlot(_binding, slot) || slot.BlankSlotId is null)) return false;
             _handoffFrom = _binding;
             _handoffSessionId = sessionId;
             _handoffDraft = _draft;
@@ -108,7 +108,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private bool HasDraft => !string.IsNullOrWhiteSpace(_text) || _command is not null || _files.Count != 0;
     private bool Active => _binding is not null && (_origin is null || SameOrigin(_binding, _origin));
     private static bool SameOrigin(OpenCodeComposerBinding a, OpenCodeComposerBinding b)
-        => ReferenceEquals(a.Source, b.Source) && a.Revision == b.Revision && a.SessionId == b.SessionId;
+        => ReferenceEquals(a.Source, b.Source) && a.Revision == b.Revision && a.SessionId == b.SessionId && a.Slot == b.Slot;
     private bool Current(OpenCodeComposerToken token) => token == Token && Active
         && _binding!.Revision == _binding.Source.Revision && !_binding.Source.RevocationToken.IsCancellationRequested
         && _ownsBinding(_binding);
@@ -157,6 +157,8 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         lock (_sync)
         {
             if (Equals(_binding, binding)) return;
+            // Legacy Bind may carry only legacy no-Slot drafts. Page slot paths must capture/activate explicitly.
+            if (_binding?.Slot is not null || binding?.Slot is not null) return;
             var handoffFrom = _handoffFrom;
             var handoffSession = _handoffSessionId;
             _handoffFrom = null;
@@ -205,7 +207,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         lock (_sync)
         {
             if (!Current(basisToken)
-                && !(allowUnboundCarry && Current(Token) && _origin is null && _command is null && _files.Count == 0
+                && !(allowUnboundCarry && _binding?.Slot is null && Current(Token) && _origin is null && _command is null && _files.Count == 0
                     && basisToken.Draft == _draft && basisToken.Edit == _edit)) return null;
             _text = text;
             Edited(); // Even an edit->original-text cycle invalidates unchanged-submission clearing.
@@ -705,6 +707,18 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             Publish();
             // Bytes are private, retained and never mutated. Entire validation occurs before Begin.
             var encoded = OpenCodeAttachment.Encode(drafts);
+            if (command is not null && binding.Slot is not null)
+            {
+                // A restored command is data, not the old menu's capability. Validate against a fresh
+                // catalog on this activation/send before any continuation/gate mutation or command POST.
+                Task<IReadOnlyList<OpenCodeCommandInfo>>? catalog = null;
+                binding.Source.TryExecute(linked.Token, () =>
+                {
+                    if (CanStart(context.Origin)) catalog = binding.Client.GetCommandsAsync(linked.Token);
+                });
+                if (catalog is null || !(await catalog.ConfigureAwait(false)).Any(row => row.Name == command)
+                    || !CanStart(context.Origin)) return outcome;
+            }
             using (var lease = await _gate.EnterAsync(binding.Source.Identity, binding.SessionId, linked.Token).ConfigureAwait(false))
             {
                 var preparation = await _sessionControls.PrepareContinuationAsync(context.Origin, lease,

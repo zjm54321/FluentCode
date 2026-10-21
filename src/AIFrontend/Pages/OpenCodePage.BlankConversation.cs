@@ -17,7 +17,7 @@ public sealed partial class OpenCodePage
 {
     private bool _blankComposerPlacement;
     private OpenCodeBlankDraftPreferences? _blankPreferences;
-    private readonly Dictionary<(string SourceIdentity, Guid Draft), string?> _blankCreationResults = new();
+    private readonly Dictionary<(string SourceIdentity, Guid BlankSlotId), string?> _blankCreationResults = new();
     private bool _blankPickerPending;
     private long _blankPickerEpoch;
     private string? _blankPreferenceError;
@@ -25,6 +25,7 @@ public sealed partial class OpenCodePage
     private IReadOnlyList<OpenCodeModelInfo> _blankModels = Array.Empty<OpenCodeModelInfo>();
     private string? _blankMetadataRuntime, _blankMetadataDirectory;
     private Guid _blankMetadataDraft;
+    private Guid _blankMetadataSlotId;
     private bool _blankModelChosen;
 
     private void SetBlankComposerPlacement(bool centered)
@@ -37,31 +38,38 @@ public sealed partial class OpenCodePage
 
     private void EnsureBlankPreferences()
     {
-        if (_composerController is null || !_newSessionDraftActive || !SourceReady) return;
+        if (_composerController is null || !_newSessionDraftActive || _homeActive || !SourceReady
+            || _activeBlankSlotId is not { } blankId || !_blankTabs.TryGetValue(blankId, out var blank)
+            || blank.Epoch != _draftSourceEpoch || _activeDraftSlot is not { } slot || slot.Key.BlankSlotId != blankId) return;
         var draft = _composerController.Snapshot.Token.Draft;
-        if (_blankPreferences is null || _blankPreferences.Draft != draft)
+        if (_blankPreferences is null || _blankPreferences.BlankSlotId != blankId)
         {
             _blankModelChosen = false;
-            var directory = _homeView.SelectedProject?.Directory ?? _homeDefaultDirectory;
-            if (directory is not null) _blankPreferences = new(_homeRuntimeSource, draft, directory);
+            _blankPreferences = new(_homeRuntimeSource, draft, slot.Key.Directory) { BlankSlotId = blankId };
         }
+        else if (_blankPreferences.Draft != draft) _blankPreferences = _blankPreferences with { Draft = draft };
         RefreshBlankPreferenceLabels();
-        if (_blankPreferences is { } basis && basis.Matches(_homeRuntimeSource, draft) && !HasBlankMetadata(basis) && !_blankPickerPending)
+        if (_blankPreferences is { } basis && basis.Matches(_homeRuntimeSource, draft)
+            && (!HasBlankMetadata(basis) || !slot.DefaultsInitialized) && !_blankPickerPending)
             _ = LoadBlankMetadataAsync(basis, _composerController.Snapshot.Token);
     }
 
     private bool HasBlankMetadata(OpenCodeBlankDraftPreferences value) => value.RuntimeSourceId == _blankMetadataRuntime
-        && value.Directory == _blankMetadataDirectory && value.Draft == _blankMetadataDraft;
+        && value.Directory == _blankMetadataDirectory && value.BlankSlotId == _blankMetadataSlotId;
 
     private void OwnBlankMetadata(OpenCodeBlankDraftPreferences value)
     {
         if (!HasBlankMetadata(value)) { _blankAgents = Array.Empty<OpenCodeAgentInfo>(); _blankModels = Array.Empty<OpenCodeModelInfo>(); }
         _blankMetadataRuntime = value.RuntimeSourceId; _blankMetadataDirectory = value.Directory; _blankMetadataDraft = value.Draft;
+        _blankMetadataSlotId = value.BlankSlotId;
     }
 
     private bool OwnsBlankMetadata(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token)
         => !_homeActive && _newSessionDraftActive && _blankPreferences == basis && _composerController is { } controller
+        // Background default metadata does not apply text/files. Its captured activation and exact
+        // preference record/version must survive; ordinary typing need not strand initial defaults.
         && controller.Snapshot.Token.Scope == token.Scope && controller.Snapshot.Token.Draft == token.Draft
+        && _activeBlankSlotId == basis.BlankSlotId
         && basis.Matches(_homeRuntimeSource, token.Draft);
 
     private async Task LoadBlankMetadataAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token)
@@ -114,7 +122,8 @@ public sealed partial class OpenCodePage
     {
         // Server selectedDefault semantics, verified against 2.0.32: configured selectable agent,
         // then the actual selectable build entry, then the first selectable entry in the server's list.
-        if (_blankPreferences != basis || !basis.Matches(_homeRuntimeSource, _composerController?.Snapshot.Token.Draft ?? Guid.Empty)) return;
+        if (_blankPreferences != basis || basis.BlankSlotId != _activeBlankSlotId
+            || !basis.Matches(_homeRuntimeSource, _composerController?.Snapshot.Token.Draft ?? Guid.Empty)) return;
         var agent = BlankSelectedAgent(basis, configuredAgentId);
         if (agent is null) { _blankPreferenceError = "当前目录的智能体未就绪，请重新选择。"; return; }
         var reference = _blankModelChosen && basis.Model is not null ? basis.Model : ReadBlankAgentModel(agent)
@@ -130,6 +139,7 @@ public sealed partial class OpenCodePage
         _blankPreferences = basis with { Agent = agent.Id,
             Model = new() { Id = model.Id, ProviderId = model.ProviderId, Variant = variant }, Version = basis.Version + 1 };
         _blankPreferenceError = null;
+        if (_activeDraftSlot is { } slot) { slot.DefaultsInitialized = true; SaveBlankSlotPreferences(slot); }
     }
 
     private static OpenCodeModelRef? ReadBlankAgentModel(OpenCodeAgentInfo agent)
@@ -164,7 +174,7 @@ public sealed partial class OpenCodePage
     private void RefreshBlankPreferenceLabels()
     {
         var value = _blankPreferences;
-        var current = value is not null && _composerController is not null
+        var current = !_draftRecoveryPending && !_homeActive && _newSessionDraftActive && value is not null && _composerController is not null
             && value.Matches(_homeRuntimeSource, _composerController.Snapshot.Token.Draft);
         BlankProjectButton.Content = current ? value!.Directory : "选择当前来源的项目目录";
         var metadata = current && HasBlankMetadata(value!);
@@ -179,21 +189,22 @@ public sealed partial class OpenCodePage
         BlankStrengthButton.Content = model is null ? "强度未就绪" : shownVariant;
         AutomationProperties.SetName(BlankStrengthButton, shownVariant.Length == 0 ? "选择推理强度" : "推理强度：" + shownVariant);
         BlankPreferencesHint.Text = !current ? "目录尚未就绪或草稿来自其他来源。请明确选择当前来源的目录；草稿不会被清空。"
-            : _source is { } source && _blankCreationResults.ContainsKey((source.Identity, value!.Draft))
+            : _source is { } source && _blankCreationResults.ContainsKey((source.Identity, value!.BlankSlotId))
                 ? "此草稿已发起过创建；草稿已保留，不会再次创建。请先检查首页会话列表。"
                 : _blankPreferenceError ?? "选择仅用于此草稿的首次发送，不修改全局或已有会话。";
         BlankAgentButton.IsEnabled = current && !_newSessionCreatePending && !_blankPickerPending;
         BlankModelButton.IsEnabled = current && !_newSessionCreatePending && !_blankPickerPending;
         BlankStrengthButton.IsEnabled = current && model is not null && !_newSessionCreatePending && !_blankPickerPending;
-        BlankProjectButton.IsEnabled = SourceReady && !_newSessionCreatePending && !_blankPickerPending;
+        BlankProjectButton.IsEnabled = !_draftRecoveryPending && _newSessionDraftActive && SourceReady && !_newSessionCreatePending && !_blankPickerPending;
     }
 
     private OpenCodeBlankDraftPreferences? CaptureBlankPreferences(OpenCodeComposerToken token)
     {
         // Exact draft/source/ABA checks precede creation. Unknown creation cannot be retried by editing its text/choices.
         if (_homeActive || _blankPickerPending || _blankPreferences is not { } value
-            || !value.Matches(_homeRuntimeSource, token.Draft) || !_homeProjects.ContainsKey(value.Directory)
-            || _source is not { } source || _blankCreationResults.ContainsKey((source.Identity, token.Draft)))
+            || !value.Matches(_homeRuntimeSource, token.Draft) || value.BlankSlotId != _activeBlankSlotId
+            || _activeDraftSlot is not { DefaultsInitialized: true } || !_homeProjects.ContainsKey(value.Directory)
+            || _source is not { } source || _blankCreationResults.ContainsKey((source.Identity, value.BlankSlotId)))
         {
             ShowMessage(InfoBarSeverity.Warning, "尚未创建", "请选择当前来源的项目目录；若上次创建结果未确认，请先检查会话列表。草稿已保留。");
             return null;
@@ -203,7 +214,7 @@ public sealed partial class OpenCodePage
 
     private bool OwnsBlankPreferences(OpenCodeBlankDraftPreferences value, OpenCodeComposerToken token)
         => !_homeActive && _newSessionDraftActive && _composerController?.Snapshot.Token == token
-        && _blankPreferences == value && value.Matches(_homeRuntimeSource, token.Draft);
+        && _blankPreferences == value && value.BlankSlotId == _activeBlankSlotId && value.Matches(_homeRuntimeSource, token.Draft);
 
     private void BlankProjectButton_Click(object sender, RoutedEventArgs e)
     {
@@ -218,12 +229,7 @@ public sealed partial class OpenCodePage
             {
                 if (!_pageActive || !SourceReady || _homeActive || !_newSessionDraftActive || runtime != _homeRuntimeSource
                     || _newSessionCreatePending || _composerController.Snapshot.Token != token) return;
-                // Explicit directory choice resets directory-scoped preferences, never draft text/files or Source.
-                _blankPreferences = new(runtime, token.Draft, project.Key.Directory, Version: (_blankPreferences?.Version ?? 0) + 1);
-                _blankPreferenceError = null;
-                _blankModelChosen = false;
-                _blankMetadataDirectory = null;
-                EnsureBlankPreferences();
+                ChangeBlankSlotDirectory(project.Key.Directory);
             };
             flyout.Items.Add(item);
         }

@@ -23,13 +23,14 @@ $assembly = Join-Path $output 'OpenCodeComposerHookupTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
-foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerContinuationModels.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeSessionControlCoordinator.cs')) {
+foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerContinuationModels.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeSessionControlCoordinator.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs', 'OpenCodeExecutionProjection.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
 }
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.Composer.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SteerChat.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SessionActivityIntegration.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerActivityPolicy.cs"
@@ -88,7 +89,7 @@ $sources += Get-Item $generated
 # Actual blank-tab creation/handoff methods; UI list/layout members remain boundaries.
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
-$blankMembers = foreach ($name in @('OpenNewSessionTab', 'CreateSessionAndSubmitAsync', 'OnNativeSessionCreating', 'OnNativeSessionCreated')) {
+$blankMembers = foreach ($name in @('OpenNewSessionTab', 'TryGetBlankTab', 'RemoveNewSessionTab', 'CreateSessionAndSubmitAsync', 'OnNativeSessionCreating', 'OnNativeSessionCreated')) {
     $m = [regex]::Matches($blank, ('(?m)^    (?:private|partial) [^\r\n]*\b' + $name + '\('))
     if ($m.Count -ne 1) { throw "Expected one production blank-tab member: $name" }
     $block = [regex]::Match($blank.Substring($m[0].Index), '(?ms)\A.*?^    \}\r?$')
@@ -98,10 +99,10 @@ $blankMembers = foreach ($name in @('OpenNewSessionTab', 'CreateSessionAndSubmit
 $blankGenerated = Join-Path $output 'BlankSessionMembers.cs'
 $blankChoicePath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
 $blankChoice = [IO.File]::ReadAllText($blankChoicePath)
-foreach ($name in @('CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSelectedAgent', 'IsBlankAgentSelectable', 'ApplyBlankDefaults', 'ReadBlankAgentModel', 'BlankAgentName', 'BlankStrengthText')) {
+foreach ($name in @('EnsureBlankPreferences', 'HasBlankMetadata', 'CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSelectedAgent', 'IsBlankAgentSelectable', 'ApplyBlankDefaults', 'ReadBlankAgentModel', 'BlankAgentName', 'BlankStrengthText')) {
     $m = [regex]::Match($blankChoice, ('(?m)^    private [^\r\n]*\b' + $name + '\('))
     if (!$m.Success) { throw "Missing production blank preference member: $name" }
-    $block = if ($name -in @('OwnsBlankPreferences', 'IsBlankAgentSelectable', 'BlankAgentName', 'BlankStrengthText')) { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?;') }
+    $block = if ($name -in @('HasBlankMetadata', 'OwnsBlankPreferences', 'IsBlankAgentSelectable', 'BlankAgentName', 'BlankStrengthText')) { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?;') }
         else { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?^    \}\r?$') }
     $blankMembers += $block.Value
 }

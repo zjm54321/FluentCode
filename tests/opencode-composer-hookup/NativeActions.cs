@@ -373,7 +373,7 @@ namespace AIFrontend.Pages
         private void RefreshSessionStateUi() { }
         internal Task? NewSessionRefresh;
         internal Action? NewSessionBound;
-        private Task SwitchToSessionAsync(string id, Action? onBound = null)
+        private Task SwitchToSessionAsync(string id, Action? onBound = null, bool forceDraftTransition=false)
         {
             Switch(id); onBound?.Invoke(); NewSessionBound?.Invoke();
             return NewSessionRefresh ?? Task.CompletedTask;
@@ -387,9 +387,36 @@ namespace AIFrontend.Pages
         private static readonly object NewSessionTabTag = new();
         private bool _suppressTabSelection;
         private readonly TabsStub SessionTabs = new();
-        private void EnterNewSessionLayout() => EnterBlank(); // Native placement boundary, not the creation path.
+        private void EnterNewSessionLayout(TabViewItem? selected=null) {if(selected is not null)_newSessionTab=selected;EnterBlank();} // Native placement boundary; real handlers live in opencode-tabs.
         internal void OpenBlankTab() => OpenNewSessionTab();
         private bool _homeActive, _blankPickerPending;
+        private string? _activeTabSessionId;
+        private bool _suppressSessionSelection;
+        private long _blankPickerEpoch;
+        private string? _blankMetadataRuntime,_blankMetadataDirectory;
+        private Guid _blankMetadataDraft,_blankMetadataSlotId;
+        private string? _homeDefaultDirectory="/synthetic";
+        private sealed class HomeStub { internal OpenCodeHomeProjectKey? SelectedProject; }
+        private readonly HomeStub _homeView=new();
+        private void RefreshBlankPreferenceLabels(){}
+        private void ShowSourceWaiting(){} // Native connection/recovery visibility is outside this controller/page-transport harness.
+        private void ShowHomePage(){} // Caller already suspended via real CAS; actual Home native selection tested by opencode-tabs.
+        private void SetBlankComposerPlacement(bool blank){} // Native layout only.
+        private void UpdateSessionTabsEmptyState(){} // Actual native actor/selection routing is source-linked in opencode-tabs.
+        private Task LoadBlankMetadataAsync(OpenCodeBlankDraftPreferences basis,OpenCodeComposerToken token)=>Task.CompletedTask; // I/O boundary; real defaults loader tested by opencode-draft-slots.
+        // Native placement/indicator boundary; actual retired actor handlers are linked in opencode-draft-slots.
+        private sealed class SessionTabEntry(TabViewItem item){internal readonly TabViewItem Item=item;internal OpenCodeDraftSlotKey? DraftSlotKey;internal readonly ProgressRing Working=new();internal readonly Button Attention=new();}
+        private readonly Dictionary<string,SessionTabEntry> _sessionTabs=new();
+        private readonly Dictionary<string,string> _sessionTitles=new();
+        private void SelectSessionTabSilently(string? id)=>SessionTabs.SelectedItem=_homeActive?null:id is not null&&_sessionTabs.TryGetValue(id,out var s)?s.Item:_newSessionTab;
+        private void CreateSessionTab(string id,int insertAt=-1)
+        {var t=new TabViewItem{Tag=id,Header=id,IsClosable=true};_sessionTabs[id]=new(t);SessionTabs.TabItems.Insert(insertAt<0?SessionTabs.TabItems.Count:Math.Clamp(insertAt,0,SessionTabs.TabItems.Count),t);}
+        private void RemoveSessionTab(SessionTabEntry entry)
+        {
+            if(entry.DraftSlotKey is{} key&&_draftSlots.TryGetValue(key,out var data))ReleaseDraftSlot(data);
+            var pair=_sessionTabs.FirstOrDefault(p=>ReferenceEquals(p.Value,entry));if(pair.Key is not null)_sessionTabs.Remove(pair.Key);
+            _retiredSessionTabs.Remove(entry.Item);SessionTabs.TabItems.Remove(entry.Item);
+        }
         private string _homeRuntimeSource = "synthetic-runtime";
         private readonly Dictionary<string, OpenCodeHomeProject> _homeProjects = new(StringComparer.Ordinal)
             { ["/synthetic"] = new(new("synthetic-runtime", "/synthetic"), "synthetic") };
@@ -399,7 +426,7 @@ namespace AIFrontend.Pages
         private bool _blankModelChosen;
         private string? _blankPreferenceError;
         internal OpenCodeBlankDraftPreferences BlankPreferences => _blankPreferences!;
-        internal void UseBlankSelection(OpenCodeBlankDraftPreferences value) => _blankPreferences = value;
+        internal void UseBlankSelection(OpenCodeBlankDraftPreferences value) => _blankPreferences = value.BlankSlotId==Guid.Empty?value with{BlankSlotId=_activeBlankSlotId??Guid.Empty}:value;
         internal void ResolveBlankDefaults(IReadOnlyList<OpenCodeAgentInfo> agents, IReadOnlyList<OpenCodeModelInfo> models,
             string? configuredAgent, OpenCodeModelRef? configuredModel, OpenCodeModelInfo? directoryModel,
             bool chosenModel = false, OpenCodeBlankDraftPreferences? basis = null)
@@ -409,22 +436,25 @@ namespace AIFrontend.Pages
         }
         internal static string AgentCaption(string name) => BlankAgentName(name);
         internal static string StrengthCaption(OpenCodeModelInfo model, OpenCodeModelRef selected) => BlankStrengthText(model, selected);
-        private readonly Dictionary<(string SourceIdentity, Guid Draft), string?> _blankCreationResults = new();
+        private readonly Dictionary<(string SourceIdentity, Guid BlankSlotId), string?> _blankCreationResults = new();
         internal void SetupBlankPreferences(string directory = "/synthetic", string? agent = null, OpenCodeModelRef? model = null)
         {
             _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory);
-            _blankPreferences = new(_homeRuntimeSource, Snapshot.Token.Draft, directory, agent, model);
+            if(_activeDraftSlot is{} current&&current.Key.Directory!=directory)ChangeBlankSlotDirectory(directory);
+            _blankPreferences = new(_homeRuntimeSource, Snapshot.Token.Draft, directory, agent, model){BlankSlotId=_activeBlankSlotId??Guid.Empty};
+            if(_activeDraftSlot is{} slot)slot.DefaultsInitialized=true; // Explicit default-metadata boundary, real default loading is exercised in opencode-draft-slots.
         }
         internal void StaleBlankSource() => _homeRuntimeSource = Guid.NewGuid().ToString("N");
         internal void BlankSourceAba()
         {
             var source = _source;
-            _source = null; _sourceGeneration++; BindComposer();
+            InvalidateDraftSourceEpoch();_source = null; _sourceGeneration++; BindComposer();
             _source = source; _sourceGeneration++; BindComposer();
             _homeRuntimeSource = Guid.NewGuid().ToString("N");
         }
         private string? _convertNewSessionTabTo { get; set; }
         private void SelectSessionItem(string id) { }
+        partial void OnSessionContextSelected(string id){_homeActive=false;_newSessionDraftActive=false;}
         internal Task CreateBlankSession() => CreateSessionAndSubmitAsync(Snapshot.Token);
         private readonly OpenCodePermissionOverlay _permissionOverlay = new();
         private readonly InteractionsViewStub _interactionsView = new();
@@ -451,7 +481,7 @@ namespace AIFrontend.Pages
 }
 namespace Microsoft.UI.Xaml.Controls
 {
-    public sealed class ListView { public int Focuses; public bool Focus(FocusState state) { Focuses++; return true; } }
+    public sealed class ListView { public object? SelectedItem; public int Focuses; public bool Focus(FocusState state) { Focuses++; return true; } }
     public sealed class TextBlock { public string Text = ""; }
     public sealed class ScrollViewer { public double VerticalOffset, ScrollableHeight; public void UpdateLayout() { } public void ChangeView(double? x, double? y, double? zoom, bool disableAnimation) { VerticalOffset = y ?? VerticalOffset; } }
 }

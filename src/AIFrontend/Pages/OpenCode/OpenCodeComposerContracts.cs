@@ -9,7 +9,22 @@ using AIFrontend.Services.OpenCode;
 namespace AIFrontend.Pages.OpenCode;
 
 internal sealed record OpenCodeComposerBinding(OpenCodePageSource Source, long Revision,
-    int SourceGeneration, OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId);
+    int SourceGeneration, OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId)
+{
+    internal OpenCodeDraftSlotKey? Slot { get; init; }
+}
+
+internal readonly record struct OpenCodeDraftSlotKey(Guid SourceEpoch, string SourceIdentity, string Directory,
+    string? SessionId, Guid? BlankSlotId);
+
+// No public data/authority surface. Contents is a controller-private immutable payload type;
+// other objects cannot manufacture valid slot data, and no payload bytes leave the core API.
+internal sealed class OpenCodeComposerSlotData
+{
+    private OpenCodeComposerSlotData(object contents) => Contents = contents;
+    internal object Contents { get; }
+    internal static OpenCodeComposerSlotData Wrap(object contents) => new(contents);
+}
 
 // Opaque capabilities: the view may store/pass them, never manufacture or interpret them.
 public readonly record struct OpenCodeComposerToken

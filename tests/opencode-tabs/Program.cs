@@ -21,21 +21,21 @@ internal static class Program
         Check(cold.LastLayout=="HomeLayout"&&cold.MessageLoads==0&&cold.Tracking==0,"disconnected Home initialization does not activate a session");
         cold.Close(cold.HomeTab);OnlyHome(cold,"native close/middle/keyboard-equivalent Home close request is rejected");Check(cold.DragHome(),"actual Home UIElement DragStarting cancels originating drag");
 
-        var p=Page();p.Composer.Text="keep draft";p.AddSession("a");p.AddSession("b");p.Select(p.Session("a"));
-        Check(p.Current=="a"&&!p.Home&&p.LastLayout=="SessionLayout"&&p.MessageLoads==1,"real Tab selection routes through actual SwitchToSessionAsync and native list handler");
-        var fence=p.CaptureBindingFence();var loads=p.MessageLoads;var binds=p.Binds;p.HomeNow();
-        Check(p.Home&&ReferenceEquals(p.SessionTabs.SelectedItem,p.HomeTab)&&p.Current=="a"&&p.Composer.Text=="keep draft","Home selects collection item without clearing accepted binding/composer draft");
-        Check(p.Binds==binds&&fence(),"actual ShowHomePage does not rebind controller or invalidate session ownership fields");
-        p.Select(p.Session("a"));Check(!p.Home&&p.MessageLoads==loads&&p.Current=="a","same accepted current session returns from Home without fake reselect or unnecessary read");
+        var p=Page();p.AddSession("a");p.AddSession("b");p.Select(p.Session("a"));
+        Check(p.Current=="a"&&!p.Home&&p.LastLayout=="SessionLayout"&&p.MessageLoads==1,$"real Tab selection routes through actual SwitchToSessionAsync and native list handler (current={p.Current},home={p.Home},layout={p.LastLayout},loads={p.MessageLoads},notices={p.Notices})");
+        p.Text("keep draft");var fence=p.CaptureBindingFence();var loads=p.MessageLoads;p.HomeNow();
+        Check(p.Home&&ReferenceEquals(p.SessionTabs.SelectedItem,p.HomeTab)&&p.Current=="a"&&!p.Draft.IsActive,"Home selects collection item and suspends composer while retaining real session binding");
+        Check(fence(),"Home does not corrupt source/session binding ownership fields");
+        p.Select(p.Session("a"));Check(!p.Home&&p.MessageLoads==loads&&p.Current=="a"&&p.Composer.Text=="keep draft","same accepted current session restores its slot from Home without unnecessary history read");
         p.Select(p.Session("b"));Check(!fence()&&p.Current=="b","actual switch invalidates captured session-generation fence");
-        var sourceFence=p.CaptureBindingFence();p.ReplaceSource();Check(!sourceFence(),"actual binding comparison rejects previous source/revision/client owner");
-        loads=p.MessageLoads;p.SwitchAgain("b").GetAwaiter().GetResult();Check(p.MessageLoads==loads+1,"same session ID under replaced source cannot bypass actual IsSameMessageBinding guards");
+        var oldA=p.Session("a");var sourceFence=p.CaptureBindingFence();p.ReplaceSource();Check(!sourceFence(),"actual binding comparison rejects previous source/revision/client owner");
+        p.AddSession("b");loads=p.MessageLoads;p.SwitchAgain("b").GetAwaiter().GetResult();Check(p.MessageLoads==loads+1,"same session ID under replaced source cannot bypass actual IsSameMessageBinding guards");
         p.HomeNow();p.New();Check(p.Blank&&!p.Home&&ReferenceEquals(p.SessionTabs.SelectedItem,p.BlankTab),"Home to singleton blank uses real unbound layout/selection");
-        var blank=p.BlankTab;p.New();Check(ReferenceEquals(p.BlankTab,blank),"A6 preserves singleton blank semantics, does not implement A7 slots");
-        p.HomeNow();p.Close(p.Session("a"));Check(p.Home&&ReferenceEquals(p.SessionTabs.SelectedItem,p.HomeTab),"inactive session close on Home does not steal selection into preserved hidden blank");
-        p.Creating=true;p.Close(blank!);Check(ReferenceEquals(p.BlankTab,blank),"pending blank create blocks native close");p.Creating=false;
+        var blank=p.BlankTab;p.New();var secondBlank=p.BlankTab;Check(!ReferenceEquals(secondBlank,blank)&&p.BlankCount==2,"each plus allocates a stable independent native blank");
+        p.HomeNow();p.Close(oldA);Check(p.Home&&ReferenceEquals(p.SessionTabs.SelectedItem,p.HomeTab),"inactive retired actor close on Home does not steal selection into preserved hidden blank");
+        p.Select(blank!);p.Creating=true;p.Close(blank!);Check(ReferenceEquals(p.BlankTab,blank),"pending blank create blocks its own native close");p.Creating=false;p.HomeNow();
         p.Close(blank!);Check(p.Home&&p.BlankTab is null&&ReferenceEquals(p.SessionTabs.SelectedItem,p.HomeTab),"inactive blank close preserves Home selection");
-        Check(p.Composer.Text=="keep draft","close/tab UI paths retain the same composer input boundary");
+        p.Close(secondBlank!);Check(p.Home&&!p.Draft.IsActive,"closing both hidden blanks leaves Home suspended, not a carried cross-slot editor");
 
         foreach(var order in new[]{"blank-first","real-first"})
         {
@@ -74,5 +74,6 @@ internal static class Program
         Check((string?)tabs.Attribute("Height") is null&&(string?)tabs.Attribute("CanDragTabs")=="False"&&(string?)tabs.Attribute("CanReorderTabs")=="True"&&(string?)tabs.Attribute("AllowDropTabs")=="True","native strip height untouched; same-collection reorder enabled without drag-out");
         var footer=tabs.Element(ns+"TabView.TabStripFooter")!;Check(footer.Descendants().Where(e=>e.Attribute("VerticalAlignment")is not null).All(e=>(string?)e.Attribute("VerticalAlignment")=="Center"),"actual footer participants use centered native alignment");
         Console.WriteLine($"PASS A6 actual Tab collection/selection/close + actual Switch/binding: {checks} assertions; native controls/IO boundaries inert, no native layout/keyboard/drag claim");
+        DraftSlotPageTests.Run(xaml).GetAwaiter().GetResult();
     }
 }

@@ -14,7 +14,7 @@ namespace AIFrontend.Pages;
 /// </summary>
 /// <remarks>
 /// <para>
-    /// “+”与 <c>/sessions</c> 打开（或激活）唯一的空白标签 <c>OpenCodeSessionTab.New</c>：
+/// “+”与 <c>/sessions</c> 每次打开独立的空白标签；稳定 SlotId 与 controller 的 DraftId 分离：
 /// 页面不选中任何会话（与切换会话同样的作废/取消），布局经 VisualState <c>NewSessionLayout</c> 切换——
 /// 输入框仍是同一个 Composer，绝不换父元素。输入框绑定“未绑定会话”的 binding：控制器绝不对其发起传输，
 /// Enter 只请求本文件先创建会话。
@@ -32,10 +32,7 @@ namespace AIFrontend.Pages;
 /// </remarks>
 public sealed partial class OpenCodePage
 {
-    private static readonly object NewSessionTabTag = new();
     private TabViewItem? _newSessionTab;
-    private string? _blankWasActiveFor;
-    private string? _convertNewSessionTabTo;
     private bool _activatingSessionTab;
     private bool _newSessionListWired;
     private bool _newSessionListRefreshQueued;
@@ -54,64 +51,63 @@ public sealed partial class OpenCodePage
 
     private void OpenNewSessionTab()
     {
-        if (!_pageActive)
+        if (!_pageActive || !TryPrepareDraftSlotNavigation())
         {
             return;
         }
 
-        if (_newSessionTab is null)
+        var id = Guid.NewGuid();
+        var item = new TabViewItem
         {
-            var item = new TabViewItem
-            {
-                Tag = NewSessionTabTag,
-                Header = "新会话",
-                IconSource = new FontIconSource { Glyph = "\uE710" },
-                IsClosable = true,
-            };
-            AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab.New");
-            AutomationProperties.SetName(item, "新会话");
-            ToolTipService.SetToolTip(item, "新会话：输入第一条消息创建，或打开已有会话");
-            _newSessionTab = item;
-            var previous = _suppressTabSelection;
-            _suppressTabSelection = true;
-            try
-            {
-                SessionTabs.TabItems.Add(item);
-            }
-            finally
-            {
-                _suppressTabSelection = previous;
-            }
-        }
-
-        EnterNewSessionLayout();
+            Tag = id,
+            Header = "新会话",
+            IconSource = new FontIconSource { Glyph = "\uE710" },
+            IsClosable = true,
+        };
+        AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab.New." + id.ToString("N"));
+        AutomationProperties.SetName(item, "新会话");
+        ToolTipService.SetToolTip(item, "新会话：输入第一条消息创建，或打开已有会话");
+        _blankTabs.Add(id, new(id, _draftSourceEpoch, item));
+        var previous = _suppressTabSelection;
+        _suppressTabSelection = true;
+        try { SessionTabs.TabItems.Add(item); }
+        finally { _suppressTabSelection = previous; }
+        EnterNewSessionLayout(item);
     }
 
-    /// <summary>显示空白页：不选中任何会话，输入框绑定未绑定会话的 binding。重复调用只聚焦。</summary>
-    private void EnterNewSessionLayout()
+    private bool TryGetBlankTab(object? item, out BlankTabEntry? blank)
     {
-        if (!_pageActive || _newSessionTab is null)
+        blank = item is TabViewItem { Tag: Guid id } tab && _blankTabs.TryGetValue(id, out var entry)
+            && ReferenceEquals(entry.Item, tab) ? entry : null;
+        return blank is not null;
+    }
+
+    /// <summary>Save the previous clean slot before changing the selected blank identity.</summary>
+    private void EnterNewSessionLayout(TabViewItem? selected = null)
+    {
+        var target = selected ?? _newSessionTab;
+        if (target is not null && TryGetRetiredDraftTab(target, out var retiredSlot))
+        { PresentRetiredDraftTab(target, retiredSlot); return; }
+        if (!_pageActive || !TryGetBlankTab(target, out var blank) || !TryPrepareDraftSlotNavigation())
         {
+            RestoreDraftSlotTabSelection();
             return;
         }
 
         InvalidateViewAcknowledgement();
         _homeActive = false;
-
-        if (!_newSessionDraftActive)
-        {
-            _blankWasActiveFor = null;
-            _convertNewSessionTabTo = null;
-            _activeTabSessionId = null;
-            _newSessionDraftActive = true;
-            DeselectSessionForNewTab();
-            BindComposer();
-            VisualStateManager.GoToState(this, "NewSessionLayout", false);
-            WireNewSessionList();
-            RefreshNewSessionList();
-            UpdateComposerButtons();
-            RefreshComposerView();
-        }
+        _newSessionTab = blank!.Item;
+        _activeBlankSlotId = blank.Id;
+        _activeTabSessionId = null;
+        _newSessionDraftActive = true;
+        if (_selectedSessionId is null) _sessionGeneration++;
+        DeselectSessionForNewTab();
+        BindComposer();
+        VisualStateManager.GoToState(this, "NewSessionLayout", false);
+        WireNewSessionList();
+        RefreshNewSessionList();
+        UpdateComposerButtons();
+        RefreshComposerView();
 
         VisualStateManager.GoToState(this, "NewSessionLayout", false);
         SetBlankComposerPlacement(true);
@@ -147,7 +143,6 @@ public sealed partial class OpenCodePage
         SetBlankComposerPlacement(false);
         if (_newSessionDraftActive)
         {
-            _blankWasActiveFor = sessionId;
             ExitNewSessionLayout();
         }
     }
@@ -173,14 +168,17 @@ public sealed partial class OpenCodePage
 
     private int NewSessionTabIndex() => _newSessionTab is null ? -1 : SessionTabs.TabItems.IndexOf(_newSessionTab);
 
-    private void RemoveNewSessionTab()
+    private void RemoveNewSessionTab(TabViewItem? target = null, bool releasePayload = true)
     {
-        if (_newSessionTab is not { } item)
+        if (!TryGetBlankTab(target ?? _newSessionTab, out var blank))
         {
             return;
         }
 
-        _newSessionTab = null;
+        var item = blank!.Item;
+        _blankTabs.Remove(blank.Id);
+        if (releasePayload) ReleaseDraftSlot(blank.Slot);
+        if (ReferenceEquals(_newSessionTab, item)) _newSessionTab = null;
         var previous = _suppressTabSelection;
         _suppressTabSelection = true;
         try
@@ -194,28 +192,33 @@ public sealed partial class OpenCodePage
     }
 
     /// <summary>
-    /// 关闭空白标签：草稿属于页面唯一的输入框，关闭标签不丢弃也不发送它（既有草稿保护不变）。
-    /// 正在创建时不允许关闭。激活相邻会话标签；最后一个可关闭标签关完则返回集合中的固定 Home。
+    /// Close only the requested slot; inactive close never touches current input. Stable create tombstones survive.
     /// </summary>
-    private void CloseNewSessionTab()
+    private void CloseNewSessionTab(TabViewItem? target = null)
     {
-        if (_newSessionTab is null || _newSessionCreatePending)
+        if ((target ?? _newSessionTab) is { } retired && TryGetRetiredDraftTab(retired, out _))
+        { CloseRetiredDraftTab(retired); return; }
+        if (!TryGetBlankTab(target ?? _newSessionTab, out var blank) || blank!.Slot?.CreateOperation is not null)
         {
             return;
         }
 
-        var index = NewSessionTabIndex();
-        var wasActive = _newSessionDraftActive && !_homeActive;
-        RemoveNewSessionTab();
+        var index = SessionTabs.TabItems.IndexOf(blank.Item);
+        var wasActive = !_homeActive && (_newSessionDraftActive && _activeBlankSlotId == blank.Id
+            || _draftRecoveryPending && ReferenceEquals(_draftRecoveryTab, blank.Item));
+        if (wasActive && !TryPrepareDraftSlotNavigation()) { RestoreDraftSlotTabSelection(); return; }
+        if (wasActive && !SuspendPreparedDraftSlot()) { RestoreDraftSlotTabSelection(); return; }
+        RemoveNewSessionTab(blank.Item, releasePayload: !wasActive);
         if (!wasActive)
         {
-            SelectSessionTabSilently(_activeTabSessionId);
+            RestoreDraftSlotTabSelection();
             UpdateSessionTabsEmptyState();
             return;
         }
 
         ExitNewSessionLayout();
         ActivateAdjacentTab(index);
+        ReleaseDraftSlot(blank.Slot);
         UpdateSessionTabsEmptyState();
     }
 
@@ -444,7 +447,7 @@ public sealed partial class OpenCodePage
         var controller = _composerController;
         var view = _composerView;
         if (!_pageActive || controller is null || view is null || !_newSessionDraftActive || _selectedSessionId is not null
-            || _newSessionCreatePending || _newSessionOperation is not null || _isSending || _composerPickerPending
+            || _newSessionCreatePending || _isSending || _composerPickerPending
             || HasPendingNativeAction() || !view.PrepareSubmission() || !view.InputEvidence.IsClean)
         {
             return;
@@ -473,12 +476,15 @@ public sealed partial class OpenCodePage
         var sourceGeneration = _sourceGeneration;
         var pageGeneration = _pageGeneration;
         var sessionGeneration = _sessionGeneration;
+        var activation = _draftActivationVersion;
         var epoch = ++_newSessionCreateEpoch;
         var preferences = CaptureBlankPreferences(token);
         if (preferences is null) return;
 
         // Field comparisons only (may run inside Source.TryExecute): still this blank draft, page and source.
         bool Owns() => _pageActive && !_homeActive && _newSessionDraftActive && _selectedSessionId is null && _newSessionCreateEpoch == epoch
+            && _activeBlankSlotId == preferences.BlankSlotId && _blankPreferences == preferences
+            && activation == _draftActivationVersion
             && ReferenceEquals(_source, source) && ReferenceEquals(_client, client) && revision == _sourceRevision
             && sourceGeneration == _sourceGeneration && pageGeneration == _pageGeneration && sessionGeneration == _sessionGeneration;
 
@@ -500,13 +506,19 @@ public sealed partial class OpenCodePage
         }
         finally
         {
-            _newSessionCreatePending = false;
-            _newSessionHandoffToken = null;
-            if (_pageActive) UpdateComposerButtons();
-            RefreshComposerView();
+            if (_newSessionCreateEpoch == epoch)
+            {
+                _newSessionCreatePending = false;
+                _newSessionHandoffToken = null;
+                if (_pageActive) UpdateComposerButtons();
+                RefreshComposerView();
+            }
         }
 
-        if (_newSessionCreatedId is not { } created || epoch != _newSessionCreateEpoch)
+        if (epoch != _newSessionCreateEpoch) return;
+        var armed = _newSessionHandoffArmed;
+        _newSessionHandoffArmed = false; _newSessionHandoffActivationToken = null; _draftCreateTarget = null;
+        if (!armed || _newSessionCreatedId is not { } created)
         {
             return; // Not created (draft untouched, blank page kept) or superseded.
         }
@@ -524,7 +536,7 @@ public sealed partial class OpenCodePage
         var fresh = controller.Snapshot;
         if (createdBinding is null || createdToken is null || !Equals(_composerBinding, createdBinding)
             || !OwnsComposerBinding(createdBinding) || createdBinding.Source.IsRevoked || fresh.Token != createdToken.Value
-            || fresh.Token.Draft != token.Draft || fresh.Token.Edit != token.Edit || !fresh.IsActive || !fresh.HasDraft)
+            || fresh.Token.Draft != token.Draft || !fresh.IsActive || !fresh.HasDraft)
         {
             ShowMessage(InfoBarSeverity.Informational, "会话已创建，未发送",
                 "草稿在创建期间发生了变化或未能交给新会话；草稿已保留，请检查后再按 Enter 发送。");
@@ -537,15 +549,15 @@ public sealed partial class OpenCodePage
 
     partial void OnNativeSessionCreating(string sessionId)
     {
-        if (_newSessionHandoffToken is { } token && _newSessionDraftActive)
+        if (_newSessionHandoffToken is { } token && _newSessionDraftActive && !_homeActive
+            && _composerController?.Snapshot.Token == token && _activeDraftSlot?.Key.BlankSlotId == _activeBlankSlotId)
         {
             _composerController?.ArmUnboundHandoff(token, sessionId);
+            _draftCreateTarget = sessionId;
+            _newSessionHandoffArmed = true;
+            _newSessionHandoffActivationToken = token;
         }
 
-        if (_newSessionTab is not null && _newSessionDraftActive)
-        {
-            _convertNewSessionTabTo = sessionId; // 空白标签原位变为新会话标签（含从空白页执行 /new）。
-        }
     }
 
     partial void OnNativeSessionCreated(string sessionId, OpenCodeComposerBinding? binding, OpenCodeComposerToken? token)
@@ -555,11 +567,10 @@ public sealed partial class OpenCodePage
             return;
         }
 
-        if (_newSessionHandoffToken is not null)
+        if (_newSessionHandoffToken is not null && _newSessionHandoffArmed
+            && _newSessionCreatedToken == _composerController?.Snapshot.Token && _newSessionCreatedBinding is not null)
         {
             _newSessionCreatedId = sessionId;
-            _newSessionCreatedBinding = binding;
-            _newSessionCreatedToken = token;
         }
 
         // 列表高亮（受抑制，不触发切换）→ 标签栏镜像创建/转换该会话的标签。

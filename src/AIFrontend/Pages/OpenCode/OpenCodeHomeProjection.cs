@@ -25,6 +25,7 @@ public sealed class OpenCodeHomeSessionActionEventArgs(long revision, OpenCodeHo
 internal sealed record OpenCodeBlankDraftPreferences(string RuntimeSourceId, Guid Draft, string Directory,
     string? Agent = null, OpenCodeModelRef? Model = null, long Version = 0)
 {
+    internal Guid BlankSlotId { get; init; }
     internal bool Matches(string runtimeSourceId, Guid draft) => RuntimeSourceId == runtimeSourceId && Draft == draft;
 }
 

@@ -76,8 +76,12 @@ public sealed partial class OpenCodePage
     {
         if (!_pageActive) return;
         InvalidateViewAcknowledgement();
+        if (!TryPrepareDraftSlotNavigation()) { RestoreDraftSlotTabSelection(); return; }
         _homeActive = true;
-        // Home is a native collection member. Keep every draft/binding alive, changing only the view.
+        _newSessionDraftActive = false;
+        _activeBlankSlotId = null;
+        BindComposer(); // Null-triple suspension; pure data stays in its originating slot.
+        // Home is a native collection member, never an editor owner.
         var suppress = _suppressTabSelection;
         _suppressTabSelection = true;
         try { SessionTabs.SelectedItem = HomeTab; }
@@ -86,7 +90,7 @@ public sealed partial class OpenCodePage
         SessionPane.IsPaneOpen = false;
         InsightsPane.IsPaneOpen = false;
         VisualStateManager.GoToState(this, "HomeLayout", false);
-        QueueHomeProjection(); // Does not clear, rebind, move, recreate, or submit the composer.
+        QueueHomeProjection();
     }
 
     private bool HomeEventCurrent(long revision, OpenCodeHomeProjectKey? project)

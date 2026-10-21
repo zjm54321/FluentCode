@@ -16,7 +16,7 @@ namespace Microsoft.UI.Dispatching
     public enum DispatcherQueuePriority{Low}
     public sealed class DispatcherQueue
     {
-        private readonly Queue<Action> _queue=new();public int Count=>_queue.Count;public bool Accept=true;
+        private readonly Queue<Action> _queue=new();public int Count=>_queue.Count;public bool Accept=true;public bool HasThreadAccess=>true;
         public bool TryEnqueue(DispatcherQueuePriority priority,Action action){if(!Accept)return false;_queue.Enqueue(action);return true;}
         public bool TryEnqueue(Action action)=>TryEnqueue(DispatcherQueuePriority.Low,action);
         public void Drain(){var n=0;while(_queue.TryDequeue(out var action)){if(++n>100)throw new Exception("queue loop");action();}}
@@ -27,6 +27,7 @@ namespace Microsoft.UI.Xaml
     public enum Visibility{Visible,Collapsed}public enum HorizontalAlignment{Left,Center,Right,Stretch}public enum VerticalAlignment{Top,Center,Bottom,Stretch}
     public enum TextWrapping{NoWrap,Wrap}public enum TextTrimming{CharacterEllipsis}public enum FocusState{Programmatic}
     public readonly record struct Thickness(double Left,double Top,double Right,double Bottom){public Thickness(double all):this(all,all,all,all){}}
+    public readonly record struct CornerRadius(double Value);
     public class RoutedEventArgs:EventArgs{}public class DragStartingEventArgs:EventArgs{public bool Cancel{get;set;}}
     public class DependencyObject{public Dictionary<string,object?> Attached=new();}
     public class UIElement:DependencyObject{public Visibility Visibility{get;set;}}
@@ -59,9 +60,10 @@ namespace Microsoft.UI.Xaml.Controls
     public class ContentControl:FrameworkElement{public object? Content{get;set;}public HorizontalAlignment HorizontalContentAlignment{get;set;}}
     public class Panel:FrameworkElement{public List<UIElement> Children{get;}=new();}
     public class Grid:Panel{}public class StackPanel:Panel{public Orientation Orientation{get;set;}public double Spacing{get;set;}}
-    public class ProgressRing:FrameworkElement{public bool IsActive{get;set;}}public class TextBlock:FrameworkElement{public string Text{get;set;}="";public TextWrapping TextWrapping{get;set;}public TextTrimming TextTrimming{get;set;}}
+    public class Border:FrameworkElement{public UIElement? Child{get;set;}public CornerRadius CornerRadius{get;set;}public Thickness BorderThickness{get;set;}}
+    public class ProgressRing:FrameworkElement{public bool IsActive{get;set;}}public class TextBlock:FrameworkElement{public string Text{get;set;}="";public bool IsTextSelectionEnabled{get;set;}public TextWrapping TextWrapping{get;set;}public TextTrimming TextTrimming{get;set;}}
     public class Button:ContentControl{public bool IsEnabled{get;set;}=true;public event Action<object,RoutedEventArgs>? Click;public void Press()=>Click?.Invoke(this,new());}
-    public class TextBox:FrameworkElement{public string Text{get;set;}="";public bool Focus(FocusState state)=>true;}
+    public class TextBox:FrameworkElement{private string _text="";public Action<string>? OnTextAssigned;public string Text{get=>_text;set{_text=value;OnTextAssigned?.Invoke(value);}}public bool IsReadOnly{get;set;} public int SelectionStart,SelectionLength;public void Select(int start,int length){SelectionStart=start;SelectionLength=length;}public bool Focus(FocusState state)=>true;}
     public class FontIcon:FrameworkElement{public string Glyph{get;set;}="";public double FontSize{get;set;}}
     public class FontIconSource{public string Glyph{get;set;}="";}
     public class MenuFlyout:FrameworkElement{public List<object> Items{get;}=new();}
@@ -95,7 +97,6 @@ namespace Microsoft.UI.Xaml.Controls
     }
     public static class ToolTipService{public static void SetToolTip(DependencyObject e,object? value)=>e.Attached["Tooltip"]=value;}
 }
-namespace AIFrontend.Services.OpenCode{public sealed class OpenCodeClient:IDisposable{public void Dispose(){}}}
 namespace AIFrontend.Pages.OpenCode
 {
     internal static class OpenCodeInteractionUi

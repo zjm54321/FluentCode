@@ -45,7 +45,7 @@ internal static class Program
                     : throw new InvalidOperationException("Unexpected offline GET " + r.RequestUri.AbsolutePath)
                 : r.RequestUri!.AbsolutePath.EndsWith("/command", StringComparison.Ordinal)
                     ? new(HttpStatusCode.NoContent) : r.RequestUri!.AbsolutePath.EndsWith("/interrupt", StringComparison.Ordinal)
-                        ? Json("{\"interrupted\":true}") : Receipt());
+                         ? Json("{\"interrupted\":true}") : Receipt(r.RequestUri!.AbsolutePath.Split('/')[3]));
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             if (request.Method == HttpMethod.Get) Gets++; else Posts++;
@@ -55,9 +55,14 @@ internal static class Program
             // Legacy fixture callbacks below intentionally control mutation responses only.
             // Give the current continuation preflight its own authoritative no-stage GET,
             // without intercepting NativeTests' independently controlled stage/state reads.
-            if (NoStagePreflight && request.Method == HttpMethod.Get && Path is "/api/session/ses_test" or "/api/session/ses_other")
+            if (NoStagePreflight && request.Method == HttpMethod.Get && Path.StartsWith("/api/session/",StringComparison.Ordinal)
+                && !Path["/api/session/".Length..].Contains('/'))
                 return Task.FromResult(Json("{\"data\":{\"id\":\"" + Path["/api/session/".Length..]
-                    + "\",\"projectID\":\"p\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/synthetic\"}}}"));
+                     + "\",\"projectID\":\"p\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/synthetic\"}}}"));
+            // A7 slotted command send must ALSO perform a fresh real command catalog GET.
+            // These callbacks control mutations only; native/explicit catalog fixtures leave this flag false.
+            if (NoStagePreflight && request.Method == HttpMethod.Get && Path == "/api/command")
+                return Task.FromResult(Json("{\"data\":[{\"name\":\"review\",\"description\":\"Review\"}]}"));
             return Respond(request, ct);
         }
     }
@@ -94,6 +99,12 @@ internal static class Program
     }
     private static async Task Main(string[] args)
     {
+        // Isolate optional successful-use bookkeeping BEFORE any send/model UI group, not only NativeTests.
+        // No user history/config is read or written by this offline process.
+        var recentFlags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+        typeof(OpenCodeRecentModels).GetField("_path",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,
+            Path.Combine(Path.GetTempPath(),"a7-offline-recents-"+Guid.NewGuid().ToString("N")+".json"));
+        typeof(OpenCodeRecentModels).GetField("_loaded",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,true);
         await ComposerActivityTests.Run();
         if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }
         await RoutingAndProtection();
@@ -214,7 +225,8 @@ internal static class Program
                 && !OpenCodeComposerCommandMenuSession.RequiresSession(OpenCodeComposerClientActionKind.EditDraft), "session-free actions keep their own reasons");
             f.Page.Text("carried text");
             f.Page.LeaveBlankTo("ses_test");
-            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Text == "carried text", "plain text carries into the created session without handoff");
+            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Text == "", "opening existing session does not carry blank text without an accepted-create association");
+            f.Page.Text("new explicit existing-session input");
             Check(!f.Page.Snapshot.IsUnboundDraft
                 && OpenCodeComposerCommandMenuSession.UnavailableReason(OpenCodeComposerClientActionKind.ChooseAgent, f.Page.Snapshot) != "开始会话后可用",
                 "bound session never shows the blank-tab caption");
@@ -234,12 +246,11 @@ internal static class Program
             Check(f.Page.Snapshot.IsBoundDraft && f.Page.Snapshot.IsActive && f.Http.Posts == 0, "unbound command/file draft staged without POST");
             var token = f.Page.Snapshot.Token;
             Check(!f.Page.Controller.ArmUnboundHandoff(token, ""), "handoff requires a concrete created session");
-            Check(f.Page.Controller.ArmUnboundHandoff(token, "ses_test"), "handoff armed for the exact unchanged draft");
-            f.Page.LeaveBlankTo("ses_test");
-            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.HasDraft && (command ? f.Page.Snapshot.SelectedCommand == "review" : f.Page.Snapshot.Attachments.Count == 1),
-                "armed handoff moves the command/attachment draft to the created session without loss");
-            await f.Page.Send();
-            Check(f.Http.Posts == 1 && f.Http.Path!.EndsWith(command ? "/command" : "/prompt", StringComparison.Ordinal), "handed-over draft sends once via the enhanced path");
+            var respond=f.Http.Respond;
+            f.Http.Respond=(r,ct)=>r.Method==HttpMethod.Post&&r.RequestUri!.AbsolutePath=="/api/session"
+                ?Task.FromResult(Json("{\"data\":{\"id\":\"ses_created\"}}")):respond(r,ct);
+            await f.Page.CreateBlankSession();
+            Check(f.Http.Posts == 2 && f.Http.Path!.EndsWith(command ? "/command" : "/prompt", StringComparison.Ordinal), "accepted-create association hands over and sends exactly once via fresh enhanced path");
             if (!command) Check(f.Http.Body!.Contains("\"delivery\":\"steer\"", StringComparison.Ordinal) && f.Http.Body.Contains("\"files\"", StringComparison.Ordinal), "enhanced guarded prompt preserves files and selected steer delivery");
             Check(!f.Page.Snapshot.HasDraft, "accepted handed-over draft cleared once");
         }
@@ -249,7 +260,7 @@ internal static class Program
             var token = f.Page.Snapshot.Token;
             Check(f.Page.Controller.ArmUnboundHandoff(token, "ses_created"), "armed for a different session");
             f.Page.LeaveBlankTo("ses_test");
-            Check(!f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 1, "handoff never retargets another session; draft retained inactive");
+            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 0, "old Arm alone never retargets blank payload into independent existing slot");
             await f.Page.Send(); f.Page.PublicSubmit();
             Check(f.Http.Posts == 0, "inactive unbound-origin draft cannot be sent to a different session");
             f.Page.EnterBlank();
@@ -258,7 +269,7 @@ internal static class Program
             Check(f.Page.Controller.ArmUnboundHandoff(token, "ses_test"), "re-armed");
             f.Page.Text("edited after arm");
             f.Page.LeaveBlankTo("ses_test");
-            Check(!f.Page.Snapshot.IsActive, "an edit after arming drops the handoff (no stale capture)");
+            Check(f.Page.Snapshot.IsActive&&f.Page.Snapshot.Attachments.Count==0&&f.Page.Snapshot.Text=="", "edit after old Arm cannot inject blank data into unrelated existing slot");
         }
         Console.WriteLine($"PASS blank new-session draft: {checks - before} assertions; production controller/page partials, fake HTTP.");
     }
@@ -277,12 +288,12 @@ internal static class Program
             f.Page.NewSessionBound = () => bound.TrySetResult(true);
             var respond = f.Http.Respond;
             f.Http.Respond = (request, ct) => request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session"
-                ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_test\"}}")) : respond(request, ct);
+                ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_created\"}}")) : respond(request, ct);
             var create = f.Page.CreateBlankSession();
             await bound.Task.WaitAsync(TimeSpan.FromSeconds(2));
             var firstBinding = f.Page.Snapshot.Token;
-            Check(f.Page.Created == "ses_test" && f.Http.Posts == 1, kind + ": create accepted once while initial refresh held");
-            f.Page.Switch("ses_other"); f.Page.Switch("ses_test");
+            Check(f.Page.Created == "ses_created" && f.Http.Posts == 1, kind + ": create accepted once while initial refresh held");
+            f.Page.Switch("ses_other"); f.Page.Switch("ses_created");
             Check(f.Page.Snapshot.Token != firstBinding, kind + ": A→B→A installs a different exact token");
             held.SetResult(true); await create;
             var retained = f.Page.Snapshot;
@@ -298,9 +309,9 @@ internal static class Program
             f.Page.EnterBlank(); f.Page.Text("unchanged create and send");
             var respond = f.Http.Respond;
             f.Http.Respond = (request, ct) => request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session"
-                ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_test\"}}")) : respond(request, ct);
+                ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_created\"}}")) : respond(request, ct);
             await f.Page.CreateBlankSession();
-            Check(f.Page.Created == "ses_test" && f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft,
+            Check(f.Page.Created == "ses_created" && f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft,
                 "unchanged exact new binding still creates and auto-sends once; guard does not reject every handoff");
         }
         Console.WriteLine($"PASS blank-tab delayed-refresh ABA: {checks - before} assertions; actual create/handoff methods, fake HTTP/refresh.");
@@ -326,7 +337,7 @@ internal static class Program
         f.Page.ResolveBlankDefaults(new[] { agent }, models, "catalog-agent", configRef, directory, chosenModel: true);
         var selected = f.Page.BlankPreferences;
         Check(selected.Model?.Id == "config-model" && selected.Model.Variant is null, "explicit pending model outranks agent configuration and retains a real omitted variant");
-        Check(OpenCodePage.StrengthCaption(configured, selected.Model!) == string.Empty, "unspecified strength selected display stays empty, not default/unspecified/high text");
+        Check(OpenCodePage.StrengthCaption(configured, selected.Model!) == "默认", "A2 default strength label is 默认 while the wire Variant remains null");
         f.Page.ResolveBlankDefaults(new[] { agent }, models, "catalog-agent", configRef, directory, basis: resolved);
         Check(f.Page.BlankPreferences == selected, "late captured-basis defaults cannot overwrite a later explicit selection/version");
         Check(f.Http.Posts == 0 && f.Http.Gets == 0, "applying actual parsed directory metadata performs no creation or transport");
@@ -347,7 +358,7 @@ internal static class Program
                 if (request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session")
                 {
                     creation = request.Content!.ReadAsStringAsync(ct).GetAwaiter().GetResult();
-                    return Task.FromResult(Json("{\"data\":{\"id\":\"ses_test\"}}"));
+                    return Task.FromResult(Json("{\"data\":{\"id\":\"ses_configured\"}}"));
                 }
                 return respond(request, ct);
             };
@@ -385,7 +396,7 @@ internal static class Program
             f.Page.BlankSourceAba();
             held.SetResult(Json("{\"data\":{\"id\":\"ses_created_old\"}}"));
             await create;
-            Check(f.Http.Posts == 1 && f.Page.Created is null && f.Page.Snapshot.HasDraft, "source A→B→A rejects old create handoff even when reference returns, preserving draft");
+            Check(f.Http.Posts == 1 && f.Page.Created is null && !f.Page.Snapshot.HasDraft&&f.Page.RecoveryPending&&f.Page.Composer.Text=="source ABA while creation held", "source A→B→A rejects old create handoff even when reference returns, preserving readonly recovery instead of active old payload");
             f.Page.SetupBlankPreferences(); await f.Page.CreateBlankSession();
             Check(f.Http.Posts == 1, "explicitly reselecting directory after source ABA cannot create same draft twice at same stable source");
         }
@@ -572,7 +583,8 @@ internal static class Program
         {
             await f.Page.File();
             using var lease = await f.Lease(); var pending = f.Page.Send(); f.Page.Switch("ses_other"); lease.Dispose(); await pending;
-            Check(f.Http.Posts == 0 && !f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 1, "navigation while awaiting gate is NotStarted, retains inactive draft");
+            Check(f.Http.Posts == 0 && f.Page.Snapshot.IsActive && f.Page.Snapshot.Attachments.Count == 0, "navigation while awaiting gate is NotStarted and activates independent empty target slot");
+            f.Page.Switch("ses_test");Check(f.Page.Snapshot.Attachments.Count==1,"original inactive file payload remains only in original slot");
         }
     }
     private static async Task LifecycleAndHooks(string repo)
@@ -580,12 +592,12 @@ internal static class Program
         using (var f = new Fixture())
         {
             await f.Page.Command("retained"); var token = f.Page.Snapshot.Token; f.Page.Switch("ses_other");
-            Check(!f.Page.Snapshot.IsActive && f.Page.Snapshot.Text == "retained", "binding switch retains inactive draft");
+            Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Text == "", "binding switch activates independent target slot instead of carrying inactive command text");
             f.Page.Switch("ses_test"); Check(f.Page.Snapshot.IsActive && f.Page.Snapshot.Token != token, "exact return activates a new scope");
             await f.Page.RouteToken(token); Check(f.Http.Posts == 0, "stale public submit token cannot send after A-B-A");
             foreach (var field in new[] { "page", "sourceGeneration", "sessionGeneration", "revision", "client", "session", "source", "missing", "active" })
                 Check(f.Page.CheckBindingField(field), "pure owner rejects changed field: " + field);
-            f.Page.UnloadFixture(); Check(!f.Page.Snapshot.IsActive && f.Page.Snapshot.HasDraft, "Bind(null) on unload retains draft");
+            f.Page.UnloadFixture(); Check(!f.Page.Snapshot.IsActive && !f.Page.Snapshot.HasDraft&&f.Page.Composer.Text=="retained"&&f.Page.RecoveryPending, "unload null-triple releases core authority and keeps visible readonly recovery");
         }
         using (var f = new Fixture())
         {
@@ -817,7 +829,8 @@ internal static class Program
             f.Page.Text("old accepted"); f.Page.HoldHandoff(); var send = f.Page.Send();
             await f.Page.HandoffEntered.WaitAsync(TimeSpan.FromSeconds(10));
             f.Page.Switch("ses_other"); await send; f.Page.ReleaseHandoff();
-            Check(f.Page.Receipts == 0 && f.Page.Snapshot.Text == "old accepted", "legacy handoff lost origin cannot clear or publish receipt into new session");
+            Check(f.Page.Receipts == 0 && f.Page.Snapshot.Text == "", "legacy handoff lost origin cannot clear or publish receipt into independent target slot");
+            f.Page.Switch("ses_test");Check(f.Page.Snapshot.Text=="old accepted"&&f.Http.Posts==1,"original accepted text retained conservatively in its own slot, never auto-resubmitted");
         }
     }
 }
@@ -874,7 +887,9 @@ namespace AIFrontend.Pages
             // This host starts after an explicit empty, authoritative no-stage history fixture.
             // Initial unread selection is exercised via the actual latest-GET pagination harness.
             _messageHistoryBoundaryKnown = true; _messageHistoryNeedsState = false;
-            InitializeAgentSelector(); InitializeComposer(); BindComposer();
+            InitializeAgentSelector(); InitializeComposer();
+            _messageBinding = new(source, _sourceRevision, _sourceGeneration, _pageGeneration, client, _selectedSessionId!, "/synthetic");
+            BindComposer();
             _composerView!.StateChanged += (_, _) => { };
             DrainView(); ConfigureAgentSelectorForSession("ses_test"); UpdateComposerButtons();
         }
@@ -927,15 +942,24 @@ namespace AIFrontend.Pages
         internal void RebaselineExecution(string acceptedId) { _historyExecutionRebaseline = true; _historyAcceptedPromptId = acceptedId; }
         internal void Switch(string session)
         {
+            if(!TryPrepareDraftSlotNavigation())return;
             _sessionMissing = false; // Real SwitchToSessionAsync clears the previous session's missing flag.
-            _selectedSessionId = session; _sessionGeneration++; BindComposer();
+            _selectedSessionId = session; _sessionGeneration++; BeginSessionMessageBinding(session,"/synthetic");BindComposer();
             _sessionCts?.Cancel(); _sessionCts = new(); ConfigureAgentSelectorForSession(session);
             _pendingAckIds.Clear(); UpdateComposerButtons();
             DrainView();
         }
         internal bool BindingUnbound => OpenCodeComposerController.IsUnbound(_composerBinding);
+        internal bool RecoveryPending=>_draftRecoveryPending;
         internal void EnterBlank()
         {
+            if(!TryPrepareDraftSlotNavigation())return;
+            if(_newSessionTab?.Tag is not Guid id||!_blankTabs.ContainsKey(id))
+            {
+                id=Guid.NewGuid();_newSessionTab=new(){Tag=id,Header="新会话",IsClosable=true};
+                _blankTabs.Add(id,new(id,_draftSourceEpoch,_newSessionTab));SessionTabs.TabItems.Add(_newSessionTab);
+            }
+            _activeBlankSlotId=id;
             _newSessionDraftActive = true; _newSessionCreatePending = false;
             _selectedSessionId = null; _sessionGeneration++; BindComposer();
             SetupBlankPreferences();
@@ -944,13 +968,13 @@ namespace AIFrontend.Pages
         }
         internal void LeaveBlankTo(string session)
         {
-            _selectedSessionId = session; _sessionGeneration++; BindComposer(); // same order as SwitchToSessionAsync
+            Switch(session);
             _newSessionDraftActive = false; BindComposer();
             _sessionCts?.Cancel(); _sessionCts = new(); ConfigureAgentSelectorForSession(session);
             _pendingAckIds.Clear(); UpdateComposerButtons();
             DrainView();
         }
-        internal void UnloadFixture() { _pageActive = false; _pageGeneration++; _sessionGeneration++; BindComposer(); _pageCts?.Cancel(); _sessionCts?.Cancel(); ClearAgentSelector(); }
+        internal void UnloadFixture() { ForceSuspendDraftSlot("Fixture page unloaded");_pageActive = false; _pageGeneration++; _sessionGeneration++; BindComposer(); _pageCts?.Cancel(); _sessionCts?.Cancel(); ClearAgentSelector(); }
         internal bool CheckBindingField(string field)
         {
             var b = _composerBinding!;
@@ -999,6 +1023,7 @@ namespace Microsoft.UI.Xaml
     public class XamlRoot { }
     public class Application { public static Application Current { get; } = new AIFrontend.App(); }
     public class RoutedEventArgs : EventArgs { }
+    public static class VisualStateManager { public static bool GoToState(object owner,string state,bool transitions)=>true; }
     public sealed class Dispatcher
     {
         internal bool HasThreadAccess = true;
@@ -1015,8 +1040,8 @@ namespace Microsoft.UI.Xaml.Controls
     public sealed class TabViewItem { public object? Tag; public object? Header; public object? IconSource; public bool IsClosable; }
     public sealed class FontIconSource { public string? Glyph; }
     public static class ToolTipService { public static void SetToolTip(object target, object text) { } }
-    public sealed class TabsStub { public List<object> TabItems { get; } = new(); }
-    public sealed class ProgressRing { public bool IsActive; }
+    public sealed class TabsStub { public List<object> TabItems { get; } = new(); public object? SelectedItem {get;set;} }
+    public sealed class ProgressRing { public bool IsActive; public Visibility Visibility; }
     public sealed class Panel { public List<object> Children = new(); public Visibility Visibility; }
 }
 namespace Microsoft.UI.Xaml.Input { public sealed class KeyRoutedEventArgs : EventArgs { public VirtualKey Key; public bool Handled; } }
@@ -1153,6 +1178,16 @@ namespace AIFrontend.Pages.OpenCode
         internal void NotifyEditorTextChanged() { Sync.Flush(); Evidence.Refresh(); }
         internal bool PrepareSubmission() { var clean = Sync.Prepare(); Evidence.Refresh(); return clean; }
         internal bool PrepareClientTextApplication() => PrepareSubmission();
+        internal void BeginDraftSlotTransition(){}
+        internal void EndDraftSlotTransition()=>RequestRender();
+        internal bool TryActivateDraftSlot(OpenCodeComposerToken token,int start,int length)
+        {if(!Sync.TryActivateClean(token))return false;editor!.Select(Math.Clamp(start,0,editor.Text.Length),Math.Clamp(length,0,editor.Text.Length-Math.Clamp(start,0,editor.Text.Length)));Lifetime=begin!();Evidence.Refresh();return true;}
+        internal OpenCodeComposerEditorRecovery SuspendDraftSlotForRecovery(string reason){var r=Sync.SuspendForRecovery();Evidence.Refresh();return r;}
+        internal void ResolveDraftSlotRecovery(){Sync.ResolveRecovery();Evidence.Refresh();}
+        internal bool TryPresentDraftSlotRecovery(string text){var ok=Sync.TryPresentRecovery(text);Evidence.Refresh();return ok;}
+        internal bool PrepareDraftSlotPageUnload()=>Sync.Prepare(); // This harness's native view is live/inert; actual live/unloaded View method is linked in opencode-draft-slots.
+        internal void ShowUnavailableDraftSlot(string reason){if(Sync.State==OpenCodeComposerInputState.Clean&&!Sync.IsSuspendedForRecovery)Sync.WriteSnapshot(source());Evidence.Refresh();}
+        internal void RevokeSlotGestures(){LifetimeGeneration++;end!(Lifetime);Evidence.LifetimeChanged();}
         internal Task HandoffAcceptedDraftAsync(OpenCodeComposerToken submittedToken,
             Func<OpenCodeComposerDraftFinalization> finalize, CancellationToken lifetimeToken)
         {

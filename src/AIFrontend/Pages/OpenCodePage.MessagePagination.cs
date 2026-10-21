@@ -119,6 +119,7 @@ public sealed partial class OpenCodePage
                 CaptureContextMetadataVersion(ref contextMetadataVersion);
             }
             _messageBinding = binding with { Directory = state.Directory };
+            BindComposer(); // Existing authoritative response supplies the formerly-unknown real directory.
             read = CaptureMessageHistoryRead(read.Client, read.SessionId);
             if (binding.Directory is null) RestoreMessageWindow();
         }

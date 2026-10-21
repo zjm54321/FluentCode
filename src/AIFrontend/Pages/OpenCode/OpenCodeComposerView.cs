@@ -91,6 +91,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     private readonly Button _intentRemove;
     private readonly TextBlock _intentHint;
     private readonly Dictionary<Guid, FrameworkElement> _attachmentChips = new();
+    private OpenCodeComposerToken? _attachmentActivation;
+    private long _attachmentViewGeneration = -1;
 
     // Status line (inactive / busy / protected / notes)
     private readonly Border _statusBar;
@@ -112,6 +114,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     private Func<bool> _isComposing = static () => false;
     private string? _editorPlaceholder;
     private bool _editorReadOnlyApplied;
+    private int _slotTransitionDepth;
+    private string? _slotUnavailableReason;
 
     private OpenCodeComposerSnapshot? _snapshot;
     private OpenCodeComposerEditorSync? _sync;
@@ -563,6 +567,88 @@ internal sealed class OpenCodeComposerView : StackPanel
         return ready;
     }
 
+    /// <summary>Revoke view-owned gestures, not draft data or pending input. Slot activation separately
+    /// adopts a clean ledger; a forced recovery separately suspends it without overwriting visible text.</summary>
+    internal void RevokeSlotGestures()
+    {
+        if (_menuShown) _menuSession.Dismiss(this, _menuSession.Capture());
+        _addButton.Flyout?.Hide();
+        _discardFlyout.Hide();
+        _picking = false;
+        _localNote = null;
+        _localNoteToken = null;
+        _lifetime.OnEditorAttached(); // Existing generation fences queued UI and accepted-draft handoffs.
+    }
+
+    internal void BeginDraftSlotTransition() => _slotTransitionDepth++;
+    internal void EndDraftSlotTransition()
+    {
+        if (_slotTransitionDepth > 0) _slotTransitionDepth--;
+        if (_slotTransitionDepth == 0) RequestRender();
+    }
+
+    internal bool TryActivateDraftSlot(OpenCodeComposerToken activated, int start, int length)
+    {
+        if (_sync is null || !_sync.TryActivateClean(activated)) return false;
+        _slotUnavailableReason = null;
+        if (_editor is { } editor)
+        {
+            var count = (editor.Text ?? string.Empty).Length;
+            start = Math.Clamp(start, 0, count);
+            editor.Select(start, Math.Clamp(length, 0, count - start));
+        }
+        BeginCatalogLifetime();
+        _inputEvidence.Refresh();
+        return true;
+    }
+
+    internal OpenCodeComposerEditorRecovery SuspendDraftSlotForRecovery(string reason)
+    {
+        _slotUnavailableReason = reason;
+        var recovery = _sync?.SuspendForRecovery() ?? new(_editor?.Text ?? string.Empty, OpenCodeComposerInputState.HeldStale, _composing);
+        if (_editor is { } editor) { editor.IsReadOnly = true; _editorReadOnlyApplied = true; }
+        _inputEvidence.Refresh();
+        return recovery;
+    }
+
+    internal void ResolveDraftSlotRecovery()
+    {
+        _sync?.ResolveRecovery(); // Explicit resolution only; no write/adoption occurs here.
+        _slotUnavailableReason = null;
+        _inputEvidence.Refresh();
+    }
+
+    internal bool TryPresentDraftSlotRecovery(string text)
+    {
+        var presented = _sync?.TryPresentRecovery(text) == true;
+        _inputEvidence.Refresh();
+        return presented;
+    }
+
+    internal bool PrepareDraftSlotPageUnload()
+    {
+        if (_sync is null || _composing || _sync.IsSuspendedForRecovery || !_dispatcher.HasThreadAccess) return false;
+        if (_lifetime.IsLive) return PrepareClientTextApplication();
+        // Child Unloaded may precede Page Unloaded. Never flush/reconcile/write an unloaded editor:
+        // only clean, identical native/core text in the same activation is safe to capture.
+        // A completed attachment edit may precede its queued render; capture its CURRENT core token/data,
+        // without adopting the older text baseline as input/send authority or changing that baseline.
+        var snapshot = _source();
+        return _sync.State == OpenCodeComposerInputState.Clean && _sync.BaselineToken.Scope == snapshot.Token.Scope
+            && _sync.BaselineToken.Draft == snapshot.Token.Draft
+            && _editor is { } editor && string.Equals(editor.Text, _sync.EditorText, StringComparison.Ordinal)
+            && (_sync.BaselineToken == snapshot.Token || string.Equals(editor.Text, snapshot.Text, StringComparison.Ordinal));
+    }
+
+    internal void ShowUnavailableDraftSlot(string reason)
+    {
+        _slotUnavailableReason = reason;
+        if (_sync is { State: OpenCodeComposerInputState.Clean, IsSuspendedForRecovery: false } && !_composing)
+            _sync.WriteSnapshot(_source()); // The REAL empty suspension snapshot, through the existing guard.
+        if (_editor is { } editor) { editor.IsReadOnly = true; _editorReadOnlyApplied = true; }
+        _inputEvidence.Refresh();
+    }
+
     /// <summary>
     /// <see cref="OpenCodeComposerAcceptedDraftHandoff"/> implementation for the page bridge. Dispatches to this
     /// view's UI thread (generation captured now), flushes recorded input, keeps held input, waits for an unchanged
@@ -582,6 +668,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         if (!_dispatcher.HasThreadAccess) { RequestRender(); return; }
+        if (_slotTransitionDepth != 0) return; // Core CAS publication cannot paint an intermediate old ledger.
         if (!_lifetime.IsLive) return; // Unloaded: no editor writes, events or focus; resume re-renders.
         _snapshot = snapshot;
         if (_localNoteToken is { } noteToken && noteToken != snapshot.Token) { _localNote = null; _localNoteToken = null; }
@@ -653,7 +740,8 @@ internal sealed class OpenCodeComposerView : StackPanel
 
         // Inactive bound drafts and held-stale input are shown read-only; reading a picked batch also blocks edits
         // that would invalidate the pick ticket. Legacy sending never touches this flag.
-        var readOnly = inactiveBound || _sync.State == OpenCodeComposerInputState.HeldStale || (s.IsBusy && _picking);
+        var readOnly = !s.IsActive || _slotUnavailableReason is not null || inactiveBound
+            || _sync.State == OpenCodeComposerInputState.HeldStale || (s.IsBusy && _picking);
         if (readOnly != _editorReadOnlyApplied)
         {
             _editorReadOnlyApplied = readOnly;
@@ -1070,6 +1158,14 @@ internal sealed class OpenCodeComposerView : StackPanel
 
     private void RenderChips(OpenCodeComposerSnapshot s, bool canEdit)
     {
+        if (_attachmentActivation is not { } prior || prior.Scope != s.Token.Scope || prior.Draft != s.Token.Draft
+            || _attachmentViewGeneration != _lifetime.Generation)
+        {
+            foreach (var chip in _attachmentChips.Values) _chipPanel.Children.Remove(chip);
+            _attachmentChips.Clear();
+            _attachmentActivation = s.Token;
+            _attachmentViewGeneration = _lifetime.Generation;
+        }
         var showCommand = s.SelectedCommand is not null;
         _commandChip.Visibility = showCommand ? Visibility.Visible : Visibility.Collapsed;
         if (showCommand)
@@ -1117,7 +1213,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         {
             if (!_attachmentChips.TryGetValue(a.Id, out var chip))
             {
-                chip = AttachmentChip(a);
+                chip = AttachmentChip(a, s.Token);
                 _attachmentChips[a.Id] = chip;
                 _chipPanel.Children.Add(chip);
             }
@@ -1140,7 +1236,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _ => "action",
     };
 
-    private FrameworkElement AttachmentChip(OpenCodeComposerAttachmentRow a)
+    private FrameworkElement AttachmentChip(OpenCodeComposerAttachmentRow a, OpenCodeComposerToken activation)
     {
         var name = OpenCodeComposerInputPolicy.Bound(a.Name, OpenCodeComposerInputPolicy.MaxChipNameLength);
         var size = OpenCodeComposerInputPolicy.FormatBytes(a.Bytes);
@@ -1168,10 +1264,18 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetName(remove, $"移除附件 {name}");
         ToolTipService.SetToolTip(remove, "移除此附件");
         var id = a.Id;
+        var generation = _lifetime.Generation;
+        FrameworkElement? renderedChip = null;
         remove.Click += (_, _) =>
         {
-            FlushForIntent();
+            var before = _source();
+            if (!_lifetime.IsLive || generation != _lifetime.Generation || renderedChip is null
+                || !_attachmentChips.TryGetValue(id, out var liveChip) || !ReferenceEquals(renderedChip, liveChip)
+                || before.Token.Scope != activation.Scope || before.Token.Draft != activation.Draft || !FlushForIntent()) return;
             var fresh = _source();
+            // Same-activation typing may advance Edit. Obtain that NEW gesture token only after
+            // validating this still-rendered chip; never lend it to an old A→B→A callback.
+            if (fresh.Token.Scope != activation.Scope || fresh.Token.Draft != activation.Draft) return;
             AttachmentRemoved?.Invoke(this, new(fresh.Token, id));
         };
         row.Children.Add(remove);
@@ -1184,6 +1288,7 @@ internal sealed class OpenCodeComposerView : StackPanel
             Child = row,
             Tag = remove,
         };
+        renderedChip = chip;
         AutomationProperties.SetName(chip, $"附件 {name}，{size}");
         ToolTipService.SetToolTip(chip, $"{name} · {a.Mime} · {size}");
         return chip;
@@ -1200,7 +1305,14 @@ internal sealed class OpenCodeComposerView : StackPanel
         var tone = "neutral";
         var busy = false;
         var offerDiscard = false;
-        if (inactiveBound)
+        if (_slotUnavailableReason is { } unavailable)
+        {
+            text = unavailable;
+            glyph = "\uE7BA";
+            tone = "caution";
+            offerDiscard = _sync?.IsSuspendedForRecovery == true;
+        }
+        else if (inactiveBound)
         {
             text = (s.Note ?? "草稿属于原会话；返回原会话或明确丢弃。")
                 + " 此草稿含命令或附件，不会转到当前会话；丢弃后才能在此输入新内容。";
@@ -1260,6 +1372,9 @@ internal sealed class OpenCodeComposerView : StackPanel
     private Flyout BuildDiscardFlyout()
     {
         var flyout = new Flyout { Placement = FlyoutPlacementMode.BottomEdgeAlignedRight };
+        OpenCodeComposerToken? opening = null;
+        long generation = -1;
+        flyout.Opening += (_, _) => { opening = _source().Token; generation = _lifetime.Generation; };
         var confirm = new Button { Content = "丢弃", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
         AutomationProperties.SetAutomationId(confirm, "OpenCodeComposerDiscardConfirm");
         var cancel = new Button { Content = "保留" };
@@ -1267,7 +1382,8 @@ internal sealed class OpenCodeComposerView : StackPanel
         {
             flyout.Hide();
             var fresh = _source();
-            if (fresh.IsBusy) return;
+            if (!_lifetime.IsLive || generation != _lifetime.Generation || opening != fresh.Token || fresh.IsBusy) return;
+            opening = null; // One confirmation, never a reusable discard capability.
             DiscardRequested?.Invoke(this, new(fresh.Token));
             // Explicit discard is the only disposal of held input: only when it actually replaced the draft.
             if (_source().Token != fresh.Token && _lifetime.IsLive) { _sync?.ResolveDiscard(); _inputEvidence.Refresh(); }

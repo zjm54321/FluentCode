@@ -36,6 +36,7 @@ public sealed partial class OpenCodePage
 {
     private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, ProgressRing working, Ellipse attention)
     {
+        internal OpenCodeDraftSlotKey? DraftSlotKey { get; set; }
         internal string SessionId { get; } = sessionId;
         internal TabViewItem Item { get; } = item;
         internal TextBlock Title { get; } = title;
@@ -276,6 +277,7 @@ public sealed partial class OpenCodePage
         }
 
         var userInitiated = !_suppressSessionSelection;
+        if (userInitiated && _selectedSessionId != sessionId) { RestoreDraftSlotTabSelection(); return; }
         if (userInitiated && SessionPane.IsPaneOpen)
         {
             SessionPane.IsPaneOpen = false;
@@ -286,19 +288,10 @@ public sealed partial class OpenCodePage
 
     private void MirrorSessionSelection(string sessionId, bool userInitiated)
     {
+        if (_draftRecoveryPending) return; // List rebuild/highlight cannot relabel a readonly recovery actor.
         if (_homeActive && !userInitiated) return; // Background list rebuild/highlight must not navigate away from Home.
-        // L2：从空白“新会话”页选中会话（新会话页列表 / 会话面板 / 新建成功）→ 空白标签原位变为该会话的标签；
-        // 该会话已有标签则关闭空白标签并激活已有标签。从标签栏切到其他标签或通知导航时保留空白标签。
-        var fromBlank = _newSessionDraftActive || string.Equals(_blankWasActiveFor, sessionId, StringComparison.Ordinal);
-        var convert = _newSessionTab is not null
-            && (string.Equals(_convertNewSessionTabTo, sessionId, StringComparison.Ordinal)
-                || (fromBlank && userInitiated && !_activatingSessionTab));
-        _blankWasActiveFor = null;
-        if (string.Equals(_convertNewSessionTabTo, sessionId, StringComparison.Ordinal))
-        {
-            _convertNewSessionTabTo = null;
-        }
-
+        // Only an accepted create converts its originating blank. Opening an existing session
+        // keeps every blank slot and its independent draft/configuration alive.
         if (!_sessionTabs.ContainsKey(sessionId))
         {
             // 列表重建对“已被用户关闭的当前会话”的重新高亮不重新打开标签；用户明确选择则总是打开。
@@ -309,12 +302,7 @@ public sealed partial class OpenCodePage
                 return;
             }
 
-            CreateSessionTab(sessionId, convert ? NewSessionTabIndex() : -1);
-        }
-
-        if (convert)
-        {
-            RemoveNewSessionTab();
+            CreateSessionTab(sessionId);
         }
 
         ExitNewSessionLayout();
@@ -364,9 +352,8 @@ public sealed partial class OpenCodePage
             IsClosable = true,
         };
         AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab." + sessionId);
-        item.ContextFlyout = CreateSessionTabMenu(sessionId);
-
         var entry = new SessionTabEntry(sessionId, item, title, working, attention);
+        item.ContextFlyout = CreateSessionTabMenu(entry);
         _sessionTabs[sessionId] = entry;
         ApplySessionTabState(entry);
 
@@ -389,14 +376,14 @@ public sealed partial class OpenCodePage
         }
     }
 
-    private MenuFlyout CreateSessionTabMenu(string sessionId)
+    private MenuFlyout CreateSessionTabMenu(SessionTabEntry entry)
     {
         var close = new MenuFlyoutItem { Text = "关闭", Icon = new FontIcon { Glyph = "\uE711" } };
-        close.Click += (_, _) => CloseSessionTab(sessionId);
+        close.Click += (_, _) => CloseSessionTabActor(entry);
         var closeOthers = new MenuFlyoutItem { Text = "关闭其他标签" };
-        closeOthers.Click += (_, _) => CloseOtherSessionTabs(sessionId);
+        closeOthers.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) CloseOtherSessionTabs(entry.SessionId); };
         var locate = new MenuFlyoutItem { Text = "在首页查看会话", Icon = new FontIcon { Glyph = "\uE8A4" } };
-        locate.Click += (_, _) => LocateSessionInPane(sessionId);
+        locate.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) LocateSessionInPane(entry.SessionId); };
         return new MenuFlyout { Items = { close, closeOthers, new MenuFlyoutSeparator(), locate } };
     }
 
@@ -439,9 +426,12 @@ public sealed partial class OpenCodePage
             return;
         }
 
-        if (_newSessionTab is not null && ReferenceEquals(SessionTabs.SelectedItem, _newSessionTab))
+        if (SessionTabs.SelectedItem is TabViewItem retired && TryGetRetiredDraftTab(retired, out var retiredSlot))
+        { PresentRetiredDraftTab(retired, retiredSlot); return; }
+
+        if (TryGetBlankTab(SessionTabs.SelectedItem, out var selectedBlank))
         {
-            EnterNewSessionLayout();
+            EnterNewSessionLayout(selectedBlank!.Item);
             return;
         }
 
@@ -455,11 +445,15 @@ public sealed partial class OpenCodePage
 
     private void ActivateSessionTab(string sessionId)
     {
-        if (_homeActive && SourceReady && !_sessionMissing && string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal))
+        if (_draftRecoveryPending) { RestoreDraftSlotTabSelection(); return; }
+        if (_homeActive && SourceReady && !_sessionMissing && string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)
+            && IsSameMessageBinding(sessionId, _messageBinding?.Directory))
         {
+            if (!TryPrepareDraftSlotNavigation()) { RestoreDraftSlotTabSelection(); return; }
             // Return to the already accepted current session without reselecting an unchanged ListView item.
             OnSessionContextSelected(sessionId);
             MirrorSessionSelection(sessionId, userInitiated: false);
+            BindComposer();
             UpdateSessionTabsEmptyState();
             return;
         }
@@ -505,14 +499,21 @@ public sealed partial class OpenCodePage
     private void SessionTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
         if (ReferenceEquals(args.Tab, HomeTab)) return;
-        if (_newSessionTab is not null && ReferenceEquals(args.Tab, _newSessionTab))
+        if (TryGetRetiredDraftTab(args.Tab, out _)) { CloseRetiredDraftTab(args.Tab); return; }
+        if (TryGetBlankTab(args.Tab, out _))
         {
-            CloseNewSessionTab();
+            CloseNewSessionTab(args.Tab);
         }
         else if (args.Tab is TabViewItem { Tag: string sessionId })
         {
-            CloseSessionTab(sessionId);
+            if (_sessionTabs.TryGetValue(sessionId, out var entry) && ReferenceEquals(entry.Item, args.Tab)) CloseSessionTabActor(entry);
         }
+    }
+
+    private void CloseSessionTabActor(SessionTabEntry entry)
+    {
+        if (_retiredSessionTabs.ContainsKey(entry.Item)) { CloseRetiredDraftTab(entry.Item); return; }
+        if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) CloseSessionTab(entry.SessionId);
     }
 
     private void CloseSessionTab(string sessionId)
@@ -523,12 +524,17 @@ public sealed partial class OpenCodePage
         }
 
         var index = SessionTabs.TabItems.IndexOf(entry.Item);
-        var wasActive = string.Equals(sessionId, _activeTabSessionId, StringComparison.Ordinal);
+        var wasActive = string.Equals(sessionId, _activeTabSessionId, StringComparison.Ordinal)
+            || _draftRecoveryPending && ReferenceEquals(_draftRecoveryTab, entry.Item);
+        var closingSlot = wasActive ? _activeDraftSlot : null;
+        if (wasActive && (!TryPrepareDraftSlotNavigation() || !SuspendPreparedDraftSlot()))
+        { RestoreDraftSlotTabSelection(); return; }
         RemoveSessionTab(entry);
+        ReleaseDraftSlot(closingSlot);
 
         if (!wasActive)
         {
-            SelectSessionTabSilently(_activeTabSessionId);
+            RestoreDraftSlotTabSelection();
             UpdateSessionTabsEmptyState();
             return;
         }
@@ -543,6 +549,9 @@ public sealed partial class OpenCodePage
 
     private void CloseOtherSessionTabs(string keepSessionId)
     {
+        if (!_homeActive && _activeTabSessionId is { } active && active != keepSessionId
+            && (!TryPrepareDraftSlotNavigation() || !SuspendPreparedDraftSlot()))
+        { RestoreDraftSlotTabSelection(); return; }
         foreach (var entry in _sessionTabs.Values.Where(t => !string.Equals(t.SessionId, keepSessionId, StringComparison.Ordinal)).ToList())
         {
             RemoveSessionTab(entry);
@@ -563,8 +572,16 @@ public sealed partial class OpenCodePage
 
     private void RemoveSessionTab(SessionTabEntry entry)
     {
+        var isCurrent = _sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry);
+        if (isCurrent && _createdDraftTransfers.TryGetValue((_draftSourceEpoch, entry.SessionId), out var pending)) ReleaseDraftSlot(pending);
+        if (entry.DraftSlotKey is { } key && _draftSlots.TryGetValue(key, out var slot))
+        {
+            if (ReferenceEquals(slot, _activeDraftSlot)) ForceSuspendDraftSlot("当前会话标签已移除。输入只读保留，请复制需要的内容后明确丢弃。");
+            else ReleaseDraftSlot(slot);
+        }
         entry.Working.IsActive = false;
-        _sessionTabs.Remove(entry.SessionId);
+        if (isCurrent) _sessionTabs.Remove(entry.SessionId);
+        _retiredSessionTabs.Remove(entry.Item);
         var previous = _suppressTabSelection;
         _suppressTabSelection = true;
         try
@@ -580,14 +597,20 @@ public sealed partial class OpenCodePage
     private void UpdateSessionTabsEmptyState()
     {
         if (_homeActive) SelectSessionTabSilently(null);
-        else if (_sessionTabs.Count == 0 && _newSessionTab is null) ShowHomePage();
+        else if (_sessionTabs.Count == 0 && _blankTabs.Count == 0 && _retiredSessionTabs.Count == 0) ShowHomePage();
     }
 
     private void ActivateAdjacentTab(int oldIndex)
     {
         var next = SessionTabs.TabItems.Count > 0
             ? SessionTabs.TabItems[Math.Clamp(oldIndex, 0, SessionTabs.TabItems.Count - 1)] : HomeTab;
-        if (_newSessionTab is not null && ReferenceEquals(next, _newSessionTab)) EnterNewSessionLayout();
+        if (next is TabViewItem retired && TryGetRetiredDraftTab(retired, out var retiredSlot))
+        {
+            var previous = _suppressTabSelection; _suppressTabSelection = true;
+            try { SessionTabs.SelectedItem = retired; } finally { _suppressTabSelection = previous; }
+            PresentRetiredDraftTab(retired, retiredSlot);
+        }
+        else if (TryGetBlankTab(next, out var nextBlank)) EnterNewSessionLayout(nextBlank!.Item);
         else if (next is TabViewItem { Tag: string sessionId })
         {
             SelectSessionTabSilently(sessionId);

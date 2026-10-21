@@ -23,7 +23,7 @@ public sealed partial class OpenCodePage
     private bool _newSessionDraftActive;
     private bool _newSessionCreatePending;
     private string? ComposerBindingSessionId
-        => _selectedSessionId ?? (_newSessionDraftActive ? OpenCodeComposerController.UnboundSessionId : null);
+        => _homeActive ? null : _selectedSessionId ?? (_newSessionDraftActive ? OpenCodeComposerController.UnboundSessionId : null);
     partial void OnUnboundComposerSubmitRequested(OpenCodeComposerToken token);
     // Only durable server admission is published; presentation may deduplicate by receipt.Id.
     partial void OnComposerPromptAdmitted(string sessionId, OpenCodeInboxUser receipt);
@@ -66,28 +66,26 @@ public sealed partial class OpenCodePage
         };
         _composerView.CommandRemoved += (_, e) => _composerController.RemoveCommand(e.Token);
         _composerView.AttachmentRemoved += (_, e) => _composerController.RemoveAttachment(e.Token, e.Id);
-        _composerView.DiscardRequested += (_, e) => _composerController.DiscardDraft(e.Token);
+        _composerView.DiscardRequested += (_, e) =>
+        {
+            if (_draftRecoveryPending) DiscardDraftSlotRecovery();
+            else { _composerController.DiscardDraft(e.Token); if (_newSessionDraftActive) EnsureBlankPreferences(); }
+        };
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
     }
 
     // Called under the controller/source locks and on worker threads: ONLY captured page field comparisons.
     private bool OwnsComposerBinding(OpenCodeComposerBinding b)
-        => _pageActive && !_sessionMissing
+        => _pageActive && !_homeActive && !_draftRecoveryPending && !_sessionMissing
         && ReferenceEquals(b.Source, _source) && b.Revision == _sourceRevision
         && b.SourceGeneration == _sourceGeneration && ReferenceEquals(b.Client, _client)
         && b.PageGeneration == _pageGeneration && b.SessionGeneration == _sessionGeneration
-        && string.Equals(b.SessionId, ComposerBindingSessionId, StringComparison.Ordinal);
+        && string.Equals(b.SessionId, ComposerBindingSessionId, StringComparison.Ordinal)
+        && b.Slot == _activeDraftSlot?.Key;
 
     private void BindComposer()
     {
-        if (_composerController is null) return;
-        _composerBinding = _pageActive && !_sessionMissing && _source is { IsRevoked: false } source
-            && _client is { } client && ComposerBindingSessionId is { } sessionId
-            ? new(source, _sourceRevision, _sourceGeneration, client, _pageGeneration, _sessionGeneration, sessionId)
-            : null;
-        _composerController.Bind(_composerBinding);
-        InvalidateNativeActionIfBindingLost();
-        RefreshComposerView();
+        BindDraftSlotComposer();
     }
 
     private OpenCodeComposerSnapshot GetComposerSnapshot()
@@ -101,6 +99,7 @@ public sealed partial class OpenCodePage
 
     private void OnComposerSnapshotChanged(object? sender, OpenCodeComposerSnapshotChangedEventArgs e)
     {
+        if (_draftSlotChanging) return;
         RefreshComposerView(); // Never render a queued event payload.
         CheckNativeEditorOwnership();
     }
@@ -146,6 +145,8 @@ public sealed partial class OpenCodePage
             return;
         }
         _composerPickerPending = true;
+        var operation = ++_composerPickEpoch;
+        var activation = _draftActivationVersion;
         UpdateComposerButtons();
         RefreshComposerView();
         var outcome = OpenCodeComposerPickOutcome.Cancelled;
@@ -162,12 +163,16 @@ public sealed partial class OpenCodePage
         }
         finally
         {
-            _composerPickerPending = false;
-            var current = OwnsComposerBinding(binding) && !binding.Source.IsRevoked;
-            _suppressComposerFocus = !current;
-            try { _composerView.ReportPickOutcome(current ? outcome : OpenCodeComposerPickOutcome.Cancelled); }
-            finally { _suppressComposerFocus = false; }
-            if (_pageActive) UpdateComposerButtons();
+            if (operation == _composerPickEpoch && activation == _draftActivationVersion)
+            {
+                _composerPickerPending = false;
+                var current = OwnsComposerBinding(binding) && !binding.Source.IsRevoked
+                    && _composerController.Snapshot.Token.Scope == token.Scope;
+                _suppressComposerFocus = !current;
+                try { _composerView.ReportPickOutcome(current ? outcome : OpenCodeComposerPickOutcome.Cancelled); }
+                finally { _suppressComposerFocus = false; }
+                if (_pageActive) UpdateComposerButtons();
+            }
         }
     }
 

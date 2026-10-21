@@ -300,6 +300,7 @@ public sealed partial class OpenCodePage : Page
             return;
         }
 
+        SuspendDraftSlotForPageUnload();
         _pageActive = false;
         _hostWindowVisible = false;
         UpdateViewAcknowledgementVisibility(false);
@@ -424,7 +425,8 @@ public sealed partial class OpenCodePage : Page
         }
 
         var source = ReadAppSource();
-        if (ReferenceEquals(source, _source) && (source is null || (!source.IsRevoked && source.Revision == _sourceRevision)))
+        if (ReferenceEquals(source, _source) && (source is null ? _draftEpochSource is null
+            : !source.IsRevoked && source.Revision == _sourceRevision && _client is not null))
         {
             return;
         }
@@ -444,7 +446,7 @@ public sealed partial class OpenCodePage : Page
         catch (InvalidOperationException)
         {
             // 创建期间来源被撤销：按等待处理（换代事件会再次到达并重读）。
-            InvalidateForSourceChange();
+            InvalidateForSourceChange(retireDraftSource: !IsDraftSourceCurrent(ReadAppSource()));
             ShowSourceWaiting();
             return;
         }
@@ -453,18 +455,20 @@ public sealed partial class OpenCodePage : Page
         if (source.IsRevoked || !ReferenceEquals(ReadAppSource(), source))
         {
             client.Dispose();
-            InvalidateForSourceChange();
+            InvalidateForSourceChange(retireDraftSource: !IsDraftSourceCurrent(ReadAppSource()));
             ShowSourceWaiting();
             return;
         }
 
-        InvalidateForSourceChange();
+        InvalidateForSourceChange(retireDraftSource: !IsDraftSourceCurrent(source));
         _source = source;
         _sourceRevision = source.Revision;
         _client = client;
+        EnsureDraftSourceEpoch(source);
         BeginHomeSource();
         StartEventSync();
         BindComposer();
+        if (_newSessionDraftActive) EnsureBlankPreferences();
         ShowWorkspace();
         _ = RefreshSessionsAsync();
         _ = TryDrainNavigationQueueAsync();
@@ -474,9 +478,10 @@ public sealed partial class OpenCodePage : Page
     /// 来源代际失效（null / 已撤销 / 安装新代际前）：取消页面级与会话级操作、增加来源与会话代际、
     /// 释放本页自有客户端、清空旧代际的会话选中与交互卡片；旧请求的迟到结果不会污染新代际。
     /// </summary>
-    private void InvalidateForSourceChange()
+    private void InvalidateForSourceChange(bool retireDraftSource = true)
     {
         InvalidateViewAcknowledgement();
+        if (retireDraftSource) InvalidateDraftSourceEpoch();
         ResetHomeSource();
         StopEventSync();
         _sourceGeneration++;
@@ -507,7 +512,7 @@ public sealed partial class OpenCodePage : Page
         SessionList.Items.Clear();
         ResetSessionPaginationState();
         ResetMessagePaginationState();
-        _selectedSessionId = null;
+        if (retireDraftSource) _selectedSessionId = null;
         _sessionMissing = false;
         BindComposer();
         _pendingAckIds.Clear();
@@ -854,17 +859,26 @@ public sealed partial class OpenCodePage : Page
         }
     }
 
-    private async Task SwitchToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null, Action? onBound = null, string? directory = null)
+    private async Task SwitchToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null, Action? onBound = null, string? directory = null,
+        bool forceDraftTransition = false)
     {
+        if (!TryPrepareDraftSlotNavigation())
+        {
+            if (!forceDraftTransition) { RestoreDraftSlotTabSelection(); return; }
+            ForceSuspendDraftSlot("会话已创建，但输入尚未完成同步。内容已只读保留，请复制需要的内容后明确丢弃；不会自动发送。");
+        }
         if (string.IsNullOrWhiteSpace(directory)) directory = null;
         directory ??= KnownSessionDirectory(sessionId);
         if (IsSameMessageBinding(sessionId, directory) && _sessionCts is not null)
         {
+            OnSessionContextSelected(sessionId);
+            BindComposer();
             return;
         }
 
         InvalidateViewAcknowledgement();
         ClearSessionReturnContext();
+        _homeActive = false;
         _selectedSessionId = sessionId;
         _sessionMissing = false;
         _sessionGeneration++;
@@ -3782,8 +3796,14 @@ public sealed partial class OpenCodePage : Page
     {
         NotConfiguredTitle.Text = title;
         NotConfiguredDetail.Text = detail;
-        NotConfiguredPanel.Visibility = Visibility.Visible;
-        WorkspaceGrid.Visibility = Visibility.Collapsed;
+        NotConfiguredPanel.Visibility = _draftRecoveryPending ? Visibility.Collapsed : Visibility.Visible;
+        WorkspaceGrid.Visibility = _draftRecoveryPending ? Visibility.Visible : Visibility.Collapsed;
+        if (_draftRecoveryPending)
+        {
+            _homeActive = false; _newSessionDraftActive = false;
+            VisualStateManager.GoToState(this, "NewSessionLayout", false);
+            SetBlankComposerPlacement(true); // Existing editor, readonly/copyable; no second recovery surface.
+        }
         SetConnectionState(ConnectionState.NotConfigured);
         UpdateComposerButtons();
     }
@@ -3864,7 +3884,7 @@ public sealed partial class OpenCodePage : Page
         var isWorking = hasSession && _selectedSessionId is { } selected && IsComposerSessionWorking(selected);
 
         // 权限遮罩盖住输入区时输入框仍留在可视树中（保留草稿/输入法状态），仅禁用（重设计 v3 §5）。
-        Composer.IsEnabled = _pageActive && hasClient && !ComposerCoveredByOverlay;
+        Composer.IsEnabled = _pageActive && (_draftRecoveryPending || hasClient && !ComposerCoveredByOverlay);
 
         // 单按钮禁用矩阵：有草稿 → 发送（发送中禁用防重复提交）；无草稿且当前选中会话
         // 处于本页已观察到的 Working → 停止；idle / Unknown / 无会话 / 会话缺失一律禁用。
