@@ -5,7 +5,8 @@
 //   * TextBox.Text rejects null and raises TextChanged on change; ComboBox/RadioButtons.SelectedIndex accept only -1..Count-1;
 //   * CheckBox raises Checked/Unchecked when IsChecked changes;
 //   * Button.Click is raised ONLY by the test's explicit StandInClick() (models a user click; nothing else raises it).
-// No layout, rendering, focus, theme resources, input routing, IME or UI Automation peers are modelled.
+// No native layout/rendering/theme/input routing/IME/UIA. Focus and dispatcher below are explicit
+// tracked stand-ins for testing guarded deferred callbacks, not native focus/layout evidence.
 #nullable enable
 using System;
 using System.Collections;
@@ -17,12 +18,14 @@ namespace Microsoft.UI.Xaml
     {
         internal readonly Dictionary<string, object?> Attached = new();
         public object? StandInAttached(string key) => Attached.GetValueOrDefault(key);
+        public Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue => Microsoft.UI.Dispatching.DispatcherQueue.Shared;
     }
 
     public enum Visibility { Visible, Collapsed }
     public enum VerticalAlignment { Top, Center, Bottom, Stretch }
     public enum HorizontalAlignment { Left, Center, Right, Stretch }
     public enum TextWrapping { NoWrap, Wrap }
+    public enum TextTrimming { None, CharacterEllipsis }
     public enum FocusState { Unfocused, Pointer, Keyboard, Programmatic }
 
     public readonly record struct Thickness(double Left, double Top, double Right, double Bottom)
@@ -55,7 +58,23 @@ namespace Microsoft.UI.Xaml
         public Visibility Visibility { get; set; }
         public double Opacity { get; set; } = 1;
         public bool IsTabStop { get; set; }
-        public bool Focus(FocusState state) => true;
+        public Microsoft.UI.Xaml.Input.KeyboardNavigationMode TabFocusNavigation { get; set; }
+        public Microsoft.UI.Xaml.Input.XYFocusKeyboardNavigationMode XYFocusKeyboardNavigation { get; set; }
+        public FocusState FocusState { get; private set; }
+        public bool Focus(FocusState state)
+        {
+            if (Microsoft.UI.Xaml.Input.FocusManager.Focused is UIElement old) old.FocusState = FocusState.Unfocused;
+            Microsoft.UI.Xaml.Input.FocusManager.Focused = this;
+            FocusState = state;
+            return true;
+        }
+        public event Microsoft.UI.Xaml.Input.KeyEventHandler? PreviewKeyDown;
+        public Microsoft.UI.Xaml.Input.KeyRoutedEventArgs StandInKey(Windows.System.VirtualKey key)
+        {
+            var args = new Microsoft.UI.Xaml.Input.KeyRoutedEventArgs { Key = key };
+            PreviewKeyDown?.Invoke(this, args);
+            return args;
+        }
     }
 
     public class FrameworkElement : UIElement
@@ -63,16 +82,27 @@ namespace Microsoft.UI.Xaml
         public double Width { get; set; }
         public double Height { get; set; }
         public double MinHeight { get; set; }
+        public double MinWidth { get; set; }
+        public double MaxWidth { get; set; }
+        public double MaxHeight { get; set; }
+        public UIElement? Parent => StandInOwner;
+        public XamlRoot? XamlRoot { get; set; } = new();
         public Thickness Margin { get; set; }
         public VerticalAlignment VerticalAlignment { get; set; }
         public HorizontalAlignment HorizontalAlignment { get; set; }
         public Style? Style { get; set; }
     }
+    public sealed class XamlRoot { }
+    public readonly record struct GridLength(double Value, GridUnitType Type = GridUnitType.Pixel)
+    { public static GridLength Auto => new(0, GridUnitType.Auto); }
+    public enum GridUnitType { Auto, Pixel, Star }
 }
 
 namespace Microsoft.UI.Xaml.Media
 {
     public class Brush { }
+    public static class VisualTreeHelper
+    { public static Microsoft.UI.Xaml.DependencyObject? GetParent(Microsoft.UI.Xaml.DependencyObject element) => (element as Microsoft.UI.Xaml.UIElement)?.StandInOwner; }
 }
 
 namespace Microsoft.UI.Text
@@ -90,7 +120,12 @@ namespace Microsoft.UI.Xaml.Automation
         public static void SetHelpText(DependencyObject element, string value) => element.Attached["HelpText"] = value;
         public static string? GetAutomationId(DependencyObject element) => element.Attached.GetValueOrDefault("AutomationId") as string;
         public static void SetLiveSetting(DependencyObject element, Microsoft.UI.Xaml.Automation.Peers.AutomationLiveSetting value) => element.Attached["LiveSetting"] = value;
+        public static void SetLandmarkType(DependencyObject element, AutomationLandmarkType value) => element.Attached["Landmark"] = value;
+        public static void SetLocalizedLandmarkType(DependencyObject element, string value) => element.Attached["LandmarkText"] = value;
+        public static void SetAccessibilityView(DependencyObject element, AccessibilityView value) => element.Attached["Accessibility"] = value;
     }
+    public enum AutomationLandmarkType { Custom }
+    public enum AccessibilityView { Raw }
 }
 
 namespace Microsoft.UI.Xaml.Automation.Peers
@@ -125,6 +160,8 @@ namespace Microsoft.UI.Xaml.Controls
             foreach (var item in _items) item.StandInOwner = null;
             _items.Clear();
         }
+        public bool Remove(UIElement item)
+        { if (!_items.Remove(item)) return false; item.StandInOwner = null; return true; }
 
         public IEnumerator<UIElement> GetEnumerator() => _items.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -140,6 +177,13 @@ namespace Microsoft.UI.Xaml.Controls
     {
         public Orientation Orientation { get; set; }
         public double Spacing { get; set; }
+    }
+    public class ColumnDefinition { public GridLength Width { get; set; } }
+    public class Grid : Panel
+    {
+        public double ColumnSpacing { get; set; }
+        public List<ColumnDefinition> ColumnDefinitions { get; } = new();
+        public static void SetColumn(FrameworkElement element, int column) => element.Attached["GridColumn"] = column;
     }
 
     public class Border : FrameworkElement
@@ -171,6 +215,8 @@ namespace Microsoft.UI.Xaml.Controls
         public FontWeight FontWeight { get; set; }
         public TextWrapping TextWrapping { get; set; }
         public bool IsTextSelectionEnabled { get; set; }
+        public int MaxLines { get; set; }
+        public TextTrimming TextTrimming { get; set; }
         private Brush? _foreground;
         public bool HasLocalForeground { get; private set; }
         public Brush? Foreground
@@ -188,7 +234,22 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class ContentControl : Control
     {
-        public object? Content { get; set; }
+        private object? _content;
+        public object? Content
+        {
+            get => _content;
+            set
+            {
+                if (ReferenceEquals(_content, value)) return;
+                if (value is UIElement incoming && incoming.StandInOwner is not null) throw new InvalidOperationException("stand-in: content already parented");
+                if (_content is UIElement old) old.StandInOwner = null;
+                _content = value;
+                if (value is UIElement next) next.StandInOwner = this;
+            }
+        }
+        public HorizontalAlignment HorizontalContentAlignment { get; set; }
+        public VerticalAlignment VerticalContentAlignment { get; set; }
+        public bool UseSystemFocusVisuals { get; set; }
     }
 
     public class Button : ContentControl
@@ -288,4 +349,62 @@ namespace Microsoft.UI.Xaml.Controls
     {
         public bool IsActive { get; set; }
     }
+    public class FontIcon : Control { public string Glyph { get; set; } = ""; public double FontSize { get; set; } }
+    public enum InfoBarSeverity { Informational, Warning, Error, Success }
+    public class InfoBar : ContentControl
+    {
+        public InfoBarSeverity Severity { get; set; }
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public bool IsClosable { get; set; }
+        public bool IsOpen { get; set; }
+        public Button? ActionButton { get; set; }
+    }
+    public enum ScrollBarVisibility { Disabled, Auto }
+    public class ScrollViewer : ContentControl
+    {
+        public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }
+        public ScrollBarVisibility VerticalScrollBarVisibility { get; set; }
+        public int StandInScrollChanges { get; private set; }
+        public bool ChangeView(double? horizontal, double? vertical, float? zoom) { StandInScrollChanges++; return true; }
+    }
+    public static class ToolTipService
+    { public static void SetToolTip(DependencyObject element, object value) => element.Attached["Tooltip"] = value; }
+}
+
+namespace Microsoft.UI.Dispatching
+{
+    public sealed class DispatcherQueue
+    {
+        public static DispatcherQueue Shared { get; } = new();
+        private readonly Queue<Action> _pending = new();
+        public bool TryEnqueue(Action action) { _pending.Enqueue(action); return true; }
+        public void StandInDrain() { while (_pending.TryDequeue(out var action)) action(); }
+    }
+}
+namespace Windows.System { public enum VirtualKey { Enter, Escape, ProcessKey, Control } }
+namespace Windows.UI.Core { [Flags] public enum CoreVirtualKeyStates { None = 0, Down = 1 } }
+namespace Microsoft.UI.Input
+{
+    public static class InputKeyboardSource
+    {
+        public static bool StandInControlDown;
+        public static Windows.UI.Core.CoreVirtualKeyStates GetKeyStateForCurrentThread(Windows.System.VirtualKey key)
+            => StandInControlDown ? Windows.UI.Core.CoreVirtualKeyStates.Down : Windows.UI.Core.CoreVirtualKeyStates.None;
+    }
+}
+namespace Microsoft.UI.Xaml.Input
+{
+    public delegate void KeyEventHandler(object sender, KeyRoutedEventArgs args);
+    public enum KeyboardNavigationMode { Cycle }
+    public enum XYFocusKeyboardNavigationMode { Enabled }
+    public sealed class KeyRoutedEventArgs : EventArgs { public Windows.System.VirtualKey Key { get; set; } public bool Handled { get; set; } }
+    public static class FocusManager
+    { public static DependencyObject? Focused; public static DependencyObject? GetFocusedElement(XamlRoot root) => Focused; }
+}
+namespace AIFrontend.Pages.OpenCode
+{
+    // Boundary double for runtime XAML/resource loading: exercise the production fallback controls.
+    internal static class OpenCodeThemedXaml
+    { internal static T? Load<T>(string element, string attributes) where T : class => null; }
 }

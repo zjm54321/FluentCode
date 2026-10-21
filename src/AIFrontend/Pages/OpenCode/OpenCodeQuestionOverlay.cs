@@ -31,7 +31,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// <para>
 /// 外观：原生 Fluent——底层不透明 <c>SolidBackgroundFillColorBaseBrush</c>，卡片 <c>CardBackgroundFillColorDefaultBrush</c>
 /// + <c>CardStrokeColorDefaultBrush</c>、<c>OverlayCornerRadius</c>，顶部 2px 强调色细线；标题 Subtitle、题目 BodyStrong、
-/// 说明 Body/Caption；RadioButtons / CheckBox / TextBox；多题用 PipsPager 逐题显示 + “第 1 / 3 题”；
+/// 说明 Body/Caption；RadioButtons / CheckBox / TextBox；多题用“上一个问题 / 下一个问题”逐题显示 + “第 1 / 3 题”；
 /// “提交”AccentButtonStyle + “不回答”。全部经 <c>{ThemeResource}</c> / 内置样式，随浅色/深色/高对比度切换。
 /// Tab 焦点在遮罩内循环；Ctrl+Enter 提交（输入法组合中不触发）；Esc 在“确认不回答”态返回。
 /// </para>
@@ -57,7 +57,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
     private readonly ContentControl _editorHost;
     private readonly TextBlock _confirmText;
     private readonly StackPanel _pagerPanel;
-    private readonly PipsPager _pager;
+    private readonly Button _previousButton;
     private readonly TextBlock _pageText;
     private readonly ProgressRing _progress;
     private readonly Button _submitButton;
@@ -70,7 +70,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
     private string? _pinnedId;
     private int _acceptedRevision;
     private bool _confirming;
-    private bool _syncingPager;
+    private long _focusEpoch;
 
     internal OpenCodeQuestionOverlay()
     {
@@ -164,23 +164,15 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _confirmText = OpenCodeInteractionUi.StyledText("确定不回答？助手会收到“已取消”。", OpenCodeInteractionUi.BodyStyleKey);
         _confirmText.Visibility = Visibility.Collapsed;
 
-        // ---- 底部：左侧逐题分页（PipsPager + 第 1 / 3 题），右侧 提交（强调）/ 不回答 ----
-        _pager = new PipsPager
-        {
-            PreviousButtonVisibility = PipsPagerButtonVisibility.Visible,
-            NextButtonVisibility = PipsPagerButtonVisibility.Visible,
-            MaxVisiblePips = 7,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        AutomationProperties.SetName(_pager, "切换题目");
-        _pager.SelectedIndexChanged += Pager_SelectedIndexChanged;
+        // ---- 请求内向导：上一个问题 / 下一个问题；只有末题可以提交整份回答 ----
+        _previousButton = new Button { Content = "上一个问题", MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
+        _previousButton.Click += (_, _) => MoveQuestion(-1);
         _pageText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
         _pageText.VerticalAlignment = VerticalAlignment.Center;
         _pageText.TextWrapping = TextWrapping.NoWrap;
         AutomationProperties.SetLiveSetting(_pageText, AutomationLiveSetting.Polite);
         _pagerPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Visibility = Visibility.Collapsed };
-        _pagerPanel.Children.Add(_pager);
-        _pagerPanel.Children.Add(_pageText);
+        _pagerPanel.Children.Add(_previousButton);
 
         _progress = new ProgressRing
         {
@@ -194,8 +186,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
 
         _submitButton = new Button { Content = "提交", MinWidth = 96 };
         _submitButton.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle");
-        _submitButton.Click += (_, _) => TrySubmit();
-        ToolTipService.SetToolTip(_submitButton, "提交回答（Ctrl+Enter）");
+        _submitButton.Click += (_, _) => HandlePrimaryAction();
         _cancelButton = new Button { Content = "不回答", MinWidth = 88 };
         _cancelButton.Click += (_, _) => BeginCancel();
         ToolTipService.SetToolTip(_cancelButton, "跳过这个提问，助手会收到“已取消”");
@@ -205,10 +196,9 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _backButton = new Button { Content = "返回", MinWidth = 88, Visibility = Visibility.Collapsed };
         _backButton.Click += (_, _) => EndCancel();
 
-        // ContentDialog 风格底部按钮行：次要操作在左（不回答 / 返回），主操作（AccentButtonStyle 提交 / 确认不回答）在最右。
+        // 请求级“不回答”留在标题说明区，不与逐题导航混同。
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
         buttons.Children.Add(_progress);
-        buttons.Children.Add(_cancelButton);
         buttons.Children.Add(_backButton);
         buttons.Children.Add(_submitButton);
         buttons.Children.Add(_confirmButton);
@@ -221,12 +211,20 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         var footerBar = OpenCodeThemedXaml.Load<Border>("Border",
             "BorderBrush=\"{ThemeResource DividerStrokeColorDefaultBrush}\" BorderThickness=\"0,1,0,0\" Padding=\"0,12,0,0\" Margin=\"0,4,0,0\"")
             ?? new Border { BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 12, 0, 0), Margin = new Thickness(0, 4, 0, 0) };
-        footerBar.Child = footer;
+        var footerContent = new StackPanel { Spacing = 8 };
+        footerContent.Children.Add(_pageText);
+        footerContent.Children.Add(footer);
+        footerBar.Child = footerContent;
 
         var layout = new StackPanel { Spacing = 12 };
         var headerBlock = new StackPanel { Spacing = 4 };
         headerBlock.Children.Add(header);
-        headerBlock.Children.Add(_summaryText);
+        var summaryRow = new Grid { ColumnSpacing = 8 };
+        summaryRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        summaryRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Place(summaryRow, _summaryText, 0);
+        Place(summaryRow, _cancelButton, 1);
+        headerBlock.Children.Add(summaryRow);
         layout.Children.Add(headerBlock);
         layout.Children.Add(_staleBar);
         layout.Children.Add(_busyBar);
@@ -385,6 +383,25 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         }
     }
 
+    private void QueueFocus(bool input, bool scrollTop = false)
+    {
+        var card = _current;
+        var editor = _editor;
+        if (card is null) return;
+        var revision = card.Revision;
+        var page = editor?.PageIndex;
+        var epoch = ++_focusEpoch;
+        DispatcherQueue?.TryEnqueue(() =>
+        {
+            if (epoch != _focusEpoch || !ReferenceEquals(_current, card) || !ReferenceEquals(_editor, editor)
+                || !ReferenceEquals(card.Editor, editor) || !ReferenceEquals(_editorHost.Content, editor)
+                || card.IsDetached || card.Revision != revision || editor?.PageIndex != page
+                || input && (IsStale || _confirming || !card.CanSubmit)) return;
+            if (scrollTop) _editorScroll.ChangeView(null, 0, null);
+            if (input) FocusCurrentInput(); else FocusCurrent();
+        });
+    }
+
     private void Card_AnswerRequested(object? sender, EventArgs e)
     {
         if (sender is not OpenCodeFormCard card || !_cards.Contains(card))
@@ -396,7 +413,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         Show(card);
         UpdatePosition();
         // 遮罩可能正因权限请求或输入法组合暂未显示：只记下选择，显示后用户可直接作答。
-        DispatcherQueue?.TryEnqueue(FocusCurrentInput);
+        QueueFocus(input: true);
     }
 
     private void Card_FocusRequested(object? sender, EventArgs e)
@@ -443,6 +460,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _current = card;
         if (switching)
         {
+            _focusEpoch++;
             _confirming = false;
             _acceptedRevision = card?.Revision ?? 0;
         }
@@ -464,7 +482,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         AutomationProperties.SetAutomationId(_resolveRetryButton, "OpenCodeQuestionResolveRetry_" + id);
         AutomationProperties.SetAutomationId(_resolveSettledButton, "OpenCodeQuestionResolveSettled_" + id);
         AutomationProperties.SetAutomationId(_errorBar, "OpenCodeQuestionError_" + id);
-        AutomationProperties.SetAutomationId(_pager, "OpenCodeQuestionPager_" + id);
+        AutomationProperties.SetAutomationId(_previousButton, "OpenCodeQuestionPrevious_" + id);
         AutomationProperties.SetAutomationId(_pageText, "OpenCodeQuestionPage_" + id);
         AutomationProperties.SetAutomationId(_submitButton, "OpenCodeFormSubmit_" + id);
         AutomationProperties.SetAutomationId(_cancelButton, "OpenCodeFormCancel_" + id);
@@ -475,7 +493,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         if (hadFocus && switching)
         {
             // 处理完一个后焦点跟随到下一个提问的呈现根，而不是掉到被遮住的输入框。
-            DispatcherQueue?.TryEnqueue(() => FocusCurrent());
+            QueueFocus(input: false);
         }
     }
 
@@ -521,7 +539,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
 
         _acceptedRevision = _current.Revision;
         Refresh();
-        DispatcherQueue?.TryEnqueue(FocusCurrentInput);
+        QueueFocus(input: true);
     }
 
     private void Refresh()
@@ -567,6 +585,9 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _backButton.Visibility = _confirming ? Visibility.Visible : Visibility.Collapsed;
 
         _submitButton.IsEnabled = !stale && card.CanSubmit;
+        // Disable answer controls through their ContentControl ancestor, not the reader:
+        // long questions must remain scrollable while busy, stale or outcome-unknown.
+        _editorHost.IsEnabled = !stale && card.CanSubmit && !_confirming;
         _cancelButton.IsEnabled = !stale && card.CanCancel;
         _confirmButton.IsEnabled = !stale && card.CanCancel;
         _backButton.IsEnabled = true;
@@ -588,48 +609,44 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         var editor = _editor;
         var paged = editor is not null && editor.IsPaged && !_confirming;
         _pagerPanel.Visibility = paged ? Visibility.Visible : Visibility.Collapsed;
+        _pageText.Visibility = paged ? Visibility.Visible : Visibility.Collapsed;
+        var last = editor is null || !editor.IsPaged || editor.PageIndex >= editor.PageCount - 1;
+        _submitButton.Content = last ? "提交" : "下一个问题";
+        ToolTipService.SetToolTip(_submitButton, last ? "提交整份回答（Ctrl+Enter）" : "暂存当前输入并前往下一个问题（Ctrl+Enter）");
+        _previousButton.IsEnabled = CanNavigate && editor is { PageIndex: > 0 };
         if (!paged || editor is null)
         {
             return;
         }
 
-        _syncingPager = true;
-        try
-        {
-            if (_pager.NumberOfPages != editor.PageCount)
-            {
-                _pager.NumberOfPages = editor.PageCount;
-            }
-
-            if (_pager.SelectedPageIndex != editor.PageIndex)
-            {
-                _pager.SelectedPageIndex = editor.PageIndex;
-            }
-        }
-        finally
-        {
-            _syncingPager = false;
-        }
-
         _pageText.Text = $"第 {editor.PageIndex + 1} / {editor.PageCount} 题" + (editor.PageHasError(editor.PageIndex) ? " · 需修改" : string.Empty);
     }
 
-    private void Pager_SelectedIndexChanged(PipsPager sender, PipsPagerSelectedIndexChangedEventArgs args)
-    {
-        if (_syncingPager || _editor is null || !_editor.IsPaged)
-        {
-            return;
-        }
+    private bool CanNavigate => _current is { CanSubmit: true } && _editor is not null
+        && ReferenceEquals(_editor, _current.Editor) && !_confirming && !IsStale;
 
-        _editor.ShowPage(sender.SelectedPageIndex);
+    private void MoveQuestion(int direction)
+    {
+        if (!CanNavigate || _editor is not { IsPaged: true } editor) return;
+        // Inputs remain in this request/revision's field.Key-bound controls. Only visibility changes:
+        // invalid/empty/custom values are retained without a second answer cache, validation or callbacks.
+        editor.ShowPage(editor.PageIndex + direction);
+        QueueFocus(input: true, scrollTop: true);
     }
 
     private void Editor_PageChanged(object? sender, EventArgs e) => UpdatePager();
 
+    private void HandlePrimaryAction()
+    {
+        if (!CanNavigate) return;
+        if (_editor is { IsPaged: true } editor && editor.PageIndex < editor.PageCount - 1) MoveQuestion(1);
+        else TrySubmit();
+    }
+
     private void TrySubmit()
     {
         var card = _current;
-        if (card is null || _confirming || IsStale || !card.CanSubmit)
+        if (card is null || !CanNavigate || _editor is { IsPaged: true } editor && editor.PageIndex < editor.PageCount - 1)
         {
             Refresh();
             return;
@@ -637,6 +654,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
 
         // 逐题校验失败：错误显示在题目下方，分页跳到第一个有错的题；提交仍经条目既有回调交给页面
         // （页面重新查询、比对指纹、单飞提交、结果未知进入阻断态）。
+        _focusEpoch++; // A queued navigation focus must not override validation's more specific error target.
         if (card.TryValidateAnswer(out var answer))
         {
             card.SubmitValidatedAnswer(answer, card.Revision);
@@ -692,7 +710,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _confirming = false;
         _current?.ResetConfirm();
         Refresh();
-        DispatcherQueue?.TryEnqueue(FocusCurrentInput);
+        QueueFocus(input: true);
     }
 
     private void Presenter_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
@@ -714,7 +732,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         {
             // 输入法组合中的 Enter 以 ProcessKey 送达，不会走到这里。
             e.Handled = true;
-            TrySubmit();
+            HandlePrimaryAction();
         }
     }
 

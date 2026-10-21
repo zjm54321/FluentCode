@@ -30,6 +30,7 @@ internal static class Program
             ("scenario 6", FieldIdsAndReservedOptionValues),
             ("scenario 7", ThemeStylesPreserveEditor),
             ("scenario 8", OverlayPagingAndMirroredState),
+            ("actual overlay wizard", OverlayWizardTests.Run),
         })
         {
             try
@@ -45,11 +46,11 @@ internal static class Program
 
         if (failed > 0)
         {
-                Console.WriteLine($"FAILED {failed}/8 scenarios ({checks} assertions reached).");
+                Console.WriteLine($"FAILED {failed}/9 scenarios ({checks} card assertions reached).");
             return 1;
         }
 
-        Console.WriteLine($"PASS 8 FormCard scenarios; {checks} assertions. Stand-in WinUI only; native rendering/Page/POST not exercised.");
+        Console.WriteLine($"PASS 8 FormCard scenarios; {checks} assertions, plus actual overlay wizard checks. Stand-in WinUI only; native rendering/Page/POST not exercised.");
         return 0;
     }
 
