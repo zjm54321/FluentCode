@@ -14,7 +14,7 @@ namespace AIFrontend.Pages;
 /// </summary>
 /// <remarks>
 /// <para>
-/// “+”、<c>/sessions</c> 与“没有打开的标签”都打开（或激活）唯一的空白标签 <c>OpenCodeSessionTab.New</c>：
+    /// “+”与 <c>/sessions</c> 打开（或激活）唯一的空白标签 <c>OpenCodeSessionTab.New</c>：
 /// 页面不选中任何会话（与切换会话同样的作废/取消），布局经 VisualState <c>NewSessionLayout</c> 切换——
 /// 输入框仍是同一个 Composer，绝不换父元素。输入框绑定“未绑定会话”的 binding：控制器绝不对其发起传输，
 /// Enter 只请求本文件先创建会话。
@@ -195,8 +195,7 @@ public sealed partial class OpenCodePage
 
     /// <summary>
     /// 关闭空白标签：草稿属于页面唯一的输入框，关闭标签不丢弃也不发送它（既有草稿保护不变）。
-    /// 正在创建时不允许关闭。若还有其他标签则激活相邻标签；它是唯一标签时离开空白布局并显示
-    /// NoOpenTabsPanel（“没有打开的会话”+ 打开或新建会话），不留下无标签的空白页。
+    /// 正在创建时不允许关闭。激活相邻会话标签；最后一个可关闭标签关完则返回集合中的固定 Home。
     /// </summary>
     private void CloseNewSessionTab()
     {
@@ -215,17 +214,8 @@ public sealed partial class OpenCodePage
             return;
         }
 
-        if (SessionTabs.TabItems.Count > 0
-            && SessionTabs.TabItems[Math.Clamp(index, 0, SessionTabs.TabItems.Count - 1)] is TabViewItem { Tag: string nextId })
-        {
-            SelectSessionTabSilently(nextId);
-            ActivateSessionTab(nextId);
-            return;
-        }
-
-        // 唯一的空白标签被关闭：草稿留在页面唯一输入框中（不丢弃、不发送），只是不再显示。
-        _noOpenTabsShown = true;
         ExitNewSessionLayout();
+        ActivateAdjacentTab(index);
         UpdateSessionTabsEmptyState();
     }
 

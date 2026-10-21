@@ -145,9 +145,10 @@ namespace AIFrontend.Pages
         private bool _homeActive = false;
         private void ResetHomeSource() => _homeActive = false;
         internal bool BlankTabActive { set => _newSessionDraftActive = value; }
-        // L2 follow-up: zero-session refresh requests the blank tab (production: OpenCodePage.NewSessionTab.cs / Tabs.cs).
-        private bool _noOpenTabsShown = false;
-        internal bool NoOpenTabsShown { set => _noOpenTabsShown = value; }
+        // Home layout boundary for the real RebuildSessionList; full tab actor/selection is
+        // compiled and exercised by opencode-tabs, not substituted into this return harness.
+        internal bool HomeTabActive { get => _homeActive; set => _homeActive = value; }
+        private void ShowHomePage() => _homeActive = true;
         internal int NewSessionTabRequests;
         private void RequestNewSessionTab() => NewSessionTabRequests++;
         private CancellationTokenSource? _pageCts, _sessionCts;

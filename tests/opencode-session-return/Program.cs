@@ -44,12 +44,12 @@ internal static class Program
                 && f.Page.SessionList.SelectedItem is ListViewItem { Tag: "ses_root" }, "blank.inactive-rebuild-still-auto-selects-first");
             Check(f.Page.NewSessionTabRequests == 0, "blank.sessions-present-no-blank-tab-request");
         }
-        // L2 follow-up (a): zero root sessions → request the blank tab instead of the old empty state.
+        // A6: zero root sessions → Home, never an automatically manufactured blank tab.
         using (var f = new Fixture("endpoint_blank_" + Guid.NewGuid().ToString("N")))
         {
-            Check(f.Page.Rebuild(new()) is null && f.Page.Viewed is null && f.Page.NewSessionTabRequests == 1, "blank.zero-sessions-requests-blank-tab");
-            Check(f.Page.Rebuild(new() { Session("ses_child", "ses_parent") }) is null && f.Page.NewSessionTabRequests == 2,
-                "blank.child-only-page-requests-blank-tab");
+            Check(f.Page.Rebuild(new()) is null && f.Page.Viewed is null && f.Page.NewSessionTabRequests == 0 && f.Page.HomeTabActive, "home.zero-sessions-no-invented-blank-tab");
+            Check(f.Page.Rebuild(new() { Session("ses_child", "ses_parent") }) is null && f.Page.NewSessionTabRequests == 0,
+                "home.child-only-page-does-not-create-blank-tab");
         }
         using (var f = new Fixture("endpoint_blank_" + Guid.NewGuid().ToString("N")))
         {
@@ -58,8 +58,8 @@ internal static class Program
         }
         using (var f = new Fixture("endpoint_blank_" + Guid.NewGuid().ToString("N")))
         {
-            f.Page.NoOpenTabsShown = true;
-            Check(f.Page.Rebuild(new()) is null && f.Page.NewSessionTabRequests == 0, "blank.user-closed-blank-tab-not-reopened-by-refresh");
+            f.Page.HomeTabActive = true;
+            Check(f.Page.Rebuild(new()) is null && f.Page.NewSessionTabRequests == 0 && f.Page.HomeTabActive, "home.closed-blank-not-reopened-by-refresh");
         }
     }
     private static void Check(bool condition, string label)

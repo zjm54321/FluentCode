@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using Microsoft.UI.Dispatching;
 using Windows.Foundation.Collections;
 
 namespace AIFrontend.Pages;
@@ -50,9 +51,50 @@ public sealed partial class OpenCodePage
     private string? _activeTabSessionId;
     private string? _closedBoundSessionId;
     private int _closedBoundGeneration;
-    private bool _sessionTabsClosedByUser;
-    // 用户关闭了唯一的空白标签：显示 NoOpenTabsPanel，且不因会话列表刷新自动重开空白标签。
-    private bool _noOpenTabsShown;
+    private static readonly object HomeSessionTabTag = new();
+    private bool _homeNormalizeQueued;
+    private bool _homeNormalizeApplying;
+
+    private void InitializePinnedHomeTab()
+    {
+        HomeTab.Tag = HomeSessionTabTag;
+        if (_homeActive)
+        {
+            SelectSessionTabSilently(null);
+            VisualStateManager.GoToState(this, "HomeLayout", false);
+        }
+    }
+
+    private void HomeTab_DragStarting(UIElement sender, DragStartingEventArgs args) => args.Cancel = true;
+
+    private void SessionTabs_TabItemsChanged(TabView sender, IVectorChangedEventArgs args) => QueuePinnedHomeNormalization();
+
+    private void QueuePinnedHomeNormalization()
+    {
+        if (_homeNormalizeApplying || _homeNormalizeQueued || !_pageActive || HomeTab is not { } home
+            || SessionTabs.TabItems.IndexOf(home) <= 0) return;
+        _homeNormalizeQueued = true;
+        var page = _pageGeneration;
+        if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _homeNormalizeQueued = false;
+            if (!_pageActive || !ReferenceEquals(HomeTab, home)) return;
+            if (page != _pageGeneration) { QueuePinnedHomeNormalization(); return; }
+            var index = SessionTabs.TabItems.IndexOf(home);
+            if (index <= 0) return; // Never manufacture a replacement during a native temporary removal.
+            var selected = SessionTabs.SelectedItem; // Execution-time identity, not the queued old selection.
+            var suppress = _suppressTabSelection;
+            _homeNormalizeApplying = true;
+            _suppressTabSelection = true;
+            try
+            {
+                SessionTabs.TabItems.RemoveAt(index);
+                SessionTabs.TabItems.Insert(0, home);
+                if (selected is not null && SessionTabs.TabItems.Contains(selected)) SessionTabs.SelectedItem = selected;
+            }
+            finally { _suppressTabSelection = suppress; _homeNormalizeApplying = false; }
+        })) _homeNormalizeQueued = false;
+    }
 
     // ------------------------------------------------------------------
     // 初始化（TabView.Loaded；可能多次触发，接线只做一次）
@@ -61,13 +103,14 @@ public sealed partial class OpenCodePage
     private void SessionTabs_Loaded(object sender, RoutedEventArgs e)
     {
         TagSessionTabAddButton();
+        QueuePinnedHomeNormalization();
         if (_sessionTabsInitialized)
         {
             return;
         }
 
         _sessionTabsInitialized = true;
-        VisualStateManager.GoToState(this, "SessionLayout", false);
+        VisualStateManager.GoToState(this, _homeActive ? "HomeLayout" : _newSessionDraftActive ? "NewSessionLayout" : "SessionLayout", false);
 
         SessionList.SelectionChanged += SessionTabs_SessionListSelectionChanged;
         SessionList.Items.VectorChanged += SessionTabs_SessionItemsChanged;
@@ -76,7 +119,7 @@ public sealed partial class OpenCodePage
             DecorateSessionItem(item);
         }
 
-        if (SessionList.SelectedItem is ListViewItem { Tag: string selected })
+        if (!_homeActive && SessionList.SelectedItem is ListViewItem { Tag: string selected })
         {
             MirrorSessionSelection(selected, userInitiated: false);
         }
@@ -333,7 +376,7 @@ public sealed partial class OpenCodePage
         {
             if (insertAt >= 0 && insertAt <= SessionTabs.TabItems.Count)
             {
-                SessionTabs.TabItems.Insert(insertAt, item);
+                SessionTabs.TabItems.Insert(Math.Max(1, insertAt), item);
             }
             else
             {
@@ -359,8 +402,9 @@ public sealed partial class OpenCodePage
 
     private void SelectSessionTabSilently(string? sessionId)
     {
-        var target = sessionId is not null && _sessionTabs.TryGetValue(sessionId, out var entry) ? entry.Item
-            : sessionId is null && _newSessionDraftActive ? _newSessionTab : null; // 空白“新会话”页显示中：回退到空白标签。
+        var target = _homeActive ? HomeTab
+            : sessionId is not null && _sessionTabs.TryGetValue(sessionId, out var entry) ? entry.Item
+            : sessionId is null && _newSessionDraftActive && _newSessionTab is not null ? _newSessionTab : HomeTab;
         if (ReferenceEquals(SessionTabs.SelectedItem, target))
         {
             return;
@@ -386,6 +430,12 @@ public sealed partial class OpenCodePage
     {
         if (_suppressTabSelection)
         {
+            return;
+        }
+
+        if (HomeTab is not null && ReferenceEquals(SessionTabs.SelectedItem, HomeTab))
+        {
+            ShowHomePage();
             return;
         }
 
@@ -441,7 +491,8 @@ public sealed partial class OpenCodePage
             && !string.Equals(_activeTabSessionId, sessionId, StringComparison.Ordinal))
         {
             // 切换未发生（被拒绝或会话不在列表中）：标签选择回退到当前会话。
-            SelectSessionTabSilently(_activeTabSessionId);
+            if (_activeTabSessionId is null && !_newSessionDraftActive) ShowHomePage();
+            else SelectSessionTabSilently(_activeTabSessionId);
         }
 
         UpdateSessionTabsEmptyState();
@@ -453,6 +504,7 @@ public sealed partial class OpenCodePage
 
     private void SessionTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
+        if (ReferenceEquals(args.Tab, HomeTab)) return;
         if (_newSessionTab is not null && ReferenceEquals(args.Tab, _newSessionTab))
         {
             CloseNewSessionTab();
@@ -482,37 +534,9 @@ public sealed partial class OpenCodePage
         }
 
         _activeTabSessionId = null;
-        if (SessionTabs.TabItems.Count > 0)
-        {
-            // 关闭当前标签 → 激活右侧（无则左侧）标签。
-            var next = SessionTabs.TabItems[Math.Clamp(index, 0, SessionTabs.TabItems.Count - 1)];
-            if (next is TabViewItem { Tag: string nextId })
-            {
-                SelectSessionTabSilently(nextId);
-                ActivateSessionTab(nextId);
-            }
-            else if (_newSessionTab is not null && ReferenceEquals(next, _newSessionTab))
-            {
-                EnterNewSessionLayout();
-            }
-        }
-        else
-        {
-            // 关闭最后一个：会话仍在服务端照常运行；清除列表高亮（受抑制，不触发切换），显示空状态。
-            _closedBoundSessionId = sessionId;
-            _closedBoundGeneration = _sessionGeneration;
-            _sessionTabsClosedByUser = true;
-            var previous = _suppressSessionSelection;
-            _suppressSessionSelection = true;
-            try
-            {
-                SessionList.SelectedItem = null;
-            }
-            finally
-            {
-                _suppressSessionSelection = previous;
-            }
-        }
+        _closedBoundSessionId = sessionId;
+        _closedBoundGeneration = _sessionGeneration;
+        ActivateAdjacentTab(index);
 
         UpdateSessionTabsEmptyState();
     }
@@ -555,26 +579,21 @@ public sealed partial class OpenCodePage
 
     private void UpdateSessionTabsEmptyState()
     {
-        if (_sessionTabs.Count > 0)
-        {
-            _sessionTabsClosedByUser = false;
-        }
+        if (_homeActive) SelectSessionTabSilently(null);
+        else if (_sessionTabs.Count == 0 && _newSessionTab is null) ShowHomePage();
+    }
 
-        // 规则（L2 跟进，统一）：关闭最后一个会话标签 → 自动打开空白“新会话”标签；
-        // 再关闭这个唯一的空白标签 → 显示 NoOpenTabsPanel。任何标签/空白页/选中会话出现时面板即隐藏。
-        if (_sessionTabs.Count > 0 || _newSessionDraftActive || _newSessionTab is not null || _selectedSessionId is not null)
+    private void ActivateAdjacentTab(int oldIndex)
+    {
+        var next = SessionTabs.TabItems.Count > 0
+            ? SessionTabs.TabItems[Math.Clamp(oldIndex, 0, SessionTabs.TabItems.Count - 1)] : HomeTab;
+        if (_newSessionTab is not null && ReferenceEquals(next, _newSessionTab)) EnterNewSessionLayout();
+        else if (next is TabViewItem { Tag: string sessionId })
         {
-            _noOpenTabsShown = false;
+            SelectSessionTabSilently(sessionId);
+            ActivateSessionTab(sessionId);
         }
-
-        var showEmpty = _sessionTabsClosedByUser && _activeTabSessionId is null && _sessionTabs.Count == 0;
-        NoOpenTabsPanel.Visibility = _noOpenTabsShown ? Visibility.Visible : Visibility.Collapsed;
-        SessionLayoutRoot.Visibility = _noOpenTabsShown ? Visibility.Collapsed : Visibility.Visible;
-        if (showEmpty && !_newSessionDraftActive && !_noOpenTabsShown)
-        {
-            _sessionTabsClosedByUser = false;
-            DispatcherQueue.TryEnqueue(OpenNewSessionTab); // 延后：绝不在关闭/选择事件中重入绑定。
-        }
+        else ShowHomePage();
     }
 
     // ------------------------------------------------------------------
@@ -618,15 +637,8 @@ public sealed partial class OpenCodePage
     // 会话面板 / “+” / 空状态
     // ------------------------------------------------------------------
 
-    private void SessionPaneToggle_Click(object sender, RoutedEventArgs e)
-    {
-        ShowHomePage();
-    }
-
     /// <summary>“+”（L2）：打开或激活唯一的空白“新会话”标签（OpenCodeSessionTab.New）。</summary>
     private void SessionTabs_AddTabButtonClick(TabView sender, object args) => OpenNewSessionTab();
-
-    private void NoOpenTabsOpenButton_Click(object sender, RoutedEventArgs e) => OpenNewSessionTab();
 
     private void OpenSessionPane()
     {

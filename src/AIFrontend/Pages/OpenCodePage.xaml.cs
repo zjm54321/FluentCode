@@ -758,11 +758,10 @@ public sealed partial class OpenCodePage : Page
                 return firstId;
             }
 
-            // L2 跟进：没有可自动选中的会话（如首次启动零会话）→ 显示空白“新会话”标签，而不是旧空状态。
-            // 用户明确关闭了空白标签（显示 NoOpenTabsPanel）时不自动重开；延后执行，不在列表重建中重入绑定。
-            if (!_homeActive && !_newSessionDraftActive && _selectedSessionId is null && SessionList.Items.Count == 0 && !_noOpenTabsShown)
+            // An empty catalog does not manufacture a blank draft. Home is the native fallback tab.
+            if (!_homeActive && !_newSessionDraftActive && _selectedSessionId is null && SessionList.Items.Count == 0)
             {
-                RequestNewSessionTab();
+                ShowHomePage();
             }
 
             return null;

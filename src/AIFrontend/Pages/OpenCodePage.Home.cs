@@ -35,6 +35,7 @@ public sealed partial class OpenCodePage
 
     private void InitializeHomePage()
     {
+        InitializePinnedHomeTab();
         HomePageHost.Children.Add(_homeView);
         SessionList.Items.VectorChanged += (_, _) => QueueHomeProjection();
         Loaded += (_, _) => { if (_homeActive) ShowHomePage(); };
@@ -76,11 +77,10 @@ public sealed partial class OpenCodePage
         if (!_pageActive) return;
         InvalidateViewAcknowledgement();
         _homeActive = true;
-        // Home is not a session tab. Leave every tab/draft/binding alive but remove its visual selection,
-        // so clicking the previously active tab can actually raise SelectionChanged again.
+        // Home is a native collection member. Keep every draft/binding alive, changing only the view.
         var suppress = _suppressTabSelection;
         _suppressTabSelection = true;
-        try { SessionTabs.SelectedItem = null; }
+        try { SessionTabs.SelectedItem = HomeTab; }
         finally { _suppressTabSelection = suppress; }
         _activeTabSessionId = null;
         SessionPane.IsPaneOpen = false;

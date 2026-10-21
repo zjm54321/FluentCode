@@ -102,18 +102,21 @@ $commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
 [IO.File]::WriteAllText($commonHost, $commonText)
 $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'))
 $inputs = @($production + $tests + @($pagePath, $builtinPath, $extracted, $commonHostInput, $PSCommandPath)) | Sort-Object -Unique
-Get-FileHash -LiteralPath $inputs -Algorithm SHA256 |
-    Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
 @{ CompiledSources = @($production + $tests + @($extracted)); ExtractedFrom = @($pagePath, $builtinPath); ExtractedMembers = @($names + @('OrderMessages', 'IsScrollContextCurrent', 'SourceReady', 'ResetAcceptedHistoryProjection')) } |
     ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
-$arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
+$references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
+$arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += ($production + $tests + @($extracted)) | ForEach-Object { '"' + $_ + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
+$compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
+$inputs = @($inputs + $references.FullName + @($compiler, $dotnet, $responseFile)) | Sort-Object -Unique
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 |
+    Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
 New-Item -ItemType File -Path (Join-Path $output 'compile.log') -Force | Out-Null
-& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
+& $dotnet exec $compiler "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeSessionReturnTests.runtimeconfig.json')
 Write-Output "Headless compilation passed (SDK $($sdk.Name); $($methods.Count) extracted members; warnings treated as errors)."
