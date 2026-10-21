@@ -12,8 +12,6 @@ $production = @('OpenCodeSessionUiState.cs', 'OpenCodeSessionUiStateStore.cs', '
     Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_
 }
 $testSource = Join-Path $PSScriptRoot 'Program.cs'
-Get-FileHash -LiteralPath ($production + @($testSource, $PSCommandPath)) -Algorithm SHA256 |
-    Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
 Write-Output "Evidence directory: $output"
 
 $assembly = Join-Path $output 'OpenCodeSessionUiStateTests.dll'
@@ -23,9 +21,14 @@ $arguments += $production | ForEach-Object { '"' + $_ + '"' }
 $arguments += '"' + $testSource + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
+$runtime = Join-Path $output 'OpenCodeSessionUiStateTests.runtimeconfig.json'
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
+$inputs = @($production + @($testSource, $PSCommandPath, $responseFile, $runtime, $dotnet, (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll')) + @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll')).FullName) | Sort-Object -Unique
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
-'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeSessionUiStateTests.runtimeconfig.json')
 Write-Output "Headless compilation passed (SDK $($sdk.Name); warnings treated as errors)."
 & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'test.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
+if ([IO.File]::ReadAllText((Join-Path $output 'source-hashes-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'source-hashes.json'))) { throw 'State inputs changed during validation.' }

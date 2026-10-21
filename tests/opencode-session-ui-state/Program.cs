@@ -16,7 +16,8 @@ internal static class Program
         IndependentEvidenceAndExpiry();
         HistoricalWatermarksAndAttention();
         BindingSnapshotsAndVersions();
-        Console.WriteLine($"PASS: 3 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
+        IndependentQuestionEvidence();
+        Console.WriteLine($"PASS: 4 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
     }
 
     private static void Check(bool condition, string label)
@@ -46,6 +47,47 @@ internal static class Program
         var before = store.GetSnapshot().Version;
         Check(store.Expire(At(now)) == changes, label + ".result");
         Check(store.GetSnapshot().Version == before + (changes ? 1 : 0), label + ".version");
+    }
+
+    private static void IndependentQuestionEvidence()
+    {
+        var store = Store();
+        Apply(store, Observation() with { QuestionPending = Fact(true, 0) }, 0, true, "question.only-registers");
+        Check(State(store).QuestionPending == true && State(store).PendingAction is null
+            && State(store).UnknownReason == OpenCodeStateUnknownReason.NotObserved, "question.independent-no-pending-or-reason-rewrite");
+        Apply(store, Observation() with { QuestionPending = Fact(false, -1) }, 1, false, "question.older-rejected");
+        Apply(store, Observation() with { QuestionPending = Fact(false, 2) }, 1, false, "question.future-rejected");
+        Apply(store, Observation() with { QuestionPending = Fact(false, 0) }, 1, true, "question.same-time-conflict-existing-last-accepted-rule");
+        Check(State(store).QuestionPending == false, "question.same-time-known-conflict-matches-other-facts");
+        Apply(store, Observation() with { QuestionPending = Fact(true, 0) }, 1, true, "question.same-time-true");
+        Apply(store, Observation() with { Working = Fact(true, 10), PendingAction = Fact(true, 10),
+            Completion = new("succeeded", 100), ViewedWatermark = 50, MutationProtected = true }, 10, true, "question.independent-facts-newer");
+        Apply(store, Observation(), 14, false, "question.missing-does-not-renew");
+        Expire(store, 14.9999999, false, "question.one-tick-before-expiry");
+        Check(State(store).QuestionPending == true, "question.fresh-through-last-tick");
+        Expire(store, 15, true, "question.exact-15s-expiry");
+        Check(State(store).QuestionPending is null && State(store).Working == true && State(store).PendingAction == true
+            && State(store).UnknownReason == OpenCodeStateUnknownReason.None && State(store).MutationProtected
+            && State(store).IsUnread && State(store).Completion?.IdleWatermark == 100 && State(store).ViewedWatermark == 50,
+            "question.expiry-does-not-modify-existing-reasons-or-history-protection");
+        Apply(store, Observation() with { QuestionPending = Fact(false, 0) }, 15, false, "question.expired-same-time-conflict-rejected");
+        Expire(store, 1, false, "question.clock-rollback");
+        Apply(store, Observation() with { QuestionPending = Fact(true, 0) }, 1, false, "question.same-time-cannot-revive-after-clock-rollback");
+        Apply(store, Observation() with { QuestionPending = Fact(false, 16), Completion = new("failed", 99), ViewedWatermark = 49 }, 16, true, "question.newer-complete-false");
+        Check(State(store).QuestionPending == false && State(store).IsUnread && State(store).Completion?.Outcome == "succeeded"
+            && State(store).ViewedWatermark == 50, "question.acceptance-preserves-watermark-monotonicity");
+        Apply(store, Observation() with { QuestionPending = Fact(true, 16, OpenCodeStateUnknownReason.Incomplete) }, 16, true, "question.explicit-incomplete");
+        Check(State(store).QuestionPending is null && State(store).UnknownReason == OpenCodeStateUnknownReason.None,
+            "question.incomplete-does-not-change-working-pending-UnknownReason-contract");
+        var saved = State(store);
+        Apply(store, Observation() with { EndpointIdentity = "other", QuestionPending = Fact(false, 100) }, 100, false, "question.wrong-source-no-expire");
+        Apply(store, Observation() with { Revision = Revision + 1, QuestionPending = Fact(false, 100) }, 100, false, "question.wrong-revision-no-expire");
+        Check(State(store) == saved, "question.rejected-binding-no-side-effects");
+        store.Reset(Endpoint, Revision + 1);
+        Check(store.GetSnapshot().Sessions.IsEmpty, "question.reset-removes-evidence");
+        Apply(store, Observation() with { QuestionPending = Fact(true, 101) }, 101, false, "question.old-source-after-rebind");
+        Apply(store, new(Endpoint, Revision + 1, "ses_a") { QuestionPending = Fact(false, 101) }, 101, true, "question.new-revision-false");
+        Check(State(store).QuestionPending == false, "question.false-valid-without-other-facts");
     }
 
     private static void IndependentEvidenceAndExpiry()

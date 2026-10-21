@@ -232,6 +232,7 @@ internal static class Program
                 Outcome = OpenCodeSessionOutcomes.Succeeded, Time = new OpenCodeMessageTime { Created = 42 } } };
             f.Page.Conversation.ApplyMessages(idle);
             f.Page.NotifyViewAcknowledgementRendered(idle, windowVisible: true);
+            f.Page.ProveViewport();
             Check(f.App.Acks.Count == 1 && f.App.Acks[0].Fence(), "ack.real-helper-initial-attempt");
             await EnterChild(f);
             Check(!f.App.Acks[0].Fence(), "ack.switch-invalidates-live-fence");
@@ -278,11 +279,13 @@ internal static class Program
             }
             f.Page.Conversation.ApplyMessages(idle);
             f.Page.NotifyViewAcknowledgementRendered(idle, windowVisible: true);
+            f.Page.ProveViewport();
             Check(f.App.Acks.Count == 1, "ack.same-watermark-not-retried-after-return-revision-unload");
             var nextIdle = new[] { new OpenCodeMessage { Id = "msg_next_idle", Type = OpenCodeMessageTypes.Idle,
                 Time = new OpenCodeMessageTime { Created = 43 } } };
             f.Page.Conversation.ApplyMessages(nextIdle);
             f.Page.NotifyViewAcknowledgementRendered(nextIdle, windowVisible: true);
+            f.Page.ProveViewport();
             Check(f.App.Acks.Count == 2 && f.App.Acks[1].Watermark == 43, "ack.new-watermark-still-eligible");
         }
     }

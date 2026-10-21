@@ -129,6 +129,7 @@ public sealed class OpenCodeSessionUiStateStore
 
         var working = FilterFact(observation.Working, existing?.Working, now);
         var pendingAction = FilterFact(observation.PendingAction, existing?.PendingAction, now);
+        var questionPending = FilterFact(observation.QuestionPending, existing?.QuestionPending, now);
         var completion = FilterCompletion(observation.Completion);
         var viewed = FilterViewedWatermark(observation.ViewedWatermark);
         var mutationProtected = observation.MutationProtected;
@@ -136,6 +137,7 @@ public sealed class OpenCodeSessionUiStateStore
         if (existing is null
             && working is null
             && pendingAction is null
+            && questionPending is null
             && completion is null
             && viewed is null
             && mutationProtected is null)
@@ -166,6 +168,16 @@ public sealed class OpenCodeSessionUiStateStore
             if (Differs(existing.PendingAction, normalized))
             {
                 existing.PendingAction = normalized;
+                changed = true;
+            }
+        }
+
+        if (questionPending is { } questionFact)
+        {
+            var normalized = NormalizeFact(questionFact, now);
+            if (Differs(existing.QuestionPending, normalized))
+            {
+                existing.QuestionPending = normalized;
                 changed = true;
             }
         }
@@ -246,6 +258,16 @@ public sealed class OpenCodeSessionUiStateStore
             if (!normalized.Equals(pendingAction))
             {
                 entry.PendingAction = normalized;
+                changed = true;
+            }
+        }
+
+        if (entry.QuestionPending is { } questionPending)
+        {
+            var normalized = NormalizeFact(questionPending, now);
+            if (!normalized.Equals(questionPending))
+            {
+                entry.QuestionPending = normalized;
                 changed = true;
             }
         }
@@ -410,7 +432,7 @@ public sealed class OpenCodeSessionUiStateStore
             entry.MutationProtected,
             entry.Completion,
             entry.ViewedWatermark,
-            unknownReason);
+            unknownReason) { QuestionPending = entry.QuestionPending?.Value };
     }
 
     /// <summary>单会话的待应用事实，可写属性供后续增量接口填充。</summary>
@@ -419,6 +441,7 @@ public sealed class OpenCodeSessionUiStateStore
         public OpenCodeSessionUiFact? Working { get; set; }
 
         public OpenCodeSessionUiFact? PendingAction { get; set; }
+        public OpenCodeSessionUiFact? QuestionPending { get; set; }
 
         public bool MutationProtected { get; set; }
 

@@ -42,13 +42,13 @@ using System;
 using AIFrontend.Services.OpenCode;
 namespace AIFrontend.Services.Notifications;
 public sealed partial class OpenCodeNotificationMonitor {
-internal static (OpenCodeSessionUiFact? Working, OpenCodeSessionUiFact? Pending, DateTimeOffset? Completion) BridgeBoundary(
+internal static (OpenCodeSessionUiFact? Working, OpenCodeSessionUiFact? Pending, DateTimeOffset? Completion, OpenCodeSessionUiFact? Question) BridgeBoundary(
     DateTimeOffset now, OpenCodeExecutionInput input, DateTimeOffset historyTimestamp, DateTimeOffset activeAt,
-    DateTimeOffset? permissionsAt, DateTimeOffset? formsAt) {
+    DateTimeOffset? permissionsAt, DateTimeOffset? formsTimestamp) {
     var session = input.SessionId;
     var window = input.Window;
     var projection = OpenCodeExecutionProjection.Evaluate(input);
-    var state = new StreamState { HistoryAt = historyTimestamp, PermissionsAt = permissionsAt, FormsAt = formsAt,
+    var state = new StreamState { HistoryAt = historyTimestamp, PermissionsAt = permissionsAt, FormsAt = formsTimestamp,
         UnresolvedChildren = projection.KnownUnresolvedChildSessionIds };
     bool activeFresh = input.ActiveIsFresh, running = input.ForegroundRunning;
     bool inboxFresh = input.InboxIsFresh, hasInbox = input.HasInbox, protectedSession = input.HasGateProtection;
@@ -58,7 +58,7 @@ internal static (OpenCodeSessionUiFact? Working, OpenCodeSessionUiFact? Pending,
     string? outcome = null;
     double? watermark = null;
 '@
-    $probe += "`n$facts`nreturn (workingFact, pendingActionFact, completionObservedAt);`n}`n}"
+    $probe += "`n$facts`nreturn (workingFact, pendingActionFact, completionObservedAt, questionPendingFact);`n}`n}"
     [IO.File]::WriteAllText((Join-Path $output 'Monitor.Boundary.Extracted.cs'), $probe)
 
     $assembly = Join-Path $output 'SessionUiBridge.dll'
@@ -86,10 +86,15 @@ internal static (OpenCodeSessionUiFact? Working, OpenCodeSessionUiFact? Pending,
     $args += $sources | ForEach-Object { '"' + $_ + '"' }
     $rsp = Join-Path $output 'compile.rsp'
     $args | Set-Content -Encoding UTF8 $rsp
+    $runtime = Join-Path $output 'SessionUiBridge.runtimeconfig.json'
+    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
+    $inputs = @($sources + @($appPath, $PSCommandPath, $rsp, $runtime, $dotnet, "$($sdk.FullName)/Roslyn/bincore/csc.dll") + $refs + @(Get-ChildItem "$output/*.dll").FullName + @(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll").FullName) | Sort-Object -Unique
+    Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'input-hashes-before.json')
     & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp"
     if ($LASTEXITCODE -ne 0) { throw "Bridge compile failed: $LASTEXITCODE" }
-    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'SessionUiBridge.runtimeconfig.json')
     & $dotnet $assembly
     if ($LASTEXITCODE -ne 0) { throw "Bridge tests failed: $LASTEXITCODE" }
+    Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'input-hashes-after.json')
+    if ([IO.File]::ReadAllText((Join-Path $output 'input-hashes-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'input-hashes-after.json'))) { throw 'Bridge inputs changed during validation.' }
     Write-Output "Evidence directory: $output"
 } finally { Stop-Transcript | Out-Null }

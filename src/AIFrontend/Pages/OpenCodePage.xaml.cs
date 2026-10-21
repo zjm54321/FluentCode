@@ -267,6 +267,7 @@ public sealed partial class OpenCodePage : Page
         TrustedEndpointIdentityChanged += OpenCodePage_TrustedEndpointIdentityChanged;
         SubscribeAppSourceChanged();
         AttachConversationEvents();
+        AttachViewAcknowledgementEvents();
 
         try
         {
@@ -300,6 +301,9 @@ public sealed partial class OpenCodePage : Page
         }
 
         _pageActive = false;
+        _hostWindowVisible = false;
+        UpdateViewAcknowledgementVisibility(false);
+        DetachViewAcknowledgementEvents();
         _pageGeneration++;
         _sessionGeneration++;
         BindComposer();
@@ -472,6 +476,7 @@ public sealed partial class OpenCodePage : Page
     /// </summary>
     private void InvalidateForSourceChange()
     {
+        InvalidateViewAcknowledgement();
         ResetHomeSource();
         StopEventSync();
         _sourceGeneration++;
@@ -859,6 +864,7 @@ public sealed partial class OpenCodePage : Page
             return;
         }
 
+        InvalidateViewAcknowledgement();
         ClearSessionReturnContext();
         _selectedSessionId = sessionId;
         _sessionMissing = false;
@@ -3738,6 +3744,7 @@ public sealed partial class OpenCodePage : Page
         SetConnectionState(ConnectionState.Connected);
         if (ex.StatusCode == 404)
         {
+            InvalidateViewAcknowledgement();
             _sessionMissing = true;
             BindComposer();
             ClearAgentSelector();
@@ -4406,6 +4413,7 @@ public sealed partial class OpenCodePage : Page
     /// <summary>导航用强制会话切换：重置消息与卡片并刷新（保留输入草稿，不触碰 Composer）。</summary>
     private async Task<int> NavigateToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null)
     {
+        InvalidateViewAcknowledgement();
         ClearSessionReturnContext();
         _selectedSessionId = sessionId;
         _sessionMissing = false;

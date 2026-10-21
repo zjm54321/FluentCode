@@ -53,13 +53,28 @@ static class Checks
         internal double? Posted;
         internal readonly List<string> EventErrors = [];
         internal readonly List<OpenCodeSessionUiStateChangedEventArgs> Published = [];
+        internal readonly List<string> Paths = [];
+        internal List<OpenCodeFormInfo> Forms = [];
+        internal bool PermissionPending, FailForms, MissingFormsList;
+        internal Func<CancellationToken, Task<HttpResponseMessage>>? HeldForms;
         internal Fixture(string endpoint, long revision = 1, App? app = null, bool bind = true)
         {
             App = app ?? new();
-            http = new(new Handler(async (request, _) =>
+            http = new(new Handler(async (request, token) =>
             {
                 if (request.RequestUri!.Host != "offline.invalid") throw new InvalidOperationException("Non-offline URL");
                 var path = request.RequestUri.AbsolutePath;
+                Paths.Add(path);
+                if (path == "/api/session/" + Session + "/form")
+                {
+                    if (HeldForms is { } held) return await held(token);
+                    if (FailForms) throw new HttpRequestException("synthetic forms read failure");
+                    return Json(new { data = MissingFormsList ? null : Forms });
+                }
+                if (path == "/api/session/" + Session + "/permission") return Json(new { data = PermissionPending
+                    ? new object[] { new { id = "per_questionfixture", sessionID = Session, action = "test", resources = Array.Empty<string>() } }
+                    : Array.Empty<object>() });
+                if (path == "/api/session/" + Session + "/message") return Json(new { data = new[] { Idle() }, cursor = new { next = (string?)null } });
                 if (path.EndsWith("/view", StringComparison.Ordinal))
                 {
                     Posts++;
@@ -130,6 +145,12 @@ static class Checks
             await Monitor.BridgeExecute(history, historyAt, permissionsAt, formsAt, pending, complete);
             Drain();
         }
+        internal async Task Poll(CancellationToken token = default)
+        {
+            Monitor.TrackSession(Session);
+            await Monitor.PollOnceAsync(token);
+            Drain();
+        }
         internal OpenCodeSessionObservation Observation(DateTimeOffset? at = null) => new(Source.Identity, Session,
             new(OpenCodeExecutionState.Unknown, false, false, false, false, []), null, null, null, at ?? DateTimeOffset.UtcNow);
         internal async Task Protect()
@@ -154,6 +175,7 @@ static class Checks
     {
         foreach (var (name, test) in new (string, Func<Task>)[] {
             ("1 producer facts, strict boundaries, independent TTL and legacy outputs", Producer),
+            ("question pending existing forms producer to App/store, failures and independent clock", Questions),
             ("2 viewed/completion atomicity and exact ACK receipts", Receipts),
             ("3 owner/dispatcher fences, seed, synchronous gate and event publication", Ownership) })
         {
@@ -164,6 +186,104 @@ static class Checks
         Console.WriteLine($"PASS total {assertions}; real production links; injected HttpMessageHandler only; no live HTTP, model or GUI.");
         Console.WriteLine("BOUNDARY: exact 15s/future active timestamps use the generated production-facts probe with one explicit clock binding; ordinary cases run full ExecutionAsync.");
         Console.WriteLine("EXCLUDED: credential/configuration construction, real WinUI dispatcher/thread affinity, native notifications/taskbar rendering, and exhaustive scheduling interleavings.");
+    }
+
+    private static OpenCodeFormInfo Form(object? metadata, string id = "frm_questionfixture", string session = Session) => new()
+    {
+        Id = id, SessionId = session, Title = "synthetic question fact input",
+        Fields = [new() { Key = "answer", Type = "string" }],
+        Metadata = metadata is null ? null : JsonSerializer.SerializeToElement(metadata),
+    };
+
+    private static async Task Questions()
+    {
+        using var f = new Fixture("ep-ui-questions");
+        Check(f.State.QuestionPending is null, "unobserved tracked seed is question unknown");
+        foreach (var (metadata, expected) in new (object?, bool)[] {
+            (new { kind = "question" }, true), (new { kind = "form" }, false), (null, false),
+            (new { kind = "Question" }, false), (new { kind = 1 }, false), (new[] { "question" }, false),
+            ("question", false), (new { other = "question" }, false) })
+        {
+            f.Forms = [Form(metadata)];
+            var start = DateTimeOffset.UtcNow; var paths = f.Paths.Count;
+            await f.Poll();
+            Check(f.Last!.QuestionPendingFact?.Value == expected && f.State.QuestionPending == expected,
+                "exact metadata object/string/case contract reaches App store");
+            Check(f.Last.QuestionPendingFact!.ObservedAt >= start && f.Last.QuestionPendingFact.ObservedAt <= DateTimeOffset.UtcNow
+                && f.Last.QuestionPendingFact.ObservedAt <= f.Last.InfoObservedAt,
+                "question fact keeps original forms request clock, not publisher clock");
+            var reads = f.Paths.Skip(paths).ToArray();
+            Check(reads.Count(path => path.EndsWith("/form", StringComparison.Ordinal)) == 1
+                && reads.All(path => path == "/api/session" || path == "/api/session/active"
+                    || path == "/api/session/" + Session + "/message" || path == "/api/session/" + Session + "/inbox"
+                    || path == "/api/session/" + Session + "/permission" || path == "/api/session/" + Session + "/form"),
+                "one existing pending forms list request, no details, new poll or wire");
+        }
+        f.Forms = []; f.PermissionPending = true; await f.Poll();
+        Check(f.State.QuestionPending == false && f.State.PendingAction == true, "permission-only is pending but not a question");
+        f.PermissionPending = false; await f.Poll();
+        Check(f.State.QuestionPending == false && f.State.PendingAction == false, "complete empty lists establish true absence");
+        Check(f.State.Completion == new OpenCodeCompletionMark("succeeded", 200) && f.State.IsUnread,
+            "original complete empty projection establishes independent unread completion");
+        f.Forms = [Form(new { kind = "question" })]; await f.Poll();
+        var original = f.Last!.QuestionPendingFact!;
+        await f.Protect(); f.App.RefreshOpenCodeSessionProtection(Session); f.Drain();
+        Check(f.State.QuestionPending == true && f.State.MutationProtected && f.State.IsUnread,
+            "question independent of protection and prior unread completion");
+        foreach (var failure in new[] { "network", "missing", "owner", "invalid", "budget", "duplicate-budget" })
+        {
+            f.FailForms = failure == "network"; f.MissingFormsList = failure == "missing";
+            f.Forms = failure switch {
+                "owner" => [Form(new { kind = "question" }, session: "ses_other")],
+                "invalid" => [Form(new { kind = "question" }) with { Fields = [] }],
+                "budget" => Enumerable.Range(0, 257).Select(i => Form(new { kind = "form" }, "frm_budget" + i)).ToList(),
+                "duplicate-budget" => Enumerable.Repeat(Form(new { kind = "form" }), 257).ToList(),
+                _ => [],
+            };
+            await f.Poll();
+            Check(f.Last!.QuestionPendingFact is null && f.State.QuestionPending == true,
+                failure + " does not fabricate false or replace accepted question evidence");
+            Check(f.State.Completion?.IdleWatermark == 200 && f.State.ViewedWatermark is null && f.State.MutationProtected,
+                failure + " preserves completion/viewed/protection contracts");
+        }
+        f.FailForms = f.MissingFormsList = false;
+        using var cancel = new CancellationTokenSource();
+        f.HeldForms = _ => { cancel.Cancel(); return Task.FromCanceled<HttpResponseMessage>(cancel.Token); };
+        var cancelled = false;
+        try { await f.Poll(cancel.Token); } catch (OperationCanceledException) { cancelled = true; }
+        Check(cancelled && f.State.QuestionPending == true, "cancelled pending list cannot emit false");
+        f.HeldForms = null;
+        await f.Monitor.BridgeRepublish(); f.Drain();
+        Check(f.Last!.QuestionPendingFact is null && f.State.QuestionPending == true,
+            "republishing after failed/cancelled list cannot renew old FormsAt");
+
+        // Real App adapter/store with explicit evidence clock, no sleep or publisher-time renewal.
+        var evidenceAt = DateTimeOffset.UtcNow.AddSeconds(-14);
+        using var ttl = new Fixture("ep-ui-question-ttl");
+        ttl.Observe(ttl.Observation() with { QuestionPendingFact = new(true, evidenceAt),
+            WorkingFact = new(true, DateTimeOffset.UtcNow), PendingActionFact = new(false, DateTimeOffset.UtcNow) });
+        Check(ttl.State.QuestionPending == true, "fresh independent question evidence accepted");
+        ttl.Observe(ttl.Observation() with { QuestionPendingFact = new(false, evidenceAt.AddTicks(-1)) });
+        Check(ttl.State.QuestionPending == true, "App/store reject older question false despite newer publication");
+        foreach (var at in new[] { DateTimeOffset.UtcNow.AddSeconds(-15), DateTimeOffset.UtcNow.AddSeconds(30) })
+            ttl.Observe(ttl.Observation() with { QuestionPendingFact = new(false, at) });
+        Check(ttl.State.QuestionPending == true, "expired/future question facts do not become reliable false");
+        ttl.App.BridgeExpireSessionUi(evidenceAt.AddSeconds(15)); ttl.Drain();
+        Check(ttl.State.QuestionPending is null && ttl.State.Working == true && ttl.State.PendingAction == false,
+            "new publications including omitted/failed facts never renew the original question clock");
+        var now = DateTimeOffset.UtcNow;
+        var window = OpenCodeExecutionProjection.CreateWindow(Session, [Idle()], true, true, true);
+        var input = new OpenCodeExecutionInput(Session, window, true, false, true, false, true, false, false, false);
+        var boundary = OpenCodeNotificationMonitor.BridgeBoundary(now, input, now, now, now, now.AddSeconds(-15));
+        Check(boundary.Question is null, "exact 15s forms timestamp cannot produce a question fact");
+        boundary = OpenCodeNotificationMonitor.BridgeBoundary(now, input, now, now, now, now.AddSeconds(-15).AddTicks(1));
+        Check(boundary.Question?.Value == false && boundary.Question.ObservedAt == now.AddSeconds(-15).AddTicks(1),
+            "one-tick-fresh absence retains forms timestamp independent of other dependencies");
+        boundary = OpenCodeNotificationMonitor.BridgeBoundary(now, input, now, now, null, now);
+        Check(boundary.Question?.Value == false && boundary.Pending is null,
+            "question depends only on complete forms; missing permissions leaves existing pending aggregate unknown");
+        await f.Recover();
+        Check(original.ObservedAt < DateTimeOffset.UtcNow, "retained accepted evidence time remains historical");
     }
 
     private static async Task Producer()
@@ -362,7 +482,8 @@ static class Checks
 
         // Callback has entered the dispatch queue with the old source captured.
         old.App.Observe(old.Monitor, old.Observation() with { WorkingFact = new(true, DateTimeOffset.UtcNow),
-            Outcome = "succeeded", IdleWatermark = 900, CompletionObservedAt = DateTimeOffset.UtcNow });
+            Outcome = "succeeded", IdleWatermark = 900, CompletionObservedAt = DateTimeOffset.UtcNow,
+            QuestionPendingFact = new(true, DateTimeOffset.UtcNow) });
         Check(await old.App.AcknowledgeOpenCodeSessionAsync(old.Source, 1, Session, 100) == 100,
             "old source successful receipt queued before replacement");
         var oldSnapshot = old.App.GetOpenCodeSessionUiSnapshot(old.Source, 1)!;
@@ -373,7 +494,7 @@ static class Checks
         Check(old.App.GetOpenCodeSessionUiSnapshot(old.Source, 1) is null, "getter immediately rejects revoked source before invalidation dispatcher action");
         using var replacement = new Fixture("ep-ui-owner", 2, old.App);
         Check(replacement.State.Working is null && replacement.State.PendingAction is null && replacement.State.Completion is null
-            && replacement.State.ViewedWatermark is null && replacement.State.MutationProtected,
+            && replacement.State.ViewedWatermark is null && replacement.State.MutationProtected && replacement.State.QuestionPending is null,
             "queued old monitor, ACK and release invalidation cannot pollute new owner or clear endpoint gate protection");
         Check(old.App.GetOpenCodeSessionUiSnapshot(old.Source, 1) is null && old.App.GetOpenCodeSessionUiSnapshot(replacement.Source, 1) is null,
             "getter rejects old object and wrong revision");
@@ -381,9 +502,9 @@ static class Checks
             "rebind preserves monotonic snapshot version");
         Check(await replacement.App.AcknowledgeOpenCodeSessionAsync(old.Source, 1, Session, 100) is null,
             "old source cannot initiate another ACK after replacement");
-        replacement.App.Observe(old.Monitor, old.Observation() with { WorkingFact = new(true, DateTimeOffset.UtcNow) });
+        replacement.App.Observe(old.Monitor, old.Observation() with { WorkingFact = new(true, DateTimeOffset.UtcNow), QuestionPendingFact = new(true, DateTimeOffset.UtcNow) });
         replacement.Drain();
-        Check(replacement.State.Working is null, "old sender rejected even before dispatch");
+        Check(replacement.State.Working is null && replacement.State.QuestionPending is null, "old sender rejected even before dispatch");
 
         // Busy sample stays conservative, then real gate recovery permits a false only in a new callback.
         replacement.ExternalLeaseHeld = true;

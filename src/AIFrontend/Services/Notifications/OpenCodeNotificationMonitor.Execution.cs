@@ -16,6 +16,7 @@ public sealed record OpenCodeSessionObservation(string EndpointIdentity, string 
 
     // 待处理动作 UI 事实；其携带时间戳为该事实的原始独立证据时间。
     public OpenCodeSessionUiFact? PendingActionFact { get; init; }
+    public OpenCodeSessionUiFact? QuestionPendingFact { get; init; }
 
     // 成功 ID 匹配时 Info 读取的开始时间。
     public DateTimeOffset? InfoObservedAt { get; init; }
@@ -38,6 +39,7 @@ public sealed partial class OpenCodeNotificationMonitor
         internal OpenCodeMessageHistoryResult? History;
         internal DateTimeOffset HistoryAt;
         internal DateTimeOffset? PermissionsAt, FormsAt;
+        internal bool QuestionPending;
         internal ImmutableArray<string> UnresolvedChildren;
     }
 
@@ -150,6 +152,8 @@ public sealed partial class OpenCodeNotificationMonitor
             pendingActionFact = new(rawProjection.Waiting, pendingAt);
 
         DateTimeOffset? infoObservedAt = info?.Id == session ? infoAt : null;
+        OpenCodeSessionUiFact? questionPendingFact = EarliestUiEvidence(uiNow, state.FormsAt) is { } formsAt
+            ? new(state.QuestionPending, formsAt) : null;
         DateTimeOffset? completionObservedAt = outcome is not null
             && watermark is { } completionWatermark && double.IsFinite(completionWatermark) && completionWatermark >= 0
                 ? EarliestUiEvidence(uiNow, state.HistoryAt, infoAt, inboxAt, activeAt,
@@ -161,6 +165,7 @@ public sealed partial class OpenCodeNotificationMonitor
         {
             WorkingFact = workingFact,
             PendingActionFact = pendingActionFact,
+            QuestionPendingFact = questionPendingFact,
             InfoObservedAt = infoObservedAt,
             CompletionObservedAt = completionObservedAt
         });

@@ -149,7 +149,9 @@ public sealed partial class OpenCodePage
         _messageHistoryBoundaryKnown = true; // Saved windows have no rollback boundary.
         // Visual only: no reducer, execution observation, context publication or ACK.
         EnsureConversationImages();
-        _conversationView.ApplyMessages(MergeMessageHistory());
+        var visibleHistory = MergeMessageHistory();
+        _conversationView.ApplyMessages(visibleHistory);
+        NotifyViewAcknowledgementRendered(visibleHistory, _hostWindowVisible);
         UpdateLoadOlderMessagesUi();
         UpdateEmptyState();
     }

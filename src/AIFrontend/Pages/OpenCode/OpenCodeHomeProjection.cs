@@ -36,7 +36,10 @@ public sealed record OpenCodeHomeProject(OpenCodeHomeProjectKey Key, string Disp
 
 /// <summary>An accepted status snapshot overrides DTO outcome entirely. Missing Working never means success.</summary>
 public sealed record OpenCodeHomeStatus(bool? Working = null, bool? PendingAction = null,
-    bool IsUnread = false, string? Outcome = null);
+    bool IsUnread = false, string? Outcome = null)
+{
+    public bool? QuestionPending { get; init; }
+}
 
 public sealed record OpenCodeHomeSession(OpenCodeHomeProjectKey Project, OpenCodeSessionInfo Info,
     OpenCodeHomeStatus? Status = null);
@@ -47,11 +50,14 @@ public sealed record OpenCodeHomeSnapshot(long Revision, IReadOnlyList<OpenCodeH
     IReadOnlyList<OpenCodeHomeSession> Sessions, bool IsLoading = false, string? StatusMessage = null,
     bool HasMoreSessions = false);
 
-public enum OpenCodeHomeTone { Unknown, Working, WorkingNeedsAction, NeedsAction, Succeeded, Failed, Interrupted, Unread }
+public enum OpenCodeHomeTone { Unknown, Working, WorkingNeedsAction, NeedsAction, Succeeded, Failed, Interrupted, Unread, QuestionBlocked }
 public enum OpenCodeHomeDateGroup { Today, Yesterday, Earlier, Future, Unknown }
 
 public sealed record OpenCodeHomeSessionRow(OpenCodeHomeSession Session, string Title, string ProjectName,
-    OpenCodeHomeTone Tone, OpenCodeHomeDateGroup DateGroup, DateTimeOffset? Updated);
+    OpenCodeHomeTone Tone, OpenCodeHomeDateGroup DateGroup, DateTimeOffset? Updated)
+{
+    public bool IsUnread => Session.Status?.IsUnread == true;
+}
 
 /// <summary>Pure display projection; never creates catalog entries, changes session records, or infers activity.</summary>
 public static class OpenCodeHomeProjection
@@ -59,6 +65,7 @@ public static class OpenCodeHomeProjection
     public static OpenCodeHomeTone Classify(OpenCodeHomeSession session)
     {
         var status = session.Status;
+        if (status?.QuestionPending == true) return OpenCodeHomeTone.QuestionBlocked;
         if (status?.Working == true)
             return status.PendingAction == true ? OpenCodeHomeTone.WorkingNeedsAction : OpenCodeHomeTone.Working;
         if (status?.PendingAction == true) return OpenCodeHomeTone.NeedsAction;
@@ -68,7 +75,7 @@ public static class OpenCodeHomeProjection
             "succeeded" => OpenCodeHomeTone.Succeeded,
             "failed" => OpenCodeHomeTone.Failed,
             "interrupted" => OpenCodeHomeTone.Interrupted,
-            _ => status?.IsUnread == true ? OpenCodeHomeTone.Unread : OpenCodeHomeTone.Unknown,
+            _ => OpenCodeHomeTone.Unknown,
         };
     }
 

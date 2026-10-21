@@ -24,6 +24,17 @@ namespace AIFrontend.Pages.OpenCode
     }
 }
 
+namespace Microsoft.UI.Xaml { public class SizeChangedEventArgs : EventArgs { } }
+namespace Microsoft.UI.Xaml.Controls { public class ScrollViewerViewChangedEventArgs : EventArgs { } }
+namespace Microsoft.UI.Xaml.Media
+{
+    public static class CompositionTarget
+    {
+        public static event EventHandler<object>? Rendering;
+        internal static void Frame() => Rendering?.Invoke(null, new());
+    }
+}
+
 namespace AIFrontend.Pages
 {
     public sealed class ReturnHostDispatcher
@@ -98,6 +109,7 @@ namespace AIFrontend.Pages
     internal sealed class ReturnHostTimer { internal void Stop() { } }
     internal sealed class ReturnHostScroll : ScrollViewer
     {
+        public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged { add { } remove { } }
         internal double VerticalOffset { get; private set; }
         internal double ScrollableHeight => 0;
         internal void UpdateLayout() { }
@@ -143,6 +155,9 @@ namespace AIFrontend.Pages
         private readonly Dictionary<string, ListViewItem> _sessionItems = new(StringComparer.Ordinal);
         private readonly OpenCodeConversationView _conversationView = new();
         private readonly ReturnHostScroll MessageScroll = new();
+        private readonly Border _ackRoot = new();
+        private readonly ScrollContentPresenter _ackPresenter = new();
+        private bool _ackTreeBound;
         private const int MaxScrollSettlePasses = 3;
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
@@ -162,9 +177,9 @@ namespace AIFrontend.Pages
         internal readonly ReturnHostTextBlock SessionsHint = new();
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
         public ReturnHostDispatcher DispatcherQueue { get; } = new();
-        public bool IsLoaded => true;
+        public new bool IsLoaded => true;
         public new double ActualWidth => 800;
-        public double ActualHeight => 600;
+        public new double ActualHeight => 600;
         internal readonly Queue<Task> MessageLoads = new();
         internal TaskCompletionSource<string> LoadEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly List<string> Tracked = new();
@@ -220,6 +235,8 @@ namespace AIFrontend.Pages
             // run a real parent history GET; A3's real boundary/directory adoption is tested separately
             // by message-pagination. The real Switch/no-op still checks the full binding and source.
             if (_messageBinding is { } binding) _messageBinding = binding with { Directory = FixtureMessageDirectory };
+            _messageHistoryBoundaryKnown = true;
+            _messageHistoryNeedsState = false;
             LoadEntered.TrySetResult(_selectedSessionId ?? string.Empty);
             return MessageLoads.Count == 0 ? Task.CompletedTask : MessageLoads.Dequeue();
         }
@@ -249,5 +266,30 @@ namespace AIFrontend.Pages
         private void HandleApiException(OpenCodeException ex, string context) { }
         private void RestartSessionEventSync(string id) { }
         private void StopEventSync() { }
+        // Inert native layout input only: uses the real ConversationView CaptureIdleViewport query.
+        internal void ProveViewport()
+        {
+            if (!_ackTreeBound)
+            {
+                _ackRoot.Child = MessageScroll;
+                MessageScroll.Content = _ackPresenter;
+                _ackPresenter.Content = _conversationView;
+                _ackTreeBound = true;
+            }
+            void Prepare(UIElement element)
+            {
+                if (element is FrameworkElement fe)
+                {
+                    fe.XamlRoot = XamlRoot; fe.IsLoaded = true; fe.ActualWidth = 500; fe.ActualHeight = 500;
+                    fe.TestTransform = _ => new Microsoft.UI.Xaml.Media.GeneralTransform(0);
+                }
+                if (element is Panel panel) foreach (var child in panel.Children) Prepare(child);
+                if (element is Border { Child: { } borderChild }) Prepare(borderChild);
+                if (element is ContentControl { Content: UIElement content }) Prepare(content);
+            }
+            Prepare(_ackRoot);
+            _conversationView.RaiseLayoutUpdatedForTest();
+            Microsoft.UI.Xaml.Media.CompositionTarget.Frame();
+        }
     }
 }

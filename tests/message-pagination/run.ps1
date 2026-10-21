@@ -31,7 +31,7 @@ $openCode = @(
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs',
-    'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs'
+    'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs'
     'OpenCodeCompletionCrashTrace.cs'
 ) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
 $sources = $openCode + @(
@@ -47,22 +47,25 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationInteractions.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewVisibility.cs'),
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyTests.cs'),
     (Join-Path $PSScriptRoot 'SessionBindingTests.cs'),
+    (Join-Path $PSScriptRoot 'Viewport.TestHost.cs'),
+    (Join-Path $PSScriptRoot 'ViewportTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
 $ackPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'
 $eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
-$extractions = @(@{ Path = $pagePath; Names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
-    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
+$extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
+    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
-    @{ Path = $ackPath; Names = @('InvalidateViewAcknowledgement') },
-    @{ Path = $eventPath; Names = @('PrepareEventSnapshot', 'OnEventStreamConnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
+    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
     $text = [IO.File]::ReadAllText($extraction.Path)

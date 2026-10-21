@@ -29,4 +29,11 @@ public sealed partial class OpenCodeNotificationMonitor
 
     internal static DateTimeOffset? BridgeEarliest(DateTimeOffset now, params DateTimeOffset?[] times)
         => EarliestUiEvidence(now, times);
+
+    internal Task BridgeRepublish()
+    {
+        StreamState state;
+        lock (_sync) state = _tracked["ses_test"];
+        return ExecutionAsync("ses_test", state, CancellationToken.None);
+    }
 }

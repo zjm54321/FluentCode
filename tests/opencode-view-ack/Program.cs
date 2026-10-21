@@ -5,244 +5,175 @@ using AIFrontend;
 using AIFrontend.Pages;
 using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Xaml.Media;
 
-// Focused evidence for OpenCodePage.ViewAcknowledgement.cs: real production partial (watermark reader,
-// per-(identity,session,watermark) dedup key, 512 attempt cap, live-snapshot fence) + real
-// OpenCodePageSource / message DTOs / OpenCodeExecutionStateReader; only the WinUI/App surface is faked
-// (TestHost). No live server, no UI, no main-project build.
 internal static class Program
 {
     private static int _n;
-
-    private static void Check(bool condition, string message)
+    private static void Check(bool value, string label) { _n++; if (!value) throw new InvalidOperationException(label); }
+    private static OpenCodeMessage Idle(string id, double created) => new() { Id = id, Type = "idle", Outcome = "succeeded", Time = new() { Created = created } };
+    private static List<OpenCodeMessage> Window(params OpenCodeMessage[] rows) => new(rows);
+    private static OpenCodePageSource Source(string id, long revision = 1) => new(id, revision, () => throw new NotSupportedException());
+    private static (App App, OpenCodePage Page) Fixture(string id)
     {
-        _n++;
-        if (!condition)
-        {
-            throw new InvalidOperationException(message);
-        }
+        var app = new App(); Microsoft.UI.Xaml.Application.Current = app;
+        var page = new OpenCodePage(); page.TestActivate(Source(id), "ses_test"); return (app, page);
     }
-
-    private static OpenCodeMessage Idle(string id, double created, string outcome = "succeeded")
-        => new() { Id = id, Type = OpenCodeMessageTypes.Idle, Outcome = outcome, Time = new() { Created = created } };
-
-    private static OpenCodeMessage User(string id, double created)
-        => new() { Id = id, Type = "user", Text = "t", Time = new() { Created = created } };
-
-    private static List<OpenCodeMessage> Window(params OpenCodeMessage[] messages) => new(messages);
-
-    private static OpenCodePageSource Source(string identity, long revision)
-        => new(identity, revision, () => throw new NotSupportedException());
-
+    private static void Render(OpenCodePage page, double watermark)
+    { page.Apply(Window(Idle("msg_" + watermark, watermark))); page.Layout(watermark); CompositionTarget.Frame(); }
     private static async Task<int> Main()
     {
         try
         {
-            foreach (var (name, run) in new (string, Func<Task>)[]
-            {
-                ("rendered idle is the sole watermark source (no extra GET)", ReaderTests),
-                ("only the rendered idle watermark is acked", RenderedIdleOnlyAcksRenderedWatermark),
-                ("hidden / inactive / non-UI / revoked entries never ack", HiddenInactiveNonUiRevokedNeverAck),
-                ("live fence rejects stale context", FenceRejectsStaleContext),
-                ("unknown result never re-acks across invalidate / null source / new revision", UnknownResultNeverReacks),
-                ("512 attempt cap stops new acks without eviction", AttemptCapStopsNewAcks),
+            foreach (var (name, run) in new (string, Func<Task>)[] {
+                ("legacy reader is not viewport authority", Reader),
+                ("Apply/layout/frame/old visible idle and coalesced geometry", Viewport),
+                ("Home/blank/hidden/unknown history and non-UI block ACK", Visibility),
+                ("owner/frame/reflow fences and listener lifecycle", Fences),
+                ("receipts, monotonic server viewed and stale owner", Receipts),
+                ("unknown same key never retries across source/revision/render", Unknown),
+                ("512 attempt cap never evicts", Cap),
             })
             {
-                var before = _n;
-                await run().WaitAsync(TimeSpan.FromSeconds(30));
+                var before = _n; await run().WaitAsync(TimeSpan.FromSeconds(30));
+                Check(CompositionTarget.Count == 0, "no lingering frame subscription after scenario");
                 Console.WriteLine($"PASS {name}: {_n - before} assertions");
             }
-
-            Console.WriteLine(
-                $"PASS total {_n}; fake WinUI/App surface only; real view-ack partial + real source/DTOs/reader.");
+            Console.WriteLine($"PASS total {_n}; real ACK/visibility/binding/pagination guards; controlled frame/geometry/App boundary, not native layout or real POST.");
             return 0;
         }
-        catch (Exception ex)
+        catch (Exception ex) { Console.WriteLine("FAIL: " + ex); return 1; }
+    }
+    private static Task Reader()
+    {
+        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(null, out _), "null DTO window");
+        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(), out _), "empty DTO window");
+        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(new OpenCodeMessage { Type = "user" }), out _), "no idle DTO");
+        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(new OpenCodeMessage { Type = "idle" }), out _), "no time DTO");
+        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(Idle("msg_nan", double.NaN)), out _), "nonfinite DTO");
+        Check(OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(Idle("msg_old", 50), Idle("msg_new", 100)), out var w) && w == 100, "legacy reader still returns last DTO idle");
+        return Task.CompletedTask;
+    }
+    private static Task Viewport()
+    {
+        var (app, page) = Fixture("ep-viewport");
+        page.Apply(Window(Idle("msg_old", 100), Idle("msg_new", 220)));
+        Check(app.Calls == 0 && CompositionTarget.Count == 0, "Apply without actual layout candidate never ACKs or spins frames");
+        page.Layout(100);
+        Check(app.Calls == 0 && CompositionTarget.Count == 1, "layout requests exactly one fresh native-frame review");
+        page.RepeatLayout(); page.Scroll();
+        Check(CompositionTarget.Count == 1, "same geometry cannot add a frame per layout or scroll event");
+        CompositionTarget.Frame();
+        Check(app.Calls == 1 && app.LastSent == 100, "only actually visible old idle ACKed, not newer DTO 220");
+        var oldFence = app.LastFence!;
+        page.RepeatLayout(); page.Scroll();
+        Check(CompositionTarget.Count == 0 && oldFence(), "unchanged geometry preserves proof without fresh request");
+        page.Layout(220);
+        Check(!oldFence() && app.Calls == 1 && CompositionTarget.Count == 1, "new visible candidate revokes old proof before next frame");
+        CompositionTarget.Frame();
+        Check(app.Calls == 2 && app.LastSent == 220, "new visible watermark can independently ACK once");
+        page.NotifyViewAcknowledgementRendered(Window(Idle("msg_fake_raw", 900)), true);
+        CompositionTarget.Frame();
+        Check(app.Calls == 2, "legacy DTO argument cannot enlarge current visible watermark");
+        page.Layout(null); page.NotifyHostWindowVisibility(true);
+        Check(app.Calls == 2 && CompositionTarget.Count == 0, "reactivate cannot ACK invisible raw latest history");
+        page.Unload(); return Task.CompletedTask;
+    }
+    private static Task Visibility()
+    {
+        var (app, page) = Fixture("ep-visible");
+        page.Apply(Window(Idle("msg_a", 100)), false); page.Layout(100); CompositionTarget.Frame();
+        Check(app.Calls == 0, "hidden host cannot ACK");
+        page.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
+        Check(app.Calls == 1, "host reactivate reviews current actual view");
+        page.Home(true); page.Apply(Window(Idle("msg_b", 200))); page.Layout(200); CompositionTarget.Frame();
+        Check(app.Calls == 1, "Home-covered timeline cannot ACK even with visible Page");
+        page.Home(false); CompositionTarget.Frame(); Check(app.Calls == 2, "leaving Home permits current layout proof");
+        page.Blank(true); page.Apply(Window(Idle("msg_c", 300))); page.Layout(300); CompositionTarget.Frame();
+        Check(app.Calls == 2, "blank layout cannot ACK old session");
+        page.Blank(false); CompositionTarget.Frame(); Check(app.Calls == 3, "session after blank can prove actual viewport");
+        page.TestSetPageInvisible(); Render(page, 400); Check(app.Calls == 3, "collapsed/zero-size Page rejects");
+        page.TestSetPageVisible(); page.RepeatLayout(); CompositionTarget.Frame(); Check(app.Calls == 4, "visible Page reproof");
+        page.TestSetPageActive(false); Render(page, 500); Check(app.Calls == 4, "inactive page rejects");
+        page.TestSetPageActive(true); page.RepeatLayout(); CompositionTarget.Frame(); Check(app.Calls == 5, "active page reproof");
+        page.History(false); Render(page, 600); Check(app.Calls == 5, "cache / unconfirmed boundary never authorizes ACK");
+        page.History(true); page.RepeatLayout(); CompositionTarget.Frame(); Check(app.Calls == 6, "authoritative history unlocks current proven label");
+        page.Directory(null); Render(page, 700); Check(app.Calls == 6, "unknown real directory does not guess identity");
+        page.Directory("/fixture"); CompositionTarget.Frame(); Check(app.Calls == 7, "confirmed directory permits same exact candidate");
+        page.TestSetThreadAccess(false); page.NotifyViewAcknowledgementRendered(Window(Idle("msg_raw", 800)), true);
+        page.UpdateViewAcknowledgementVisibility(false); page.InvalidateViewAcknowledgement();
+        Check(app.Calls == 7 && app.LastFence!(), "non-UI entries neither enqueue nor touch existing proof");
+        page.TestSetThreadAccess(true); page.TestRevokeSource(); Render(page, 800);
+        Check(app.Calls == 7, "revoked source never ACKs");
+        page.Unload(); return Task.CompletedTask;
+    }
+    private static Task Fences()
+    {
+        foreach (var dimension in new[] { "page", "session", "revision", "client", "directory", "source", "conversation", "epoch", "workflow", "revocation" })
         {
-            Console.WriteLine("FAIL: " + ex);
-            return 1;
+            var (app, page) = Fixture("ep-owner-" + dimension);
+            page.Apply(Window(Idle("msg_a", 100))); page.Layout(100); var late = CompositionTarget.Capture();
+            page.OwnerChange(dimension); late?.Invoke(null, new());
+            Check(app.Calls == 0 && CompositionTarget.Count == 0, dimension + " old callback cannot produce an ACK");
+            page.Unload();
         }
-    }
-
-    /// <summary>纯水印提取：只取传入窗口内最后一个 idle 的 time.created，绝不额外 GET 更大的服务端水位。</summary>
-    private static Task ReaderTests()
-    {
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(null, out _), "null window -> no watermark");
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(new List<OpenCodeMessage>(), out _), "empty window -> no watermark");
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(User("m1", 5)), out _), "no idle -> no watermark");
-
-        Check(OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(Idle("m1", 100)), out var only) && only == 100,
-            "rendered idle 100 yields exactly 100");
-        Check(OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(
-                Window(Idle("m1", 50), User("m2", 80), Idle("m3", 100)), out var latest) && latest == 100,
-            "latest idle in the window is the watermark (100, never larger)");
-
-        var noTime = new[] { new OpenCodeMessage { Id = "mx", Type = OpenCodeMessageTypes.Idle, Outcome = "succeeded" } };
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(noTime, out _), "idle without time -> no watermark");
-
-        var nonFinite = new[] { new OpenCodeMessage { Id = "mn", Type = OpenCodeMessageTypes.Idle, Time = new() { Created = double.NaN } } };
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(nonFinite, out _), "non-finite created -> no watermark");
+        var (a, p) = Fixture("ep-reflow"); Render(p, 100); var original = a.LastFence!;
+        p.Layout(100, 20); var detached = CompositionTarget.Capture();
+        Check(!original() && CompositionTarget.Count == 1, "markdown/geometry reflow synchronously revokes live proof");
+        p.Layout(200, 30); detached?.Invoke(null, new());
+        Check(CompositionTarget.Count == 1 && a.Calls == 1, "detached old handler cannot consume replacement frame");
+        CompositionTarget.Frame(); Check(a.Calls == 2 && a.LastSent == 200, "replacement geometry proof only");
+        var fence = a.LastFence!;
+        p.NotifyHostWindowVisibility(false); Check(!fence(), "host hiding invalidates volatile proof immediately");
+        p.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
+        Check(!fence() && a.Calls == 2, "restoring visibility never revives an old fence or retries same key");
+        p.Apply(Window(Idle("msg_new", 300))); p.Layout(300); var callback = CompositionTarget.Capture();
+        Check(p.ViewListeners > 0, "real viewport controller listeners are attached");
+        p.Unload(); callback?.Invoke(null, new());
+        Check(CompositionTarget.Count == 0 && p.ViewListeners == 0 && a.Calls == 2, "unload detaches frame and view/scroll listeners; late frame inert");
+        p.NotifyHostWindowVisibility(true);
+        Check(CompositionTarget.Count == 0 && p.ViewListeners == 0, "late host activation cannot resurrect unloaded view listeners");
         return Task.CompletedTask;
     }
-
-    /// <summary>已渲染窗口的 idle 水位是唯一发送值；同一水位的轮询重渲染绝不重发。</summary>
-    private static Task RenderedIdleOnlyAcksRenderedWatermark()
+    private static async Task Receipts()
     {
-        var app = new App();
-        Microsoft.UI.Xaml.Application.Current = app;
-        var page = new OpenCodePage();
-        page.TestActivate(Source("ep-render", 1), "ses_1");
-
-        page.NotifyViewAcknowledgementRendered(Window(Idle("r1", 100)), windowVisible: true);
-        Check(app.Posts == 1 && app.Calls == 1 && app.LastSent == 100, "rendered idle 100 acks exactly 100");
-
-        page.NotifyViewAcknowledgementRendered(Window(Idle("r1", 100)), windowVisible: true);
-        Check(app.Calls == 1, "same rendered watermark is not re-acked by polling re-render");
-
-        page.NotifyViewAcknowledgementRendered(Window(Idle("r1", 100), User("r2", 150), Idle("r3", 220)), windowVisible: true);
-        Check(app.Calls == 2 && app.LastSent == 220, "newest rendered idle in the window is the watermark");
-
-        page.NotifyViewAcknowledgementRendered(Window(User("r4", 300)), windowVisible: true);
-        Check(app.Calls == 2, "no rendered idle -> no ack, no key consumed");
-        return Task.CompletedTask;
+        var (app, page) = Fixture("ep-receipt");
+        app.Receipt = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Render(page, 100);
+        Check(app.Calls == 1 && app.Viewed is null, "before simulated 204 no local viewed receipt");
+        app.Receipt.SetResult(100); await app.Finished.Task;
+        Check(app.Viewed == 100, "only successful receipt advances viewed");
+        app.Finished = new(); app.Receipt = new(); Render(page, 200); page.Home(true); app.Receipt.SetResult(200); await app.Finished.Task;
+        Check(app.Viewed == 100, "old-owner successful receipt does not update new bound UI");
+        page.Unload();
+        var store = new OpenCodeSessionUiStateStore("ep-server-view", 1); var now = DateTimeOffset.UtcNow;
+        store.Apply(new("ep-server-view", 1, "ses_test", Completion: new("failed", 300), ViewedWatermark: 100), now);
+        store.Apply(new("ep-server-view", 1, "ses_test", ViewedWatermark: 200), now);
+        Check(store.GetSnapshot().Sessions[0].IsUnread, "server viewed old idle cannot clear newer unread completion");
+        store.Apply(new("ep-server-view", 1, "ses_test", ViewedWatermark: 300), now);
+        Check(!store.GetSnapshot().Sessions[0].IsUnread && store.GetSnapshot().Sessions[0].Completion?.Outcome == "failed", "server viewed synchronization remains independent of viewport candidates and outcome");
     }
-
-    /// <summary>隐藏（宿主窗口不可见 / 页面折叠）、非活动、非 UI 线程、来源已撤销的入口一律拒绝。</summary>
-    private static Task HiddenInactiveNonUiRevokedNeverAck()
+    private static Task Unknown()
     {
-        var app = new App();
-        Microsoft.UI.Xaml.Application.Current = app;
-        var page = new OpenCodePage();
-        page.TestActivate(Source("ep-vis", 1), "ses_1");
-
-        // 宿主判定的窗口级不可见：不发送，也不占用尝试键。
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v1", 100)), windowVisible: false);
-        Check(app.Calls == 0, "window-invisible render never acks");
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v1", 100)), windowVisible: true);
-        Check(app.Calls == 1 && app.LastSent == 100, "later visible render of the same watermark acks once");
-
-        // 非活动导航态（已切走 / 缓存页）：即使宿主声称窗口可见也不发送。
-        page.TestSetPageActive(false);
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v2", 200)), windowVisible: true);
-        Check(app.Calls == 1, "inactive page never acks");
-        page.TestSetPageActive(true);
-
-        // 页面折叠 / 零尺寸：实时 XAML 属性判定不可见。
-        page.TestSetPageInvisible();
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v2", 200)), windowVisible: true);
-        Check(app.Calls == 1, "collapsed page never acks even if host says the window is visible");
-        page.TestSetPageVisible();
-
-        // 非 UI 线程调用：直接拒绝，绝不排队。
-        page.TestSetThreadAccess(false);
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v2", 200)), windowVisible: true);
-        page.UpdateViewAcknowledgementVisibility(true);
-        page.InvalidateViewAcknowledgement();
-        Check(app.Calls == 1, "non-UI thread entries are rejected (no ack, not queued)");
-        page.TestSetThreadAccess(true);
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v2", 200)), windowVisible: true);
-        Check(app.Calls == 2 && app.LastSent == 200, "after returning to the UI thread the watermark acks once");
-
-        // 来源已撤销：绝不发送。
-        page.TestRevokeSource();
-        page.NotifyViewAcknowledgementRendered(Window(Idle("v3", 300)), windowVisible: true);
-        Check(app.Calls == 2, "revoked source never acks");
-        return Task.CompletedTask;
+        var (app, page) = Fixture("ep-unknown"); app.ResultUnknown = true; Render(page, 100);
+        Check(app.Calls == 1 && app.Posts == 0, "unknown result records attempt without a receipt");
+        Render(page, 100); page.InvalidateViewAcknowledgement(); page.RepeatLayout(); CompositionTarget.Frame();
+        Check(app.Calls == 1, "unknown never retries after apply/invalidate/review");
+        page.TestClearSource(); page.TestActivate(Source("ep-unknown"), "ses_test"); Render(page, 100);
+        Check(app.Calls == 1, "same endpoint source replacement cannot reset attempt");
+        page.TestActivate(Source("ep-unknown", 2), "ses_test"); Render(page, 100);
+        Check(app.Calls == 1, "revision/render generations never enter dedup key");
+        app.ResultUnknown = false; Render(page, 200);
+        Check(app.Calls == 2 && app.Posts == 1 && app.LastSent == 200, "new actually visible watermark still attempts once");
+        page.Unload(); return Task.CompletedTask;
     }
-
-    /// <summary>跨线程只读活动快照 fence：可见性 / 会话 / 来源失效后旧上下文一律被拒绝。</summary>
-    private static async Task FenceRejectsStaleContext()
+    private static Task Cap()
     {
-        var app = new App();
-        Microsoft.UI.Xaml.Application.Current = app;
-        var page = new OpenCodePage();
-        var src = Source("ep-fence", 1);
-        page.TestActivate(src, "ses_1");
-
-        page.NotifyViewAcknowledgementRendered(Window(Idle("f1", 100)), windowVisible: true);
-        Check(app.Calls == 1 && app.LastFence is not null, "ack passes a fence to the App entry");
-        var fence = app.LastFence!;
-        Check(fence(), "fence true while page/session/visibility unchanged");
-
-        page.UpdateViewAcknowledgementVisibility(false);
-        Check(!fence(), "fence false after window visibility drops");
-        page.UpdateViewAcknowledgementVisibility(true);
-        Check(fence(), "fence true again after visibility restored");
-
-        var accepted = await app.AcknowledgeOpenCodeSessionAsync(src, 1, "ses_1", 100, fence);
-        Check(accepted == 100, "fresh fence lets the App entry proceed");
-
-        page.InvalidateViewAcknowledgement();
-        Check(!fence(), "fence false after invalidation (old context rejected)");
-        var rejected = await app.AcknowledgeOpenCodeSessionAsync(src, 1, "ses_1", 100, fence);
-        Check(rejected is null && app.FenceBlocked == 1, "stale fence rejects the POST");
-
-        page.TestActivate(Source("ep-fence", 1), "ses_2");
-        Check(!fence(), "fence false after session switch");
-    }
-
-    /// <summary>
-    /// 返回 null（结果未知）后：Invalidate / 来源暂时为 null 复原 / 同 endpoint 新 revision 都绝不
-    /// 重发同一水位 100；真正更新的水位仍可发送一次。
-    /// </summary>
-    private static Task UnknownResultNeverReacks()
-    {
-        var app = new App { ResultUnknown = true };
-        Microsoft.UI.Xaml.Application.Current = app;
-        var page = new OpenCodePage();
-        page.TestActivate(Source("ep-unknown", 1), "ses_1");
-
-        page.NotifyViewAcknowledgementRendered(Window(Idle("u1", 100)), windowVisible: true);
-        Check(app.Calls == 1 && app.Posts == 0, "unknown result: one attempt, no receipt");
-
-        page.NotifyViewAcknowledgementRendered(Window(Idle("u1", 100)), windowVisible: true);
-        Check(app.Calls == 1, "unknown result: polling re-render never retries the same watermark");
-
-        page.InvalidateViewAcknowledgement();
-        page.NotifyViewAcknowledgementRendered(Window(Idle("u1", 100)), windowVisible: true);
-        Check(app.Calls == 1, "unknown result: invalidate then return never retries");
-
-        // 来源暂时为 null 后以同一 endpoint / 同一 revision 复原。
-        page.TestClearSource();
-        page.InvalidateViewAcknowledgement();
-        page.TestActivate(Source("ep-unknown", 1), "ses_1");
-        page.NotifyViewAcknowledgementRendered(Window(Idle("u1", 100)), windowVisible: true);
-        Check(app.Calls == 1, "unknown result: source temporarily null then same endpoint never retries");
-
-        // 同一 endpoint 换凭据（新 revision）也不得重置去重。
-        page.TestActivate(Source("ep-unknown", 2), "ses_1");
-        page.NotifyViewAcknowledgementRendered(Window(Idle("u1", 100)), windowVisible: true);
-        Check(app.Calls == 1, "unknown result: same endpoint new revision never retries watermark 100");
-
-        // 真正更新的已渲染水位仍可发送一次。
-        app.ResultUnknown = false;
-        page.NotifyViewAcknowledgementRendered(Window(Idle("u1", 100), Idle("u2", 200)), windowVisible: true);
-        Check(app.Calls == 2 && app.Posts == 1 && app.LastSent == 200, "new rendered watermark may still send once");
-        return Task.CompletedTask;
-    }
-
-    /// <summary>尝试键硬上限 512：满时停止新增自动 ACK，绝不逐出旧键（逐出会导致不确定 POST 重发）。</summary>
-    private static Task AttemptCapStopsNewAcks()
-    {
-        var app = new App();
-        Microsoft.UI.Xaml.Application.Current = app;
-        var page = new OpenCodePage();
-        page.TestActivate(Source("ep-cap", 1), "ses_1");
-
-        for (var w = 1; w <= 513; w++)
-        {
-            page.NotifyViewAcknowledgementRendered(Window(Idle("cap_" + w, w)), windowVisible: true);
-        }
-
-        Check(app.Posts == 512 && app.Calls == 512, "cap: exactly 512 distinct watermarks auto-acked; the 513th is dropped");
-
-        // 无逐出：已尝试的水位在满额后仍不重发。
-        page.NotifyViewAcknowledgementRendered(Window(Idle("cap_1", 1)), windowVisible: true);
-        Check(app.Calls == 512, "cap: earlier keys retained (no eviction, no retry)");
-
-        // 满额后新水位同样停止。
-        page.NotifyViewAcknowledgementRendered(Window(Idle("cap_514", 514)), windowVisible: true);
-        Check(app.Calls == 512, "cap: new watermarks stop once the set is full");
-        return Task.CompletedTask;
+        var (app, page) = Fixture("ep-cap");
+        for (int i = 1; i <= 513; i++) Render(page, i);
+        Check(app.Calls == 512 && app.Posts == 512, "512 cap stops new automatic attempts");
+        Render(page, 1); Check(app.Calls == 512, "no eviction or unknown-key retry");
+        Render(page, 514); Check(app.Calls == 512, "exhausted cap remains closed");
+        page.Unload(); return Task.CompletedTask;
     }
 }

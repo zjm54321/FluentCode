@@ -32,6 +32,9 @@ public sealed record OpenCodeSessionUiState(
     double? ViewedWatermark,
     OpenCodeStateUnknownReason UnknownReason)
 {
+    /// <summary>独立 question 事实；null 表示未观测或证据已过期。</summary>
+    public bool? QuestionPending { get; init; }
+
     /// <summary>有 Completion 且（无 ViewedWatermark 或 IdleWatermark 更大）时为未读。</summary>
     public bool IsUnread =>
         Completion is not null &&
@@ -69,4 +72,7 @@ public sealed record OpenCodeSessionUiObservation(
     OpenCodeSessionUiFact? PendingAction = null,
     bool? MutationProtected = null,
     OpenCodeCompletionMark? Completion = null,
-    double? ViewedWatermark = null);
+    double? ViewedWatermark = null)
+{
+    public OpenCodeSessionUiFact? QuestionPending { get; init; }
+}

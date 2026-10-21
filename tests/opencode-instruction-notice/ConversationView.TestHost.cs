@@ -392,6 +392,7 @@ namespace Microsoft.UI.Xaml
     public class DependencyObject { }
     public class UIElement : DependencyObject
     {
+        public Microsoft.UI.Xaml.Media.RectangleGeometry? Clip { get; set; }
         public Visibility Visibility { get; set; }
         public double Opacity { get; set; } = 1;
         internal UIElement? Parent { get; set; }
@@ -403,10 +404,16 @@ namespace Microsoft.UI.Xaml
     {
         public XamlRoot? XamlRoot { get; set; } = new(); // inert root identity, not native window evidence
         public double ActualWidth { get; set; } = 700;
+        public double ActualHeight { get; set; } = 600;
+        public bool IsLoaded { get; set; }
         public double Width { get; set; }
         public double Height { get; set; }
         public double TestTop { get; set; } = 400;
-        public Microsoft.UI.Xaml.Media.GeneralTransform TransformToVisual(UIElement? target) => new(TestTop);
+        // Optional explicit geometry stimulus. Default keeps the historical inert TestTop behavior.
+        public Func<UIElement?, Microsoft.UI.Xaml.Media.GeneralTransform>? TestTransform { get; set; }
+        public Microsoft.UI.Xaml.Media.GeneralTransform TransformToVisual(UIElement? target) => TestTransform?.Invoke(target) ?? new(TestTop);
+        public event EventHandler<object>? LayoutUpdated;
+        public void RaiseLayoutUpdatedForTest() => LayoutUpdated?.Invoke(this, new());
         public event RoutedEventHandler? Unloaded;
         public void RaiseUnloadedForTest() => Unloaded?.Invoke(this, new());
         public event RoutedEventHandler? Loaded;
@@ -618,6 +625,7 @@ namespace Microsoft.UI.Xaml.Controls
         public ScrollBarVisibility VerticalScrollBarVisibility { get; set; }
         public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }
     }
+    public class ScrollContentPresenter : ContentControl { }
     public class Flyout
     {
         public Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode Placement { get; set; }
@@ -638,14 +646,20 @@ namespace Windows.Foundation
 {
     public readonly record struct Point(double X, double Y);
     public readonly record struct Size(double Width, double Height);
+    public readonly record struct Rect(double X, double Y, double Width, double Height)
+    { public double Right => X + Width; public double Bottom => Y + Height; }
 }
 
 namespace Microsoft.UI.Xaml.Media
 {
-    public sealed class GeneralTransform(double y)
+    public sealed class GeneralTransform(double y, double x = 0, double scaleX = 1, double scaleY = 1, double skew = 0)
     {
-        public Windows.Foundation.Point TransformPoint(Windows.Foundation.Point p) => new(p.X, p.Y + y);
+        public Windows.Foundation.Point TransformPoint(Windows.Foundation.Point p) => new(x + p.X * scaleX + p.Y * skew, p.Y * scaleY + y);
     }
+    public class Transform { }
+    public class Geometry { public Transform? Transform { get; set; } }
+    public class RectangleGeometry : Geometry { public Windows.Foundation.Rect Rect { get; set; } }
+    public static class VisualTreeHelper { public static DependencyObject? GetParent(DependencyObject node) => (node as UIElement)?.Parent; }
     public class Brush { }
     public class FontFamily
     {

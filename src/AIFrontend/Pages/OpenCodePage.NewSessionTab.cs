@@ -95,6 +95,7 @@ public sealed partial class OpenCodePage
             return;
         }
 
+        InvalidateViewAcknowledgement();
         _homeActive = false;
 
         if (!_newSessionDraftActive)

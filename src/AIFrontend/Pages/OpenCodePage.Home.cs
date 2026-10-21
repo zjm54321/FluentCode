@@ -74,6 +74,7 @@ public sealed partial class OpenCodePage
     private void ShowHomePage()
     {
         if (!_pageActive) return;
+        InvalidateViewAcknowledgement();
         _homeActive = true;
         // Home is not a session tab. Leave every tab/draft/binding alive but remove its visual selection,
         // so clicking the previously active tab can actually raise SelectionChanged again.
@@ -256,6 +257,10 @@ public sealed partial class OpenCodePage
         DispatcherQueue.TryEnqueue(() => { _homeQueued = false; if (_pageActive) RefreshHomeProjection(); });
     }
 
+    private static OpenCodeHomeStatus? CreateHomeStatus(OpenCodeSessionUiState? state, OpenCodeSessionInfo info)
+        => state is null ? null : new OpenCodeHomeStatus(state.Working, state.PendingAction, state.IsUnread,
+            state.Completion?.Outcome ?? info.Outcome) { QuestionPending = state.QuestionPending };
+
     private void RefreshHomeProjection()
     {
         var rows = new List<OpenCodeHomeSession>();
@@ -267,8 +272,7 @@ public sealed partial class OpenCodePage
                 if (!_homeProjects.ContainsKey(directory)) RememberHomeProject(directory, null, info.ProjectId);
                 _sessionTabStates.TryGetValue(info.Id!, out var state);
                 // Empty/inactive status never overwrites an actual terminal DTO outcome.
-                var status = state is null ? null : new OpenCodeHomeStatus(state.Working, state.PendingAction, state.IsUnread,
-                    state.Completion?.Outcome ?? info.Outcome);
+                var status = CreateHomeStatus(state, info);
                 rows.Add(new(new(_homeRuntimeSource, directory), info, status));
             }
         _homeView.SetSnapshot(new(++_homeRevision, _homeProjects.Values.ToArray(), rows,

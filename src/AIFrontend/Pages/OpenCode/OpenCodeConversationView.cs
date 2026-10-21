@@ -10,8 +10,14 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 
 namespace AIFrontend.Pages.OpenCode;
+
+// UI-thread snapshots only. The Page must bind these to its captured source/session/view owner;
+// message DTOs do not contain a session ID. Rectangles are in the supplied ScrollViewer's coordinates.
+internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Rect LabelBounds, Rect EffectiveViewport, Rect ScrollBounds);
+internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
 
 /// <summary>
 /// OpenCode 会话消息时间线的纯 C# 展示控件（<see cref="StackPanel"/> 子类）。
@@ -53,6 +59,141 @@ public sealed class OpenCodeConversationView : StackPanel
 {
     private readonly OpenCodeManualBackgroundIndex _manualBackground = new();
     internal event EventHandler? BindingCleared;
+    internal event EventHandler? IdleViewportInvalidated;
+    internal long RenderVersion { get; private set; }
+    private long _idleLayoutVersion = -1;
+    private bool _idleContentChanging;
+    private bool _idleSnapshotComplete = true;
+    private readonly Dictionary<string, int> _messageIdCounts = new(StringComparer.Ordinal);
+
+    private void InvalidateIdleViewport()
+    {
+        RenderVersion++;
+        _idleLayoutVersion = -1;
+        IdleViewportInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ChangeIdleContent(Action change)
+    {
+        _idleContentChanging = true;
+        _idleSnapshotComplete = false;
+        try
+        {
+            InvalidateIdleViewport();
+            change();
+            _idleSnapshotComplete = true;
+        }
+        finally
+        {
+            _idleContentChanging = false;
+            IdleViewportInvalidated?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Conservative actual-label proof, not message-list membership. No layout/visibility fallback.
+    /// Call on the UI thread after layout, then recheck the immutable snapshot at the Page's one-shot frame.
+    /// No candidate is returned during mutation or before this version's LayoutUpdated.</summary>
+    internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(ScrollViewer viewport)
+    {
+        OpenCodeVisibleIdle? best = null;
+        if (!_idleContentChanging && _idleSnapshotComplete && _idleLayoutVersion == RenderVersion)
+            foreach (var entry in _entries)
+            {
+                if (entry.MessageType != OpenCodeMessageTypes.Idle || entry.IdleLabel is not { } label
+                    || string.IsNullOrWhiteSpace(entry.IdleMessageId) || _messageIdCounts.GetValueOrDefault(entry.IdleMessageId) != 1
+                    || entry.IdleWatermark is not { } water || !double.IsFinite(water) || water < 0
+                    || string.IsNullOrWhiteSpace(label.Text) || !ReferenceEquals(entry.Element.Parent, this)
+                    || !ReferenceEquals(VisualTreeHelper.GetParent(label), entry.Element)) continue;
+                if (!TryIdleBounds(label, viewport, out var bounds, out var clip)) continue;
+                if (best is null || water > best.Watermark || (water == best.Watermark && string.CompareOrdinal(entry.IdleMessageId, best.MessageId) < 0))
+                    best = new(entry.IdleMessageId, water, bounds, clip, new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight));
+            }
+        return new(RenderVersion, best);
+    }
+
+    private bool TryIdleBounds(TextBlock label, ScrollViewer viewport, out Rect bounds, out Rect clip)
+    {
+        bounds = clip = default;
+        try
+        {
+            if (viewport.XamlRoot is not { } root || !Positive(viewport.ActualWidth) || !Positive(viewport.ActualHeight)
+                || !TryBounds(label, viewport, new Rect(0, 0, label.ActualWidth, label.ActualHeight), out bounds)) return false;
+            clip = new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight);
+            var hasView = false;
+            var hasScroll = false;
+            var hasPresenter = false;
+            DependencyObject? current = label;
+            var depth = 0;
+            for (; current is not null && depth++ < 512; current = VisualTreeHelper.GetParent(current))
+            {
+                if (current is UIElement ui && (ui.Visibility != Visibility.Visible || !Positive(ui.Opacity))) return false;
+                if (current is not FrameworkElement node) return false;
+                if (!node.IsLoaded || !ReferenceEquals(node.XamlRoot, root)) return false;
+                // Also stay inside ancestor layout bounds. This is deliberately conservative about
+                // implicit layout clips (which WinUI does not expose as an IsArrangeValid contract).
+                if (!ReferenceEquals(node, label))
+                {
+                    if (!TryBounds(node, viewport, new Rect(0, 0, node.ActualWidth, node.ActualHeight), out var layoutBounds)) return false;
+                    clip = Intersect(clip, layoutBounds);
+                }
+                hasView |= ReferenceEquals(node, this);
+                hasScroll |= ReferenceEquals(node, viewport);
+                // Native ScrollContentPresenter is the template's actual clipping viewport, excluding chrome.
+                if (node is ScrollContentPresenter)
+                {
+                    if (!hasScroll) hasPresenter = true;
+                }
+                if (node is Border border)
+                {
+                    var corners = border.CornerRadius;
+                    var inset = Math.Max(Math.Max(corners.TopLeft, corners.TopRight), Math.Max(corners.BottomLeft, corners.BottomRight));
+                    if (inset > 0)
+                    {
+                        // A rounded ancestor can implicitly clip even when UIElement.Clip is null.
+                        // Its central inset rectangle is conservative, not the rounded bounding box.
+                        if (!TryBounds(node, viewport, new Rect(inset, inset, node.ActualWidth - 2 * inset, node.ActualHeight - 2 * inset), out var roundSafe)) return false;
+                        clip = Intersect(clip, roundSafe);
+                    }
+                }
+                if (node.Clip is { } rectangle)
+                {
+                    // WinUI Clip is RectangleGeometry (not WPF's arbitrary Geometry).
+                    // An additional clip transform is not proven by this axis-aligned query.
+                    if (rectangle.Transform is not null
+                        || !TryBounds(node, viewport, rectangle.Rect, out var explicitClip)) return false;
+                    clip = Intersect(clip, explicitClip);
+                }
+            }
+            if (current is not null || !hasView || !hasScroll || !hasPresenter) return false;
+            return Positive(clip.Width) && Positive(clip.Height) && bounds.X >= clip.X && bounds.Y >= clip.Y
+                && bounds.Right <= clip.Right && bounds.Bottom <= clip.Bottom;
+        }
+        catch (Exception) { return false; } // Detached tree/invalid transforms are absence of proof.
+    }
+
+    private static bool Positive(double value) => double.IsFinite(value) && value > 0;
+    private static Rect Intersect(Rect a, Rect b)
+    {
+        var x = Math.Max(a.X, b.X); var y = Math.Max(a.Y, b.Y);
+        return new Rect(x, y, Math.Max(0, Math.Min(a.Right, b.Right) - x), Math.Max(0, Math.Min(a.Bottom, b.Bottom) - y));
+    }
+    private static bool TryBounds(FrameworkElement node, UIElement target, Rect local, out Rect bounds)
+    {
+        bounds = default;
+        if (!double.IsFinite(local.X) || !double.IsFinite(local.Y) || !Positive(local.Width) || !Positive(local.Height)) return false;
+        var transform = node.TransformToVisual(target);
+        var a = transform.TransformPoint(new Point(local.X, local.Y));
+        var b = transform.TransformPoint(new Point(local.Right, local.Y));
+        var c = transform.TransformPoint(new Point(local.X, local.Bottom));
+        var d = transform.TransformPoint(new Point(local.Right, local.Bottom));
+        // Reject rotation/skew/reflection: bounding boxes alone overstate visible area in those cases.
+        if (!double.IsFinite(a.X) || !double.IsFinite(a.Y) || !double.IsFinite(b.X) || !double.IsFinite(b.Y)
+            || !double.IsFinite(c.X) || !double.IsFinite(c.Y) || !double.IsFinite(d.X) || !double.IsFinite(d.Y)
+            || Math.Abs(a.Y - b.Y) > 0.000001 || Math.Abs(a.X - c.X) > 0.000001
+            || Math.Abs(b.X - d.X) > 0.000001 || Math.Abs(c.Y - d.Y) > 0.000001 || b.X <= a.X || c.Y <= a.Y) return false;
+        bounds = new Rect(a.X, a.Y, b.X - a.X, c.Y - a.Y);
+        return Positive(bounds.Width) && Positive(bounds.Height);
+    }
     private sealed class SteerRow
     {
         internal required OpenCodeInboxItem Item;
@@ -80,6 +221,7 @@ public sealed class OpenCodeConversationView : StackPanel
     public void ApplyAdmittedSteer(string? sessionId, IReadOnlyList<OpenCodeInboxItem>? items,
         Func<OpenCodeInboxItem, bool>? canWithdraw = null, Func<OpenCodeInboxItem, bool>? canChangeDelivery = null)
     {
+        var previousOrder = _steerOrder.ToArray();
         if (_steerSession != sessionId) _deliveredSteerIds.Clear();
         _steerSession = sessionId;
         _canWithdrawSteer = canWithdraw;
@@ -108,6 +250,7 @@ public sealed class OpenCodeConversationView : StackPanel
         foreach (var pair in _steerRows) if (!retained.Contains(pair.Key)) { Children.Remove(pair.Value.Element); stale.Add(pair.Key); }
         foreach (var id in stale) _steerRows.Remove(id);
         ReconcileSteerRows();
+        if (stale.Count > 0 || !previousOrder.SequenceEqual(_steerOrder)) InvalidateIdleViewport();
     }
 
     public void SetPendingSteerBusy(bool busy)
@@ -129,6 +272,7 @@ public sealed class OpenCodeConversationView : StackPanel
         var samePayload = row.RenderedPayload is { } previous && item.Payload is { } current
             ? JsonElement.DeepEquals(previous, current) : row.RenderedPayload is null && item.Payload is null;
         if (signature == row.Signature && samePayload) return;
+        InvalidateIdleViewport();
         row.Signature = signature;
         row.RenderedPayload = item.Payload;
         var rawText = OpenCodeQueuedPromptsView.ReadText(item.Payload);
@@ -233,6 +377,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private sealed class Entry
     {
+        internal TextBlock? IdleLabel { get; init; }
+        internal string? IdleMessageId { get; set; }
+        internal double? IdleWatermark { get; set; }
         public required string Key { get; init; }
         public string? MessageType { get; set; }
         public string Fingerprint { get; set; } = string.Empty;
@@ -448,6 +595,7 @@ public sealed class OpenCodeConversationView : StackPanel
     /// Call after applying a snapshot; null restores message-based inference. ClearMessages resets the binding.</summary>
     public void SetCurrentTurnActivity(bool? active)
     {
+        if (_currentTurnActivity != active && _entries.Any(entry => entry.Assistant is not null)) InvalidateIdleViewport();
         if (active == false) ClearCurrentRetry();
         _currentTurnActivity = active;
         if (active == false) _terminalTurnKey = _observedTurnKey;
@@ -491,6 +639,7 @@ public sealed class OpenCodeConversationView : StackPanel
         Padding = new Thickness(0, 4, 0, 4);
         Unloaded += (_, _) => _retryTimer?.Stop();
         Loaded += (_, _) => StartRetryTimer();
+        LayoutUpdated += (_, _) => _idleLayoutVersion = RenderVersion;
     }
 
     /// <summary>
@@ -528,8 +677,11 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     /// <summary>清空全部已渲染消息（切换会话或卸载时调用）；同时退订并停用全部子部件回调。</summary>
-    public void ClearMessages()
+    public void ClearMessages() => ChangeIdleContent(ClearMessagesCore);
+
+    private void ClearMessagesCore()
     {
+        _messageIdCounts.Clear();
         _manualBackground.Clear();
         BindingCleared?.Invoke(this, EventArgs.Empty);
         ApplyAdmittedSteer(null, null);
@@ -570,6 +722,12 @@ public sealed class OpenCodeConversationView : StackPanel
     public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        ChangeIdleContent(() => ApplyMessagesCore(messages));
+    }
+
+    private void ApplyMessagesCore(IReadOnlyList<OpenCodeMessage> messages)
+    {
+        _messageIdCounts.Clear();
         // Accepted raw order, before safe presentation copies and before any provisional chat rows.
         _manualBackground.Update(messages);
 
@@ -611,6 +769,7 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 // 仅收真实 id；匿名兜底 key 与重复 id 序号兜底 key 不进入归属索引。
                 renderedIds.Add(messageId);
+                _messageIdCounts[messageId] = _messageIdCounts.GetValueOrDefault(messageId) + 1;
                 if (message.Type == OpenCodeMessageTypes.User && !OpenCodeManualBackgroundIndex.TryReadNotice(message, out _)) renderedUserIds.Add(messageId);
             }
 
@@ -669,6 +828,8 @@ public sealed class OpenCodeConversationView : StackPanel
                 _byKey[key] = entry;
                 newEntries.Add(entry);
             }
+            newEntries[^1].IdleMessageId = message.Id;
+            newEntries[^1].IdleWatermark = message.Type == OpenCodeMessageTypes.Idle ? message.Time?.Created : null;
         }
 
         // 移除不再出现的消息（例如窗口化拉取时旧消息滑出）。
@@ -1607,6 +1768,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
         else
         {
+            if (!_groupExpansion.TryGetValue(groupId, out var previous) || previous != expanded) InvalidateIdleViewport();
             _groupExpansion[groupId] = expanded;
         }
 
@@ -2184,7 +2346,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         Apply(message);
-        return new Entry { Key = key, Element = row, Update = Apply };
+        return new Entry { Key = key, Element = row, Update = Apply, IdleLabel = text };
     }
 
     private static string DescribeIdleSeparator(OpenCodeMessage message)

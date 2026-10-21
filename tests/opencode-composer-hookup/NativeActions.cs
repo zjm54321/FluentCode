@@ -366,6 +366,9 @@ namespace AIFrontend.Pages
         private void InvalidateViewAcknowledgement() => AckInvalidations++;
         private void CancelSessionOperations() => _sessionCts?.Cancel();
         private void UpdateEmptyState() { }
+        // Viewport ACK is outside this composer harness; real cache Apply now requests that surface.
+        private void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> rows, bool visible) { }
+        private const bool _hostWindowVisible = false;
         private void InsertSessionItemFirst(OpenCodeSessionInfo session) => Created = session.Id;
         private void RefreshSessionStateUi() { }
         internal Task? NewSessionRefresh;

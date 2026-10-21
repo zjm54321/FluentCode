@@ -21,13 +21,39 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Open
 }
 $arguments += '"' + (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs') + '"'
 $arguments += '"' + (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs') + '"'
+foreach ($name in @('OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs')) {
+    $arguments += '"' + (Join-Path $repo "src/AIFrontend/Pages/$name") + '"'
+}
+$pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
+$builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
+$members = foreach ($pair in @(@($pagePath, 'CreateOperationToken'), @($pagePath, 'OrderMessages'), @($pagePath, 'IsScrollContextCurrent'), @($builtinPath, 'ResetAcceptedHistoryProjection'))) {
+    $text = [IO.File]::ReadAllText($pair[0])
+    $matches = [regex]::Matches($text, ('(?m)^    private [^\r\n]*\b' + $pair[1] + '\('))
+    if ($matches.Count -ne 1) { throw "Missing/ambiguous member $($pair[1])" }
+    $start = $matches[0].Index
+    $opening = $text.IndexOf('{', $start); $arrow = $text.IndexOf('=>', $start)
+    $block = if ($opening -ge 0 -and ($arrow -lt 0 -or $opening -lt $arrow)) {
+        [regex]::Match($text.Substring($start), '(?ms)\A.*?^    \}\r?$')
+    } else { [regex]::Match($text.Substring($start), '(?ms)\A.*?=>[^;]*;') }
+    if (!$block.Success) { throw "Missing member body $($pair[1])" }
+    $block.Value
+}
+$generated = Join-Path $output 'PageMembers.cs'
+'using System; using System.Collections.Generic; using System.Threading; using AIFrontend.Services.OpenCode; using AIFrontend.Services.Notifications; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {' + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
+$arguments += '"' + $generated + '"'
 $arguments += Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
-& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile"
+$runtime = Join-Path $output 'ViewAckTests.runtimeconfig.json'
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
+$sources = @($arguments | Where-Object { $_ -match '^".*\.cs"$' } | ForEach-Object { $_.Trim('"') })
+$inputs = @($sources + @($pagePath, $builtinPath, $PSCommandPath, $responseFile, $runtime, $dotnet, (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll')) + @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll')).FullName) | Sort-Object -Unique
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-before.json')
+& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
-'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ViewAckTests.runtimeconfig.json')
 Write-Output 'Headless compilation passed (warnings treated as errors).'
-& $dotnet $assembly
+& $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-after.json')
+if ([IO.File]::ReadAllText((Join-Path $output 'inputs-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'inputs-after.json'))) { throw 'ACK inputs changed during validation.' }
 Write-Output "Evidence directory: $output"

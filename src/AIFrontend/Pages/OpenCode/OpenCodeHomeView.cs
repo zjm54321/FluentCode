@@ -271,7 +271,7 @@ public sealed class OpenCodeHomeView : UserControl
     private ListViewItem SessionItem(OpenCodeHomeSessionRow row, ListViewItem? item = null)
     {
         var grid = new Grid { Tag = row, ColumnSpacing = 12, Padding = new Thickness(2, 6, 2, 6) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 200 });
         var working = row.Tone is OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction;
@@ -288,13 +288,14 @@ public sealed class OpenCodeHomeView : UserControl
             {
                 OpenCodeHomeTone.Succeeded => "\uE73E", OpenCodeHomeTone.Failed => "\uEA39",
                 OpenCodeHomeTone.Interrupted => "\uE711", OpenCodeHomeTone.NeedsAction => "\uE7BA",
+                OpenCodeHomeTone.QuestionBlocked => "\uE897",
                 OpenCodeHomeTone.Unread => "\uE8F2", _ => "\uE8A5",
             } };
             var brush = row.Tone switch
             {
                 OpenCodeHomeTone.Succeeded => OpenCodeToolTheme.Success,
                 OpenCodeHomeTone.Failed => OpenCodeToolTheme.Critical,
-                OpenCodeHomeTone.NeedsAction or OpenCodeHomeTone.Interrupted => OpenCodeToolTheme.Caution,
+                OpenCodeHomeTone.NeedsAction or OpenCodeHomeTone.Interrupted or OpenCodeHomeTone.QuestionBlocked => OpenCodeToolTheme.Caution,
                 _ => OpenCodeToolTheme.TextSecondary,
             };
             OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(brush));
@@ -304,7 +305,23 @@ public sealed class OpenCodeHomeView : UserControl
         var status = ToneLabel(row.Tone);
         AutomationProperties.SetName(indicator, status);
         ToolTipService.SetToolTip(indicator, status);
-        grid.Children.Add(indicator);
+        // Reserve independent columns: unread never replaces the outcome/question/spinner glyph.
+        var badges = new Grid { ColumnSpacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        badges.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        badges.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+        indicator.HorizontalAlignment = HorizontalAlignment.Center;
+        AutomationProperties.SetAutomationId(indicator, "OpenCodeHomeStatus");
+        badges.Children.Add(indicator);
+        var unread = new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3),
+            VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center,
+            Visibility = row.IsUnread ? Visibility.Visible : Visibility.Collapsed };
+        OpenCodeToolTheme.Apply(unread, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
+        AutomationProperties.SetAutomationId(unread, "OpenCodeHomeUnread");
+        AutomationProperties.SetName(unread, "未读");
+        ToolTipService.SetToolTip(unread, "未读");
+        Grid.SetColumn(unread, 1);
+        badges.Children.Add(unread);
+        grid.Children.Add(badges);
         var title = Label(row.Title, "BodyTextBlockStyle");
         title.TextWrapping = TextWrapping.Wrap;
         Grid.SetColumn(title, 1);
@@ -322,7 +339,7 @@ public sealed class OpenCodeHomeView : UserControl
         }
         item.Tag = row;
         item.Content = grid;
-        AutomationProperties.SetName(item, row.Title + "，" + row.ProjectName + "，" + status);
+        AutomationProperties.SetName(item, row.Title + "，" + row.ProjectName + "，" + status + (row.IsUnread ? "，未读" : string.Empty));
         ToolTipService.SetToolTip(item, row.Session.Project.Directory + Environment.NewLine + row.Session.Info.Id);
         return item;
     }
@@ -371,6 +388,7 @@ public sealed class OpenCodeHomeView : UserControl
     {
         OpenCodeHomeTone.Working => "运行中", OpenCodeHomeTone.WorkingNeedsAction => "运行中，需要处理",
         OpenCodeHomeTone.NeedsAction => "需要处理", OpenCodeHomeTone.Succeeded => "已完成",
+        OpenCodeHomeTone.QuestionBlocked => "等待回答问题",
         OpenCodeHomeTone.Failed => "失败", OpenCodeHomeTone.Interrupted => "已中断",
         OpenCodeHomeTone.Unread => "未读", _ => "状态未知",
     };

@@ -188,6 +188,7 @@ internal static partial class Program
             foreach (var (name, run) in new (string, Func<Task>)[]
             {
                 ("real Switch/Navigate immediate authoritative loading and exact empty/error state", BindingImmediateAndEmpty),
+                ("REST/SSE/cache/reactivate share actual viewport proof gate; question adapter survives Working override", ViewportIntegration),
                 ("binding refresh owners isolate late reads, auxiliary waits and finally queues", BindingLateOwners),
                 ("accepted two-buffer windows reused with bounded page-owned slots", BindingWindowReuse),
                 ("failure/cancellation, rapid same-ID return and transferred continuation buffers", BindingFailureAndRapidReturn),
@@ -532,7 +533,7 @@ internal static partial class Program
         Check(!page.TestOlderBusy && SameIds(Ids(page), 1, 149), "current older page still prepends before staged boundary");
         page.TestAcceptedHistory(null);
         backend.OnRequest(_ => Task.FromResult(Page(1, 200, null))); await page.TestLatestAsync();
-        Check(SameIds(Ids(page), 1, 200) && page.ExecutionPublications == 0 && page.AckPublications == 1, "redo clear permits fresh history/ACK; real execution reader does not report user-only rows as completion");
+        Check(SameIds(Ids(page), 1, 200) && page.ExecutionPublications == 0 && page.AckPublications == 0, "redo clear permits fresh history but user-only rows without viewport proof do not ACK");
 
         // Source replacement with unchanged session also fences non-cancelled older GETs.
         var sourceResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -564,7 +565,7 @@ internal static partial class Program
         backend.State = "{\"data\":{\"id\":\"ses_test\",\"projectID\":\"p\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/synthetic\"},\"revert\":{\"messageID\":\"msg_3\"}}}";
         backend.OnRequest(_ => Task.FromResult(Page(1, 5, null))); await page.TestLatestAsync();
         Check(backend.StateReads == 1 && SameIds(Ids(page), 1, 2) && !page.TestNeedsState, "fresh authoritative stage remains staged even after accepted send effects");
-        Check(page.ExecutionPublications == 0 && page.AckPublications == 1 && page.AttemptKeys == 1, "fresh user-only history generates no real execution terminal; ACK and old keys retained");
+        Check(page.ExecutionPublications == 0 && page.AckPublications == 0 && page.AttemptKeys == 1, "fresh user-only history generates no execution terminal or viewport ACK; old keys retained");
         var oldAuxiliary = page.LastAuxiliaryFence;
         page.TestBeginSend(13); page.TestEndSend(12, true);
         Check(oldAuxiliary is not null && !oldAuxiliary(), "latest refresh passes its captured epoch into late auxiliary publication fence");

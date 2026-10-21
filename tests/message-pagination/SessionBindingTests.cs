@@ -121,7 +121,7 @@ internal static partial class Program
         Check(LiveText(page) == "ses_A" && page.TestEmptyText == "" && state.Started.Task.IsCompleted,
             "A-B-A reuses accepted message window synchronously and still starts authoritative boundary");
         Check(ReferenceEquals(older, page.TestOlderBuffer) && ReferenceEquals(latest, page.TestLatestBuffer), "original two buffers transfer ownership; no parallel flattened message cache");
-        Check(page.AckPublications == 2 && page.ExecutionPublications == 0, "visual reuse does not publish ACK or execution observation");
+        Check(page.AckPublications == 0 && page.ExecutionPublications == 0, "visual reuse requests review but never ACKs without actual viewport proof or publishes execution observation");
         state.Result.SetResult(backend.State("ses_A")); await back;
         foreach (var id in new[] { "ses_C", "ses_D", "ses_E", "ses_F", "ses_G" }) await page.TestSwitchAsync(id, "/" + id[4..]);
         Check(page.TestCachedBindings <= 3 && page.TestCachedRows <= 600 && page.TestCachedBytes <= 2 * 1024 * 1024, "retained binding windows obey all three page budgets");

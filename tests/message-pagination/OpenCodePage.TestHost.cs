@@ -44,7 +44,7 @@ namespace Microsoft.UI.Xaml.Controls
         public Visibility Visibility { get; set; }
     }
 
-    public class ScrollViewer
+    public partial class ScrollViewer
     {
         public double VerticalOffset { get; set; }
 
@@ -81,7 +81,7 @@ namespace Microsoft.UI.Dispatching
 namespace AIFrontend.Pages
 {
     /// <summary>记录每次 ApplyMessages 的应用快照（不渲染）：测试据此断言应用顺序、去重与内容更新。</summary>
-    public sealed class OpenCodeConversationView
+    public sealed partial class OpenCodeConversationView
     {
         public IReadOnlyList<OpenCodeMessage> Children { get; private set; } = Array.Empty<OpenCodeMessage>();
         public List<IReadOnlyList<OpenCodeMessage>> Applied { get; } = new();
@@ -89,9 +89,9 @@ namespace AIFrontend.Pages
         public int ActivityPublications { get; private set; }
         public void SetCurrentTurnActivity(bool? active) { TurnActivity = active; ActivityPublications++; }
 
-        public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { Applied.Add(messages); Children = messages; }
+        public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { Applied.Add(messages); Children = messages; InvalidateGeometry(); }
 
-        public void ClearMessages() { Applied.Clear(); Children = Array.Empty<OpenCodeMessage>(); }
+        public void ClearMessages() { Applied.Clear(); Children = Array.Empty<OpenCodeMessage>(); InvalidateGeometry(); }
     }
 
     public sealed partial class OpenCodePage
@@ -120,27 +120,21 @@ namespace AIFrontend.Pages
         private CancellationTokenSource? _sessionCts;
         private bool _testSourceReady;
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
-        private bool _hostWindowVisible = true;
         private readonly Dictionary<string, string> _lastIdleBySession = new();
         private readonly HashSet<string> _workingSessions = new();
-        internal int AckPublications;
+        internal int AckPublications => _ackApp.Calls;
         internal int ExecutionPublications => _lastIdleBySession.Count;
         internal readonly List<OpenCodeExecutionStateChangedEventArgs> ExecutionEvents = new();
         private void RaiseExecutionState(OpenCodeExecutionStateChangedEventArgs args) => ExecutionEvents.Add(args);
-        // Storage doubles for the extracted REAL invalidation method; ACK HTTP itself is not replayed.
-        private object? _viewAcknowledgementLive = new();
-        private bool _viewAcknowledgementWindowVisible = true;
-        private readonly HashSet<(string, string, double)> _viewAcknowledgementAttempted = new();
-        internal bool AckInvalidated => _viewAcknowledgementLive is null && !_viewAcknowledgementWindowVisible;
+        internal bool AckInvalidated => _viewAcknowledgementLive is null;
         internal int AttemptKeys => _viewAcknowledgementAttempted.Count;
-        internal void SeedUnknownAck() => _viewAcknowledgementAttempted.Add(("endpoint", SessionForTests, 42));
+        internal void SeedUnknownAck() => _viewAcknowledgementAttempted.Add(new("endpoint", SessionForTests, 42));
         private const string SessionForTests = "ses_test";
         private bool IsScrolledToBottom() => false;
         private void ScrollToBottom(bool animated) { }
         private readonly TextBlock EmptyStateText = new();
         private void UpdateScrollToBottomButton() { }
         private void UpdateComposerButtons() { }
-        private void NotifyViewAcknowledgementRendered(List<OpenCodeMessage> messages, bool visible) => AckPublications++;
         internal Func<bool>? LastAuxiliaryFence;
         internal Func<Task> Auxiliary = () => Task.CompletedTask;
         private Task RefreshAuxiliaryAsync(OpenCodeClient client, string id, int generation, CancellationToken ct, Func<bool> historyCurrent)
@@ -155,7 +149,7 @@ namespace AIFrontend.Pages
         private long _homeRevision = 7;
         private readonly Dictionary<string, AIFrontend.Pages.OpenCode.OpenCodeHomeProject> _homeProjects = new(StringComparer.Ordinal);
         internal bool TestHomeEvent(long revision, AIFrontend.Pages.OpenCode.OpenCodeHomeProjectKey key) => HomeEventCurrent(revision, key);
-        internal void TestHomeDirectory(string directory) => _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory);
+        internal void TestHomeDirectory(string directory) { _homeActive = true; _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory); }
         internal void TestReplaceHomeSource() { _homeRuntimeSource = "runtime-b"; _homeRevision++; }
         // Native selector and existing SwitchToSessionAsync are explicit boundaries here. The actual
         // extracted Home router must call that switch even when the hidden selected object is unchanged.
@@ -279,6 +273,7 @@ namespace AIFrontend.Pages
         // ---- 测试钩子（仅本测试编译可见） ----
         internal void TestActivate(string sessionId, OpenCodeClient client, Func<OpenCodeClient>? clientFactory = null)
         {
+            InvalidateViewAcknowledgement();
             StopEventSync();
             // 镜像 xaml.cs：进入页面 / 选中会话各自的代际递增（测试中仅一次）。
             _pageGeneration++;
@@ -292,6 +287,10 @@ namespace AIFrontend.Pages
             _sessionMissing = false;
             _selectedSessionId = sessionId;
             _sessionCts = new CancellationTokenSource();
+            _homeActive = false;
+            Microsoft.UI.Xaml.Application.Current = _ackApp;
+            AttachViewAcknowledgementEvents();
+            NotifyHostWindowVisibility(true);
         }
 
         internal void TestApplyRefresh(List<OpenCodeMessage> asc, string? nextCursor, bool explicitRefresh)

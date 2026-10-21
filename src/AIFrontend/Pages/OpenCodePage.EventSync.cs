@@ -77,6 +77,7 @@ public sealed partial class OpenCodePage
         {
             _eventReconciliationPending = false;
             _messageHistoryNeedsState = true; // Gap may contain a model/revert boundary, not just text.
+            InvalidateViewAcknowledgement();
         }
     }
 
@@ -89,7 +90,11 @@ public sealed partial class OpenCodePage
         {
             _eventReconciliationPending = true;
             // Preserve the existing reconnect boundary fence. First readiness must NOT hide the initial paint.
-            if (reconnect) _messageHistoryNeedsState = true;
+            if (reconnect)
+            {
+                _messageHistoryNeedsState = true;
+                InvalidateViewAcknowledgement();
+            }
             if (_messageHistoryWorkflowOwner is null) _ = RefreshMessagesAsync();
         }
         _ = RefreshListedSessionStatusesAsync();
@@ -269,7 +274,8 @@ public sealed partial class OpenCodePage
         {
             states.TryGetValue(id, out var previous);
             states[id] = new(id, value.Working, previous?.PendingAction, previous?.MutationProtected ?? false,
-                previous?.Completion, previous?.ViewedWatermark, OpenCodeStateUnknownReason.None);
+                previous?.Completion, previous?.ViewedWatermark, OpenCodeStateUnknownReason.None)
+                { QuestionPending = previous?.QuestionPending };
         }
     }
 

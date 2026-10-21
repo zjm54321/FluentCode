@@ -82,7 +82,7 @@ $production = @()
     $production += Join-Path "$repo/src/AIFrontend/Services/Notifications" $_
 }
 @('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SessionReturn.Ui.cs', 'OpenCodePage.SubagentNavigation.cs',
-    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs') | ForEach-Object {
+    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages" $_
 }
 @('OpenCodeConversationView.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
@@ -92,8 +92,16 @@ $production = @()
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
 $commonHost = Join-Path $repo 'tests/opencode-instruction-notice/ConversationView.TestHost.cs'
+$commonHostInput = $commonHost
+$commonText = [IO.File]::ReadAllText($commonHostInput)
+$anchor = '    public class FrameworkElement : UIElement'
+if ([regex]::Matches($commonText, [regex]::Escape($anchor)).Count -ne 1) { throw 'Missing/ambiguous inert FrameworkElement shape.' }
+$commonText = $commonText.Replace($anchor + "`n    {", $anchor + "`n    {`n        public event Action<object, SizeChangedEventArgs>? SizeChanged { add { } remove { } }")
+if (!$commonText.Contains('event Action<object, SizeChangedEventArgs>')) { throw 'FrameworkElement shim failed.' }
+$commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
+[IO.File]::WriteAllText($commonHost, $commonText)
 $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'))
-$inputs = @($production + $tests + @($pagePath, $builtinPath, $extracted, $PSCommandPath)) | Sort-Object -Unique
+$inputs = @($production + $tests + @($pagePath, $builtinPath, $extracted, $commonHostInput, $PSCommandPath)) | Sort-Object -Unique
 Get-FileHash -LiteralPath $inputs -Algorithm SHA256 |
     Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
 @{ CompiledSources = @($production + $tests + @($extracted)); ExtractedFrom = @($pagePath, $builtinPath); ExtractedMembers = @($names + @('OrderMessages', 'IsScrollContextCurrent', 'SourceReady', 'ResetAcceptedHistoryProjection')) } |

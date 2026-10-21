@@ -234,9 +234,20 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             if (!Active(session, state)) return;
             token.ThrowIfCancellationRequested();
             var started = DateTimeOffset.UtcNow;
-            var ids = form
-                ? (await _source.Client.GetPendingFormsAsync(session, token).ConfigureAwait(false)).Select(f => f.Id!).ToHashSet(StringComparer.Ordinal)
-                : (await _source.Client.GetPendingPermissionsAsync(session, token).ConfigureAwait(false)).Select(p => p.Id!).ToHashSet(StringComparer.Ordinal);
+            bool questionPending = false;
+            HashSet<string> ids;
+            if (form)
+            {
+                var forms = await _source.Client.GetPendingFormsAsync(session, token).ConfigureAwait(false);
+                if (!Active(session, state)) return;
+                if (forms.Count > 256) { Emit(session, state, OpenCodeNotificationObservationKind.Gap, "pending-budget"); return; }
+                ids = forms.Select(f => f.Id!).ToHashSet(StringComparer.Ordinal);
+                questionPending = forms.Any(f => f.Metadata is { ValueKind: System.Text.Json.JsonValueKind.Object } metadata
+                    && metadata.TryGetProperty("kind", out var kind) && kind.ValueKind == System.Text.Json.JsonValueKind.String
+                    && kind.GetString() == "question");
+            }
+            else ids = (await _source.Client.GetPendingPermissionsAsync(session, token).ConfigureAwait(false))
+                .Select(p => p.Id!).ToHashSet(StringComparer.Ordinal);
             if (!Active(session, state)) return;
             if (ids.Count > 256) { Emit(session, state, OpenCodeNotificationObservationKind.Gap, "pending-budget"); return; }
             token.ThrowIfCancellationRequested();
@@ -251,9 +262,15 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             }
             await reconcile.ConfigureAwait(false);
             if (!Active(session, state)) return;
+            token.ThrowIfCancellationRequested();
             var old = form ? state.Forms : state.Permissions;
-            if (form) state.Forms = ids; else state.Permissions = ids;
-            if (form) state.FormsAt = started; else state.PermissionsAt = started;
+            if (form)
+            {
+                state.Forms = ids;
+                state.QuestionPending = questionPending;
+                state.FormsAt = started;
+            }
+            else { state.Permissions = ids; state.PermissionsAt = started; }
             Emit(session, state, OpenCodeNotificationObservationKind.PendingSnapshot, form ? "forms" : "permissions");
             foreach (var id in _sink.IsReady && Fresh(started) ? ids.Except(old) : Enumerable.Empty<string>())
             {

@@ -90,7 +90,11 @@ public partial class App
             && observation.ViewedWatermark is { } watermark && double.IsFinite(watermark) && watermark >= 0
             ? (double?)watermark : null;
         return new(source.Identity, source.Revision, observation.SessionId,
-            observation.WorkingFact, observation.PendingActionFact, Completion: completion, ViewedWatermark: viewed);
+            observation.WorkingFact, observation.PendingActionFact, Completion: completion, ViewedWatermark: viewed)
+        {
+            QuestionPending = observation.QuestionPendingFact is { } question
+                && IsFreshSessionUiEvidence(question.ObservedAt, now) ? question : null,
+        };
     }
 
     private void ApplySessionUiProtection(OpenCodePageSource source, string sessionId, bool isProtected,

@@ -81,6 +81,12 @@ namespace AIFrontend
         internal void Observe(OpenCodeNotificationMonitor monitor, OpenCodeSessionObservation observation)
             => OnOpenCodeSessionObserved(monitor, new(observation));
         internal void Tick() => _sessionObservationTimer!.Fire();
+        // Explicit expiry clock only; storage normalization/publication remain the real implementation.
+        internal void BridgeExpireSessionUi(DateTimeOffset now)
+        {
+            _sessionUiChanged |= _sessionUiStore!.Expire(now);
+            PublishSessionUiChanges();
+        }
         private void FlushOpenCodeNavigation() { }
         private TaskbarOperationResult ApplyTaskbarAggregate() => new(TaskbarOperationStatus.NotInitialized, "OfflineHost");
     }
