@@ -65,17 +65,27 @@ public sealed partial class OpenCodePage
     private string? _historyAcceptedPromptId;
     private ImmutableArray<string> _historyUnresolvedChildren = ImmutableArray<string>.Empty;
     private sealed record MessageHistoryRead(OpenCodePageSource? Source, long Revision, int SourceGeneration,
-        OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId, long Epoch);
+        OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId, long Epoch, string? Directory);
 
     private MessageHistoryRead CaptureMessageHistoryRead(OpenCodeClient client, string sessionId)
-        => new(_source, _sourceRevision, _sourceGeneration, client, _pageGeneration, _sessionGeneration, sessionId, _messageHistoryEpoch);
+    {
+        // Other existing refresh entrances (e.g. a restored page) may not have a list metadata binding.
+        // Unknown stays unknown until the authoritative state response supplies its real directory.
+        if (_source is { IsRevoked: false } source && (_messageBinding is not { } binding
+            || !ReferenceEquals(binding.Source, source) || binding.Revision != _sourceRevision
+            || binding.SourceGeneration != _sourceGeneration || binding.PageGeneration != _pageGeneration
+            || !ReferenceEquals(binding.Client, client) || binding.SessionId != sessionId))
+            _messageBinding = new(source, _sourceRevision, _sourceGeneration, _pageGeneration, client, sessionId, null);
+        return new(_source, _sourceRevision, _sourceGeneration, client, _pageGeneration, _sessionGeneration, sessionId, _messageHistoryEpoch, _messageBinding?.Directory);
+    }
 
     private bool IsCurrentMessageHistoryRead(MessageHistoryRead read)
         => IsCurrentMessagePage(read.PageGeneration, read.SessionGeneration, read.SessionId)
         && _messageHistoryWorkflowOwner is null
         && read.Epoch == _messageHistoryEpoch && ReferenceEquals(read.Source, _source)
         && read.Source is { IsRevoked: false } && read.Revision == _sourceRevision
-        && read.SourceGeneration == _sourceGeneration && ReferenceEquals(read.Client, _client) && !_sessionMissing;
+        && read.SourceGeneration == _sourceGeneration && ReferenceEquals(read.Client, _client) && !_sessionMissing
+        && read.Directory == _messageBinding?.Directory;
 
     private Task<OpenCodeSessionMessagesResponse> StartMessageHistoryRead(MessageHistoryRead read,
         OpenCodeMessageQuery query, CancellationToken ct)
@@ -100,13 +110,25 @@ public sealed partial class OpenCodePage
         if (pending is null) return null;
         var state = await pending;
         if (!IsCurrentMessageHistoryRead(read)) return null;
+        if (_messageBinding is { } binding && binding.Directory != state.Directory)
+        {
+            if (binding.Directory is not null)
+            {
+                // The backend corrected previously accepted directory evidence. Never retain that window.
+                ResetHistoryWithinRefresh(state.Revert?.MessageId, keepChildEvidence: false);
+                CaptureContextMetadataVersion(ref contextMetadataVersion);
+            }
+            _messageBinding = binding with { Directory = state.Directory };
+            read = CaptureMessageHistoryRead(read.Client, read.SessionId);
+            if (binding.Directory is null) RestoreMessageWindow();
+        }
         var boundary = state.Revert?.MessageId;
         if (_messageHistoryBoundaryKnown && _messageRevertBoundary != boundary)
         {
             // A committed/cleared/moved boundary changes the meaning of retained rows. Rebuild,
             // rather than unmasking a cached committed tail through ordinary pagination retention.
             var acceptedPrompt = _historyAcceptedPromptId;
-            ResetAcceptedHistoryProjection(boundary);
+            ResetHistoryWithinRefresh(boundary);
             _historyAcceptedPromptId = acceptedPrompt;
             read = CaptureMessageHistoryRead(read.Client, read.SessionId);
             CaptureContextMetadataVersion(ref contextMetadataVersion);
@@ -127,6 +149,9 @@ public sealed partial class OpenCodePage
 
     private void BeginMessageHistoryWorkflow(long owner)
     {
+        RevokeMessageRefresh();
+        _messageWindowAccepted = false;
+        if (_messageBinding is { } binding) _retainedMessageWindows.RemoveAll(slot => slot.Binding == binding);
         _messageHistoryEpoch++; // Before confirmation/preflight/transport/handoff, not after receipt.
         _messageHistoryWorkflowOwner = owner;
         _isLoadingOlderMessages = false;
@@ -205,10 +230,10 @@ public sealed partial class OpenCodePage
     private bool _isLoadingOlderMessages;
 
     /// <summary>旧历史块（服务端序列顺序，旧→新）：经“加载更早消息”累计的旧页 + 刷新窗口滚出保留的条目；刷新路径只追加滚出条目、从不删除。</summary>
-    private readonly List<OpenCodeMessage> _olderMessages = new();
+    private List<OpenCodeMessage> _olderMessages = new();
 
     /// <summary>最近一次成功刷新的消息窗口（服务端序列顺序，旧→新）；每次刷新整体替换（滚出条目先并入历史块）。</summary>
-    private readonly List<OpenCodeMessage> _latestMessages = new();
+    private List<OpenCodeMessage> _latestMessages = new();
 
     /// <summary>
     /// 只读的缺口标记（Phase 2 概况用，不改变分页/渲染/指纹行为）：刷新窗口无法证明有序向前连续时，
@@ -302,6 +327,7 @@ public sealed partial class OpenCodePage
     /// <summary>分页硬重置核心：清游标、链状态与全部缓存；递增链代际使在途续页失效；不动视图、不刷 UI。</summary>
     private void ResetMessagePaginationCore()
     {
+        ResetMessageBindingState();
         OnEventMessageHistoryReset();
         _messageHistoryEpoch++;
         _messageHistoryWorkflowOwner = null;

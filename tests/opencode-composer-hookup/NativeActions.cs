@@ -324,6 +324,12 @@ namespace AIFrontend.Pages
         private readonly XamlRoot XamlRoot = new();
         private readonly Dictionary<string, string> _lastIdleBySession = new();
         private const int MaxScrollSettlePasses = 3;
+        // Unrelated message-page presentation/metadata surface; the real binding/pagination partials compile.
+        private readonly Dictionary<string, object> _sessionItems = new(StringComparer.Ordinal);
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
+        private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
+        internal object MessagePageDiagnostics => (_isRefreshing, _refreshQueued, _refreshQueuedInitial,
+            _refreshQueuedForceFollow, _refreshQueuedExplicit, _firstMessagesLoading, _messagesResponseEmpty, _messagesLoadError);
         internal int AckInvalidations;
         internal string? Created;
         internal int SessionFocus => SessionList.Focuses;

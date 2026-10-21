@@ -44,7 +44,7 @@ namespace AIFrontend.Pages;
 /// 停止使用 InterruptAsync 并只转述服务端 interrupted 结果；
 /// 权限请求与表单可在卡片中操作：提交前重新查询 pending 并比对指纹，
 /// 仅服务端 204 视为成功；超时/连接中断/未知状态一律按“结果未知”处理，绝不自动重发；
-/// 消息通过不重叠、可取消的约 2 秒定时刷新与手动刷新获取，绝不根据 idle /
+/// 消息通过不重叠、可取消的定时刷新与手动刷新获取，绝不根据 idle /
 /// 无变化 / 单条助手消息推断请求级成功，也不发送任何“完成”通知。
 /// </para>
 /// <para>
@@ -850,9 +850,11 @@ public sealed partial class OpenCodePage : Page
         }
     }
 
-    private async Task SwitchToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null, Action? onBound = null)
+    private async Task SwitchToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null, Action? onBound = null, string? directory = null)
     {
-        if (string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal) && _sessionCts is not null)
+        if (string.IsNullOrWhiteSpace(directory)) directory = null;
+        directory ??= KnownSessionDirectory(sessionId);
+        if (IsSameMessageBinding(sessionId, directory) && _sessionCts is not null)
         {
             return;
         }
@@ -861,6 +863,7 @@ public sealed partial class OpenCodePage : Page
         _selectedSessionId = sessionId;
         _sessionMissing = false;
         _sessionGeneration++;
+        BeginSessionMessageBinding(sessionId, directory);
         BindComposer();
         onBound?.Invoke(); // Capture the new binding before refresh or externally observable callbacks.
 
@@ -871,8 +874,6 @@ public sealed partial class OpenCodePage : Page
         RestartSessionEventSync(sessionId);
         InstallSessionReturnContext(returnTarget);
 
-        _conversationView.ClearMessages();
-        ResetMessagePaginationState();
         EnsureConversationImages();
         _interactionsView.ClearAll();
         // 切换会话即切换整会话恢复的归属：清除旧会话的提示、确认快照与确认面板（并复位面板忙碌态），
@@ -966,6 +967,11 @@ public sealed partial class OpenCodePage : Page
         var generation = _sessionGeneration;
         var sessionId = _selectedSessionId;
         var historyRead = CaptureMessageHistoryRead(client, sessionId);
+        var refreshOwner = new MessageRefreshOwner(historyRead);
+        _messageRefreshOwner = refreshOwner;
+        _messagesLoadError = null;
+        if (!_messageWindowAccepted) _firstMessagesLoading = true;
+        UpdateEmptyState();
         var ct = _sessionCts?.Token ?? CancellationToken.None;
 
         try
@@ -981,6 +987,7 @@ public sealed partial class OpenCodePage : Page
                     var refreshed = await RefreshHistoryBoundaryAsync(historyRead, ct);
                     if (refreshed is null) return;
                     historyRead = refreshed;
+                    refreshOwner.Read = historyRead;
                     ct = _sessionCts?.Token ?? CancellationToken.None;
                 }
                 response = await StartMessageHistoryRead(historyRead,
@@ -989,11 +996,13 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OperationCanceledException)
             {
+                SetMessageLoadFailure(refreshOwner);
                 return;
             }
             catch (OpenCodeApiException ex)
             {
-                if (IsCurrentMessageHistoryRead(historyRead))
+                SetMessageLoadFailure(refreshOwner);
+                if (OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead))
                 {
                     HandleApiException(ex, "消息刷新");
                 }
@@ -1002,7 +1011,8 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeTransportException)
             {
-                if (IsCurrentMessageHistoryRead(historyRead))
+                SetMessageLoadFailure(refreshOwner);
+                if (OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead))
                 {
                     SetConnectionState(ConnectionState.Failed);
                     ShowMessage(InfoBarSeverity.Error, "无法连接 OpenCode 服务", "消息刷新失败（本页会自动重试）。");
@@ -1012,7 +1022,8 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeTimeoutException)
             {
-                if (IsCurrentMessageHistoryRead(historyRead))
+                SetMessageLoadFailure(refreshOwner);
+                if (OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead))
                 {
                     SetConnectionState(ConnectionState.Failed);
                     ShowMessage(InfoBarSeverity.Error, "消息刷新超时", "客户端 30 秒内未完成本次请求（本页会自动重试）。");
@@ -1022,7 +1033,8 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeProtocolException)
             {
-                if (IsCurrentMessageHistoryRead(historyRead))
+                SetMessageLoadFailure(refreshOwner);
+                if (OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead))
                 {
                     ShowMessage(InfoBarSeverity.Error, "响应不符合契约", "消息响应不符合已核实的 V2 契约；已保留当前已渲染内容。");
                 }
@@ -1031,7 +1043,7 @@ public sealed partial class OpenCodePage : Page
             }
 
             // 防旧 response 污染：会话已切换或页面已卸载时丢弃本次结果。
-            if (!IsCurrentMessageHistoryRead(historyRead))
+            if (!OwnsMessageRefresh(refreshOwner) || !IsCurrentMessageHistoryRead(historyRead))
             {
                 return;
             }
@@ -1048,14 +1060,18 @@ public sealed partial class OpenCodePage : Page
             var mergeVersion = ReferenceEquals(eventReducer, _eventReducer) ? eventVersion : 0;
             orderedMessages = _eventReducer?.MergeSnapshot(orderedMessages, mergeVersion) ?? orderedMessages;
             ApplyRefreshedMessages(orderedMessages, response.Cursor?.Next, explicitRefresh);
-            if (!IsCurrentMessageHistoryRead(historyRead)) return;
+            if (!OwnsMessageRefresh(refreshOwner) || !IsCurrentMessageHistoryRead(historyRead)) return;
+            _firstMessagesLoading = false;
+            _messagesResponseEmpty = response.Data is { Count: 0 } && orderedMessages.Count == 0;
+            _messageWindowAccepted = true;
+            _messagesLoadError = null;
             RetainHistoryChildEvidence(sessionId, MergeMessageHistory());
             var projectedWindow = ProjectMessageHistory(orderedMessages);
             ObserveExecutionState(sessionId, projectedWindow);
 
             // 最新窗口已成功 Apply（真实渲染窗口，非历史 prepend）：向 view ACK 入口提交该窗口与宿主
             // 窗口可见性；仅在页面/窗口真正可见时按 (来源, 会话, 水位) 去重尝试一次，绝不额外 GET 水位。
-            if (!IsCurrentMessageHistoryRead(historyRead)) return;
+            if (!OwnsMessageRefresh(refreshOwner) || !IsCurrentMessageHistoryRead(historyRead)) return;
             NotifyViewAcknowledgementRendered(projectedWindow, _hostWindowVisible);
             UpdateEmptyState();
 
@@ -1064,30 +1080,35 @@ public sealed partial class OpenCodePage : Page
                 ScrollToBottom(animated: !(initial || forceFollow));
             }
 
-            await RefreshAuxiliaryAsync(client, sessionId, generation, ct, () => IsCurrentMessageHistoryRead(historyRead));
+            await RefreshAuxiliaryAsync(client, sessionId, generation, ct, () => OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead));
         }
         catch (Exception)
         {
-            if (IsCurrentMessageHistoryRead(historyRead))
+            SetMessageLoadFailure(refreshOwner);
+            if (OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead))
             {
                 ShowMessage(InfoBarSeverity.Error, "消息刷新失败", "发生未预期错误；已保留当前已渲染内容。");
             }
         }
         finally
         {
-            _isRefreshing = false;
-            if (_refreshQueued)
+            if (ReferenceEquals(_messageRefreshOwner, refreshOwner))
             {
-                _refreshQueued = false;
-                var queuedInitial = _refreshQueuedInitial;
-                var queuedForceFollow = _refreshQueuedForceFollow;
-                var queuedExplicit = _refreshQueuedExplicit;
-                _refreshQueuedInitial = false;
-                _refreshQueuedForceFollow = false;
-                _refreshQueuedExplicit = false;
-                if (_pageActive && _selectedSessionId is not null && !_sessionMissing)
+                _messageRefreshOwner = null;
+                _isRefreshing = false;
+                if (_refreshQueued)
                 {
-                    _ = RefreshMessagesAsync(queuedInitial, queuedForceFollow, queuedExplicit);
+                    _refreshQueued = false;
+                    var queuedInitial = _refreshQueuedInitial;
+                    var queuedForceFollow = _refreshQueuedForceFollow;
+                    var queuedExplicit = _refreshQueuedExplicit;
+                    _refreshQueuedInitial = false;
+                    _refreshQueuedForceFollow = false;
+                    _refreshQueuedExplicit = false;
+                    if (_pageActive && _selectedSessionId is not null && !_sessionMissing)
+                    {
+                        _ = RefreshMessagesAsync(queuedInitial, queuedForceFollow, queuedExplicit);
+                    }
                 }
             }
         }
@@ -3864,7 +3885,9 @@ public sealed partial class OpenCodePage : Page
         }
         else if (_conversationView.Children.Count == 0)
         {
-            text = "该会话暂无消息。发送后，消息会经定时刷新（约 2 秒）出现。";
+            text = _messagesLoadError ?? (_firstMessagesLoading ? "正在加载消息…"
+                : _messagesResponseEmpty ? "该会话暂无消息。"
+                : "当前没有可显示的消息，历史状态将随刷新更新。");
         }
 
         EmptyStateText.Text = text ?? string.Empty;
@@ -4387,6 +4410,7 @@ public sealed partial class OpenCodePage : Page
         _selectedSessionId = sessionId;
         _sessionMissing = false;
         _sessionGeneration++;
+        BeginSessionMessageBinding(sessionId, KnownSessionDirectory(sessionId));
         BindComposer();
 
         // 通知/子会话导航的强制切换同样使 view ACK 活动快照立即失效（新窗口 Apply 后再尝试）。
@@ -4397,8 +4421,6 @@ public sealed partial class OpenCodePage : Page
         var sessionGeneration = _sessionGeneration;
         SelectSessionItem(sessionId);
 
-        _conversationView.ClearMessages();
-        ResetMessagePaginationState();
         EnsureConversationImages();
         _interactionsView.ClearAll();
         // 同 SwitchToSessionAsync：切换会话即清除旧会话的恢复提示、确认快照与确认面板。

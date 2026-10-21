@@ -152,7 +152,7 @@ public sealed partial class OpenCodePage
             // Same actual method used by SessionList_SelectionChanged; assigning an unchanged hidden
             // SelectedItem does not raise that event. Never use a native selection event as a command bus.
             OpenCodeCompletionCrashTrace.Mark("home.click.switch.start");
-            await SwitchToSessionAsync(sessionId, onBound: MirrorAcceptedSelection);
+            await SwitchToSessionAsync(sessionId, onBound: MirrorAcceptedSelection, directory: project.Directory);
             OpenCodeCompletionCrashTrace.Mark("home.click.switch.return", $"activated={activated};current={Current()};selectedEqual={string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)};cts={_sessionCts is not null};home={_homeActive}");
             if (!activated && _sessionCts is not null) MirrorAcceptedSelection(); // Existing accepted session can return before onBound.
         }

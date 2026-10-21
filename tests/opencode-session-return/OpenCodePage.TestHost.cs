@@ -12,9 +12,21 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Microsoft.UI.Dispatching
+namespace AIFrontend.Pages.OpenCode
 {
-    public sealed class DispatcherQueue
+    // Queue-presentation event payload; this harness does not construct the queue widget.
+    internal sealed record OpenCodePendingDeliveryRequest(string InboxId, string Delivery);
+    internal static class OpenCodeQueuedPromptsView
+    {
+        // Queue rows are not supplied by these return/child-preview fixtures.
+        internal static bool IsSteerUser(OpenCodeInboxItem item) => false;
+        internal static string ReadText(System.Text.Json.JsonElement? payload) => string.Empty;
+    }
+}
+
+namespace AIFrontend.Pages
+{
+    public sealed class ReturnHostDispatcher
     {
         public bool HasThreadAccess => true;
         public bool TryEnqueue(Action callback) { callback(); return true; }
@@ -84,6 +96,14 @@ namespace AIFrontend.Pages
         }
     }
     internal sealed class ReturnHostTimer { internal void Stop() { } }
+    internal sealed class ReturnHostScroll : ScrollViewer
+    {
+        internal double VerticalOffset { get; private set; }
+        internal double ScrollableHeight => 0;
+        internal void UpdateLayout() { }
+        internal void ChangeView(double? horizontalOffset, double? verticalOffset, double? zoomFactor, bool disableAnimation)
+        { if (verticalOffset is { } offset) VerticalOffset = offset; }
+    }
     internal sealed class ReturnHostRecovery
     {
         internal void HideConfirm() { }
@@ -110,6 +130,8 @@ namespace AIFrontend.Pages
         private string? _selectedSessionId;
         // L2: blank "新会话" layout flag (production field lives in OpenCodePage.Composer.cs).
         private bool _newSessionDraftActive = false;
+        private bool _homeActive = false;
+        private void ResetHomeSource() => _homeActive = false;
         internal bool BlankTabActive { set => _newSessionDraftActive = value; }
         // L2 follow-up: zero-session refresh requests the blank tab (production: OpenCodePage.NewSessionTab.cs / Tabs.cs).
         private bool _noOpenTabsShown = false;
@@ -120,6 +142,10 @@ namespace AIFrontend.Pages
         private bool _suppressSessionSelection, _sessionMissing;
         private readonly Dictionary<string, ListViewItem> _sessionItems = new(StringComparer.Ordinal);
         private readonly OpenCodeConversationView _conversationView = new();
+        private readonly ReturnHostScroll MessageScroll = new();
+        private const int MaxScrollSettlePasses = 3;
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
+        private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
         private readonly ReturnHostInteractions _interactionsView = new();
         private readonly ReturnHostRecovery _sessionRecoveryPanel = new();
         private ReturnHostTimer? _pollTimer = null;
@@ -135,7 +161,7 @@ namespace AIFrontend.Pages
         internal readonly ListView SessionList = new();
         internal readonly ReturnHostTextBlock SessionsHint = new();
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
-        public Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; } = new();
+        public ReturnHostDispatcher DispatcherQueue { get; } = new();
         public bool IsLoaded => true;
         public new double ActualWidth => 800;
         public double ActualHeight => 600;
@@ -156,7 +182,9 @@ namespace AIFrontend.Pages
         internal int ResultSuppressions => _interactionsView.SuppressCount;
         // Read otherwise unrelated fields so warnings-as-errors remains enabled without suppressions.
         internal object Diagnostics => (_recoveryOrigin, _sessionProtectionHint, _interactionBusy,
-            _deliveredNoticeShown, _mutationEpoch, _sessionMissing);
+            _deliveredNoticeShown, _mutationEpoch, _sessionMissing, _isRefreshing, _refreshQueued,
+            _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit,
+            _firstMessagesLoading, _messagesResponseEmpty, _messagesLoadError, _historyExecutionRebaseline);
 
         public OpenCodePage(OpenCodePageSource source)
         {
@@ -174,7 +202,8 @@ namespace AIFrontend.Pages
         }
         internal void ChangeSource(OpenCodePageSource source) { InvalidateForSourceChange(); BindFixture(source); }
         internal void Unload() => OnPageUnloaded(this, new());
-        internal Task Switch(string id) => SwitchToSessionAsync(id);
+        private const string FixtureMessageDirectory = "/synthetic/return-fixture";
+        internal Task Switch(string id) => SwitchToSessionAsync(id, directory: FixtureMessageDirectory);
         internal Task<int> Navigate(string id) => NavigateToSessionAsync(id);
         internal Task Card(string messageId, string childId) => NavigateToSubagentSessionAsync(_conversationView, messageId, childId);
         internal Task Preview(string messageId, string childId) => ShowSubagentChatAsync(_conversationView, messageId, childId);
@@ -187,6 +216,10 @@ namespace AIFrontend.Pages
         // Controllable asynchronous boundary: tests explicitly render fixtures through real ApplyMessages.
         private Task RefreshMessagesAsync(bool initial)
         {
+            // Existing message-load boundary supplies synthetic completed-load metadata. It does not
+            // run a real parent history GET; A3's real boundary/directory adoption is tested separately
+            // by message-pagination. The real Switch/no-op still checks the full binding and source.
+            if (_messageBinding is { } binding) _messageBinding = binding with { Directory = FixtureMessageDirectory };
             LoadEntered.TrySetResult(_selectedSessionId ?? string.Empty);
             return MessageLoads.Count == 0 ? Task.CompletedTask : MessageLoads.Dequeue();
         }
@@ -196,9 +229,6 @@ namespace AIFrontend.Pages
         private void RaiseNavigationHandled(OpenCodeNavigationStatus status, string detail, NotificationNavigationTarget? target)
             => NavigationStatuses.Add(status);
         private void EnqueueNavigation(NotificationNavigationTarget target, NotificationInteractionResult? result) => QueuedNavigations++;
-        private void ResetMessagePaginationState() => ResetConversationImages();
-        partial void EnsureConversationImages();
-        partial void ResetConversationImages();
         internal OpenCodeMarkdownImageScope? Images => _conversationImages;
         internal void RebindImages() => EnsureConversationImages();
         internal void ReplaceHistoryToken() { CancelSessionOperations(); _sessionCts = new(); }
@@ -216,6 +246,7 @@ namespace AIFrontend.Pages
         private void UnsubscribeAppSourceChanged() { }
         private void OpenCodePage_TrustedEndpointIdentityChanged(object? sender, EventArgs e) { }
         private void SetConnectionState(ConnectionState state) { }
+        private void HandleApiException(OpenCodeException ex, string context) { }
         private void RestartSessionEventSync(string id) { }
         private void StopEventSync() { }
     }

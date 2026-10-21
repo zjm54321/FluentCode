@@ -424,7 +424,7 @@
                                         Click="RefreshMessagesButton_Click"
                                         AutomationProperties.AutomationId="OpenCodeRefreshMessagesButton"
                                         AutomationProperties.Name="刷新消息"
-                                        ToolTipService.ToolTip="立即刷新当前会话消息（另有约 2 秒的定时刷新）">
+                                        ToolTipService.ToolTip="立即刷新当前会话消息（另有定时刷新）">
                                         <FontIcon Glyph="&#xE72C;" FontSize="12" />
                                     </Button>
                                 </Grid>

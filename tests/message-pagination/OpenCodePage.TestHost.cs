@@ -41,6 +41,7 @@ namespace Microsoft.UI.Xaml.Controls
     public class TextBlock
     {
         public string Text { get; set; } = string.Empty;
+        public Visibility Visibility { get; set; }
     }
 
     public class ScrollViewer
@@ -82,14 +83,15 @@ namespace AIFrontend.Pages
     /// <summary>记录每次 ApplyMessages 的应用快照（不渲染）：测试据此断言应用顺序、去重与内容更新。</summary>
     public sealed class OpenCodeConversationView
     {
+        public IReadOnlyList<OpenCodeMessage> Children { get; private set; } = Array.Empty<OpenCodeMessage>();
         public List<IReadOnlyList<OpenCodeMessage>> Applied { get; } = new();
         public bool? TurnActivity { get; private set; }
         public int ActivityPublications { get; private set; }
         public void SetCurrentTurnActivity(bool? active) { TurnActivity = active; ActivityPublications++; }
 
-        public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) => Applied.Add(messages);
+        public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { Applied.Add(messages); Children = messages; }
 
-        public void ClearMessages() => Applied.Clear();
+        public void ClearMessages() { Applied.Clear(); Children = Array.Empty<OpenCodeMessage>(); }
     }
 
     public sealed partial class OpenCodePage
@@ -135,12 +137,14 @@ namespace AIFrontend.Pages
         private const string SessionForTests = "ses_test";
         private bool IsScrolledToBottom() => false;
         private void ScrollToBottom(bool animated) { }
-        private void UpdateEmptyState() { }
+        private readonly TextBlock EmptyStateText = new();
+        private void UpdateScrollToBottomButton() { }
         private void UpdateComposerButtons() { }
         private void NotifyViewAcknowledgementRendered(List<OpenCodeMessage> messages, bool visible) => AckPublications++;
         internal Func<bool>? LastAuxiliaryFence;
+        internal Func<Task> Auxiliary = () => Task.CompletedTask;
         private Task RefreshAuxiliaryAsync(OpenCodeClient client, string id, int generation, CancellationToken ct, Func<bool> historyCurrent)
-        { LastAuxiliaryFence = historyCurrent; return Task.CompletedTask; }
+        { LastAuxiliaryFence = historyCurrent; return Auxiliary(); }
 
         private bool SourceReady => _testSourceReady && _client is not null;
         // Existing runtime-feedback visuals are an explicit native presentation boundary in this headless host.
@@ -184,7 +188,7 @@ namespace AIFrontend.Pages
         internal string UnrelatedDraft = "keep this draft";
         private void RemoveSessionTab(object tab) { RemovedTabs++; }
         private void DeselectSessionForNewTab() { DeletedBindings++; _selectedSessionId = null; CancelSessionOperations(); ResetMessagePaginationState(); }
-        private void BindComposer() { Bindings++; }
+        private void BindComposer() { Bindings++; if (_selectedSessionId is { } id) HomeSwitchRequests.Add(id); }
         private int _sessionListEpoch;
         private string? _homeSessionsMessage = null;
         private int BeginSessionRefresh() => ++_sessionListEpoch;
@@ -212,12 +216,28 @@ namespace AIFrontend.Pages
         internal async Task<bool> TestHomeComposerProtected(string id)
         { using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(_source!.Identity, id); return !lease.CanSubmitComposer(); }
         private void MirrorSessionSelection(string sessionId, bool userInitiated) { HomeMirrors++; _homeActive = false; }
-        private void SelectSessionItem(string sessionId) { _testHiddenSelection = _sessionItems[sessionId]; }
-        private Task SwitchToSessionAsync(string sessionId, Action? onBound = null)
+        private void SelectSessionItem(string sessionId) { if (_sessionItems.TryGetValue(sessionId, out var item)) _testHiddenSelection = item; }
+        private sealed record SessionReturnTarget(string Id);
+        private void ClearSessionReturnContext() { _sessionReturnContext = null; }
+        private void InstallSessionReturnContext(SessionReturnTarget? target) { }
+        private void RestartSessionEventSync(string sessionId) { StopEventSync(); }
+        private sealed class Surface
         {
-            HomeSwitchRequests.Add(sessionId); _selectedSessionId = sessionId; _sessionCts = new();
-            onBound?.Invoke(); return Task.CompletedTask;
+            internal bool IsOpen;
+            internal void ClearAll() { }
+            internal void HideConfirm() { }
+            internal void SetBusy(bool busy, object? message) { }
         }
+        private readonly Surface _interactionsView = new(), _sessionRecoveryPanel = new(), PermissionBar = new();
+        private bool _sessionProtectionHint = false, _interactionBusy = false, _deliveredNoticeShown = false;
+        private object? _recoveryOrigin = null;
+        private long _mutationEpoch;
+        private readonly HashSet<string> _pendingAckIds = new();
+        internal bool TestResetSurface => !_sessionProtectionHint && !_interactionBusy && !_deliveredNoticeShown && _recoveryOrigin is null;
+        private void ConfigureAgentSelectorForSession(string sessionId) { }
+        private void UpdateWaitingText() { }
+        private void UpdateInteractionsSection() { }
+        private void RaiseSessionTracked(string sessionId, OpenCodeSessionTrackReason reason) { }
         internal object TestPrepareHomeClick(string id, string directory)
         {
             _homeActive = true; _selectedSessionId = null; _sessionCts = null;
@@ -283,6 +303,27 @@ namespace AIFrontend.Pages
 
         internal Task TestLoadOlderAsync() => LoadOlderMessagesAsync();
         internal Task TestLatestAsync() => RefreshMessagesAsync();
+        internal Task TestSwitchAsync(string id, string? directory = null, Action? onBound = null) => SwitchToSessionAsync(id, directory: directory, onBound: onBound);
+        internal Task TestNavigateAsync(string id) => NavigateToSessionAsync(id);
+        internal string TestEmptyText => EmptyStateText.Text;
+        internal bool TestRefreshQueued => _refreshQueued;
+        internal string? TestBindingDirectory => _messageBinding?.Directory;
+        internal int TestCachedBindings => _retainedMessageWindows.Count;
+        internal long TestCachedBytes => System.Linq.Enumerable.Sum(_retainedMessageWindows, slot => slot.Bytes);
+        internal int TestCachedRows => System.Linq.Enumerable.Sum(_retainedMessageWindows, slot => slot.Older.Count + slot.Latest.Count);
+        internal void TestRevokeSource() { _source!.Revoke(); ResetMessagePaginationState(); _conversationView.ClearMessages(); }
+        internal void TestUnload() { _pageActive = false; _pageGeneration++; CancelSessionOperations(); ResetMessagePaginationState(); _conversationView.ClearMessages(); }
+        internal void TestRemoveDirectory(string id) => _sessionItems.Remove(id);
+        internal void TestReplaceSource()
+        {
+            _source = new OpenCodePageSource(_source!.Identity, ++_sourceRevision, () => _client!);
+            _sourceGeneration++;
+        }
+        internal object TestOlderBuffer => _olderMessages;
+        internal object TestLatestBuffer => _latestMessages;
+        internal void TestAdvanceRevisionOnly() => _sourceRevision++;
+        internal void TestAdvancePageGeneration() => _pageGeneration++;
+        internal void TestForeignSource() { _source = new OpenCodePageSource("foreign-source", _sourceRevision, () => _client!); }
         internal void TestAcceptedHistory(string? boundary) => ResetAcceptedHistoryProjection(boundary);
         internal long TestEpoch => _messageHistoryEpoch;
         internal int TestAppliedCount => _conversationView.Applied.Count;

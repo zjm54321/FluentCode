@@ -46,15 +46,17 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeInteractionGate.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationInteractions.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs'),
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyTests.cs'),
+    (Join-Path $PSScriptRoot 'SessionBindingTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
 $ackPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'
 $eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
-$extractions = @(@{ Path = $pagePath; Names = @('RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
+$extractions = @(@{ Path = $pagePath; Names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn') },
@@ -90,6 +92,7 @@ using SessionControlKind = AIFrontend.Services.Notifications.SessionControlKind;
 using Windows.ApplicationModel.DataTransfer;
 using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
 namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated

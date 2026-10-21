@@ -187,6 +187,13 @@ internal static partial class Program
         {
             foreach (var (name, run) in new (string, Func<Task>)[]
             {
+                ("real Switch/Navigate immediate authoritative loading and exact empty/error state", BindingImmediateAndEmpty),
+                ("binding refresh owners isolate late reads, auxiliary waits and finally queues", BindingLateOwners),
+                ("accepted two-buffer windows reused with bounded page-owned slots", BindingWindowReuse),
+                ("failure/cancellation, rapid same-ID return and transferred continuation buffers", BindingFailureAndRapidReturn),
+                ("source/revision/directory identity and unknown-directory resolution", BindingExactIdentity),
+                ("source, revision and page-generation independently isolate retained windows", BindingIndependentGenerations),
+                ("rollback/workflow/revocation/unload evict visual windows and refresh owners", BindingInvalidation),
                 ("rolled-off window preserved and updated in place", RolledOffWindowPreservedAndUpdated),
                 ("refresh/continuation completion orders consistent", RefreshOlderOrdersConsistent),
                 ("exhausted/stopped chains not revived by polling", StopStatesNotRevivedByPolling),

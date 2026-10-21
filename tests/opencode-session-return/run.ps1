@@ -38,6 +38,13 @@ $names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'CancelSessionOpera
     'CreateOperationToken', 'TryStartRead', 'ProcessNavigationTargetAsync', 'LocateSessionAsync',
     'DescribeNavigationReadFailure', 'ApplyNavigationResult', 'OnPageUnloaded', 'InvalidateForSourceChange', 'DisposeOwnClient')
 $methods = @($names | ForEach-Object { Extract-Method $page $_ })
+$builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
+$methods += Extract-Method ([IO.File]::ReadAllText($builtinPath)) 'ResetAcceptedHistoryProjection'
+$methods += Extract-Method $page 'OrderMessages'
+$methods += Extract-Method $page 'IsScrollContextCurrent'
+$sourceReady = [regex]::Match($page, '(?m)^    private bool SourceReady =>[^;]*;')
+if (!$sourceReady.Success) { throw 'Missing production SourceReady property.' }
+$methods += $sourceReady.Value
 $header = @'
 using System;
 using System.Collections.Generic;
@@ -64,39 +71,46 @@ if (!$page.Contains('|| !string.Equals(_selectedSessionId, target.SessionId, Str
 }
 $production = @()
 @('OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.View.cs',
-    'OpenCodeClient.SessionInfo.cs', 'OpenCodeClient.ImageFiles.cs', 'OpenCodeImageFile.cs', 'OpenCodeAttachment.cs', 'OpenCodeDtos.Commands.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
-    'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeSessionAncestry.cs',
+    'OpenCodeClient.SessionInfo.cs', 'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs', 'OpenCodeClient.ImageFiles.cs', 'OpenCodeImageFile.cs', 'OpenCodeAttachment.cs', 'OpenCodeDtos.Commands.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
+    'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeManualBackgroundIndex.cs', 'OpenCodeNoticeDismissals.cs', 'OpenCodeSessionAncestry.cs',
     'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Inbox.cs',
     'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Sessions.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_
 }
 @('OpenCodePageSource.cs', 'OpenCodeInteractionGate.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs',
-    'NotificationActivationInfo.cs', 'NotificationSource.cs') | ForEach-Object {
+    'NotificationActivationInfo.cs', 'NotificationSource.cs', 'OpenCodeExecutionProjection.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Services/Notifications" $_
 }
 @('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SessionReturn.Ui.cs', 'OpenCodePage.SubagentNavigation.cs',
-    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.MarkdownImages.cs') | ForEach-Object {
+    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages" $_
 }
 @('OpenCodeConversationView.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs',
-    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs') | ForEach-Object {
+    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
 $commonHost = Join-Path $repo 'tests/opencode-instruction-notice/ConversationView.TestHost.cs'
 $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'))
-Get-FileHash -LiteralPath ($production + $tests + @($pagePath, $PSCommandPath)) -Algorithm SHA256 |
-    Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
+$inputs = @($production + $tests + @($pagePath, $builtinPath, $extracted, $PSCommandPath)) | Sort-Object -Unique
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 |
+    Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
+@{ CompiledSources = @($production + $tests + @($extracted)); ExtractedFrom = @($pagePath, $builtinPath); ExtractedMembers = @($names + @('OrderMessages', 'IsScrollContextCurrent', 'SourceReady', 'ResetAcceptedHistoryProjection')) } |
+    ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += ($production + $tests + @($extracted)) | ForEach-Object { '"' + $_ + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
+New-Item -ItemType File -Path (Join-Path $output 'compile.log') -Force | Out-Null
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeSessionReturnTests.runtimeconfig.json')
-Write-Output "Headless compilation passed (SDK $($sdk.Name); $($names.Count) extracted methods; warnings treated as errors)."
+Write-Output "Headless compilation passed (SDK $($sdk.Name); $($methods.Count) extracted members; warnings treated as errors)."
 & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'test.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
+Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
+if ([IO.File]::ReadAllText((Join-Path $output 'source-hashes-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'source-hashes.json'))) { throw 'Session-return inputs changed during validation.' }
+Get-FileHash -LiteralPath $assembly, $responseFile, (Join-Path $output 'compile.log'), (Join-Path $output 'test.log'), (Join-Path $output 'input-membership.json') -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'artifact-hashes.json')

@@ -39,6 +39,7 @@ $sources += Get-Item (Join-Path $PSScriptRoot 'ComposerActivity.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.AgentIntegration.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'Program.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'NativeActions.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
