@@ -134,6 +134,7 @@ namespace AIFrontend.Pages
         private void ScrollToBottom(bool animated) { }
         private readonly TextBlock EmptyStateText = new();
         private void UpdateScrollToBottomButton() { }
+        private void RefreshRightPanelMetadata() { } // B2 native slot projection is outside this pagination host.
         private void UpdateComposerButtons() { }
         internal Func<bool>? LastAuxiliaryFence;
         internal Func<Task> Auxiliary = () => Task.CompletedTask;

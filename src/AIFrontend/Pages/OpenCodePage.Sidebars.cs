@@ -102,6 +102,7 @@ public sealed partial class OpenCodePage
             ContextRingHost.Visibility = (_sidebarLayout.ShowHeaderContext || !workspaceVisible) && hasSessionSurface
                 ? Visibility.Visible : Visibility.Collapsed;
             RightContextRingHost.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
+            RefreshRightPanelMetadata();
         }
         finally { _sidebarApplying = false; }
     }

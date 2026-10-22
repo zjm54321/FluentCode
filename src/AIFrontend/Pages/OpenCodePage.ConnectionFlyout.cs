@@ -15,7 +15,7 @@ namespace AIFrontend.Pages;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 读取时机：只在 Flyout 打开时（或点 Flyout 内“重新读取”）读取。服务版本 = 一次 GET api/info，按来源引用 + Revision +
+/// 读取时机：安装来源时为常驻页脚读取服务版本；Flyout 打开时补读未加载/失败的版本（或点“重新读取”）。服务版本 = 一次 GET api/info，按来源引用 + Revision +
 /// 来源代际 + 页面客户端归属，换源即作废；MCP / 插件复用会话概况控制器的同一次显式读取（打开时若当前会话尚无结果才读取），
 /// 因为插件/MCP 目录按会话目录查询。没有计时器、没有轮询；Flyout 关闭后不再更新内容。
 /// </para>
@@ -76,6 +76,7 @@ public sealed partial class OpenCodePage
     /// <summary>会话概况快照或连接状态变化时调用：仅当 Flyout 正在显示才重建内容。</summary>
     private void RenderConnectionFlyoutIfOpen()
     {
+        RefreshRightPanelFooter();
         if (ConnectionFlyout is { IsOpen: true })
         {
             RenderConnectionFlyout();

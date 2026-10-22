@@ -210,6 +210,7 @@ public sealed partial class OpenCodePage : Page
         InitializeSessionStateUi();
         InitializeSessionInsights();
         InitializeSidebars();
+        InitializeRightPanelMetadata();
 
         UpdateConnectionStatus();
         UpdateComposerButtons();
@@ -471,6 +472,7 @@ public sealed partial class OpenCodePage : Page
         BindComposer();
         if (_newSessionDraftActive) EnsureBlankPreferences();
         ShowWorkspace();
+        _ = ReadServerInfoAsync(); // B2 footer: once per installed source, never polled.
         _ = RefreshSessionsAsync();
         _ = TryDrainNavigationQueueAsync();
     }
@@ -3931,6 +3933,7 @@ public sealed partial class OpenCodePage : Page
 
     private void UpdateEmptyState()
     {
+        RefreshRightPanelMetadata();
         string? text = null;
         if (_selectedSessionId is null)
         {

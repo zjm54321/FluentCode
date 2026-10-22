@@ -137,6 +137,7 @@ public sealed partial class OpenCodePage
         _messageRevertBoundary = boundary;
         _messageHistoryBoundaryKnown = true;
         _messageHistoryNeedsState = false;
+        OnRightPanelSessionMetadata(state);
         OnContextSessionMetadata(state.Model is { } model ? new OpenCodeModelRef
         {
             Id = model.Id, ProviderId = model.ProviderId, Variant = model.Variant,
@@ -145,6 +146,7 @@ public sealed partial class OpenCodePage
     }
 
     partial void CaptureContextMetadataVersion(ref long version);
+    partial void OnRightPanelSessionMetadata(SessionControlState state);
     partial void OnContextSessionMetadata(OpenCodeModelRef? model, string directory, long version);
     partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
 
