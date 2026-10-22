@@ -116,7 +116,7 @@
 | **B1b** | B | `anthropic/claude-opus-5-5` | designer | 模型选择 Dialog 间距/层级/可读性舒展重构（新增，独占commit） | B1a (前置，B2之前) | `4d53884` | 已提交，待统一验收；解决拥挤感、舒展排版、层级清晰、兼容A2/A9/A10，不混R3 |
 | **B2** | B | `anthropic/claude-opus-5-5` | designer + fixer | 右侧栏会话元数据、复制 ID、只读目录、官方美术+所连服务版本+绿点 | B1 | `7576978` | 已提交，待统一验收；点击复制 ID、显示后端服务版本、真实连接绿点（无文字）、弹详情 |
 | **B3** | B | `anthropic/claude-opus-5-5` | fixer + designer | 上下文与轮次、双层用量（主Agent单行/明细行/总token汇总+总费用） | B2, A10 | `b628112` | 已提交，待统一验收；真实来源/单位、总token汇总、右侧容器就绪、复用A10原生数据源 |
-| **B4** | B | `anthropic/claude-opus-5-5` | fixer + designer | 左上亚克力预设卡片、Agent与对应子智能体挂载＋Shell终端分组 | B1 | `待办` | 实例挂在对应已配置Agent下、终端独立分组不伪装Agent、无空壳 |
+| **B4** | B | `anthropic/claude-opus-5-5` | fixer + designer | 左上亚克力预设卡片、Agent与对应子智能体挂载＋Shell终端分组 | B1 | `42f79fc` | 已提交，待统一验收；实例挂在对应已配置Agent下、终端独立分组不伪装Agent、无空壳 |
 | **B5** | B | `anthropic/claude-opus-5-5` | designer | 左下独立卡片：Agent 一行 + 模型与思考强度一行 | B1, A2 | `8137b4b` | 已提交，待统一验收；复用前阶段选择逻辑、与当前会话准确绑定 |
 | **B6** | B | `anthropic/claude-opus-5-5` | designer + fixer | 窄屏自适应、两行式 Composer、动态仪表盘、移除旧顶栏整行 | B1, B5 | `待办` | 默认两行、仪表盘动态档位、全屏入框、新入口接通后删旧顶栏整行 |
 | **B7** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer + 菜单与合法上下文原生字符触发（/和@候选，!由B8交付） | B6 | `cfd7656` | 已提交，待统一验收；菜单形态、输入框特定合法位置触发不误触、候选真实、保留附件 |
@@ -768,7 +768,7 @@
 | **B1b** | 模型选择弹窗间距与可读性重构 | `anthropic/claude-opus-5-5` | `style(opencode): give the model picker dialog roomier spacing and hierarchy` | `4d538846197f0b356b9bb00cf4e339b16c08b966` | 已提交，待统一验收 | parent |
 | **B2** | 右侧栏元数据与官方详情点 | `anthropic/claude-opus-5-5` | `feat(opencode): show session metadata and backend version in the right panel` | `75769784747a05c3a15565b355954afd0408cc5a` | 已提交，待统一验收 | parent |
 | **B3** | 上下文分层用量与右侧容器结构 | `anthropic/claude-opus-5-5` | `feat(opencode): layered context usage and to do container in the right panel` | `b6281122e710d5a634a264fa6d0d7fe743a808b7` | 已提交，待统一验收 | parent |
-| **B4** | 亚克力 Agent 与子智能体树＋终端分组 | `anthropic/claude-opus-5-5` | `feat(opencode): acrylic agent hierarchy with subagents and terminal group [建议]` | `待办` | 待验收 | parent |
+| **B4** | 亚克力 Agent 与子智能体树＋终端分组 | `anthropic/claude-opus-5-5` | `feat(opencode): agent tree with subagent instances and shell group in left sidebar` | `42f79fcf4b474ade4a1797a88158f0cdd46c9983` | 已提交，待统一验收 | parent |
 | **B5** | 左下独立会话控制卡片 | `anthropic/claude-opus-5-5` | `feat(opencode): session agent and model control card in the left sidebar` | `8137b4bdde8be161e4469b204da464a6265f30f2` | 已提交，待统一验收 | parent |
 | **B6** | 窄屏双行 Composer 与移除旧顶栏 | `anthropic/claude-opus-5-5` | `feat(opencode): two-row composer and remove legacy top header [建议]` | `待办` | 待验收 | parent |
 | **B7** | `+` 菜单整合与字符原生触发 | `anthropic/claude-opus-5-5` | `feat(opencode): composer plus menu and contextual char triggers` | `cfd7656f6d395e8f20e40d3629277036eb83d29f` | 已提交，待统一验收 | parent |
