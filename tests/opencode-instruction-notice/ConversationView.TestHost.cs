@@ -191,6 +191,8 @@ namespace AIFrontend.Pages.OpenCode
         internal void SetBackgroundAction(Action? action) => BackgroundAction = action;
         internal bool InlineLeaf { get; private set; }
         internal string? ExecutingModelId { get; private set; }
+        internal string? CurrentStep { get; private set; }
+        internal void SetCurrentStep(string step) => CurrentStep = step;
         internal bool WorkingReasoning { get; private set; }
         internal bool WorkingTool { get; private set; }
         internal void SetWorkingContext(bool reasoning, bool toolRunning, string? executingModelId)

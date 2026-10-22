@@ -47,11 +47,26 @@ internal static class Program
         ancestor.Visibility=Visibility.Visible;Check(clock.SubscriberCount==baseline+1,"visible working ancestor resumes");
         indicator.Label.Unload();Check(clock.SubscriberCount==baseline,"unload unsubscribes");indicator.Label.Load();indicator.SetActive(false);
         Check(clock.SubscriberCount==baseline,"Done unsubscribes");indicator.Dispose();
-        var group=new OpenCodeToolGroupView("group",(_,_)=>{});
+        var toggles=0;var opened=0;
+        var group=new OpenCodeToolGroupView("group",(_,_)=>toggles++);
         var summary=new OpenCodeStepRunSummary("处理中…","",0,0,true,null,false,"处理中");
         group.SetWorkingContext(true,false,"claude-sonnet");group.Update(summary,true,true);
+        group.BindSingleLeaf(()=>opened++,null,null,"读取");
+        group.ItemsHost.Children.Add(new TextBlock {Text="step one"});
+        group.ItemsHost.Children.Add(new TextBlock {Text="step two"});
         LoadTree(group.Element);
         Check(clock.SubscriberCount==baseline+1&&DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"group reuses one loaded header timer and shared clock");
+        group.SetCurrentStep("读取 · file-a.cs · 运行中");
+        ((Button)group.DetailAnchor).Press();
+        Check(!group.IsExpanded&&toggles==1&&opened==0,"active single-leaf header collapses rather than opening detail");
+        Check(((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Collapsed&&group.ItemsHost.Children.Count==2,"collapse hides rows without removing them");
+        group.SetCurrentStep("执行 · dotnet test · 运行中");group.Update(summary with {SuccessCount=1},false,true);
+        var workingLabel=Walk(group.Element).Single(e=>e.Automation.TryGetValue("Id",out var id)&&id=="OpenCodeWorkingIndicator.group");
+        var labelTexts=((StackPanel)workingLabel).Children.OfType<TextBlock>().ToArray();
+        Check(labelTexts[0].Text=="执行 · dotnet test · 运行中"&&labelTexts[1].Visibility==Visibility.Collapsed,"collapsed native label updates real step and omits decorative phrase/elapsed");
+        Check(group.DetailAnchor.Automation["Name"].Contains("dotnet test",StringComparison.Ordinal)&&clock.SubscriberCount==baseline+1,"collapsed accessibility reports latest real step while gear keeps working");
+        ((Button)group.DetailAnchor).Press();
+        Check(group.IsExpanded&&toggles==2&&((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Visible&&group.ItemsHost.Children.Count==2,"native re-expand reveals intact rows");
         group.Element.Visibility=Visibility.Collapsed;
         Check(clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"hidden group stops clock and cadence timer");
         group.Element.Visibility=Visibility.Visible;
@@ -61,4 +76,6 @@ internal static class Program
     }
     private static void LoadTree(FrameworkElement e)
     { e.Load();if(e is Panel p)foreach(var child in p.Children.OfType<FrameworkElement>())LoadTree(child);if(e is Button {Content:FrameworkElement content})LoadTree(content);if(e is Border {Child:FrameworkElement child2})LoadTree(child2); }
+    private static System.Collections.Generic.IEnumerable<FrameworkElement> Walk(FrameworkElement e)
+    { yield return e;if(e is Panel p)foreach(var child in p.Children.OfType<FrameworkElement>())foreach(var item in Walk(child))yield return item;if(e is Button {Content:FrameworkElement content})foreach(var item in Walk(content))yield return item;if(e is Border {Child:FrameworkElement child2})foreach(var item in Walk(child2))yield return item; }
 }

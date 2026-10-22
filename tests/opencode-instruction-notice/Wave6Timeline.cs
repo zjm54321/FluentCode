@@ -107,7 +107,7 @@ internal static class Wave6Timeline
         Check(completionSource.Contains("OpenCodeStepRunPresentation.SubagentGlyph") && completionSource.Contains("_chip.UpdateRow(OpenCodeStepRunPresentation.DescribeAsyncCompletion(completion)")
             && !completionSource.Contains("new Expander") && !completionSource.Contains("查看子会话"), "wave6.native-completion-wrapper-has-direct-peer-chip-no-intermediate-expand-or-link");
         var groupSource = File.ReadAllText(Path.Combine(root, "OpenCodeToolGroupView.cs"));
-        Check(groupSource.Contains("if (_openLeaf is { } open) { open(); return; }") && groupSource.Contains("_header.PointerEntered")
+        Check(groupSource.Contains("if (!_summary.IsActive && _openLeaf is { } open) { open(); return; }") && groupSource.Contains("_header.PointerEntered")
             && groupSource.Contains("tool-group.progress.before") && groupSource.Contains("tool-group.expansion.before") && groupSource.Contains("tool-group.expansion.after"), "wave6.native-single-leaf-dispatch-and-existing-diagnostics-preserved");
         Check(groupSource.Contains("titleCluster.Children.Add(_leafLabel);") && groupSource.Contains("titleCluster.Children.Add(_headerText);")
             && groupSource.Contains("titleCluster.Children.Add(_chevron);") && groupSource.Contains("Grid.SetColumn(titleCluster, 1)")
@@ -156,7 +156,7 @@ internal static class Wave6Timeline
         Check(toolSource.Contains("_nameText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey)")
             && toolSource.Contains("_targetText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey)")
             && groupSource.Contains("_headerText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey)")
-            && groupSource.Contains("_headerText.Visibility = _openLeaf is null || backgroundRunning ? Visibility.Visible : Visibility.Collapsed"),
+            && groupSource.Contains("_headerText.Visibility = (_openLeaf is null && !ShowsWorkingIndicator) || backgroundRunning ? Visibility.Visible : Visibility.Collapsed"),
             "wave7.compact-native-caption-typography-and-single-operation-title-without-processed-suffix");
 
         ConversationViewTestProbe.Reset();

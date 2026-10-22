@@ -215,25 +215,25 @@ internal static class ConversationLifecycle
         Check(follower.DisposeCount == 1 && !tail.HeaderVisible && leader.Summary is { IsActive: true }
               && leader.Summary.HeaderText.StartsWith("处理中…", StringComparison.Ordinal)
               && ReferenceEquals(tail.Summary, leader.Summary), "chain.live-tail");
-        Check(leader.IsExpanded && tail.IsExpanded && view.Children.Count == 2
-              && view.Children.All(c => c.Visibility == Microsoft.UI.Xaml.Visibility.Visible), "chain.running-auto-expands-with-followers");
+        Check(!leader.IsExpanded && !tail.IsExpanded && view.Children.Count == 2
+              && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Collapsed, "b18.existing-group-choice-survives-return-to-running");
         leader.ToggleForTest();
         Check(leader.IsExpanded && tail.IsExpanded
-              && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Visible, "wave6.active-turn-keeps-follower-expanded");
+              && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Visible, "b18.active-turn-manual-expand-shows-follower");
         var stepC2 = Step("msg_a3", T0 + 5_000, null, TimedTool("part_c", T0 + 6_000, null, "running"),
             new { id = "r_more", type = "reasoning", text = "MORE" });
         view.ApplyMessages(new[] { stepA, stepC2 });
-        Check(leader.IsExpanded && tail.IsExpanded && leader.Summary is { IsActive: true }, "wave6.active-turn-cannot-collapse-on-refresh");
+        Check(leader.IsExpanded && tail.IsExpanded && leader.Summary is { IsActive: true }, "b18.active-turn-keeps-manual-expansion-on-refresh");
         leader.ToggleForTest();
-        Check(leader.IsExpanded && tail.IsExpanded && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Visible,
-            "chain.follower-entry-shown-when-expanded");
+        Check(!leader.IsExpanded && !tail.IsExpanded && view.Children[1].Visibility == Microsoft.UI.Xaml.Visibility.Collapsed,
+            "b18.follower-entry-hidden-when-collapsed");
 
         // A user message breaks the chain: each segment gets its own visible header.
         var user = Message(new { id = "msg_u", type = "user", text = "NEXT" });
         view.ApplyMessages(new[] { stepA, user, stepC });
         Check(leader.HeaderVisible && tail.HeaderVisible && !ReferenceEquals(leader.Summary, tail.Summary)
               && leader.Summary is { IsActive: false } && tail.Summary is { IsActive: true }, "chain.broken-by-user-message");
-        Check(!leader.IsExpanded && tail.IsExpanded, "chain.finished-leader-collapses-new-running-leader-expands");
+        Check(!leader.IsExpanded && tail.IsExpanded, "b18.finished-leader-retains-manual-collapse-new-running-leader-expands");
         view.ClearMessages();
         Check(rows.All(r => r.DisposeCount == 1) && leader.DisposeCount == 1 && tail.DisposeCount == 1, "chain.clear-disposes");
 
@@ -248,8 +248,7 @@ internal static class ConversationLifecycle
     }
 
     // Scenario 4b (F5 expansion rules): history loaded finished starts collapsed; a manual toggle during a run is
-    // respected until it finishes (no re-expand) and the group still auto-collapses on finish; a post-finish toggle
-    // survives re-renders; re-entering running auto-expands again.
+    // preserved for the whole group lifetime, including finish and repeated activity changes.
     private static void RunningExpansionRules()
     {
         ConversationViewTestProbe.Reset();
@@ -263,28 +262,28 @@ internal static class ConversationLifecycle
         view.ApplyMessages(new[] { Grouped("msg_h", 4, lastStatus: "running", withQuestion: false) });
         Check(group.IsExpanded && group.Summary is { IsActive: true }, "rules.transition-into-running-expands");
         group.ToggleForTest();
-        Check(group.IsExpanded, "wave6.active-turn-collapse-is-ignored");
+        Check(!group.IsExpanded, "b18.active-turn-collapse-is-accepted");
         view.ApplyMessages(new[] { Grouped("msg_h", 5, lastStatus: "running", withQuestion: false) });
-        Check(group.IsExpanded && group.Summary is { IsActive: true }, "wave6.whole-turn-remains-expanded");
+        Check(!group.IsExpanded && group.Summary is { IsActive: true }, "b18.whole-turn-remains-manually-collapsed");
         group.ToggleForTest();
         view.ApplyMessages(new[] { Grouped("msg_h", 5, lastStatus: "running", withQuestion: false) });
         Check(group.IsExpanded, "rules.manual-expand-during-run-respected");
         view.ApplyMessages(new[] { Grouped("msg_h", 5, withQuestion: false) });
         Check(group.IsExpanded && group.Summary is { IsActive: true }, "wave6.ended-step-awaits-turn-terminal");
         view.SetCurrentTurnActivity(false);
-        Check(!group.IsExpanded && group.Summary is { IsActive: false }, "rules.finish-collapses-despite-manual-toggle");
+        Check(group.IsExpanded && group.Summary is { IsActive: false }, "b18.finish-preserves-manual-expansion");
 
         group.ToggleForTest();
         view.ApplyMessages(new[] { Grouped("msg_h", 5, lastStatus: "error", withQuestion: false) });
         view.ApplyMessages(new[] { Grouped("msg_h", 5, withQuestion: false) });
-        Check(group.IsExpanded, "rules.post-finish-toggle-remembered");
+        Check(!group.IsExpanded, "b18.post-finish-collapse-remembered");
         group.ToggleForTest();
         view.SetCurrentTurnActivity(true);
         view.ApplyMessages(new[] { Grouped("msg_h", 6, lastStatus: "running", withQuestion: false) });
-        Check(group.IsExpanded, "rules.re-entering-running-expands-again");
+        Check(group.IsExpanded, "b18.re-entering-running-preserves-manual-expansion");
         view.ApplyMessages(new[] { Grouped("msg_h", 6, withQuestion: false) });
         view.SetCurrentTurnActivity(false);
-        Check(!group.IsExpanded && group.DisposeCount == 0, "rules.second-finish-collapses");
+        Check(group.IsExpanded && group.DisposeCount == 0, "b18.second-finish-preserves-choice");
         view.ClearMessages();
     }
 

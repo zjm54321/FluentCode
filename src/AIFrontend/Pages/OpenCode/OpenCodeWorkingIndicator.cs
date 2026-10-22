@@ -100,10 +100,11 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         Update();
     }
 
-    internal void SetText(string phrase, string elapsed)
+    internal void SetText(string phrase, string elapsed, bool decorative = true)
     {
         _fullPhrase = phrase ?? string.Empty;
-        var stem = OpenCodeWorkingPhrases.Stem(_fullPhrase);
+        var stem = decorative ? OpenCodeWorkingPhrases.Stem(_fullPhrase) : _fullPhrase;
+        _dots.Visibility = decorative ? Visibility.Visible : Visibility.Collapsed;
         if (!string.Equals(_phrase.Text, stem, StringComparison.Ordinal)) _phrase.Text = stem;
         if (!string.Equals(_elapsed.Text, elapsed, StringComparison.Ordinal)) _elapsed.Text = elapsed ?? string.Empty;
         _elapsed.Visibility = string.IsNullOrEmpty(elapsed) ? Visibility.Collapsed : Visibility.Visible;

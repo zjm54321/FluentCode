@@ -144,6 +144,24 @@ internal static class Program
         working.ApplyMessages(new[]{executing,next with {Model=null}});
         Check(activeGroup.ExecutingModelId is null,"missing actual execution model remains unknown rather than using previous step");
         working.ClearMessages();
+        ConversationViewTestProbe.Reset();
+        OpenCodeMessage StreamingSteps(int count) => System.Text.Json.JsonSerializer.Deserialize<OpenCodeMessage>(
+            System.Text.Json.JsonSerializer.Serialize(new { id="msg_steps",type="assistant",time=new {created=1700000000000d},
+                content=Enumerable.Range(0,count).Select(i=>new {id="call_"+i,type="tool",name="read",state=new {status=i==count-1?"running":"completed",input=new {path="file-"+i+".cs"}}}).ToArray() }),OpenCodeJson.Options)!;
+        var stepsView=new OpenCodeConversationView();stepsView.ApplyMessages(new[]{StreamingSteps(2)});
+        var stepsGroup=ConversationViewTestProbe.Records.Where(r=>r.Operation=="Construct").Select(r=>r.Subject).OfType<OpenCodeToolGroupView>().Single();
+        Check(stepsGroup.IsExpanded,"new working group defaults expanded");stepsGroup.ToggleForTest();
+        Check(!stepsGroup.IsExpanded,"manual working collapse is accepted");
+        for(var i=3;i<=20;i++)stepsView.ApplyMessages(new[]{StreamingSteps(i)});
+        Check(!stepsGroup.IsExpanded&&stepsGroup.CurrentStep!.Contains("file-19.cs",StringComparison.Ordinal),"streaming preserves collapse while latest real step keeps updating");
+        Check(stepsGroup.ItemsHost.Children.Count==20,"all streamed rows retained while collapsed");
+        stepsGroup.ToggleForTest();
+        Check(stepsGroup.IsExpanded&&stepsGroup.ItemsHost.Children.Count==20,"re-expanding retains every step");
+        stepsView.ApplyMessages(new[]{StreamingSteps(21)});stepsView.SetCurrentTurnActivity(false);
+        Check(stepsGroup.IsExpanded,"manual expansion persists through updates and terminal transition for group lifetime");
+        stepsView.ClearMessages();stepsView.SetCurrentTurnActivity(null);stepsView.ApplyMessages(new[]{StreamingSteps(2)});
+        var resetGroup=ConversationViewTestProbe.Records.Where(r=>r.Operation=="Construct").Select(r=>r.Subject).OfType<OpenCodeToolGroupView>().Last();
+        Check(resetGroup.IsExpanded&&!ReferenceEquals(resetGroup,stepsGroup),"new group lifetime resets manual choice");stepsView.ClearMessages();
         Console.WriteLine($"PASS visible-idle actual ConversationView/query: {checks} assertions; controlled WinUI tree/transforms only, NOT native geometry/ACK proof");
     }
     private sealed class BrokenWindow:System.Collections.Generic.IReadOnlyList<OpenCodeMessage>

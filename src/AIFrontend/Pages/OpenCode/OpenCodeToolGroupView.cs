@@ -9,10 +9,10 @@ namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
 /// 时间线“处理过程”分组（F5，AutomationId <c>OpenCodeToolGroup.{首个部件 id}</c>）：一个助手回合中两段文本输出之间的
-/// 全部思考 / 工具调用折叠为一行：整轮进行中保持展开，整轮终态首次到达后收起；历史分组保留独立手动选择。
+/// 全部思考 / 工具调用折叠为一行：默认进行中展开、终态收起；手动选择在本组整个生命周期内保留。
 /// 头部（wave5 H2）：“▸ 已处理 12 秒”，右侧只显示结果计数——成功 “n ✓”（CheckMark 字形 + 成功色）与出错 “m ✗”
 /// （Cancel 字形 + 危险色，仅 m &gt; 0 时显示，从不隐藏）；不再显示“思考 · N 个工具调用 · edit×…”文字摘要（仍保留在读屏名称中）。
-/// 进行中显示右侧 ProgressRing + “处理中… N 秒”。单叶头部直接预览/打开叶详情；多叶历史头部只切换本组列表。
+/// 进行中显示共享时钟驱动的齿轮；展开显示装饰词与全部步骤，收起只显示当前真实步骤。已完成单叶头部直接打开详情。
 /// 同一回合跨多条 assistant 消息（每步一条）时，只有链首分组显示头部，后续分组隐藏头部并跟随链首的展开状态
 /// （由 <see cref="OpenCodeConversationView"/> 计算并调用 <see cref="Update"/>）。
 /// 原生 Button + StackPanel + Border，内置文本样式与主题画刷；不派生控件、不自定义模板（不使用 Expander 子类）。
@@ -34,6 +34,7 @@ internal sealed class OpenCodeToolGroupView
     private readonly StackPanel _errorTally;
     private readonly TextBlock _errorText;
     private readonly ProgressRing _progress;
+    private readonly StackPanel _tally;
     private readonly Border _itemsBorder;
     private readonly StackPanel _items;
     private OpenCodeStepRunSummary _summary = new(string.Empty, string.Empty, 0, 0, false, null, false, string.Empty);
@@ -55,6 +56,13 @@ internal sealed class OpenCodeToolGroupView
     private readonly OpenCodeWorkingPhrasePicker _phrases = new();
     private OpenCodeWorkingActivity _activity;
     private OpenCodeWorkingFamily _family;
+    private string _currentStep = "处理中…";
+
+    internal void SetCurrentStep(string step)
+    {
+        _currentStep = step;
+        if (_summary.IsActive) { RefreshWorkingText(); UpdateHeaderAutomation(); }
+    }
 
     internal void SetInlineLeaf(bool inline)
     {
@@ -63,7 +71,7 @@ internal sealed class OpenCodeToolGroupView
         _itemsBorder.Margin = inline ? new Thickness(0) : new Thickness(15, 0, 0, 0);
         _itemsBorder.Padding = inline ? new Thickness(0) : new Thickness(8, 0, 0, 0);
         _itemsBorder.BorderThickness = inline ? new Thickness(0) : new Thickness(1, 0, 0, 0);
-        _itemsBorder.Visibility = inline || _expanded && _openLeaf is null ? Visibility.Visible : Visibility.Collapsed;
+        _itemsBorder.Visibility = inline || _expanded && (_summary.IsActive || _openLeaf is null) ? Visibility.Visible : Visibility.Collapsed;
         RefreshWorking();
         UpdateTimer();
     }
@@ -83,9 +91,9 @@ internal sealed class OpenCodeToolGroupView
         _leafStatus = status;
         _icon.Glyph = glyph ?? (_summary.ReasoningOnly ? "\uEA80" : "\uE9F5");
         _leafLabel.Text = name ?? string.Empty;
-        _leafLabel.Visibility = name is null ? Visibility.Collapsed : Visibility.Visible;
-        _chevron.Visibility = open is null ? Visibility.Visible : Visibility.Collapsed;
-        _itemsBorder.Visibility = open is null && _expanded ? Visibility.Visible : Visibility.Collapsed;
+        _leafLabel.Visibility = name is null || _summary.IsActive ? Visibility.Collapsed : Visibility.Visible;
+        _chevron.Visibility = open is null || _summary.IsActive ? Visibility.Visible : Visibility.Collapsed;
+        _itemsBorder.Visibility = (open is null || _summary.IsActive) && _expanded ? Visibility.Visible : Visibility.Collapsed;
         RefreshHeaderText();
         RefreshProgress();
         ApplySettledTone();
@@ -132,6 +140,7 @@ internal sealed class OpenCodeToolGroupView
         (_successTally, _successText) = CreateTally("\uE73E", OpenCodeToolTheme.Success, "OpenCodeToolGroup.Success." + GroupId);
         (_errorTally, _errorText) = CreateTally("\uE711", OpenCodeToolTheme.Critical, "OpenCodeToolGroup.Errors." + GroupId);
         var tally = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
+        _tally = tally;
         tally.Children.Add(_successTally);
         tally.Children.Add(_errorTally);
         _progress = new ProgressRing
@@ -188,8 +197,7 @@ internal sealed class OpenCodeToolGroupView
                 return;
             }
 
-            if (_openLeaf is { } open) { open(); return; }
-            if (_summary.IsActive) return;
+            if (!_summary.IsActive && _openLeaf is { } open) { open(); return; }
             SetExpanded(!_expanded);
             _onUserToggled(GroupId, _expanded);
         };
@@ -332,7 +340,7 @@ internal sealed class OpenCodeToolGroupView
     private void RefreshHeaderText()
     {
         // A single logical operation is the header itself, never “读取 · 已处理”.
-        var backgroundRunning = _openLeaf is not null && _leafLabel.Text.EndsWith("（后台）", StringComparison.Ordinal)
+        var backgroundRunning = !_summary.IsActive && _openLeaf is not null && _leafLabel.Text.EndsWith("（后台）", StringComparison.Ordinal)
             && _leafStatus == OpenCodeToolRowStatus.Running;
         _headerText.Visibility = (_openLeaf is null && !ShowsWorkingIndicator) || backgroundRunning ? Visibility.Visible : Visibility.Collapsed;
         if (backgroundRunning) { _headerText.Text = "后台运行中"; return; }
@@ -454,7 +462,7 @@ internal sealed class OpenCodeToolGroupView
         var elapsed = OpenCodeStepRunPresentation.IsPlausibleTimestamp(started) && now >= started!.Value
             ? OpenCodeStepRunPresentation.FormatDuration(now - started.Value)
             : string.Empty;
-        _working.SetText(_phrases.Current, elapsed);
+        _working.SetText(_expanded ? _phrases.Current : _currentStep, _expanded ? elapsed : string.Empty, decorative: _expanded);
     }
 
     /// <summary>箭头仅在指针悬停于分组内时显示；其余时间透明（保留占位，标题不跳动）。</summary>
@@ -465,8 +473,18 @@ internal sealed class OpenCodeToolGroupView
     {
         _expanded = expanded;
         _chevron.Glyph = expanded ? "\uE70D" : "\uE76C";
-        _itemsBorder.Visibility = _inlineLeaf || expanded && _openLeaf is null ? Visibility.Visible : Visibility.Collapsed;
-        AutomationProperties.SetName(_header, (_openLeaf is null ? string.Empty : _leafLabel.Text + "，") + _summary.AccessibleName + (expanded ? "，已展开" : "，已折叠"));
-        AutomationProperties.SetHelpText(_header, _openLeaf is not null ? "按 Enter 查看详情" : _summary.IsActive ? "本轮处理中，处理过程保持展开" : expanded ? "按 Enter 收起处理过程" : "按 Enter 展开处理过程");
+        _itemsBorder.Visibility = _inlineLeaf || expanded && (_summary.IsActive || _openLeaf is null) ? Visibility.Visible : Visibility.Collapsed;
+        _leafLabel.Visibility = !_summary.IsActive && !string.IsNullOrEmpty(_leafLabel.Text) ? Visibility.Visible : Visibility.Collapsed;
+        _chevron.Visibility = _summary.IsActive || _openLeaf is null ? Visibility.Visible : Visibility.Collapsed;
+        _tally.Visibility = _summary.IsActive && !expanded ? Visibility.Collapsed : Visibility.Visible;
+        RefreshWorkingText();
+        UpdateHeaderAutomation();
+    }
+
+    private void UpdateHeaderAutomation()
+    {
+        var description = _summary.IsActive && !_expanded ? _currentStep : (_openLeaf is null ? string.Empty : _leafLabel.Text + "，") + _summary.AccessibleName;
+        AutomationProperties.SetName(_header, description + (_expanded ? "，已展开" : "，已折叠"));
+        AutomationProperties.SetHelpText(_header, !_summary.IsActive && _openLeaf is not null ? "按 Enter 查看详情" : _expanded ? "按 Enter 收起处理过程" : "按 Enter 展开处理过程");
     }
 }

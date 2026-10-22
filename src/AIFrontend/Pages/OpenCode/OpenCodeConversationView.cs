@@ -1796,52 +1796,25 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void OnStepGroupToggled(string groupId, bool expanded)
     {
-        // Current-turn groups cannot collapse. Only independent historical choices are remembered.
-        if (_activeGroups.Contains(groupId))
-        {
-            ApplyStepChains();
-            return;
-        }
-        else
-        {
-            if (!_groupExpansion.TryGetValue(groupId, out var previous) || previous != expanded) InvalidateIdleViewport();
-            _groupExpansion[groupId] = expanded;
-        }
+        if (!_groupExpansion.TryGetValue(groupId, out var previous) || previous != expanded) InvalidateIdleViewport();
+        _groupExpansion[groupId] = expanded;
 
         ApplyStepChains();
     }
 
     /// <summary>
-    /// 整轮运行期间保持展开；首次进入终态时收起一次。历史分组的独立手动选择跨刷新保留。
+    /// 默认进行中展开、终态收起；手动选择优先，在本组整个生命周期内跨流式刷新和终态保留。
     /// </summary>
     private bool ResolveExpansion(string leaderId, bool active, HashSet<string> nowActive)
     {
-        var wasActive = _activeGroups.Contains(leaderId);
-        if (active)
-        {
-            nowActive.Add(leaderId);
-            if (!wasActive)
-            {
-                _groupExpansion.Remove(leaderId);
-                return true;
-            }
-
-            return true; // Active turns stay expanded; only historical groups have manual collapse choices.
-        }
-
-        if (wasActive)
-        {
-            _groupExpansion.Remove(leaderId);
-            return false;
-        }
-
-        return _groupExpansion.TryGetValue(leaderId, out var userExpanded) && userExpanded;
+        if (active) nowActive.Add(leaderId);
+        return _groupExpansion.TryGetValue(leaderId, out var userExpanded) ? userExpanded : active;
     }
 
     /// <summary>
     /// 跨消息计算处理过程分组：同一回合按步骤拆成多条 assistant 消息时，消息 A 末尾的段与紧随其后的消息 B 开头的段
     /// （两者之间没有可见文本 / 提问 / 其他消息）连成一条链，链首显示合并摘要（“已处理 X 秒”，进行中“处理中… N 秒”），
-    /// 后续段隐藏头部并跟随链首的展开状态（进行中自动展开、结束自动收起、历史默认收起；规则见 ResolveExpansion）。
+    /// 后续段隐藏头部并跟随链首的展开状态（默认进行中展开、终态收起，手动选择优先；规则见 ResolveExpansion）。
     /// 只剩隐藏的后续段（或什么都不显示）的 assistant 条目整体折叠，避免空行间距。
     /// </summary>
     private void ApplyStepChains()
@@ -1981,6 +1954,22 @@ public sealed class OpenCodeConversationView : StackPanel
             // B17: decorative working phrases follow only real state — the latest visible step and the model
             // that is actually executing (including a new assistant with no visible parts yet), never the UI dropdown.
             var latestLeaf = leaves.Count > 0 ? leaves[^1] : null;
+            // Prefer the newest still-running real step; a later completed background notification must not mask it.
+            var currentLeaf = latestLeaf;
+            for (var p = leaves.Count - 1; p >= 0; p--)
+            {
+                var candidate = leaves[p];
+                var model = StepModel(candidate);
+                if (candidate.Reasoning?.Status == OpenCodeToolRowStatus.Streaming
+                    || model is { Status: OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming, IsBackground: false })
+                { currentLeaf = candidate; break; }
+            }
+            var currentModel = currentLeaf is null ? null : StepModel(currentLeaf);
+            var currentStep = currentModel is not null
+                ? currentModel.Name + (string.IsNullOrWhiteSpace(currentModel.Target) ? string.Empty : " · " + currentModel.Target.Replace('\r', ' ').Replace('\n', ' '))
+                    + (string.IsNullOrEmpty(currentModel.StatusText) ? string.Empty : " · " + currentModel.StatusText)
+                : currentLeaf?.Reasoning is { } reasoning ? (reasoning.Status == OpenCodeToolRowStatus.Streaming ? "思考中…" : "思考 · 已完成") : "处理中…";
+            chain[0].Group.SetCurrentStep(currentStep);
             var latestReasoning = latestLeaf?.Reasoning?.Status == OpenCodeToolRowStatus.Streaming;
             var anyToolRunning = tools.Exists(t => t.Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming);
             // Missing model on the newest message means unknown; never borrow a previous step's model.
@@ -1991,7 +1980,7 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 chain[k].IsFollower = k > 0;
                 var leaf = leaves.Count == 1 && k == 0 ? leaves[0] : null;
-                leaf?.SetDetailAnchor?.Invoke(chain[k].Group.DetailAnchor);
+                leaf?.SetDetailAnchor?.Invoke(summary.IsActive ? null : chain[k].Group.DetailAnchor);
                 var leafModel = leaf?.Presentation?.Invoke()
                     ?? (leaf?.LastPart is { } snapshot && leaf.Reasoning is null ? OpenCodeToolRowPresentation.Build(snapshot, leaf.LastCompletion, leaf.ManualBackground) : null);
                 chain[k].Group.BindSingleLeaf(leaf?.OpenDetail, leaf?.HoverEnter, leaf?.HoverExit,
@@ -1999,7 +1988,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     leaf is null ? null : leaf.Glyph?.Invoke() ?? (leafModel is null ? "\uEA80" : leafModel.GlyphOverride ?? OpenCodeToolPartView.KindGlyph(leafModel.Kind)),
                     leaf is null ? null : leafModel?.Status ?? leaf.Reasoning?.Status);
                 chain[k].Group.SetBackgroundAction(leaf?.BackgroundAction?.Invoke());
-                chain[k].Group.SetInlineLeaf(leaf?.InlinePresentation == true);
+                chain[k].Group.SetInlineLeaf(leaf?.InlinePresentation == true && !summary.IsActive);
                 chain[k].Group.Update(summary, expanded, headerVisible: k == 0);
                 chain[k].Group.Element.Visibility = k == 0 || (leaves.Count > 1 && chain[k].HasVisibleLeaves) ? Visibility.Visible : Visibility.Collapsed;
             }
@@ -2032,6 +2021,10 @@ public sealed class OpenCodeConversationView : StackPanel
         if (_retryDeadline is not null && _retryStatus is not null && !Children.Contains(_retryStatus)) Children.Add(_retryStatus);
         ReconcileSteerRows();
     }
+
+    private static OpenCodeToolRowModel? StepModel(PartEntry part)
+        => part.Presentation?.Invoke() ?? (part.LastPart is { } snapshot && part.Reasoning is null
+            ? OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground) : null);
 
     private static void AlignChildren(Panel panel, List<UIElement> elements)
     {

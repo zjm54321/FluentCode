@@ -1,7 +1,7 @@
 # Headless only: installed .NET 10 SDK/reference packs, no restore, no new packages, no UI, no live server.
 # Fake HttpMessageHandler and inert UI/presenter probes only. Production sources compile read-only.
 # The in-progress OpenCodeSessionUiState*.cs lane and the WinUI pairing service are excluded here.
-param([switch]$QueueOnly)
+param([switch]$QueueOnly, [string]$EvidenceRoot)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -9,7 +9,8 @@ $dotnetRoot = Split-Path $dotnet
 $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
-$output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-instruction-notice-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-instruction-notice-' + [guid]::NewGuid().ToString('N')) }
+if (Test-Path $output) { throw "Evidence root already exists: $output" }
 New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeInstructionNoticeTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
@@ -35,10 +36,10 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
 }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
-& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile"
+& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeInstructionNoticeTests.runtimeconfig.json')
 Write-Output 'Headless compilation passed (warnings treated as errors).'
-& $dotnet $assembly $QueueOnly.IsPresent $repo
+& $dotnet $assembly $QueueOnly.IsPresent $repo | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
 Write-Output "Evidence directory: $output"
