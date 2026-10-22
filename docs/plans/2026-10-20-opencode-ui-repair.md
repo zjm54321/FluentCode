@@ -120,7 +120,7 @@
 | **B5** | B | `anthropic/claude-opus-5-5` | designer | 左下独立卡片：Agent 一行 + 模型与思考强度一行 | B1, A2 | `8137b4b` | 已提交，待统一验收；复用前阶段选择逻辑、与当前会话准确绑定 |
 | **B6** | B | `anthropic/claude-opus-5-5` | designer + fixer | 窄屏自适应、两行式 Composer、动态仪表盘、移除旧顶栏整行 | B1, B5 | `待办` | 默认两行、仪表盘动态档位、全屏入框、新入口接通后删旧顶栏整行 |
 | **B7** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer + 菜单与合法上下文原生字符触发（/和@候选，!由B8交付） | B6 | `cfd7656` | 已提交，待统一验收；菜单形态、输入框特定合法位置触发不误触、候选真实、保留附件 |
-| **B8** | B | `anthropic/claude-opus-5-5` | designer + fixer | 敲击!切入终端样式Composer、真实后端Shell协议联调与草稿恢复 | B7 | `待办` | 隐藏工具栏、Esc/退格恢复草稿、调用真实shell接口、不假prompt不本地exec |
+| **B8** | B | `anthropic/claude-opus-5-5` | designer + fixer | 敲击!切入终端样式Composer、真实后端Shell协议联调与草稿恢复 | B7 | `dfe0afb` | 已提交，待统一验收；隐藏工具栏、Esc/退格恢复草稿、调用真实shell接口、不假prompt不本地exec |
 | **B11** | B | `anthropic/claude-opus-5-5` | fixer + designer | 后端连接移至账号/用户入口（三流程：WSL/远程密码/配对链接）与平滑迁移 | B8 (按序执行，A10已作为Gate A前置完成) | `a3b1cfe` | 已提交，待统一验收；仅单账号、按钮“连接 OpenCode”、WSL识别NixOS且持久化为Wsl、平滑迁移 |
 | **B12** | B | `anthropic/claude-opus-5-5` | fixer + designer | WSL专属快速访问区（资源管理器与主机编辑器以WSL模式打开）、动态UNC | B11 (连接完成且为Wsl) | `7590fcf` | 已提交，待统一验收；仅Wsl显示/Remote绝对隐藏、动态解析真实UNC不硬编码、转义安全 |
 | **B13** | B | `anthropic/claude-opus-5-5` | designer + fixer | 标签页working不定进度流光指示器全局时钟同向同速同相同步 | B12 | `dc2782c` | 已提交，待统一验收；共享动画时钟同相位、新tab平滑接入不重启全部、无working停机无额外tick |
@@ -772,7 +772,7 @@
 | **B5** | 左下独立会话控制卡片 | `anthropic/claude-opus-5-5` | `feat(opencode): session agent and model control card in the left sidebar` | `8137b4bdde8be161e4469b204da464a6265f30f2` | 已提交，待统一验收 | parent |
 | **B6** | 窄屏双行 Composer 与移除旧顶栏 | `anthropic/claude-opus-5-5` | `feat(opencode): two-row composer and remove legacy top header [建议]` | `待办` | 待验收 | parent |
 | **B7** | `+` 菜单整合与字符原生触发 | `anthropic/claude-opus-5-5` | `feat(opencode): composer plus menu and contextual char triggers` | `cfd7656f6d395e8f20e40d3629277036eb83d29f` | 已提交，待统一验收 | parent |
-| **B8** | 终端命令行模式与后台协议联调 | `anthropic/claude-opus-5-5` | `feat(opencode): terminal mode switch with shell backend [建议]` | `待办` | 待验收 | parent |
+| **B8** | 终端命令行模式与后台协议联调 | `anthropic/claude-opus-5-5` | `feat(opencode): terminal mode in the composer via the session shell API` | `dfe0afb9298616482e01d0d53213e1073721064f` | 已提交，待统一验收 | parent |
 | **B11** | 后端连接移至用户入口与三流程支持 | `anthropic/claude-opus-5-5` | `feat(opencode): move backend connection to user entry with wsl and remote flows` | `a3b1cfef8c8cb791542df9f5dfa2f309db96cc35` | 已提交，待统一验收 | parent |
 | **B12** | WSL 专属快速访问区与动态路径转换 | `anthropic/claude-opus-5-5` | `feat(opencode): wsl quick access to explorer and host editors` | `7590fcf8098548b147c8719bb808417011fcf046` | 已提交，待统一验收 | parent |
 | **B13** | 标签页working指示器全局时钟同步 | `anthropic/claude-opus-5-5` | `feat(opencode): sync tab working indicators to a shared animation clock` | `dc2782c05ed830bc2da07e3dc1fedd63cb98cb0c` | 已提交，待统一验收 | parent |
