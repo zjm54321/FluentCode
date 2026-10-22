@@ -54,6 +54,113 @@ internal static partial class Program
         internal OpenCodeClient Client() => new(new HttpClient(this), new() { BaseUrl = "https://offline.invalid" }, true);
     }
 
+    private static async Task BindingFirstBodyWithoutNetworkWait()
+    {
+        foreach (var home in new[] { false, true })
+        {
+            var backend = new BindingBackend(); using var client = backend.Client(); var page = new OpenCodePage(); page.TestActivate("ses_seed", client);
+            await page.TestSwitchAsync("ses_A", "/A"); await page.TestSwitchAsync("ses_B", "/B");
+            var selected = home ? page.TestPrepareHomeClick("ses_A", "/A") : null;
+            var state = backend.Hold("ses_A", false); var messages = backend.Hold("ses_A", true);
+            var returning = home ? page.TestOpenHome(7, "/A", "ses_A") : page.TestSwitchAsync("ses_A", "/A");
+            Check(!returning.IsCompleted && !state.Result.Task.IsCompleted && !messages.Result.Task.IsCompleted
+                && LiveText(page) == "ses_A" && page.TestAppliedCount == 1,
+                (home ? "Home consumer" : "direct switch") + " applies first actual cached text body synchronously while BOTH network responses remain held");
+            if (home) Check(page.TestHiddenSelectionIs(selected!) && page.HomeMirrors == 1,
+                "unchanged hidden Home selection still routes directly to real binding and body restore");
+            state.Result.SetResult(backend.State("ses_A"));
+            await messages.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            messages.Result.SetResult(backend.Messages("ses_A")); await returning;
+        }
+    }
+
+    private static async Task BindingColdReadOverlap()
+    {
+        var backend = new BindingBackend(); using var client = backend.Client(); var page = new OpenCodePage(); page.TestActivate("ses_seed", client);
+        var state = backend.Hold("ses_A", false); var messages = backend.Hold("ses_A", true);
+        var load = page.TestSwitchAsync("ses_A", "/A");
+        Console.WriteLine($"CONTROLLED cold while state held: messagesStarted={messages.Started.Task.IsCompleted}; applications={page.TestAppliedCount}");
+        Check(state.Started.Task.IsCompleted && messages.Started.Task.IsCompleted,
+            "cold state and messages GET must both start before either response completes (no serial state RTT)");
+        messages.Result.SetResult(backend.Messages("ses_A"));
+        Check(!load.IsCompleted && page.TestAppliedCount == 0 && page.TestEmptyText == "正在加载消息…",
+            "completed speculative body cannot Apply before authoritative state validates directory and rollback fence");
+        backend.Boundaries["ses_A"] = "msg_not_in_window";
+        state.Result.SetResult(backend.State("ses_A")); await load;
+        Check(page.TestLastApplied().Count == 0 && backend.MessageCount["ses_A"] == 1,
+            "same-identity parallel response is reused once but unknown rollback side stays hidden");
+    }
+
+    private static async Task BindingCorrectedParallelRead()
+    {
+        foreach (var correction in new[] { "directory", "boundary", "unknown directory" })
+        {
+            var backend = new BindingBackend(); using var client = backend.Client(); var page = new OpenCodePage(); page.TestActivate("ses_seed", client);
+            if (correction == "boundary")
+            {
+                await page.TestSwitchAsync("ses_A", "/A"); await page.TestSwitchAsync("ses_B", "/B");
+                backend.Boundaries["ses_A"] = "msg_cut";
+            }
+            if (correction == "directory") backend.Directories["ses_A"] = "/corrected";
+            var state = backend.Hold("ses_A", false); var stale = backend.Hold("ses_A", true); var fresh = backend.Hold("ses_A", true);
+            var load = page.TestSwitchAsync("ses_A", correction == "unknown directory" ? null : "/A");
+            Check(state.Started.Task.IsCompleted && stale.Started.Task.IsCompleted, correction + " starts concurrent read under original owner");
+            var epoch = page.TestEpoch;
+            state.Result.SetResult(backend.State("ses_A")); await fresh.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Check(!load.IsCompleted && page.TestAppliedCount == 0 && backend.MessageCount["ses_A"] >= 2,
+                correction + " invalidates speculative read and immediately starts a fresh read without waiting for stale transport");
+            if (correction != "unknown directory") Check(page.TestEpoch > epoch, correction + " authoritative correction advances history epoch");
+            fresh.Result.SetResult(correction == "boundary"
+                ? Json(new { data = new[] { new OpenCodeMessage { Id = "msg_cut", Type = "user" }, Live("validated body") }, cursor = new { next = (string?)null } })
+                : Snapshot("validated body"));
+            await load;
+            Check(LiveText(page) == "validated body" && !page.TestRefreshBusy, correction + " only corrected-owner body applies");
+            stale.Result.SetResult(Snapshot("stale body"));
+            Check(LiveText(page) == "validated body" && page.Notices.Count == 0, correction + " abandoned response cannot publish over fresh success");
+        }
+    }
+
+    private static async Task BindingParallelStateFences()
+    {
+        foreach (var invalidation in new[] { "state failure", "revision", "page", "source", "unload", "revocation", "workflow" })
+        {
+            var backend = new BindingBackend(); using var client = backend.Client(); var page = new OpenCodePage(); page.TestActivate("ses_seed", client);
+            var state = backend.Hold("ses_A", false); var messages = backend.Hold("ses_A", true);
+            var load = page.TestSwitchAsync("ses_A", "/A");
+            Check(state.Started.Task.IsCompleted && messages.Started.Task.IsCompleted, invalidation + " starts both held reads");
+            if (invalidation == "revision") page.TestAdvanceRevisionOnly();
+            if (invalidation == "page") page.TestAdvancePageGeneration();
+            if (invalidation == "source") page.TestForeignSource();
+            if (invalidation == "unload") page.TestUnload();
+            if (invalidation == "revocation") page.TestRevokeSource();
+            if (invalidation == "workflow") page.TestBeginSend(71);
+            state.Result.SetResult(invalidation == "state failure"
+                ? new(HttpStatusCode.OK) { Content = new StringContent("malformed") } : backend.State("ses_A"));
+            await load.WaitAsync(TimeSpan.FromSeconds(2));
+            Check(page.TestAppliedCount == 0 && !page.TestRefreshBusy && !messages.Result.Task.IsCompleted,
+                invalidation + " rejects publication and releases refresh without waiting for ignored message cancellation");
+            if (invalidation == "state failure") Check(page.TestNeedsState && page.TestEmptyText.Contains("未完成"),
+                "state failure stays retryable, never successful empty or accepted history");
+            messages.Result.SetException(new HttpRequestException("late abandoned speculative transport failure"));
+        }
+    }
+
+    private static async Task BindingLateAfterSuccess()
+    {
+        foreach (var phase in new[] { "boundary", "messages" })
+        foreach (var fail in new[] { false, true })
+        {
+            var backend = new BindingBackend(); using var client = backend.Client(); var page = new OpenCodePage(); page.TestActivate("ses_seed", client);
+            var held = backend.Hold("ses_A", phase == "messages"); var old = page.TestSwitchAsync("ses_A", "/A");
+            await page.TestSwitchAsync("ses_B", "/B");
+            var applied = page.TestAppliedCount;
+            held.Result.SetResult(fail ? new(HttpStatusCode.ServiceUnavailable) : phase == "messages" ? backend.Messages("ses_A") : backend.State("ses_A"));
+            await old;
+            Check(LiveText(page) == "ses_B" && page.TestAppliedCount == applied && !page.TestRefreshBusy && !page.TestRefreshQueued && page.Notices.Count == 0,
+                "old " + phase + (fail ? " error" : " success") + "/finally after new success cannot change body, loading, errors or owner");
+        }
+    }
+
     private static async Task BindingImmediateAndEmpty()
     {
         var backend = new BindingBackend(); using var client = backend.Client(); var page = new OpenCodePage();

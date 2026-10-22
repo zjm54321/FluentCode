@@ -183,6 +183,11 @@ namespace AIFrontend.Pages
         private void RemoveSessionTab(object tab) { RemovedTabs++; }
         private void DeselectSessionForNewTab() { DeletedBindings++; _selectedSessionId = null; CancelSessionOperations(); ResetMessagePaginationState(); }
         private void BindComposer() { Bindings++; if (_selectedSessionId is { } id) HomeSwitchRequests.Add(id); }
+        // Draft/agent native integration is outside this headless message-binding host.
+        private bool TryPrepareDraftSlotNavigation() => true;
+        private void RestoreDraftSlotTabSelection() { }
+        private void ForceSuspendDraftSlot(string reason) { }
+        private void OnSessionContextSelected(string sessionId) { }
         private int _sessionListEpoch;
         private string? _homeSessionsMessage = null;
         private int BeginSessionRefresh() => ++_sessionListEpoch;

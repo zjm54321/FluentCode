@@ -187,6 +187,11 @@ internal static partial class Program
         {
             foreach (var (name, run) in new (string, Func<Task>)[]
             {
+                ("warm direct/Home first real text body applies with state AND messages held", BindingFirstBodyWithoutNetworkWait),
+                ("cold parallel reads start immediately but authoritative rollback gates Apply", BindingColdReadOverlap),
+                ("authoritative directory/epoch correction discards speculative read without serial wait", BindingCorrectedParallelRead),
+                ("failed/invalidated authoritative state cannot publish speculative messages", BindingParallelStateFences),
+                ("old success/error/finally cannot alter a newer successful binding", BindingLateAfterSuccess),
                 ("real Switch/Navigate immediate authoritative loading and exact empty/error state", BindingImmediateAndEmpty),
                 ("REST/SSE/cache/reactivate share actual viewport proof gate; question adapter survives Working override", ViewportIntegration),
                 ("binding refresh owners isolate late reads, auxiliary waits and finally queues", BindingLateOwners),
@@ -597,8 +602,8 @@ internal static partial class Program
         page.TestUnreadSelection(); backend.State = "malformed"; var messagesBefore = backend.Queries.Count;
         var appliesBefore = page.TestAppliedCount;
         await page.TestLatestAsync();
-        Check(page.TestNeedsState && backend.Queries.Count == messagesBefore && page.TestAppliedCount == appliesBefore,
-            "failed initial state read cannot fetch/publish unfiltered replacement history");
+        Check(page.TestNeedsState && backend.Queries.Count == messagesBefore + 1 && page.TestAppliedCount == appliesBefore,
+            "failed initial state read may overlap a speculative GET but cannot publish unfiltered replacement history");
 
         var oldIdle = new OpenCodeMessage { Id = "msg_old_idle", Type = OpenCodeMessageTypes.Idle, Outcome = OpenCodeSessionOutcomes.Succeeded };
         var newUser = new OpenCodeMessage { Id = "msg_accepted", Type = OpenCodeMessageTypes.User, Text = "synthetic" };

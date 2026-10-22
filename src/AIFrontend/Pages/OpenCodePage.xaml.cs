@@ -1001,17 +1001,47 @@ public sealed partial class OpenCodePage : Page
             OpenCodeSessionMessagesResponse response;
             try
             {
-                if (_messageHistoryNeedsState)
+                // Start both reads in the same turn; state is still authoritative for publication.
+                // A synchronous state correction may already invalidate the original read, in which
+                // case only the corrected read below is sent. No network/state await precedes GET.
+                using var speculativeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                var boundaryRead = _messageHistoryNeedsState ? RefreshHistoryBoundaryAsync(historyRead, ct) : null;
+                var messageRead = historyRead;
+                var pendingMessages = IsCurrentMessageHistoryRead(messageRead)
+                    ? StartMessageHistoryRead(messageRead,
+                        new OpenCodeMessageQuery { Order = OpenCodeSessionOrders.Desc, Limit = 100 }, speculativeCts.Token)
+                    : null;
+                if (pendingMessages is not null)
                 {
-                    var refreshed = await RefreshHistoryBoundaryAsync(historyRead, ct);
-                    if (refreshed is null) return;
-                    historyRead = refreshed;
-                    refreshOwner.Read = historyRead;
-                    ct = _sessionCts?.Token ?? CancellationToken.None;
+                    // State failure/correction can abandon this task. Observe late faults without
+                    // awaiting a transport that ignores cancellation or touching the page/owner.
+                    _ = pendingMessages.ContinueWith(static task => { _ = task.Exception; }, CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 }
-                response = await StartMessageHistoryRead(historyRead,
-                    new OpenCodeMessageQuery { Order = OpenCodeSessionOrders.Desc, Limit = 100 },
-                    ct);
+                try
+                {
+                    if (boundaryRead is not null)
+                    {
+                        var refreshed = await boundaryRead;
+                        if (refreshed is null) return;
+                        historyRead = refreshed;
+                        refreshOwner.Read = historyRead;
+                        ct = _sessionCts?.Token ?? CancellationToken.None;
+                    }
+                    if (pendingMessages is null || messageRead != historyRead)
+                    {
+                        // Directory resolution/correction or rollback reset changes read identity.
+                        // Never relabel an in-flight snapshot with the new directory/epoch.
+                        speculativeCts.Cancel();
+                        pendingMessages = StartMessageHistoryRead(historyRead,
+                            new OpenCodeMessageQuery { Order = OpenCodeSessionOrders.Desc, Limit = 100 }, ct);
+                    }
+                    response = await pendingMessages;
+                }
+                finally
+                {
+                    speculativeCts.Cancel();
+                }
             }
             catch (OperationCanceledException)
             {
