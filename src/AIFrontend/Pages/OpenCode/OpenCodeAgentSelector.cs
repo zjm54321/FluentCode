@@ -170,7 +170,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             text.TextTrimming = TextTrimming.CharacterEllipsis;
         }
 
-        _currentText.MaxWidth = 200;
+        OpenCodeAgentPresentation.WrapName(_currentText);
         _modelText.MaxWidth = 260;
 
         _statusText.TextWrapping = TextWrapping.NoWrap;
@@ -183,7 +183,16 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         AutomationProperties.SetLiveSetting(_statusText, Microsoft.UI.Xaml.Automation.Peers.AutomationLiveSetting.Polite);
 
         // 单行只读：智能体 · 模型 · （忙碌环 + 简短状态）。切换只经 /agents、/models。
-        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var line = new Grid { ColumnSpacing = 6, RowSpacing = 4 };
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        line.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        line.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetColumn(_separator, 1);
+        Grid.SetColumn(_modelText, 2);
+        Grid.SetRow(_statusRow, 1);
+        Grid.SetColumnSpan(_statusRow, 3);
         line.Children.Add(_currentText);
         line.Children.Add(_separator);
         line.Children.Add(_modelText);
@@ -281,6 +290,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             _rows.AddRange(keptRows);
             _currentAgentId = keptAgentId;
             _currentText.Text = keptAgent;
+            ApplyCurrentAgentPresentation();
             _modelText.Text = keptModel;
             CurrentModelDisplay = keptModelDisplay;
         }
@@ -450,7 +460,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         }
     }
 
-    /// <summary>用真实列表刷新可切换目标快照与只读显示；隐藏 agent 不列出，subagent 列出但不可选。</summary>
+    /// <summary>用真实列表刷新可选目标与只读显示；hidden/subagent-only 不进入候选。</summary>
     private void ApplyAgents(IReadOnlyList<OpenCodeAgentInfo> data, string? currentAgentId)
     {
         _rows.Clear();
@@ -463,10 +473,10 @@ internal sealed class OpenCodeAgentSelector : StackPanel
                 continue;
             }
 
-            var subagent = string.Equals(agent.Mode, OpenCodeAgentModes.Subagent, StringComparison.Ordinal);
+            if (string.Equals(agent.Mode, OpenCodeAgentModes.Subagent, StringComparison.Ordinal)) continue;
             _rows.Add(new OpenCodeAgentPickerRow(agent.Id, agent.Name,
                 string.IsNullOrWhiteSpace(agent.Description) ? null : agent.Description.Trim(),
-                !subagent, subagent ? "子智能体，只能由任务调用，不能作为会话智能体切换。" : null));
+                true, null, agent.Color));
         }
 
         if (string.IsNullOrEmpty(currentAgentId))
@@ -479,7 +489,16 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             _currentText.Text = DisplayName(currentAgentId);
         }
 
-        AutomationProperties.SetName(_currentText, string.IsNullOrEmpty(currentAgentId) ? UnknownAgentText : "智能体：" + _currentText.Text);
+        ApplyCurrentAgentPresentation();
+    }
+
+    private void ApplyCurrentAgentPresentation()
+    {
+        var selected = _rows.Find(row => row.Id == _currentAgentId);
+        OpenCodeAgentPresentation.Apply(_currentText, selected?.Color);
+        ToolTipService.SetToolTip(_currentText, selected?.Description ?? "输入 /agents 切换智能体");
+        AutomationProperties.SetHelpText(_currentText, selected?.Description ?? string.Empty);
+        AutomationProperties.SetName(_currentText, string.IsNullOrEmpty(_currentAgentId) ? UnknownAgentText : "智能体：" + _currentText.Text);
     }
 
     /// <summary>只读模型显示（会话真实状态；变体附在后面）。未设置时显示“模型：未知”。</summary>
@@ -806,6 +825,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     {
         _rows.Clear();
         _currentText.Text = string.Empty;
+        OpenCodeAgentPresentation.Apply(_currentText, null);
+        ToolTipService.SetToolTip(_currentText, "输入 /agents 切换智能体");
+        AutomationProperties.SetHelpText(_currentText, string.Empty);
         _modelText.Text = string.Empty;
         CurrentModelDisplay = null;
         _statusText.Text = string.Empty;

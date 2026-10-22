@@ -63,6 +63,7 @@ internal static class DraftSlotPageTests
         await CallbackCases(xaml);
         await RetiredCases(xaml);
         await PageLifetimeCases(xaml);
+        await AgentPresentationTests.Run(xaml);
         Console.WriteLine($"PASS A7 real Page/native/core slot integration: {checks} assertions; native editor/window/IO boundaries explicit, no native IME/geometry claim");
     }
 

@@ -25,23 +25,27 @@ foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSe
     $members += $m.Value
 }
 $generated = Join-Path $output 'ProductionMembers.cs'
-"using System; using System.Globalization; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Media; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + ($members -join "`n") + "`n} }" | Set-Content -Encoding UTF8 $generated
+"using System; using System.Globalization; using AIFrontend.Pages.OpenCode; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Media; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + ($members -join "`n") + "`n} }" | Set-Content -Encoding UTF8 $generated
 $assembly = Join-Path $output 'ComposerA1Tests.dll'
 $sources = @($generated, (Join-Path $PSScriptRoot 'Program.cs'), "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Agents.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
+$sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs","$repo/tests/opencode-tabs/Tab.TestHost.cs")
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
-$arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
+$references=@(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll')|ForEach-Object FullName)
+$arguments += $references | ForEach-Object { '/reference:"' + $_ + '"' }
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ComposerA1Tests.runtimeconfig.json')
-$inputs = @($sources + $blankPath + $layoutPath + "$repo/src/AIFrontend/Pages/OpenCodePage.xaml" + $PSCommandPath)
+$inputs = @($sources + $blankPath + $layoutPath + "$repo/src/AIFrontend/Pages/OpenCodePage.xaml" + $PSCommandPath+$references+$dotnet+$rsp+(Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'))
 $before = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
 $before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs.json')
+$before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-before.json')
 New-Item -ItemType File -Path (Join-Path $output 'compile.log') | Out-Null
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "A1 focused compile failed: $LASTEXITCODE" }
 & $dotnet $assembly $repo | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "A1 focused tests failed: $LASTEXITCODE" }
 $after = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
+$after | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-after.json')
 if ($before -ne $after) { throw 'A1 inputs changed during validation.' }
 Write-Output "Evidence directory: $output"

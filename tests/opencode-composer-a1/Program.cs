@@ -6,24 +6,12 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
-namespace Windows.UI { public struct Color { public byte A, R, G, B; } }
-namespace Microsoft.UI.Xaml.Controls
-{
-    public class Control { public static readonly object ForegroundProperty = new(); }
-    public sealed class DropDownButton : Control
-    {
-        // ClearValue restores style ownership, not a cached system brush. Real ThemeResource is checked in XAML below.
-        public object? Foreground;
-        public int Clears;
-        public void ClearValue(object property) { if (property != ForegroundProperty) throw new Exception("Unexpected property"); Foreground = null; Clears++; }
-    }
-}
-namespace Microsoft.UI.Xaml.Media { public sealed class SolidColorBrush(Windows.UI.Color color) { public Windows.UI.Color Color = color; } }
 
 namespace AIFrontend.Pages
 {
     public sealed partial class OpenCodePage
     {
+        internal string LastLayout=""; // Shared inert native host compatibility only.
         private readonly DropDownButton BlankAgentButton = new();
         internal static void Main(string[] args)
         {
@@ -44,7 +32,7 @@ namespace AIFrontend.Pages
                 Check(brush is not null && brush.Color.A == 255 && brush.Color.R == (byte)(rgb >> 16)
                     && brush.Color.G == (byte)(rgb >> 8) && brush.Color.B == (byte)rgb, "valid RGB preserved exactly");
             }
-            foreach (var invalid in new string?[] { null, "", "accent", "#abc", "#12345678", "#GG0000", "red" })
+            foreach (var invalid in new string?[] { null, "", "accent", "#abc", "#12345678", "#GG0000", "red", "# 12345", "#12345 " })
             {
                 page.ApplyBlankAgentColor("#123456");
                 var before = page.BlankAgentButton.Clears;
@@ -58,13 +46,15 @@ namespace AIFrontend.Pages
                 var w = BlankToolbarWidths(available);
                 Check(w.Agent >= 0 && w.Model >= 0 && w.Variant >= 0, "nonnegative control budgets");
                 Check(w.Agent + w.Model + w.Variant <= Math.Max(0, available - 12) + 0.001, "controls fit after two gaps");
-                Check(w.Agent <= 104 && w.Model <= 260 && w.Variant <= 112, "wide-pane caps");
+                Check(w.Agent <= Math.Max(0,available-12)*0.35+0.001 && w.Model <= 260 && w.Variant <= 112, "full-name wrapping gets responsive agent budget, not old104 cap");
             }
             var root = args[0];
             var xaml = XDocument.Load(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.xaml"));
             XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
             XElement Named(string name) => xaml.Descendants().Single(n => (string?)n.Attribute(x + "Name") == name);
             string? Attr(XElement node, string name) => (string?)node.Attribute(name);
+            Check(Attr(Named("SessionStatusLine"), "ColumnDefinitions") == "Auto,*,*,Auto"
+                && Attr(Named("AgentSelectorHost"), "Grid.Column") == "1", "normal agent host has finite star-column measure so full names wrap, rather than overflow an Auto column");
             var logo = Named("NewConversationWordmark");
             Check(Attr(logo, "Width") == "520" && Attr(logo, "Height") == "93.3333333333", "logo grows from 360 to 520 DIP with aspect preserved");
             Check(Attr(logo.Parent!, "StretchDirection") == "DownOnly" && Attr(logo.Parent!, "MaxWidth") == "520", "wordmark can shrink on narrow panes");
@@ -72,7 +62,7 @@ namespace AIFrontend.Pages
             Check(Attr(toolbar, "ColumnDefinitions") == "Auto,Auto,Auto" && Attr(toolbar, "HorizontalAlignment") == "Left", "model/variant adjacent rather than spread across row");
             Check(Attr(toolbar, "Margin") == "0,8,0,4" && Attr(toolbar, "VerticalAlignment") == "Center", "choices share bottom-row inset/center");
             foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton" })
-                Check(Attr(Named(name), "Height") == "32" && Attr(Named(name), "MinWidth") == "0" && Attr(Named(name), "VerticalAlignment") == "Center", "choice control centered at 32 DIP");
+                Check((name=="BlankAgentButton"?Attr(Named(name),"MinHeight")=="32"&&Attr(Named(name),"Height")is null:Attr(Named(name),"Height")=="32") && Attr(Named(name), "MinWidth") == "0" && Attr(Named(name), "VerticalAlignment") == "Center", "choices centered; agent grows for complete wrapped name, others remain32DIP");
             Check(Named("BlankAgentButton").Descendants().Any(n => Attr(n, "Property") == "Foreground"
                 && Attr(n, "Value") == "{ThemeResource AccentTextFillColorPrimaryBrush}"), "dynamic theme accent setter (not static/cached brush)");
             Check(Attr(Named("ComposerActions"), "HorizontalAlignment") == "Right" && Attr(Named("SendStopButton"), "Height") == "32", "send stays right at same height");

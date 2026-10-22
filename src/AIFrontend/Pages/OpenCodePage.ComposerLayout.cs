@@ -84,6 +84,7 @@ public sealed partial class OpenCodePage
             var widths = BlankToolbarWidths(ComposerInputLayout.ActualWidth - ComposerLeadingHost.ActualWidth
                 - ComposerActions.ActualWidth - 16);
             BlankAgentButton.MaxWidth = widths.Agent;
+            if (BlankAgentButton.Content is TextBlock agentName) agentName.MaxWidth = Math.Max(1, widths.Agent - 40);
             BlankModelButton.MaxWidth = widths.Model;
             BlankStrengthButton.MaxWidth = widths.Variant;
         }
@@ -109,7 +110,7 @@ public sealed partial class OpenCodePage
     internal static (double Agent, double Model, double Variant) BlankToolbarWidths(double available)
     {
         var content = Math.Max(0, available - 12); // Two 6-DIP gaps; unused space stays after Variant.
-        return (Math.Min(104, content * 0.25), Math.Min(260, content * 0.5), Math.Min(112, content * 0.25));
+        return (content * 0.35, Math.Min(260, content * 0.4), Math.Min(112, content * 0.25));
     }
 
     private void UpdateConversationColumns()

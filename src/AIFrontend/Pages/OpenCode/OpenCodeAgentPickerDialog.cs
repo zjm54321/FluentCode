@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Media;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>智能体选择对话框中的一行（只读快照；不含客户端、租约或会话绑定）。</summary>
-internal sealed record OpenCodeAgentPickerRow(string Id, string Name, string? Description, bool Selectable, string? Reason);
+internal sealed record OpenCodeAgentPickerRow(string Id, string Name, string? Description, bool Selectable, string? Reason, string? Color = null);
 
 /// <summary>
 /// 重设计 §7：<c>/agents</c> 打开的原生 ContentDialog。只负责“选出一个目标”，不做任何 IO、不切换：
@@ -31,7 +31,7 @@ internal static class OpenCodeAgentPickerDialog
         {
             SelectionMode = ListViewSelectionMode.Single,
             MaxHeight = 360,
-            MinWidth = 380,
+            MinWidth = 0,
         };
         AutomationProperties.SetAutomationId(list, "OpenCodeAgentSelectorCombo");
         AutomationProperties.SetName(list, "可切换的智能体");
@@ -43,7 +43,7 @@ internal static class OpenCodeAgentPickerDialog
             if (string.Equals(row.Id, currentId, StringComparison.Ordinal)) selectedIndex = list.Items.Count - 1;
         }
 
-        var body = new StackPanel { Spacing = 10, MinWidth = 380, MaxWidth = 520 };
+        var body = new StackPanel { Spacing = 10, MinWidth = 0, MaxWidth = 520, Width = Math.Max(1, Math.Min(520, owner.Size.Width - 80)) };
         body.Children.Add(current);
         if (rows.Count == 0)
         {
@@ -156,8 +156,9 @@ internal static class OpenCodeAgentPickerDialog
 
         var text = new StackPanel { Spacing = 2 };
         var name = OpenCodeInteractionUi.StyledText(row.Name, OpenCodeInteractionUi.BodyStrongStyleKey);
-        name.TextWrapping = TextWrapping.NoWrap;
-        name.TextTrimming = TextTrimming.CharacterEllipsis;
+        OpenCodeAgentPresentation.WrapName(name);
+        OpenCodeAgentPresentation.Apply(name, row.Color);
+        ToolTipService.SetToolTip(name, row.Description);
         text.Children.Add(name);
         var detail = row.Selectable ? row.Description : row.Reason;
         if (detail is { Length: > 0 })
@@ -171,7 +172,7 @@ internal static class OpenCodeAgentPickerDialog
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
 
-        var item = new ListViewItem { Content = grid, Tag = row, IsEnabled = row.Selectable };
+        var item = new ListViewItem { Content = grid, Tag = row, IsEnabled = row.Selectable, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetAutomationId(item, "OpenCodeAgentPickerRow." + row.Id);
         AutomationProperties.SetName(item, row.Name + (isCurrent ? "（当前）" : string.Empty)
             + (detail is { Length: > 0 } ? "，" + detail : string.Empty));

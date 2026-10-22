@@ -442,7 +442,7 @@ namespace AIFrontend.Pages
             _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory);
             if(_activeDraftSlot is{} current&&current.Key.Directory!=directory)ChangeBlankSlotDirectory(directory);
             _blankPreferences = new(_homeRuntimeSource, Snapshot.Token.Draft, directory, agent, model){BlankSlotId=_activeBlankSlotId??Guid.Empty};
-            if(_activeDraftSlot is{} slot)slot.DefaultsInitialized=true; // Explicit default-metadata boundary, real default loading is exercised in opencode-draft-slots.
+            if(_activeDraftSlot is{} slot){slot.DefaultsInitialized=true;slot.AgentPresentationDirectory=directory;} // Explicit default-metadata boundary; actual acceptance/labels are exercised in opencode-draft-slots.
         }
         internal void StaleBlankSource() => _homeRuntimeSource = Guid.NewGuid().ToString("N");
         internal void BlankSourceAba()

@@ -97,6 +97,32 @@ public sealed partial class OpenCodePage
     internal long Activation=>_draftActivationVersion;
     internal int FileOpens;
     internal bool Recovery=>_draftRecoveryPending;
+    private readonly DropDownButton BlankAgentButton=new(){MaxWidth=260},BlankStrengthButton=new(),BlankProjectButton=new();private readonly Button BlankModelButton=new();private readonly TextBlock BlankPreferencesHint=new();
+    internal string AgentName=>BlankAgentButton.Content is TextBlock text?text.Text:BlankAgentButton.Content as string??"";
+    internal Windows.UI.Color? AgentColor=>(BlankAgentButton.Foreground as Microsoft.UI.Xaml.Media.SolidColorBrush)?.Color;
+    internal object? AgentDescription=>BlankAgentButton.Attached.GetValueOrDefault("Tooltip");
+    internal bool AgentEnabled=>BlankAgentButton.IsEnabled;
+    internal bool ModelMetadataReady=>_blankPreferences is{} preferences&&HasBlankMetadata(preferences);
+    internal void AgentData(bool enabled=true)=>_http.AgentMode=enabled;
+    internal void FailConfig(bool value)=>_http.FailConfig=value;
+    private TaskCompletionSource? _agentIdle;
+    internal Task WaitAgentIdle(){if(!_blankPickerPending)return Task.CompletedTask;_agentIdle??=new(TaskCreationOptions.RunContinuationsAsynchronously);return _agentIdle.Task.WaitAsync(TimeSpan.FromSeconds(5));}
+    internal Task ReloadAgentDefaults()=>LoadBlankMetadataAsync(_blankPreferences!,Draft.Token);
+    internal Action ModelsRelease(){var signal=_http.HeldModels!;var result=EmptyHttp.Json(_http.Catalog());return()=>signal.TrySetResult(result);}
+    internal void FailModels()=>_http.HeldModels!.TrySetException(new HttpRequestException("synthetic model failure"));
+    internal void HoldAgents(){_http.AgentsGate=new(TaskCreationOptions.RunContinuationsAsynchronously);_http.AgentsStarted=new(TaskCreationOptions.RunContinuationsAsynchronously);}
+    internal Task WaitAgentsStarted()=>_http.AgentsStarted!.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    internal Action AgentsRelease(){var signal=_http.PendingAgentsGate!;var result=EmptyHttp.Json(_http.LastAgentsJson!);return()=>signal.TrySetResult(result);}
+    internal void HoldConfig(){_http.ConfigGate=new(TaskCreationOptions.RunContinuationsAsynchronously);_http.ConfigStarted=new(TaskCreationOptions.RunContinuationsAsynchronously);}
+    internal Task WaitConfigStarted()=>_http.ConfigStarted!.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    internal void ReleaseConfig()=>_http.PendingConfigGate!.TrySetException(new HttpRequestException("synthetic delayed config failure"));
+    internal void ChangeBlankDirectory(string directory)=>ChangeBlankSlotDirectory(directory);
+    internal async Task<MenuFlyout> AgentMenu()
+    {
+        var shown=new TaskCompletionSource<MenuFlyout>(TaskCreationOptions.RunContinuationsAsynchronously);
+        MenuFlyout.Shown=menu=>shown.TrySetResult(menu);BlankAgentButton_Click(this,new());
+        return await shown.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
     internal Guid SourceEpoch=>_draftSourceEpoch;
     internal OpenCodePageSource SourceInstance=>_source!;
     internal OpenCodePageSource NewSource(string identity,long revision)=>new(identity,revision,CreateClient);
@@ -183,6 +209,7 @@ public sealed partial class OpenCodePage
         _composerView.AttachmentRemoved+=(_,e)=>_composerController.RemoveAttachment(e.Token,e.Id);
         _composerController.SnapshotChanged+=OnComposerSnapshotChanged;
         _homeProjects["/project"]=new(new(_homeRuntimeSource,"/project"),"Project");
+        BlankPreferencesHint.TextUpdated=OnBlankLabelsRefreshed;
         InitializePinnedHomeTab();
     }
     internal void Load(){_pageActive=true;SessionTabs_Loaded(SessionTabs,new());}
@@ -245,7 +272,7 @@ public sealed partial class OpenCodePage
     private void RaiseSessionTracked(string id,OpenCodeSessionTrackReason reason)=>Tracking++;
     private Task RefreshMessagesAsync(bool initial){MessageLoads++;return Task.CompletedTask;}
     private void SetBlankComposerPlacement(bool blank){}private void WireNewSessionList(){}private void RefreshNewSessionList(){}
-    private void RefreshBlankPreferenceLabels(){if(!_blankPickerPending&&_activeBlankSlotId is{} id&&_defaultsReady.TryGetValue(id,out var ready))ready.TrySetResult();}
+    private void OnBlankLabelsRefreshed(){if(!_blankPickerPending){_agentIdle?.TrySetResult();_agentIdle=null;if(_activeBlankSlotId is{} id&&_defaultsReady.TryGetValue(id,out var ready))ready.TrySetResult();}}
     private void InsertSessionItemFirst(OpenCodeSessionInfo info)
     {
         if(info.Id is not{} id||_sessionItems.ContainsKey(id))return;
@@ -264,6 +291,9 @@ public sealed partial class OpenCodePage
         internal TaskCompletionSource<HttpResponseMessage>? CreateResponse;
         internal readonly TaskCompletionSource CreateStarted=new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal bool HoldNextModels,IncludeXhigh=true;
+        internal bool AgentMode,FailConfig;
+        internal TaskCompletionSource<HttpResponseMessage>? AgentsGate,ConfigGate,PendingAgentsGate,PendingConfigGate;
+        internal TaskCompletionSource? AgentsStarted,ConfigStarted;internal string? LastAgentsJson;
         internal TaskCompletionSource ModelsStarted=new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal TaskCompletionSource<HttpResponseMessage>? HeldModels;
         internal string Catalog()=>"{\"location\":{\"directory\":\"/project\"},\"data\":["+Model("base")+","+Model("custom")+"]}";
@@ -282,15 +312,18 @@ public sealed partial class OpenCodePage
             var location="\"location\":{\"directory\":\"/project\"},";
             var json=request.RequestUri!.AbsolutePath switch
             {
-                "/api/agent"=>"{"+location+"\"data\":[{\"id\":\"build\",\"name\":\"Build\",\"request\":{},\"permissions\":{},\"hidden\":false,\"mode\":\"primary\",\"model\":{\"id\":\"base\",\"providerID\":\"p\",\"variant\":\""+DefaultVariant+"\"}}]}",
+                "/api/agent"=>AgentMode?"{"+location+"\"data\":["+Agent("build",AgentPresentationTests.LongName,"#123aBc","primary",false)+","+Agent("other","Other full agent",null,"all",false)+","+Agent("hidden","Hidden",null,"primary",true)+","+Agent("sub","Sub",null,"subagent",false)+"]}":"{"+location+"\"data\":[{\"id\":\"build\",\"name\":\"Build\",\"request\":{},\"permissions\":{},\"hidden\":false,\"mode\":\"primary\",\"model\":{\"id\":\"base\",\"providerID\":\"p\",\"variant\":\""+DefaultVariant+"\"}}]}",
                 "/api/model"=>Catalog(),
-                "/api/config"=>"[{\"type\":\"document\",\"info\":{\"default_agent\":\"build\"}}]",
+                "/api/config"=>FailConfig?throw new HttpRequestException("synthetic config failure"):"[{\"type\":\"document\",\"info\":{\"default_agent\":\"build\"}}]",
                 "/api/command"=>"{\"data\":[{\"name\":\"review\",\"description\":\"Review\"}]}",
                 _=>"{\"data\":[]}"
             };
+            if(request.RequestUri!.AbsolutePath=="/api/agent"&&AgentsGate is{} agents){LastAgentsJson=json;AgentsGate=null;PendingAgentsGate=agents;AgentsStarted!.TrySetResult();return await agents.Task;}
+            if(request.RequestUri!.AbsolutePath=="/api/config"&&ConfigGate is{} config){ConfigGate=null;PendingConfigGate=config;ConfigStarted!.TrySetResult();return await config.Task;}
             return Json(json);
         }
         private string Model(string id)
         {var json="{\"id\":\""+id+"\",\"providerID\":\"p\",\"name\":\""+id+"\",\"enabled\":true,\"status\":\"active\",\"variants\":[{\"id\":\"low\"},{\"id\":\"medium\"},{\"id\":\"high\"},{\"id\":\"xhigh\"}]}";return IncludeXhigh?json:json.Replace(",{\"id\":\"xhigh\"}","");}
+        private static string Agent(string id,string name,string? color,string mode,bool hidden)=>"{\"id\":\""+id+"\",\"name\":\""+name+"\",\"description\":\"description "+id+"\",\"request\":{},\"permissions\":{},\"hidden\":"+(hidden?"true":"false")+",\"mode\":\""+mode+"\""+(color is null?"":",\"color\":\""+color+"\"")+",\"model\":{\"id\":\"base\",\"providerID\":\"p\",\"variant\":\"medium\"}}";
     }
 }

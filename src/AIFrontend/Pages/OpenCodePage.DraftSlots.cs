@@ -19,6 +19,7 @@ public sealed partial class OpenCodePage
         internal OpenCodeBlankDraftPreferences? Preferences;
         internal bool ModelChosen, DefaultsInitialized;
         internal IReadOnlyList<OpenCodeAgentInfo> Agents = Array.Empty<OpenCodeAgentInfo>();
+        internal string? AgentPresentationDirectory;
         internal IReadOnlyList<OpenCodeModelInfo> Models = Array.Empty<OpenCodeModelInfo>();
         internal string? MetadataRuntime, MetadataDirectory, PreferenceError;
         internal Guid MetadataDraft;

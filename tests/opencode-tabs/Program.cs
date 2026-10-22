@@ -14,6 +14,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         xaml=Path.Combine(args[0],"src/AIFrontend/Pages/OpenCodePage.xaml");
+        if(Environment.GetEnvironmentVariable("AIF_R1_BASELINE_PROBE")=="1"){AgentPresentationTests.BaselineProbe(xaml).GetAwaiter().GetResult();return;}
         var cold=new OpenCodePage(xaml,false);
         Check(cold.SessionTabs.TabItems.Count==1&&ReferenceEquals(cold.SessionTabs.SelectedItem,cold.HomeTab)&&cold.LastLayout=="HomeLayout","Home exists/selected before Loaded, without connection or first resize");
         Check(cold.HomeTab.Header is FontIcon{Glyph:"\uE80F"}&&!cold.HomeTab.IsClosable&&cold.HomeTab.Tag is not string&&cold.HomeTab.MinWidth==48&&cold.HomeTab.MaxWidth==48,"real icon-only pinned item shape and opaque identity from actual XAML");

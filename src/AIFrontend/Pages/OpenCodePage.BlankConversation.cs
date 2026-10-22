@@ -59,10 +59,24 @@ public sealed partial class OpenCodePage
 
     private void OwnBlankMetadata(OpenCodeBlankDraftPreferences value)
     {
-        if (!HasBlankMetadata(value)) { _blankAgents = Array.Empty<OpenCodeAgentInfo>(); _blankModels = Array.Empty<OpenCodeModelInfo>(); }
+        if (!HasBlankMetadata(value)) _blankModels = Array.Empty<OpenCodeModelInfo>();
         _blankMetadataRuntime = value.RuntimeSourceId; _blankMetadataDirectory = value.Directory; _blankMetadataDraft = value.Draft;
         _blankMetadataSlotId = value.BlankSlotId;
     }
+
+    private void AcceptBlankAgentPresentation(OpenCodeBlankDraftPreferences basis, IReadOnlyList<OpenCodeAgentInfo> agents)
+    {
+        if (_activeDraftSlot is not { } slot || slot.Key.SourceEpoch != _draftSourceEpoch
+            || slot.Key.BlankSlotId != basis.BlankSlotId || slot.Key.Directory != basis.Directory) return;
+        _blankAgents = agents;
+        slot.Agents = agents;
+        slot.AgentPresentationDirectory = basis.Directory;
+    }
+
+    private bool HasBlankAgentPresentation(OpenCodeBlankDraftPreferences value)
+        => IsDraftSourceCurrent(_source) && _activeDraftSlot is { } slot && slot.Key.SourceEpoch == _draftSourceEpoch
+        && slot.Key.BlankSlotId == value.BlankSlotId && _activeBlankSlotId == value.BlankSlotId
+        && slot.Key.Directory == value.Directory && slot.AgentPresentationDirectory == value.Directory;
 
     private bool OwnsBlankMetadata(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token)
         => !_homeActive && _newSessionDraftActive && _blankPreferences == basis && _composerController is { } controller
@@ -83,7 +97,10 @@ public sealed partial class OpenCodePage
         {
             var cancellation = _homeCancellation.Token;
             var agents = await client.ListAgentsAsync(basis.Directory, cancellation);
-            if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankMetadata(basis, token)) return;
+            if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankMetadata(basis, token)
+                || agents.Location?.Directory != basis.Directory) return;
+            AcceptBlankAgentPresentation(basis, agents.Data!);
+            RefreshBlankPreferenceLabels(); // Agent presentation never waits for unrelated models/config.
             var models = await client.ListModelsAsync(basis.Directory, cancellation);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankMetadata(basis, token)
                 || agents.Location?.Directory != basis.Directory || models.Location?.Directory != basis.Directory) return;
@@ -159,10 +176,7 @@ public sealed partial class OpenCodePage
 
     private void ApplyBlankAgentColor(string? color)
     {
-        BlankAgentButton.ClearValue(Control.ForegroundProperty);
-        // Only an actual unambiguous RGB literal. Symbolic server tokens require a verified palette, never an agent-name guess.
-        if (color is { Length: 7 } && color[0] == '#' && uint.TryParse(color.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rgb))
-            BlankAgentButton.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = (byte)(rgb >> 16), G = (byte)(rgb >> 8), B = (byte)rgb });
+        OpenCodeAgentPresentation.Apply(BlankAgentButton, color);
     }
 
     private static bool IsBlankAgentSelectable(OpenCodeAgentInfo agent)
@@ -178,9 +192,13 @@ public sealed partial class OpenCodePage
             && value.Matches(_homeRuntimeSource, _composerController.Snapshot.Token.Draft);
         BlankProjectButton.Content = current ? value!.Directory : "选择当前来源的项目目录";
         var metadata = current && HasBlankMetadata(value!);
-        var agent = metadata ? _blankAgents.FirstOrDefault(agent => agent.Id == value!.Agent) : null;
+        var agent = current && HasBlankAgentPresentation(value!) ? _activeDraftSlot!.Agents.FirstOrDefault(agent => agent.Id == value!.Agent) : null;
         var model = metadata ? _blankModels.FirstOrDefault(model => model.Id == value!.Model?.Id && model.ProviderId == value.Model?.ProviderId) : null;
-        BlankAgentButton.Content = agent?.Name is { Length: > 0 } name ? BlankAgentName(name) : _blankPickerPending ? "加载中…" : "未就绪";
+        var agentName = agent?.Name is { Length: > 0 } name ? name : _blankPickerPending ? "加载中…" : "未就绪";
+        if (BlankAgentButton.Content is TextBlock label) label.Text = agentName;
+        else BlankAgentButton.Content = OpenCodeAgentPresentation.Name(agentName, BlankAgentButton.MaxWidth - 40);
+        AutomationProperties.SetName(BlankAgentButton, "智能体：" + agentName);
+        AutomationProperties.SetHelpText(BlankAgentButton, agent?.Description ?? string.Empty);
         ApplyBlankAgentColor(agent?.Color);
         ToolTipService.SetToolTip(BlankAgentButton, agent?.Description);
         BlankModelButton.Content = OpenCodeModelLogo.Label(model?.Id, model?.Name ?? (_blankPickerPending ? "加载中…" : "模型未就绪"));
@@ -253,11 +271,12 @@ public sealed partial class OpenCodePage
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token)
                 || response.Location?.Directory != basis.Directory) return;
             var flyout = new MenuFlyout();
-            OwnBlankMetadata(basis);
-            _blankAgents = response.Data!;
+            AcceptBlankAgentPresentation(basis, response.Data!);
             void Add(OpenCodeAgentInfo agent)
             {
-                var item = new MenuFlyoutItem { Text = BlankAgentName(agent.Name!) };
+                var item = new MenuFlyoutItem { Text = agent.Name!, MaxWidth = Math.Max(1, Math.Min(520, (BlankAgentButton.XamlRoot?.Size.Width ?? 600) - 48)) };
+                OpenCodeAgentPresentation.Apply(item, agent.Color);
+                item.Loaded += (_, _) => OpenCodeAgentPresentation.WrapMenuName(item, agent.Name!, item.MaxWidth - 72);
                 ToolTipService.SetToolTip(item, agent.Description);
                 item.Click += (_, _) =>
                 {

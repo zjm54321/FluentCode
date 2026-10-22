@@ -390,7 +390,7 @@
                                 <Grid
                                     x:Name="SessionStatusLine"
                                     Grid.Row="0"
-                                    ColumnDefinitions="Auto,Auto,*,Auto"
+                                    ColumnDefinitions="Auto,*,*,Auto"
                                     ColumnSpacing="8"
                                     Margin="0,0,0,4">
                                     <Button
@@ -617,7 +617,7 @@
                                                  <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto"
                                                        ColumnSpacing="6" Margin="0,8,0,4" HorizontalAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center">
                                                      <DropDownButton x:Name="BlankAgentButton" Content="加载中…" Click="BlankAgentButton_Click"
-                                                             Height="32" MinWidth="0" MaxWidth="104" Padding="8,0" VerticalAlignment="Center"
+                                                              MinHeight="32" MinWidth="0" MaxWidth="260" Padding="8,0" VerticalAlignment="Center" HorizontalContentAlignment="Stretch"
                                                              AutomationProperties.AutomationId="OpenCodeBlankAgent">
                                                          <DropDownButton.Style>
                                                              <Style TargetType="DropDownButton">
