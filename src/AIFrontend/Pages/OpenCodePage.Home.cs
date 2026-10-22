@@ -87,8 +87,7 @@ public sealed partial class OpenCodePage
         try { SessionTabs.SelectedItem = HomeTab; }
         finally { _suppressTabSelection = suppress; }
         _activeTabSessionId = null;
-        SessionPane.IsPaneOpen = false;
-        InsightsPane.IsPaneOpen = false;
+        DismissSidebarDrawers();
         VisualStateManager.GoToState(this, "HomeLayout", false);
         QueueHomeProjection();
     }

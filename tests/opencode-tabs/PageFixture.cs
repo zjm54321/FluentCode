@@ -23,6 +23,9 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
     private readonly Dictionary<string,SessionTabEntry> _sessionTabs=new(StringComparer.Ordinal);
+    private OpenCodeSidebarLayout _sidebarLayout;
+    // Native host boundary only; dismissal policy is extracted verbatim from Sidebars.cs.
+    private void ApplySidebarLayout(){SessionPane.IsPaneOpen=_sidebarLayout.LeftOpen;InsightsPane.IsPaneOpen=_sidebarLayout.RightOpen;}
     private readonly Dictionary<string,string> _sessionTitles=new(StringComparer.Ordinal);
     private bool _sessionTabsInitialized,_suppressTabSelection;
     private string? _activeTabSessionId,_closedBoundSessionId;private int _closedBoundGeneration;

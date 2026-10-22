@@ -280,7 +280,7 @@ public sealed partial class OpenCodePage
         if (userInitiated && _selectedSessionId != sessionId) { RestoreDraftSlotTabSelection(); return; }
         if (userInitiated && SessionPane.IsPaneOpen)
         {
-            SessionPane.IsPaneOpen = false;
+            DismissSidebarDrawers();
         }
 
         MirrorSessionSelection(sessionId, userInitiated);
@@ -686,25 +686,5 @@ public sealed partial class OpenCodePage
     // 右侧概况面板（宿主；分区内容由 L8 重做）
     // ------------------------------------------------------------------
 
-    private void SessionInsightsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var open = SessionInsightsButton.IsChecked == true;
-        InsightsPane.IsPaneOpen = open;
-        if (open)
-        {
-            // 复用既有读取时机：打开且当前会话尚无结果时读取一次；已有结果只显示（见 OpenCodePage.SessionInsights.cs）。
-            OpenSessionInsightsPane();
-        }
-    }
-
-    private void InsightsPane_PaneClosed(SplitView sender, object args)
-    {
-        SessionInsightsButton.IsChecked = false;
-    }
-
-    private void InsightsPaneCloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        InsightsPane.IsPaneOpen = false;
-        SessionInsightsButton.IsChecked = false;
-    }
+    // B1: sidebar entry/dismiss handlers now live in OpenCodePage.Sidebars.cs.
 }

@@ -209,6 +209,7 @@ public sealed partial class OpenCodePage : Page
         this.Unloaded += OnPageUnloaded;
         InitializeSessionStateUi();
         InitializeSessionInsights();
+        InitializeSidebars();
 
         UpdateConnectionStatus();
         UpdateComposerButtons();

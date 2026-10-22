@@ -22,6 +22,7 @@ $members=@([regex]::Match($tabs,'(?ms)^    private sealed class SessionTabEntry\
 $members+=@('InitializePinnedHomeTab','HomeTab_DragStarting','SessionTabs_TabItemsChanged','QueuePinnedHomeNormalization','SessionTabs_Loaded','TagSessionTabAddButton','FindDescendant','SessionTabs_SessionItemsChanged','DecorateSessionItem','SessionTabs_SessionListSelectionChanged','MirrorSessionSelection','CreateSessionTab','CreateSessionTabMenu','SelectSessionTabSilently','SessionTabs_SelectionChanged','ActivateSessionTab','SessionTabs_TabCloseRequested','CloseSessionTabActor','CloseSessionTab','CloseOtherSessionTabs','RemoveSessionTab','UpdateSessionTabsEmptyState','ActivateAdjacentTab','OpenSessionPane','LocateSessionInPane')|ForEach-Object{Extract $tabs $_}
 $members+=@('OpenNewSessionTab','TryGetBlankTab','EnterNewSessionLayout','ExitNewSessionLayout','OnSessionContextSelected','SelectNewSessionTabSilently','NewSessionTabIndex','RemoveNewSessionTab','CloseNewSessionTab','DeselectSessionForNewTab','OnNativeSessionCreating','OnNativeSessionCreated','CreateSessionAndSubmitAsync')|ForEach-Object{Extract $blank $_}
 $members+=Extract $homeSource 'ShowHomePage'
+$members+=Extract ([IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.Sidebars.cs")) 'DismissSidebarDrawers'
 $members+=Extract $homeSource 'OwnsHome'
 $blankChoicePath="$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs";$choices=[IO.File]::ReadAllText($blankChoicePath)
 $baseline=if($BaselineBlankFile){[IO.File]::ReadAllText($BaselineBlankFile)}else{''}
@@ -44,6 +45,7 @@ $viewGenerated=Join-Path $EvidenceRoot 'ActualViewBridge.cs'
 "using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages.OpenCode;`n"+$removedArgs+"`ninternal sealed partial class OpenCodeComposerView {`n"+($viewMembers -join "`n")+"`n}"|Set-Content -Encoding UTF8 $viewGenerated
 $sources=@($generated,$viewGenerated,"$PSScriptRoot/Tab.TestHost.cs","$PSScriptRoot/PageFixture.cs","$PSScriptRoot/ViewFixture.cs","$PSScriptRoot/Program.cs","$PSScriptRoot/WorkingClockTests.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs","$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs")
 $sources+="$repo/tests/opencode-draft-slots/PageSlots.cs"
+$sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSidebarLayout.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
 $sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeDirectoryPresentation.cs","$PSScriptRoot/DirectorySelectorTests.cs")
 $sources+="$repo/tests/opencode-draft-slots/AgentPresentation.cs"
@@ -62,7 +64,7 @@ $refs=@(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll"|ForEach-Object FullN
 $args2=@('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+',('/out:"'+$dll+'"'))
 $args2+=$refs|ForEach-Object{'/reference:"'+$_+'"'};$args2+=$sources|ForEach-Object{'"'+$_+'"'};$args2|Set-Content -Encoding UTF8 $rsp
 $compiler=Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-$inputs=@($sources+$refs+$compiler+$dotnet+$PSCommandPath+$rsp+$tabsPath+$blankPath+$homePath+$pagePath+$bindingPath+$composerPath+$viewPath+$blankChoicePath+$builtinPath+$selectorPath+$pickerPath+"$repo/src/AIFrontend/Pages/OpenCodePage.xaml"+"$repo/tests/opencode-draft-slots/run.ps1")
+$inputs=@($sources+$refs+$compiler+$dotnet+$PSCommandPath+$rsp+$tabsPath+$blankPath+$homePath+$pagePath+$bindingPath+$composerPath+$viewPath+$blankChoicePath+$builtinPath+$selectorPath+$pickerPath+"$repo/src/AIFrontend/Pages/OpenCodePage.xaml"+"$repo/src/AIFrontend/Pages/OpenCodePage.Sidebars.cs"+"$repo/tests/opencode-draft-slots/run.ps1")
 if($BaselineBlankFile){$inputs+=$BaselineBlankFile}
 $env:AIF_R1_BASELINE_PROBE=if($RegressionProbe){'1'}else{''}
 $before=@(Get-FileHash -LiteralPath $inputs -Algorithm SHA256|Select-Object Path,Hash);$before|ConvertTo-Json|Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'inputs-before.json')
