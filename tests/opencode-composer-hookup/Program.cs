@@ -864,6 +864,7 @@ namespace AIFrontend.Pages
         private bool _composerOverFiveLines = false;
         private void InitializeComposerLayout() { }
         private void QueueComposerLayout() { }
+        private void RefreshWslQuickAccess() { } // B12 quick access is outside this hookup host.
         internal readonly ProgressRing SendProgress = new();
         internal readonly Panel ComposerCompanionHost = new(), AgentSelectorHost = new();
         internal readonly Dispatcher DispatcherQueue = new();
