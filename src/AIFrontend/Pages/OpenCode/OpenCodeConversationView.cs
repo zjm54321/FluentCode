@@ -1908,10 +1908,12 @@ public sealed class OpenCodeConversationView : StackPanel
         var turnKey = turnStart > 0 ? _entries[turnStart - 1].Key : (_entries.Count > 0 ? _entries[0].Key : string.Empty);
         if (_observedTurnKey != turnKey) { _observedTurnKey = turnKey; _observedTurnActive = false; }
         var currentOwners = new HashSet<AssistantState>();
+        OpenCodeMessage? executingAssistant = null;
         for (var index = turnStart; index < _entries.Count; index++)
             if (_entries[index].Assistant is { } owner)
             {
                 currentOwners.Add(owner);
+                if (!owner.IsProcessNotice) executingAssistant = owner.Message;
                 if (!owner.IsProcessNotice && !owner.CompletionShown && owner.Message?.Time is { Completed: null }) _observedTurnActive = true;
                 foreach (var run in owner.Runs)
                     foreach (var tool in run.Tools)
@@ -1976,6 +1978,14 @@ public sealed class OpenCodeConversationView : StackPanel
                 now, authoritativeTurnState: true);
             var leaderId = chain[0].Group.GroupId;
             var expanded = ResolveExpansion(leaderId, summary.IsActive, nowActive);
+            // B17: decorative working phrases follow only real state — the latest visible step and the model
+            // that is actually executing (including a new assistant with no visible parts yet), never the UI dropdown.
+            var latestLeaf = leaves.Count > 0 ? leaves[^1] : null;
+            var latestReasoning = latestLeaf?.Reasoning?.Status == OpenCodeToolRowStatus.Streaming;
+            var anyToolRunning = tools.Exists(t => t.Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming);
+            // Missing model on the newest message means unknown; never borrow a previous step's model.
+            var executingModelId = summary.IsActive ? executingAssistant?.Model?.Id : null;
+            chain[0].Group.SetWorkingContext(latestReasoning, anyToolRunning, executingModelId);
             foreach (var part in leaves) part.SetDetailAnchor?.Invoke(null);
             for (var k = 0; k < chain.Count; k++)
             {

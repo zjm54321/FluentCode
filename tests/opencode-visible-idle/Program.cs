@@ -130,6 +130,20 @@ internal static class Program
         var groupStamp=grouped.View.RenderVersion;group.ToggleForTest();
         Check(grouped.View.RenderVersion>groupStamp&&grouped.Capture().Candidate is null,"actual historical group toggle invalidates presentation version before fresh layout");
         grouped.Layout();Check(grouped.Capture().Candidate?.MessageId=="msg_independent_idle","idle readable label remains independently provable outside assistant grouping");
+        ConversationViewTestProbe.Reset();
+        var working = new OpenCodeConversationView();
+        var executing = System.Text.Json.JsonSerializer.Deserialize<OpenCodeMessage>("""
+            {"id":"msg_work","type":"assistant","model":{"providerID":"gateway","id":"proxy/claude-sonnet"},"time":{"created":1},"content":[{"id":"r_work","type":"reasoning","text":"thinking"}]}
+            """,OpenCodeJson.Options)!;
+        working.ApplyMessages(new[]{executing});
+        var activeGroup=ConversationViewTestProbe.Records.Where(r=>r.Operation=="Construct").Select(r=>r.Subject).OfType<OpenCodeToolGroupView>().Single();
+        Check(activeGroup.ExecutingModelId=="proxy/claude-sonnet"&&activeGroup.WorkingReasoning,"working context comes from executing assistant modelID and real reasoning");
+        var next=executing with {Id="msg_next",Model=new(){ProviderId="openai",Id="opaque"},Content=new()};
+        working.ApplyMessages(new[]{executing,next});
+        Check(activeGroup.ExecutingModelId=="opaque","empty newest executing assistant never borrows previous model or infers brand from provider");
+        working.ApplyMessages(new[]{executing,next with {Model=null}});
+        Check(activeGroup.ExecutingModelId is null,"missing actual execution model remains unknown rather than using previous step");
+        working.ClearMessages();
         Console.WriteLine($"PASS visible-idle actual ConversationView/query: {checks} assertions; controlled WinUI tree/transforms only, NOT native geometry/ACK proof");
     }
     private sealed class BrokenWindow:System.Collections.Generic.IReadOnlyList<OpenCodeMessage>

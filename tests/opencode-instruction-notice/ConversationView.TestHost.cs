@@ -190,6 +190,11 @@ namespace AIFrontend.Pages.OpenCode
         internal Action? BackgroundAction { get; private set; }
         internal void SetBackgroundAction(Action? action) => BackgroundAction = action;
         internal bool InlineLeaf { get; private set; }
+        internal string? ExecutingModelId { get; private set; }
+        internal bool WorkingReasoning { get; private set; }
+        internal bool WorkingTool { get; private set; }
+        internal void SetWorkingContext(bool reasoning, bool toolRunning, string? executingModelId)
+            => (WorkingReasoning, WorkingTool, ExecutingModelId) = (reasoning, toolRunning, executingModelId);
         internal void SetInlineLeaf(bool inline) => InlineLeaf = inline;
         internal string? LeafName { get; private set; }
         internal string? LeafGlyph { get; private set; }

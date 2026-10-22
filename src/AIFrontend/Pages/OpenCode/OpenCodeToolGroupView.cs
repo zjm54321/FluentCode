@@ -42,6 +42,7 @@ internal sealed class OpenCodeToolGroupView
     private bool _headerVisible = true;
     private bool _initialized;
     private bool _disposed;
+    private bool _loaded;
     private bool _pointerOver;
     private Action? _openLeaf;
     private Action? _enterLeaf;
@@ -49,6 +50,11 @@ internal sealed class OpenCodeToolGroupView
     private string? _leafGlyph;
     private OpenCodeToolRowStatus? _leafStatus;
     private bool _inlineLeaf;
+    // B17：进行中头部的 working 指示器（齿轮 + 点 + 装饰词）与本组的换词状态。
+    private readonly OpenCodeWorkingIndicator _working;
+    private readonly OpenCodeWorkingPhrasePicker _phrases = new();
+    private OpenCodeWorkingActivity _activity;
+    private OpenCodeWorkingFamily _family;
 
     internal void SetInlineLeaf(bool inline)
     {
@@ -58,6 +64,8 @@ internal sealed class OpenCodeToolGroupView
         _itemsBorder.Padding = inline ? new Thickness(0) : new Thickness(8, 0, 0, 0);
         _itemsBorder.BorderThickness = inline ? new Thickness(0) : new Thickness(1, 0, 0, 0);
         _itemsBorder.Visibility = inline || _expanded && _openLeaf is null ? Visibility.Visible : Visibility.Collapsed;
+        RefreshWorking();
+        UpdateTimer();
     }
 
     internal void SetBackgroundAction(Action? action)
@@ -81,6 +89,18 @@ internal sealed class OpenCodeToolGroupView
         RefreshHeaderText();
         RefreshProgress();
         ApplySettledTone();
+        RefreshWorking();
+    }
+
+    /// <summary>
+    /// B17：真实执行上下文——最新步骤是思考还是工具、正在运行的 assistant 消息的 modelID（不是 UI 下拉框）。
+    /// 只影响装饰词；流式刷新频繁调用也不会因此换词（换词节奏由 <see cref="OpenCodeWorkingPhrasePicker"/> 控制）。
+    /// </summary>
+    internal void SetWorkingContext(bool reasoning, bool toolRunning, string? executingModelId)
+    {
+        _activity = reasoning ? OpenCodeWorkingActivity.Reasoning : toolRunning ? OpenCodeWorkingActivity.Tool : OpenCodeWorkingActivity.General;
+        _family = OpenCodeWorkingPhrases.Family(executingModelId);
+        if (_working.IsActive && _phrases.UpdateContext(_activity, _family, NowMs())) RefreshWorkingText();
     }
 
     internal OpenCodeToolGroupView(string groupId, Action<string, bool> onUserToggled)
@@ -134,6 +154,10 @@ internal sealed class OpenCodeToolGroupView
         var iconCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
         iconCell.Children.Add(_icon);
         tally.Children.Add(_progress);
+        _working = new OpenCodeWorkingIndicator(GroupId);
+        _working.VisibilityChanged += UpdateTimer;
+        iconCell.Children.Add(_working.Gear);
+        titleCluster.Children.Insert(titleCluster.Children.IndexOf(_headerText) + 1, _working.Label);
         var headerContent = new Grid { ColumnSpacing = 8 };
         headerContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         headerContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -221,8 +245,8 @@ internal sealed class OpenCodeToolGroupView
         _root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };
         _root.PointerExited += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
         _root.PointerCanceled += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
-        _root.Unloaded += (_, _) => StopTimer();
-        _root.Loaded += (_, _) => UpdateTimer();
+        _root.Unloaded += (_, _) => { _loaded = false; StopTimer(); };
+        _root.Loaded += (_, _) => { _loaded = true; UpdateTimer(); };
     }
 
     internal string GroupId { get; }
@@ -267,6 +291,7 @@ internal sealed class OpenCodeToolGroupView
         AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.expansion.before", expanded.ToString());
         SetExpanded(expanded);
         AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.expansion.after", expanded.ToString());
+        RefreshWorking();
         UpdateTimer();
     }
 
@@ -278,6 +303,8 @@ internal sealed class OpenCodeToolGroupView
         _enterLeaf = null;
         _exitLeaf = null;
         StopTimer();
+        _phrases.Stop();
+        _working.Dispose();
     }
 
     /// <summary>结果计数：“n” + 语义色 Fluent 字形（CheckMark / Cancel），数字与字形同色（主题样式，随主题更新）。</summary>
@@ -307,7 +334,7 @@ internal sealed class OpenCodeToolGroupView
         // A single logical operation is the header itself, never “读取 · 已处理”.
         var backgroundRunning = _openLeaf is not null && _leafLabel.Text.EndsWith("（后台）", StringComparison.Ordinal)
             && _leafStatus == OpenCodeToolRowStatus.Running;
-        _headerText.Visibility = _openLeaf is null || backgroundRunning ? Visibility.Visible : Visibility.Collapsed;
+        _headerText.Visibility = (_openLeaf is null && !ShowsWorkingIndicator) || backgroundRunning ? Visibility.Visible : Visibility.Collapsed;
         if (backgroundRunning) { _headerText.Text = "后台运行中"; return; }
         _headerText.Text = _summary.IsActive
             ? OpenCodeStepRunPresentation.FormatActiveHeader(_summary.StartedAt, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
@@ -332,15 +359,19 @@ internal sealed class OpenCodeToolGroupView
     private void RefreshProgress()
     {
         var active = _openLeaf is not null ? _leafStatus is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming : _summary.IsActive;
+        // 分组头部已有转动的齿轮时不再叠加进度环（单叶头部仍用进度环表示该叶的真实运行状态）。
+        if (ShowsWorkingIndicator) active = false;
         _progress.IsActive = active;
         _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>进行中且开始时间可信时每秒刷新“处理中… N 秒”；否则停止计时器。</summary>
+    /// <summary>
+    /// 进行中且开始时间可信时每秒刷新“处理中… N 秒”；working 指示器显示时同一节拍顺带检查换词（不另建计时器）；否则停止计时器。
+    /// </summary>
     private void UpdateTimer()
     {
-        var needed = !_disposed && _headerVisible && _summary.IsActive
-            && OpenCodeStepRunPresentation.IsPlausibleTimestamp(_summary.StartedAt);
+        var needed = !_disposed && _loaded && _working.IsVisibleWhileLoaded && _headerVisible && !_inlineLeaf && _summary.IsActive
+            && (ShowsWorkingIndicator || OpenCodeStepRunPresentation.IsPlausibleTimestamp(_summary.StartedAt));
         if (!needed)
         {
             StopTimer();
@@ -367,6 +398,11 @@ internal sealed class OpenCodeToolGroupView
                 }
 
                 RefreshHeaderText();
+                if (_working.IsActive)
+                {
+                    _phrases.Tick(NowMs());
+                    RefreshWorkingText();
+                }
             };
         }
 
@@ -382,6 +418,43 @@ internal sealed class OpenCodeToolGroupView
         {
             timer.Stop();
         }
+    }
+
+    /// <summary>B17：本轮进行中的可见头部显示 working 指示器（内联叶、后续段不显示）。叶名称仍保留真实步骤。</summary>
+    private bool ShowsWorkingIndicator => !_disposed && _initialized && _summary.IsActive && _headerVisible && !_inlineLeaf;
+
+    private static double NowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    /// <summary>B17：按真实状态显示/隐藏 working 指示器；进入时从标准词开始，离开（完成/隐藏）时停掉换词并离开共享时钟。</summary>
+    private void RefreshWorking()
+    {
+        var show = ShowsWorkingIndicator;
+        if (show && !_working.IsActive) _phrases.Start(_activity, _family, NowMs());
+        else if (!show && _working.IsActive) _phrases.Stop();
+        _working.SetActive(show);
+        _icon.Visibility = show ? Visibility.Collapsed : Visibility.Visible;
+        if (show)
+        {
+            RefreshHeaderText();
+            RefreshWorkingText();
+        }
+        else
+        {
+            RefreshHeaderText();
+        }
+
+        RefreshProgress();
+    }
+
+    private void RefreshWorkingText()
+    {
+        if (!_working.IsActive) return;
+        var started = _summary.StartedAt;
+        var now = NowMs();
+        var elapsed = OpenCodeStepRunPresentation.IsPlausibleTimestamp(started) && now >= started!.Value
+            ? OpenCodeStepRunPresentation.FormatDuration(now - started.Value)
+            : string.Empty;
+        _working.SetText(_phrases.Current, elapsed);
     }
 
     /// <summary>箭头仅在指针悬停于分组内时显示；其余时间透明（保留占位，标题不跳动）。</summary>
