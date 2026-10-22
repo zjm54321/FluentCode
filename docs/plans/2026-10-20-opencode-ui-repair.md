@@ -104,10 +104,10 @@
 | **A5** | A | `openai/gpt-6.1-sol` | designer + fixer | 会话状态图标细化：提问阻塞问号与可视渲染水位未读小圆点 | 无 | `781824a` | 已提交，待统一验收；阻塞显`?`、正交未读圆点、视口渲染消除 |
 | **A6** | A | `openai/gpt-6.1-sol` | designer + fixer | 标签栏高度规范、顶栏居中、真正固定在集合中的原生Home标签 | 无 | `f6729c7` | 已提交，待统一验收；启动高度正确、全关自动回退Home且无空壳 |
 | **A7** | A | `openai/gpt-6.1-sol` | fixer + designer | 多空白会话独立初始化、GUID槽位与独立未提交草稿隔离 | A1, A6 | `eb6b9b5` | 已提交，待统一验收；无`+`前缀、配置不串、草稿隔离不丢失 |
-| **R1** | A | `openai/gpt-6.1-sol` | fixer + designer | Agent颜色往返保持 + 名字完整显示不截断（新增回归项） | A7 | `待办` | 往返切换/刷新颜色不丢失、长名完整呈现不截断省略 |
-| **R2** | A | `openai/gpt-6.1-sol` | fixer | 会话加载首帧/延迟回归（真实首次正文计时、warmcache零网络） | A3, A7 | `待办` | 秒出正文首帧、冷启动去串行等待、保留A3代际安全、核对binary |
-| **R3** | A | `openai/gpt-6.1-sol` | designer + fixer | Reasoning effort 改用 WinUI3 原生单选/选中样式 | A2 | `待办` | 原生RadioButton单选外观、默认清空=null、wireID与显示解耦 |
-| **A8** | A | `openai/gpt-6.1-sol` | designer | 终端/工具悬停样式精简、内容区边界约 10% 留白 Clamp | A1 | `待办` | 暂缓优先R；移除重复原生tooltip、横向居中并边缘限制、无溢出 |
+| **R1** | A | `openai/gpt-6.1-sol` | fixer + designer | Agent颜色往返保持 + 名字完整显示不截断（新增回归项） | A7 | `811feb3` | 已提交，待统一验收；往返切换/刷新颜色不丢失、长名完整呈现不截断省略 |
+| **R2** | A | `openai/gpt-6.1-sol` | fixer | 会话加载首帧/延迟回归（真实首次正文计时、warmcache零网络） | A3, A7 | `c0e3ab1` | 已提交，待统一验收；秒出正文首帧、冷启动去串行等待、保留A3代际安全、核对binary |
+| **R3** | A | `openai/gpt-6.1-sol` | designer + fixer | Reasoning effort 改用 WinUI3 原生单选/选中样式 | A2 | `9917d75` | 已提交，待统一验收；原生RadioButton单选外观、默认清空=null、wireID与显示解耦 |
+| **A8** | A | `openai/gpt-6.1-sol` | designer | 终端/工具悬停样式精简、内容区边界约 10% 留白 Clamp | A1 | `5150c00` | 已提交，待统一验收；暂缓优先R；移除重复原生tooltip、横向居中并边缘限制、无溢出 |
 | **A9** | A | `openai/gpt-6.1-sol` | fixer + designer | 调研 OpenCode 真实 "by the way" 交互并等价实现（原B9移入） | 真实协议核实、当前A2/A7 Composer | `待办` | 来源映射B9→A9；核实官方vs社区实现、明确能力边界、拒绝臆造 |
 | **A10** | A | `openai/gpt-6.1-sol` | fixer + designer | 官方原生 to do 接入、样式对齐与全界面自有文案替换（原B10移入） | 契约核实 | `待办` | 来源映射B10→A10；原子替换不降级、仅当前会话不混child、文案替换 |
 | **Gate A** | A-Gate | 交叉检查 | Parent / All | 阶段 A 13项功能综合测试、全应用 Windows Build 与一次性用户实测 | A1..A10, R1..R3 | `待办(截止SHA)` | 13项全量提交后一次性Gate，完整构建测试通过、用户统一实测 |
@@ -737,6 +737,8 @@
 
 ## 8. 提交与验收记录表
 
+> **2026-10-23 执行策略更新（用户指令）**：取消 Sol/Opus 模型通道限制，所有子代理一律使用默认模型；取消严格串行顺序，按内容重新拆分、按优先级并行（独立 git worktree 分支 `lane/*`，完成后 cherry-pick 回 main）。仍保持：一任务一 Conventional Commit、聚焦测试后提交、渐进替换与真实性红线。
+
 ### 阶段 A 任务追踪（Sol 专属 · 共 13 项功能任务）
 
 | 任务编号 | 任务简述 | 执行模型 | Conventional Commit 信息 | 提交 Commit SHA | 验收状态 | 验收人 |
@@ -749,10 +751,10 @@
 | **A5** | 提问阻塞问号与未读小圆点 | `openai/gpt-6.1-sol` | `fix(opencode): distinguish blocked questions and unread completions` | `781824a0c8569d36007b0ae8fc1ca1dc3ffcd9eb` | 已提交，待统一验收 | parent |
 | **A6** | Tab栏高度修正与集合内原生Home标签 | `openai/gpt-6.1-sol` | `fix(opencode): pin native home tab and restore last-close fallback` | `f6729c73f4d4669e3b57519d2ca1debff54c52b9` | 已提交，待统一验收 | parent |
 | **A7** | 多空白会话与独立输入草稿 | `openai/gpt-6.1-sol` | `feat(opencode): isolate drafts and defaults across session tabs` | `eb6b9b5e0a0f4efe22dde161db2a312ff811b0cc` | 已提交，待统一验收 | parent |
-| **R1** | Agent颜色往返保持与名字完整显示 | `openai/gpt-6.1-sol` | `fix(opencode): persist agent custom color and show full agent name [建议]` | `待办` | 待验收 | parent |
-| **R2** | 会话加载首帧/延迟回归优化 | `openai/gpt-6.1-sol` | `perf(opencode): optimize warm cache first frame and remove serial delays [建议]` | `待办` | 待验收 | parent |
-| **R3** | Reasoning effort 改用原生单选样式 | `openai/gpt-6.1-sol` | `style(opencode): native winui3 radio selection for reasoning effort [建议]` | `待办` | 待验收 | parent |
-| **A8** | 悬停样式精简与 10% 边界限制 | `openai/gpt-6.1-sol` | `style(opencode): clamp hover tooltips with 10pct margin [建议]` | `待办` | 待验收 (暂缓优先R) | parent |
+| **R1** | Agent颜色往返保持与名字完整显示 | `openai/gpt-6.1-sol` | `fix(opencode): keep agent color, description and full name across picker round-trips` | `811feb3290433082220946e398d80a3b57b9cc5d` | 已提交，待统一验收 | parent |
+| **R2** | 会话加载首帧/延迟回归优化 | `openai/gpt-6.1-sol` | `perf(opencode): overlap session state and message reads on cold switch` | `c0e3ab1e133f09b2303e3c36bfc733a1ffdbde7b` | 已提交，待统一验收 | parent |
+| **R3** | Reasoning effort 改用原生单选样式 | `openai/gpt-6.1-sol` | `fix(opencode): use native radio items for blank reasoning effort menu` | `9917d75533ca4452e0f872b7211402de9292c2b5` | 已提交，待统一验收 | parent |
+| **A8** | 悬停样式精简与 10% 边界限制 | `openai/gpt-6.1-sol` | `fix(opencode): center tool hover preview on pointer within content column` | `5150c008b3d44e454c1db3d83a68f027ab6dd215` | 已提交，待统一验收 | parent |
 | **A9** | 官方 "by the way" 功能调研与落地 | `openai/gpt-6.1-sol` | `feat(opencode): implement verified by-the-way feature [建议]` | `待办` | 待验收 (原B9移入) | parent |
 | **A10** | 官方原生 to do 接入与自有文案规范化 | `openai/gpt-6.1-sol` | `feat(opencode): official native todo integration and copy alignment [建议]` | `待办` | 待验收 (原B10移入) | parent |
 | **Gate A** | 阶段 A 13项全面测试与应用验收 | - | - | **阶段截止 SHA**: `待办` | 待执行 (统一验收) | parent / user |
