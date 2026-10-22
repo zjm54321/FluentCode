@@ -29,7 +29,7 @@ internal static class OpenCodeSideQuestionDialog
         };
         AutomationProperties.SetAutomationId(input, "OpenCodeSideQuestionInput");
         AutomationProperties.SetName(input, "顺便问的问题");
-        var body = new StackPanel { Spacing = 12, Width = Math.Clamp(owner.Size.Width - 112, 260, 456) };
+        var body = new StackPanel { Spacing = 12, Width = Math.Clamp(owner.Size.Width - 112, 232, 456) };
         body.Children.Add(OpenCodeInteractionUi.StyledText("基于当前会话已有的上下文一次性回答；不会写入会话，也不会调用工具。",
             OpenCodeInteractionUi.CaptionSubtleStyleKey));
         body.Children.Add(input);
@@ -79,7 +79,7 @@ internal static class OpenCodeSideQuestionDialog
         }
         var scroll = new ScrollViewer
         {
-            Content = new Border { Child = content, Padding = new Thickness(16, 12, 16, 14) },
+            Content = new Border { Child = content, Padding = new Thickness(16, 12, 18, 14) }, // Right inset clears the overlay scrollbar.
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             MaxHeight = AnswerMaxHeight(owner),
@@ -178,7 +178,7 @@ internal static class OpenCodeSideQuestionDialog
         return row;
     }
 
-    private static double AnswerWidth(XamlRoot? owner) => Math.Clamp((owner?.Size.Width ?? 760) - 112, 280, 680);
+    private static double AnswerWidth(XamlRoot? owner) => Math.Clamp((owner?.Size.Width ?? 760) - 112, 232, 680);
 
     // Official overlay: answer body ≈ 60% of the available height.
     private static double AnswerMaxHeight(XamlRoot? owner) => Math.Clamp((owner?.Size.Height ?? 760) * 0.6 - 120, 160, 640);

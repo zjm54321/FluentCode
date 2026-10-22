@@ -557,26 +557,54 @@
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                         BorderThickness="1"
                                         CornerRadius="{ThemeResource OverlayCornerRadius}"
-                                        Padding="12,10">
-                                         <StackPanel>
+                                        Padding="12,12,12,10">
+                                        <StackPanel>
+                                            <!-- Shell 模式：独立的深色命令行面，铺满整张输入卡片（负外边距抵消卡片内边距）；普通两行输入与工具栏整体隐藏。 -->
                                             <Grid x:Name="ComposerShellHost" Visibility="Collapsed" RequestedTheme="Dark"
-                                                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" RowDefinitions="Auto,Auto" RowSpacing="8">
+                                                  Margin="-12,-12,-12,-10" Padding="14,12,12,10"
+                                                  CornerRadius="{ThemeResource OverlayCornerRadius}"
+                                                  Background="{ThemeResource SolidBackgroundFillColorBaseAltBrush}"
+                                                  RowDefinitions="Auto,Auto" RowSpacing="10">
                                                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                    <TextBlock Text="$" FontFamily="Consolas" VerticalAlignment="Center"
-                                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    <TextBlock x:Name="ShellPromptGlyph" Text="$" FontFamily="Consolas" FontWeight="SemiBold"
+                                                               VerticalAlignment="Top" Margin="0,6,0,0"
+                                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                               AutomationProperties.AccessibilityView="Raw" />
                                                     <TextBox x:Name="ShellComposer" Grid.Column="1" PlaceholderText="输入 Shell 命令"
-                                                             AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="180"
-                                                             Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                                                             AutomationProperties.AutomationId="OpenCodeShellComposer" AutomationProperties.Name="Shell 命令" />
+                                                             AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="180" MinHeight="32"
+                                                             Padding="0,5,0,6" BorderThickness="0,0,0,1"
+                                                             Background="{ThemeResource SubtleFillColorTransparentBrush}"
+                                                             AutomationProperties.AutomationId="OpenCodeShellComposer" AutomationProperties.Name="Shell 命令">
+                                                        <!-- 轻量样式：命令行无填充底色，只保留一条下划线（聚焦时为强调色）。 -->
+                                                        <TextBox.Resources>
+                                                            <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                            <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                            <StaticResource x:Key="TextControlBackgroundDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                        </TextBox.Resources>
+                                                    </TextBox>
                                                     <Button x:Name="ShellSubmitButton" Grid.Column="2" Content="运行" VerticalAlignment="Bottom"
-                                                            AutomationProperties.AutomationId="OpenCodeShellSubmit" />
+                                                            Height="32" MinWidth="64" Padding="14,0"
+                                                            Style="{ThemeResource AccentButtonStyle}"
+                                                            AutomationProperties.AutomationId="OpenCodeShellSubmit"
+                                                            ToolTipService.ToolTip="运行（Enter）" />
                                                 </Grid>
-                                                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                                    <TextBlock Text="Shell" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                                    <Border VerticalAlignment="Center" CornerRadius="{ThemeResource ControlCornerRadius}" Padding="6,1,6,2"
+                                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                                                        <TextBlock x:Name="ShellModeLabel" Text="Shell" FontFamily="Consolas"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                    </Border>
                                                     <TextBlock x:Name="ShellStatusText" Grid.Column="1" Text="在会话工作目录执行 · 不排队"
-                                                               TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    <Button x:Name="ShellExitButton" Grid.Column="2" Content="返回（Esc）" Padding="8,0"
-                                                            AutomationProperties.AutomationId="OpenCodeShellExit" />
+                                                               VerticalAlignment="Center" TextWrapping="Wrap"
+                                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    <Button x:Name="ShellExitButton" Grid.Column="2" Content="返回（Esc）"
+                                                            VerticalAlignment="Center" MinHeight="28" Padding="10,2,10,4"
+                                                            Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
+                                                            AutomationProperties.AutomationId="OpenCodeShellExit"
+                                                            ToolTipService.ToolTip="返回普通输入（Esc）" />
                                                 </Grid>
                                             </Grid>
                                             <!-- 命令 / 附件伴随视图宿主：页面代码挂入 OpenCodeComposerView 后设为可见；未挂入时折叠、不占位。 -->
@@ -585,114 +613,131 @@
                                                 Visibility="Collapsed"
                                                 AutomationProperties.AutomationId="OpenCodeComposerCompanionHost" />
 
-                                             <!-- Always two rows, including an empty draft. Shell mode hides this entire surface. -->
-                                             <Grid x:Name="ComposerInputLayout" RowDefinitions="Auto,Auto" RowSpacing="8">
-                                                 <Grid x:Name="ComposerEditorHost">
-                                                  <TextBox
-                                                     x:Name="Composer"
-                                                     AcceptsReturn="True"
-                                                     TextWrapping="Wrap"
-                                                     Padding="8,8,40,8"
-                                                    MinHeight="40"
-                                                     MaxHeight="140"
-                                                    ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                                    PlaceholderText="给 OpenCode 发消息"
-                                                    KeyDown="Composer_KeyDown"
-                                                    KeyUp="Composer_KeyUp"
-                                                    AutomationProperties.AutomationId="OpenCodeComposer"
-                                                      AutomationProperties.Name="消息输入" />
-                                                     <Button x:Name="ComposerExpandButton" Width="32" Height="32" MinWidth="0" Padding="0"
-                                                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
-                                                             Visibility="Collapsed" Click="ComposerExpandButton_Click"
-                                                             AutomationProperties.AutomationId="OpenCodeComposerExpand"
-                                                             AutomationProperties.Name="展开输入框" ToolTipService.ToolTip="展开输入框">
-                                                         <FontIcon Glyph="&#xE740;" FontSize="14" />
-                                                     </Button>
-                                                 </Grid>
-                                                 <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
-                                                               HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
-                                                 <Grid x:Name="ComposerToolbar" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" MinWidth="312">
-                                                     <StackPanel x:Name="ComposerToolbarLeft" Orientation="Horizontal" Spacing="4">
-                                                         <Grid x:Name="ComposerLeadingHost" VerticalAlignment="Center" />
-                                                  <Grid x:Name="BlankToolbarChoices" ColumnDefinitions="Auto,Auto,Auto"
-                                                        ColumnSpacing="4" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                                      <Button x:Name="BlankAgentButton" Click="ComposerAgentButton_Click"
-                                                               Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
-                                                              AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
-                                                              AutomationProperties.AutomationId="OpenCodeBlankAgent">
-                                                          <Button.Style>
-                                                              <Style TargetType="Button">
-                                                                 <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                                             </Style>
-                                                          </Button.Style>
-                                                      </Button>
-                                                      <Button x:Name="BlankModelButton" Grid.Column="1" Click="ComposerModelButton_Click"
-                                                              Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
-                                                              AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
-                                                              AutomationProperties.AutomationId="OpenCodeBlankModel" />
-                                                      <Button x:Name="BlankStrengthButton" Grid.Column="2" Click="ComposerEffortButton_Click"
-                                                                      Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="选择推理强度"
-                                                              ToolTipService.ToolTip="选择推理强度"
-                                                              AutomationProperties.AutomationId="OpenCodeBlankStrength" />
-                                                  </Grid>
-                                                     </StackPanel>
-                                                     <StackPanel x:Name="ComposerToolbarMiddle" Grid.Column="1" Orientation="Horizontal" Spacing="4"
-                                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                         <Button x:Name="ComposerSubagentsButton" Width="32" Height="32" MinWidth="0" Padding="0"
-                                                                 Click="ComposerSubagentsButton_Click" AutomationProperties.Name="后台子智能体"
-                                                                 ToolTipService.ToolTip="后台子智能体" AutomationProperties.AutomationId="OpenCodeComposerSubagents">
-                                                             <FontIcon Glyph="&#xE902;" FontSize="16" />
-                                                         </Button>
-                                                         <Button x:Name="ComposerConnectionButton" Width="20" Height="32" MinWidth="0" Padding="0" Visibility="Collapsed"
-                                                                 Click="ComposerConnectionButton_Click" AutomationProperties.Name="OpenCode 连接详情"
-                                                                 ToolTipService.ToolTip="OpenCode 连接详情" AutomationProperties.AutomationId="OpenCodeComposerConnection" />
-                                                     </StackPanel>
-                                                 <StackPanel
-                                                     x:Name="ComposerActions"
-                                                     Grid.Column="2"
-                                                    Orientation="Horizontal"
-                                                    Spacing="8"
-                                                    HorizontalAlignment="Right"
-                                                     VerticalAlignment="Center">
-                                                    <ProgressRing
-                                                        x:Name="SendProgress"
-                                                        Width="16"
-                                                        Height="16"
-                                                        IsActive="False"
-                                                        Visibility="Collapsed"
-                                                        VerticalAlignment="Center"
-                                                         AutomationProperties.AutomationId="OpenCodeSendProgress" />
-                                                    <Button
-                                                        x:Name="ComposerQueueButton"
-                                                        Width="32" Height="32" MinWidth="0" Padding="0"
-                                                        Visibility="Collapsed" IsEnabled="False"
-                                                        Click="ComposerQueueButton_Click"
-                                                        AutomationProperties.AutomationId="OpenCodeComposerQueue"
-                                                        AutomationProperties.Name="当前回合结束后发送"
-                                                        ToolTipService.ToolTip="当前回合结束后发送">
-                                                        <FontIcon Glyph="&#xE823;" FontSize="14" />
+                                            <!-- Always two rows, including an empty draft. Shell mode hides this entire surface. -->
+                                            <Grid x:Name="ComposerInputLayout" RowDefinitions="Auto,Auto" RowSpacing="8">
+                                                <Grid x:Name="ComposerEditorHost">
+                                                    <!-- 右侧内边距 44 = 全屏按钮 32 + 外边距 4 + 与文字的间隔 8。 -->
+                                                    <TextBox
+                                                        x:Name="Composer"
+                                                        AcceptsReturn="True"
+                                                        TextWrapping="Wrap"
+                                                        Padding="12,9,44,9"
+                                                        MinHeight="40"
+                                                        MaxHeight="140"
+                                                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                        PlaceholderText="给 OpenCode 发消息"
+                                                        KeyDown="Composer_KeyDown"
+                                                        KeyUp="Composer_KeyUp"
+                                                        AutomationProperties.AutomationId="OpenCodeComposer"
+                                                        AutomationProperties.Name="消息输入" />
+                                                    <Button x:Name="ComposerExpandButton" Width="32" Height="32" MinWidth="0" Padding="0"
+                                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
+                                                            Visibility="Collapsed" Click="ComposerExpandButton_Click"
+                                                            AutomationProperties.AutomationId="OpenCodeComposerExpand"
+                                                            AutomationProperties.Name="展开输入框" ToolTipService.ToolTip="展开输入框">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource OpenCodeTransparentToolButtonStyle}">
+                                                                <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                                                                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                            </Style>
+                                                        </Button.Style>
+                                                        <FontIcon Glyph="&#xE740;" FontSize="12" />
                                                     </Button>
-                                                    <Button
-                                                        x:Name="SendStopButton"
-                                                        Width="32"
-                                                        Height="32"
-                                                        MinWidth="0"
-                                                        Padding="0"
-                                                        IsEnabled="False"
-                                                        Style="{ThemeResource AccentButtonStyle}"
-                                                        Click="SendStopButton_Click"
-                                                        AutomationProperties.AutomationId="OpenCodeSendStopButton"
-                                                        AutomationProperties.Name="发送"
-                                                        ToolTipService.ToolTip="发送（Enter）">
-                                                        <FontIcon
-                                                            x:Name="SendStopIcon"
-                                                            Glyph="&#xE724;"
-                                                            FontSize="14" />
-                                                    </Button>
-                                                 </StackPanel>
-                                                 </Grid>
-                                                 </ScrollViewer>
-                                              </Grid>
+                                                </Grid>
+                                                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                                                              HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+                                                    <Grid x:Name="ComposerToolbar" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" MinWidth="312">
+                                                        <!-- 工具栏图标按钮：静止时无填充、无描边，悬停/按下沿用原生按钮状态；禁用时不出现灰色方块。
+                                                             发送按钮显式使用 AccentButtonStyle，不受此隐式样式影响。 -->
+                                                        <Grid.Resources>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource OpenCodeTransparentToolButtonStyle}">
+                                                                <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                                                            </Style>
+                                                            <StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                            <StaticResource x:Key="ButtonBorderBrushDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                        </Grid.Resources>
+                                                        <StackPanel x:Name="ComposerToolbarLeft" Orientation="Horizontal" Spacing="2">
+                                                            <Grid x:Name="ComposerLeadingHost" VerticalAlignment="Center" />
+                                                            <Grid x:Name="BlankToolbarChoices" ColumnDefinitions="Auto,Auto,Auto"
+                                                                  ColumnSpacing="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                <Button x:Name="BlankAgentButton" Click="ComposerAgentButton_Click"
+                                                                        Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
+                                                                        AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
+                                                                        AutomationProperties.AutomationId="OpenCodeBlankAgent">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource OpenCodeTransparentToolButtonStyle}">
+                                                                            <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                                                                            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                </Button>
+                                                                <Button x:Name="BlankModelButton" Grid.Column="1" Click="ComposerModelButton_Click"
+                                                                        Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
+                                                                        AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
+                                                                        AutomationProperties.AutomationId="OpenCodeBlankModel" />
+                                                                <Button x:Name="BlankStrengthButton" Grid.Column="2" Click="ComposerEffortButton_Click"
+                                                                        Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
+                                                                        AutomationProperties.Name="选择推理强度" ToolTipService.ToolTip="选择推理强度"
+                                                                        AutomationProperties.AutomationId="OpenCodeBlankStrength" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                        <StackPanel x:Name="ComposerToolbarMiddle" Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                            <Button x:Name="ComposerSubagentsButton" Width="32" Height="32" MinWidth="0" Padding="0"
+                                                                    Click="ComposerSubagentsButton_Click" AutomationProperties.Name="后台子智能体"
+                                                                    ToolTipService.ToolTip="后台子智能体" AutomationProperties.AutomationId="OpenCodeComposerSubagents">
+                                                                <FontIcon Glyph="&#xE902;" FontSize="16" />
+                                                            </Button>
+                                                            <Button x:Name="ComposerConnectionButton" Width="20" Height="32" MinWidth="0" Padding="0" Visibility="Collapsed"
+                                                                    Click="ComposerConnectionButton_Click" AutomationProperties.Name="OpenCode 连接详情"
+                                                                    ToolTipService.ToolTip="OpenCode 连接详情" AutomationProperties.AutomationId="OpenCodeComposerConnection" />
+                                                        </StackPanel>
+                                                        <StackPanel
+                                                            x:Name="ComposerActions"
+                                                            Grid.Column="2"
+                                                            Orientation="Horizontal"
+                                                            Spacing="6"
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Center">
+                                                            <ProgressRing
+                                                                x:Name="SendProgress"
+                                                                Width="16"
+                                                                Height="16"
+                                                                IsActive="False"
+                                                                Visibility="Collapsed"
+                                                                VerticalAlignment="Center"
+                                                                AutomationProperties.AutomationId="OpenCodeSendProgress" />
+                                                            <Button
+                                                                x:Name="ComposerQueueButton"
+                                                                Width="32" Height="32" MinWidth="0" Padding="0"
+                                                                Visibility="Collapsed" IsEnabled="False"
+                                                                Click="ComposerQueueButton_Click"
+                                                                AutomationProperties.AutomationId="OpenCodeComposerQueue"
+                                                                AutomationProperties.Name="当前回合结束后发送"
+                                                                ToolTipService.ToolTip="当前回合结束后发送">
+                                                                <FontIcon Glyph="&#xE823;" FontSize="16" />
+                                                            </Button>
+                                                            <Button
+                                                                x:Name="SendStopButton"
+                                                                Width="32"
+                                                                Height="32"
+                                                                MinWidth="0"
+                                                                Padding="0"
+                                                                IsEnabled="False"
+                                                                Style="{ThemeResource AccentButtonStyle}"
+                                                                Click="SendStopButton_Click"
+                                                                AutomationProperties.AutomationId="OpenCodeSendStopButton"
+                                                                AutomationProperties.Name="发送"
+                                                                ToolTipService.ToolTip="发送（Enter）">
+                                                                <FontIcon
+                                                                    x:Name="SendStopIcon"
+                                                                    Glyph="&#xE724;"
+                                                                    FontSize="14" />
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </ScrollViewer>
+                                            </Grid>
                                         </StackPanel>
                                     </Border>
 

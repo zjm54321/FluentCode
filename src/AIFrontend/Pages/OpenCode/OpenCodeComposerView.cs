@@ -271,12 +271,12 @@ internal sealed class OpenCodeComposerView : StackPanel
         addMenu.Items.Add(_discardItem);
         _addButton = new Button
         {
-            Content = new FontIcon { Glyph = "\uE710", FontSize = 14 },
+            Content = new FontIcon { Glyph = "\uE710", FontSize = 16 },
             Width = 32,
             Height = 32,
             MinWidth = 0,
             Padding = new Thickness(0),
-            VerticalAlignment = VerticalAlignment.Bottom,
+            VerticalAlignment = VerticalAlignment.Center,
             Flyout = addMenu,
         };
         AutomationProperties.SetAutomationId(_addButton, "OpenCodeComposerAddButton");
@@ -1348,10 +1348,11 @@ internal sealed class OpenCodeComposerView : StackPanel
             Text = OpenCodeComposerInputPolicy.Bound(name, 64) + (candidate.IsDirectory ? "/" : string.Empty),
             FontFamily = MonoFont,
             FontWeight = FontWeights.SemiBold,
+            MaxWidth = 260, // An Auto column measures unbounded; cap it so long names trim and the folder stays visible.
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var row = new Grid { ColumnSpacing = 10, Padding = new Thickness(0, 5, 0, 5), Tag = candidate };
+        var row = new Grid { ColumnSpacing = 8, Padding = new Thickness(0, 4, 0, 4), Tag = candidate };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1512,6 +1513,7 @@ internal sealed class OpenCodeComposerView : StackPanel
             Text = "/" + OpenCodeComposerInputPolicy.Bound(row.Name, 48),
             FontFamily = MonoFont,
             FontWeight = FontWeights.SemiBold,
+            MaxWidth = 280, // Horizontal stacks measure unbounded; cap so long names trim instead of clipping hints.
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -1803,6 +1805,8 @@ internal sealed class OpenCodeComposerView : StackPanel
         if (_sideQuestionPending > 0)
         {
             var pending = $"/btw ({_sideQuestionPending}) · 正在回答旁路问题…";
+            // Visual only: on its own the pending answer reads as quiet progress; protection notices keep their icon/tone.
+            if (text is null) busy = true;
             text = text is null ? pending : text + " · " + pending;
         }
         if (text is null) { _statusBar.Visibility = Visibility.Collapsed; _statusRing.IsActive = false; return; }

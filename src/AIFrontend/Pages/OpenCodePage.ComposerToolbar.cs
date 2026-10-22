@@ -70,6 +70,7 @@ public sealed partial class OpenCodePage
         BlankAgentButton.IsEnabled = enabled;
         BlankModelButton.IsEnabled = enabled;
         BlankStrengthButton.IsEnabled = enabled && ticks.Count > 0;
+        _composerEffortGauge.Dimmed = !BlankStrengthButton.IsEnabled; // Visual only: mirror the button's disabled state.
     }
 
     private static void DescribeComposerIcon(Button button, string name)
