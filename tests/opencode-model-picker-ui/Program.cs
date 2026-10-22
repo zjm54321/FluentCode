@@ -86,6 +86,12 @@ internal static class Program
         Check(dialog.Contains("Title = \"选择模型\"") && dialog.Contains("OpenCodeModelPresentation.CurrentName") && dialog.Contains("PrimaryButtonText = \"确认修改\"") && dialog.Contains("CloseButtonText = \"取消\""), "minimal title/current-name and two actions");
         Check(dialog.Contains("row.ModelId.Contains(filter") && dialog.Contains("row.ProviderName ?? row.ProviderId") && dialog.Contains("row.Name.Contains(filter"), "search keeps true fields without exposing subtitles");
         Check(dialog.Contains("OpenCodeModelLogo.Label(row.ModelId, row.Name)") && dialog.Contains("Tag = row") && dialog.Contains("ListViewSelectionMode.Single"), "logo plus name preserves native selection identity/keyboard surface");
+        Check(dialog.Contains("grid.ColumnSpacing = 12") && dialog.Contains("grid.Padding = new Thickness(0, 10, 0, 10)") && dialog.Contains("MinHeight = 48")
+            && dialog.Contains("Spacing = 16") && dialog.Contains("CardBackgroundBrushKey"), "B1b roomy rows (12px mark gap, 48px rows), 16px section rhythm and list card");
+        Check(dialog.Contains("MaxHeight = ModelListMaxHeight(owner)") && dialog.Contains("Width = ModelBodyWidth(owner)") && dialog.Contains("owner.Changed += Refit")
+            && dialog.Contains("finally { owner.Changed -= Refit; }") && dialog.Contains("Content = new ScrollViewer { Content = body"), "B1b dialog re-fits width/list height to live window size and scale, never overflows");
+        var sharedLabel = Read("src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs");
+        Check(!sharedLabel.Contains("ColumnSpacing = 12") && sharedLabel.Contains("ColumnSpacing = 8"), "B1b row spacing is dialog-local; shared composer label unchanged");
         Check(dialog.Contains("OpenCodeCurrentStrengthEntry") && dialog.Contains("dialog.Hide()")
             && dialog.IndexOf("await dialog.ShowAsync()", StringComparison.Ordinal) < dialog.IndexOf("await OpenCodeVariantPickerDialog.ShowAsync", StringComparison.Ordinal), "normal strength entry closes first dialog before opening independent native editor");
         Check(dialog.Contains("var fresh = refresh is null ? basis : await refresh()") && dialog.Contains("currentRow.ProviderId != freshRow.ProviderId || currentRow.ModelId != freshRow.ModelId"), "independent strength entry refreshes existing owner-bound catalog and refuses model retargeting");
