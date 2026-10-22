@@ -2,6 +2,7 @@
 // immutable token/preferences contracts are extracted verbatim from production by run.ps1.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -47,7 +48,18 @@ public sealed partial class OpenCodePage
                     new() { Id = "same", ProviderId = "b", Variants = new() { new() { Id = "other-provider" } } } } });
             return page;
         }
+        var catalog = new OpenCodeModelInfo { Id = "same", ProviderId = "a", Variants = new() { new() { Id = "low" }, new() { Id = "extra_high" }, new() { Id = "Opaque/V2" }, new() { Id = "low" } } };
+        var entries = BlankVariantMenuEntries(catalog, "extra_high");
+        check(entries.Select(e => e.Id).SequenceEqual(new string?[] { null, "low", "extra_high", "Opaque/V2" }), "radio entries: default null first, then exact catalog raw IDs once each");
+        check(entries.Select(e => e.Label).SequenceEqual(new[] { "默认", "低", "极高", "Opaque/V2" }), "radio labels are localized display only");
+        check(entries.Count(e => e.IsChecked) == 1 && entries.Single(e => e.IsChecked).Id == "extra_high", "exactly the current raw variant is checked");
+        check(BlankVariantMenuEntries(catalog, null).Single(e => e.IsChecked).Id is null, "no variant checks the default (null) radio item");
+        check(!BlankVariantMenuEntries(catalog, "xhigh").Any(e => e.IsChecked), "synonym/unoffered current variant is not mapped onto an offered radio item");
+        check(!BlankVariantMenuEntries(catalog, "extra_high").Any(e => e.Id == "default") && BlankVariantRadioGroup.Length > 0, "default is null, never a fabricated \"default\" wire ID; single group name");
         var p = Fixture();
+        var initial = p._blankPreferences;
+        foreach (var entry in BlankVariantMenuEntries(catalog, initial!.Model!.Variant)) { _ = entry; }
+        check(p._blankPreferences == initial && p._client!.Reads == 0 && p._labels == 0, "building/seeding radio items does not read or commit");
         await p.SetBlankVariantAsync(p._blankPreferences!, p._token, "extra_high");
         check(p._blankPreferences!.Model?.Variant == "extra_high" && p._blankPreferences.Model.ProviderId == "a", "real page variant selection keeps exact ID/provider after fresh catalog");
         check(p._client!.Reads == 1 && p._blankModelChosen && !p._blankPickerPending && p._labels == 2 && p._blankModels.Count == 2, "variant commits fresh metadata and settles pending chrome");

@@ -323,20 +323,31 @@ public sealed partial class OpenCodePage
             if (model is null || model.Enabled == false) { _blankPreferenceError = "模型已不再可选，请重新选择。"; return; }
             OwnBlankMetadata(basis);
             _blankModels = response.Data!;
+            // Native WinUI radio menu items: one group, the system template draws the selected dot.
+            // Seeding IsChecked never commits; only an explicit Click goes through SetBlankVariantAsync.
             var flyout = new MenuFlyout();
-            void AddVariant(string? variantId)
+            foreach (var (variantId, label, isChecked) in BlankVariantMenuEntries(model, basis.Model.Variant))
             {
-                var item = new ToggleMenuFlyoutItem { Text = OpenCodeModelPresentation.VariantLabel(variantId), IsChecked = variantId == basis.Model.Variant };
-                item.Click += async (_, _) => await SetBlankVariantAsync(basis, token, variantId);
+                var item = new RadioMenuFlyoutItem { Text = label, GroupName = BlankVariantRadioGroup, IsChecked = isChecked };
+                item.Click += async (_, _) => { if (variantId != basis.Model.Variant) await SetBlankVariantAsync(basis, token, variantId); };
                 flyout.Items.Add(item);
             }
-            AddVariant(null);
-            foreach (var variant in model.Variants ?? new()) AddVariant(variant.Id);
             flyout.ShowAt(BlankStrengthButton);
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "强度信息未能读取；当前选择未变。"; }
         finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
+    }
+
+    internal const string BlankVariantRadioGroup = "OpenCodeBlankReasoningEffort";
+
+    // Default (null wire value) first, then only catalog-offered raw IDs; labels are display-only.
+    internal static IReadOnlyList<(string? Id, string Label, bool IsChecked)> BlankVariantMenuEntries(OpenCodeModelInfo model, string? current)
+    {
+        var ids = new List<string?> { null };
+        foreach (var variant in model.Variants ?? new())
+            if (variant.Id is { } id && !ids.Contains(id)) ids.Add(id);
+        return ids.Select(id => (id, OpenCodeModelPresentation.VariantLabel(id), id == current)).ToArray();
     }
 
     private async Task ChooseBlankModelAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token)

@@ -24,13 +24,14 @@ $wirePath = Join-Path $output 'ModelRef.cs'
 "using System.Text.Json.Serialization; namespace AIFrontend.Services.OpenCode;`n" + $wire.Value | Set-Content -Encoding UTF8 $wirePath
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
 $method = [regex]::Match([IO.File]::ReadAllText($blankPath), '(?ms)^    private async Task SetBlankVariantAsync\(.*?^    \}')
+$entries = [regex]::Match([IO.File]::ReadAllText($blankPath), '(?ms)^    internal const string BlankVariantRadioGroup = .*?^    internal static IReadOnlyList<\(string\? Id, string Label, bool IsChecked\)> BlankVariantMenuEntries\(.*?^    \}')
 $homePath = "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs"
 $preferences = [regex]::Match([IO.File]::ReadAllText($homePath), '(?ms)^internal sealed record OpenCodeBlankDraftPreferences\(.*?^\}')
 $tokenPath = "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerContracts.cs"
 $token = [regex]::Match([IO.File]::ReadAllText($tokenPath), '(?ms)^public readonly record struct OpenCodeComposerToken\r?\n\{.*?^\}')
-if (!$method.Success -or !$preferences.Success -or !$token.Success) { throw 'Missing variant selection production member/contracts.' }
+if (!$method.Success -or !$entries.Success -or !$preferences.Success -or !$token.Success) { throw 'Missing variant selection production member/contracts.' }
 $variantPath = Join-Path $output 'VariantSelection.cs'
-"using System; using System.Linq; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + $method.Value + "`n} } namespace AIFrontend.Pages.OpenCode {`n" + $preferences.Value + "`n" + $token.Value + "`n}" | Set-Content -Encoding UTF8 $variantPath
+"using System; using System.Collections.Generic; using System.Linq; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + $method.Value + "`n" + $entries.Value + "`n} } namespace AIFrontend.Pages.OpenCode {`n" + $preferences.Value + "`n" + $token.Value + "`n}" | Set-Content -Encoding UTF8 $variantPath
 $sources = @($generated, $wirePath, $variantPath, (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'VariantSelection.cs'), "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeRecentModels.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Models.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
 $assembly = Join-Path $output 'ModelPickerUiTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
