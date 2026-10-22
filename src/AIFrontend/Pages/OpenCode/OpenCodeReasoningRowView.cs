@@ -166,6 +166,14 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         _progress.IsActive = streaming;
         _progress.Visibility = streaming ? Visibility.Visible : Visibility.Collapsed;
         _statusIcon.Visibility = streaming ? Visibility.Collapsed : Visibility.Visible;
+        // B16: finished reasoning recedes (secondary label, tertiary glyph); streaming keeps the default emphasis.
+        var labelKey = OpenCodeProcessedSummaryStyle.RowLabelKey(_model.Status);
+        OpenCodeToolTheme.Apply(_nameText, labelKey is null
+            ? OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey)
+            : OpenCodeToolTheme.Text(labelKey, OpenCodeInteractionUi.CaptionStyleKey));
+        OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeProcessedSummaryStyle.IsSettledRow(_model.Status)
+            ? OpenCodeProcessedSummaryStyle.IconBrushKey
+            : OpenCodeToolTheme.TextSecondary));
         AutomationProperties.SetAutomationId(_row, "OpenCodeReasoningRow." + (rowKey ?? string.Empty));
         AutomationProperties.SetName(_row, _model.AccessibleName);
 

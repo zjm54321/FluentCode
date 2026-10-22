@@ -457,7 +457,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
         OpenCodeToolTheme.Apply(_nameText, textStyle);
         OpenCodeToolTheme.Apply(_targetText, textStyle);
-        OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(chrome.KindIconKey));
+        // B16: a completed row's kind glyph recedes; failure chrome (critical) and running rows are unchanged.
+        OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(OpenCodeProcessedSummaryStyle.RowIconKey(model.Status, chrome)));
 
         var active = model.IsActive;
         _progress.IsActive = active;

@@ -80,6 +80,7 @@ internal sealed class OpenCodeToolGroupView
         _itemsBorder.Visibility = open is null && _expanded ? Visibility.Visible : Visibility.Collapsed;
         RefreshHeaderText();
         RefreshProgress();
+        ApplySettledTone();
     }
 
     internal OpenCodeToolGroupView(string groupId, Action<string, bool> onUserToggled)
@@ -262,6 +263,7 @@ internal sealed class OpenCodeToolGroupView
         _icon.Visibility = Visibility.Visible;
         _icon.Glyph = _leafGlyph ?? (summary.ReasoningOnly ? "\uEA80" : "\uE9F5");
         RefreshHeaderText();
+        ApplySettledTone();
         AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.expansion.before", expanded.ToString());
         SetExpanded(expanded);
         AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.expansion.after", expanded.ToString());
@@ -310,6 +312,21 @@ internal sealed class OpenCodeToolGroupView
         _headerText.Text = _summary.IsActive
             ? OpenCodeStepRunPresentation.FormatActiveHeader(_summary.StartedAt, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
             : _summary.HeaderText;
+    }
+
+    /// <summary>
+    /// B16: a finished, error-free group header ("已处理 X 秒") recedes (secondary text, tertiary glyph) so the final
+    /// answer is the focus. Active / failed groups keep the default primary text; the red error tally is never touched.
+    /// </summary>
+    private void ApplySettledTone()
+    {
+        var textKey = OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(_summary.IsActive, _summary.ErrorCount, _leafStatus);
+        var textStyle = textKey is null
+            ? OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey)
+            : OpenCodeToolTheme.Text(textKey, OpenCodeInteractionUi.CaptionStyleKey);
+        OpenCodeToolTheme.Apply(_headerText, textStyle);
+        OpenCodeToolTheme.Apply(_leafLabel, textStyle);
+        OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeProcessedSummaryStyle.GroupIconKey(_summary.IsActive, _summary.ErrorCount, _leafStatus)));
     }
 
     private void RefreshProgress()

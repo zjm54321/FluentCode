@@ -162,6 +162,73 @@ internal static class Program
         Check(toolView.Contains("OpenCodeToolRowChrome.For(model.Status)") && chipView.Contains("OpenCodeToolRowChrome.For(content.Status)"), "tool row and timeline chip use the shared whole-row chrome");
         Check(toolView.Contains("ApplyRowChrome(_rowChrome, chrome)") && chipView.Contains("ApplyRowChrome(_rowChrome, chrome)"), "row border/background applied from chrome in both views");
 
+        // --- 10. B16: completed processing summaries recede; failures and in-progress rows never do ---------
+        Check(OpenCodeProcessedSummaryStyle.LabelBrushKey == "TextFillColorSecondaryBrush" && OpenCodeProcessedSummaryStyle.IconBrushKey == "TextFillColorTertiaryBrush",
+            "B16: de-emphasis uses only theme brushes (secondary text, tertiary glyph)");
+        Check(OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(false, 0, null) == "TextFillColorSecondaryBrush"
+            && OpenCodeProcessedSummaryStyle.GroupIconKey(false, 0, null) == "TextFillColorTertiaryBrush", "B16: finished error-free 已处理 header recedes");
+        Check(OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(false, 0, OpenCodeToolRowStatus.Completed) == "TextFillColorSecondaryBrush", "B16: finished single-leaf header recedes");
+        Check(OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(true, 0, null) is null
+            && OpenCodeProcessedSummaryStyle.GroupIconKey(true, 0, null) == "TextFillColorSecondaryBrush", "B16: working (active) group header keeps default emphasis");
+        Check(OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(false, 1, null) is null
+            && OpenCodeProcessedSummaryStyle.GroupIconKey(false, 2, null) == "TextFillColorSecondaryBrush", "B16: group with failed tools is NOT de-emphasized");
+        foreach (var leaf in new[] { OpenCodeToolRowStatus.Error, OpenCodeToolRowStatus.Running, OpenCodeToolRowStatus.Streaming, OpenCodeToolRowStatus.Unknown })
+        {
+            Check(OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(false, 0, leaf) is null, "B16: single-leaf header with " + leaf + " leaf is NOT de-emphasized");
+        }
+
+        var failure = OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Error);
+        Check(OpenCodeProcessedSummaryStyle.RowIconKey(OpenCodeToolRowStatus.Error, failure) == "SystemFillColorCriticalBrush"
+            && OpenCodeProcessedSummaryStyle.RowLabelKey(OpenCodeToolRowStatus.Error) is null, "B16: failed (red) tool row keeps critical icon and text");
+        Check(OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Error) == failure && failure.BackgroundKey == "SystemFillColorCriticalBackgroundBrush",
+            "B16: B14 failure chrome itself unchanged");
+        var normalChrome = OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Completed);
+        Check(OpenCodeProcessedSummaryStyle.RowIconKey(OpenCodeToolRowStatus.Completed, normalChrome) == "TextFillColorTertiaryBrush"
+            && OpenCodeProcessedSummaryStyle.RowLabelKey(OpenCodeToolRowStatus.Completed) == "TextFillColorSecondaryBrush", "B16: completed row glyph/label recede");
+        foreach (var working in new[] { OpenCodeToolRowStatus.Running, OpenCodeToolRowStatus.Streaming, OpenCodeToolRowStatus.Unknown })
+        {
+            Check(OpenCodeProcessedSummaryStyle.RowIconKey(working, OpenCodeToolRowChrome.For(working)) == "TextFillColorSecondaryBrush"
+                && OpenCodeProcessedSummaryStyle.RowLabelKey(working) is null, "B16: " + working + " row keeps its default emphasis");
+        }
+
+        // Standard Windows 11 theme colours (WinUI Common_themeresources_any.xaml), alpha-composited on the
+        // Mica/base backgrounds: Light #F3F3F3 / card #FFFFFF, Dark #202020 / #282828 (layer).
+        static int Over(int argb, int bg)
+        {
+            var a = ((argb >> 24) & 0xFF) / 255.0;
+            int Ch(int s) => (int)Math.Round(((argb >> s) & 0xFF) * a + ((bg >> s) & 0xFF) * (1 - a));
+            return (Ch(16) << 16) | (Ch(8) << 8) | Ch(0);
+        }
+
+        foreach (var (theme, bg) in new[] { ("Light", 0xF3F3F3), ("Light card", 0xFFFFFF) })
+        {
+            var text = Contrast(Over(unchecked((int)0x9E000000), bg), bg);
+            var icon = Contrast(Over(0x72000000, bg), bg);
+            Check(text >= 4.5, "B16 " + theme + ": secondary summary text ≥ 4.5:1 (" + text.ToString("0.00") + ")");
+            Check(icon >= 3, "B16 " + theme + ": tertiary glyph non-text ≥ 3:1 (" + icon.ToString("0.00") + ")");
+        }
+
+        foreach (var (theme, bg) in new[] { ("Dark", 0x202020), ("Dark layer", 0x282828) })
+        {
+            var text = Contrast(Over(unchecked((int)0xC5FFFFFF), bg), bg);
+            var icon = Contrast(Over(unchecked((int)0x87FFFFFF), bg), bg);
+            Check(text >= 4.5, "B16 " + theme + ": secondary summary text ≥ 4.5:1 (" + text.ToString("0.00") + ")");
+            Check(icon >= 3, "B16 " + theme + ": tertiary glyph non-text ≥ 3:1 (" + icon.ToString("0.00") + ")");
+        }
+
+        var groupView = File.ReadAllText(Path.Combine(pages, "OpenCodeToolGroupView.cs"));
+        var reasoningView = File.ReadAllText(Path.Combine(pages, "OpenCodeReasoningRowView.cs"));
+        Check(groupView.Contains("OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(_summary.IsActive, _summary.ErrorCount, _leafStatus)")
+            && groupView.Contains("OpenCodeProcessedSummaryStyle.GroupIconKey(_summary.IsActive, _summary.ErrorCount, _leafStatus)"), "B16: group header consumes settled tone");
+        Check(groupView.Contains("CreateTally(\"\\uE711\", OpenCodeToolTheme.Critical"), "B16: red error tally untouched");
+        Check(reasoningView.Contains("OpenCodeProcessedSummaryStyle.RowLabelKey(_model.Status)"), "B16: reasoning row consumes settled tone");
+        Check(toolView.Contains("OpenCodeProcessedSummaryStyle.RowIconKey(model.Status, chrome)") && toolView.Contains("chrome.TextKey is { } textKey"),
+            "B16: tool row kind glyph via settled tone, failure text chrome intact");
+        foreach (var source in new[] { groupView, reasoningView, toolView })
+        {
+            Check(!source.Contains("Opacity = 0.") && !source.Contains("FontSize = 11"), "B16: no opacity / smaller-type reductions (contrast preserved, HC uses system colours)");
+        }
+
         Console.WriteLine("B14 error-recovery tests passed: " + _assertions + " assertions");
         return 0;
     }

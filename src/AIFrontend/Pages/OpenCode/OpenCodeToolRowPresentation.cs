@@ -70,6 +70,43 @@ internal sealed record OpenCodeToolRowChrome(
         => FailureLabel is null ? summary : string.IsNullOrEmpty(summary) || summary == "出错" ? FailureLabel : FailureLabel + " · " + summary;
 }
 
+/// <summary>
+/// B16: completed processing summaries recede so the final answer text stays the visual focus.
+/// Finished "已处理 …" / "思考了 …" group headers and finished reasoning rows use the secondary text brush,
+/// and their auxiliary glyphs (group / reasoning / finished tool kind icons) use the tertiary brush.
+/// Only WinUI theme brushes, no Opacity and no smaller type: TextFillColorSecondaryBrush keeps small text ≥ 4.5:1
+/// in Light (#9E000000 → ≈6.0:1 on #F3F3F3) and Dark (#C5FFFFFF → ≈10:1 on #202020); TextFillColorTertiaryBrush is
+/// used for icons only (non-text ≥ 3:1: ≈3.1:1 Light, ≈5.5:1 Dark). In High Contrast both keys resolve to system
+/// colours (SystemColorWindowTextColor), so nothing is reduced there.
+/// Never applied to anything in progress (active group, Running / Streaming) or failed (group with errors,
+/// Error / Unknown leaf, B14 red rows and unrecovered error alerts keep their critical chrome).
+/// Null keys mean "keep the default appearance".
+/// </summary>
+internal static class OpenCodeProcessedSummaryStyle
+{
+    internal const string LabelBrushKey = "TextFillColorSecondaryBrush";
+    internal const string IconBrushKey = "TextFillColorTertiaryBrush";
+
+    /// <summary>Group header "已处理 X 秒": finished, error-free, and (single-leaf header) the leaf itself completed.</summary>
+    internal static bool IsSettledGroup(bool isActive, int errorCount, OpenCodeToolRowStatus? leafStatus)
+        => !isActive && errorCount == 0 && leafStatus is null or OpenCodeToolRowStatus.Completed;
+
+    /// <summary>Row inside a processing group (reasoning / tool): only a successfully completed row recedes.</summary>
+    internal static bool IsSettledRow(OpenCodeToolRowStatus status) => status == OpenCodeToolRowStatus.Completed;
+
+    internal static string? GroupHeaderTextKey(bool isActive, int errorCount, OpenCodeToolRowStatus? leafStatus)
+        => IsSettledGroup(isActive, errorCount, leafStatus) ? LabelBrushKey : null;
+
+    internal static string GroupIconKey(bool isActive, int errorCount, OpenCodeToolRowStatus? leafStatus)
+        => IsSettledGroup(isActive, errorCount, leafStatus) ? IconBrushKey : OpenCodeToolRowChrome.SecondaryIconKey;
+
+    internal static string? RowLabelKey(OpenCodeToolRowStatus status) => IsSettledRow(status) ? LabelBrushKey : null;
+
+    /// <summary>Kind glyph for a row: failure chrome wins (critical); a completed row's glyph recedes; others unchanged.</summary>
+    internal static string RowIconKey(OpenCodeToolRowStatus status, OpenCodeToolRowChrome chrome)
+        => chrome.IsFailure ? chrome.KindIconKey : IsSettledRow(status) ? IconBrushKey : chrome.KindIconKey;
+}
+
 /// <summary>单个文件的改动（优先来自服务端 metadata.files[]，否则由输入本地计算）。</summary>
 internal sealed record OpenCodeToolDiffFile
 {
