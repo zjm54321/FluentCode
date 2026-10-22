@@ -112,7 +112,7 @@
 | **A10** | A | `openai/gpt-6.1-sol` | fixer + designer | 官方原生 to do 接入、样式对齐与全界面自有文案替换（原B10移入） | 契约核实 | `待办` | 来源映射B10→A10；原子替换不降级、仅当前会话不混child、文案替换 |
 | **Gate A** | A-Gate | 交叉检查 | Parent / All | 阶段 A 13项功能综合测试、全应用 Windows Build 与一次性用户实测 | A1..A10, R1..R3 | `待办(截止SHA)` | 13项全量提交后一次性Gate，完整构建测试通过、用户统一实测 |
 | **B1** | B | `anthropic/claude-opus-5-5` | designer | 响应式双侧栏常驻/收起平滑切换（旧顶栏暂留待B6删除） | Gate A | `待办` | 响应式框架就绪、中间宽度保留、宽屏隐藏三钮、旧顶栏暂留 |
-| **B1a** | B | `anthropic/claude-opus-5-5` | designer | 新会话页底部当前目录选择器美化（新增） | B1 | `待办` | 目录选择器排版美化、长路径优雅省略与tooltip、切换联动 |
+| **B1a** | B | `anthropic/claude-opus-5-5` | designer | 新会话页底部当前目录选择器美化（新增） | B1 | `969c2ba` | 已提交，待统一验收；目录选择器排版美化、长路径优雅省略与tooltip、切换联动 |
 | **B1b** | B | `anthropic/claude-opus-5-5` | designer | 模型选择 Dialog 间距/层级/可读性舒展重构（新增，独占commit） | B1a (前置，B2之前) | `4d53884` | 已提交，待统一验收；解决拥挤感、舒展排版、层级清晰、兼容A2/A9/A10，不混R3 |
 | **B2** | B | `anthropic/claude-opus-5-5` | designer + fixer | 右侧栏会话元数据、复制 ID、只读目录、官方美术+所连服务版本+绿点 | B1 | `待办` | 点击复制 ID、显示后端服务版本、真实连接绿点（无文字）、弹详情 |
 | **B3** | B | `anthropic/claude-opus-5-5` | fixer + designer | 上下文与轮次、双层用量（主Agent单行/明细行/总token汇总+总费用） | B2, A10 | `待办` | 真实来源/单位、总token汇总、右侧容器就绪、复用A10原生数据源 |
@@ -124,9 +124,9 @@
 | **B11** | B | `anthropic/claude-opus-5-5` | fixer + designer | 后端连接移至账号/用户入口（三流程：WSL/远程密码/配对链接）与平滑迁移 | B8 (按序执行，A10已作为Gate A前置完成) | `待办` | 仅单账号、按钮“连接 OpenCode”、WSL识别NixOS且持久化为Wsl、平滑迁移 |
 | **B12** | B | `anthropic/claude-opus-5-5` | fixer + designer | WSL专属快速访问区（资源管理器与主机编辑器以WSL模式打开）、动态UNC | B11 (连接完成且为Wsl) | `待办` | 仅Wsl显示/Remote绝对隐藏、动态解析真实UNC不硬编码、转义安全 |
 | **B13** | B | `anthropic/claude-opus-5-5` | designer + fixer | 标签页working不定进度流光指示器全局时钟同向同速同相同步 | B12 | `dc2782c` | 已提交，待统一验收；共享动画时钟同相位、新tab平滑接入不重启全部、无working停机无额外tick |
-| **B14** | B | `anthropic/claude-opus-5-5` | fixer + designer | 依据实际续接关系消除已恢复瞬态错误、未恢复工具错误全行红色语义 | B13 | `待办` | 仅显未恢复错误、同会话新attempt续接成功后清除关联旧错、工具整行红 |
+| **B14** | B | `anthropic/claude-opus-5-5` | fixer + designer | 依据实际续接关系消除已恢复瞬态错误、未恢复工具错误全行红色语义 | B13 | `d081227` | 已提交，待统一验收；仅显未恢复错误、同会话新attempt续接成功后清除关联旧错、工具整行红 |
 | **B15** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer placeholder 趣味 splash 词库（打开/切上下文轮换，新增） | B6 | `64c1440` | 已提交，待统一验收；Minecraft/Claude Code风格、通用俏皮+真实功能提示、不替用户输入 |
-| **B16** | B | `anthropic/claude-opus-5-5` | designer | 处理摘要视觉主次淡化（已处理标签/文字图标灰化小字，正文优先，新增） | B1 | `待办` | 已处理项视觉弱化让正文突出、主题与无障碍对比度、不淡化B14真实错误 |
+| **B16** | B | `anthropic/claude-opus-5-5` | designer | 处理摘要视觉主次淡化（已处理标签/文字图标灰化小字，正文优先，新增） | B1 | `ed9eed0` | 已提交，待统一验收；已处理项视觉弱化让正文突出、主题与无障碍对比度、不淡化B14真实错误 |
 | **B17** | B | `anthropic/claude-opus-5-5` | designer + fixer | working 动画与状态词库（齿轮转/点动，通用+低概率模型特定段子，新增） | B13 | `待办` | 齿轮/点真实动、仅匹配当前执行模型才出特定段子、装饰性不改真状态、克制停机 |
 | **B18** | B | `anthropic/claude-opus-5-5` | fixer + designer | working group 可展开/手动收回（收回显当前步骤，展开显处理中，新增） | B4 | `待办` | 手动收回不被步骤更新强撑、收回显当前步骤、展开显全貌、不丢内容 |
 
@@ -764,7 +764,7 @@
 | 任务编号 | 任务简述 | 执行模型 | Conventional Commit 信息 | 提交 Commit SHA | 验收状态 | 验收人 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **B1** | 响应式双侧栏框架与入口迁移 | `anthropic/claude-opus-5-5` | `feat(opencode): responsive dual sidebars and entry migration framework [建议]` | `待办` | 待验收 | parent |
-| **B1a** | 新会话页底部目录选择器美化 | `anthropic/claude-opus-5-5` | `style(opencode): polish working directory selector on new session page [建议]` | `待办` | 待验收 | parent |
+| **B1a** | 新会话页底部目录选择器美化 | `anthropic/claude-opus-5-5` | `style(opencode): polish working directory selector on new session page` | `969c2baa877a3745c727ce1bea845362659aaf10` | 已提交，待统一验收 | parent |
 | **B1b** | 模型选择弹窗间距与可读性重构 | `anthropic/claude-opus-5-5` | `style(opencode): give the model picker dialog roomier spacing and hierarchy` | `4d538846197f0b356b9bb00cf4e339b16c08b966` | 已提交，待统一验收 | parent |
 | **B2** | 右侧栏元数据与官方详情点 | `anthropic/claude-opus-5-5` | `feat(opencode): right panel session details and status [建议]` | `待办` | 待验收 | parent |
 | **B3** | 上下文分层用量与右侧容器结构 | `anthropic/claude-opus-5-5` | `feat(opencode): context usage breakdown and right panel container [建议]` | `待办` | 待验收 | parent |
@@ -776,9 +776,9 @@
 | **B11** | 后端连接移至用户入口与三流程支持 | `anthropic/claude-opus-5-5` | `feat(opencode): move backend connection to user entry with wsl and remote flows [建议]` | `待办` | 待验收 | parent |
 | **B12** | WSL 专属快速访问区与动态路径转换 | `anthropic/claude-opus-5-5` | `feat(opencode): wsl quick access with explorer and editor integration [建议]` | `待办` | 待验收 | parent |
 | **B13** | 标签页working指示器全局时钟同步 | `anthropic/claude-opus-5-5` | `feat(opencode): sync tab working indicators to a shared animation clock` | `dc2782c05ed830bc2da07e3dc1fedd63cb98cb0c` | 已提交，待统一验收 | parent |
-| **B14** | 依据实际续接消除瞬态错误与工具全行红 | `anthropic/claude-opus-5-5` | `feat(opencode): error projection cleanup and full-row tool failure styling [建议]` | `待办` | 待验收 | parent |
+| **B14** | 依据实际续接消除瞬态错误与工具全行红 | `anthropic/claude-opus-5-5` | `feat(opencode): hide recovered transient errors and mark failed tool rows red` | `d0812277aee1524f735ef9ee199c834a34c15474` | 已提交，待统一验收 | parent |
 | **B15** | Composer placeholder 趣味 splash 词库 | `anthropic/claude-opus-5-5` | `feat(opencode): rotate playful composer placeholder splashes` | `64c1440143b577c6cb109b96d86b57dbe22839bf` | 已提交，待统一验收 | parent |
-| **B16** | 处理摘要视觉主次淡化弱化 | `anthropic/claude-opus-5-5` | `style(opencode): de-emphasize processed summary tags for content priority [建议]` | `待办` | 待验收 | parent |
+| **B16** | 处理摘要视觉主次淡化弱化 | `anthropic/claude-opus-5-5` | `style(opencode): de-emphasize completed processing summaries` | `ed9eed0e5208e63806a726eacb745412d001027b` | 已提交，待统一验收 | parent |
 | **B17** | working 动画与状态词库（齿轮/点动） | `anthropic/claude-opus-5-5` | `feat(opencode): working animation with status and satire phrase library [建议]` | `待办` | 待验收 | parent |
 | **B18** | working group 可展开与手动收回 | `anthropic/claude-opus-5-5` | `feat(opencode): collapsible working group preserving manual state [建议]` | `待办` | 待验收 | parent |
 
