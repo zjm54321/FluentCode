@@ -108,10 +108,10 @@
 | **R2** | A | `openai/gpt-6.1-sol` | fixer | 会话加载首帧/延迟回归（真实首次正文计时、warmcache零网络） | A3, A7 | `c0e3ab1` | 已提交，待统一验收；秒出正文首帧、冷启动去串行等待、保留A3代际安全、核对binary |
 | **R3** | A | `openai/gpt-6.1-sol` | designer + fixer | Reasoning effort 改用 WinUI3 原生单选/选中样式 | A2 | `9917d75` | 已提交，待统一验收；原生RadioButton单选外观、默认清空=null、wireID与显示解耦 |
 | **A8** | A | `openai/gpt-6.1-sol` | designer | 终端/工具悬停样式精简、内容区边界约 10% 留白 Clamp | A1 | `5150c00` | 已提交，待统一验收；暂缓优先R；移除重复原生tooltip、横向居中并边缘限制、无溢出 |
-| **A9** | A | `openai/gpt-6.1-sol` | fixer + designer | 调研 OpenCode 真实 "by the way" 交互并等价实现（原B9移入） | 真实协议核实、当前A2/A7 Composer | `待办` | 来源映射B9→A9；核实官方vs社区实现、明确能力边界、拒绝臆造 |
-| **A10** | A | `openai/gpt-6.1-sol` | fixer + designer | 官方原生 to do 接入、样式对齐与全界面自有文案替换（原B10移入） | 契约核实 | `待办` | 来源映射B10→A10；原子替换不降级、仅当前会话不混child、文案替换 |
+| **A9** | A | `openai/gpt-6.1-sol` | fixer + designer | 调研 OpenCode 真实 "by the way" 交互并等价实现（原B9移入） | 真实协议核实、当前A2/A7 Composer | `6fef8a6` | 已提交，待统一验收；来源映射B9→A9；核实官方vs社区实现、明确能力边界、拒绝臆造 |
+| **A10** | A | `openai/gpt-6.1-sol` | fixer + designer | 官方原生 to do 接入、样式对齐与全界面自有文案替换（原B10移入） | 契约核实 | `66008ce` | 已提交，待统一验收；来源映射B10→A10；原子替换不降级、仅当前会话不混child、文案替换 |
 | **Gate A** | A-Gate | 交叉检查 | Parent / All | 阶段 A 13项功能综合测试、全应用 Windows Build 与一次性用户实测 | A1..A10, R1..R3 | `待办(截止SHA)` | 13项全量提交后一次性Gate，完整构建测试通过、用户统一实测 |
-| **B1** | B | `anthropic/claude-opus-5-5` | designer | 响应式双侧栏常驻/收起平滑切换（旧顶栏暂留待B6删除） | Gate A | `待办` | 响应式框架就绪、中间宽度保留、宽屏隐藏三钮、旧顶栏暂留 |
+| **B1** | B | `anthropic/claude-opus-5-5` | designer | 响应式双侧栏常驻/收起平滑切换（旧顶栏暂留待B6删除） | Gate A | `b22f9a3` | 已提交，待统一验收；响应式框架就绪、中间宽度保留、宽屏隐藏三钮、旧顶栏暂留 |
 | **B1a** | B | `anthropic/claude-opus-5-5` | designer | 新会话页底部当前目录选择器美化（新增） | B1 | `969c2ba` | 已提交，待统一验收；目录选择器排版美化、长路径优雅省略与tooltip、切换联动 |
 | **B1b** | B | `anthropic/claude-opus-5-5` | designer | 模型选择 Dialog 间距/层级/可读性舒展重构（新增，独占commit） | B1a (前置，B2之前) | `4d53884` | 已提交，待统一验收；解决拥挤感、舒展排版、层级清晰、兼容A2/A9/A10，不混R3 |
 | **B2** | B | `anthropic/claude-opus-5-5` | designer + fixer | 右侧栏会话元数据、复制 ID、只读目录、官方美术+所连服务版本+绿点 | B1 | `待办` | 点击复制 ID、显示后端服务版本、真实连接绿点（无文字）、弹详情 |
@@ -119,9 +119,9 @@
 | **B4** | B | `anthropic/claude-opus-5-5` | fixer + designer | 左上亚克力预设卡片、Agent与对应子智能体挂载＋Shell终端分组 | B1 | `待办` | 实例挂在对应已配置Agent下、终端独立分组不伪装Agent、无空壳 |
 | **B5** | B | `anthropic/claude-opus-5-5` | designer | 左下独立卡片：Agent 一行 + 模型与思考强度一行 | B1, A2 | `待办` | 复用前阶段选择逻辑、与当前会话准确绑定 |
 | **B6** | B | `anthropic/claude-opus-5-5` | designer + fixer | 窄屏自适应、两行式 Composer、动态仪表盘、移除旧顶栏整行 | B1, B5 | `待办` | 默认两行、仪表盘动态档位、全屏入框、新入口接通后删旧顶栏整行 |
-| **B7** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer + 菜单与合法上下文原生字符触发（/和@候选，!由B8交付） | B6 | `待办` | 菜单形态、输入框特定合法位置触发不误触、候选真实、保留附件 |
+| **B7** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer + 菜单与合法上下文原生字符触发（/和@候选，!由B8交付） | B6 | `cfd7656` | 已提交，待统一验收；菜单形态、输入框特定合法位置触发不误触、候选真实、保留附件 |
 | **B8** | B | `anthropic/claude-opus-5-5` | designer + fixer | 敲击!切入终端样式Composer、真实后端Shell协议联调与草稿恢复 | B7 | `待办` | 隐藏工具栏、Esc/退格恢复草稿、调用真实shell接口、不假prompt不本地exec |
-| **B11** | B | `anthropic/claude-opus-5-5` | fixer + designer | 后端连接移至账号/用户入口（三流程：WSL/远程密码/配对链接）与平滑迁移 | B8 (按序执行，A10已作为Gate A前置完成) | `待办` | 仅单账号、按钮“连接 OpenCode”、WSL识别NixOS且持久化为Wsl、平滑迁移 |
+| **B11** | B | `anthropic/claude-opus-5-5` | fixer + designer | 后端连接移至账号/用户入口（三流程：WSL/远程密码/配对链接）与平滑迁移 | B8 (按序执行，A10已作为Gate A前置完成) | `a3b1cfe` | 已提交，待统一验收；仅单账号、按钮“连接 OpenCode”、WSL识别NixOS且持久化为Wsl、平滑迁移 |
 | **B12** | B | `anthropic/claude-opus-5-5` | fixer + designer | WSL专属快速访问区（资源管理器与主机编辑器以WSL模式打开）、动态UNC | B11 (连接完成且为Wsl) | `待办` | 仅Wsl显示/Remote绝对隐藏、动态解析真实UNC不硬编码、转义安全 |
 | **B13** | B | `anthropic/claude-opus-5-5` | designer + fixer | 标签页working不定进度流光指示器全局时钟同向同速同相同步 | B12 | `dc2782c` | 已提交，待统一验收；共享动画时钟同相位、新tab平滑接入不重启全部、无working停机无额外tick |
 | **B14** | B | `anthropic/claude-opus-5-5` | fixer + designer | 依据实际续接关系消除已恢复瞬态错误、未恢复工具错误全行红色语义 | B13 | `d081227` | 已提交，待统一验收；仅显未恢复错误、同会话新attempt续接成功后清除关联旧错、工具整行红 |
@@ -755,15 +755,15 @@
 | **R2** | 会话加载首帧/延迟回归优化 | `openai/gpt-6.1-sol` | `perf(opencode): overlap session state and message reads on cold switch` | `c0e3ab1e133f09b2303e3c36bfc733a1ffdbde7b` | 已提交，待统一验收 | parent |
 | **R3** | Reasoning effort 改用原生单选样式 | `openai/gpt-6.1-sol` | `fix(opencode): use native radio items for blank reasoning effort menu` | `9917d75533ca4452e0f872b7211402de9292c2b5` | 已提交，待统一验收 | parent |
 | **A8** | 悬停样式精简与 10% 边界限制 | `openai/gpt-6.1-sol` | `fix(opencode): center tool hover preview on pointer within content column` | `5150c008b3d44e454c1db3d83a68f027ab6dd215` | 已提交，待统一验收 | parent |
-| **A9** | 官方 "by the way" 功能调研与落地 | `openai/gpt-6.1-sol` | `feat(opencode): implement verified by-the-way feature [建议]` | `待办` | 待验收 (原B9移入) | parent |
-| **A10** | 官方原生 to do 接入与自有文案规范化 | `openai/gpt-6.1-sol` | `feat(opencode): official native todo integration and copy alignment [建议]` | `待办` | 待验收 (原B10移入) | parent |
+| **A9** | 官方 "by the way" 功能调研与落地 | `openai/gpt-6.1-sol` | `feat(opencode): add native /btw side questions via session generate` | `6fef8a6727344239fe5d83aeadb797dfc344bffc` | 已提交，待统一验收 | parent |
+| **A10** | 官方原生 to do 接入与自有文案规范化 | `openai/gpt-6.1-sol` | `feat(opencode): derive native to do like official v2 and align to do copy` | `66008cea1c660692d6acaeb0cba0bc2d65c4261c` | 已提交，待统一验收 | parent |
 | **Gate A** | 阶段 A 13项全面测试与应用验收 | - | - | **阶段截止 SHA**: `待办` | 待执行 (统一验收) | parent / user |
 
 ### 阶段 B 任务追踪（Opus 专属 · 共 18 项功能任务）
 
 | 任务编号 | 任务简述 | 执行模型 | Conventional Commit 信息 | 提交 Commit SHA | 验收状态 | 验收人 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **B1** | 响应式双侧栏框架与入口迁移 | `anthropic/claude-opus-5-5` | `feat(opencode): responsive dual sidebars and entry migration framework [建议]` | `待办` | 待验收 | parent |
+| **B1** | 响应式双侧栏框架与入口迁移 | `anthropic/claude-opus-5-5` | `feat(opencode): responsive dual sidebars with narrow-width drawers` | `b22f9a363767602c296f302b6cc365c52eb96da7` | 已提交，待统一验收 | parent |
 | **B1a** | 新会话页底部目录选择器美化 | `anthropic/claude-opus-5-5` | `style(opencode): polish working directory selector on new session page` | `969c2baa877a3745c727ce1bea845362659aaf10` | 已提交，待统一验收 | parent |
 | **B1b** | 模型选择弹窗间距与可读性重构 | `anthropic/claude-opus-5-5` | `style(opencode): give the model picker dialog roomier spacing and hierarchy` | `4d538846197f0b356b9bb00cf4e339b16c08b966` | 已提交，待统一验收 | parent |
 | **B2** | 右侧栏元数据与官方详情点 | `anthropic/claude-opus-5-5` | `feat(opencode): right panel session details and status [建议]` | `待办` | 待验收 | parent |
@@ -771,9 +771,9 @@
 | **B4** | 亚克力 Agent 与子智能体树＋终端分组 | `anthropic/claude-opus-5-5` | `feat(opencode): acrylic agent hierarchy with subagents and terminal group [建议]` | `待办` | 待验收 | parent |
 | **B5** | 左下独立会话控制卡片 | `anthropic/claude-opus-5-5` | `feat(opencode): session control card for agent and model [建议]` | `待办` | 待验收 | parent |
 | **B6** | 窄屏双行 Composer 与移除旧顶栏 | `anthropic/claude-opus-5-5` | `feat(opencode): two-row composer and remove legacy top header [建议]` | `待办` | 待验收 | parent |
-| **B7** | `+` 菜单整合与字符原生触发 | `anthropic/claude-opus-5-5` | `feat(opencode): composer plus menu and contextual char triggers [建议]` | `待办` | 待验收 | parent |
+| **B7** | `+` 菜单整合与字符原生触发 | `anthropic/claude-opus-5-5` | `feat(opencode): composer plus menu and contextual char triggers` | `cfd7656f6d395e8f20e40d3629277036eb83d29f` | 已提交，待统一验收 | parent |
 | **B8** | 终端命令行模式与后台协议联调 | `anthropic/claude-opus-5-5` | `feat(opencode): terminal mode switch with shell backend [建议]` | `待办` | 待验收 | parent |
-| **B11** | 后端连接移至用户入口与三流程支持 | `anthropic/claude-opus-5-5` | `feat(opencode): move backend connection to user entry with wsl and remote flows [建议]` | `待办` | 待验收 | parent |
+| **B11** | 后端连接移至用户入口与三流程支持 | `anthropic/claude-opus-5-5` | `feat(opencode): move backend connection to user entry with wsl and remote flows` | `a3b1cfef8c8cb791542df9f5dfa2f309db96cc35` | 已提交，待统一验收 | parent |
 | **B12** | WSL 专属快速访问区与动态路径转换 | `anthropic/claude-opus-5-5` | `feat(opencode): wsl quick access with explorer and editor integration [建议]` | `待办` | 待验收 | parent |
 | **B13** | 标签页working指示器全局时钟同步 | `anthropic/claude-opus-5-5` | `feat(opencode): sync tab working indicators to a shared animation clock` | `dc2782c05ed830bc2da07e3dc1fedd63cb98cb0c` | 已提交，待统一验收 | parent |
 | **B14** | 依据实际续接消除瞬态错误与工具全行红 | `anthropic/claude-opus-5-5` | `feat(opencode): hide recovered transient errors and mark failed tool rows red` | `d0812277aee1524f735ef9ee199c834a34c15474` | 已提交，待统一验收 | parent |
