@@ -481,6 +481,7 @@ public sealed partial class MainWindow : Window
 
             // 账户项（SelectsOnInvoked=False）：仅弹出既有账户菜单，不改变页面选中、不导航。
             case "Account":
+                UpdateAccountConnectionSummary();
                 FlyoutBase.ShowAttachedFlyout(item);
                 break;
 

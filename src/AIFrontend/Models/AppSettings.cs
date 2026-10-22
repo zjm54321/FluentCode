@@ -35,6 +35,47 @@ public sealed record OpenCodeSettings
 
     /// <summary>Basic 用户名（非密码）；密码只经 CredentialId 引用安全存储。</summary>
     public string? Username { get; init; }
+
+    /// <summary>
+    /// 连接类型（B11）。null = 旧配置（未记录类型）：有地址时按 <see cref="OpenCodeConnectionKind.Remote"/> 解读，
+    /// 不改写磁盘。WSL 连接即使经 HTTP 通信也必须记为 <see cref="OpenCodeConnectionKind.Wsl"/>。
+    /// </summary>
+    public OpenCodeConnectionKind? Kind { get; init; }
+
+    /// <summary>Kind=Wsl 时的发行版名称（来自系统枚举，非硬编码）；Remote 时为 null。</summary>
+    public string? WslDistribution { get; init; }
+
+    /// <summary>
+    /// 发行版名称的词法校验（1-64 字符；不得含路径分隔符、控制字符或 Windows 保留字符），
+    /// 以便安全拼接 <c>\\wsl.localhost\&lt;名称&gt;</c>。不对具体名称做任何假设。
+    /// </summary>
+    public static bool IsValidWslDistributionName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 64 || name != name.Trim() || name is "." or "..")
+        {
+            return false;
+        }
+
+        foreach (char ch in name)
+        {
+            if (char.IsControl(ch) || ch is '\\' or '/' or ':' or '*' or '?' or '"' or '<' or '>' or '|' or '\0')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+/// <summary>持久化的 OpenCode 连接类型；单账号，仅一个连接槽位。</summary>
+public enum OpenCodeConnectionKind
+{
+    /// <summary>远程地址 + 用户名/密码，或远程配对链接兑换。</summary>
+    Remote = 1,
+
+    /// <summary>本机 WSL 发行版内自动发现的 OpenCode 服务（底层仍走 HTTP，但类型必须记为 Wsl）。</summary>
+    Wsl = 2,
 }
 
 /// <summary>

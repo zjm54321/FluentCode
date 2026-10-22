@@ -189,6 +189,7 @@ public sealed class SettingsService
         {
             ValidateOptionalUrl(settings.OpenCode.BaseUrl, "openCode.baseUrl", errors);
             ValidateOptionalStorageId(settings.OpenCode.CredentialId, "openCode.credentialId", errors);
+            ValidateOpenCodeConnectionKind(settings.OpenCode, errors);
         }
 
         HashSet<string>? providerIds = null;
@@ -365,6 +366,28 @@ public sealed class SettingsService
         if (!AppDataPaths.IsValidStorageId(id))
         {
             errors.Add($"{field} 非法：'{id}'");
+        }
+    }
+
+    /// <summary>B11：类型字段可空（旧配置）；Wsl 必须带合法发行版名，Remote/旧配置不得带发行版名。</summary>
+    private static void ValidateOpenCodeConnectionKind(OpenCodeSettings openCode, List<string> errors)
+    {
+        if (openCode.Kind is { } kind && !Enum.IsDefined(kind))
+        {
+            errors.Add("openCode.kind 取值非法");
+            return;
+        }
+
+        if (openCode.Kind == OpenCodeConnectionKind.Wsl)
+        {
+            if (!OpenCodeSettings.IsValidWslDistributionName(openCode.WslDistribution))
+            {
+                errors.Add("openCode.wslDistribution 缺失或非法（Kind=Wsl 时必填）");
+            }
+        }
+        else if (openCode.WslDistribution is not null)
+        {
+            errors.Add("openCode.wslDistribution 仅允许在 Kind=Wsl 时出现");
         }
     }
 

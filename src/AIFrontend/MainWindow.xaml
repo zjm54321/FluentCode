@@ -328,8 +328,8 @@
                     x:Name="NavAccount"
                     AutomationProperties.AutomationId="AccountButton"
                     AutomationProperties.Name="账户"
-                    ToolTipService.ToolTip="账户（未登录）"
-                    Content="登录"
+                    ToolTipService.ToolTip="用户 · OpenCode 连接"
+                    Content="用户"
                     Tag="Account"
                     SelectsOnInvoked="False">
                     <NavigationViewItem.Icon>
@@ -338,20 +338,26 @@
                             Glyph="&#xE77B;"
                             FontSize="16" />
                     </NavigationViewItem.Icon>
-                    <!-- 既有账户菜单（AttachedFlyout）：保留账户状态与设置入口（与左栏设置项同源）。
-                         未接入身份服务，状态如实显示未登录，不假造登录成功。 -->
+                    <!-- 单账号 OpenCode 连接入口；状态只描述保存配置，不假造在线状态。 -->
                     <FlyoutBase.AttachedFlyout>
                         <Flyout Placement="Right">
-                            <StackPanel Width="220" Spacing="10">
+                            <StackPanel Width="260" Spacing="10">
                                 <!-- 账户状态 -->
                                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                     <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <TextBlock
-                                        Text="未登录（尚未接入账户服务）"
+                                        x:Name="AccountConnectionSummary"
+                                        Text="未连接 OpenCode"
+                                        TextWrapping="Wrap"
                                         Style="{ThemeResource CaptionTextBlockStyle}"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                         VerticalAlignment="Center" />
                                 </StackPanel>
+
+                                <Button Content="连接 OpenCode"
+                                        AutomationProperties.AutomationId="AccountConnectOpenCode"
+                                        HorizontalAlignment="Stretch"
+                                        Click="ConnectOpenCode_Click" />
 
                                 <MenuFlyoutSeparator Margin="-12,0,-12,0" />
 

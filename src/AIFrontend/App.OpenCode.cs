@@ -81,7 +81,10 @@ public partial class App
     private void RequestOpenCodeConfiguration(AppSettings? settings, bool force = false)
     {
         if (_closing) return;
-        OpenCodeSettings? relevant = settings?.OpenCode;
+        // B11：连接类型 / WSL 发行版只是元数据，不影响端点与凭据；比较前剥离，避免仅写入类型就重建连接（闪断）。
+        OpenCodeSettings? relevant = settings?.OpenCode is { } current
+            ? current with { Kind = null, WslDistribution = null }
+            : null;
         try
         {
             if (relevant is not null && !string.IsNullOrWhiteSpace(relevant.BaseUrl))

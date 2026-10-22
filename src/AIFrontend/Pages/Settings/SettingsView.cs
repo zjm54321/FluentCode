@@ -34,16 +34,11 @@ namespace AIFrontend.Pages.Settings;
 /// 绝不写入 <c>settings.json</c>、界面状态文本或日志；控件不回显已保存的密钥明文。
 /// 凭据相关失败只展示安全类型与 HRESULT，不输出密钥或含请求头的异常文本。</para>
 /// <para>持久化模型：结构性变更（provider / 模型 / 选中模型 / 主题）在用户操作时立即保存；
-    /// OpenCode 地址、认证方式（Basic/Bearer/None）、用户名与凭据为暂存字段，经“保存”按钮提交；
-    /// 配对链接入口的兑换结果仅保留在内存中，经显式“重试保存”提交（见 OpenCodePairing 分文件）；
-    /// 外部 <c>Changed</c> 刷新时保留未提交输入。
+/// OpenCode 连接已迁移到用户入口，此页只保留指引；外部 <c>Changed</c> 刷新时保留未提交输入。
 /// 存在未提交输入时离开页面会先经页内三态确认（保存并离开 / 放弃并离开 / 取消），不默默丢失。</para>
 /// </remarks>
 public sealed partial class SettingsView : UserControl
 {
-    /// <summary>OpenCode 后端 token 的固定凭据存储 ID（合法存储 ID：1-64 字符，仅字母/数字/._-）。</summary>
-    private const string OpenCodeCredentialId = "opencode-backend-token";
-
     /// <summary>协议下拉的固定顺序，索引即选项顺序。</summary>
     private static readonly ChatProtocol[] ProtocolOrder =
     {
@@ -91,32 +86,6 @@ public sealed partial class SettingsView : UserControl
     // 主题
     private ComboBox _themeCombo = null!;
     private ComboBox _codeThemeCombo = null!;
-
-    // OpenCode
-    private TextBox _openCodeUrlBox = null!;
-    private PasswordBox _openCodeTokenBox = null!;
-    private TextBlock _openCodeTokenStatus = null!;
-    private TextBlock _openCodeStatus = null!;
-    private Button _openCodeSaveButton = null!;
-    private Button _openCodeCancelButton = null!;
-    private Button _openCodeTestButton = null!;
-    private ProgressRing _openCodeProgress = null!;
-    private bool _openCodeDirty;
-    private CancellationTokenSource? _openCodeTestCts;
-    private int _openCodeTestGeneration;
-
-    // OpenCode 认证（Basic/Bearer/None）与配对链接入口（第二入口，见 SettingsView.OpenCodePairing.cs）
-    private ComboBox _openCodeAuthModeCombo = null!;
-    private TextBlock _openCodeAuthModeHint = null!;
-    private TextBox _openCodeUsernameBox = null!;
-    private TextBox _openCodePairLinkBox = null!;
-    private Button _openCodePairButton = null!;
-    private Button _openCodePairDiscardButton = null!;
-    private ProgressRing _openCodePairProgress = null!;
-    private TextBlock _openCodePairStatus = null!;
-    private CancellationTokenSource? _pairingCts;
-    private int _pairingGeneration;
-    private OpenCodePairingResult? _pairingResult;
 
     // Provider
     private StackPanel _providerListPanel = null!;
@@ -245,7 +214,7 @@ public sealed partial class SettingsView : UserControl
     /// </summary>
     public bool HasUnsavedChanges =>
         !_unloaded &&
-        (HasOpenCodePendingInput || IsProviderFormDirty() || IsModelFormDirty() || IsCapabilityEditorOpen());
+        (IsProviderFormDirty() || IsModelFormDirty() || IsCapabilityEditorOpen());
 
     /// <summary>
     /// 由外层宿主（应用内设置页 <c>SettingsPage</c>）在离开承载本控件的页面后调用：
@@ -262,7 +231,7 @@ public sealed partial class SettingsView : UserControl
     {
         ConfirmChoice choice = await ConfirmCoreAsync(
             "有未保存的修改",
-            "当前设置中存在尚未提交的输入（OpenCode 地址/token、provider 或模型表单、模型能力编辑）。" +
+            "当前设置中存在尚未提交的输入（provider 或模型表单、模型能力编辑）。" +
             "请选择如何处理后再离开；选择“取消”将留在设置页。",
             "保存并离开",
             "放弃并离开");
@@ -303,11 +272,6 @@ public sealed partial class SettingsView : UserControl
             return false;
         }
 
-        if (HasOpenCodePendingInput && !await TrySaveOpenCodeAsync())
-        {
-            return false;
-        }
-
         return true;
     }
 
@@ -319,11 +283,9 @@ public sealed partial class SettingsView : UserControl
             return;
         }
 
-        ResetOpenCodeInputs();
         ResetProviderForm();
         ResetModelForm();
         CloseCapabilityEditor();
-        SetOpenCodeStatus("已放弃未保存的修改。");
     }
 
     /// <summary>
@@ -371,35 +333,6 @@ public sealed partial class SettingsView : UserControl
 
         _unloaded = false;
 
-        // 重新挂载时复位 OpenCode 测试的可见状态（上一轮卸载可能取消了进行中的测试）。
-        _openCodeTestCts = null;
-        if (_openCodeTestButton is not null)
-        {
-            _openCodeTestButton.IsEnabled = true;
-        }
-
-        if (_openCodeProgress is not null)
-        {
-            _openCodeProgress.IsActive = false;
-            _openCodeProgress.Visibility = Visibility.Collapsed;
-        }
-
-        // 重新挂载时复位配对入口的可见状态（上一轮卸载可能取消了进行中的兑换；
-        // 已兑换未保存的结果按设计保留在内存中，可显式重试保存）。
-        _pairingCts = null;
-        if (_openCodePairButton is not null)
-        {
-            _openCodePairButton.IsEnabled = true;
-        }
-
-        if (_openCodePairProgress is not null)
-        {
-            _openCodePairProgress.IsActive = false;
-            _openCodePairProgress.Visibility = Visibility.Collapsed;
-        }
-
-        UpdatePairingUiState();
-
         Subscribe();
     }
 
@@ -412,14 +345,6 @@ public sealed partial class SettingsView : UserControl
 
         Unsubscribe();
         _lifetimeCts.Cancel();
-
-        // 取消进行中的 OpenCode 连接测试（独立 CTS），并使代际失效，避免卸载后到达的续体触碰界面。
-        _openCodeTestCts?.Cancel();
-        _openCodeTestGeneration++;
-
-        // 取消进行中的配对兑换/保存（独立 CTS），并使代际失效，避免卸载后到达的续体触碰界面。
-        _pairingCts?.Cancel();
-        _pairingGeneration++;
 
         if (_ownsCatalog && _modelCatalog is IDisposable disposable)
         {
@@ -491,7 +416,6 @@ public sealed partial class SettingsView : UserControl
         {
             ApplyThemeToUi();
             ApplyFontsToUi();
-            ApplyOpenCodeToUi(preserveEdits);
             ApplyProvidersToUi();
             ApplyModelsToUi();
         }
@@ -548,7 +472,7 @@ public sealed partial class SettingsView : UserControl
             BuildThemeSection()));
         _categories.Add(new CategoryEntry(
             "OpenCode 后端",
-            "两种连接入口：Basic（后端地址 + 用户名 + 密码）或粘贴 V2 配对链接兑换；“保存”只写入配置，不建立连接。",
+            "连接设置已移至“用户”→“连接 OpenCode”；现有连接与凭据保留。",
             BuildOpenCodeSection()));
         _categories.Add(new CategoryEntry(
             "聊天 provider",
