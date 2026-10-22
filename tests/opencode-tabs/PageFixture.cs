@@ -64,6 +64,7 @@ public sealed partial class OpenCodePage
     private void RefreshSessionStateUi(){}
     private Task ReadServerInfoAsync()=>Task.CompletedTask; // B2 footer version read is outside this fixture.
     private void RefreshWslQuickAccess(){} // B12 quick access is outside this fixture.
+    private void OnCreatedShellSubmit(string command){} // B8 shell submit after blank creation is outside this fixture.
     private bool HasPendingNativeAction()=>_nativeActionOwner is not null||_nativeDialogPending;
     internal int SubmissionRequests;
     private void RequestComposerSubmission()=>SubmissionRequests++;
