@@ -1,38 +1,42 @@
-# OpenCode UI 修复与升级全景任务计划 (2026-10-20)
+# OpenCode UI 修复与升级全景任务计划 (2026-10-20，最新修订：2026-10-22)
 
 ## 1. 规则约束与版本边界
 
 - **主工作区与隔离原则**：
   - 当前主工作区路径：`/mnt/c/Users/Zhang/source/repos/AIFrontend-history-20261020`
   - 严禁修改、构建或测试原版与冻结目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend` 及 `/mnt/c/Users/Zhang/source/repos/AIFrontend-frozen-20261019`。
-- **基线版本与提交记录**：
+- **基线版本与当前提交记录**：
   - 最新主分支基线 Commit SHA：`9711c71f90f951df74e4d83a157c3fb0252aecb0`
   - 旧版参考基线 Commit SHA：`8884a7cdc22fb7dca73b685fca7206703cc6ce53`
-- **执行角色与模型分工**：
-  - **阶段 A（A1 ~ A8）**：前端基础修复与交互规范化。**必须全部由 GPT-6.1 Sol (`openai/gpt-6.1-sol`) 实施**。以 A8（终端 hover 修复）结束为严格阶段边界。
-  - **阶段 B（B1 ~ B14）**：双侧栏、信息面板、输入框改版、官方原生 to do 接入、后端连接移至用户入口、WSL专属快速访问区、working动画全局同步、已恢复瞬态错误智能消除与全行红色错误卡片等新功能。**必须全部由 Claude Opus 5.5 (`anthropic/claude-opus-5-5`) 实施**。
+  - 计划任务 Task 0 提交 Commit SHA：`f221b372be5d7700d7e91880a49687e80820447a`
+  - 当前代码基线快照基于提交 `eb6b9b5e0a0f4efe22dde161db2a312ff811b0cc`。A1 至 A7 均已分别完成独立任务实现并提交（状态：已提交，待统一验收）；原 A8 因供应商网络原因暂缓，优先处理新增回归。当前 R1 由 designer 在独立产品 scope 中开展实现，本计划文档独立维护，不干扰或回退其实施改动。
+- **执行角色与模型分工（31 项功能任务矩阵）**：
+  - 全景共规划 **31 项功能任务**（Sol 13 项 + Opus 18 项，计划文档任务 Task 0 与阶段门禁 Gate A/Gate B 不计入功能任务总数）：
+    - **阶段 A（Sol 专属 · 共 13 项功能任务）**：全部由 **GPT-6.1 Sol (`openai/gpt-6.1-sol`)** 实施。
+      - 已提交待统一验收（7 项）：A1、A2、A3、A4、A5、A6、A7。
+      - 待实施（6 项）：新增回归项 R1、R2、R3；暂缓项 A8；原 Opus 阶段 B9、B10 整体前移至 Sol 阶段分别作为 A9、A10（fixer + designer，保留来源映射 `B9 → A9`、`B10 → A10`）。
+      - **Sol 实施优先级**：`R1 → R2 → R3 → A8 → A9 → A10`。
+    - **阶段 B（Opus 专属 · 共 18 项功能任务）**：全部由 **Claude Opus 5.5 (`anthropic/claude-opus-5-5`)** 实施。
+      - 任务集合：B1、B1a、B1b、B2、B3、B4、B5、B6、B7、B8、B11、B12、B13、B14、B15、B16、B17、B18。
+      - 原 B9/B10 已前移为 A9/A10，Opus 阶段不再执行 B9/B10，不整体重编号其他 B 任务。
+      - 新增任务：B1a（新会话页底部目录选择器美化）、B1b（模型选择 Dialog 间距与可读性舒展重构）、B15（Composer placeholder 趣味 splash 库）、B16（处理摘要视觉主次淡化）、B17（working 动画与状态词库）、B18（working group 可展开/手动收回）。
+      - **B3 依赖重写**：B3 容器直接复用 Sol 阶段 A10 已沉淀的官方原生 to do 数据源，不再另行实现。
   - **分工职责**：UI 由 `designer` 负责，逻辑与测试由 `fixer` 负责，整体集成、验收与 Git 提交由 `parent` 会话统一负责。文案检查与架构审计角色不代替阶段实施模型。
   - **模型通道纪律**：此前 Sol 通道出现报错，严禁私自替换为 Opus 提前实施阶段 A，亦不可提前实施阶段 B。若 Sol 通道失败，必须恢复同模型重试或向 parent 汇报阻塞。
 - **提交与阶段门禁（Gate）规范**：
   - **任务 0**：本计划文档自身单独 Commit，不夹带任何代码修改。
-  - **单任务单独 Commit**：A1 ~ A8、B1 ~ B14 每项任务完成后，执行各自聚焦测试（Focused test）与文案核查，通过后单独进行 Conventional Commit；未达到验收标准不得提交。
+  - **单任务单独 Commit**：每项任务完成后，执行各自聚焦测试（Focused test）与文案核查，通过后单独进行 Conventional Commit；未达到验收标准不得提交。
   - **提交 SHA 登记与回填机制**：为避免自引用悖论，各任务在 commit 完成后于实施记录中登记该 commit SHA；在阶段整体验收/截止总结时统一回填至文档表格，不为向文档自身填入自身 SHA 而反复制造循环 commit。
-  - **单项自检与统一用户验收**：A1 ~ A8 的聚焦测试、代码核对与提交由实施代理和 parent 连续完成，不逐项请用户验收、不逐项暂停等待确认。Sol 阶段全部完成后再一次性汇报并交付用户统一验收；每项独立提交的规则不变。
-  - **阶段 A 验收门禁**：A1 ~ A8 全部单项提交完成后，执行阶段整体 Gate（Broad test suite + Windows 完整应用构建 + 一次统一用户界面验收），确认无回归并记录阶段 A 截止 Commit SHA 后，方可启动阶段 B。
+  - **单项自检与统一用户验收**：Sol 阶段各任务的聚焦测试、代码核对与提交由实施代理和 parent 连续推进，不逐项暂停等待用户确认。13 项 Sol 任务全部完成后，一次性执行阶段整体 Gate A（Broad suite + Windows 完整构建 + 真实运行环境用户验收）。通过后锁定阶段 A 截止 Commit SHA，方可切入 Opus。
   - **渐进替换原则**：重构过程中保持产品始终可用；新面板、新控件接通验证前，不先删除旧版功能；后阶段充分复用前阶段沉淀的 UI 组件与选择逻辑。
 - **协议与参考源核实进展（计划事实依据，不作为已实现声称）**：
   - **本地 To Do 现状与能力 Gate 核实**：
     - 经代码走查，本地 `Services/OpenCode/OpenCodeTodoReplay.cs:15-24,56-117` 当前仅从公开消息流中回放已完成的 `todowrite` 工具输入内容，既不是直接读取插件 store，也未集成官方 to do 服务/API。严禁在计划中把“当前是插件 API”当成已证实事实。
     - 同时查明，现有能力检查中确有 `opencode-todolist`（`Services/OpenCode/OpenCodeCapabilityStatus.cs:93`），表明产品当前展示受插件能力 Gate 控制，但这不等于直接读写插件 store。
-  - **官方原生 To Do 源码参照**：在官方源码提交 `51e310c9 session/todo.ts` 中查见存在 `Todo.Info`（包含 `content`、`status`、`priority`）以及 `todo.updated(sessionID, todos)` 事件流。但该机制与用户口述提及的“2.1.1”版本对应关系及当前运行中 V2 服务的实际 HTTP 路由尚未核实，实施前必须首先对比运行中服务的 OpenAPI 契约。
-  - **B3 与 B10 边界划分与执行顺序（采纳 Oracle 决策）**：
-    - **职责严格拆分**：Task B3 仅负责交付真实的 usage/cost 指标统计与右侧面板基础容器结构；to do 的正文内容、真实数据源、视觉样式及专项验收完整划归 Task B10。B3 仅在界面保留容器并注明由 B10 接入，B3 完成验收绝不把 to do 重复算作已完成。
-    - **执行次序**：执行顺序保持标准的 B1 至 B14 线性顺序。B3 做只读准备，B10 在实施前严谨核实原生契约。
-    - **架构约束**：B3 严禁新增任何插件接线，严禁复制回放链；B10 采用原子替换（Atomic Replacement），基于同源状态快照，若后端不支持原生 to do 则如实呈现能力缺口，绝不静默退回插件。
-    - **数据范围与状态流转**：to do 严格只展示当前选中会话的任务，绝不自动混入子智能体（child agent）任务；子智能体仅参与 B3 的 usage/cost 全局汇总。UI 上必须清晰区分“未知”、“读取失败”、“空列表”三种状态；切换数据源或切换会话时，严格丢弃迟到响应以防串台。
+  - **官方原生 To Do 源码参照与 A10/B3 协同**：在官方源码提交 `51e310c9 session/todo.ts` 中查见存在 `Todo.Info`（包含 `content`、`status`、`priority`）以及 `todo.updated(sessionID, todos)` 事件流。但该机制与用户口述提及的“2.1.1”版本对应关系及当前运行中 V2 服务的实际 HTTP 路由尚未核实，A10 实施前必须首先对比运行中服务的 OpenAPI 契约。B3 直接复用 A10 接入的原生数据源，避免重复实现或双源冲突。
+  - **"by the way" 参考源核实（原 B9 移入 Sol A9）**：`/btw` 或 `/bytheway` 暂未在官方原生代码库中核实为原生命令。检索发现存在社区开源项目 `opencode-btw` 的侧会话（side-session）实现模式，严禁将社区实现直接冒充为官方原生特性。A9 任务保留用户核心需求，但必须先核实准确参考来源与能力边界，再进行等价交互实现；若存在协议能力缺口应如实向 parent/用户说明，严禁臆造虚假接口。
   - **文案替换范围约束**：全界面“待办/代办/更新待办”规范化为“to do/更新 to do”，严格仅修改前端应用程序自有 UI 文案，严禁修改用户输入/输出的消息文本、底层工具标识（如 `todowrite`/`todoread`）或后端 API 字段。
   - **工具侧与产品侧数据源甄别**：父会话中使用的 `todowrite` / `todoread` 工具调用仅为实施阶段的代理任务清单记录工具，绝非客户端产品运行时的 to do 数据源。
-  - **"by the way" 参考源核实**：`/btw` 或 `/bytheway` 暂未在官方原生代码库中核实为原生命令。检索发现存在社区开源项目 `opencode-btw` 的侧会话（side-session）实现模式，严禁将社区实现直接冒充为官方原生特性。B9 任务保留用户核心需求，但必须先核实准确参考来源与能力边界，再进行等价交互实现；若存在协议能力缺口应如实向 parent/用户说明，严禁臆造虚假接口。
   - **OpenCode 后端连接迁移与入口规划（Task B11 事实依据）**：
     - **入口与操作定义**：将后端连接配置整体从“设置”页移入“账号登录/用户”入口，按钮文字规范为“连接 OpenCode”。
     - **单账号原则**：当前客户端架构严格只允许单个 OpenCode 账号/连接，明确不做多账号架构。
@@ -90,32 +94,41 @@
 
 ## 3. 任务总表与分工依赖矩阵
 
-| 任务编号 | 阶段 | 实施模型 | 负责角色 | 核心任务概要 | 依赖前置 | 提交 SHA (待填) | 验收重点 |
+| 任务编号 | 阶段 | 实施模型 | 负责角色 | 核心任务概要 | 依赖前置 | 提交 SHA | 状态与验收重点 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Task 0** | 计划 | - | Secretary / Parent | 编写并独立提交计划归档文档 | 无 | `待办` | 文档完整覆盖需求，无代码变更混入 |
-| **A1** | A | `openai/gpt-6.1-sol` | designer | Composer 五控件共基准线、Logo 放大、合法颜色保留与悬停提示 | Task 0 | `待办` | 垂直居中对齐、窄屏不溢出、hidden 不显示 |
-| **A2** | A | `openai/gpt-6.1-sol` | designer + fixer | 品牌彩色模型图标、极简扁平选择器、成功使用才记录 recent | A1 | `待办` | 扁平列表、最近使用置顶、变体中文化、无冗余文案 |
-| **A3** | A | `openai/gpt-6.1-sol` | fixer | 切换会话即时显示与防串会话、修正“暂无消息”误判 | 无直接UI依赖 | `待办` | 消除两秒等待感、快速切换不串、真无数据才显占位 |
-| **A4** | A | `openai/gpt-6.1-sol` | designer + fixer | 多问题对话向导化导航、答案暂存回看与必答校验 | 无 | `待办` | 非末题“下一个问题”、末题“提交”、单题直接提交 |
-| **A5** | A | `openai/gpt-6.1-sol` | designer + fixer | 会话状态图标细化：提问阻塞问号与未读新完成小圆点 | 无 | `待办` | 阻塞显`?`、新完成小圆点、区分查看回执 |
-| **A6** | A | `openai/gpt-6.1-sol` | designer + fixer | 标签栏高度规范、顶栏居中、真正固定在集合中的Home标签（仅房子icon/无名称/不可关/关闭所有后回退选中Home/无空壳） | 无 | `待办` | 启动仅Home时高度正确、Home为真正集合成员同一体系、关闭全部选中Home不显空壳、顶栏垂直居中 |
-| **A7** | A | `openai/gpt-6.1-sol` | fixer + designer | 多空白会话独立初始化、独立未提交草稿与附件隔离 | A1, A6 | `待办` | 无`+`前缀、配置不串、草稿隔离（A=1234/B=5678） |
-| **A8** | A | `openai/gpt-6.1-sol` | designer | 终端/工具悬停样式精简、内容区边界约 10% 留白 Clamp | A1 | `待办` | 移除重复原生文本提示、横向居中并边缘限制、无溢出 |
-| **Gate A** | A-Gate | 交叉检查 | Parent / All | 阶段 A 综合测试、全应用 Windows Build 与界面实测 | A1~A8 | `待办(截止SHA)` | 完整测试通过、应用成功构建运行、用户实测通过 |
-| **B1** | B | `anthropic/claude-opus-5-5` | designer | 响应式双侧栏常驻/收起平滑切换、宽屏顶栏三钮精简（旧顶栏暂留待B6删除） | Gate A | `待办` | 响应式框架就绪、中间消息宽度保留、宽屏隐藏三钮、过渡动画平滑、旧顶栏暂留保持可用 |
-| **B2** | B | `anthropic/claude-opus-5-5` | designer + fixer | 右侧栏会话元数据、复制 ID、只读目录、官方美术与连接点 | B1 | `待办` | 点击复制 ID、无“已连接”文字、点击弹详情 |
-| **B3** | B | `anthropic/claude-opus-5-5` | fixer + designer | 上下文与轮次、双层用量（主 Agent 单行 / 子智能体汇总）与右侧容器结构 | B2 (执行顺序仍B1..B14，to do正文归B10) | `待办` | 真实来源/单位、不假 0、无重复累加、容器结构就绪、to do注明由B10接入（不重复算完成） |
-| **B4** | B | `anthropic/claude-opus-5-5` | fixer + designer | 左上亚克力预设卡片、Agent与对应子智能体分组挂载＋Shell终端分组、直达 | B1 | `待办` | 实例挂在对应已配置Agent下、终端独立分组不伪装Agent、前后台区分、无空壳、状态不凭文案推断 |
+| **Task 0** | 计划 | - | Secretary / Parent | 编写并独立提交计划归档文档 | 无 | `f221b37` | 已完成；文档完整覆盖需求，无代码变更混入 |
+| **A1** | A | `openai/gpt-6.1-sol` | designer | Composer 五控件共基准线、Logo 放大、合法颜色保留与悬停提示 | Task 0 | `5763da8` | 已提交，待统一验收；垂直居中对齐、窄屏不溢出 |
+| **A2** | A | `openai/gpt-6.1-sol` | designer + fixer | 品牌彩色模型图标、极简扁平选择器、成功使用才记录 MRU recent | A1 | `47e883b` | 已提交，待统一验收；扁平列表、最近使用置顶、变体中文化 |
+| **A3** | A | `openai/gpt-6.1-sol` | fixer | 切换会话即时显示与防串会话、代际校验拒绝旧响应及旧 finally | 无直接UI依赖 | `ae867d3` | 已提交，待统一验收；消除两秒等待感、快速切换不串 |
+| **A4** | A | `openai/gpt-6.1-sol` | designer + fixer | 多问题对话向导化导航、答案暂存回看与末题必答校验 | 无 | `1baa0e2` | 已提交，待统一验收；非末题仅导航、末题提交、单题直接提交 |
+| **A5** | A | `openai/gpt-6.1-sol` | designer + fixer | 会话状态图标细化：提问阻塞问号与可视渲染水位未读小圆点 | 无 | `781824a` | 已提交，待统一验收；阻塞显`?`、正交未读圆点、视口渲染消除 |
+| **A6** | A | `openai/gpt-6.1-sol` | designer + fixer | 标签栏高度规范、顶栏居中、真正固定在集合中的原生Home标签 | 无 | `f6729c7` | 已提交，待统一验收；启动高度正确、全关自动回退Home且无空壳 |
+| **A7** | A | `openai/gpt-6.1-sol` | fixer + designer | 多空白会话独立初始化、GUID槽位与独立未提交草稿隔离 | A1, A6 | `eb6b9b5` | 已提交，待统一验收；无`+`前缀、配置不串、草稿隔离不丢失 |
+| **R1** | A | `openai/gpt-6.1-sol` | fixer + designer | Agent颜色往返保持 + 名字完整显示不截断（新增回归项） | A7 | `待办` | 往返切换/刷新颜色不丢失、长名完整呈现不截断省略 |
+| **R2** | A | `openai/gpt-6.1-sol` | fixer | 会话加载首帧/延迟回归（真实首次正文计时、warmcache零网络） | A3, A7 | `待办` | 秒出正文首帧、冷启动去串行等待、保留A3代际安全、核对binary |
+| **R3** | A | `openai/gpt-6.1-sol` | designer + fixer | Reasoning effort 改用 WinUI3 原生单选/选中样式 | A2 | `待办` | 原生RadioButton单选外观、默认清空=null、wireID与显示解耦 |
+| **A8** | A | `openai/gpt-6.1-sol` | designer | 终端/工具悬停样式精简、内容区边界约 10% 留白 Clamp | A1 | `待办` | 暂缓优先R；移除重复原生tooltip、横向居中并边缘限制、无溢出 |
+| **A9** | A | `openai/gpt-6.1-sol` | fixer + designer | 调研 OpenCode 真实 "by the way" 交互并等价实现（原B9移入） | 真实协议核实、当前A2/A7 Composer | `待办` | 来源映射B9→A9；核实官方vs社区实现、明确能力边界、拒绝臆造 |
+| **A10** | A | `openai/gpt-6.1-sol` | fixer + designer | 官方原生 to do 接入、样式对齐与全界面自有文案替换（原B10移入） | 契约核实 | `待办` | 来源映射B10→A10；原子替换不降级、仅当前会话不混child、文案替换 |
+| **Gate A** | A-Gate | 交叉检查 | Parent / All | 阶段 A 13项功能综合测试、全应用 Windows Build 与一次性用户实测 | A1..A10, R1..R3 | `待办(截止SHA)` | 13项全量提交后一次性Gate，完整构建测试通过、用户统一实测 |
+| **B1** | B | `anthropic/claude-opus-5-5` | designer | 响应式双侧栏常驻/收起平滑切换（旧顶栏暂留待B6删除） | Gate A | `待办` | 响应式框架就绪、中间宽度保留、宽屏隐藏三钮、旧顶栏暂留 |
+| **B1a** | B | `anthropic/claude-opus-5-5` | designer | 新会话页底部当前目录选择器美化（新增） | B1 | `待办` | 目录选择器排版美化、长路径优雅省略与tooltip、切换联动 |
+| **B1b** | B | `anthropic/claude-opus-5-5` | designer | 模型选择 Dialog 间距/层级/可读性舒展重构（新增，独占commit） | B1a (前置，B2之前) | `待办` | 解决拥挤感、舒展排版、层级清晰、兼容A2/A9/A10，不混R3 |
+| **B2** | B | `anthropic/claude-opus-5-5` | designer + fixer | 右侧栏会话元数据、复制 ID、只读目录、官方美术+所连服务版本+绿点 | B1 | `待办` | 点击复制 ID、显示后端服务版本、真实连接绿点（无文字）、弹详情 |
+| **B3** | B | `anthropic/claude-opus-5-5` | fixer + designer | 上下文与轮次、双层用量（主Agent单行/明细行/总token汇总+总费用） | B2, A10 | `待办` | 真实来源/单位、总token汇总、右侧容器就绪、复用A10原生数据源 |
+| **B4** | B | `anthropic/claude-opus-5-5` | fixer + designer | 左上亚克力预设卡片、Agent与对应子智能体挂载＋Shell终端分组 | B1 | `待办` | 实例挂在对应已配置Agent下、终端独立分组不伪装Agent、无空壳 |
 | **B5** | B | `anthropic/claude-opus-5-5` | designer | 左下独立卡片：Agent 一行 + 模型与思考强度一行 | B1, A2 | `待办` | 复用前阶段选择逻辑、与当前会话准确绑定 |
-| **B6** | B | `anthropic/claude-opus-5-5` | designer + fixer | 窄屏自适应、两行式 Composer、动态仪表盘、移除旧顶栏整行 | B1, B5 | `待办` | 默认两行、仪表盘动态档位、全屏入框、新入口均可用后完整移除旧顶栏整行 |
-| **B7** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer + 菜单与合法上下文原生字符触发（/和@候选，!由B8交付） | B6 | `待办` | 菜单形态、输入框特定合法位置触发不误触、候选来源真实、保留附件、不抢算B8 |
-| **B8** | B | `anthropic/claude-opus-5-5` | designer + fixer | 敲击!切入终端样式Composer、真实后端Shell协议联调与草稿恢复 | B7 | `待办` | 隐藏工具栏、Esc/退格恢复草稿、调用后端真实支持的shell接口、不假prompt不本地exec |
-| **B9** | B | `anthropic/claude-opus-5-5` | fixer + designer | 调研 OpenCode V2/Web/TUI 真实 "by the way" 交互并等价实现 | B7, B8 | `待办` | 核实准确来源(区分官方vs社区opencode-btw)、明确能力缺口、拒绝虚构endpoint |
-| **B10** | B | `anthropic/claude-opus-5-5` | fixer + designer | 官方原生 to do 接入、样式对齐、状态管理与全界面自有文案替换 | B9 (执行顺序仍B1..B14，实施前核实原生契约) | `待办` | 原子替换不静默退回、仅当前会话不混child、状态区分(未知/失败/空)、防迟到串台、自有文案规范化 |
-| **B11** | B | `anthropic/claude-opus-5-5` | fixer + designer | 后端连接移至账号/用户入口（三流程：WSL/远程密码/配对链接）与平滑迁移 | B10 (按序执行，独立Commit) | `待办` | 仅单账号、按钮“连接 OpenCode”、WSL识别NixOS且持久化为Wsl、平滑迁移不先删配置、凭据不外泄 |
-| **B12** | B | `anthropic/claude-opus-5-5` | fixer + designer | WSL专属快速访问区（资源管理器与主机编辑器VSCode/VSCodium/Emacs打开目录）、动态UNC解析 | B11 (需连接完成且为Wsl) | `待办` | 仅Wsl显示/Remote绝对隐藏、动态展开~解析真实UNC不硬编码、VSCode以WSL模式打开、转义安全无残留旧目录 |
-| **B13** | B | `anthropic/claude-opus-5-5` | designer + fixer | 标签页working不定进度流光指示器全局时钟同向同速同相同步 | B12 (按序执行，独立Commit) | `待办` | 共享动画时钟同相位、新tab平滑接入不重启全部、宽度自适应比例、无working暂停释放、不增后端轮询 |
-| **B14** | B | `anthropic/claude-opus-5-5` | fixer + designer | 依据实际续接/恢复关系消除已恢复瞬态错误、未恢复工具错误全行红色语义 | B13 (按序执行，独立Commit) | `待办` | 仅显未恢复错误、同会话新attempt续接成功后清除关联旧错(不僵硬限同responseID)、不跨会话误清、工具整行红非仅红叉、不篡改底层诊断与真实失败 |
+| **B6** | B | `anthropic/claude-opus-5-5` | designer + fixer | 窄屏自适应、两行式 Composer、动态仪表盘、移除旧顶栏整行 | B1, B5 | `待办` | 默认两行、仪表盘动态档位、全屏入框、新入口接通后删旧顶栏整行 |
+| **B7** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer + 菜单与合法上下文原生字符触发（/和@候选，!由B8交付） | B6 | `待办` | 菜单形态、输入框特定合法位置触发不误触、候选真实、保留附件 |
+| **B8** | B | `anthropic/claude-opus-5-5` | designer + fixer | 敲击!切入终端样式Composer、真实后端Shell协议联调与草稿恢复 | B7 | `待办` | 隐藏工具栏、Esc/退格恢复草稿、调用真实shell接口、不假prompt不本地exec |
+| **B11** | B | `anthropic/claude-opus-5-5` | fixer + designer | 后端连接移至账号/用户入口（三流程：WSL/远程密码/配对链接）与平滑迁移 | B8 (按序执行，A10已作为Gate A前置完成) | `待办` | 仅单账号、按钮“连接 OpenCode”、WSL识别NixOS且持久化为Wsl、平滑迁移 |
+| **B12** | B | `anthropic/claude-opus-5-5` | fixer + designer | WSL专属快速访问区（资源管理器与主机编辑器以WSL模式打开）、动态UNC | B11 (连接完成且为Wsl) | `待办` | 仅Wsl显示/Remote绝对隐藏、动态解析真实UNC不硬编码、转义安全 |
+| **B13** | B | `anthropic/claude-opus-5-5` | designer + fixer | 标签页working不定进度流光指示器全局时钟同向同速同相同步 | B12 | `待办` | 共享动画时钟同相位、新tab平滑接入不重启全部、无working停机无额外tick |
+| **B14** | B | `anthropic/claude-opus-5-5` | fixer + designer | 依据实际续接关系消除已恢复瞬态错误、未恢复工具错误全行红色语义 | B13 | `待办` | 仅显未恢复错误、同会话新attempt续接成功后清除关联旧错、工具整行红 |
+| **B15** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer placeholder 趣味 splash 词库（打开/切上下文轮换，新增） | B6 | `待办` | Minecraft/Claude Code风格、通用俏皮+真实功能提示、不替用户输入 |
+| **B16** | B | `anthropic/claude-opus-5-5` | designer | 处理摘要视觉主次淡化（已处理标签/文字图标灰化小字，正文优先，新增） | B1 | `待办` | 已处理项视觉弱化让正文突出、主题与无障碍对比度、不淡化B14真实错误 |
+| **B17** | B | `anthropic/claude-opus-5-5` | designer + fixer | working 动画与状态词库（齿轮转/点动，通用+低概率模型特定段子，新增） | B13 | `待办` | 齿轮/点真实动、仅匹配当前执行模型才出特定段子、装饰性不改真状态、克制停机 |
+| **B18** | B | `anthropic/claude-opus-5-5` | fixer + designer | working group 可展开/手动收回（收回显当前步骤，展开显处理中，新增） | B4 | `待办` | 手动收回不被步骤更新强撑、收回显当前步骤、展开显全貌、不丢内容 |
 
 ---
 
@@ -238,7 +251,44 @@
   - 草稿隔离实测：Tab A 输入 `1234`，Tab B 输入 `5678`，反复切换各自文本与附件完整复原，Edit Token 校验有效。
   - 切换瞬间前序操作被安全中止，旧槽草稿保存完整无丢失。
 
-### Task A8：终端与工具 Hover 样式精简、内容区边界 10% 留白 Clamp
+### Task R1：Agent 自定义颜色往返保持与名称完整显示不截断（新增回归项）
+- **负责角色**：`fixer` + `designer` | **模型**：`openai/gpt-6.1-sol`
+- **详细规格**：
+  1. 颜色往返持久性：用户初次选中带合法自定义颜色的 Agent 时颜色正常，但切换到另一个 Agent 再切回该 Agent 时自定义颜色丢失。必须修复该回归，确保在往返切换、异步刷新和页面重新加载时均完整保留合法自定义颜色。
+  2. 动态强调色兜底：无合法自定义颜色的 Agent 依然动态回退采用系统强调色（System Accent Color）。
+  3. 名称完整呈现：Composer 底栏 Agent 名称无论长短均必须完整展示，彻底去除不必要的文本截断与省略号（ellipsis），不以仅靠鼠标悬停 tooltip 替代正文显示。
+  4. 保持既有约束：保留 A1 中已完成的隐藏（hidden）与子智能体专享（subagent-only）过滤逻辑，保留悬停描述浮层。
+- **单项验收标准**：
+  - 在带自定义颜色的 Agent 与其他 Agent 之间反复切换，自定义颜色始终稳定呈现，无降级为默认色的情况。
+  - 较长名称的 Agent 在底栏完全显示全称，无截断、无省略号。
+  - 无颜色的 Agent 正常应用动态强调色，过滤机制完好。
+
+### Task R2：会话加载首帧呈现与延迟回归（消除串行等待）
+- **负责角色**：`fixer` | **模型**：`openai/gpt-6.1-sol`
+- **详细规格**：
+  1. 体验基准与计时口径：以点击会话到第一帧真实消息正文内容完成绘制的时间为严格基准（非 loading 占位符或骨架屏的呈现时间），向 TUI 级的即时反馈体验对齐。
+  2. 内存热缓存（Warm Cache）：命中本地已缓存消息的会话切换，首帧呈现绝不依赖网络，实现零网络等待的瞬间呈现。
+  3. 冷打开网络路径优化：冷打开或无缓存会话立即发起消息数据请求，剔除不必要的串行等待与次要附属调用（例如未读状态同步、非关键元数据获取不得阻塞消息正文加载流）。
+  4. 既有安全机制保全：严格保留 A3 中已建立的复合键寻址（`source + directory + sessionID`）、请求所有权令牌校验、异步迟到响应丢弃以及旧 finally 块状态隔离等安全防护，不引入任何并发竞态回归。
+  5. 真实环境核对约束：不承诺冷网络物理零延迟，不拿旧静态测试 PASS 冒充新实际体验。实施前必须首先核对运行客户端 binary 与当前源码版本一致（当前无运行中的进程）。
+- **单项验收标准**：
+  - 热缓存会话切换实现正文内容首帧瞬间显示，无白屏或占位符闪烁。
+  - 冷打开会话时消息请求立即发出，无多余串行阻塞。
+  - 快速切换会话安全防御依然完备，无串台或旧状态覆盖。
+
+### Task R3：Reasoning Effort 变体改用 WinUI3 原生单选样式
+- **负责角色**：`designer` + `fixer` | **模型**：`openai/gpt-6.1-sol`
+- **详细规格**：
+  1. 真实控件改造（基于真实代码侦查）：经查证（`aif-ui-regression-recon-20261022.md`），当前 normal 会话弹窗已使用原生 `RadioButtons / RadioButton`，而 blank 新建会话变体菜单中实际采用的是系统原生 `ToggleMenuFlyoutItem.IsChecked` 的复选框式勾选（并非手绘符号）。本任务将 blank 的 checkbox 式 menu 改造替换为用户所需的原生 Radio 单选交互样式，normal 保持/复用既有原生单选逻辑；**不得引入自绘标记，亦绝不得误删 AgentPicker 当前选中项的 `E73E` 字体图标**。
+  2. 行为契约保持：未选定状态明确置为默认（`null`），清除选择时清空至 `null` 且不改变底层通信协议的原始 wire 值。
+  3. 本地化与绑定解耦：界面严格采用规范汉化显示，内部保留原始 wire 枚举 ID，与当前会话及模型新鲜 catalog 正常双向绑定。
+- **单项验收标准**：
+  - blank 页面变体菜单成功将 checkbox 式勾选升级为符合用户预期的原生 Radio 单选交互样式。
+  - normal 页面模型选择弹窗保持/复用原生 RadioButtons，无视觉倒退。
+  - 选中状态标记由原生控件自身渲染，绝无自绘伪造标记；AgentPicker 的当前项 E73E 选中标记完好未受误伤。
+  - 清除变体选择后恢复默认，底层通信 wire 值为 `null`。
+
+### Task A8：终端与工具 Hover 样式精简、内容区边界 10% 留白 Clamp（暂缓，优先处理 R1~R3 回归）
 - **负责角色**：`designer` | **模型**：`openai/gpt-6.1-sol`
 - **详细规格**：
   1. 终端与工具悬停提示重构：移除重复的原生文本 tooltip（按实际实现处理 title / ToolTipService），保留定制浮层。
@@ -248,19 +298,62 @@
   - 鼠标悬停在终端或工具输出上，无重复原生文本 tooltip 干扰。
   - 悬停浮层在屏幕两侧边缘测试时，均平滑贴边并默认保留约 10% 左右留白，不溢出内容区。
 
+### Task A9：官方 "by the way" 独立功能调研与等价落地（原 Task B9 移入 Sol）
+- **负责角色**：`fixer` + `designer` | **模型**：`openai/gpt-6.1-sol`
+- **详细规格**：
+  1. **来源映射说明**：原计划阶段 B 的 Task B9 整体前移至阶段 A 实施，对应编号变更为 Task A9。保留原任务全部功能目标与质量红线。
+  2. **协议与交互深度调研（区分官方与社区）**：
+     - 首先对当前 OpenCode V2 / Web / TUI 最新实现进行代码与协议走查，核实该功能是否存在官方原生入口、命令名（如 `/by the way` 还是 `/bytheway`）、交互与 API 机制。
+     - **甄别事实**：经检索发现存在社区开源项目 `opencode-btw` 的侧会话（side-session）实现模式，严禁将社区实现直接冒充为官方原生特性。
+     - 核实其底层 API 机制：探明其是伴随主会话旁路执行、带外静默插入、还是开辟临时轻量通道，厘清其与主会话上下文生命周期的真实关系。
+  3. **等价功能与 UI 落地**：
+     - 在完全查清真实机制后，实现等价的交互界面与协议对接。
+     - **严禁凭空臆造虚假的 `/bytheway` HTTP Endpoint，严禁简单将其当作普通文字命令敷衍了事**；若官方确无原生 endpoint 而属于能力缺口，必须向 parent/用户据实说明，并在真实能力边界内做等价交互。
+- **单项验收标准**：
+  - 提供详实的协议与入口核实依据，严禁混淆官方原生与社区实现。
+  - 界面交互与命令触发与经核实的设计行为等价。
+  - 旁路/伴随执行符合主会话生命周期规则，绝无虚构 endpoint。
+
+### Task A10：官方原生 to do 接入、样式对齐与全界面自有文案规范化（原 Task B10 移入 Sol）
+- **负责角色**：`fixer` + `designer` | **模型**：`openai/gpt-6.1-sol`
+- **详细规格**：
+  1. **来源映射说明**：原计划阶段 B 的 Task B10 整体前移至阶段 A 实施，对应编号变更为 Task A10。为后序 Task B3 奠定权威的原生数据源基础。
+  2. **全局 UI 自有文案统一（明确界限）**：
+     - 将所有前端用户可见界面的“待办”、“代办”、“更新待办”等相关中文文案，统一规范替换为英文及混合标准格式：“to do”与“更新 to do”。
+     - **严格文案边界**：修改范围仅限前端应用程序自身的 UI 文本与静态标签；**严禁修改用户输入/输出的消息内容文本、底层 Tool IDs（如 `todowrite`、`todoread`）或后端 API 通信字段**。
+  3. **接入官方原生 to do 数据源（原子替换机制）**：
+     - **实施前原生契约核实**：实施前必须对比运行中服务的 OpenAPI 契约，核对官方源码提交 `51e310c9 session/todo.ts` 中的 `Todo.Info`（`content`, `status`, `priority`）与 `todo.updated(sessionID, todos)` 事件流。用户口述提及的“2.1.1”版本号明确标注为待核实口述信息，不作为既定事实，亦不盲猜“multi6”等未知字段。
+     - **原子替换与同源状态快照**：废弃旧版工具回放机制，对 to do 数据链路进行原子替换，采用同源状态快照驱动视图渲染。
+     - **不支持绝不静默退回**：若当前后端服务实际未开放原生 to do API，必须如实向用户呈现能力缺口或提示不可用，**严禁静默退回插件实现或悄悄伪造数据**。
+  4. **会话范围隔离与状态精细流转**：
+     - **会话作用域**：to do 列表严格仅展示当前选中会话（Current Selected Session）的任务清单，**绝不自动混入子智能体（child agent）任务**；子智能体任务仅参与 B3 的用量指标汇总。
+     - **三态精准区分**：UI 展示上必须明确区分“状态未知 (Unknown)”、“数据读取失败 (Read Failure)”与“真正空列表 (Empty List)”，绝不将读取失败当成空列表，亦不把未知当成失败。
+     - **防迟到串台**：切换会话或切换数据来源时，通过会话 Token 签名主动拒绝并抛弃迟到的异步响应，杜绝会话间任务串联。
+  5. **对齐官方原生交互与视觉样式**：
+     - 严格参考当前 OpenCode 官方原生 to do 的卡片布局、状态图标样式与折叠展开交互，打造一致体验。
+  6. **工具侧与产品侧明确界限**：
+     - 父会话中的 `todowrite` / `todoread` 仅作为实施计划的任务跟踪工具，绝非产品的运行时数据源。
+- **单项验收标准**：
+  - 完成服务 OpenAPI 真实契约核实，形成技术查证结论。
+  - 实现官方原生 to do 的原子替换，不支持时明确提示缺口，无静默降级插件行为。
+  - to do 仅展示当前会话任务，无子智能体任务混入。
+  - “未知 / 失败 / 空列表”三态渲染准确无误。
+  - 快速切换会话无迟到数据串台污染。
+  - 全界面应用自有文案规范替换为“to do/更新 to do”，用户内容与 toolID 完好未被破坏。
+
 ---
 
 ## 5. 阶段 A 结束门禁与验收流程（Phase A Gate）
 
 在进入阶段 B 之前，必须按顺序完成以下严格门禁，任何一项未通过均不得切入 Opus 模型实施阶段 B：
 
-1. **单项 Commit SHA 完整回填**：Task A1 至 A8 每一个任务均已完成独立 commit，SHA 已登记在追踪表中。
+1. **单项 Commit SHA 完整回填**：Task A1 至 A10 以及 R1、R2、R3 共 13 项功能任务均已各自完成独立 Conventional Commit，SHA 全部登记在追踪表中。
 2. **聚焦测试与通用测试集运行**：
-   - 运行前端单元测试套件：确保所有涉及 ModelPresentation、Dialog、BlankConversation、SessionState 的测试 100% 通过。
+   - 运行前端单元测试套件：确保所有涉及 ModelPresentation、Dialog、BlankConversation、SessionState、FormCard、DraftSlots 等的测试 100% 通过。
 3. **Windows 完整应用构建**：
    - 执行完整客户端构建（Release / Debug），确认编译零 Error，无 XAML 绑定破损与命名空间告警。
-4. **用户界面窗口实机验收**：
-   - 启动本地应用窗口，逐项对照 A1 ~ A8 验收点进行人工走查确认。
+4. **真实运行环境一次性用户实机验收**：
+   - 启动本地真实构建生成的应用窗口，对照 13 项 Sol 任务验收点进行统一走查确认（非逐项打断）。
 5. **记录阶段 A 截止 SHA**：
    - 确认通过后，记录阶段 A 最终截止 Commit SHA，锁定代码库状态。
 
@@ -280,6 +373,28 @@
   - 宽屏下双面板常驻且消息区排版优雅，顶栏右侧冗余按钮自动隐藏。
   - 缩窄窗口平滑收起为入口按钮，动画无掉帧，支持减弱动画。
   - 旧顶栏完整保留，会话交互功能不缺失。
+
+### Task B1a：新会话页底部工作目录选择器美化
+- **负责角色**：`designer` | **模型**：`anthropic/claude-opus-5-5`
+- **详细规格**：
+  1. 优化范围界定：新会话页面顶部与中部布局已满足用户预期，不改动用户满意的顶部和中间区域；B1a 严格聚焦于新会话页面底部的工作空间/当前目录选择器视觉与交互美化。
+  2. 视觉排版提升：目录区整体美化，与现有 WinUI3 / Fluent 原生视觉风格协调；优化内边距与字体排印，文件夹图标与路径对齐；超长路径支持优雅呈现且完整路径可获知（可通过 Tooltip 等原生机制呈现完整路径，与 R1 Agent 完整名不省略号原则不冲突）。不预定具体边框半透明等参数，由 designer 依 native 风格实定。
+  3. 交互与联动：点击选择器弹出目录浏览或切换菜单交互平滑，切换目录后与底层会话创建上下文正确联动，不丢失当前选择。
+- **单项验收标准**：
+  - 新会话页面底部工作目录选择器排版美化，与现有 WinUI3 / Fluent 原生风格协调。
+  - 完整路径清晰可获知，不改动用户满意的顶部和中间区域。
+  - 目录切换功能正常，无事件冲突与布局破损。
+
+### Task B1b：模型选择 Dialog 间距/层级/可读性舒展重构
+- **负责角色**：`designer` | **模型**：`anthropic/claude-opus-5-5`
+- **详细规格**：
+  1. 执行顺序与独立 Commit：本任务排在 Task B1a 之后、Task B2 之前按序执行并单独提交；专注于弹窗的视觉间距、排版层级与舒展度重构，**绝不与 Sol 阶段 Task R3（原生单选样式修复）混合**。
+  2. 布局舒展与间距重构：针对当前模型选择弹窗视觉过于拥挤的问题，全面重新规划容器 Padding、列表项 ItemSpacing、图标与文字间距以及行高，赋予界面充分的呼吸感与视觉层级。
+  3. 完整功能保留：严格保留 Task A2 中已确立的品牌彩色图标、扁平化列表展示、搜索输入框、MRU 最近使用置顶、变体规范化文案、取消与确认操作契约；保持与 Task A9/A10 及完整会话选择身份的兼容性。
+- **单项验收标准**：
+  - 模型选择弹窗呈现舒展清爽的排版结构，彻底消除拥挤紧绷感。
+  - 品牌图标、模型名称、搜索过滤及 MRU 记录等全量功能完好无损。
+  - 弹窗在不同分辨率与缩放比例下布局自适应无溢出。
 
 ### Task B2：右侧面板会话元数据、路径展示与官方连接详情
 - **负责角色**：`designer` + `fixer` | **模型**：`anthropic/claude-opus-5-5`
@@ -305,15 +420,14 @@
      - **分割线（Divider）**。
      - **分割线下方汇总**：展示总 Token 汇总（Total Tokens）和总消耗费用（Total Cost）。子智能体（child agent）仅参与此处的 usage/cost 统计汇总，不进入右侧 to do 任务列表。
      - **数据真实性与去重**：必须对接底层真实通信统计，禁止将输入与缓存重复相加；无真实数据的字段明确标注“不可用”或连字符 `-`，严禁伪造假数据或将缺失直接显示为 `0`。
-  3. 右侧面板基础容器与 to do 区域划分（Oracle 决策严格落地）：
+  3. 右侧面板基础容器与 to do 区域划分（Oracle 决策与阶段迁移严格落地）：
      - 搭建并交付右侧面板的基础容器布局结构，上部为上下文用量，下部为 to do 任务卡片容器。
-     - **严格职责边界**：B3 仅交付真实 usage/cost 指标统计与右侧容器结构。下部 to do 区域的具体正文内容、真实数据源接入、交互样式与专项验收完整归入 Task B10。
-     - **预留呈现与防重构**：B3 在该区域标题规范展示英文全小写“to do”，并展示占位提示明确注明将由 Task B10 接入官方原生服务；B3 绝不新增任何插件接线，绝不复制回放链（`OpenCodeTodoReplay.cs`）。
-     - **验收独立性**：B3 的完成与验收绝不把 to do 重复算作已完成。
+     - **严格依赖与职责边界**：由于官方原生 to do 数据源已在阶段 A 的 Task A10 中完整接入并完成验证，Task B3 在右侧容器中直接复用 A10 沉淀的权威原生数据源进行任务项展示，不再重复开发数据源；B3 仅专注于右侧面板容器排版与用量展示。
+     - **验收独立性**：B3 的完成与验收以容器结构与用量统计为准，原生 to do 数据源依赖 A10。
 - **单项验收标准**：
   - 上下文统计主次分明，数据与底层 session 真实指标一致，包含总 Token 汇总与总费用，子智能体用量汇总准确无误。
   - 缓存命中率与思考 token 计算精准无重复统计。
-  - 右侧面板容器结构渲染正确无崩溃，to do 区域结构预留就绪并明确标注归属 B10。
+  - 右侧面板容器结构渲染正确无崩溃，to do 区域直接复用 A10 数据源正常呈现。
 
 ### Task B4：左上亚克力 Agent 架构树、动态预设与子智能体＋终端分组直达
 - **负责角色**：`fixer` + `designer` | **模型**：`anthropic/claude-opus-5-5`
@@ -413,50 +527,6 @@
   - 敲入 `!` 后界面平滑变为终端黑框，工具栏自动隐藏。
   - 空命令按退格或按 Esc 顺畅退回普通模式，原有草稿完整保留。
   - 命令通过官方真实支持的后端 Shell 接口执行，输出回显真实，不伪装 Prompt，不本地直接 exec。
-
-### Task B9：深度调研并等价实现 "by the way" 独立功能
-- **负责角色**：`fixer` + `designer` | **模型**：`anthropic/claude-opus-5-5`
-- **详细规格**：
-  1. **禁止抢跑**：本任务必须在阶段 B 后期执行，严禁在 Sol 阶段提前实现。
-  2. **协议与交互深度调研（区分官方与社区）**：
-     - 首先对当前 OpenCode V2 / Web / TUI 最新实现进行代码与协议走查，核实该功能是否存在官方原生入口、命令名（如 `/by the way` 还是 `/bytheway`）、交互与 API 机制。
-     - **甄别事实**：经检索发现存在社区开源项目 `opencode-btw` 的侧会话（side-session）实现模式，严禁将社区实现直接冒充为官方原生特性。
-     - 核实其底层 API 机制：探明其是伴随主会话旁路执行、带外静默插入、还是开辟临时轻量通道，厘清其与主会话上下文生命周期的真实关系。
-  3. **等价功能与 UI 落地**：
-     - 在完全查清真实机制后，实现等价的交互界面与协议对接。
-     - **严禁凭空臆造虚假的 `/bytheway` HTTP Endpoint，严禁简单将其当作普通文字命令敷衍了事**；若官方确无原生 endpoint 而属于能力缺口，必须向 parent/用户据实说明，并在真实能力边界内做等价交互。
-  4. **补充验收标准**：调研完成后，向 parent 确认并补充精细化验收指标。
-- **单项验收标准**：
-  - 提供详实的协议与入口核实依据，严禁混淆官方原生与社区实现。
-  - 界面交互与命令触发与经核实的设计行为等价。
-  - 旁路/伴随执行符合主会话生命周期规则，绝无虚构 endpoint。
-
-### Task B10：官方原生 to do 接入、样式对齐、状态管理与全界面自有文案规范化
-- **负责角色**：`fixer` + `designer` | **模型**：`anthropic/claude-opus-5-5`
-- **详细规格**：
-  1. **执行顺序与模型约束**：本任务按序执行（保持 B1..B14 严格推进），必须全部由 Claude Opus 5.5 实施。当前状态保持“待办”，绝不声称已实现。
-  2. **全局 UI 自有文案统一（明确界限）**：
-     - 将所有前端用户可见界面的“待办”、“代办”、“更新待办”等相关中文文案，统一规范替换为英文及混合标准格式：“to do”与“更新 to do”。
-     - **严格文案边界**：修改范围仅限前端应用程序自身的 UI 文本与静态标签；**严禁修改用户输入/输出的消息内容文本、底层 Tool IDs（如 `todowrite`、`todoread`）或后端 API 通信字段**。
-  3. **接入官方原生 to do 数据源（原子替换机制）**：
-     - **实施前原生契约核实**：实施前必须对比运行中服务的 OpenAPI 契约，核对官方源码提交 `51e310c9 session/todo.ts` 中的 `Todo.Info`（`content`, `status`, `priority`）与 `todo.updated(sessionID, todos)` 事件流。用户口述提及的“2.1.1”版本号明确标注为待核实口述信息，不作为既定事实，亦不盲猜“multi6”等未知字段。
-     - **原子替换与同源状态快照**：废弃旧版工具回放机制，对 to do 数据链路进行原子替换，采用同源状态快照驱动视图渲染。
-     - **不支持绝不静默退回**：若当前后端服务实际未开放原生 to do API，必须如实向用户呈现能力缺口或提示不可用，**严禁静默退回插件实现或悄悄伪造数据**。
-  4. **会话范围隔离与状态精细流转**：
-     - **会话作用域**：to do 列表严格仅展示当前选中会话（Current Selected Session）的任务清单，**绝不自动混入子智能体（child agent）任务**；子智能体任务仅参与 B3 的用量指标汇总。
-     - **三态精准区分**：UI 展示上必须明确区分“状态未知 (Unknown)”、“数据读取失败 (Read Failure)”与“真正空列表 (Empty List)”，绝不将读取失败当成空列表，亦不把未知当成失败。
-     - **防迟到串台**：切换会话或切换数据来源时，通过会话 Token 签名主动拒绝并抛弃迟到的异步响应，杜绝会话间任务串联。
-  5. **对齐官方原生交互与视觉样式**：
-     - 严格参考当前 OpenCode 官方原生 to do 的卡片布局、状态图标样式与折叠展开交互，打造一致体验。
-  6. **工具侧与产品侧明确界限**：
-     - 父会话中的 `todowrite` / `todoread` 仅作为实施计划的任务跟踪工具，绝非产品的运行时数据源。
-- **单项验收标准**：
-  - 完成服务 OpenAPI 真实契约核实，形成技术查证结论。
-  - 实现官方原生 to do 的原子替换，不支持时明确提示缺口，无静默降级插件行为。
-  - to do 仅展示当前会话任务，无子智能体任务混入。
-  - “未知 / 失败 / 空列表”三态渲染准确无误。
-  - 快速切换会话无迟到数据串台污染。
-  - 全界面应用自有文案规范替换为“to do/更新 to do”，用户内容与 toolID 完好未被破坏。
 
 ### Task B11：OpenCode 后端连接入口迁移（移至账号/用户入口，支持 WSL/远程密码/配对链接三流程）与平滑迁移
 - **负责角色**：`fixer` + `designer` | **模型**：`anthropic/claude-opus-5-5`
@@ -579,14 +649,82 @@
   - 工具调用报错时，整行卡片呈现连贯清晰的红色语义样式，非单薄红叉，明暗主题下对比度良好。
   - 底层历史诊断日志完整未被篡改，真实失败的工具结果未被擅自判为恢复。
 
+### Task B15：Composer placeholder 趣味 splash 词库（足量多样与 Claude Code 调研迁移）
+- **负责角色**：`designer` + `fixer` | **模型**：`anthropic/claude-opus-5-5`
+- **详细规格**：
+  1. 机制调研与迁移：先查阅 Claude Code 当前公开可适配的 placeholder/tips/spinner 机制与可用资源，迁移其设计思路与可用提示词条，不整库盲拷；结合类似 Minecraft splash text 体验，在每次打开会话或进入适合上下文时轮换。
+  2. 足量多样词库（绝非仅两三条示例）：
+     - 建设覆盖广泛、具有充足多样性的本地提示词库（非仅局限于几个简单示例）。
+     - 包含通用幽默风趣短句与生态俏皮彩蛋。
+     - 真实功能引导提示（例如：“你知道吗？输入 ! 可进入终端模式”——严格依赖 B8 已实现）。
+     - 行业生态彩蛋（如“Why not try Pi?”、支持国产模型/DeepSeek harness 提示，具体准确名称待核准）。
+  3. 功能与真实性红线：
+     - **绝不替用户输入**：仅改变 placeholder 提示文本，绝不自动填入用户输入框，不产生草稿脏数据。
+     - **绝不频繁乱变**：不在用户每次击键或每一渲染帧切换，仅在会话打开、切换或特定上下文就绪时轮换。
+     - **绝不暗示未实现能力**：所有功能性提示必须对应实际已具备的功能（如提示终端模式必须在 B8 终端模式就绪后启用），绝不新增 Pi 或 DeepSeek 集成功能，亦不虚假暗示当前客户端具有未接入的功能。
+- **单项验收标准**：
+  - 完成对 Claude Code 公开机制的适配性调研并迁移有效思路与可用词，建立足量多样的词库。
+  - 新打开或切换会话时，placeholder 呈现生动有趣的提示文本，且每次合理轮换。
+  - 提示涉及的功能真实可用，无误导性虚假提示。
+  - 用户击键输入不受任何干扰，placeholder 正常消失，无自动键入文本。
+
+### Task B16：处理摘要视觉主次淡化（已处理标签弱化，最终正文优先）
+- **负责角色**：`designer` | **模型**：`anthropic/claude-opus-5-5`
+- **详细规格**：
+  1. 视觉层级优化：对于已完成处理的消息摘要标签、内部辅助图标与折叠状态文本，在视觉上进行适当弱化（如采用更低透明度、略浅的灰度色彩或较小字号），让最终生成的核心正文内容在界面上占据绝对视觉焦点。
+  2. 主题与可读性保障：在明暗主题及高对比度模式下进行严格对比度校验，弱化效果不得影响信息的可辨识度，符合 WCAG 无障碍规范。
+  3. 异常突出保留：**绝对不得淡化 Task B14 中的未恢复错误告警与红色语义卡片**，所有失败与异常依然必须高优先级突出展示。
+- **单项验收标准**：
+  - 会话中已完成的处理步骤与中间标签视觉自然退居次席，最终输出文本主次分明。
+  - 明暗主题下辅助信息与摘要文本清晰可读，无对比度缺失。
+  - 未恢复的真实错误保持完整的红色醒目高光，未被错误淡化。
+
+### Task B17：working 动画与状态词库（齿轮转动/点动，通用与模型特定段子）
+- **负责角色**：`designer` + `fixer` | **模型**：`anthropic/claude-opus-5-5`
+- **详细规格**：
+  1. 动画真实运转：在 working 执行状态下，指示器中的省略号保持规律跳动，齿轮图标保持平滑转动，提供真实的动态忙碌反馈。
+  2. 状态装饰词库分层与用户具体备选归档：
+     - 第一层（标准状态词）：如“处理中...”、“思考中...”。
+     - 第二层（通用风趣短句）：如“少女祈祷中...”。
+     - 第三层（低概率模型专属段子/satire 备选池）：完整保留用户具体列举的备选意图，作为**待 copy 审校的装饰性备选，绝不擅自当已上线默认文案，绝不作为事实或实际国籍识别**：
+       - DeepSeek：“大肥鱼吃白饭中 / 娱乐中”
+       - Claude：“封禁中文中 / 封禁中国人中 / 检测中国人中”
+       - OpenAI：“降智中 / tibo重置中”（听写词待核准）
+       - Gemini：“奉承用户中”
+  3. 模型匹配与真实性约束：
+     - 模型特定词条**仅当底层当前实际执行模型与之明确匹配时才可能出现**；代理 provider 若可从真实执行的 `modelID` 明确确定品牌家族（沿用 A2 品牌识别逻辑），允许匹配对应品牌词条；未知真实模型才回退至通用池。不依赖随时可变的 UI 下拉框。
+     - **纯装饰定位**：段子词库纯属客户端界面的幽默装饰，真实执行状态由服务端事件驱动，绝不伪造模型实际在执行此类操作。
+  4. 性能与生命周期：
+     - 切换频率高度克制，绝不针对每一行输出频繁轮询换词。
+     - 仅在 working 状态激活，任务完成（Done）、隐藏或视图卸载时立即停止动画与计时器；支持系统减弱动画设置；与 Task B13 全局标签时钟协调，不额外创建永驻定时器。
+- **单项验收标准**：
+  - working 状态下动画齿轮转动与点动平滑，状态词自然呈现。
+  - 模型专属词条仅在命中真实执行模型或可识别品牌的代理时低概率触发，保留用户举例备选池，未知模型严格采用通用池。
+  - 任务结束时动画与计时器立即完全停机，无后台空转。
+  - 开启系统减少动画时平滑降级。
+
+### Task B18：working group 可展开与手动收回（保持手动选择）
+- **负责角色**：`fixer` + `designer` | **模型**：`anthropic/claude-opus-5-5`
+- **详细规格**：
+  1. 双向交互折叠：执行过程中的 working group 容器支持用户随时点击手动展开或收回。
+  2. 收回态与展开态呈现：
+     - 收回时：折叠卡片仅清晰展示当前正在执行的真实具体步骤，界面极简不占位。
+     - 展开时：完整展示所有执行步骤与处理中通用摘要信息。
+  3. 手动选择持久保持：用户手动收回或展开的选择状态在当前 run / group 的整个生命周期内持久持有，**绝不因为后端流式推送新步骤更新而强制重新撑开（强制展开）**。
+  4. 内容保全与更新响应：即使处于收回状态，新到来的步骤与状态更新在内部依然正确刷新，重新展开时内容完整无损，无数据丢失，亦不触发额外后端调用。
+- **单项验收标准**：
+  - 点击折叠图标可顺畅在展开与收回状态之间切换。
+  - 手动收回后，后续连续的执行步骤更新不会强制撑开折叠状态，收回标题实时显示最新步骤。
+  - 再次展开时所有历史步骤与细节完整呈现，无渲染丢失。
+
 ---
 
 ## 7. 重点非回归与质量红线
 
 1. **不可越界编辑目录**：严禁修改 `/mnt/c/Users/Zhang/source/repos/AIFrontend` 或 `/mnt/c/Users/Zhang/source/repos/AIFrontend-frozen-20261019`。
 2. **严禁混淆模型通道**：
-   - A1 ~ A8：唯一允许使用 `openai/gpt-6.1-sol`。
-   - B1 ~ B14：唯一允许使用 `anthropic/claude-opus-5-5`。
+   - Sol 阶段（共 13 项功能任务：A1~A10、R1~R3）：唯一允许使用 `openai/gpt-6.1-sol`。
+   - Opus 阶段（共 18 项功能任务：B1、B1a、B1b、B2~B8、B11~B18）：唯一允许使用 `anthropic/claude-opus-5-5`。
    - 严禁因通道偶发故障私自互换模型实现。
 3. **保证业务连续性**：任何旧 UI 控件的移除必须严格建立在新控件已上线且完全具备同等或更优能力的前提下，禁止先删后建导致功能悬空。
 4. **真实性原则**：
@@ -599,38 +737,48 @@
 
 ## 8. 提交与验收记录表
 
-### 阶段 A 任务追踪（Sol 专属）
+### 阶段 A 任务追踪（Sol 专属 · 共 13 项功能任务）
 
 | 任务编号 | 任务简述 | 执行模型 | Conventional Commit 信息 | 提交 Commit SHA | 验收状态 | 验收人 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **A1** | 工具栏共基准线与 Logo 放大 | `openai/gpt-6.1-sol` | `style(opencode): align composer controls and enlarge logo` | `待办` | 待验收 | parent |
-| **A2** | 品牌彩色图标与扁平化选择器 | `openai/gpt-6.1-sol` | `feat(opencode): add brand model icons and flat picker` | `待办` | 待验收 | parent |
-| **A3** | 会话即时加载与防串机制 | `openai/gpt-6.1-sol` | `fix(opencode): instant session load without polling delay` | `待办` | 待验收 | parent |
-| **A4** | 多问题分步向导与答案暂存 | `openai/gpt-6.1-sol` | `feat(opencode): multi-question wizard with answer retention` | `待办` | 待验收 | parent |
-| **A5** | 提问阻塞问号与未读小圆点 | `openai/gpt-6.1-sol` | `feat(opencode): add question blocked and unread indicators` | `待办` | 待验收 | parent |
-| **A6** | Tab栏高度修正与集合内原生Home标签 | `openai/gpt-6.1-sol` | `style(opencode): fix tab bar height and pin native home tab in collection` | `待办` | 待验收 | parent |
-| **A7** | 多空白会话与独立输入草稿 | `openai/gpt-6.1-sol` | `feat(opencode): isolate blank sessions and draft inputs` | `待办` | 待验收 | parent |
-| **A8** | 悬停样式精简与 10% 边界限制 | `openai/gpt-6.1-sol` | `style(opencode): clamp hover tooltips with 10pct margin` | `待办` | 待验收 | parent |
-| **Gate A** | 阶段 A 全面测试与应用验收 | - | - | **阶段截止 SHA**: `待办` | 待执行 | parent / user |
+| **Task 0** | 编写并提交全景任务计划文档 | - | `docs(opencode): archive model-routed UI repair plan` | `f221b372be5d7700d7e91880a49687e80820447a` | 已完成 | parent |
+| **A1** | 工具栏共基准线与 Logo 放大 | `openai/gpt-6.1-sol` | `fix(opencode): align blank composer and enlarge landing logo` | `5763da813d04fad5bfc5efcbbbd9b72a8e6083c4` | 已提交，待统一验收 | parent |
+| **A2** | 品牌彩色图标与扁平化选择器 | `openai/gpt-6.1-sol` | `feat(opencode): add branded recent models and localized variants` | `47e883bdcf748ccde05c2095043c5e5759873c2f` | 已提交，待统一验收 | parent |
+| **A3** | 会话即时加载与防串机制 | `openai/gpt-6.1-sol` | `fix(opencode): load bound sessions without stale refresh delays` | `ae867d3e58a695109b69fdd808a37fea443851dc` | 已提交，待统一验收 | parent |
+| **A4** | 多问题分步向导与答案暂存 | `openai/gpt-6.1-sol` | `fix(opencode): submit multi-question answers only on the final step` | `1baa0e28b7c26bb08d544cc5a04b275ea1124901` | 已提交，待统一验收 | parent |
+| **A5** | 提问阻塞问号与未读小圆点 | `openai/gpt-6.1-sol` | `fix(opencode): distinguish blocked questions and unread completions` | `781824a0c8569d36007b0ae8fc1ca1dc3ffcd9eb` | 已提交，待统一验收 | parent |
+| **A6** | Tab栏高度修正与集合内原生Home标签 | `openai/gpt-6.1-sol` | `fix(opencode): pin native home tab and restore last-close fallback` | `f6729c73f4d4669e3b57519d2ca1debff54c52b9` | 已提交，待统一验收 | parent |
+| **A7** | 多空白会话与独立输入草稿 | `openai/gpt-6.1-sol` | `feat(opencode): isolate drafts and defaults across session tabs` | `eb6b9b5e0a0f4efe22dde161db2a312ff811b0cc` | 已提交，待统一验收 | parent |
+| **R1** | Agent颜色往返保持与名字完整显示 | `openai/gpt-6.1-sol` | `fix(opencode): persist agent custom color and show full agent name [建议]` | `待办` | 待验收 | parent |
+| **R2** | 会话加载首帧/延迟回归优化 | `openai/gpt-6.1-sol` | `perf(opencode): optimize warm cache first frame and remove serial delays [建议]` | `待办` | 待验收 | parent |
+| **R3** | Reasoning effort 改用原生单选样式 | `openai/gpt-6.1-sol` | `style(opencode): native winui3 radio selection for reasoning effort [建议]` | `待办` | 待验收 | parent |
+| **A8** | 悬停样式精简与 10% 边界限制 | `openai/gpt-6.1-sol` | `style(opencode): clamp hover tooltips with 10pct margin [建议]` | `待办` | 待验收 (暂缓优先R) | parent |
+| **A9** | 官方 "by the way" 功能调研与落地 | `openai/gpt-6.1-sol` | `feat(opencode): implement verified by-the-way feature [建议]` | `待办` | 待验收 (原B9移入) | parent |
+| **A10** | 官方原生 to do 接入与自有文案规范化 | `openai/gpt-6.1-sol` | `feat(opencode): official native todo integration and copy alignment [建议]` | `待办` | 待验收 (原B10移入) | parent |
+| **Gate A** | 阶段 A 13项全面测试与应用验收 | - | - | **阶段截止 SHA**: `待办` | 待执行 (统一验收) | parent / user |
 
-### 阶段 B 任务追踪（Opus 专属）
+### 阶段 B 任务追踪（Opus 专属 · 共 18 项功能任务）
 
 | 任务编号 | 任务简述 | 执行模型 | Conventional Commit 信息 | 提交 Commit SHA | 验收状态 | 验收人 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **B1** | 响应式双侧栏框架与入口迁移 | `anthropic/claude-opus-5-5` | `feat(opencode): responsive dual sidebars and entry migration framework` | `待办` | 待验收 | parent |
-| **B2** | 右侧栏元数据与官方详情点 | `anthropic/claude-opus-5-5` | `feat(opencode): right panel session details and status` | `待办` | 待验收 | parent |
-| **B3** | 上下文分层用量与右侧容器结构 | `anthropic/claude-opus-5-5` | `feat(opencode): context usage breakdown and right panel container` | `待办` | 待验收 | parent |
-| **B4** | 亚克力 Agent 与子智能体树＋终端分组 | `anthropic/claude-opus-5-5` | `feat(opencode): acrylic agent hierarchy with subagents and terminal group` | `待办` | 待验收 | parent |
-| **B5** | 左下独立会话控制卡片 | `anthropic/claude-opus-5-5` | `feat(opencode): session control card for agent and model` | `待办` | 待验收 | parent |
-| **B6** | 窄屏双行 Composer 与移除旧顶栏 | `anthropic/claude-opus-5-5` | `feat(opencode): two-row composer and remove legacy top header` | `待办` | 待验收 | parent |
-| **B7** | `+` 菜单整合与字符原生触发 | `anthropic/claude-opus-5-5` | `feat(opencode): composer plus menu and literal char triggers` | `待办` | 待验收 | parent |
-| **B8** | 终端命令行模式与后台协议联调 | `anthropic/claude-opus-5-5` | `feat(opencode): terminal mode switch with shell backend` | `待办` | 待验收 | parent |
-| **B9** | 官方 "by the way" 功能调研与落地 | `anthropic/claude-opus-5-5` | `feat(opencode): implement verified by-the-way feature` | `待办` | 待验收 | parent |
-| **B10** | 官方原生 to do 接入与自有文案规范化 | `anthropic/claude-opus-5-5` | `feat(opencode): official native todo integration and copy alignment` | `待办` | 待验收 | parent |
-| **B11** | 后端连接移至用户入口与三流程支持 | `anthropic/claude-opus-5-5` | `feat(opencode): move backend connection to user entry with wsl and remote flows` | `待办` | 待验收 | parent |
-| **B12** | WSL 专属快速访问区与动态路径转换 | `anthropic/claude-opus-5-5` | `feat(opencode): wsl quick access with explorer and editor integration` | `待办` | 待验收 | parent |
-| **B13** | 标签页working指示器全局时钟同步 | `anthropic/claude-opus-5-5` | `feat(opencode): synchronized global animation clock for working tab indicators` | `待办` | 待验收 | parent |
-| **B14** | 依据实际续接消除瞬态错误与工具全行红 | `anthropic/claude-opus-5-5` | `feat(opencode): error projection cleanup and full-row tool failure styling` | `待办` | 待验收 | parent |
+| **B1** | 响应式双侧栏框架与入口迁移 | `anthropic/claude-opus-5-5` | `feat(opencode): responsive dual sidebars and entry migration framework [建议]` | `待办` | 待验收 | parent |
+| **B1a** | 新会话页底部目录选择器美化 | `anthropic/claude-opus-5-5` | `style(opencode): polish working directory selector on new session page [建议]` | `待办` | 待验收 | parent |
+| **B1b** | 模型选择弹窗间距与可读性重构 | `anthropic/claude-opus-5-5` | `style(opencode): overhaul model picker dialog spacing and hierarchy [建议]` | `待办` | 待验收 | parent |
+| **B2** | 右侧栏元数据与官方详情点 | `anthropic/claude-opus-5-5` | `feat(opencode): right panel session details and status [建议]` | `待办` | 待验收 | parent |
+| **B3** | 上下文分层用量与右侧容器结构 | `anthropic/claude-opus-5-5` | `feat(opencode): context usage breakdown and right panel container [建议]` | `待办` | 待验收 | parent |
+| **B4** | 亚克力 Agent 与子智能体树＋终端分组 | `anthropic/claude-opus-5-5` | `feat(opencode): acrylic agent hierarchy with subagents and terminal group [建议]` | `待办` | 待验收 | parent |
+| **B5** | 左下独立会话控制卡片 | `anthropic/claude-opus-5-5` | `feat(opencode): session control card for agent and model [建议]` | `待办` | 待验收 | parent |
+| **B6** | 窄屏双行 Composer 与移除旧顶栏 | `anthropic/claude-opus-5-5` | `feat(opencode): two-row composer and remove legacy top header [建议]` | `待办` | 待验收 | parent |
+| **B7** | `+` 菜单整合与字符原生触发 | `anthropic/claude-opus-5-5` | `feat(opencode): composer plus menu and contextual char triggers [建议]` | `待办` | 待验收 | parent |
+| **B8** | 终端命令行模式与后台协议联调 | `anthropic/claude-opus-5-5` | `feat(opencode): terminal mode switch with shell backend [建议]` | `待办` | 待验收 | parent |
+| **B11** | 后端连接移至用户入口与三流程支持 | `anthropic/claude-opus-5-5` | `feat(opencode): move backend connection to user entry with wsl and remote flows [建议]` | `待办` | 待验收 | parent |
+| **B12** | WSL 专属快速访问区与动态路径转换 | `anthropic/claude-opus-5-5` | `feat(opencode): wsl quick access with explorer and editor integration [建议]` | `待办` | 待验收 | parent |
+| **B13** | 标签页working指示器全局时钟同步 | `anthropic/claude-opus-5-5` | `feat(opencode): synchronized global animation clock for working tab indicators [建议]` | `待办` | 待验收 | parent |
+| **B14** | 依据实际续接消除瞬态错误与工具全行红 | `anthropic/claude-opus-5-5` | `feat(opencode): error projection cleanup and full-row tool failure styling [建议]` | `待办` | 待验收 | parent |
+| **B15** | Composer placeholder 趣味 splash 词库 | `anthropic/claude-opus-5-5` | `feat(opencode): composer placeholder splash phrase library [建议]` | `待办` | 待验收 | parent |
+| **B16** | 处理摘要视觉主次淡化弱化 | `anthropic/claude-opus-5-5` | `style(opencode): de-emphasize processed summary tags for content priority [建议]` | `待办` | 待验收 | parent |
+| **B17** | working 动画与状态词库（齿轮/点动） | `anthropic/claude-opus-5-5` | `feat(opencode): working animation with status and satire phrase library [建议]` | `待办` | 待验收 | parent |
+| **B18** | working group 可展开与手动收回 | `anthropic/claude-opus-5-5` | `feat(opencode): collapsible working group preserving manual state [建议]` | `待办` | 待验收 | parent |
 
 ---
 
@@ -679,4 +827,4 @@
   - `src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs`
   - `src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs`
   - `src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs`
-- **单线串行推进原则**：阶段 A 的 A1 至 A8 任务虽然在功能层面相互独立，但由于上述 XAML 及分部类（Partial Classes）高度共享视图树与组件状态，**严禁在不同任务间发生并行写入（No Parallel Writes）**。必须严格遵循 A1 → A2 → A3 → A4 → A5 → A6 → A7 → A8 的单线顺序，逐项修改、聚焦测试、独立 Commit，确保每个提交点的代码库均处于完全可用且便于审查回滚的健康状态。
+- **单线串行推进原则**：阶段 A 的各项任务虽然在功能层面相互独立，但由于上述 XAML 及分部类（Partial Classes）高度共享视图树与组件状态，**严禁在不同任务间发生并行写入（No Parallel Writes）**。必须严格遵循 `R1 → R2 → R3 → A8 → A9 → A10` 的单线顺序推进阶段 A 剩余任务，逐项修改、聚焦测试、独立 Commit，确保每个提交点的代码库均处于完全可用且便于审查回滚的健康状态。全量 13 项 Sol 任务完成后，统一执行一次 Gate A 综合验收。
