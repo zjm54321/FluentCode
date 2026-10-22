@@ -133,6 +133,8 @@ public sealed record OpenCodeSessionInsightsSnapshot(
     public string BillionOriginNote { get; init; } = "打开概况或刷新时通过当前 OpenCode 来源发现地址；也可手动覆盖，不猜测默认端口。";
     public OpenCodeBillionDiscoveryResult? BillionDiscovery { get; init; }
     public bool BillionDiscoveryLoading { get; init; }
+    /// <summary>所选会话撤回点之前的 user 消息数；历史或撤回边界未确认时不伪造 0。</summary>
+    public int? Turns { get; init; }
 
     public static OpenCodeSessionInsightsSnapshot Empty(string? sessionId, string? unavailableReason) => new(
         sessionId, unavailableReason, false, null, false,
@@ -253,6 +255,7 @@ public sealed class OpenCodeSessionInsightsController
         {
             if (!OwnsContext(binding)) return;
             CaptureContextMessages(orderedMessages, historyComplete);
+            if (todoHistory is not null) _todoHistory = todoHistory;
             changed = SetContextSnapshot();
             if (todoHistory is not null)
             {
@@ -387,22 +390,39 @@ public sealed class OpenCodeSessionInsightsController
 
     private OpenCodeInsightSection<OpenCodeContextEstimateResult> BuildContext()
     {
-        var estimate = OpenCodeContextEstimate.Estimate(_binding!.SessionId, _contextMessages,
+        var estimate = OpenCodeContextEstimate.Estimate(_binding!.SessionId, ContextMessagesBeforeRevert(),
             _contextModel, _contextModelInfo, _contextHistoryComplete);
         return new(estimate.ReferenceTokens is not null && !estimate.Stale ? OpenCodeInsightState.Loaded : OpenCodeInsightState.Partial,
             estimate, estimate.Label);
     }
+
+    // Official v2.1.1 yr: context never uses a message at/after revert; a missing boundary
+    // is unavailable, not a license to reuse usage from the reverted suffix.
+    private OpenCodeMessage[] ContextMessagesBeforeRevert()
+    {
+        if (!_todoHistory.RevertKnown || _todoHistory.ReadFailed) return Array.Empty<OpenCodeMessage>();
+        if (_todoHistory.RevertMessageId is not { } revert) return _contextMessages;
+        var index = Array.FindIndex(_contextMessages, message => message.Id == revert);
+        return index < 0 ? Array.Empty<OpenCodeMessage>() : _contextMessages.Take(index).ToArray();
+    }
+
+    private int? ContextTurns() => !_contextHasMessages || !_contextHistoryComplete
+        || !_todoHistory.RevertKnown || _todoHistory.ReadFailed
+        || (_todoHistory.RevertMessageId is { } revert && !_contextMessages.Any(message => message.Id == revert))
+        ? null : ContextMessagesBeforeRevert().Where(message => message.Type == OpenCodeMessageTypes.User)
+            .Select(message => message.Id).Distinct(StringComparer.Ordinal).Count();
 
     private bool SetContextSnapshot()
     {
         var context = BuildContext();
         var before = Snapshot.Context.Value;
         var after = context.Value!;
+        var turns = ContextTurns();
         if (Snapshot.Context.State == context.State && before is not null
             && before.CurrentModel == after.CurrentModel && before.LatestAssistantUsage == after.LatestAssistantUsage
             && before.ContextLimit == after.ContextLimit && before.StaleReasons.SequenceEqual(after.StaleReasons)
-            && Snapshot.HistoryComplete == _contextHistoryComplete) return false;
-        SetSnapshot(Snapshot with { Context = context, HistoryComplete = _contextHistoryComplete });
+            && Snapshot.HistoryComplete == _contextHistoryComplete && Snapshot.Turns == turns) return false;
+        SetSnapshot(Snapshot with { Context = context, HistoryComplete = _contextHistoryComplete, Turns = turns });
         return true; // Text-only deltas retain inputs without rebuilding the header/flyout/insights view.
     }
 
@@ -676,6 +696,7 @@ public sealed class OpenCodeSessionInsightsController
             {
                 SampledAt = sampledAt,
                 HistoryComplete = _contextHistoryComplete,
+                Turns = ContextTurns(),
                 Context = context,
                 Cost = cost,
                 Pricing = pricing,

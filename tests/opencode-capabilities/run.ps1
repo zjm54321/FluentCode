@@ -8,7 +8,7 @@ $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Nam
 $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
 $output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-capabilities-' + [guid]::NewGuid().ToString('N')) }
-New-Item -ItemType Directory -Path $output | Out-Null
+New-Item -ItemType Directory -Force -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeCapabilitiesTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }

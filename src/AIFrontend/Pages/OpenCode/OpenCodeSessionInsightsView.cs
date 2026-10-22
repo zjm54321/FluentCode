@@ -36,6 +36,7 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeSessionInsightsView : UserControl
 {
     private readonly TextBlock _scopeText;
+    private readonly Border _usageHost = new();
     private readonly Button _refreshButton;
     private readonly ProgressRing _refreshRing;
     private readonly CheckBox _billionConfirm;
@@ -192,9 +193,10 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         };
 
         var root = new StackPanel { Spacing = 12 };
+        root.Children.Add(_usageHost);
+        root.Children.Add(pagesHost);
         root.Children.Add(toolbar);
         root.Children.Add(_sections);
-        root.Children.Add(pagesHost);
         Content = root;
 
         // 卸载后排队的界面更新作废；重新加载时补上仍待显示的状态（不在任何输入回调内）。
@@ -260,7 +262,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         if (snapshot.UnavailableReason is { } reason) return "会话概况：" + reason;
         if (snapshot.Loading) return "会话概况：读取中";
         if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文、任务与 Agents（打开面板读取）";
-        var cost = snapshot.Cost.Value is { } view
+        var cost = snapshot.Cost.Value is { Summary.HasKnownCost: true } view
             ? (snapshot.Cost.State == OpenCodeInsightState.Partial ? "已知部分 " : "") + Money(view.Summary.TotalCost)
             : "费用无法确认";
         return "会话概况：" + cost + "（采样于 " + Time(sampled) + "，不会自动更新）";
@@ -346,14 +348,17 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
             // 页头圆环与面板同源：每次全量渲染都更新（不可用时显示“—”与原因）。
             _contextRing.Render(snapshot);
+            _usageHost.Child = ContextUsageSection(snapshot);
             if (snapshot.UnavailableReason is not null)
             {
                 _visual = snapshot;
                 return;
             }
 
-            // 概况 = to do + Agents；上下文圆环在页头（wave5 G5）。
-            _overviewPage.Children.Add(TodoSection(snapshot));
+            // 常驻上下文在上，A10 原生 to do 卡片在下；子会话只进入用量，不混入 to do。
+            var todoCard = new Border { Padding = new Thickness(12), CornerRadius = new CornerRadius(8), Child = TodoSection(snapshot) };
+            AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
+            _overviewPage.Children.Add(todoCard);
             _overviewPage.Children.Add(_agents.Render(snapshot.Children, PrimaryAgent));
             _billionPage.Children.Add(BillionSection(snapshot));
             _visual = snapshot;
@@ -409,6 +414,65 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
     // 上下文参考圆环（含“当前上下文 / 用量计费 / ACP·Billion 状态”三组 Flyout）见 OpenCodeContextRing；
     // MCP / 插件 / LSP 服务状态移到页头连接状态按钮的 Flyout（OpenCodeConnectionFlyout）。
+
+    private static UIElement ContextUsageSection(OpenCodeSessionInsightsSnapshot snapshot)
+    {
+        var panel = new StackPanel { Spacing = 8 };
+        AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsLayeredUsage");
+        var heading = new Grid { ColumnSpacing = 8 };
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        heading.Children.Add(OpenCodeInteractionUi.StyledText("上下文", OpenCodeInteractionUi.BodyStrongStyleKey));
+        var turns = Caption(snapshot.Turns is { } count ? count + " 轮" : "轮次不可用");
+        AutomationProperties.SetAutomationId(turns, "OpenCodeInsightsTurns");
+        Grid.SetColumn(turns, 1);
+        heading.Children.Add(turns);
+        panel.Children.Add(heading);
+
+        var current = Body(CurrentContextLine(snapshot));
+        current.TextWrapping = TextWrapping.NoWrap;
+        AutomationProperties.SetAutomationId(current, "OpenCodeInsightsCurrentContext");
+        ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
+        panel.Children.Add(current);
+
+        var summary = snapshot.Cost.Value?.Summary;
+        var knownTokens = summary?.HasKnownTokens == true;
+        var knownCost = summary?.HasKnownCost == true;
+        var tokens = knownTokens ? summary!.Tokens : null;
+        var prefix = summary?.Incomplete == true ? "已知部分 " : "";
+        string Token(double? value) => value is { } number ? prefix + Tokens(number) : "不可用";
+        panel.Children.Add(Table(new List<(string, string)>
+        {
+            ("输入", Token(tokens?.Input)),
+            ("输出", Token(tokens?.Output)),
+            ("缓存读取", Token(tokens?.CacheRead)),
+            ("缓存写入", Token(tokens?.CacheWrite)),
+            ("缓存命中率", tokens?.CacheHitPercent is { } hit ? prefix + hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "不可用"),
+            ("思考 tokens", Token(tokens?.Reasoning)),
+        }));
+        panel.Children.Add(OpenCodeContextRing.Divider());
+        panel.Children.Add(Table(new List<(string, string)>
+        {
+            ("总 tokens", Token(tokens?.Total)),
+            ("总费用", knownCost ? prefix + Money(summary!.TotalCost) : "不可用"),
+        }));
+        var note = Caption(summary is null ? "主会话及子会话累计用量：" + snapshot.Cost.Note
+            : "主会话及全部子会话，按 parentID 去重累计；输入不含缓存。" + (summary.Incomplete ? "部分数据未能读取。" : ""));
+        ToolTipService.SetToolTip(note, "总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入；缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。费用直接累计 Session.Info.cost，不重新计价，不加消息费用或 Billion 账单。");
+        panel.Children.Add(note);
+        return panel;
+    }
+
+    internal static string CurrentContextLine(OpenCodeSessionInsightsSnapshot snapshot)
+    {
+        if (snapshot.UnavailableReason is not null || snapshot.Context.Value is not { } estimate
+            || estimate.StaleReasons.Any(reason => reason is not OpenCodeContextStaleReason.HistoryIncomplete
+                and not OpenCodeContextStaleReason.ModelLimitUnavailable)) return "不可用";
+        var (_, tokens, limit) = OpenCodeContextRing.Measure(snapshot);
+        if (tokens is not { } used) return "不可用";
+        return Compact(used) + " / " + (limit is { } max ? Compact(max) + " ("
+            + Math.Round(used / max * 100, 1).ToString("0.#", CultureInfo.InvariantCulture) + "%)" : "- (-)");
+    }
 
     // ------------------------------------------------------------------
     // to do（概况分区内）— 对齐官方 v2.1.1 sidebar：标题 "to do"；超过 2 项时标题可折叠，

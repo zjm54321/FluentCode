@@ -262,7 +262,7 @@ internal sealed class OpenCodeContextRing
         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
     };
 
-    private static UIElement Divider()
+    internal static UIElement Divider()
     {
         var line = new Border { Height = 1 };
         if (OpenCodeInsightsTheme.DividerLine() is { } style)
@@ -353,12 +353,13 @@ internal sealed class OpenCodeContextRing
         var summary = view.Summary;
         var tokens = summary.Tokens;
         var prefix = summary.Incomplete ? "已知部分 " : "";
+        string Token(double value) => summary.HasKnownTokens ? prefix + OpenCodeSessionInsightsView.Tokens(value) : "不可用";
         var figures = new Grid { ColumnSpacing = 16 };
         figures.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         figures.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var tokenFigure = OpenCodeSessionInsightsView.Figure(prefix + OpenCodeSessionInsightsView.Compact(tokens.Total),
+        var tokenFigure = OpenCodeSessionInsightsView.Figure(Token(tokens.Total),
             "已用 tokens");
-        var costFigure = OpenCodeSessionInsightsView.Figure(prefix + OpenCodeSessionInsightsView.Money(summary.TotalCost), "费用（Core 累计估算）");
+        var costFigure = OpenCodeSessionInsightsView.Figure(summary.HasKnownCost ? prefix + OpenCodeSessionInsightsView.Money(summary.TotalCost) : "不可用", "费用（Core 累计估算）");
         Grid.SetColumn(costFigure, 1);
         figures.Children.Add(tokenFigure);
         figures.Children.Add(costFigure);
@@ -370,11 +371,11 @@ internal sealed class OpenCodeContextRing
 
         var rows = new List<(string, string)>
         {
-            ("输入（未缓存）", OpenCodeSessionInsightsView.Tokens(tokens.Input)),
-            ("输出", OpenCodeSessionInsightsView.Tokens(tokens.Output)),
-            ("推理", OpenCodeSessionInsightsView.Tokens(tokens.Reasoning)),
-            ("缓存读取", OpenCodeSessionInsightsView.Tokens(tokens.CacheRead)),
-            ("缓存写入", OpenCodeSessionInsightsView.Tokens(tokens.CacheWrite)),
+            ("输入（未缓存）", Token(tokens.Input)),
+            ("输出", Token(tokens.Output)),
+            ("推理", Token(tokens.Reasoning)),
+            ("缓存读取", Token(tokens.CacheRead)),
+            ("缓存写入", Token(tokens.CacheWrite)),
             ("主会话自身费用", summary.RootCost is { } rootCost ? OpenCodeSessionInsightsView.Money(rootCost) : "无法确认"),
         };
         if (!view.Scope.SelectedIsRoot)

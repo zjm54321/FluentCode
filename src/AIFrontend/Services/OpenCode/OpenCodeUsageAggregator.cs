@@ -18,7 +18,11 @@ public sealed record OpenCodeUsageIssue(OpenCodeUsageIncompleteReason Reason, st
 /// <summary>五类互不重叠；input 非缓存，output 可见，cache.write 为输入缓存写入。</summary>
 public sealed record OpenCodeUsageTokens(double Input, double Output, double Reasoning, double CacheRead, double CacheWrite)
 {
+    // OpenCode v2.1.1 Qq: input excludes cache; output and reasoning are distinct.
     public double Total => Input + Output + Reasoning + CacheRead + CacheWrite;
+    public double PromptTotal => Input + CacheRead + CacheWrite;
+    public double? CacheHitPercent => PromptTotal > 0 && double.IsFinite(PromptTotal)
+        ? CacheRead / PromptTotal * 100 : null;
     public static OpenCodeUsageTokens Zero { get; } = new(0, 0, 0, 0, 0);
 
     internal static OpenCodeUsageTokens? From(OpenCodeTokenUsage? value)
@@ -54,6 +58,8 @@ public sealed record UsageTreeSummary(
     OpenCodeDerivedCacheMultipliers? ReferenceCacheMultipliers)
 {
     public int SessionCount => Sessions.Length;
+    public bool HasKnownTokens => Sessions.Any(session => session.Tokens is not null);
+    public bool HasKnownCost => Sessions.Any(session => session.CoreCost is not null);
     public bool Incomplete => !IncompleteReasons.IsEmpty;
     public string Label => "Core 累计估算";
     public string DataSource => "Session.Info.cost/tokens (parentID tree)";

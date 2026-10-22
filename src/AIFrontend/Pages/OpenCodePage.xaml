@@ -353,7 +353,7 @@
                                         <Border x:Name="RightContextRingHost" VerticalAlignment="Center" />
                                         <Border x:Name="RightConnectionStatusHost" VerticalAlignment="Center" />
                                     </StackPanel>
-                                    <!-- L8：SelectorBar（OpenCodeInsightsSections）与各分区放入此宿主。 -->
+                                    <!-- B3：常驻上下文 / 分层用量在上，A10 原生 to do 卡片在下；复用同一概况视图。 -->
                                     <ScrollViewer
                                         x:Name="RightSessionContent"
                                         Grid.Row="3"

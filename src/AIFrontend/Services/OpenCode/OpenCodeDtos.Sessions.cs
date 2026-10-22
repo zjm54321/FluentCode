@@ -117,15 +117,15 @@ public sealed record OpenCodeTokenUsage
 {
     /// <summary>输入 token 数。</summary>
     [JsonPropertyName("input")]
-    public double Input { get; init; }
+    public double Input { get; init; } = double.NaN;
 
     /// <summary>输出 token 数。</summary>
     [JsonPropertyName("output")]
-    public double Output { get; init; }
+    public double Output { get; init; } = double.NaN;
 
     /// <summary>推理 token 数。</summary>
     [JsonPropertyName("reasoning")]
-    public double Reasoning { get; init; }
+    public double Reasoning { get; init; } = double.NaN;
 
     /// <summary>缓存读写。</summary>
     [JsonPropertyName("cache")]
@@ -137,11 +137,11 @@ public sealed record OpenCodeTokenCache
 {
     /// <summary>缓存读取量。</summary>
     [JsonPropertyName("read")]
-    public double Read { get; init; }
+    public double Read { get; init; } = double.NaN;
 
     /// <summary>缓存写入量。</summary>
     [JsonPropertyName("write")]
-    public double Write { get; init; }
+    public double Write { get; init; } = double.NaN;
 }
 
 /// <summary>会话时间戳（Session.Info.time）。created/updated 必填，其余可选。</summary>

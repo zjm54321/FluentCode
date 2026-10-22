@@ -38,6 +38,18 @@ internal static partial class Program
         var two = Assistant("msg_b", 20, 300);
         controller.UpdateContext(binding, new[] { one, two }, true);
         Check(controller.Snapshot.Context.Value?.ReferenceTokens == 310, "context.next accepted usage replaces reference, not accumulated");
+        var user = Message("""{"id":"msg_user","type":"user","time":{"created":1},"content":[]}""");
+        controller.UpdateContext(binding, new[] { user, one, two }, true);
+        Check(controller.Snapshot.Turns == 1, "turns count only current-session user messages, not assistant steps");
+        controller.UpdateContext(binding, new[] { user, one, two }, false);
+        Check(controller.Snapshot.Turns is null, "incomplete history does not invent a zero/exact turn count");
+        controller.UpdateContext(binding, new[] { user, one, two }, true, new(false, true, two.Id));
+        Check(controller.Snapshot.Context.Value?.ReferenceTokens == 110 && controller.Snapshot.Turns == 1,
+            "reverted suffix excluded from current context and turns like official yr");
+        controller.UpdateContext(binding, new[] { user, one, two }, true, new(false, true, "msg_missing"));
+        Check(controller.Snapshot.Context.Value?.ReferenceTokens is null && controller.Snapshot.Turns is null,
+            "missing revert boundary cannot resurrect suffix usage");
+        controller.UpdateContext(binding, new[] { one, two }, true, OpenCodeTodoHistory.NoRevert);
         var before = changed;
         for (var i = 0; i < 30; i++)
         {

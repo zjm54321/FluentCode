@@ -182,6 +182,11 @@ internal static class Program
         var summary = OpenCodeUsageAggregator.Aggregate("ses_root", new[] { child, Session("ses_fork", cost: 500), root, child with { Cost = 200 } }, Array.Empty<OpenCodeUsageIssue>());
         Check(summary.RootCost == 0 && summary.TotalCost == 2 && summary.SessionCount == 2, "pure aggregator counts first unique root tree samples only");
         Check(summary.Tokens == new OpenCodeUsageTokens(20, 40, 6, 8, 10) && summary.Tokens.Total == 84, "no inclusive input/output double count");
+        Check(summary.Tokens.PromptTotal == 38 && Math.Abs(summary.Tokens.CacheHitPercent!.Value - 800d / 38) < 1e-9,
+            "cache hit denominator is uncached input + cache read + write, never output or reasoning");
+        Check(OpenCodeUsageTokens.Zero.CacheHitPercent is null, "zero prompt has no invented hit rate");
+        Check(OpenCodeUsageTokens.From(new OpenCodeTokenUsage { Cache = new() { Read = 0, Write = 0 } }) is null,
+            "missing required usage counters never become zero");
         Check(summary.Sessions.Single(item => item.SessionId == "ses_child").CoreCost == 2, "per-session details retained without raw metadata/body");
         Check(summary.Label == "Core 累计估算" && !summary.ZeroCostProvesFree && !summary.HistoricalPricingCoverageKnown, "missing price zero never asserted free");
         Check(!summary.CoversExternalAcpBilling && !summary.CanAddBillionBilling, "billing scopes cannot be merged");

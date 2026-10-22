@@ -68,6 +68,7 @@ internal static class Program
         Run("to do: official look, glyphs, collapse w/ remaining, unknown/failure/empty/disabled/partial states", true, TodoList);
         Run("to do: real controller config, local derivation and stale-session/epoch fences", true, _ => TodoControllerTests.Run());
         Run("context ring: header 32x32 button, compact numbers, thresholds, ACP block list, Billion in-place refreshes flyout", true, ContextRing);
+        Run("layered usage: current context, tree totals, honest missing fields and A10 container", true, LayeredUsage);
         Run("connection flyout: concise rows, built-ins silently hidden, clickable MCP/plugin detail + MCP control actions", true, ConnectionFlyout);
 
         ShimTree.ParentVisible = true;
@@ -271,7 +272,7 @@ internal static class Program
         {
             Todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(state, todo, note),
         });
-        return (StackPanel)Field<StackPanel[]>(view, "_pages")[0].Children[0];
+        return (StackPanel)((Border)Field<StackPanel[]>(view, "_pages")[0].Children[0]).Child!;
     }
 
     private static StackPanel TodoContent(StackPanel panel) => (StackPanel)panel.Children[1];
@@ -436,6 +437,39 @@ internal static class Program
         Check(refreshes == 0 && Field<StackPanel[]>(view, "_pages")[0].Children.Count == 2
             && AllText((UIElement)((Flyout)ring.Button.Flyout!).Content!).Contains("42K"), "double theme flip: no read, content intact");
         Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 2, "overview page intact");
+    }
+
+    private static void LayeredUsage(OpenCodeSessionInsightsView view)
+    {
+        var sample = WithContext(12_500, 200_000) with { Turns = 3 };
+        OpenCodeSessionInfo Row(string id, string? parent, double cost) => new()
+        {
+            Id = id, ParentId = parent, Cost = cost,
+            Tokens = new() { Input = 100, Output = 20, Reasoning = 5, Cache = new() { Read = 300, Write = 100 } },
+        };
+        var summary = OpenCodeUsageAggregator.Aggregate("ses_root",
+            new[] { Row("ses_root", null, 1), Row("ses_child", "ses_root", 2), Row("ses_grandchild", "ses_child", 3), Row("ses_unrelated", null, 99) },
+            Array.Empty<OpenCodeUsageIssue>());
+        sample = sample with { Cost = new(OpenCodeInsightState.Loaded,
+            new(summary, new("ses_root", true, 0), null, DateTimeOffset.UnixEpoch), "loaded") };
+        Draw(view, sample);
+        var host = Field<Border>(view, "_usageHost");
+        var texts = AllText(host).Reverse().ToArray();
+        Check(texts.Take(3).SequenceEqual(new[] { "上下文", "3 轮", "12.5K / 200K (6.2%)" }), "context title, grey turns and one-line current (not tree usage)");
+        Check(texts.Where(t => new[] { "输入", "输出", "缓存读取", "缓存写入", "缓存命中率", "思考 tokens", "总 tokens", "总费用" }.Contains(t))
+            .SequenceEqual(new[] { "输入", "输出", "缓存读取", "缓存写入", "缓存命中率", "思考 tokens", "总 tokens", "总费用" }), "six rows then total rows in specified order");
+        Check(texts.Contains("1.6K") && texts.Contains("60%") && texts.Contains(OpenCodeSessionInsightsView.Money(6)), "three unique parentID sessions; noncached categories, weighted hit rate and raw cost sum");
+        Check(AutomationProperties.GetAutomationId(Field<StackPanel[]>(view, "_pages")[0].Children[0]) == "OpenCodeInsightsTodoCard", "native A10 card container follows context");
+        Check(((StackPanel)view.Content!).Children[0] == host, "context is the content region's first element");
+        Draw(view, Empty());
+        Check(AllText(host).Count(t => t == "不可用") == 9 && !AllText(host).Contains("0"), "missing context and eight usage fields never show fabricated zero");
+        var missing = OpenCodeUsageAggregator.Aggregate("ses_missing", Array.Empty<OpenCodeSessionInfo>(), Array.Empty<OpenCodeUsageIssue>());
+        Draw(view, sample with { Cost = new(OpenCodeInsightState.Partial, new(missing, new("ses_missing", true, 0), null, DateTimeOffset.UnixEpoch), "missing") });
+        Check(AllText(host).Count(t => t == "不可用") == 8, "failed tree reads do not render accumulator zero as measured usage");
+        var flyoutTexts = AllText((UIElement)((Flyout)view.ContextRing.Button.Flyout!).Content!).ToArray();
+        Check(!flyoutTexts.Any(t => t.StartsWith("已知部分 0", StringComparison.Ordinal)), "ring flyout shares the honest missing-data convention");
+        var stale = sample with { Context = sample.Context with { Value = sample.Context.Value! with { StaleReasons = ImmutableArray.Create(OpenCodeContextStaleReason.CompactionAfterUsage) } } };
+        Check(OpenCodeSessionInsightsView.CurrentContextLine(stale) == "不可用", "compaction awaits fresh main-agent usage");
     }
 
     private static void ConnectionFlyout(OpenCodeSessionInsightsView _)
@@ -637,7 +671,7 @@ internal static class Program
         // header connection Flyout (see ConnectionFlyout case).
         Check(pages.Length == 2 && pages[0].Children.Count == 2
             && ReferenceEquals(body, pages[1]) && body.Children.Count == 1, "two section pages with their sections");
-        Check(new[] { "OpenCodeInsightsTodo", "OpenCodeInsightsAgents" }
+        Check(new[] { "OpenCodeInsightsTodoCard", "OpenCodeInsightsAgents" }
                 .SequenceEqual(pages[0].Children.Select(child => AutomationProperties.GetAutomationId(child))),
             "概况 shows 任务 and Agents together (ring moved to header in G5)");
         var ring = Field<OpenCodeContextRing>(view, "_contextRing");
