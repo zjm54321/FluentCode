@@ -25,7 +25,7 @@ $members+=Extract $homeSource 'ShowHomePage'
 $members+=Extract $homeSource 'OwnsHome'
 $blankChoicePath="$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs";$choices=[IO.File]::ReadAllText($blankChoicePath)
 $baseline=if($BaselineBlankFile){[IO.File]::ReadAllText($BaselineBlankFile)}else{''}
-$members+=@('EnsureBlankPreferences','HasBlankMetadata','OwnBlankMetadata','AcceptBlankAgentPresentation','HasBlankAgentPresentation','OwnsBlankMetadata','LoadBlankMetadataAsync','BlankAgentName','BlankSelectedAgent','ApplyBlankDefaults','ReadBlankAgentModel','IsBlankAgentSelectable','BlankStrengthText','CaptureBlankPreferences','OwnsBlankPreferences','SetBlankVariantAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click')|ForEach-Object{if($baseline -and $_ -in @('OwnBlankMetadata','LoadBlankMetadataAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click')){Extract $baseline $_}else{Extract $choices $_}}
+$members+=@('EnsureBlankPreferences','HasBlankMetadata','OwnBlankMetadata','AcceptBlankAgentPresentation','HasBlankAgentPresentation','OwnsBlankMetadata','LoadBlankMetadataAsync','BlankAgentName','BlankSelectedAgent','ApplyBlankDefaults','ReadBlankAgentModel','IsBlankAgentSelectable','BlankStrengthText','CaptureBlankPreferences','OwnsBlankPreferences','SetBlankVariantAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click','BlankProjectButton_Click')|ForEach-Object{if($baseline -and $_ -in @('OwnBlankMetadata','LoadBlankMetadataAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click')){Extract $baseline $_}else{Extract $choices $_}}
 $members+=@('SessionList_SelectionChanged','SwitchToSessionAsync','CancelSessionOperations','IsCurrentBindingFields','IsCurrentBinding','SelectSessionItem','CreateOperationToken','OnPageUnloaded','ApplyCurrentSource','InvalidateForSourceChange','DisposeOwnClient')|ForEach-Object{Extract $page $_}
 $builtinPath="$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs";$builtin=[IO.File]::ReadAllText($builtinPath)
 $members+=Extract $builtin 'CreateNativeSessionAsync'
@@ -45,6 +45,7 @@ $viewGenerated=Join-Path $EvidenceRoot 'ActualViewBridge.cs'
 $sources=@($generated,$viewGenerated,"$PSScriptRoot/Tab.TestHost.cs","$PSScriptRoot/PageFixture.cs","$PSScriptRoot/ViewFixture.cs","$PSScriptRoot/Program.cs","$PSScriptRoot/WorkingClockTests.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs","$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs")
 $sources+="$repo/tests/opencode-draft-slots/PageSlots.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
+$sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeDirectoryPresentation.cs","$PSScriptRoot/DirectorySelectorTests.cs")
 $sources+="$repo/tests/opencode-draft-slots/AgentPresentation.cs"
 $selectorPath="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs";$selector=[IO.File]::ReadAllText($selectorPath)
 $pickerPath="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPickerDialog.cs";$picker=[IO.File]::ReadAllText($pickerPath)

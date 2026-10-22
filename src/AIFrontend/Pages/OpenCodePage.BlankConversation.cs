@@ -190,7 +190,14 @@ public sealed partial class OpenCodePage
         var value = _blankPreferences;
         var current = !_draftRecoveryPending && !_homeActive && _newSessionDraftActive && value is not null && _composerController is not null
             && value.Matches(_homeRuntimeSource, _composerController.Snapshot.Token.Draft);
-        BlankProjectButton.Content = current ? value!.Directory : "选择当前来源的项目目录";
+        var directory = current ? value!.Directory : null;
+        var (folderName, folderParent) = OpenCodeDirectoryPresentation.Split(directory);
+        BlankProjectName.Text = directory is null ? OpenCodeDirectoryPresentation.Placeholder : folderName;
+        BlankProjectPath.Text = folderParent;
+        BlankProjectPath.Visibility = folderParent.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        AutomationProperties.SetName(BlankProjectButton, OpenCodeDirectoryPresentation.AutomationName(directory));
+        AutomationProperties.SetHelpText(BlankProjectButton, directory ?? OpenCodeDirectoryPresentation.PlaceholderToolTip);
+        ToolTipService.SetToolTip(BlankProjectButton, directory ?? OpenCodeDirectoryPresentation.PlaceholderToolTip);
         var metadata = current && HasBlankMetadata(value!);
         var agent = current && HasBlankAgentPresentation(value!) ? _activeDraftSlot!.Agents.FirstOrDefault(agent => agent.Id == value!.Agent) : null;
         var model = metadata ? _blankModels.FirstOrDefault(model => model.Id == value!.Model?.Id && model.ProviderId == value.Model?.ProviderId) : null;
@@ -239,15 +246,22 @@ public sealed partial class OpenCodePage
         if (!_newSessionDraftActive || _newSessionCreatePending || _blankPickerPending || _composerController is null) return;
         var runtime = _homeRuntimeSource;
         var token = _composerController.Snapshot.Token;
-        var flyout = new MenuFlyout();
+        var current = _blankPreferences?.Directory;
+        var flyout = new MenuFlyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedLeft };
         foreach (var project in _homeProjects.Values)
         {
-            var item = new MenuFlyoutItem { Text = project.DisplayName + " · " + project.Key.Directory };
+            var directory = project.Key.Directory;
+            // 单选勾选标记当前目录；完整路径保留在文本中，并另行放入 ToolTip / HelpText，长路径被菜单裁剪时仍可获知。
+            var item = new RadioMenuFlyoutItem { Text = project.DisplayName + " · " + directory, GroupName = "OpenCodeBlankProjectDirectory", IsChecked = directory == current };
+            ToolTipService.SetToolTip(item, directory);
+            AutomationProperties.SetHelpText(item, directory);
             item.Click += (_, _) =>
             {
                 if (!_pageActive || !SourceReady || _homeActive || !_newSessionDraftActive || runtime != _homeRuntimeSource
                     || _newSessionCreatePending || _composerController.Snapshot.Token != token) return;
-                ChangeBlankSlotDirectory(project.Key.Directory);
+                // 重选当前目录不重建草稿上下文：保留已选智能体 / 模型 / 强度。
+                if (_blankPreferences?.Directory == directory) { RefreshBlankPreferenceLabels(); return; }
+                ChangeBlankSlotDirectory(directory);
             };
             flyout.Items.Add(item);
         }

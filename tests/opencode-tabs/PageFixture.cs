@@ -97,7 +97,7 @@ public sealed partial class OpenCodePage
     internal long Activation=>_draftActivationVersion;
     internal int FileOpens;
     internal bool Recovery=>_draftRecoveryPending;
-    private readonly DropDownButton BlankAgentButton=new(){MaxWidth=260},BlankStrengthButton=new(),BlankProjectButton=new();private readonly Button BlankModelButton=new();private readonly TextBlock BlankPreferencesHint=new();
+    private readonly DropDownButton BlankAgentButton=new(){MaxWidth=260},BlankStrengthButton=new(),BlankProjectButton=new();private readonly Button BlankModelButton=new();private readonly TextBlock BlankPreferencesHint=new();private readonly TextBlock BlankProjectName=new(),BlankProjectPath=new();
     internal string AgentName=>BlankAgentButton.Content is TextBlock text?text.Text:BlankAgentButton.Content as string??"";
     internal Windows.UI.Color? AgentColor=>(BlankAgentButton.Foreground as Microsoft.UI.Xaml.Media.SolidColorBrush)?.Color;
     internal object? AgentDescription=>BlankAgentButton.Attached.GetValueOrDefault("Tooltip");
@@ -117,6 +117,10 @@ public sealed partial class OpenCodePage
     internal Task WaitConfigStarted()=>_http.ConfigStarted!.Task.WaitAsync(TimeSpan.FromSeconds(5));
     internal void ReleaseConfig()=>_http.PendingConfigGate!.TrySetException(new HttpRequestException("synthetic delayed config failure"));
     internal void ChangeBlankDirectory(string directory)=>ChangeBlankSlotDirectory(directory);
+    internal void AddHomeProject(string directory,string name)=>_homeProjects[directory]=new(new(_homeRuntimeSource,directory),name);
+    internal string ProjectName=>BlankProjectName.Text;internal string ProjectParent=>BlankProjectPath.Text;internal Microsoft.UI.Xaml.Visibility ProjectParentVisibility=>BlankProjectPath.Visibility;
+    internal object? ProjectToolTip=>BlankProjectButton.Attached.GetValueOrDefault("Tooltip");internal object? ProjectHelp=>BlankProjectButton.Attached.GetValueOrDefault("Help");internal object? ProjectAutomationName=>BlankProjectButton.Attached.GetValueOrDefault("Name");
+    internal MenuFlyout ProjectMenu(){MenuFlyout? shown=null;MenuFlyout.Shown=menu=>shown=menu;BlankProjectButton_Click(this,new());MenuFlyout.Shown=null;return shown??throw new InvalidOperationException("project menu not shown");}
     internal async Task<MenuFlyout> AgentMenu()
     {
         var shown=new TaskCompletionSource<MenuFlyout>(TaskCreationOptions.RunContinuationsAsynchronously);

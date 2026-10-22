@@ -54,6 +54,7 @@ namespace Microsoft.UI.Xaml.Media
         public static int GetChildrenCount(DependencyObject n)=>Children(n).Length;public static DependencyObject GetChild(DependencyObject n,int i)=>Children(n)[i];
     }
 }
+namespace Microsoft.UI.Xaml.Controls.Primitives{public enum FlyoutPlacementMode{Top,Bottom,Left,Right,Full,TopEdgeAlignedLeft,TopEdgeAlignedRight,BottomEdgeAlignedLeft,BottomEdgeAlignedRight,LeftEdgeAlignedTop,LeftEdgeAlignedBottom,RightEdgeAlignedTop,RightEdgeAlignedBottom,Auto}}
 namespace Microsoft.UI.Xaml.Shapes{public class Ellipse:Microsoft.UI.Xaml.FrameworkElement{}}
 namespace Windows.UI{public struct Color{public byte A,R,G,B;}}
 namespace Windows.Foundation{public readonly record struct Size(double Width,double Height);}
@@ -77,8 +78,8 @@ namespace Microsoft.UI.Xaml.Controls
     public class TextBox:FrameworkElement{private string _text="";public Action<string>? OnTextAssigned;public string Text{get=>_text;set{_text=value;OnTextAssigned?.Invoke(value);}}public bool IsReadOnly{get;set;} public int SelectionStart,SelectionLength;public void Select(int start,int length){SelectionStart=start;SelectionLength=length;}public bool Focus(FocusState state)=>true;}
     public class FontIcon:FrameworkElement{public string Glyph{get;set;}="";public double FontSize{get;set;}}
     public class FontIconSource{public string Glyph{get;set;}="";}
-    public class MenuFlyout:FrameworkElement{public List<object> Items{get;}=new();public static Action<MenuFlyout>? Shown;public void ShowAt(FrameworkElement target){foreach(var row in Items.OfType<MenuFlyoutItem>()){row.Content=new TextBlock{Text=row.Text};row.RaiseLoaded();}Shown?.Invoke(this);}}
-    public class MenuFlyoutItem:Button{public string Text{get;set;}="";public FontIcon? Icon{get;set;}}
+    public class MenuFlyout:FrameworkElement{public List<object> Items{get;}=new();public Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode Placement{get;set;}public static Action<MenuFlyout>? Shown;public void ShowAt(FrameworkElement target){foreach(var row in Items.OfType<MenuFlyoutItem>()){row.Content=new TextBlock{Text=row.Text};row.RaiseLoaded();}Shown?.Invoke(this);}}
+    public class MenuFlyoutItem:Button{public string Text{get;set;}="";public FontIcon? Icon{get;set;}}public class RadioMenuFlyoutItem:MenuFlyoutItem{public string GroupName{get;set;}="";public bool IsChecked{get;set;}}
     public class MenuFlyoutSeparator{}
     public class ListViewItem:ContentControl{public bool IsEnabled{get;set;}=true;public MenuFlyout? ContextFlyout{get;set;}}
     public sealed class ItemVector:Collection<object>,IObservableVector<object>

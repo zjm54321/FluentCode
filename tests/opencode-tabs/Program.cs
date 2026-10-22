@@ -81,5 +81,6 @@ internal static class Program
         var w1Renders=work.Shimmer("w1").Renders;work.Close(work.Session("w2"));Check(shared.SubscriberCount==baseCount+1&&shared.IsRunning&&work.Shimmer("w1").Renders==w1Renders,"B13 actual tab close leaves the clock without touching other working tabs");
         work.DirectRemove("w1");Check(shared.SubscriberCount==baseCount&&!shared.IsRunning,"B13 removing the last working tab stops the shared clock");
         DraftSlotPageTests.Run(xaml).GetAwaiter().GetResult();
+        DirectorySelectorTests.Run(xaml).GetAwaiter().GetResult();
     }
 }

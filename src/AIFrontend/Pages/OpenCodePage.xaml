@@ -704,11 +704,29 @@
                                 </Grid>
 
                                 <!-- Blank-draft choices are outside the original editor host; never global defaults. -->
+                                <!-- B1a 工作目录选择器：轻量（subtle）下拉按钮，与输入卡片左缘对齐；文件夹名完整优先，
+                                     父路径次要并按省略号裁剪；完整路径由代码写入 ToolTip 与 AutomationProperties.HelpText。 -->
                                 <StackPanel x:Name="BlankPreferencesHost" Grid.Row="7" Visibility="Collapsed"
-                                            MaxWidth="{StaticResource OpenCodeNewSessionMaxWidth}" Spacing="8" Margin="0,12,0,0">
-                                    <Button x:Name="BlankProjectButton" Content="选择项目目录" HorizontalAlignment="Left"
-                                            Click="BlankProjectButton_Click" AutomationProperties.AutomationId="OpenCodeBlankProject" />
-                                    <TextBlock x:Name="BlankPreferencesHint" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}"
+                                            MaxWidth="{StaticResource OpenCodeNewSessionMaxWidth}" Spacing="2" Margin="0,10,0,0">
+                                    <DropDownButton x:Name="BlankProjectButton" HorizontalAlignment="Left" HorizontalContentAlignment="Stretch"
+                                            MinHeight="32" Padding="8,5,8,6" Margin="4,0,0,0"
+                                            Background="{ThemeResource SubtleFillColorTransparentBrush}"
+                                            BorderBrush="{ThemeResource SubtleFillColorTransparentBrush}"
+                                            Click="BlankProjectButton_Click" AutomationProperties.AutomationId="OpenCodeBlankProject"
+                                            AutomationProperties.Name="工作目录：未选择">
+                                        <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                            <FontIcon x:Name="BlankProjectIcon" Glyph="&#xE8B7;" FontSize="16" VerticalAlignment="Center"
+                                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock x:Name="BlankProjectName" Grid.Column="1" Text="选择当前来源的项目目录" MaxWidth="240"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                       Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                            <TextBlock x:Name="BlankProjectPath" Grid.Column="2" Visibility="Collapsed"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Grid>
+                                    </DropDownButton>
+                                    <TextBlock x:Name="BlankPreferencesHint" TextWrapping="Wrap" Margin="12,0,12,0" Style="{ThemeResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
 
