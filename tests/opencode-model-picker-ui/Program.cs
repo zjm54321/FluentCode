@@ -132,6 +132,17 @@ internal static class Program
         Check(strengthDialog.Contains("VariantLabel(null), Tag = null") && strengthDialog.Contains("VariantLabel(variant), Tag = variant")
             && strengthDialog.Contains("state.TryFreezeConfirmation()"), "independent default/Chinese display keep wire IDs and frozen explicit confirmation");
         AIFrontend.Pages.OpenCodePage.RunVariantSelectionChecks(Check).GetAwaiter().GetResult();
+        var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
+        var cardBinding = Read("src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs");
+        Check(card.Contains("Grid.SetColumnSpan(AgentButton, 2)") && card.Contains("Grid.SetRow(ModelButton, 1)")
+            && card.Contains("Grid.SetRow(VariantButton, 1)") && card.Contains("OpenCodeModelLogo.Label(modelId, modelName)"),
+            "sidebar has two native rows and reuses existing branded model logo");
+        Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
+            && cardBinding.Contains("_blankPreferences") && !cardBinding.Contains("GetSessionInfoAsync") && !cardBinding.Contains("ListModelsAsync"),
+            "sidebar reads the same session/blank owners, never adds a second selection cache or data fetch");
+        Check(cardBinding.Contains("BlankAgentButton_Click(sender, e)") && cardBinding.Contains("BlankModelButton_Click(sender, e)")
+            && cardBinding.Contains("BlankStrengthButton_Click(sender, e)") && cardBinding.Contains("尚未保存为会话选择"),
+            "blank sidebar delegates to existing draft semantics and labels its unpersisted scope");
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/wire + structural native UI/resource checks (no native rendering)");
     }
 }

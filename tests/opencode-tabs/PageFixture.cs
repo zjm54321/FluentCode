@@ -22,6 +22,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
+    partial void QueueSessionControlCardRefresh(); // Optional presentation hook; no native sidebar in this fixture.
     private readonly Dictionary<string,SessionTabEntry> _sessionTabs=new(StringComparer.Ordinal);
     private OpenCodeSidebarLayout _sidebarLayout;
     // Native host boundary only; dismissal policy is extracted verbatim from Sidebars.cs.

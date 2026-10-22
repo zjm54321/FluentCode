@@ -27,6 +27,7 @@ public sealed partial class OpenCodePage
     partial void OnUnboundComposerSubmitRequested(OpenCodeComposerToken token);
     // Only durable server admission is published; presentation may deduplicate by receipt.Id.
     partial void OnComposerPromptAdmitted(string sessionId, OpenCodeInboxUser receipt);
+    partial void QueueSessionControlCardRefresh();
 
     private void InitializeComposer()
     {
@@ -126,6 +127,7 @@ public sealed partial class OpenCodePage
         // RequestRender is coalesced and pulls the latest snapshot on the UI dispatcher. It does not
         // focus the editor. An unloaded page can render its inactive snapshot, never its old context.
         _composerView.RequestRender();
+        QueueSessionControlCardRefresh();
         TryPresentSideQuestionAnswers();
     }
 

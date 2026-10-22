@@ -485,6 +485,15 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     // Direct expand-button capability: the same local editor ticket, without inventing a slash
     // command or changing the draft. Source/ABA, view lifetime, busy and existing intent guards remain.
     internal OpenCodeComposerClientActionTicket? TryTakeDraftEditorAction(OpenCodeComposerToken expected)
+        => TryTakeDirectClientAction(expected, OpenCodeComposerClientActionKind.EditDraft);
+
+    // Sidebar model/strength entries use the same fenced capability as /models, without editing
+    // the user's text or synthesizing a slash command. Unbound drafts keep their separate preferences.
+    internal OpenCodeComposerClientActionTicket? TryTakeModelPickerAction(OpenCodeComposerToken expected)
+        => TryTakeDirectClientAction(expected, OpenCodeComposerClientActionKind.ChooseModel);
+
+    private OpenCodeComposerClientActionTicket? TryTakeDirectClientAction(OpenCodeComposerToken expected,
+        OpenCodeComposerClientActionKind kind)
     {
         OpenCodeComposerBinding binding;
         lock (_sync)
@@ -498,8 +507,8 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             lock (_sync)
             {
                 if (!Current(expected) || Busy || HasClientAction || _catalogLifetime is null
-                    || !ClientEligible(OpenCodeComposerClientActionKind.EditDraft, _text)) return;
-                _clientAction = ticket = new(binding, Token, OpenCodeComposerClientActionKind.EditDraft,
+                    || !ClientEligible(kind, _text)) return;
+                _clientAction = ticket = new(binding, Token, kind,
                     Guid.NewGuid(), _catalogLifetime);
                 CloseCatalog();
             }

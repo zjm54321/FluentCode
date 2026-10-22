@@ -84,6 +84,23 @@ internal static class ComposerActivityTests
         }
         using (var f = new Program.Fixture())
         {
+            f.Page.Text("sidebar capability draft"); await f.Page.File();
+            var before = f.Page.Snapshot;
+            var ticket = f.Page.Controller.TryTakeModelPickerAction(before.Token);
+            Program.Check(ticket is { Kind: OpenCodeComposerClientActionKind.ChooseModel }
+                && f.Page.Controller.TryTakeModelPickerAction(before.Token) is null,
+                "sidebar model capability is single-flight and preserves exact current session token");
+            Program.Check(f.Page.Snapshot.Text == before.Text && f.Page.Snapshot.Attachments.Count == before.Attachments.Count
+                && f.Http.Posts == 0, "sidebar capability cannot submit or mutate draft contents");
+            f.Page.Switch("ses_other"); f.Page.Switch("ses_test");
+            Program.Check(!f.Page.Controller.OwnsClientAction(ticket!)
+                && f.Page.Controller.TryTakeModelPickerAction(before.Token) is null, "sidebar ticket cannot cross session ABA");
+            f.Page.EnterBlank();
+            Program.Check(f.Page.Controller.TryTakeModelPickerAction(f.Page.Snapshot.Token) is null,
+                "blank preferences never masquerade as a persisted session model action");
+        }
+        using (var f = new Program.Fixture())
+        {
             f.Page.Foreground("ses_other", true);
             Program.Check(!f.Page.SendEnabled && !f.Page.ShouldStop(), "other terminal's other session cannot expose selected STOP");
             f.Page.Foreground("ses_test", true);

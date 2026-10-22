@@ -221,6 +221,7 @@ public sealed partial class OpenCodePage
         BlankModelButton.IsEnabled = current && !_newSessionCreatePending && !_blankPickerPending;
         BlankStrengthButton.IsEnabled = current && model is not null && !_newSessionCreatePending && !_blankPickerPending;
         BlankProjectButton.IsEnabled = !_draftRecoveryPending && _newSessionDraftActive && SourceReady && !_newSessionCreatePending && !_blankPickerPending;
+        QueueSessionControlCardRefresh();
     }
 
     private OpenCodeBlankDraftPreferences? CaptureBlankPreferences(OpenCodeComposerToken token)
@@ -304,7 +305,7 @@ public sealed partial class OpenCodePage
             }
             foreach (var agent in response.Data!.Where(IsBlankAgentSelectable))
                 Add(agent);
-            flyout.ShowAt(BlankAgentButton);
+            flyout.ShowAt(sender as FrameworkElement ?? BlankAgentButton);
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "智能体列表未能读取；现有选择与草稿未变。"; }
@@ -346,7 +347,7 @@ public sealed partial class OpenCodePage
                 item.Click += async (_, _) => { if (variantId != basis.Model.Variant) await SetBlankVariantAsync(basis, token, variantId); };
                 flyout.Items.Add(item);
             }
-            flyout.ShowAt(BlankStrengthButton);
+            flyout.ShowAt(sender as FrameworkElement ?? BlankStrengthButton);
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "强度信息未能读取；当前选择未变。"; }

@@ -171,6 +171,7 @@ public sealed partial class OpenCodePage : Page
         MessageHost.Children.Add(_conversationView);
         InitializeAgentSelector();
         InitializeComposer();
+        InitializeSessionControlCard();
         InitializeHomePage();
         InitializeComposerOverlays();
         InitializeQuestionOverlay();

@@ -242,6 +242,12 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     /// <summary>当前会话模型的只读显示（会话真实状态；未设置 / 未读到时为 null，绝不虚构）。</summary>
     internal string? CurrentModelDisplay { get; private set; }
 
+    // Read-through presentation for other current-session surfaces; this selector remains the only
+    // owner of the observed session selection. No second session read/cache is needed by the sidebar.
+    internal OpenCodeModelRef? CurrentModel { get; private set; }
+    internal string? CurrentAgentColor => _rows.Find(row => row.Id == _currentAgentId)?.Color;
+    internal event EventHandler? DisplayChanged;
+
     /// <summary>该会话是否有未解除的 agent 未知状态（有则切换按钮禁用，仅允许显式恢复）。</summary>
     internal bool HasUnresolvedUnknown => _retainedUnknownOperationId is not null;
 
@@ -283,6 +289,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         var keptAgent = keepDisplay ? _currentText.Text : string.Empty;
         var keptModel = keepDisplay ? _modelText.Text : string.Empty;
         var keptModelDisplay = keepDisplay ? CurrentModelDisplay : null;
+        var keptModelRef = keepDisplay ? CurrentModel : null;
 
         InvalidateContext();
         if (keepDisplay)
@@ -293,6 +300,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             ApplyCurrentAgentPresentation();
             _modelText.Text = keptModel;
             CurrentModelDisplay = keptModelDisplay;
+            CurrentModel = keptModelRef;
         }
 
         var origin = new AgentSwitchOrigin(source, revision, sessionId, selectionGeneration);
@@ -504,6 +512,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     /// <summary>只读模型显示（会话真实状态；变体附在后面）。未设置时显示“模型：未知”。</summary>
     private void ApplyModel(OpenCodeModelRef? model)
     {
+        CurrentModel = model;
         if (model?.Id is not { Length: > 0 } id)
         {
             CurrentModelDisplay = null;
@@ -830,6 +839,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         AutomationProperties.SetHelpText(_currentText, string.Empty);
         _modelText.Text = string.Empty;
         CurrentModelDisplay = null;
+        CurrentModel = null;
         _statusText.Text = string.Empty;
         _progress.IsActive = false;
         HideRecoveryConfirm();
@@ -922,6 +932,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         }
 
         SyncRecoveryBar();
+        DisplayChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void RaiseReport(AgentSwitchResult result)

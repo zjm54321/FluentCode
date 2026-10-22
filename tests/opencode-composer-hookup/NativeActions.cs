@@ -28,6 +28,7 @@ internal static class NativeTests
         typeof(OpenCodeRecentModels).GetField("_loaded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(OpenCodeRecentModels.Shared, true);
         await TypedAndModels(); var a = checks;
+        await SidebarModelChoices();
         await RestorationAndOwnership(); var b = checks - a;
         await GuardsAndEpoch();
         Console.WriteLine($"PASS: 3 Page-native groups, {checks} assertions ({a}/{b}/{checks-a-b}); real production Page/core/backend; HTTP/WinUI/dialog doubles; separate continuation groups follow.");
@@ -52,6 +53,7 @@ internal static class NativeTests
             Http.Respond = Respond;
             Client = Create(); Source = new("native-" + Guid.NewGuid(), 7, Create); Page = new(Source, Client);
             OpenCodeModelPickerDialog.Next = p => Task.FromResult(new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, p));
+            OpenCodeVariantPickerDialog.Next = p => Task.FromResult(new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, p));
             OpenCodeRollbackConfirmationDialog.Next = p => Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Confirmed, p, false, true));
             OpenCodeDraftEditorDialog.Next = (_, _) => Task.FromResult(new OpenCodeDraftEditorResult(OpenCodeDraftEditorOutcome.Cancelled, null));
             OpenCodeComposerContinuationDialog.Next = p => Task.FromResult(new OpenCodeContinuationResult(OpenCodeContinuationOutcome.Cancelled, p));
@@ -159,6 +161,45 @@ internal static class NativeTests
                     "normal strength wire omits default/null and otherwise preserves exact variant spelling");
                 Check(f.Page.Working == 0, "strength selection is not a send/Working transition");
             }
+        }
+    }
+
+    private static async Task SidebarModelChoices()
+    {
+        foreach (var scenario in new[] { "model", "variant", "default", "withdrawn", "session-aba", "later-edit", "cancel" })
+        {
+            using var f = new Fixture();
+            f.Model = "{\"id\":\"catalog-id\",\"providerID\":\"provider\",\"variant\":\"fast\"}";
+            f.Page.Text("保留当前草稿");
+            await f.Page.File();
+            var before = f.Page.Snapshot;
+            var modelOpens = 0;
+            var variantOpens = 0;
+            Task<OpenCodeModelPickerResult> Choose(OpenCodeModelPickerPresentation p)
+            {
+                Check(p.Current is OpenCodeModelCurrent.Explicit { Key.ModelId: "catalog-id", Key.Variant: "fast" }
+                    && p.Rows.Single().Variants.SequenceEqual(new[] { "fast" }), "sidebar uses real session/catalog, not cached card selection");
+                if (scenario == "withdrawn") f.Catalog = f.Catalog.Replace("fast", "slow");
+                if (scenario == "session-aba") { f.Page.Switch("ses_other"); f.Page.Switch("ses_test"); }
+                if (scenario == "later-edit") { f.Page.DrainView(); f.Page.Text("更新的草稿"); }
+                return Task.FromResult(scenario == "cancel"
+                    ? new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null)
+                    : new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Confirmed, new("provider", "catalog-id", null), p));
+            }
+            OpenCodeModelPickerDialog.Next = p => { modelOpens++; return Choose(p); };
+            OpenCodeVariantPickerDialog.Next = p => { variantOpens++; return Choose(p); };
+            await f.Page.RunSidebarModel(scenario != "model");
+            var accepted = scenario is "model" or "variant" or "default";
+            Check(modelOpens == (scenario == "model" ? 1 : 0) && variantOpens == (scenario == "model" ? 0 : 1),
+                "sidebar model/variant routes to its existing independent native picker: " + scenario);
+            Check(f.Http.Posts == (accepted ? 1 : 0), "sidebar shares fresh catalog, draft and exact binding fences: " + scenario);
+            if (accepted)
+                Check(f.LastMutationPath == "/api/session/ses_test/model" && f.LastMutationBody == "{\"model\":{\"id\":\"catalog-id\",\"providerID\":\"provider\"}}",
+                    "sidebar confirmation modifies only current session with null/default omitted");
+            if (scenario != "session-aba")
+                Check(f.Page.Snapshot.Text == (scenario == "later-edit" ? "更新的草稿" : before.Text)
+                    && f.Page.Snapshot.Attachments.Count == before.Attachments.Count, "sidebar never injects slash text or discards files");
+            Check(f.Page.Working == 0, "sidebar selection is not a send");
         }
     }
 
@@ -348,6 +389,7 @@ namespace AIFrontend.Pages
             DrainView();
         }
         internal Task RunNative() { var s = Snapshot; var t = s.ClientIntent is { } i ? Controller.TryTakeClientAction(s.Token, i.Id) : null; return t is null ? Task.CompletedTask : RunClientActionAsync(t); }
+        internal Task RunSidebarModel(bool variantOnly) { var t = Controller.TryTakeModelPickerAction(Snapshot.Token); return t is null ? Task.CompletedTask : RunClientActionAsync(t, variantOnly); }
         internal void LoseNormalPickerOwnership(string loss)
         {
             if (loss == "source") _source = null;
@@ -518,6 +560,11 @@ namespace AIFrontend.Pages.OpenCode
         internal static string? LastSourceKey;
         internal static Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot root, OpenCodeModelPickerPresentation p, Func<Task<OpenCodeModelPickerPresentation?>> refresh, string? sourceKey = null)
         { LastSourceKey = sourceKey; return Next(p); }
+    }
+    internal static class OpenCodeVariantPickerDialog
+    {
+        internal static Func<OpenCodeModelPickerPresentation, Task<OpenCodeModelPickerResult>> Next = null!;
+        internal static Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot root, OpenCodeModelPickerPresentation p) => Next(p);
     }
     internal static class OpenCodeRollbackConfirmationDialog
     {
