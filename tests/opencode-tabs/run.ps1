@@ -42,7 +42,7 @@ $viewMembers=@('TryActivateDraftSlot','SuspendDraftSlotForRecovery','ResolveDraf
 $removedArgs=[regex]::Match($view,'(?ms)^public sealed class OpenCodeComposerAttachmentRemovedEventArgs\(.*?^\}').Value
 $viewGenerated=Join-Path $EvidenceRoot 'ActualViewBridge.cs'
 "using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages.OpenCode;`n"+$removedArgs+"`ninternal sealed partial class OpenCodeComposerView {`n"+($viewMembers -join "`n")+"`n}"|Set-Content -Encoding UTF8 $viewGenerated
-$sources=@($generated,$viewGenerated,"$PSScriptRoot/Tab.TestHost.cs","$PSScriptRoot/PageFixture.cs","$PSScriptRoot/ViewFixture.cs","$PSScriptRoot/Program.cs","$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs")
+$sources=@($generated,$viewGenerated,"$PSScriptRoot/Tab.TestHost.cs","$PSScriptRoot/PageFixture.cs","$PSScriptRoot/ViewFixture.cs","$PSScriptRoot/Program.cs","$PSScriptRoot/WorkingClockTests.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs","$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs")
 $sources+="$repo/tests/opencode-draft-slots/PageSlots.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
 $sources+="$repo/tests/opencode-draft-slots/AgentPresentation.cs"

@@ -113,5 +113,15 @@ namespace AIFrontend.Pages.OpenCode
     internal static class OpenCodeInteractionUi
     {internal const string BodyStrongStyleKey="BodyStrong";internal const string CaptionSubtleStyleKey="Caption";internal const string AttentionDotStyleKey="Dot";internal static object? TryStyle(string key)=>null;internal static Microsoft.UI.Xaml.Controls.TextBlock StyledText(string text,string style)=>new(){Text=text};}
     internal static class OpenCodeModelLogo{internal static object Label(string? id,string? name)=>name??"";}
+    // Native composition boundary for the B13 shimmer: the visual (Canvas/expression animation) is inert here,
+    // but clock membership uses the REAL shared OpenCodeWorkingClock so actual Tabs wiring is observable.
+    internal sealed class OpenCodeWorkingShimmer:IOpenCodeWorkingClockSubscriber
+    {
+        internal static OpenCodeWorkingClock Clock=OpenCodeWorkingClock.Shared;internal int Renders;
+        internal OpenCodeWorkingShimmer(Microsoft.UI.Xaml.Controls.StackPanel header){}
+        internal bool IsWorking{get;private set;}
+        internal void SetWorking(bool working){if(IsWorking==working)return;IsWorking=working;if(working)Clock.Join(this);else Clock.Leave(this);}
+        void IOpenCodeWorkingClockSubscriber.OnWorkingClockStateChanged(OpenCodeWorkingClock clock)=>Renders++;
+    }
     internal static class OpenCodeToolTheme{internal static Microsoft.UI.Xaml.Style? Text(string key,string? basedOnKey=null)=>new();internal static void Apply(Microsoft.UI.Xaml.FrameworkElement e,Microsoft.UI.Xaml.Style? style)=>e.Style=style;}
 }

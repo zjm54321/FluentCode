@@ -75,6 +75,11 @@ internal static class Program
         Check((string?)tabs.Attribute("Height") is null&&(string?)tabs.Attribute("CanDragTabs")=="False"&&(string?)tabs.Attribute("CanReorderTabs")=="True"&&(string?)tabs.Attribute("AllowDropTabs")=="True","native strip height untouched; same-collection reorder enabled without drag-out");
         var footer=tabs.Element(ns+"TabView.TabStripFooter")!;Check(footer.Descendants().Where(e=>e.Attribute("VerticalAlignment")is not null).All(e=>(string?)e.Attribute("VerticalAlignment")=="Center"),"actual footer participants use centered native alignment");
         Console.WriteLine($"PASS A6 actual Tab collection/selection/close + actual Switch/binding: {checks} assertions; native controls/IO boundaries inert, no native layout/keyboard/drag claim");
+        WorkingClockTests.Run();
+        var work=Page();work.AddSession("w1");work.AddSession("w2");var shared=AIFrontend.Pages.OpenCode.OpenCodeWorkingClock.Shared;var baseCount=shared.SubscriberCount;
+        work.Shimmer("w1").SetWorking(true);work.Shimmer("w2").SetWorking(true);Check(shared.SubscriberCount==baseCount+2&&shared.IsRunning,"B13 actual tab entries join the shared working clock");
+        var w1Renders=work.Shimmer("w1").Renders;work.Close(work.Session("w2"));Check(shared.SubscriberCount==baseCount+1&&shared.IsRunning&&work.Shimmer("w1").Renders==w1Renders,"B13 actual tab close leaves the clock without touching other working tabs");
+        work.DirectRemove("w1");Check(shared.SubscriberCount==baseCount&&!shared.IsRunning,"B13 removing the last working tab stops the shared clock");
         DraftSlotPageTests.Run(xaml).GetAwaiter().GetResult();
     }
 }

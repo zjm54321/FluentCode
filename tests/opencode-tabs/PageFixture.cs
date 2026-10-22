@@ -234,6 +234,7 @@ public sealed partial class OpenCodePage
     internal void HomeNow()=>ShowHomePage();
     internal bool DragHome(){var args=new DragStartingEventArgs();HomeTab_DragStarting(HomeTab,args);return args.Cancel;}
     internal void DirectRemove(string id)=>RemoveSessionTab(_sessionTabs[id]);
+    internal OpenCodeWorkingShimmer Shimmer(string id)=>_sessionTabs[id].Shimmer;
     internal void ForgetMetadata(string id)=>_sessionItems.Remove(id);
     internal void InsertSessionAt(string id,int index)=>CreateSessionTab(id,index);
     internal void ConvertBlank(string id){RecordCreatedBlankSlot(_source!,_blankPreferences!,new(){Id=id,Location=new(){Directory="/project"}});ConvertCreatedBlankTab(_activeBlankSlotId!.Value,id,true);}

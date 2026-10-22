@@ -34,7 +34,7 @@ namespace AIFrontend.Pages;
 /// </remarks>
 public sealed partial class OpenCodePage
 {
-    private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, ProgressRing working, Ellipse attention)
+    private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, ProgressRing working, Ellipse attention, OpenCodeWorkingShimmer shimmer)
     {
         internal OpenCodeDraftSlotKey? DraftSlotKey { get; set; }
         internal string SessionId { get; } = sessionId;
@@ -42,6 +42,8 @@ public sealed partial class OpenCodePage
         internal TextBlock Title { get; } = title;
         internal ProgressRing Working { get; } = working;
         internal Ellipse Attention { get; } = attention;
+        /// <summary>B13：working 流光（共享时钟驱动）；仅 Working 时运行。</summary>
+        internal OpenCodeWorkingShimmer Shimmer { get; } = shimmer;
     }
 
     private readonly Dictionary<string, SessionTabEntry> _sessionTabs = new(StringComparer.Ordinal);
@@ -229,26 +231,24 @@ public sealed partial class OpenCodePage
     };
 
     /// <summary>
-    /// 标签栏（页面顶部）工作环：工作中旋转（强调色；等待提问/权限时注意色）；未工作但等待处理 = 注意色静止满环；
+    /// 标签栏（页面顶部）状态指示：B13 起工作中（Working）不再用旋转环，改由标题下方的共享时钟流光
+    /// （<see cref="OpenCodeWorkingShimmer"/>，全部 working 标签同向同速同相）表达；本环只承担静态状态：
+    /// 工作中但等待提问/权限 = 注意色静止满环（被阻塞，不用运动暗示“在推进”）；未工作但等待处理 = 注意色静止满环；
     /// 未读的失败/中断 = 严重色静止满环；普通未读仍为圆点。静止环为原生 ProgressRing 的确定模式（Value = 100）。
     /// </summary>
     private static void ApplyIndicatorRing(ProgressRing ring, SessionIndicatorTone tone)
     {
-        var visible = tone is SessionIndicatorTone.Working or SessionIndicatorTone.WorkingNeedsAction
+        var visible = tone is SessionIndicatorTone.WorkingNeedsAction
             or SessionIndicatorTone.NeedsAction or SessionIndicatorTone.Failed;
-        var spinning = tone is SessionIndicatorTone.Working or SessionIndicatorTone.WorkingNeedsAction;
         string traceState = $"tone={tone};active={ring.IsActive};indeterminate={ring.IsIndeterminate}";
         OpenCodeCompletionCrashTrace.Mark("tab-ring.theme.before", traceState);
         OpenCodeToolTheme.Apply(ring, OpenCodeToolTheme.Ring(IndicatorBrushKey(tone)));
         OpenCodeCompletionCrashTrace.Mark("tab-ring.mode.before", traceState);
-        ring.IsIndeterminate = spinning;
+        ring.IsIndeterminate = false;
         OpenCodeCompletionCrashTrace.Mark("tab-ring.mode.after", traceState);
-        if (!spinning)
-        {
-            OpenCodeCompletionCrashTrace.Mark("tab-ring.value.before", traceState);
-            ring.Value = ring.Maximum;
-            OpenCodeCompletionCrashTrace.Mark("tab-ring.value.after", traceState);
-        }
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.value.before", traceState);
+        ring.Value = ring.Maximum;
+        OpenCodeCompletionCrashTrace.Mark("tab-ring.value.after", traceState);
 
         OpenCodeCompletionCrashTrace.Mark("tab-ring.active.before", traceState);
         ring.IsActive = visible;
@@ -344,6 +344,7 @@ public sealed partial class OpenCodePage
             Spacing = 8,
             Children = { working, attention, title },
         };
+        var shimmer = new OpenCodeWorkingShimmer(header);
 
         var item = new TabViewItem
         {
@@ -352,7 +353,7 @@ public sealed partial class OpenCodePage
             IsClosable = true,
         };
         AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab." + sessionId);
-        var entry = new SessionTabEntry(sessionId, item, title, working, attention);
+        var entry = new SessionTabEntry(sessionId, item, title, working, attention, shimmer);
         item.ContextFlyout = CreateSessionTabMenu(entry);
         _sessionTabs[sessionId] = entry;
         ApplySessionTabState(entry);
@@ -580,6 +581,7 @@ public sealed partial class OpenCodePage
             else ReleaseDraftSlot(slot);
         }
         entry.Working.IsActive = false;
+        entry.Shimmer.SetWorking(false);
         if (isCurrent) _sessionTabs.Remove(entry.SessionId);
         _retiredSessionTabs.Remove(entry.Item);
         var previous = _suppressTabSelection;
@@ -631,6 +633,12 @@ public sealed partial class OpenCodePage
         {
             ApplySessionTabState(entry);
         }
+
+        // 旧来源代际冻结的标签不再接收状态：流光离开共享时钟（来源切换会经 ClearSessionStateIndicators 走到这里）。
+        foreach (var retired in _retiredSessionTabs.Values)
+        {
+            retired.Shimmer.SetWorking(false);
+        }
     }
 
     private void ApplySessionTabState(SessionTabEntry entry)
@@ -641,6 +649,7 @@ public sealed partial class OpenCodePage
 
         entry.Title.Text = title;
         ApplyIndicatorRing(entry.Working, tone);
+        entry.Shimmer.SetWorking(tone == SessionIndicatorTone.Working);
         entry.Attention.Visibility = tone == SessionIndicatorTone.Unread ? Visibility.Visible : Visibility.Collapsed;
 
         var status = state is null ? "状态未知"
