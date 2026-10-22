@@ -25,6 +25,10 @@ public sealed partial class OpenCodePage
     private string? ComposerBindingSessionId
         => _homeActive ? null : _selectedSessionId ?? (_newSessionDraftActive ? OpenCodeComposerController.UnboundSessionId : null);
     partial void OnUnboundComposerSubmitRequested(OpenCodeComposerToken token);
+    partial void InitializeShellComposer();
+    partial void UpdateShellComposerState();
+    partial void TrySubmitShell(string? delivery, ref bool handled);
+    partial void OnCreatedShellSubmit(string command);
     // Only durable server admission is published; presentation may deduplicate by receipt.Id.
     partial void OnComposerPromptAdmitted(string sessionId, OpenCodeInboxUser receipt);
     partial void QueueSessionControlCardRefresh();
@@ -74,6 +78,7 @@ public sealed partial class OpenCodePage
             else { _composerController.DiscardDraft(e.Token); if (_newSessionDraftActive) EnsureBlankPreferences(); }
         };
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
+        InitializeShellComposer();
     }
 
     private OpenCodeComposerMentionSearch? ComposerMentionSearch()
@@ -128,6 +133,7 @@ public sealed partial class OpenCodePage
         // focus the editor. An unloaded page can render its inactive snapshot, never its old context.
         _composerView.RequestRender();
         QueueSessionControlCardRefresh();
+        UpdateShellComposerState();
         TryPresentSideQuestionAnswers();
     }
 
@@ -198,6 +204,9 @@ public sealed partial class OpenCodePage
     // Both button and eligible Enter use this one event bridge. Enter never invokes Stop.
     private void RequestComposerSubmission(string? delivery = null)
     {
+        var shellHandled = false;
+        TrySubmitShell(delivery, ref shellHandled);
+        if (shellHandled) return; // Shell never reaches prompt, command, steer or queue paths.
         if (!_pageActive || _composerController is null || _composerView is null
             || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
         var snapshot = GetComposerSnapshot();

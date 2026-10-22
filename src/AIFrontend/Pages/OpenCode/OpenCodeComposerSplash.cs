@@ -32,7 +32,7 @@ internal enum OpenCodeComposerSplashCapability
     BoundSession = 1 << 7,
     /// <summary>Context: the blank “新会话” landing, whose toolbar below the editor picks agent/model/strength.</summary>
     BlankToolbar = 1 << 8,
-    /// <summary>“!” terminal/shell mode (plan B8). NOT shipped: never part of <see cref="OpenCodeComposerSplash.Shipped"/>.</summary>
+    /// <summary>“!” session shell mode.</summary>
     ShellMode = 1 << 9,
     /// <summary>“@” file mentions (B7): a literal “@” at a line start/after a space lists the server file index (api/fs/find).</summary>
     FileMention = 1 << 10,
@@ -62,7 +62,7 @@ internal sealed class OpenCodeComposerSplash
     private const OpenCodeComposerSplashCapability Mention = OpenCodeComposerSplashCapability.FileMention;
 
     /// <summary>Capabilities this build actually ships (verified in code). Context flags are added per observation.</summary>
-    internal const OpenCodeComposerSplashCapability Shipped = Slash | CtrlSlash | Tab | Attach | Lines | Nav | Editor | Mention;
+    internal const OpenCodeComposerSplashCapability Shipped = Slash | CtrlSlash | Tab | Attach | Lines | Nav | Editor | Mention | OpenCodeComposerSplashCapability.ShellMode;
 
     /// <summary>How many recent lines a rotation avoids (bounded by the eligible pool size − 1).</summary>
     internal const int RecentWindow = 8;

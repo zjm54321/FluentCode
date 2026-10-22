@@ -442,7 +442,7 @@ public sealed partial class OpenCodePage
         else DispatcherQueue.TryEnqueue(() => _ = CreateSessionAndSubmitAsync(token));
     }
 
-    private async Task CreateSessionAndSubmitAsync(OpenCodeComposerToken token)
+    private async Task CreateSessionAndSubmitAsync(OpenCodeComposerToken token, string? shellCommand = null)
     {
         var controller = _composerController;
         var view = _composerView;
@@ -454,12 +454,12 @@ public sealed partial class OpenCodePage
         }
 
         var snapshot = controller.Snapshot;
-        if (snapshot.Token != token || !snapshot.IsActive || snapshot.IsBusy || !snapshot.HasDraft)
+        if (snapshot.Token != token || !snapshot.IsActive || snapshot.IsBusy || (!snapshot.HasDraft && shellCommand is null))
         {
             return;
         }
 
-        if (snapshot.SelectedCommand is null && snapshot.Attachments.Count == 0 && string.IsNullOrWhiteSpace(snapshot.Text))
+        if (shellCommand is null && snapshot.SelectedCommand is null && snapshot.Attachments.Count == 0 && string.IsNullOrWhiteSpace(snapshot.Text))
         {
             ShowMessage(InfoBarSeverity.Informational, "未发送", "输入为空（仅空白字符）；请输入内容后再发送。");
             return;
@@ -536,15 +536,16 @@ public sealed partial class OpenCodePage
         var fresh = controller.Snapshot;
         if (createdBinding is null || createdToken is null || !Equals(_composerBinding, createdBinding)
             || !OwnsComposerBinding(createdBinding) || createdBinding.Source.IsRevoked || fresh.Token != createdToken.Value
-            || fresh.Token.Draft != token.Draft || !fresh.IsActive || !fresh.HasDraft)
+            || fresh.Token.Draft != token.Draft || !fresh.IsActive || (!fresh.HasDraft && shellCommand is null))
         {
             ShowMessage(InfoBarSeverity.Informational, "会话已创建，未发送",
                 "草稿在创建期间发生了变化或未能交给新会话；草稿已保留，请检查后再按 Enter 发送。");
             return;
         }
 
-        // The ordinary submit path: same view flush, protection probe, legacy/enhanced route, receipts and notices.
-        RequestComposerSubmission();
+        // Shell uses the same configured create/handoff but its own transport; the normal draft is not submitted.
+        if (shellCommand is not null) OnCreatedShellSubmit(shellCommand);
+        else RequestComposerSubmission();
     }
 
     partial void OnNativeSessionCreating(string sessionId)

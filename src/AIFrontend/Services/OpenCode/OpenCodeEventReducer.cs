@@ -14,6 +14,7 @@ public sealed class OpenCodeEventReducer
     private readonly List<string> _order = new();
     private readonly Dictionary<string, long> _changed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<(string Field, string Text)>> _pending = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeEvent> _pendingShellEnds = new(StringComparer.Ordinal);
     private long _version;
     private bool _executionTerminal;
     public OpenCodeMessageRetry? CurrentRetry { get; private set; }
@@ -70,6 +71,7 @@ public sealed class OpenCodeEventReducer
         if (item.SessionId is { } session && session != _sessionId) return false;
         var data = JsonNode.Parse(item.Data.GetRawText())!.AsObject();
         var type = item.Type;
+        if (type is "session.shell.started" or "session.shell.ended") return ApplyShell(item, data);
         // Current retry is event-owned, never replayed from historical REST Retry records.
         if (type == "session.retry.scheduled")
         {
@@ -207,6 +209,41 @@ public sealed class OpenCodeEventReducer
         }
         else return false;
         Touch(messageId);
+        return true;
+    }
+
+    private bool ApplyShell(OpenCodeEvent item, JsonObject data)
+    {
+        if (item.SessionId != _sessionId || data["shell"] is not JsonObject shell || String(shell, "id") is not { } shellId)
+            return false;
+        var message = _messages.Values.FirstOrDefault(m => String(m, "type") == "shell" && String(m, "shellID") == shellId);
+        if (item.Type == "session.shell.started")
+        {
+            // Same event-derived identity as official Session.Message.ID.fromEvent; REST and SSE reconcile in place.
+            if (message is not null) return false; // Duplicate started must never erase a completed output.
+            if (item.Id is not { } eventId || !eventId.StartsWith("evt_", StringComparison.Ordinal)) return false;
+            var id = "msg_" + eventId[4..];
+            message = GetMessage(id);
+            message["type"] = "shell";
+            message["shellID"] = shellId;
+            message["command"] = shell["command"]?.DeepClone();
+            message["status"] = shell["status"]?.DeepClone();
+            message["time"] = new JsonObject { ["created"] = item.Created ?? item.ReceivedAt.ToUnixTimeMilliseconds() };
+            var metadata = item.Metadata is { ValueKind: JsonValueKind.Object } value
+                ? JsonNode.Parse(value.GetRawText())!.AsObject() : new JsonObject();
+            if (shell["metadata"] is JsonObject shellMetadata && shellMetadata["background"]?.GetValue<bool>() == true)
+                metadata["background"] = true;
+            message["metadata"] = metadata;
+            Touch(id);
+            if (_pendingShellEnds.Remove(shellId, out var ended)) ApplyShell(ended, JsonNode.Parse(ended.Data.GetRawText())!.AsObject());
+            return true;
+        }
+        if (message is null) { _pendingShellEnds[shellId] = item; return false; }
+        message["status"] = shell["status"]?.DeepClone();
+        message["exit"] = shell["exit"]?.DeepClone();
+        message["output"] = data["output"]?.DeepClone(); // {output,cursor,size,truncated}, not a plain string.
+        (message["time"] ??= new JsonObject()).AsObject()["completed"] = item.Created ?? item.ReceivedAt.ToUnixTimeMilliseconds();
+        Touch(String(message, "id")!);
         return true;
     }
 

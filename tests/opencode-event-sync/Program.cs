@@ -50,6 +50,7 @@ internal static class Program
         Check(Text(native) == "thought" && native.Messages.Single().Content!.Single().Time?.Completed is not null, "native reasoning end replaces final text and completes");
 
         RetryAndBackgroundProjection();
+        SessionShellProjection();
         NoticeDismissal();
         ManualBackgroundIndex();
 
@@ -57,6 +58,33 @@ internal static class Program
         await HomeDataContracts();
         await DefaultSelectionContracts();
         Console.WriteLine($"PASS event-sync: {checks} assertions (insert/replace, delta, out-of-order, fetch race, native reasoning, stream EOF/reconnect/cancel/auth).");
+    }
+
+    private static void SessionShellProjection()
+    {
+        var reducer = new OpenCodeEventReducer("ses_test");
+        var start = OpenCodeEvent.Parse("""{"id":"evt_shell1","created":1900000000000,"type":"session.shell.started","metadata":{"origin":"user"},"data":{"sessionID":"ses_test","shell":{"id":"sh_real","command":"printf hi","status":"running","metadata":{"background":true}}}}""");
+        var end = OpenCodeEvent.Parse("""{"id":"evt_shell2","created":1900000000100,"type":"session.shell.ended","data":{"sessionID":"ses_test","shell":{"id":"sh_real","command":"printf hi","status":"exited","exit":7,"metadata":{}},"output":{"output":"real stdout\nreal stderr","cursor":23,"size":23,"truncated":false}}}""");
+        Check(reducer.Apply(start), "shell started projects live entry");
+        var running = reducer.Messages.Single();
+        Check(running.Id == "msg_shell1" && running.Type == "shell" && running.ShellId == "sh_real" && running.Command == "printf hi"
+            && running.Status == "running" && running.Time!.Created == 1900000000000 && running.Output is null, "shell uses official event-derived message identity/time, never fake output");
+        Check(running.Metadata?.GetProperty("background").GetBoolean() == true, "official background metadata retained");
+        Check(reducer.Apply(end), "shell ended reconciles by shell.id");
+        var ended = reducer.Messages.Single();
+        Check(ended.Status == "exited" && ended.Exit?.GetInt32() == 7 && ended.Output?.Output == "real stdout\nreal stderr"
+            && ended.Output.Cursor == 23 && ended.Output.Size == 23 && ended.Output.Truncated == false
+            && ended.Time?.Completed == 1900000000100, "shell actual merged output/exit/status/completion preserved");
+        Check(!reducer.Apply(start) && reducer.Messages.Single().Output?.Output == ended.Output!.Output, "duplicate start never resets ended output");
+        reducer.MergeSnapshot(new[] { running }, 0);
+        Check(reducer.Messages.Count == 1 && reducer.Messages.Single().Output?.Output == ended.Output!.Output, "stale REST racing ended event cannot duplicate or erase shell");
+        var early = new OpenCodeEventReducer("ses_test");
+        Check(!early.Apply(end) && early.Messages.Count == 0, "ended before started does not fabricate entry identity");
+        Check(early.Apply(start) && early.Messages.Single().Output?.Output == ended.Output!.Output, "ended-before-started output retained");
+        Check(!new OpenCodeEventReducer("ses_other").Apply(start), "shell events fenced by session");
+        var fromHistory = new OpenCodeEventReducer("ses_test");
+        fromHistory.MergeSnapshot(new[] { running }, 0);
+        Check(fromHistory.Apply(end) && fromHistory.Messages.Single().Id == "msg_shell1", "ended matches existing history by shellID");
     }
 
     private static void RetryAndBackgroundProjection()

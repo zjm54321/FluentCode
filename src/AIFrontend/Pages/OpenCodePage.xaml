@@ -584,6 +584,26 @@
                                         CornerRadius="{ThemeResource OverlayCornerRadius}"
                                         Padding="12,10">
                                          <StackPanel>
+                                            <Grid x:Name="ComposerShellHost" Visibility="Collapsed" RequestedTheme="Dark"
+                                                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" RowDefinitions="Auto,Auto" RowSpacing="8">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                    <TextBlock Text="$" FontFamily="Consolas" VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    <TextBox x:Name="ShellComposer" Grid.Column="1" PlaceholderText="输入 Shell 命令"
+                                                             AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="180"
+                                                             Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                                             AutomationProperties.AutomationId="OpenCodeShellComposer" AutomationProperties.Name="Shell 命令" />
+                                                    <Button x:Name="ShellSubmitButton" Grid.Column="2" Content="运行" VerticalAlignment="Bottom"
+                                                            AutomationProperties.AutomationId="OpenCodeShellSubmit" />
+                                                </Grid>
+                                                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                                    <TextBlock Text="Shell" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                    <TextBlock x:Name="ShellStatusText" Grid.Column="1" Text="在会话工作目录执行 · 不排队"
+                                                               TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    <Button x:Name="ShellExitButton" Grid.Column="2" Content="返回（Esc）" Padding="8,0"
+                                                            AutomationProperties.AutomationId="OpenCodeShellExit" />
+                                                </Grid>
+                                            </Grid>
                                             <!-- 命令 / 附件伴随视图宿主：页面代码挂入 OpenCodeComposerView 后设为可见；未挂入时折叠、不占位。 -->
                                             <Grid
                                                 x:Name="ComposerCompanionHost"

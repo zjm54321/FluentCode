@@ -20,8 +20,7 @@ internal sealed record OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKin
 
 internal static class OpenCodeComposerPlusMenu
 {
-    /// <summary>Honest tooltip for the terminal row: "!" terminal mode is plan B8 and is not wired in this build.</summary>
-    internal const string TerminalUnavailableTooltip = "终端模式尚未接入";
+    internal const string TerminalTooltip = "在会话工作目录执行 Shell 命令；Esc 返回消息草稿。";
     internal const string ContextTooltip = "从服务器文件索引选择并插入 @路径文本（不上传文件）。也可以在行首或空格后输入 @。";
     internal const string ContextUnavailableTooltip = "当前没有可用的工作区目录或服务器连接，无法读取文件索引。";
     internal const string CommandTooltip = "服务器命令与 AIFrontend 本机操作。也可以在输入框开头输入 /。";
@@ -36,15 +35,31 @@ internal static class OpenCodeComposerPlusMenu
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Terminal, "终端（!）", "\uEC7A", "OpenCodeComposerTerminalButton", '!'),
     });
 
-    /// <summary>B7: the terminal row is present but never enabled (B8 delivers "!" terminal mode).</summary>
+    /// <summary>Availability of each independent composer action.</summary>
     internal static bool IsEnabled(OpenCodeComposerPlusMenuKind kind, bool canEdit, bool attachmentsFull, bool commandMenuOpen,
         bool mentionSourceAvailable) => kind switch
     {
         OpenCodeComposerPlusMenuKind.Attach => canEdit && !attachmentsFull,
         OpenCodeComposerPlusMenuKind.Command => canEdit && !commandMenuOpen,
         OpenCodeComposerPlusMenuKind.Context => canEdit && mentionSourceAvailable,
+        OpenCodeComposerPlusMenuKind.Terminal => canEdit,
         _ => false,
     };
+}
+
+/// <summary>Shell text never enters the normal draft ledger or the prompt/queue transport.</summary>
+internal sealed class OpenCodeComposerShellState
+{
+    internal bool Active { get; private set; }
+    internal string Text { get; set; } = string.Empty;
+    internal bool CanSubmit => Active && !string.IsNullOrWhiteSpace(Text);
+    internal void Enter() => Active = true;
+    internal void Exit() => Active = false;
+    internal void Reset() { Active = false; Text = string.Empty; }
+    internal static bool IsEntry(string before, string after, int caret, int selectionLength, bool composing, bool menuVisible)
+        => !composing && !menuVisible && caret == 0 && selectionLength == 0 && after == "!" + before;
+    internal static bool IsExit(bool escape, bool backspace, bool controlC, int caret, string text)
+        => escape || backspace && caret == 0 || controlC && text.Length == 0;
 }
 
 /// <summary>Which literal-character trigger the token ending at the caret represents.</summary>
@@ -65,7 +80,7 @@ internal static class OpenCodeComposerCharTriggers
     /// <list type="bullet">
     /// <item>"/" — the existing typed command trigger: the WHOLE draft is a bare "/name" (start of the editor only).</item>
     /// <item>"@" — at the start of a line or right after whitespace, never mid-word, inside an e-mail or a URL.</item>
-    /// <item>"!" — only as the whole draft (B8 terminal mode; reported here but B7 never acts on it).</item>
+    /// <item>"!" — at offset zero (the shell entry policy consumes it before the draft ledger).</item>
     /// </list>
     /// </summary>
     internal static OpenCodeComposerCharTriggerKind Classify(string? text, int caret)
@@ -73,7 +88,7 @@ internal static class OpenCodeComposerCharTriggers
         text ??= string.Empty;
         if (caret < 0 || caret > text.Length) return OpenCodeComposerCharTriggerKind.None;
         if (caret == text.Length && OpenCodeComposerInputPolicy.IsBareTrigger(text)) return OpenCodeComposerCharTriggerKind.Command;
-        if (caret == text.Length && text.TrimStart(' ', '\t') == "!") return OpenCodeComposerCharTriggerKind.Shell;
+        if (caret == 1 && text.StartsWith("!", StringComparison.Ordinal)) return OpenCodeComposerCharTriggerKind.Shell;
         return FindMention(text, caret).Present ? OpenCodeComposerCharTriggerKind.Mention : OpenCodeComposerCharTriggerKind.None;
     }
 

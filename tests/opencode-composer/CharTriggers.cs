@@ -17,8 +17,33 @@ internal static partial class Program
             OpenCodeComposerPlusMenuKind.Context, OpenCodeComposerPlusMenuKind.Terminal }), "plus native menu order");
         Check(entries.Where(e => e.Kind != OpenCodeComposerPlusMenuKind.Separator).Select(e => e.Text)
             .SequenceEqual(new[] { "添加附件", "命令（/）", "上下文（@）", "终端（!）" }), "plus menu labels");
-        Check(OpenCodeComposerPlusMenu.TerminalUnavailableTooltip == "终端模式尚未接入"
-            && !OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, true, false, false, true), "terminal disabled with honest tooltip");
+        Check(OpenCodeComposerPlusMenu.TerminalTooltip.Contains("Shell")
+            && OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, true, false, false, true)
+            && !OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, false, false, false, true), "terminal enabled only for editable composer");
+        var shell = new OpenCodeComposerShellState();
+        shell.Enter();
+        Check(shell.Active && !shell.CanSubmit, "shell empty Enter is inert");
+        shell.Text = "  \r\n";
+        Check(!shell.CanSubmit, "whitespace shell is inert");
+        shell.Text = "printf '你好'";
+        Check(shell.CanSubmit, "nonempty shell command eligible");
+        shell.Exit();
+        Check(!shell.Active && shell.Text == "printf '你好'" && !shell.CanSubmit, "exit keeps shell text separately");
+        shell.Enter();
+        Check(shell.CanSubmit, "reenter restores shell command");
+        shell.Reset();
+        Check(!shell.Active && shell.Text == "", "slot reset clears shell without touching a normal draft");
+        Check(OpenCodeComposerShellState.IsEntry("", "!", 0, 0, false, false)
+            && OpenCodeComposerShellState.IsEntry("normal\r\n你好", "!normal\r\n你好", 0, 0, false, false), "bang at offset zero consumes only bang, preserves normal draft");
+        Check(!OpenCodeComposerShellState.IsEntry("x", "x!", 1, 0, false, false)
+            && !OpenCodeComposerShellState.IsEntry("", "!", 0, 0, true, false)
+            && !OpenCodeComposerShellState.IsEntry("", "!", 0, 0, false, true)
+            && !OpenCodeComposerShellState.IsEntry("x", "!", 0, 1, false, false), "no shell for midtext, IME, autocomplete or selection replacement");
+        Check(OpenCodeComposerShellState.IsExit(true, false, false, 3, "pwd")
+            && OpenCodeComposerShellState.IsExit(false, true, false, 0, "pwd")
+            && OpenCodeComposerShellState.IsExit(false, false, true, 0, ""), "official Escape, backspace at zero, empty Ctrl+C exits");
+        Check(!OpenCodeComposerShellState.IsExit(false, true, false, 1, "pwd")
+            && !OpenCodeComposerShellState.IsExit(false, false, true, 0, "pwd"), "backspace elsewhere and nonempty Ctrl+C do not exit");
         Check(OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Attach, true, false, false, false)
             && !OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Attach, true, true, false, true), "attachments retain independent availability and cap");
         foreach (var text in new[] { "@", "@src", "hello @src/a", "hello\n@readme", "\t@readme" })
@@ -36,6 +61,20 @@ internal static partial class Program
             && OpenCodeComposerCharTriggers.MentionInsertion(new("my folder/a.cs", false)) == "@\"my folder/a.cs\" ", "path text insertion and whitespace quoting");
 
         using var f = new Fixture();
+        f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NoContent));
+        await f.Client.ExecuteSessionShellAsync("ses_test", "printf '你好'", CancellationToken.None);
+        Check(f.Handler.LastBody is not null && System.Text.Json.JsonDocument.Parse(f.Handler.LastBody).RootElement.EnumerateObject().Count() == 1
+            && System.Text.Json.JsonDocument.Parse(f.Handler.LastBody).RootElement.GetProperty("command").GetString() == "printf '你好'", "shell sends only official command body");
+        string? shellUri = null;
+        f.Handler.Send = (r, _) => { shellUri = r.RequestUri!.AbsolutePath; return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NoContent)); };
+        await f.Client.ExecuteSessionShellAsync("ses/escaped", "pwd");
+        Check(shellUri == "/api/session/ses%2Fescaped/shell", "shell uses escaped official session endpoint, never prompt or global shell");
+        f.Handler.Send = (_, _) => Task.FromResult(Json("{}"));
+        try { await f.Client.ExecuteSessionShellAsync("ses_test", "pwd"); Check(false, "shell rejects non-204"); }
+        catch (AIFrontend.Services.OpenCode.OpenCodeProtocolException) { Check(true, "shell requires actual 204"); }
+        f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NotFound));
+        try { await f.Client.ExecuteSessionShellAsync("ses_test", "pwd"); Check(false, "shell rejects 404"); }
+        catch (AIFrontend.Services.OpenCode.OpenCodeApiException e) { Check(e.StatusCode == 404, "shell reports real HTTP error"); }
         string? uri = null;
         f.Handler.Send = (r, _) =>
         {
@@ -75,6 +114,13 @@ internal static partial class Program
         var repo = SplashRepo();
         var view = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
         var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        var shellPage = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.ShellComposer.cs"));
+        var blankPage = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"));
+        Check(page.IndexOf("TrySubmitShell(delivery, ref shellHandled)", StringComparison.Ordinal) < page.IndexOf("if (TryHandleSideQuestionSubmission(snapshot))", StringComparison.Ordinal)
+            && shellPage.Contains("delivery == OpenCodeDeliveryModes.Queue") && !shellPage.Contains("SendPromptAsync("), "shell intercepted before all normal submission and queue routes");
+        Check(shellPage.Contains("e.Cancel = true;") && !shellPage.Contains("\n        Composer.Text =") && shellPage.Contains("ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Collapsed;"), "bang canceled before ledger; dedicated terminal hides whole normal toolbar without replacing normal text");
+        Check(shellPage.Contains("CreateSessionAndSubmitAsync(_composerController!.Snapshot.Token, _shellComposer.Text)")
+            && blankPage.Contains("if (shellCommand is not null) OnCreatedShellSubmit(shellCommand);"), "blank shell uses existing configured creation and exact handoff, never normal prompt");
         Check(view.Contains("foreach (var entry in OpenCodeComposerPlusMenu.Entries)") && view.Contains("new MenuFlyoutSeparator()"), "view uses tested menu definition and native divider");
         Check(page.Contains("_composerView.MentionSearchProvider = ComposerMentionSearch;") && page.Contains("OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct)"), "real provider wired to active binding directory");
         Check(view.Contains("_attachItem.Click += (_, _) => RequestPick();") && page.Contains("_composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);"), "existing attachment picker handoff intact");

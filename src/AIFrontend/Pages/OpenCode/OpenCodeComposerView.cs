@@ -73,7 +73,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     private readonly Button _addButton;
     private readonly MenuFlyoutItem _commandItem;
     private readonly MenuFlyoutItem _attachItem;
-    // B7: 上下文（@） inserts a legal literal "@" (real file index candidates); 终端（!） stays disabled until B8.
+    // Context inserts a legal "@"; terminal is a separate editor/transport owned by the page.
     private readonly MenuFlyoutItem _contextItem;
     private readonly MenuFlyoutItem _terminalItem;
     private readonly MenuFlyoutSeparator _discardSeparator;
@@ -175,6 +175,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// (<c>RequestComposerSubmission</c>, with every existing check). Keyboard confirmation returns Submit instead.
     /// </summary>
     internal event EventHandler? SubmitRequested;
+    internal event EventHandler? TerminalRequested;
+    internal event EventHandler? SlotGesturesRevoked;
     internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved;
     internal event EventHandler<OpenCodeComposerTokenEventArgs>? PickRequested;
     internal event EventHandler<OpenCodeComposerAttachmentRemovedEventArgs>? AttachmentRemoved;
@@ -257,9 +259,9 @@ internal sealed class OpenCodeComposerView : StackPanel
         _contextItem.Click += (_, _) => InsertContextTrigger();
         _terminalItem = terminal!;
         _terminalItem.KeyboardAcceleratorTextOverride = "!";
-        _terminalItem.IsEnabled = false; // B8 delivers terminal mode; B7 never pretends it works.
-        ToolTipService.SetToolTip(_terminalItem, OpenCodeComposerPlusMenu.TerminalUnavailableTooltip);
-        AutomationProperties.SetHelpText(_terminalItem, OpenCodeComposerPlusMenu.TerminalUnavailableTooltip);
+        _terminalItem.Click += (_, _) => TerminalRequested?.Invoke(this, EventArgs.Empty);
+        ToolTipService.SetToolTip(_terminalItem, OpenCodeComposerPlusMenu.TerminalTooltip);
+        AutomationProperties.SetHelpText(_terminalItem, OpenCodeComposerPlusMenu.TerminalTooltip);
         _discardFlyout = BuildDiscardFlyout();
         _discardSeparator = new MenuFlyoutSeparator { Visibility = Visibility.Collapsed };
         _discardItem = new MenuFlyoutItem { Text = "丢弃草稿…", Icon = new FontIcon { Glyph = "\uE74D" }, Visibility = Visibility.Collapsed };
@@ -491,6 +493,16 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// <summary>Last snapshot rendered (UI thread).</summary>
     internal OpenCodeComposerSnapshot? Snapshot => _snapshot;
     internal bool IsMenuVisible => _menuShown;
+    internal bool IsAutocompleteVisible => _menuShown || _mentionShown;
+
+    internal bool PrepareShellMode()
+    {
+        if (!PrepareSubmission()) return false;
+        DismissCatalog(focusEditor: false);
+        CloseMention();
+        _addButton.Flyout?.Hide();
+        return true;
+    }
 
     /// <summary>
     /// Attach the page's existing message TextBox. The view records input itself from TextChanging and tracks
@@ -618,6 +630,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// adopts a clean ledger; a forced recovery separately suspends it without overwriting visible text.</summary>
     internal void RevokeSlotGestures()
     {
+        SlotGesturesRevoked?.Invoke(this, EventArgs.Empty);
         if (_menuShown) _menuSession.Dismiss(this, _menuSession.Capture());
         CloseMention();
         _addButton.Flyout?.Hide();
@@ -765,7 +778,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         var discard = (enhanced || snapshot.IsBoundDraft) && !inactiveBound ? Visibility.Visible : Visibility.Collapsed;
         _discardItem.Visibility = _discardSeparator.Visibility = discard;
         _discardItem.IsEnabled = !snapshot.IsBusy;
-        _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || (discard == Visibility.Visible && _discardItem.IsEnabled);
+        _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || _terminalItem.IsEnabled || (discard == Visibility.Visible && _discardItem.IsEnabled);
         long total = 0;
         foreach (var a in snapshot.Attachments) total += a.Bytes;
         _summaryText.Text = OpenCodeComposerInputPolicy.AttachmentSummary(snapshot.Attachments.Count, total,

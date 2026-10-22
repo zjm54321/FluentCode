@@ -13,6 +13,9 @@ namespace AIFrontend.Services.OpenCode;
 /// <summary>A detached V2 event envelope. Data is the native event data, not v1 properties.</summary>
 public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset ReceivedAt)
 {
+    public string? Id { get; init; }
+    public double? Created { get; init; }
+    public JsonElement? Metadata { get; init; }
     public string? SessionId => Data.TryGetProperty("sessionID", out var id) ? id.GetString()
         : Data.TryGetProperty("info", out var info) && info.TryGetProperty("sessionID", out id) ? id.GetString()
         : Data.TryGetProperty("part", out var part) && part.TryGetProperty("sessionID", out id) ? id.GetString() : null;
@@ -24,7 +27,13 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
         using var decoded = document.RootElement.ValueKind == JsonValueKind.String
             ? JsonDocument.Parse(document.RootElement.GetString()!) : null;
         var root = decoded?.RootElement ?? document.RootElement;
-        return new(root.GetProperty("type").GetString()!, root.GetProperty("data").Clone(), DateTimeOffset.UtcNow);
+        return new(root.GetProperty("type").GetString()!, root.GetProperty("data").Clone(), DateTimeOffset.UtcNow)
+        {
+            Id = root.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String ? id.GetString() : null,
+            Created = root.TryGetProperty("created", out var created) && created.ValueKind == JsonValueKind.Number
+                && created.TryGetDouble(out var timestamp) ? timestamp : null,
+            Metadata = root.TryGetProperty("metadata", out var metadata) ? metadata.Clone() : null,
+        };
     }
 }
 
