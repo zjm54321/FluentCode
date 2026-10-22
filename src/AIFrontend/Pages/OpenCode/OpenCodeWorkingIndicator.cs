@@ -28,7 +28,7 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
 
     private readonly Grid _gear;
     private readonly FontIcon _gearIcon;
-    private readonly StackPanel _label;
+    private readonly Grid _label;
     private readonly TextBlock _phrase;
     private readonly StackPanel _dots;
     private readonly TextBlock[] _dotTexts = new TextBlock[OpenCodeWorkingMotion.DotCount];
@@ -51,6 +51,8 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         _phrase = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _phrase.VerticalAlignment = VerticalAlignment.Center;
         _phrase.TextWrapping = TextWrapping.NoWrap;
+        // 窄窗格：状态词 / 当前步骤（可能是长命令或路径）先以省略号收尾，点与耗时始终完整可见。
+        _phrase.TextTrimming = TextTrimming.CharacterEllipsis;
         _dots = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
         for (var i = 0; i < _dotTexts.Length; i++)
         {
@@ -67,10 +69,16 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         _elapsed.TextWrapping = TextWrapping.NoWrap;
         _elapsed.Margin = new Thickness(6, 0, 0, 0);
 
-        _label = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+        // 左对齐 Grid：状态词在“按内容、但不超过可用宽度”的星号列中，可截断；点与耗时为 Auto 列，紧随其后。
+        _label = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+        _label.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _label.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _label.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _label.Children.Add(_phrase);
         _label.Children.Add(_dots);
         _label.Children.Add(_elapsed);
+        Grid.SetColumn(_dots, 1);
+        Grid.SetColumn(_elapsed, 2);
         AutomationProperties.SetAutomationId(_label, "OpenCodeWorkingIndicator." + automationSuffix);
         _label.Loaded += (_, _) => { _loaded = true; WatchVisibility(); Update(); };
         _label.Unloaded += (_, _) => { _loaded = false; UnwatchVisibility(); Update(); };

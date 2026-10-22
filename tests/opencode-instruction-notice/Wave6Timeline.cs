@@ -111,7 +111,8 @@ internal static class Wave6Timeline
             && groupSource.Contains("tool-group.progress.before") && groupSource.Contains("tool-group.expansion.before") && groupSource.Contains("tool-group.expansion.after"), "wave6.native-single-leaf-dispatch-and-existing-diagnostics-preserved");
         Check(groupSource.Contains("titleCluster.Children.Add(_leafLabel);") && groupSource.Contains("titleCluster.Children.Add(_headerText);")
             && groupSource.Contains("titleCluster.Children.Add(_chevron);") && groupSource.Contains("Grid.SetColumn(titleCluster, 1)")
-            && !groupSource.Contains("Grid.SetColumn(_leafLabel,") && !groupSource.Contains("Grid.SetColumn(_headerText,")
+            && !groupSource.Contains("Grid.SetColumn(_leafLabel,") && !groupSource.Contains("titleCluster.ColumnSpacing") && !groupSource.Contains("Grid.SetColumn(_headerText, 0")
+            && groupSource.Contains("var titleCluster = new Grid { HorizontalAlignment = HorizontalAlignment.Left") && groupSource.Contains("_leafLabel.TextTrimming = TextTrimming.CharacterEllipsis;")
             && groupSource.Split("headerContent.ColumnDefinitions.Add(").Length - 1 == 3
             && groupSource.Contains("Margin = new Thickness(5, 0, 0, 0)") && groupSource.Contains("Padding = new Thickness(8, 0, 8, 0)"),
             "wave6.native-group-first-text-shares-peer-37dip-start-without-empty-auto-column-gap");
@@ -120,9 +121,10 @@ internal static class Wave6Timeline
         Check(groupSource.Contains("_root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };")
             && groupSource.Contains("_root.PointerExited += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };")
             && groupSource.Contains("_root.PointerCanceled += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };")
-            && groupSource.Contains("=> _chevron.Opacity = _pointerOver ? 1 : 0;") && !groupSource.Contains("_keyboardFocused")
+            && groupSource.Contains("=> _chevron.Opacity = _pointerOver || _focusVisible ? 1 : 0;") && groupSource.Contains("_focusVisible = _header.FocusState == FocusState.Keyboard;")
+            && !groupSource.Contains("_chevron.Visibility = _pointerOver")
             && groupSource.Contains("_enterLeaf?.Invoke();") && groupSource.Contains("_exitLeaf?.Invoke();"),
-            "wave6.native-group-box-hover-only-chevron-keeps-layout-space-and-header-leaf-preview");
+            "wave6.native-group-box-hover-or-keyboard-focus-chevron-keeps-layout-space-and-header-leaf-preview");
 
         ConversationViewTestProbe.Reset();
         var backgroundOrigin = M(new { id = "bg_origin", type = "assistant", content = new[] { new

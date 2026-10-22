@@ -11,6 +11,8 @@ namespace Microsoft.UI.Xaml
     public enum HorizontalAlignment { Left, Center, Stretch }
     public enum VerticalAlignment { Center, Stretch }
     public enum TextWrapping { NoWrap }
+    public enum TextTrimming { None, CharacterEllipsis }
+    public enum FocusState { Unfocused, Pointer, Keyboard, Programmatic }
     public enum GridUnitType { Star }
     public record struct GridLength(double Value, GridUnitType Type = default) { public static GridLength Auto => new(0); }
     public record struct Thickness(double Left, double Top, double Right, double Bottom) { public Thickness(double all):this(all,all,all,all) {} }
@@ -51,11 +53,12 @@ namespace Microsoft.UI.Xaml.Controls
     public class Grid : Panel { public double ColumnSpacing; public List<ColumnDefinition> ColumnDefinitions = new(); public static void SetColumn(UIElement e,int column) {} }
     public class ColumnDefinition { public GridLength Width; }
     public class Border : FrameworkElement { private UIElement? _child; public UIElement? Child { get=>_child; set { _child=value; if(value is not null)value.Parent=this; } } }
-    public class TextBlock : FrameworkElement { public string Text { get; set; } = ""; public TextWrapping TextWrapping; }
+    public class TextBlock : FrameworkElement { public string Text { get; set; } = ""; public TextWrapping TextWrapping; public TextTrimming TextTrimming; }
     public class FontIcon : FrameworkElement { public string Glyph=""; public double FontSize; }
     public class ProgressRing : FrameworkElement { public bool IsActive; }
     public class Button : FrameworkElement
-    { private object? _content; public object? Content { get=>_content; set { _content=value; if(value is UIElement e)e.Parent=this; } } public event Action<object,object>? Click; public void Press()=>Click?.Invoke(this,new()); }
+    { private object? _content; public object? Content { get=>_content; set { _content=value; if(value is UIElement e)e.Parent=this; } } public event Action<object,object>? Click, GotFocus, LostFocus; public FocusState FocusState; public void Press()=>Click?.Invoke(this,new());
+      public void Focus(FocusState state) { FocusState=state; GotFocus?.Invoke(this,new()); } public void Blur() { FocusState=FocusState.Unfocused; LostFocus?.Invoke(this,new()); } }
     public static class ToolTipService { public static void SetToolTip(DependencyObject e,object value) {} }
 }
 namespace Microsoft.UI.Xaml.Automation.Peers { public enum AccessibilityView { Raw } }

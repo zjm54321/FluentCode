@@ -495,6 +495,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         {
             OpenCodeToolTheme.Apply(rowChrome, OpenCodeToolTheme.Border(background, chrome.BorderKey));
             rowChrome.BorderThickness = new Thickness(chrome.BorderThickness);
+            // 描边向外让出：失败行与相邻行等高、图标与文字起点不偏移（避免出错时整列内容右移 1px、行高 +2px 跳动）。
+            rowChrome.Margin = new Thickness(-chrome.BorderThickness);
         }
         else
         {
@@ -502,6 +504,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             rowChrome.ClearValue(Border.BackgroundProperty);
             rowChrome.ClearValue(Border.BorderBrushProperty);
             rowChrome.BorderThickness = new Thickness(0);
+            rowChrome.Margin = new Thickness(0);
         }
     }
 

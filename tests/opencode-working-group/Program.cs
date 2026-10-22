@@ -62,8 +62,13 @@ internal static class Program
         Check(((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Collapsed&&group.ItemsHost.Children.Count==2,"collapse hides rows without removing them");
         group.SetCurrentStep("执行 · dotnet test · 运行中");group.Update(summary with {SuccessCount=1},false,true);
         var workingLabel=Walk(group.Element).Single(e=>e.Automation.TryGetValue("Id",out var id)&&id=="OpenCodeWorkingIndicator.group");
-        var labelTexts=((StackPanel)workingLabel).Children.OfType<TextBlock>().ToArray();
+        var labelTexts=((Panel)workingLabel).Children.OfType<TextBlock>().ToArray();
         Check(labelTexts[0].Text=="执行 · dotnet test · 运行中"&&labelTexts[1].Visibility==Visibility.Collapsed,"collapsed native label updates real step and omits decorative phrase/elapsed");
+        Check(labelTexts[0].TextTrimming==TextTrimming.CharacterEllipsis&&labelTexts[1].TextTrimming==TextTrimming.None&&workingLabel is Grid {HorizontalAlignment:HorizontalAlignment.Left},"long step/phrase trims with ellipsis in a left-aligned star cell; elapsed never trims");
+        var header=(Button)group.DetailAnchor;var chevron=Walk(group.Element).OfType<FontIcon>().Single(i=>i.Glyph is "\uE76C" or "\uE70D");
+        header.Focus(FocusState.Pointer);Check(chevron.Opacity==0,"pointer-click focus alone keeps chevron reserved but hidden");
+        header.Focus(FocusState.Keyboard);Check(chevron.Opacity==1,"keyboard focus reveals the expand chevron");
+        header.Blur();Check(chevron.Opacity==0,"losing focus hides the chevron again (layout space kept)");
         Check(group.DetailAnchor.Automation["Name"].Contains("dotnet test",StringComparison.Ordinal)&&clock.SubscriberCount==baseline+1,"collapsed accessibility reports latest real step while gear keeps working");
         ((Button)group.DetailAnchor).Press();
         Check(group.IsExpanded&&toggles==2&&((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Visible&&group.ItemsHost.Children.Count==2,"native re-expand reveals intact rows");

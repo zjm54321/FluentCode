@@ -45,6 +45,7 @@ internal sealed class OpenCodeToolGroupView
     private bool _disposed;
     private bool _loaded;
     private bool _pointerOver;
+    private bool _focusVisible;
     private Action? _openLeaf;
     private Action? _enterLeaf;
     private Action? _exitLeaf;
@@ -116,14 +117,14 @@ internal sealed class OpenCodeToolGroupView
         GroupId = groupId ?? string.Empty;
         _onUserToggled = onUserToggled ?? throw new ArgumentNullException(nameof(onUserToggled));
 
-        // 展开箭头紧跟标题文字（左对齐，不再位于最右侧）；仅指针悬停于分组内时可见。
-        // 用 Opacity 而非 Visibility 切换：占位不变，悬停时标题与计数不跳动。
+        // 展开箭头紧跟标题文字（左对齐，不再位于最右侧）；指针悬停于分组内或键盘焦点在头部时可见。
+        // 用 Opacity 而非 Visibility 切换：占位不变，悬停时标题与计数不跳动。与标题间距 4（视觉上属于标题）。
         _chevron = new FontIcon
         {
             Glyph = "\uE76C",
             FontSize = 10,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(-4, 0, 0, 0),
+            Margin = new Thickness(4, 0, 0, 0),
             Opacity = 0,
             IsHitTestVisible = false,
         };
@@ -136,6 +137,9 @@ internal sealed class OpenCodeToolGroupView
         _leafLabel = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _leafLabel.VerticalAlignment = VerticalAlignment.Center;
         _leafLabel.TextWrapping = TextWrapping.NoWrap;
+        // 长命令 / 路径在窄窗格中以省略号收尾（完整名称仍在读屏名称与详情中）。
+        _leafLabel.TextTrimming = TextTrimming.CharacterEllipsis;
+        _leafLabel.Margin = new Thickness(0, 0, 8, 0);
         _leafLabel.Visibility = Visibility.Collapsed;
         (_successTally, _successText) = CreateTally("\uE73E", OpenCodeToolTheme.Success, "OpenCodeToolGroup.Success." + GroupId);
         (_errorTally, _errorText) = CreateTally("\uE711", OpenCodeToolTheme.Critical, "OpenCodeToolGroup.Errors." + GroupId);
@@ -155,10 +159,17 @@ internal sealed class OpenCodeToolGroupView
         };
 
         // 将可选叶名称放入同一标题簇，避免空 Auto 列仍多占一个列间距：各类同行的文字起点一致。
-        var titleCluster = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        // 标题簇是左对齐 Grid：可变文本（叶名称 / working 状态词，二者互斥）位于“按内容、但不超过剩余宽度”的星号列，
+        // 窄窗格下以省略号截断而不是把箭头和计数挤出；间距由元素自身 Margin 提供（无 ColumnSpacing，空列不占间距）。
+        var titleCluster = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
+        titleCluster.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        titleCluster.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        titleCluster.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         titleCluster.Children.Add(_leafLabel);
         titleCluster.Children.Add(_headerText);
         titleCluster.Children.Add(_chevron);
+        Grid.SetColumn(_headerText, 1);
+        Grid.SetColumn(_chevron, 2);
         // 列：图标 | 标题簇（叶名称 / 主标题 / 悬停箭头） | 弹性空白 | 结果计数（右对齐不变）。
         var iconCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
         iconCell.Children.Add(_icon);
@@ -166,11 +177,13 @@ internal sealed class OpenCodeToolGroupView
         _working = new OpenCodeWorkingIndicator(GroupId);
         _working.VisibilityChanged += UpdateTimer;
         iconCell.Children.Add(_working.Gear);
+        // working 标签与叶名称同列（进行中 / 已完成互斥）：状态词或当前步骤过长时省略号收尾，耗时与点保持完整。
         titleCluster.Children.Insert(titleCluster.Children.IndexOf(_headerText) + 1, _working.Label);
         var headerContent = new Grid { ColumnSpacing = 8 };
         headerContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
-        headerContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // 标题簇占据剩余宽度（左对齐，按内容收缩）：给可截断文本一个有限的测量宽度。末列为空的保留列。
         headerContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        headerContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(iconCell, 0);
         Grid.SetColumn(titleCluster, 1);
         Grid.SetColumn(tally, 2);
@@ -215,6 +228,9 @@ internal sealed class OpenCodeToolGroupView
         {
             _exitLeaf?.Invoke();
         };
+        // 键盘焦点（非指针点击）落在头部时同样显示箭头：Tab 导航也能看出本行可展开 / 收起。
+        _header.GotFocus += (_, _) => { _focusVisible = _header.FocusState == FocusState.Keyboard; UpdateChevronAffordance(); };
+        _header.LostFocus += (_, _) => { _focusVisible = false; UpdateChevronAffordance(); };
 
         _items = new StackPanel { Spacing = 0 };
         _itemsBorder = new Border
@@ -465,9 +481,9 @@ internal sealed class OpenCodeToolGroupView
         _working.SetText(_expanded ? _phrases.Current : _currentStep, _expanded ? elapsed : string.Empty, decorative: _expanded);
     }
 
-    /// <summary>箭头仅在指针悬停于分组内时显示；其余时间透明（保留占位，标题不跳动）。</summary>
+    /// <summary>箭头仅在指针悬停于分组内或键盘焦点位于头部时显示；其余时间透明（保留占位，标题不跳动）。</summary>
     private void UpdateChevronAffordance()
-        => _chevron.Opacity = _pointerOver ? 1 : 0;
+        => _chevron.Opacity = _pointerOver || _focusVisible ? 1 : 0;
 
     private void SetExpanded(bool expanded)
     {
