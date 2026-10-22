@@ -26,13 +26,13 @@ $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enabl
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
 $arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
-foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeSessionControlCoordinator.cs')) {
+foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerSplash.cs', 'OpenCodeSessionControlCoordinator.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
 }
-foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs')) {
+foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs')) {
     $sources += Get-Item (Join-Path "$repo/tests/opencode-composer" $name)
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }
@@ -49,6 +49,7 @@ if ($SourceRoot) { Write-Output 'PROVISIONAL: immutable captured sources, not au
 try {
     & $dotnet exec $compiler "@$rsp" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
     if ($LASTEXITCODE -ne 0) { throw "Core compile failed: $LASTEXITCODE" }
+    $env:AIFRONTEND_SPLASH_REPO = $repo # Splash honesty/wiring checks read the same production sources compiled above.
     & $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
     if ($LASTEXITCODE -ne 0) { throw "Core tests failed: $LASTEXITCODE" }
 }

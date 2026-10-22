@@ -113,6 +113,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     private TextBox? _editor;
     private Func<bool> _isComposing = static () => false;
     private string? _editorPlaceholder;
+    // Placeholder splash (B15): rotated only by an explicit slot activation; feeds PlaceholderText only, never editor text.
+    private readonly OpenCodeComposerSplash _splash = new();
     private bool _editorReadOnlyApplied;
     private int _slotTransitionDepth;
     private string? _slotUnavailableReason;
@@ -599,7 +601,18 @@ internal sealed class OpenCodeComposerView : StackPanel
         }
         BeginCatalogLifetime();
         _inputEvidence.Refresh();
+        RotatePlaceholderSplash(); // Session opened/switched or blank session ready: the ONLY splash trigger.
         return true;
+    }
+
+    /// <summary>
+    /// Choose the next placeholder splash for the context just activated. Placeholder-only: no editor text, draft,
+    /// selection or input event is touched; the pending render applies it (a staged command's argument hint still wins).
+    /// </summary>
+    private void RotatePlaceholderSplash()
+    {
+        var s = _source();
+        _splash.ObserveContext(boundSession: s.IsActive && !s.IsUnboundDraft, blankSession: s.IsActive && s.IsUnboundDraft);
     }
 
     internal OpenCodeComposerEditorRecovery SuspendDraftSlotForRecovery(string reason)
@@ -747,9 +760,9 @@ internal sealed class OpenCodeComposerView : StackPanel
             _editorReadOnlyApplied = readOnly;
             _editor.IsReadOnly = readOnly;
         }
-        _editor.PlaceholderText = s.SelectedCommand is { } command && s.IsActive
-            ? $"/{OpenCodeComposerInputPolicy.Bound(command, 40)} 的参数（可选）"
-            : _editorPlaceholder ?? string.Empty;
+        // Precedence: staged command argument hint > splash (active) > neutral base placeholder (inactive/read-only).
+        var placeholder = OpenCodeComposerSplash.Resolve(s.SelectedCommand, s.IsActive, _splash.Current.Text, _editorPlaceholder ?? string.Empty);
+        if (!string.Equals(_editor.PlaceholderText, placeholder, StringComparison.Ordinal)) _editor.PlaceholderText = placeholder;
     }
 
     /// <summary>Page calls this from its existing TextChanged handler.</summary>

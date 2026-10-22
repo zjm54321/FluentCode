@@ -52,4 +52,5 @@ internal sealed partial class OpenCodeComposerView
     private static object? ThemedBorder(string fill,string stroke)=>null;
     private static TextBlock Caption(string text,double tone)=>new(){Text=text};
     private void BeginCatalogLifetime(){}
+    private void RotatePlaceholderSplash(){} // Placeholder-only splash rotation (B15); covered by tests/opencode-composer.
 }
