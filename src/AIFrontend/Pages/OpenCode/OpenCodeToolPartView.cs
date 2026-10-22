@@ -440,16 +440,29 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
                 : model.Status == OpenCodeToolRowStatus.Completed ? model.DurationText : model.StatusText;
         }
 
+        // B14: unrecovered failure = whole-row red semantic (background + border + icon + text + "失败" label).
+        var chrome = OpenCodeToolRowChrome.For(model.Status);
+        if (chrome.IsFailure)
+        {
+            _summaryText.Text = chrome.ComposeSummary(_summaryText.Text);
+        }
+
         // 非零退出码用危险色突出；其余摘要为次要色。
-        var summaryStyle = model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0
+        var summaryStyle = chrome.IsFailure || (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0)
             ? OpenCodeToolTheme.Text(OpenCodeToolTheme.Critical, OpenCodeInteractionUi.CaptionStyleKey)
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         OpenCodeToolTheme.Apply(_summaryText, summaryStyle);
+        var textStyle = chrome.TextKey is { } textKey
+            ? OpenCodeToolTheme.Text(textKey, OpenCodeInteractionUi.CaptionStyleKey)
+            : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
+        OpenCodeToolTheme.Apply(_nameText, textStyle);
+        OpenCodeToolTheme.Apply(_targetText, textStyle);
+        OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(chrome.KindIconKey));
 
         var active = model.IsActive;
         _progress.IsActive = active;
         _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        _statusIcon.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+        _statusIcon.Visibility = active || !chrome.ShowsStatusIcon ? Visibility.Collapsed : Visibility.Visible;
         switch (model.Status)
         {
             case OpenCodeToolRowStatus.Completed:
@@ -466,20 +479,29 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
                 break;
         }
 
-        if (model.Status == OpenCodeToolRowStatus.Error)
-        {
-            OpenCodeToolTheme.Apply(_rowChrome, OpenCodeToolTheme.Border(OpenCodeToolTheme.CriticalBackground));
-        }
-        else
-        {
-            _rowChrome.Style = null;
-            _rowChrome.Background = null;
-        }
+        ApplyRowChrome(_rowChrome, chrome);
 
         var id = string.IsNullOrEmpty(model.PartId) ? string.Empty : model.PartId;
         AutomationProperties.SetAutomationId(_row, "OpenCodeToolRow." + id);
         AutomationProperties.SetName(_row, model.AccessibleName);
         AutomationProperties.SetHelpText(_row, "按 Enter 查看完整内容，Esc 关闭");
+    }
+
+    /// <summary>B14: apply the whole-row chrome (theme-resource background + border) to a row/chip border.</summary>
+    internal static void ApplyRowChrome(Border rowChrome, OpenCodeToolRowChrome chrome)
+    {
+        if (chrome.BackgroundKey is { } background)
+        {
+            OpenCodeToolTheme.Apply(rowChrome, OpenCodeToolTheme.Border(background, chrome.BorderKey));
+            rowChrome.BorderThickness = new Thickness(chrome.BorderThickness);
+        }
+        else
+        {
+            rowChrome.Style = null;
+            rowChrome.ClearValue(Border.BackgroundProperty);
+            rowChrome.ClearValue(Border.BorderBrushProperty);
+            rowChrome.BorderThickness = new Thickness(0);
+        }
     }
 
     private void OnRowKeyDown(object sender, KeyRoutedEventArgs e)

@@ -25,7 +25,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
 }
 # Real renderer/title/parser algorithms and event args. ToolStates is included in Services DTOs above.
 # Explicit list excludes all four replaced presenters and every other WinUI test host.
-@('OpenCodeConversationView.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
+@('OpenCodeConversationView.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeQueuedPromptsView.cs',
     'OpenCodeInteractionUi.cs', 'OpenCodeComposerActivityPolicy.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'

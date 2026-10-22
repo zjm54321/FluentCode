@@ -7,7 +7,7 @@ $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where
 if (!$sdk -or !$pack) { throw '.NET 10 SDK/reference pack required.' }
 New-Item -ItemType Directory -Path $EvidenceRoot | Out-Null
 $sources = @('OpenCodeDtos.Common.cs','OpenCodeDtos.Messages.cs','OpenCodeDtos.Sessions.cs','OpenCodeDtos.Location.cs','OpenCodeDtos.Models.cs','OpenCodeDtos.Inbox.cs','OpenCodeInstructionNotice.cs','OpenCodeManualBackgroundIndex.cs','OpenCodeConstants.cs','OpenCodeJson.cs','OpenCodeExceptions.cs','OpenCodeNoticeDismissals.cs') | ForEach-Object { "$repo/src/AIFrontend/Services/OpenCode/$_" }
-$sources += @('OpenCodeConversationView.cs','OpenCodeSubagentPresentation.cs','OpenCodeSubagentTaskTitles.cs','OpenCodeToolRowPresentation.cs','OpenCodeLineDiff.cs','OpenCodeStepRunPresentation.cs','OpenCodeQueuedPromptsView.cs','OpenCodeInteractionUi.cs','OpenCodeComposerActivityPolicy.cs') | ForEach-Object { "$repo/src/AIFrontend/Pages/OpenCode/$_" }
+$sources += @('OpenCodeConversationView.cs','OpenCodeErrorRecoveryProjection.cs','OpenCodeSubagentPresentation.cs','OpenCodeSubagentTaskTitles.cs','OpenCodeToolRowPresentation.cs','OpenCodeLineDiff.cs','OpenCodeStepRunPresentation.cs','OpenCodeQueuedPromptsView.cs','OpenCodeInteractionUi.cs','OpenCodeComposerActivityPolicy.cs') | ForEach-Object { "$repo/src/AIFrontend/Pages/OpenCode/$_" }
 $sources += @("$repo/tests/opencode-instruction-notice/ConversationView.TestHost.cs", "$PSScriptRoot/Program.cs")
 $refs = @(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object FullName)
 $dll = Join-Path $EvidenceRoot 'VisibleIdleTests.dll'; $rsp = Join-Path $EvidenceRoot 'compile.rsp'

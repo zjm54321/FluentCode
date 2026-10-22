@@ -259,15 +259,27 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _label.Text = content.Name;
         _targetText.Text = content.Target;
         _targetText.Visibility = content.Target.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        _summaryText.Text = content.Summary;
-        _summaryText.Visibility = content.Summary.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // B14: unrecovered failure = whole-row red semantic instead of a lone red X.
+        var chrome = OpenCodeToolRowChrome.For(content.Status);
+        var summary = chrome.IsFailure ? chrome.ComposeSummary(content.Summary) : content.Summary;
+        _summaryText.Text = summary;
+        _summaryText.Visibility = summary.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var textStyle = chrome.TextKey is { } textKey
+            ? OpenCodeToolTheme.Text(textKey, OpenCodeInteractionUi.CaptionStyleKey)
+            : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
+        OpenCodeToolTheme.Apply(_label, textStyle);
+        OpenCodeToolTheme.Apply(_targetText, textStyle);
+        OpenCodeToolTheme.Apply(_summaryText, chrome.TextKey is { } summaryKey
+            ? OpenCodeToolTheme.Text(summaryKey, OpenCodeInteractionUi.CaptionStyleKey)
+            : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey));
+        OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(chrome.KindIconKey));
         // A8: no native text tooltip on the chip — the custom hover preview already shows name/target.
 
         var active = content.Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
         _statusCell.Visibility = content.Status is null ? Visibility.Collapsed : Visibility.Visible;
         _progress.IsActive = active;
         _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        _statusIcon.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+        _statusIcon.Visibility = active || !chrome.ShowsStatusIcon ? Visibility.Collapsed : Visibility.Visible;
         switch (content.Status)
         {
             case OpenCodeToolRowStatus.Completed:
@@ -284,15 +296,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
                 break;
         }
 
-        if (content.Status == OpenCodeToolRowStatus.Error)
-        {
-            OpenCodeToolTheme.Apply(_rowChrome, OpenCodeToolTheme.Border(OpenCodeToolTheme.CriticalBackground));
-        }
-        else
-        {
-            _rowChrome.Style = null;
-            _rowChrome.Background = null;
-        }
+        OpenCodeToolPartView.ApplyRowChrome(_rowChrome, chrome);
 
         AutomationProperties.SetName(_chip, content.AccessibleName);
 

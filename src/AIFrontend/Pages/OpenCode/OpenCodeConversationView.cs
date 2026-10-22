@@ -401,6 +401,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
         /// <summary>assistant 条目中工具调用所关联异步完成通知的签名（变化时就地更新以刷新原始调用行）。</summary>
         public string AsyncSignature { get; set; } = string.Empty;
+        public string RecoverySignature { get; set; } = string.Empty;
 
         /// <summary>assistant 条目的处理过程分组状态（跨消息链计算用）；其他条目为 null。</summary>
         public AssistantState? Assistant { get; init; }
@@ -683,6 +684,8 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         _messageIdCounts.Clear();
         _manualBackground.Clear();
+        _recoveredErrorMessages.Clear();
+        _recoveredRetryMessages.Clear();
         BindingCleared?.Invoke(this, EventArgs.Empty);
         ApplyAdmittedSteer(null, null);
         _renderedUserMessageIds.Clear();
@@ -740,6 +743,16 @@ public sealed class OpenCodeConversationView : StackPanel
 
         messages = sanitizedMessages;
 
+        // B14: presentation-only recovery projection over THIS session snapshot (never mutates messages / logs).
+        var recovery = OpenCodeErrorRecoveryProjection.Project(messages, IsRecoveryContinuationCandidate);
+        _recoveredErrorMessages.Clear();
+        _recoveredRetryMessages.Clear();
+        for (var i = 0; i < messages.Count; i++)
+        {
+            if (recovery.IsErrorRecovered(i)) _recoveredErrorMessages.Add(messages[i]);
+            if (recovery.IsRetryRecovered(i)) _recoveredRetryMessages.Add(messages[i]);
+        }
+
         // 异步完成通知索引：原始后台调用行（终端 / 子任务）据此显示最终状态。
         var completions = new Dictionary<string, OpenCodeAsyncCompletion>(StringComparer.Ordinal);
         foreach (var message in messages)
@@ -781,6 +794,8 @@ public sealed class OpenCodeConversationView : StackPanel
             }
 
             var fingerprint = ComputeFingerprint(message);
+            // B14: recovery state is snapshot-relative (a LATER message can recover this one), so it is tracked beside the fingerprint.
+            var recoverySignature = RecoverySignature(message);
 
             // 呈现方式改变（普通/subagent ↔ 指令通知 ↔ 内部触发提示行）时同 key 不能就地复用：旧条目须整体替换。
             // 先移除旧条目（Dispose → Children → _entries → _byKey），使末尾 retained 清理不会二次
@@ -808,7 +823,8 @@ public sealed class OpenCodeConversationView : StackPanel
                 var asyncSignature = ComputeAsyncSignature(message);
                 if (!string.Equals(existing.Fingerprint, fingerprint, StringComparison.Ordinal) ||
                     !string.Equals(existing.TaskTitle, taskTitle, StringComparison.Ordinal) ||
-                    !string.Equals(existing.AsyncSignature, asyncSignature, StringComparison.Ordinal))
+                    !string.Equals(existing.AsyncSignature, asyncSignature, StringComparison.Ordinal) ||
+                    !string.Equals(existing.RecoverySignature, recoverySignature, StringComparison.Ordinal))
                 {
                     existing.Update(message);
                     existing.Fingerprint = fingerprint;
@@ -816,6 +832,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
                 existing.TaskTitle = taskTitle;
                 existing.AsyncSignature = asyncSignature;
+                existing.RecoverySignature = recoverySignature;
                 newEntries.Add(existing);
             }
             else
@@ -825,6 +842,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 entry.Fingerprint = fingerprint;
                 entry.TaskTitle = ResolveTaskTitle(message);
                 entry.AsyncSignature = ComputeAsyncSignature(message);
+                entry.RecoverySignature = recoverySignature;
                 _byKey[key] = entry;
                 newEntries.Add(entry);
             }
@@ -889,6 +907,21 @@ public sealed class OpenCodeConversationView : StackPanel
         => message.Id is { Length: > 0 } id && _subagentTaskTitles.TryGetValue(id, out var title)
             ? title
             : null;
+
+    // B14: identity sets (records use value equality) of this snapshot's recovered message-level errors / retry records.
+    private readonly HashSet<OpenCodeMessage> _recoveredErrorMessages = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<OpenCodeMessage> _recoveredRetryMessages = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>B14: only ordinary assistant replies may prove recovery (not notices, async/subagent completions, manual-background or internal initiator rows).</summary>
+    private string RecoverySignature(OpenCodeMessage message)
+        => "recovered:" + _recoveredErrorMessages.Contains(message) + "/" + _recoveredRetryMessages.Contains(message);
+
+    private static bool IsRecoveryContinuationCandidate(OpenCodeMessage message)
+        => !IsInstructionMessage(message)
+            && !OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out _)
+            && !OpenCodeManualBackgroundIndex.TryReadNotice(message, out _)
+            && !OpenCodeStepRunPresentation.IsInternalInitiator(message)
+            && !OpenCodeSubagentPresentation.TryReadCompletionMetadata(message.Metadata, out _);
 
     /// <summary>指令消息：system 指令通知（安全投影）或 synthetic 指令文件消息（metadata.instruction.paths）。</summary>
     private static bool IsInstructionMessage(OpenCodeMessage message)
@@ -1478,10 +1511,13 @@ public sealed class OpenCodeConversationView : StackPanel
 
         partEntries.Clear();
         partEntries.AddRange(newEntries);
-        state.HasBoundary |= message.Error is not null || message.Retry is not null;
+        // B14: a recovered (hidden) error/retry record is not a visible boundary — no blank gap, step chain continues.
+        state.HasBoundary |= (message.Error is not null && !_recoveredErrorMessages.Contains(message))
+            || (message.Retry is not null && !_recoveredRetryMessages.Contains(message));
 
         // 助手消息级错误（已核实的结构化错误字段；出现即如实展示，不推断请求成败）。
-        if (message.Error is { } error)
+        // B14: a transient link error that this same session demonstrably continued past is hidden (presentation only).
+        if (message.Error is { } error && !_recoveredErrorMessages.Contains(message))
         {
             var text = string.IsNullOrWhiteSpace(error.Message) ? "（服务端未提供错误详情）" : error.Message!;
             var meta = new List<string>(2);
@@ -1507,7 +1543,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         // 重试信息：仅陈述服务端已记录的字段，不解释为最终状态。
-        if (message.Retry is { } retry)
+        if (message.Retry is { } retry && !_recoveredRetryMessages.Contains(message))
         {
             var text = retry.Attempt is { } attempt
                 ? "服务端记录了重试（第 " + attempt.ToString(CultureInfo.InvariantCulture) + " 次）"

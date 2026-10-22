@@ -38,6 +38,38 @@ internal enum OpenCodeToolRowStatus
     Error,
 }
 
+/// <summary>
+/// B14: whole-row visual semantic for a tool row / timeline chip (pure theme-resource keys; views apply them).
+/// An unrecovered tool failure paints the entire row red — tinted critical background, 1px critical border,
+/// critical kind icon, name, target and a textual "失败" label — instead of a lone small red X on the right.
+/// Null keys mean "default appearance". Failed tool results are never projected as recovered.
+/// </summary>
+internal sealed record OpenCodeToolRowChrome(
+    bool IsFailure,
+    string? BackgroundKey,
+    string? BorderKey,
+    double BorderThickness,
+    string KindIconKey,
+    string? TextKey,
+    bool ShowsStatusIcon,
+    string? FailureLabel)
+{
+    internal const string CriticalKey = "SystemFillColorCriticalBrush";
+    internal const string CriticalBackgroundKey = "SystemFillColorCriticalBackgroundBrush";
+    internal const string SecondaryIconKey = "TextFillColorSecondaryBrush";
+    internal const string FailureText = "失败";
+
+    private static readonly OpenCodeToolRowChrome Failure = new(true, CriticalBackgroundKey, CriticalKey, 1, CriticalKey, CriticalKey, false, FailureText);
+    private static readonly OpenCodeToolRowChrome Normal = new(false, null, null, 0, SecondaryIconKey, null, true, null);
+
+    /// <summary>Chrome for a row status (null = chip without status).</summary>
+    internal static OpenCodeToolRowChrome For(OpenCodeToolRowStatus? status) => status == OpenCodeToolRowStatus.Error ? Failure : Normal;
+
+    /// <summary>Right-side summary: failure label first, then the existing summary (if any).</summary>
+    internal string ComposeSummary(string summary)
+        => FailureLabel is null ? summary : string.IsNullOrEmpty(summary) || summary == "出错" ? FailureLabel : FailureLabel + " · " + summary;
+}
+
 /// <summary>单个文件的改动（优先来自服务端 metadata.files[]，否则由输入本地计算）。</summary>
 internal sealed record OpenCodeToolDiffFile
 {
