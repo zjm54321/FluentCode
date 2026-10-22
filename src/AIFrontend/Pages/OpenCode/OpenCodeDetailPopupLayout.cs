@@ -20,10 +20,17 @@ internal enum OpenCodeDetailPopupMode
 /// <summary>纯数据矩形（与 WinUI 无关，便于无界面测试）。</summary>
 internal readonly record struct OpenCodeDetailRect(double X, double Y, double Width, double Height);
 
+/// <summary>A8：预览横向安全区（根坐标，DIP）：消息内容列内、两侧留白后的 [Left, Right]。</summary>
+internal readonly record struct OpenCodeDetailBand(double Left, double Right)
+{
+    internal double Width => Math.Max(0, Right - Left);
+}
+
 /// <summary>
 /// 详情弹出层的纯几何与悬停判定（G7，无 WinUI 依赖，headless 测试直接编译本文件）。
 /// 大视图 = 应用窗口的 <see cref="LargeViewFraction"/>（居中，随窗口改变）；
-/// 悬停预览 = 来源行 0.6–1.2 倍宽，优先最窄且无需纵向滚动的宽度，只在行上/下方。
+/// 悬停预览 = 来源行 0.6–1.2 倍宽（再受内容列安全区限制），优先最窄且无需纵向滚动的宽度，只在行上/下方，
+/// 横向以指针为中心并夹紧在内容列两侧约 10% 留白之内（A8）。
 /// </summary>
 internal static class OpenCodeDetailPopupLayout
 {
@@ -60,19 +67,52 @@ internal static class OpenCodeDetailPopupLayout
         return new OpenCodeDetailRect((rootWidth - width) / 2, (rootHeight - height) / 2, width, height);
     }
 
-    /// <summary>来源行宽度范围；视口边距优先于行比例。</summary>
-    internal static (double Min, double Max) PreviewWidths(double anchorWidth, double rootWidth)
+    /// <summary>
+    /// A8：悬停预览左右各留内容列宽度的这一比例（约 10%）。预览只能落在内容列内这段安全区里，
+    /// 不以整个窗口为边界。
+    /// </summary>
+    internal const double ContentEdgeFraction = 0.1;
+
+    /// <summary>
+    /// A8：由消息内容列（已与可见滚动视口相交、同一根坐标）得到预览的横向安全区：
+    /// 两侧各收进 <see cref="ContentEdgeFraction"/> 列宽，并且仍不越过窗口 <see cref="WindowMargin"/>。
+    /// 坐标非法 / 列宽为 0 / 安全区为空时返回 null（调用方不得退回窗口或 (0,0)）。
+    /// </summary>
+    internal static OpenCodeDetailBand? PreviewSafeBand(double contentLeft, double contentRight, double rootWidth)
     {
-        var available = Math.Max(0, rootWidth - (2 * WindowMargin));
+        if (!double.IsFinite(contentLeft) || !double.IsFinite(contentRight) || !double.IsFinite(rootWidth)) return null;
+        var width = contentRight - contentLeft;
+        if (width <= 0 || rootWidth <= 0) return null;
+        var inset = width * ContentEdgeFraction;
+        var left = Math.Max(contentLeft + inset, WindowMargin);
+        var right = Math.Min(contentRight - inset, rootWidth - WindowMargin);
+        return right - left >= 1 ? new OpenCodeDetailBand(left, right) : null;
+    }
+
+    /// <summary>
+    /// A8：以指针 X 为中心，夹紧在安全区内（宽度先被限制到安全区宽度，绝不溢出）。
+    /// </summary>
+    internal static double PreviewX(double pointerX, double previewWidth, OpenCodeDetailBand band)
+    {
+        previewWidth = Math.Min(Math.Max(0, previewWidth), band.Width);
+        if (!double.IsFinite(pointerX)) pointerX = band.Left + band.Width / 2;
+        // Max() guards floating-point rounding when the preview exactly fills the band.
+        return Math.Clamp(pointerX - previewWidth / 2, band.Left, Math.Max(band.Left, band.Right - previewWidth));
+    }
+
+    /// <summary>来源行宽度范围；内容列安全区宽度优先于行比例（窄列时预览宽度随安全区收窄）。</summary>
+    internal static (double Min, double Max) PreviewWidths(double anchorWidth, OpenCodeDetailBand band)
+    {
+        var available = Math.Max(0, band.Width);
         var row = Math.Max(0, anchorWidth);
         return (Math.Min(row * PreviewMinRowFraction, available), Math.Min(row * PreviewMaxRowFraction, available));
     }
 
     /// <summary>Measure the full wrapped height, not a ScrollViewer's constrained viewport. Search to one DIP.</summary>
-    internal static (double Width, double FullHeight, bool Clipped) FitPreview(double anchorWidth, double rootWidth,
+    internal static (double Width, double FullHeight, bool Clipped) FitPreview(double anchorWidth, OpenCodeDetailBand band,
         double availableHeight, Func<double, double> measureFullHeight)
     {
-        var (min, max) = PreviewWidths(anchorWidth, rootWidth);
+        var (min, max) = PreviewWidths(anchorWidth, band);
         var height = measureFullHeight(min);
         if (height <= availableHeight) return (min, height, false);
         height = measureFullHeight(max);
@@ -97,25 +137,25 @@ internal static class OpenCodeDetailPopupLayout
 
     /// <summary>
     /// 预览只在行上方或下方，选择空间更大的一侧，保留 8px 间距并夹紧宽高。
+    /// 横向（A8）：以指针 X 为中心，夹紧在内容列安全区 <paramref name="band"/> 内，而不是来源行中心 / 整个窗口。
     /// </summary>
     internal static OpenCodeDetailRect PreviewPlacement(
-        double anchorX,
+        double pointerX,
         double anchorY,
-        double anchorWidth,
         double anchorHeight,
         double previewWidth,
         double previewHeight,
-        double rootWidth,
+        OpenCodeDetailBand band,
         double rootHeight)
     {
-        previewWidth = Math.Min(Math.Max(0, previewWidth), Math.Max(0, rootWidth - 2 * WindowMargin));
+        previewWidth = Math.Min(Math.Max(0, previewWidth), band.Width);
         var top = Math.Clamp(anchorY, WindowMargin, Math.Max(WindowMargin, rootHeight - WindowMargin));
         var bottom = Math.Clamp(anchorY + anchorHeight, WindowMargin, Math.Max(WindowMargin, rootHeight - WindowMargin));
         var above = Math.Max(0, top - WindowMargin - PreviewGap);
         var below = Math.Max(0, rootHeight - WindowMargin - bottom - PreviewGap);
         var useBelow = below >= above;
         previewHeight = Math.Min(Math.Max(0, previewHeight), useBelow ? below : above);
-        var x = Math.Max(WindowMargin, Math.Min(anchorX + (anchorWidth - previewWidth) / 2, rootWidth - previewWidth - WindowMargin));
+        var x = PreviewX(pointerX, previewWidth, band);
         var y = useBelow ? bottom + PreviewGap : top - PreviewGap - previewHeight;
         y = Math.Max(Math.Min(WindowMargin, rootHeight / 2), Math.Min(y, rootHeight - WindowMargin - previewHeight));
         return new OpenCodeDetailRect(x, y, previewWidth, previewHeight);

@@ -168,9 +168,15 @@ internal sealed class OpenCodeToolGroupView
             SetExpanded(!_expanded);
             _onUserToggled(GroupId, _expanded);
         };
-        _header.PointerEntered += (_, _) =>
+        _header.PointerEntered += (_, e) =>
         {
+            // A8: collapsed single-leaf header is the real preview anchor; record the entry point before hovering.
+            if (_enterLeaf is not null) OpenCodeToolDetailPopup.Shared.TrackPointer(_header, e);
             _enterLeaf?.Invoke();
+        };
+        _header.PointerMoved += (_, e) =>
+        {
+            if (_enterLeaf is not null) OpenCodeToolDetailPopup.Shared.TrackPointer(_header, e);
         };
         _header.PointerExited += (_, _) =>
         {

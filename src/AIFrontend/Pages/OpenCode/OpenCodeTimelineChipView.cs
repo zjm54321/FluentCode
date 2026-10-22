@@ -120,7 +120,9 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         AutomationProperties.SetAutomationId(_chip, automationId ?? string.Empty);
         AutomationProperties.SetHelpText(_chip, "悬停或按 Enter 查看完整内容，Esc 关闭");
         _chip.Click += (_, _) => OpenCodeToolDetailPopup.Shared.TogglePinned(Source);
-        _chip.PointerEntered += (_, _) => OpenCodeToolDetailPopup.Shared.HoverEnter(Source);
+        // A8: capture the entry point immediately (not on first move) so the preview centres on the pointer.
+        _chip.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e); OpenCodeToolDetailPopup.Shared.HoverEnter(Source); };
+        _chip.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e);
         _chip.PointerExited += (_, _) => OpenCodeToolDetailPopup.Shared.HoverExit(Source);
         _chip.KeyDown += OnKeyDown;
         _chip.Unloaded += (_, _) => { OpenCodeToolDetailPopup.Shared.CloseIf(this); OpenCodeToolDetailPopup.Shared.CloseIf(_childSource); };
@@ -259,7 +261,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _targetText.Visibility = content.Target.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _summaryText.Text = content.Summary;
         _summaryText.Visibility = content.Summary.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        ToolTipService.SetToolTip(_chip, content.Target.Length == 0 ? content.Name : content.Name + "  " + content.Target);
+        // A8: no native text tooltip on the chip — the custom hover preview already shows name/target.
 
         var active = content.Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
         _statusCell.Visibility = content.Status is null ? Visibility.Collapsed : Visibility.Visible;

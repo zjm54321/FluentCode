@@ -48,38 +48,73 @@ internal static class Program
             && tiny.X >= OpenCodeDetailPopupLayout.WindowMargin && tiny.Y >= OpenCodeDetailPopupLayout.WindowMargin, "large view stays inside a tiny window");
         Check(OpenCodeDetailPopupLayout.LargeViewFraction == 0.8, "large view fraction is 80%");
 
-        // Wave 7 explicitly supersedes the work-area cap: bounds come from the actual originating row.
-        var previewWidth = OpenCodeDetailPopupLayout.PreviewWidths(1000, 1600).Max;
+        // A8: horizontal bounds come from the message content column (not the window), inset ~10% per side.
+        // Content column in a 1600-wide window: left 390, width 820 (OpenCodeTimelineMaxWidth), so band = [472, 1128].
+        var band = OpenCodeDetailPopupLayout.PreviewSafeBand(390, 1210, 1600)!.Value;
+        Check(OpenCodeDetailPopupLayout.ContentEdgeFraction == 0.1 && band.Left == 472 && band.Right == 1128 && band.Width == 656,
+            "safe band = content column inset 10% per side, non-zero column origin, never the window");
+        Check(OpenCodeDetailPopupLayout.PreviewSafeBand(double.NaN, 800, 1600) is null && OpenCodeDetailPopupLayout.PreviewSafeBand(500, 500, 1600) is null
+            && OpenCodeDetailPopupLayout.PreviewSafeBand(600, 400, 1600) is null && OpenCodeDetailPopupLayout.PreviewSafeBand(0, double.PositiveInfinity, 1600) is null,
+            "invalid / zero / inverted content bounds yield no band (caller must not fall back to window or (0,0))");
+        var windowEdge = OpenCodeDetailPopupLayout.PreviewSafeBand(-100, 700, 600)!.Value;
+        Check(windowEdge.Left == 8 && windowEdge.Right == 592, "band additionally respects the 8px window margin");
+        var previewWidth = OpenCodeDetailPopupLayout.PreviewWidths(1000, band).Max;
         var previewHeight = OpenCodeDetailPopupLayout.PreviewHeightLimit(1000);
-        Check(OpenCodeDetailPopupLayout.PreviewWidths(1000, 1600) == (600, 1200) && previewHeight == 984, "preview bounds are 0.6A and 1.2A, not a percentage of the workspace");
-        Check(OpenCodeDetailPopupLayout.PreviewWidths(1000, 400) == (384, 384), "both row-based width bounds clamp to narrow viewport margins");
+        Check(OpenCodeDetailPopupLayout.PreviewWidths(500, band) == (300, 600) && previewHeight == 984, "row bounds 0.6A/1.2A when the safe band is wider");
+        Check(OpenCodeDetailPopupLayout.PreviewWidths(1000, band) == (600, 656), "row-based max width clamps to the content safe band");
+        var narrowBand = OpenCodeDetailPopupLayout.PreviewSafeBand(100, 400, 1600)!.Value;
+        Check(narrowBand.Left == 130 && narrowBand.Right == 370 && OpenCodeDetailPopupLayout.PreviewWidths(300, narrowBand) == (180, 240)
+            && OpenCodeDetailPopupLayout.PreviewWidths(1000, narrowBand) == (240, 240), "narrow column: preview width itself shrinks to the safe band");
         var measurements = 0;
-        var fitsNarrow = OpenCodeDetailPopupLayout.FitPreview(500, 1600, 500, width => { measurements++; return 96; });
+        var fitsNarrow = OpenCodeDetailPopupLayout.FitPreview(500, band, 500, width => { measurements++; return 96; });
         Check(fitsNarrow == (300, 96, false) && measurements == 1, "short wrapped content keeps minimum row width and natural height without probing wider widths");
-        var adaptive = OpenCodeDetailPopupLayout.FitPreview(500, 1600, 500, width => 180000 / width);
+        var adaptive = OpenCodeDetailPopupLayout.FitPreview(500, band, 500, width => 180000 / width);
         Check(adaptive.Width >= 360 && adaptive.Width < 361 && adaptive.FullHeight <= 500 && !adaptive.Clipped, "expand only to the narrowest fitting wrapped width within one DIP");
-        var constrained = OpenCodeDetailPopupLayout.FitPreview(500, 1600, 500, width => 1000000 / width);
+        var constrained = OpenCodeDetailPopupLayout.FitPreview(500, band, 500, width => 1000000 / width);
         Check(constrained.Width == 600 && constrained.Clipped, "only content still too tall at maximum row width requires vertical scrolling and full-detail hint");
-        var below = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 1500, 32, previewWidth, 300, 1600, 1000);
+        var squeezed = OpenCodeDetailPopupLayout.FitPreview(1000, narrowBand, 500, width => 1000000 / width);
+        Check(squeezed.Width == 240 && squeezed.Clipped, "narrow column fit never exceeds the safe band width");
+
+        // Pointer-centred X, clamped to the band (not the source-row centre).
+        var centred = OpenCodeDetailPopupLayout.PreviewPlacement(800, 200, 32, 400, 300, band, 1000);
+        Check(centred.X == 600 && centred.X + centred.Width / 2 == 800 && centred.Y == 240, "preview horizontally centred on the pointer X, below with 8px gap");
+        var nearLeft = OpenCodeDetailPopupLayout.PreviewPlacement(400, 200, 32, 400, 300, band, 1000);
+        Check(nearLeft.X == 472, "pointer near the column's left edge: clamps to the 10% left margin");
+        var nearRight = OpenCodeDetailPopupLayout.PreviewPlacement(1200, 200, 32, 400, 300, band, 1000);
+        Check(nearRight.X + nearRight.Width == 1128, "pointer near the column's right edge: clamps to the 10% right margin");
+        var outside = OpenCodeDetailPopupLayout.PreviewPlacement(1590, 200, 32, 400, 300, band, 1000);
+        Check(outside.X + outside.Width <= 1128 && outside.X >= 472, "pointer near the window edge never escapes the content column");
+        var tooWide = OpenCodeDetailPopupLayout.PreviewPlacement(250, 200, 32, 900, 300, narrowBand, 1000);
+        Check(tooWide.Width == 240 && tooWide.X == 130 && tooWide.X + tooWide.Width == 370, "preview wider than a narrow band shrinks to it before clamping");
+        Check(OpenCodeDetailPopupLayout.PreviewX(double.NaN, 200, band) == 700, "non-finite pointer falls back to the band centre, still inside");
+        var lastX = double.NegativeInfinity;
+        for (var px = 0d; px <= 1600; px += 20)
+        {
+            var x = OpenCodeDetailPopupLayout.PreviewX(px, 400, band);
+            Check(x >= lastX && x >= band.Left && x + 400 <= band.Right, "pointer sweep: X is monotone and always inside the band");
+            lastX = x;
+        }
+
+        // Vertical behaviour unchanged: above/below roomier side, 8px gap, natural/auto height.
+        var below = OpenCodeDetailPopupLayout.PreviewPlacement(800, 200, 32, previewWidth, 300, band, 1000);
         Check(below.Y == 240, "wide row: preview below with 8px gap");
-        var above = OpenCodeDetailPopupLayout.PreviewPlacement(40, 900, 1500, 32, previewWidth, 300, 1600, 1000);
+        var above = OpenCodeDetailPopupLayout.PreviewPlacement(800, 900, 32, previewWidth, 300, band, 1000);
         Check(above.Y + above.Height == 892, "row near bottom: preview above with 8px gap");
-        var right = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 300, 32, previewWidth, 300, 1600, 1000);
-        Check(right.Y == 240, "narrow row also opens below, NEVER right even with available space");
-        var clamped = OpenCodeDetailPopupLayout.PreviewPlacement(1400, 980, 150, 16, previewWidth, 300, 1600, 1000);
-        Check(clamped.X + clamped.Width <= 1592 && clamped.Y + clamped.Height <= 992, "preview clamped inside window");
-        var shortPreview = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 300, 32, 220, 96, 1600, 1000);
+        var clamped = OpenCodeDetailPopupLayout.PreviewPlacement(1400, 980, 16, previewWidth, 300, band, 1000);
+        Check(clamped.X + clamped.Width <= 1128 && clamped.Y + clamped.Height <= 992, "preview clamped inside content band and window height");
+        var shortPreview = OpenCodeDetailPopupLayout.PreviewPlacement(800, 200, 32, 220, 96, band, 1000);
         Check(shortPreview.Width == 220 && shortPreview.Height == 96 && shortPreview.Y == 240, "short measured content keeps its natural size, not the maximum empty surface");
-        var longPreview = OpenCodeDetailPopupLayout.PreviewPlacement(40, 200, 300, 32, 1200, 5000, 1600, 1000);
-        Check(longPreview.Height == 752 && longPreview.Width == 1200, "long measured content clamps to roomier side for scrolling");
+        var longPreview = OpenCodeDetailPopupLayout.PreviewPlacement(800, 200, 32, 600, 5000, band, 1000);
+        Check(longPreview.Height == 752 && longPreview.Width == 600, "long measured content clamps to roomier side for scrolling");
         foreach (var (w, h) in new[] { (1600d, 1000d), (800d, 600d), (300d, 200d), (120d, 80d) })
         foreach (var y in new[] { 8d, h / 2, h - 40 })
         foreach (var x in new[] { 0d, w - 20 })
         {
-            var r = OpenCodeDetailPopupLayout.PreviewPlacement(x, y, 20, 24,
-                OpenCodeDetailPopupLayout.PreviewWidths(20, w).Max, OpenCodeDetailPopupLayout.PreviewHeightLimit(h), w, h);
-            Check(r.X >= 8 && r.X + r.Width <= w - 8 && r.Y >= 8 && r.Y + r.Height <= h - 8,
-                "edge/small viewport width AND height clamp");
+            var b = OpenCodeDetailPopupLayout.PreviewSafeBand(w * 0.1, w * 0.9, w)!.Value;
+            var r = OpenCodeDetailPopupLayout.PreviewPlacement(x, y, 24,
+                OpenCodeDetailPopupLayout.PreviewWidths(w, b).Max, OpenCodeDetailPopupLayout.PreviewHeightLimit(h), b, h);
+            Check(r.X >= b.Left && r.X + r.Width <= b.Right && r.X >= 8 && r.X + r.Width <= w - 8 && r.Y >= 8 && r.Y + r.Height <= h - 8,
+                "edge/small viewport: width within content band AND height clamp");
             Check(r.Y >= y + 24 + 8 || r.Y + r.Height <= y - 8, "edge placement is exclusively above or below with gap");
             var room = Math.Max(y - 16, h - y - 40);
             Check(r.Height == Math.Max(0, room), "height fills roomier vertical side instead of a fixed cap");
@@ -131,6 +166,26 @@ internal static class Program
         Check(popup.Contains("new FlyoutPresenter") && !popup.Contains("Color.FromArgb") && !popup.Contains("TryBrush"), "native FlyoutPresenter chrome, no hand-rolled colors");
         Check(popup.Contains("interface IOpenCodeDetailContentSource") && popup.Contains("OpenCodeToolDetailView BuildDetailContent();")
             && popup.Contains("OpenCodeDetailHeader DetailHeader { get; }") && popup.Contains("void OnDetailStateChanged(bool shown, bool pinned);"), "IOpenCodeDetailContentSource API stable");
+        var toolPart = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolPartView.cs"));
+        var chipView = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeTimelineChipView.cs"));
+        var groupView = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolGroupView.cs"));
+        Check(!toolPart.Contains("ToolTipService.SetToolTip(_row") && !chipView.Contains("ToolTipService.SetToolTip(_chip"),
+            "A8: duplicated native text tooltips on tool rows / timeline chips (终端完成 etc.) are removed");
+        Check(toolPart.Contains("ToolTipService.SetToolTip(_backgroundButton") && groupView.Contains("ToolTipService.SetToolTip(_backgroundButton")
+            && popup.Contains("ToolTipService.SetToolTip(_closeButton, \"关闭（Esc）\")") && content.Contains("ToolTipService.SetToolTip(copy"),
+            "A8: unrelated action tooltips (background, close, copy) are kept");
+        Check(toolPart.Contains("_row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); HoverEnterDetail(); };")
+            && toolPart.Contains("_row.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e);")
+            && chipView.Contains("_chip.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e); OpenCodeToolDetailPopup.Shared.HoverEnter(Source); };")
+            && chipView.Contains("_chip.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e);")
+            && groupView.Contains("if (_enterLeaf is not null) OpenCodeToolDetailPopup.Shared.TrackPointer(_header, e);")
+            && groupView.Contains("_header.PointerMoved +="),
+            "A8: row, chip and collapsed single-leaf header capture the entry point before hover and track moves");
+        Check(popup.Contains("ReferenceEquals(element, _previewAnchor)") && popup.Contains("ReferenceEquals(element, anchor)")
+            && popup.Contains("TryContentBand(anchor, root.Size.Width, out var band)") && popup.Contains("ContentColumnName = \"MessageHost\"")
+            && popup.Contains("viewport.ViewportWidth") && !popup.Contains("origin = new Point(0, 0)") && popup.Contains("if (_previewPopup.IsOpen) Close();"),
+            "A8: pointer applies only to the current anchor; bounds = MessageHost column ∩ visible scroll viewport; no window/(0,0) fallback");
+        Check(popup.Contains("OpenCodeDetailPopupLayout.LargeView(") && popup.Contains("LayoutLarge(root.Size)"), "A8: large view branch unchanged");
         Check(!content.Contains("TextWrapping.NoWrap") && !content.Replace("preview.TextTrimming = TextTrimming.CharacterEllipsis;", string.Empty).Contains("TextTrimming.CharacterEllipsis") && !content.Contains("ScrollMode.Auto"), "full content always wraps without ellipsis/horizontal scroll; only explicitly collapsed code preview can elide");
         Check(!content.Contains("仅显示前") && content.Contains("OpenCodeDetailTextPolicy.ChunkLines"), "code blocks are not truncated");
         var child = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeChildChatWindow.cs"));

@@ -167,7 +167,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
         };
         _row.Click += (_, _) => TogglePinnedDetail();
-        _row.PointerEntered += (_, _) => HoverEnterDetail();
+        // A8: capture the entry point immediately (not on first move) so the preview centres on the pointer.
+        _row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); HoverEnterDetail(); };
+        _row.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e);
         _row.PointerExited += (_, _) => HoverExitDetail();
         _row.KeyDown += OnRowKeyDown;
         _row.Unloaded += (_, _) => CloseDetailIfShowing();
@@ -419,7 +421,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _nameText.Text = model.Name;
         _targetText.Text = model.Target;
         _targetText.Visibility = model.Target.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        ToolTipService.SetToolTip(_row, model.Target.Length == 0 ? model.Name : model.Name + "  " + model.Target);
+        // A8: no native text tooltip on the row — the custom hover preview already shows name/target.
 
         if (model.Additions is { } add && model.Deletions is { } del)
         {

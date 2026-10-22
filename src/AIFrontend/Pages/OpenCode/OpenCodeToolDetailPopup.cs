@@ -118,6 +118,15 @@ internal sealed class OpenCodeToolDetailPopup
     private double _previewExtentHeight = -1;
     private double _previewViewportWidth = -1;
 
+    // A8：最近一次指针位置（根坐标 DIP）及其所在元素；仅当该元素就是当前预览锚点时才用于横向定位。
+    private WeakReference<FrameworkElement>? _pointerElement;
+    private double _pointerRootX = double.NaN;
+    private OpenCodeDetailRect _previewRect;
+    private bool _previewPlaced;
+
+    /// <summary>消息内容列（OpenCodePage.xaml 的 MessageHost）：预览横向边界的来源，而不是整个窗口。</summary>
+    private const string ContentColumnName = "MessageHost";
+
     private OpenCodeToolDetailPopup()
     {
         // ---------------- 悬停预览 ----------------
@@ -309,6 +318,32 @@ internal sealed class OpenCodeToolDetailPopup
 
     internal void CloseIf(IOpenCodeDetailContentSource source) => CloseIfCore(source);
 
+    /// <summary>
+    /// A8：记录指针在 <paramref name="element"/>（来源行 / 折叠单项分组标题）上的位置。
+    /// 进入时立即调用（不等首次移动），移动时持续调用；若该元素正是当前预览的锚点，预览横向跟随指针。
+    /// </summary>
+    internal void TrackPointer(FrameworkElement element, PointerRoutedEventArgs e)
+    {
+        double x;
+        try
+        {
+            var local = e.GetCurrentPoint(element).Position;
+            x = element.TransformToVisual(null).TransformPoint(local).X;
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        if (!double.IsFinite(x)) return;
+        _pointerElement = new WeakReference<FrameworkElement>(element);
+        _pointerRootX = x;
+        if (_mode == OpenCodeDetailPopupMode.Preview && _previewPlaced && ReferenceEquals(element, _previewAnchor))
+        {
+            MovePreviewToPointer();
+        }
+    }
+
     /// <summary>关闭预览或大视图（大视图关闭后把焦点还给打开前的元素）。</summary>
     internal void Close()
     {
@@ -336,6 +371,7 @@ internal sealed class OpenCodeToolDetailPopup
         if (_scroller is { } scroll) scroll.LayoutUpdated -= OnPreviewContentLayoutUpdated;
         _scroller = null;
         _previewAnchor = null;
+        _previewPlaced = false;
         _previewChrome.ContentHost.Child = null;
         _dialogChrome.ContentHost.Child = null;
         _hover.Reset();
@@ -535,10 +571,19 @@ internal sealed class OpenCodeToolDetailPopup
             _hover.Reset();
             _hover.EnterAnchor();
             _previewAnchor = anchor;
+            _previewPlaced = false;
             _previewPopup.XamlRoot = root;
             ObserveRoot(root);
             UpdateTitle(source);
             Rebuild(keepScroll: false); // Rebuild performs the row-based fit before opening.
+            if (_mode != OpenCodeDetailPopupMode.Preview || !_previewPlaced)
+            {
+                // No valid content-column bounds (unloaded / different root / non-finite): never fall back
+                // to the window centre or (0,0) — just don't show.
+                if (_mode != OpenCodeDetailPopupMode.None) Close();
+                return;
+            }
+
             if (!_previewPopup.IsOpen)
             {
                 _previewPopup.IsOpen = true;
@@ -699,23 +744,22 @@ internal sealed class OpenCodeToolDetailPopup
             return;
         }
 
-        Point origin;
-        try
+        if (!anchor.IsLoaded || !TryAnchorOrigin(anchor, out var origin) || !TryContentBand(anchor, root.Size.Width, out var band))
         {
-            origin = anchor.TransformToVisual(null).TransformPoint(new Point(0, 0));
-        }
-        catch (Exception)
-        {
-            origin = new Point(0, 0);
+            // Invalid bounds: never place against the whole window or (0,0); close a stale preview instead.
+            _previewPlaced = false;
+            if (_previewPopup.IsOpen) Close();
+            return;
         }
 
+        var pointerX = PointerX(anchor, origin);
         _placingPreview = true;
         try
         {
-        var (_, maxWidth) = OpenCodeDetailPopupLayout.PreviewWidths(anchor.ActualWidth, root.Size.Width);
+        var (_, maxWidth) = OpenCodeDetailPopupLayout.PreviewWidths(anchor.ActualWidth, band);
         var height = OpenCodeDetailPopupLayout.PreviewHeightLimit(root.Size.Height);
         var capacity = OpenCodeDetailPopupLayout.PreviewPlacement(
-            origin.X, origin.Y, anchor.ActualWidth, anchor.ActualHeight, maxWidth, height, root.Size.Width, root.Size.Height);
+            pointerX, origin.Y, anchor.ActualHeight, maxWidth, height, band, root.Size.Height);
         _previewHint.Visibility = Visibility.Collapsed;
         double MeasureFullHeight(double width)
         {
@@ -727,19 +771,134 @@ internal sealed class OpenCodeToolDetailPopup
             _previewPresenter.Measure(new Size(width, double.PositiveInfinity));
             return _previewPresenter.DesiredSize.Height;
         }
-        var fit = OpenCodeDetailPopupLayout.FitPreview(anchor.ActualWidth, root.Size.Width, capacity.Height, MeasureFullHeight);
+        var fit = OpenCodeDetailPopupLayout.FitPreview(anchor.ActualWidth, band, capacity.Height, MeasureFullHeight);
         _previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed;
         var fullHeight = MeasureFullHeight(fit.Width);
         var rect = OpenCodeDetailPopupLayout.PreviewPlacement(
-            origin.X, origin.Y, anchor.ActualWidth, anchor.ActualHeight, fit.Width, fullHeight, root.Size.Width, root.Size.Height);
+            pointerX, origin.Y, anchor.ActualHeight, fit.Width, fullHeight, band, root.Size.Height);
         _previewPresenter.Width = rect.Width;
         // Keep height automatic so streamed text / decoded images can grow naturally up to this side's capacity.
         _previewPresenter.Height = double.NaN;
         _previewPresenter.MaxHeight = capacity.Height;
         _previewPopup.HorizontalOffset = rect.X;
         _previewPopup.VerticalOffset = rect.Y;
+        _previewRect = rect;
+        _previewPlaced = true;
         }
         finally { _placingPreview = false; }
+    }
+
+    /// <summary>
+    /// A8：指针在锚点上水平移动时只移动 X（不重建 / 不重新测量内容）；内容列变窄到放不下当前宽度时才完整重排。
+    /// </summary>
+    private void MovePreviewToPointer()
+    {
+        if (_placingPreview || _previewAnchor is not { XamlRoot: { } root } anchor) return;
+        if (!anchor.IsLoaded || !TryAnchorOrigin(anchor, out var origin) || !TryContentBand(anchor, root.Size.Width, out var band))
+        {
+            PlacePreview();
+            return;
+        }
+
+        if (band.Width + 0.5 < _previewRect.Width)
+        {
+            PlacePreview();
+            return;
+        }
+
+        var x = OpenCodeDetailPopupLayout.PreviewX(PointerX(anchor, origin), _previewRect.Width, band);
+        if (Math.Abs(x - _previewRect.X) < 0.5) return;
+        _previewRect = _previewRect with { X = x };
+        _previewPopup.HorizontalOffset = x;
+    }
+
+    /// <summary>当前指针 X（根坐标）；指针未在该锚点上记录过（键盘 / 其它来源）时退回锚点中心——仍受内容列安全区夹紧。</summary>
+    private double PointerX(FrameworkElement anchor, Point origin)
+        => _pointerElement is { } weak && weak.TryGetTarget(out var element) && ReferenceEquals(element, anchor) && double.IsFinite(_pointerRootX)
+            ? _pointerRootX
+            : origin.X + (anchor.ActualWidth / 2);
+
+    private static bool TryAnchorOrigin(FrameworkElement anchor, out Point origin)
+    {
+        try
+        {
+            origin = anchor.TransformToVisual(null).TransformPoint(new Point(0, 0));
+        }
+        catch (Exception)
+        {
+            origin = default;
+            return false;
+        }
+
+        return double.IsFinite(origin.X) && double.IsFinite(origin.Y);
+    }
+
+    /// <summary>
+    /// A8：预览横向安全区 = 锚点所在消息内容列（MessageHost，去掉其左右 Padding）与其外层可见滚动视口的交集，
+    /// 变换到同一 XamlRoot 坐标后两侧再各留约 10%。找不到内容列时用最近的滚动视口内容；都没有则无效（不退回窗口）。
+    /// </summary>
+    private static bool TryContentBand(FrameworkElement anchor, double rootWidth, out OpenCodeDetailBand band)
+    {
+        band = default;
+        FrameworkElement? column = null;
+        ScrollViewer? viewport = null;
+        ScrollViewer? nearestScroll = null;
+        for (DependencyObject? node = VisualTreeHelper.GetParent(anchor); node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (column is null && node is FrameworkElement { Name: ContentColumnName } named)
+            {
+                column = named;
+                continue;
+            }
+
+            if (node is ScrollViewer scroll)
+            {
+                nearestScroll ??= scroll;
+                if (column is not null)
+                {
+                    viewport = scroll;
+                    break;
+                }
+            }
+        }
+
+        if (column is null)
+        {
+            if (nearestScroll is null) return false;
+            viewport = nearestScroll;
+            column = nearestScroll.Content as FrameworkElement ?? nearestScroll;
+        }
+
+        if (!TryHorizontalExtent(column, out var left, out var right)) return false;
+        var padding = column switch
+        {
+            Grid grid => grid.Padding,
+            Border border => border.Padding,
+            StackPanel panel => panel.Padding,
+            _ => default,
+        };
+        left += padding.Left;
+        right -= padding.Right;
+        if (viewport is not null && !ReferenceEquals(viewport, column))
+        {
+            if (!TryHorizontalExtent(viewport, out var viewLeft, out var viewRight)) return false;
+            if (viewport.ViewportWidth > 0) viewRight = Math.Min(viewRight, viewLeft + viewport.ViewportWidth);
+            left = Math.Max(left, viewLeft);
+            right = Math.Min(right, viewRight);
+        }
+
+        if (OpenCodeDetailPopupLayout.PreviewSafeBand(left, right, rootWidth) is not { } safe) return false;
+        band = safe;
+        return true;
+    }
+
+    private static bool TryHorizontalExtent(FrameworkElement element, out double left, out double right)
+    {
+        left = right = 0;
+        if (element.ActualWidth <= 0 || !TryAnchorOrigin(element, out var origin)) return false;
+        left = origin.X;
+        right = origin.X + element.ActualWidth;
+        return true;
     }
 
     private void ObserveRoot(XamlRoot? root)
