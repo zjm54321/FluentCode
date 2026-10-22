@@ -127,8 +127,8 @@
 | **B14** | B | `anthropic/claude-opus-5-5` | fixer + designer | 依据实际续接关系消除已恢复瞬态错误、未恢复工具错误全行红色语义 | B13 | `d081227` | 已提交，待统一验收；仅显未恢复错误、同会话新attempt续接成功后清除关联旧错、工具整行红 |
 | **B15** | B | `anthropic/claude-opus-5-5` | designer + fixer | Composer placeholder 趣味 splash 词库（打开/切上下文轮换，新增） | B6 | `64c1440` | 已提交，待统一验收；Minecraft/Claude Code风格、通用俏皮+真实功能提示、不替用户输入 |
 | **B16** | B | `anthropic/claude-opus-5-5` | designer | 处理摘要视觉主次淡化（已处理标签/文字图标灰化小字，正文优先，新增） | B1 | `ed9eed0` | 已提交，待统一验收；已处理项视觉弱化让正文突出、主题与无障碍对比度、不淡化B14真实错误 |
-| **B17** | B | `anthropic/claude-opus-5-5` | designer + fixer | working 动画与状态词库（齿轮转/点动，通用+低概率模型特定段子，新增） | B13 | `待办` | 齿轮/点真实动、仅匹配当前执行模型才出特定段子、装饰性不改真状态、克制停机 |
-| **B18** | B | `anthropic/claude-opus-5-5` | fixer + designer | working group 可展开/手动收回（收回显当前步骤，展开显处理中，新增） | B4 | `待办` | 手动收回不被步骤更新强撑、收回显当前步骤、展开显全貌、不丢内容 |
+| **B17** | B | `anthropic/claude-opus-5-5` | designer + fixer | working 动画与状态词库（齿轮转/点动，通用+低概率模型特定段子，新增） | B13 | `1619afd` | 已提交，待统一验收；齿轮/点真实动、仅匹配当前执行模型才出特定段子、装饰性不改真状态、克制停机 |
+| **B18** | B | `anthropic/claude-opus-5-5` | fixer + designer | working group 可展开/手动收回（收回显当前步骤，展开显处理中，新增） | B4 | `f2f3579` | 已提交，待统一验收；手动收回不被步骤更新强撑、收回显当前步骤、展开显全貌、不丢内容 |
 
 ---
 
@@ -779,8 +779,8 @@
 | **B14** | 依据实际续接消除瞬态错误与工具全行红 | `anthropic/claude-opus-5-5` | `feat(opencode): hide recovered transient errors and mark failed tool rows red` | `d0812277aee1524f735ef9ee199c834a34c15474` | 已提交，待统一验收 | parent |
 | **B15** | Composer placeholder 趣味 splash 词库 | `anthropic/claude-opus-5-5` | `feat(opencode): rotate playful composer placeholder splashes` | `64c1440143b577c6cb109b96d86b57dbe22839bf` | 已提交，待统一验收 | parent |
 | **B16** | 处理摘要视觉主次淡化弱化 | `anthropic/claude-opus-5-5` | `style(opencode): de-emphasize completed processing summaries` | `ed9eed0e5208e63806a726eacb745412d001027b` | 已提交，待统一验收 | parent |
-| **B17** | working 动画与状态词库（齿轮/点动） | `anthropic/claude-opus-5-5` | `feat(opencode): working animation with status and satire phrase library [建议]` | `待办` | 待验收 | parent |
-| **B18** | working group 可展开与手动收回 | `anthropic/claude-opus-5-5` | `feat(opencode): collapsible working group preserving manual state [建议]` | `待办` | 待验收 | parent |
+| **B17** | working 动画与状态词库（齿轮/点动） | `anthropic/claude-opus-5-5` | `feat(opencode): animate working indicator with gear, dots and status phrases` | `1619afdf3895db632d042024ce8011217b085908` | 已提交，待统一验收 | parent |
+| **B18** | working group 可展开与手动收回 | `anthropic/claude-opus-5-5` | `feat(opencode): let users collapse the working group and keep their choice` | `f2f3579d52c29dd2e89f1adc676a92dfd2e6e679` | 已提交，待统一验收 | parent |
 
 ---
 
