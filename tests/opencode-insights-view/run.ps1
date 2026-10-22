@@ -10,7 +10,7 @@ param(
     [string]$SourceRoot,
     [string]$ViewSource,
     [string]$SessionInsightsSource,
-    [string]$Output
+    [Alias('EvidenceRoot')][string]$Output
 )
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
@@ -70,6 +70,7 @@ $sources = $openCode + @(
     (Join-Path $PSScriptRoot 'ContextPageHost.cs'),
     (Join-Path $PSScriptRoot 'ContextPageTests.cs'),
     (Join-Path $PSScriptRoot 'PageOriginTests.cs'),
+    (Join-Path $PSScriptRoot 'TodoControllerTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
 
 # Extract complete production members verbatim (never a copied implementation); fail if missing/ambiguous.

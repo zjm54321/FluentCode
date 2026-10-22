@@ -65,7 +65,8 @@ internal static class Program
         Run("visible: renders raise no confirmation/refresh/read events; user toggle still raises one", true, Events);
         Run("sections: SelectorBar switch only toggles page visibility (no rebuild, Billion owner kept, no events)", true, Sections);
         Run("agents: grouped list, child title shown (no id/foreground text), Running/All filter, click opens child directly", true, Agents);
-        Run("todo: server order kept (no status grouping), per-row status glyph, optional priority", true, TodoList);
+        Run("to do: official look, glyphs, collapse w/ remaining, unknown/failure/empty/disabled/partial states", true, TodoList);
+        Run("to do: real controller config, local derivation and stale-session/epoch fences", true, _ => TodoControllerTests.Run());
         Run("context ring: header 32x32 button, compact numbers, thresholds, ACP block list, Billion in-place refreshes flyout", true, ContextRing);
         Run("connection flyout: concise rows, built-ins silently hidden, clickable MCP/plugin detail + MCP control actions", true, ConnectionFlyout);
 
@@ -259,39 +260,98 @@ internal static class Program
         Check(requested.Count == 1, "renders and filter switches raise no navigation");
     }
 
+    private static OpenCodeTodoSnapshot TodoSnapshot(OpenCodeTodoState state, bool complete, string reason, params OpenCodeTodoItem[] items)
+        => new(new OpenCodeCapabilityScope("ep-view", 1, "/work", new DateTimeOffset(2026, 10, 18, 0, 0, 0, TimeSpan.Zero)),
+            "ses_synthetic", state, ImmutableArray.Create(items), items.Length > 0 ? "msg_todo" : null, complete,
+            new OpenCodeCapabilityState(OpenCodeCapabilityAvailability.Available, "ok"), reason);
+
+    private static StackPanel DrawTodo(OpenCodeSessionInsightsView view, OpenCodeInsightState state, OpenCodeTodoSnapshot? todo, string note = "note")
+    {
+        Draw(view, Billion(OpenCodeBillionPhase.Idle, confirmed: false) with
+        {
+            Todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(state, todo, note),
+        });
+        return (StackPanel)Field<StackPanel[]>(view, "_pages")[0].Children[0];
+    }
+
+    private static StackPanel TodoContent(StackPanel panel) => (StackPanel)panel.Children[1];
+
+    private static string BadgeText(StackPanel panel)
+    {
+        var heading = panel.Children[0] is Button button ? (Grid)button.Content! : (Grid)panel.Children[0];
+        return heading.Children.OfType<Border>().SingleOrDefault()?.Child is TextBlock text ? text.Text : "";
+    }
+
+    // A10: official v2.1.1 sidebar look — "to do" header, [✓][•][ ][-] glyph equivalents, >2 collapsible with remaining count.
     private static void TodoList(OpenCodeSessionInsightsView view)
     {
-        var at = new DateTimeOffset(2026, 10, 18, 0, 0, 0, TimeSpan.Zero);
-        var scope = new OpenCodeCapabilityScope("ep-view", 1, "/work", at);
-        var items = ImmutableArray.Create(
-            new OpenCodeTodoItem("first pending without priority", "pending", ""),
-            new OpenCodeTodoItem("second completed high", "completed", "high"),
-            new OpenCodeTodoItem("third in progress", "in_progress", ""),
-            new OpenCodeTodoItem("fourth cancelled low", "cancelled", "low"));
-        var todo = new OpenCodeTodoSnapshot(scope, "ses_synthetic", items, "msg_todo", true,
-            new OpenCodeCapabilityState(OpenCodeCapabilityAvailability.Available, "ok"), "来自最新已完成的 todowrite（公开消息回放）");
-        var snapshot = Billion(OpenCodeBillionPhase.Idle, confirmed: false) with
-        {
-            Todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(OpenCodeInsightState.Loaded, todo, "ok"),
-        };
-        Draw(view, snapshot);
-        var todoPanel = (StackPanel)Field<StackPanel[]>(view, "_pages")[0].Children[0];
-        var list = todoPanel.Children.OfType<StackPanel>().Single()
-            .Children.OfType<StackPanel>().Single(p => AutomationProperties.GetAutomationId(p) == "OpenCodeInsightsTodoList");
-        Check(list.Children.Count == 4, "H9/D2: all 4 todos shown, including those without priority");
-        var rowTexts = list.Children.Cast<Grid>()
-            .Select(row => row.Children.OfType<TextBlock>().First().Text).ToList();
-        Check(rowTexts.SequenceEqual(new[]
-            {
-                "first pending without priority",
-                "second completed high",
-                "third in progress",
-                "fourth cancelled low",
-            }), "H9: server original order preserved (no grouping by status)");
-        var glyphs = list.Children.Cast<Grid>()
-            .Select(row => row.Children.OfType<FontIcon>().Single().Glyph).ToList();
-        Check(glyphs.SequenceEqual(new[] { "\uE739", "\uE73A", "\uE73C", "\uE711" }), "H9: per-row status icon");
-        Check(AllText(todoPanel).Contains("已完成 1 / 4"), "todo summary count");
+        OpenCodeSessionInsightsView.TodoExpanded = true;
+        var four = TodoSnapshot(OpenCodeTodoState.Listed, true, "来自最新一次 todowrite",
+            new OpenCodeTodoItem("first pending", "pending"), new OpenCodeTodoItem("second completed", "completed"),
+            new OpenCodeTodoItem("third in progress", "in_progress"), new OpenCodeTodoItem("fourth cancelled", "cancelled"));
+        var todoPanel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
+        Check(AutomationProperties.GetAutomationId(todoPanel) == "OpenCodeInsightsTodo", "section id stable");
+        var toggle = todoPanel.Children[0] as Button;
+        Check(toggle is not null && AutomationProperties.GetAutomationId(toggle) == "OpenCodeInsightsTodoToggle", ">2 items → clickable header");
+        var heading = (Grid)toggle!.Content!;
+        var texts = heading.Children.OfType<TextBlock>().ToList();
+        Check(texts[0].Text == "to do", "header copy is \"to do\"");
+        var chevron = heading.Children.OfType<FontIcon>().Single();
+        var remaining = texts.Single(t => AutomationProperties.GetAutomationId(t) == "OpenCodeInsightsTodoRemaining");
+        Check(chevron.Glyph == "\uE70D" && remaining.Visibility == Visibility.Collapsed && TodoContent(todoPanel).Visibility == Visibility.Visible,
+            "default expanded (official open:true): chevron down, remaining hidden");
+        Check(remaining.Text == "（2 项未完成）", "remaining = pending + in_progress");
+        Check(BadgeText(todoPanel) == "", "complete list has no badge");
+        var list = TodoContent(todoPanel).Children.OfType<StackPanel>()
+            .Single(p => AutomationProperties.GetAutomationId(p) == "OpenCodeInsightsTodoList");
+        Check(list.Children.Count == 4, "all todos shown");
+        var rows = list.Children.Cast<Grid>().ToList();
+        Check(rows.Select(row => row.Children.OfType<TextBlock>().First().Text).SequenceEqual(new[]
+            { "first pending", "second completed", "third in progress", "fourth cancelled" }), "server original order preserved (no grouping by status)");
+        var glyphs = rows.Select(row => row.Children.OfType<FontIcon>().Single()).ToList();
+        Check(glyphs.Select(g => g.Glyph).SequenceEqual(new[] { "\uECCA", "\uE73E", "\uECCC", "\uE738" }),
+            "glyphs ≈ official [ ] [✓] [•] [-]");
+        Check(glyphs[1].Opacity < 1 && glyphs[3].Opacity < 1 && glyphs[0].Opacity == 1 && glyphs[2].Opacity == 1, "completed/cancelled de-emphasized");
+        Check(rows.Select(row => AutomationProperties.GetName(row)).SequenceEqual(new[]
+            { "未开始：first pending", "已完成：second completed", "进行中：third in progress", "已取消：fourth cancelled" }),
+            "row accessible names carry status; no priority");
+        Check(!HasText(todoPanel, "优先级") && !HasText(todoPanel, "已完成 1 / 4"), "no priority / summary UI the official one lacks");
+
+        // Collapse → remembered for this app run across re-render.
+        toggle.SimulateClick();
+        Check(!OpenCodeSessionInsightsView.TodoExpanded && chevron.Glyph == "\uE76C" && remaining.Visibility == Visibility.Visible
+            && TodoContent(todoPanel).Visibility == Visibility.Collapsed && AutomationProperties.GetName(toggle)!.Contains("已折叠"),
+            "collapse: chevron right, \"（N 项未完成）\" shown, list hidden");
+        todoPanel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
+        Check(TodoContent(todoPanel).Visibility == Visibility.Collapsed
+            && ((Grid)((Button)todoPanel.Children[0]).Content!).Children.OfType<FontIcon>().Single().Glyph == "\uE76C",
+            "collapsed state remembered across re-render");
+        ((Button)todoPanel.Children[0]).SimulateClick();
+        Check(OpenCodeSessionInsightsView.TodoExpanded && TodoContent(todoPanel).Visibility == Visibility.Visible, "expand again");
+
+        // ≤2 items: always expanded, no toggle, even if user collapsed before.
+        OpenCodeSessionInsightsView.TodoExpanded = false;
+        todoPanel = DrawTodo(view, OpenCodeInsightState.Loaded,
+            TodoSnapshot(OpenCodeTodoState.Listed, true, "ok", new OpenCodeTodoItem("a", "pending"), new OpenCodeTodoItem("b", "in_progress")));
+        Check(todoPanel.Children[0] is Grid && TodoContent(todoPanel).Visibility == Visibility.Visible
+            && ((Grid)todoPanel.Children[0]).Children.OfType<FontIcon>().Count() == 0, "≤2 items: plain header, always expanded");
+        OpenCodeSessionInsightsView.TodoExpanded = true;
+
+        // Three distinct non-list states + disabled + partial.
+        var unknown = DrawTodo(view, OpenCodeInsightState.Partial, TodoSnapshot(OpenCodeTodoState.Unknown, false, "消息历史未取全，暂无法确认是否有 to do"));
+        Check(BadgeText(unknown) == "未知" && HasText(unknown, "暂无法确认") && AutomationProperties.GetName(unknown) == "to do：状态未知", "Unknown state");
+        var failure = DrawTodo(view, OpenCodeInsightState.Failed, TodoSnapshot(OpenCodeTodoState.ReadFailure, false, "消息读取失败，无法读取 to do；请刷新消息后重试"));
+        Check(BadgeText(failure) == "读取失败" && HasText(failure, "消息读取失败") && AutomationProperties.GetName(failure) == "to do：读取失败", "ReadFailure state");
+        var empty = DrawTodo(view, OpenCodeInsightState.Loaded, TodoSnapshot(OpenCodeTodoState.Empty, true, "to do 已清空"));
+        Check(BadgeText(empty) == "" && HasText(empty, "to do 已清空") && AutomationProperties.GetName(empty) == "to do：空"
+            && !TodoContent(empty).Children.OfType<StackPanel>().Any(), "Empty state: minimal, no badge, no list");
+        var disabled = DrawTodo(view, OpenCodeInsightState.Unavailable, TodoSnapshot(OpenCodeTodoState.Disabled, true, "当前后端未启用 to do（experimental.todo）"));
+        Check(BadgeText(disabled) == "未启用" && HasText(disabled, "当前后端未启用 to do（experimental.todo）"), "capability-off message");
+        var partial = DrawTodo(view, OpenCodeInsightState.Partial,
+            TodoSnapshot(OpenCodeTodoState.Unknown, false, "消息历史未取全，暂无法确认当前 to do"));
+        Check(BadgeText(partial) == "未知" && HasText(partial, "未取全"), "incomplete pagination remains Unknown, not Empty");
+        var notLoaded = DrawTodo(view, OpenCodeInsightState.NotLoaded, null, "尚未读取");
+        Check(BadgeText(notLoaded) == "未读取" && HasText(notLoaded, "尚未读取"), "not loaded section");
     }
 
     private static IEnumerable<string?> FlyoutGroupIds(OpenCodeContextRing ring)
@@ -523,6 +583,8 @@ internal static class Program
             Children = new OpenCodeInsightSection<OpenCodeSubagentStatusSnapshot>(OpenCodeInsightState.Loaded, children, "loaded"),
         };
     }
+
+    private static bool HasText(UIElement root, string value) => AllText(root).Any(t => t.Contains(value, StringComparison.Ordinal));
 
     private static IEnumerable<string> AllText(UIElement root)
     {

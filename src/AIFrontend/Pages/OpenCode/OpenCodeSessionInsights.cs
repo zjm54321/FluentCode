@@ -155,7 +155,7 @@ public sealed record OpenCodeSessionInsightsSnapshot(
 /// 同次显式加载在已核实的会话目录发起一次 Billion 地址元数据 RPC；手动覆盖优先，不自动重试。
 /// Billion 只在 <see cref="ReadBillionAsync"/>（单独点击且已确认当前来源的地址）时读取 health + 单会话 detail。
     /// 上下文另由已接纳消息本地更新；每个绑定最多自动读取一次模型目录，不读取费用/能力/Billion。
-    /// 本类没有计时器或后台轮询；Todo 仍是显式读取快照。
+    /// 本类没有计时器或后台轮询；to do 使用已接纳消息本地派生，配置开关仅在显式加载时读取。
 /// </para>
 /// <para>
 /// 代际：每次读取捕获 <see cref="OpenCodeInsightsBinding"/>，经来源 TryExecute 起发，await 后以
@@ -191,6 +191,8 @@ public sealed class OpenCodeSessionInsightsController
     private OpenCodeMessage[] _contextMessages = Array.Empty<OpenCodeMessage>();
     private bool _contextHistoryComplete;
     private bool _contextHasMessages;
+    private OpenCodeTodoHistory _todoHistory = OpenCodeTodoHistory.NoRevert;
+    private OpenCodeTodoConfig _todoConfig = OpenCodeTodoConfig.Unknown;
     private OpenCodeModelRef? _contextModel;
     private string? _contextDirectory;
     private OpenCodeModelInfo[]? _contextModels;
@@ -239,7 +241,8 @@ public sealed class OpenCodeSessionInsightsController
     public long ContextMetadataVersion => _contextModelVersion;
 
     /// <summary>只更新本地上下文参考。调用方已核实 binding、历史投影及消息顺序；无网络/发现/费用读取。</summary>
-    public void UpdateContext(OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> orderedMessages, bool historyComplete)
+    public void UpdateContext(OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> orderedMessages, bool historyComplete,
+        OpenCodeTodoHistory? todoHistory = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(orderedMessages);
@@ -251,6 +254,28 @@ public sealed class OpenCodeSessionInsightsController
             if (!OwnsContext(binding)) return;
             CaptureContextMessages(orderedMessages, historyComplete);
             changed = SetContextSnapshot();
+            if (todoHistory is not null)
+            {
+                _todoHistory = todoHistory;
+                var scope = Snapshot.Todo.Value?.Scope ?? new OpenCodeCapabilityScope(binding.Source.Identity,
+                    binding.Revision, _contextDirectory, DateTimeOffset.UtcNow);
+                var todo = BuildTodo(scope);
+                var before = Snapshot.Todo.Value;
+                var after = todo.Value!;
+                if (before is null || before.State != after.State || before.Complete != after.Complete
+                    || before.SourceMessageId != after.SourceMessageId || before.Reason != after.Reason
+                    || before.Capability != after.Capability || !before.Items.SequenceEqual(after.Items))
+                {
+                    var capabilities = Snapshot.Capabilities.Value;
+                    SetSnapshot(Snapshot with
+                    {
+                        Todo = todo,
+                        Capabilities = capabilities is null ? Snapshot.Capabilities
+                            : Snapshot.Capabilities with { Value = capabilities with { Todo = after.Capability } },
+                    });
+                    changed = true;
+                }
+            }
         });
         if (changed) Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -383,6 +408,8 @@ public sealed class OpenCodeSessionInsightsController
 
     private void ClearContext()
     {
+        _todoHistory = OpenCodeTodoHistory.NoRevert;
+        _todoConfig = OpenCodeTodoConfig.Unknown;
         CancelAndForget(ref _contextCts);
         _contextCatalogVersion++;
         _contextMessages = Array.Empty<OpenCodeMessage>();
@@ -493,10 +520,11 @@ public sealed class OpenCodeSessionInsightsController
     /// </summary>
     public async Task LoadAsync(
         OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> orderedMessages, bool historyComplete,
-        CancellationToken outer)
+        CancellationToken outer, OpenCodeTodoHistory? todoHistory = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(orderedMessages);
+        todoHistory ??= OpenCodeTodoHistory.NoRevert;
         if (!IsCurrent(binding))
         {
             return;
@@ -513,6 +541,7 @@ public sealed class OpenCodeSessionInsightsController
         var ct = cts.Token;
         var messages = orderedMessages.ToArray(); // 起发时快照：之后的轮询不改变本次投影输入。
         CaptureContextMessages(messages, historyComplete);
+        _todoHistory = todoHistory;
         var contextModelVersion = _contextModelVersion;
 
         // 刷新时保留上次结果（仍标注采样时间），只在从未读取过的分区显示“读取中”。
@@ -597,12 +626,16 @@ public sealed class OpenCodeSessionInsightsController
                 : StartRead(id, binding, ct, () => binding.Client.GetMcpServersAsync(directory, ct));
             var pluginsTask = directory is null ? null
                 : StartRead(id, binding, ct, () => binding.Client.GetPluginsAsync(directory, ct));
+            // 原生 to do 开关（experimental.todo）；只读、与其它只读请求同源同代际。
+            var todoConfigTask = directory is null ? null
+                : StartRead(id, binding, ct, async () => (bool?)await binding.Client.GetExperimentalTodoEnabledAsync(directory, ct));
 
             var tree = await AwaitOptionalAsync(treeTask, wanted: root is not null);
             var models = await AwaitOptionalAsync(modelsTask, wanted: directory is not null);
             var mcp = await AwaitOptionalAsync(mcpTask, wanted: directory is not null);
             var plugins = await AwaitOptionalAsync(pluginsTask, wanted: directory is not null);
-            if (tree.Lost || models.Lost || mcp.Lost || plugins.Lost || !IsOwner(id, binding)) return;
+            var todoConfig = await AwaitOptionalAsync(todoConfigTask, wanted: directory is not null);
+            if (tree.Lost || models.Lost || mcp.Lost || plugins.Lost || todoConfig.Lost || !IsOwner(id, binding)) return;
 
             var sampledAt = DateTimeOffset.UtcNow;
             var cost = BuildCost(binding.SessionId, root, ancestorReads, rootFailure, tree, sampledAt);
@@ -626,15 +659,17 @@ public sealed class OpenCodeSessionInsightsController
                 _contextCatalogVersion++; // An older automatic catalog completion cannot replace this explicit read.
             }
             var context = BuildContext(); // Latest accepted usage, never the old explicit-load input snapshot.
-            var todoSnapshot = OpenCodeTodoReplay.Replay(binding.SessionId, messages, historyComplete, capabilities);
-            var todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(
-                todoSnapshot.Capability.Availability switch
+            // 官方原生 to do：最新已完成 todowrite（撤回点之前）；不再由插件能力门控，也不回退插件来源。
+            _todoConfig = todoConfig.Value switch
                 {
-                    OpenCodeCapabilityAvailability.Unknown => OpenCodeInsightState.Failed,
-                    OpenCodeCapabilityAvailability.Unavailable => OpenCodeInsightState.Unavailable,
-                    _ => todoSnapshot.Complete ? OpenCodeInsightState.Loaded : OpenCodeInsightState.Partial,
-                },
-                todoSnapshot, todoSnapshot.Reason);
+                    true => OpenCodeTodoConfig.Enabled,
+                    false => OpenCodeTodoConfig.Disabled,
+                    null => OpenCodeTodoConfig.Unknown,
+                };
+            // A message/revert publication received during the HTTP read always wins over its starting input.
+            var todo = BuildTodo(scope);
+            capabilities = capabilities with { Todo = todo.Value!.Capability };
+            capabilitySection = capabilitySection with { Value = capabilities };
 
             var omoAvailable = capabilities.Omo.Availability == OpenCodeCapabilityAvailability.Available;
             Publish(Snapshot with
@@ -1088,6 +1123,19 @@ public sealed class OpenCodeSessionInsightsController
         => read.Value is { } items ? OpenCodeCapabilityRead<T>.Success(items)
             : read.Error is { } error ? OpenCodeCapabilityRead<T>.Failed(error)
             : OpenCodeCapabilityRead<T>.NotObserved();
+
+    private OpenCodeInsightSection<OpenCodeTodoSnapshot> BuildTodo(OpenCodeCapabilityScope scope)
+    {
+        var todo = OpenCodeTodoReplay.Derive(_binding!.SessionId, _contextMessages, _contextHistoryComplete,
+            _todoHistory, _todoConfig, scope);
+        return new(todo.State switch
+        {
+            OpenCodeTodoState.ReadFailure => OpenCodeInsightState.Failed,
+            OpenCodeTodoState.Disabled => OpenCodeInsightState.Unavailable,
+            _ when !todo.Complete => OpenCodeInsightState.Partial,
+            _ => OpenCodeInsightState.Loaded,
+        }, todo, todo.Reason);
+    }
 
     private void AdoptBinding(OpenCodeInsightsBinding binding)
     {

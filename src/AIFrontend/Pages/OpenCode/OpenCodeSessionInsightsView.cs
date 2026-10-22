@@ -352,7 +352,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
                 return;
             }
 
-            // 概况 = 任务（Todo）+ Agents；上下文圆环在页头（wave5 G5）。
+            // 概况 = to do + Agents；上下文圆环在页头（wave5 G5）。
             _overviewPage.Children.Add(TodoSection(snapshot));
             _overviewPage.Children.Add(_agents.Render(snapshot.Children, PrimaryAgent));
             _billionPage.Children.Add(BillionSection(snapshot));
@@ -411,51 +411,127 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     // MCP / 插件 / LSP 服务状态移到页头连接状态按钮的 Flyout（OpenCodeConnectionFlyout）。
 
     // ------------------------------------------------------------------
-    // 任务（概况分区内）
+    // to do（概况分区内）— 对齐官方 v2.1.1 sidebar：标题 "to do"；超过 2 项时标题可折叠，
+    // 折叠后显示“（N 项未完成）”，N = pending + in_progress；展开状态在本次应用运行期间记住。
     // ------------------------------------------------------------------
 
+    internal const string TodoTitle = "to do";
+
+    /// <summary>官方超过此数量才允许折叠（≤2 项始终展开）。</summary>
+    internal const int TodoCollapsibleThreshold = 2;
+
+    /// <summary>官方默认展开；本次应用运行期间记住用户的折叠选择（不落盘）。</summary>
+    internal static bool TodoExpanded { get; set; } = true;
+
     /// <summary>
-    /// 每行状态图标（Segoe Fluent Icons，只读外观，不是可勾选控件）。wave5 H9：保持服务端原始顺序、不按状态分组，
-    /// 状态只由行首图标与无障碍名称表达。
+    /// 每行状态图标（Segoe Fluent Icons，只读外观，不是可勾选控件），与官方 [✓] [•] [ ] [-] 一一对应。
+    /// 保持服务端原始顺序、不按状态分组。
     /// </summary>
     internal static string TodoGlyph(string status) => status switch
     {
-        "completed" => "\uE73A",   // CheckboxComposite（已勾选）
-        "in_progress" => "\uE73C", // CheckboxIndeterminate（进行中）
-        "cancelled" => "\uE711",   // Cancel
-        _ => "\uE739",             // Checkbox（待办 / 未识别）
+        "completed" => "\uE73E",   // CheckMark          ≈ [✓]
+        "in_progress" => "\uECCC", // RadioBtnOn（实心点）≈ [•]
+        "cancelled" => "\uE738",   // Remove（短横）      ≈ [-]
+        _ => "\uECCA",             // RadioBtnOff（空圈） ≈ [ ]（pending / 规范化后的未知状态）
     };
+
+    internal static string TodoRemainingText(int remaining) => "（" + remaining + " 项未完成）";
 
     private static UIElement TodoSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
         var section = snapshot.Todo;
-        var (panel, content) = Section("任务", section.State, "OpenCodeInsightsTodo");
-        if (section.Value is not { } todo)
+        var todo = section.Value;
+        var collapsible = todo is { State: OpenCodeTodoState.Listed } && todo.Items.Length > TodoCollapsibleThreshold;
+        var expanded = !collapsible || TodoExpanded;
+
+        var panel = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = 8 };
+        AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsTodo");
+        AutomationProperties.SetName(panel, TodoTitle + "：" + (todo is null ? DescribeState(section.State) : DescribeTodoState(todo)));
+        var badge = todo is null ? Badge(section.State) : TodoBadge(todo);
+
+        var heading = new Grid { ColumnSpacing = 6 };
+        if (collapsible)
+        {
+            heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        }
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var column = 0;
+        FontIcon? chevron = null;
+        if (collapsible)
+        {
+            chevron = new FontIcon { Glyph = expanded ? "\uE70D" : "\uE76C", FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
+            heading.Children.Add(chevron);
+            column++;
+        }
+        var title = OpenCodeInteractionUi.StyledText(TodoTitle, OpenCodeInteractionUi.BodyStrongStyleKey);
+        title.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(title, column++);
+        heading.Children.Add(title);
+        var remaining = OpenCodeInteractionUi.StyledText(TodoRemainingText(todo?.Remaining ?? 0), OpenCodeInteractionUi.CaptionSubtleStyleKey);
+        remaining.VerticalAlignment = VerticalAlignment.Center;
+        remaining.TextWrapping = TextWrapping.NoWrap;
+        remaining.Visibility = collapsible && !expanded ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetAutomationId(remaining, "OpenCodeInsightsTodoRemaining");
+        Grid.SetColumn(remaining, column++);
+        heading.Children.Add(remaining);
+        if (badge is not null)
+        {
+            Grid.SetColumn(badge, column);
+            heading.Children.Add(badge);
+        }
+
+        if (collapsible)
+        {
+            var toggle = new Button
+            {
+                Content = heading,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Padding = new Thickness(4, 2, 4, 2),
+            };
+            if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } style)
+            {
+                toggle.Style = style;
+            }
+            AutomationProperties.SetAutomationId(toggle, "OpenCodeInsightsTodoToggle");
+            AutomationProperties.SetName(toggle, TodoToggleName(expanded, todo!.Remaining));
+            toggle.Click += (_, _) =>
+            {
+                TodoExpanded = !TodoExpanded;
+                var open = TodoExpanded;
+                chevron!.Glyph = open ? "\uE70D" : "\uE76C";
+                remaining.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
+                content.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+                AutomationProperties.SetName(toggle, TodoToggleName(open, todo.Remaining));
+            };
+            panel.Children.Add(toggle);
+        }
+        else
+        {
+            panel.Children.Add(heading);
+        }
+        panel.Children.Add(content);
+        content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+
+        if (todo is null)
         {
             content.Children.Add(Caption(section.Note));
             return panel;
         }
 
-        if (todo.Capability.Availability != OpenCodeCapabilityAvailability.Available)
+        if (todo.State != OpenCodeTodoState.Listed)
         {
-            content.Children.Add(Caption(todo.Reason));
+            // 未知 / 读取失败 / 未启用 / 空：只保留一行说明（空态最淡，接近官方“空则隐藏”）。
+            content.Children.Add(Caption(todo.Reason, todo.State == OpenCodeTodoState.Empty ? 0.55 : 0.75));
             return panel;
         }
 
-        if (todo.Items.IsEmpty)
-        {
-            content.Children.Add(Caption(todo.Reason, 0.75));
-            return panel;
-        }
-
-        var done = todo.Items.Count(item => item.Status == "completed");
-        var summary = Caption("已完成 " + done + " / " + todo.Items.Length, 0.85);
-        AutomationProperties.SetAutomationId(summary, "OpenCodeInsightsTodoSummary");
-        content.Children.Add(summary);
-
-        var list = new StackPanel { Spacing = 8 };
+        var list = new StackPanel { Spacing = 6 };
         AutomationProperties.SetAutomationId(list, "OpenCodeInsightsTodoList");
-        AutomationProperties.SetName(list, "任务列表（服务端顺序）");
+        AutomationProperties.SetName(list, TodoTitle + " 列表（服务端顺序）");
         for (var index = 0; index < todo.Items.Length; index++)
         {
             list.Children.Add(TodoRow(todo.Items[index], index));
@@ -464,12 +540,15 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         content.Children.Add(list);
         if (!todo.Complete)
         {
-            // 只有“可能不完整”才需要说明；完整回放不再附加来源说明。
+            // 只有“可能不完整”才需要说明。
             content.Children.Add(Caption(todo.Reason, 0.55));
         }
 
         return panel;
     }
+
+    private static string TodoToggleName(bool expanded, int remaining)
+        => TodoTitle + "，" + (expanded ? "已展开" : "已折叠") + "，" + remaining + " 项未完成";
 
     private static UIElement TodoRow(OpenCodeTodoItem item, int index)
     {
@@ -477,26 +556,41 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var row = new Grid { ColumnSpacing = 8 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = new FontIcon { Glyph = TodoGlyph(item.Status), FontSize = 16, VerticalAlignment = VerticalAlignment.Top };
+        // 图标与首行文字基线对齐；完成 / 取消弱化，进行中加粗强调（对应官方的高亮行）。
+        var icon = new FontIcon
+        {
+            Glyph = TodoGlyph(item.Status), FontSize = 14, VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 3, 0, 0), Opacity = finished ? 0.55 : 1,
+        };
+        if (finished) icon.Style = OpenCodeInsightsTheme.TodoSecondaryIcon();
         var text = OpenCodeInteractionUi.StyledText(item.Content,
-            finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey, selectable: true);
+            item.Status == "in_progress" ? OpenCodeInteractionUi.BodyStrongStyleKey
+                : finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey, selectable: true);
         Grid.SetColumn(text, 1);
         row.Children.Add(icon);
         row.Children.Add(text);
-        var priority = DescribePriority(item.Priority);
-        if (priority.Length > 0)
-        {
-            var badge = OpenCodeInteractionUi.StyledText(priority, OpenCodeInteractionUi.CaptionSubtleStyleKey);
-            badge.VerticalAlignment = VerticalAlignment.Top;
-            Grid.SetColumn(badge, 2);
-            row.Children.Add(badge);
-        }
-
         AutomationProperties.SetAutomationId(row, "OpenCodeInsightsTodoItem." + index);
-        AutomationProperties.SetName(row, DescribeTodoStatus(item.Status) + (priority.Length > 0 ? "，" + priority + "优先级" : "") + "：" + item.Content);
+        AutomationProperties.SetName(row, DescribeTodoStatus(item.Status) + "：" + item.Content);
         return row;
     }
+
+    private static Border? TodoBadge(OpenCodeTodoSnapshot todo) => todo.State switch
+    {
+        OpenCodeTodoState.Unknown => BadgeOf("未知", "OpenCodeNeutralBadgeStyle"),
+        OpenCodeTodoState.ReadFailure => BadgeOf("读取失败", "OpenCodeCriticalBadgeStyle"),
+        OpenCodeTodoState.Disabled => BadgeOf("未启用", "OpenCodeNeutralBadgeStyle"),
+        _ when !todo.Complete => BadgeOf("部分", "OpenCodeCautionBadgeStyle"),
+        _ => null,
+    };
+
+    private static string DescribeTodoState(OpenCodeTodoSnapshot todo) => todo.State switch
+    {
+        OpenCodeTodoState.Unknown => "状态未知",
+        OpenCodeTodoState.ReadFailure => "读取失败",
+        OpenCodeTodoState.Disabled => "后端未启用",
+        OpenCodeTodoState.Empty => todo.Complete ? "空" : "空（部分数据）",
+        _ => todo.Items.Length + " 项，" + todo.Remaining + " 项未完成" + (todo.Complete ? "" : "（部分数据）"),
+    };
 
     // ------------------------------------------------------------------
     // Billion 分区
@@ -877,11 +971,11 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             OpenCodeInsightState.Failed => "OpenCodeCriticalBadgeStyle",
             _ => "OpenCodeNeutralBadgeStyle",
         };
-        if (text is null)
-        {
-            return null;
-        }
+        return text is null ? null : BadgeOf(text, style);
+    }
 
+    private static Border BadgeOf(string text, string style)
+    {
         // Brush references remain theme-aware for the entire badge lifetime.
         return new Border
         {
@@ -1089,22 +1183,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         _ => "原因未知",
     };
 
-    private static string DescribeTodoStatus(string status) => status switch
+    internal static string DescribeTodoStatus(string status) => status switch
     {
-        "pending" => "待办",
         "in_progress" => "进行中",
         "completed" => "已完成",
         "cancelled" => "已取消",
-        _ => status,
-    };
-
-    /// <summary>优先级文案；缺省（空字符串，wave3 D2）时不显示。</summary>
-    internal static string DescribePriority(string priority) => priority switch
-    {
-        "high" => "高",
-        "medium" => "中",
-        "low" => "低",
-        _ => priority,
+        _ => "未开始",
     };
 }
 

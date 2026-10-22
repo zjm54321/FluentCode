@@ -1,3 +1,4 @@
+param([string]$EvidenceRoot)
 # Headless only (.NET 10 SDK/reference pack, no restore, no UI): F2 tool-detail property list.
 # Compiles the REAL OpenCodeToolRowPresentation (pure data, no WinUI) and asserts the readable
 # key/value projection that replaces the raw JSON dump in the tool detail popup.
@@ -10,7 +11,7 @@ $dotnetRoot = Split-Path $dotnet
 $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
-$output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-tool-detail-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-tool-detail-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory -Path $output | Out-Null
 Write-Output "Evidence directory: $output"
 $assembly = Join-Path $output 'OpenCodeToolDetailTests.dll'

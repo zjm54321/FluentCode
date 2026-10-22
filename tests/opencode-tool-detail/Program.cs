@@ -150,6 +150,9 @@ internal static class Program
         }
 
         var dir = System.IO.Path.Combine(args[0], "src", "AIFrontend", "Pages", "OpenCode");
+        var permissions = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodePermissionPresentation.cs"));
+        Check(permissions.Contains("\"todowrite\" => \"更新 to do\"") && permissions.Contains("\"todoread\" => \"读取 to do\""),
+            "A10 permission copy changes labels, never tool ids");
         var popup = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolDetailPopup.cs"));
         var content = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolDetailContent.cs"));
         Check(popup.Contains("internal const int HoverOpenDelayMs = 800;") && popup.Contains("internal const int HoverSwitchDelayMs = 0;"), "confirmed initial 800ms / open-preview row switch 0ms contract");
@@ -295,6 +298,13 @@ internal static class Program
             Check(streaming.InputProperties.Count == 0 && streaming.InputText == "{\"comm", "streaming partial input is not parsed");
             var unknown = Model("x", "{\"status\":\"weird\",\"detail\":{\"a\":1}}");
             Check(unknown.RawState is not null && unknown.RawStateProperties.Any(r => r.Key == "detail" && r.Kind == OpenCodeToolPropertyKind.Group), "unrecognized state rendered as properties");
+
+            var todoWrite = Model("todowrite", "{\"status\":\"completed\",\"input\":{\"todos\":[{\"content\":\"待办内容原样保留\",\"status\":\"pending\"}]}}");
+            var todoRead = Model("todoread", "{\"status\":\"completed\",\"input\":{}}");
+            Check(todoWrite.Name == "更新 to do" && todoRead.Name == "查看 to do", "A10 app-owned to do tool-row copy");
+            Check(OpenCodeToolRowPresentation.DisplayName("custom_todowrite") == "custom_todowrite"
+                && Row(todoWrite.InputProperties, "content", 2).Value == "待办内容原样保留"
+                && Row(todoWrite.InputProperties, "status", 2).Value == "pending", "A10 custom ids, protocol fields and tool input content are unchanged");
 
             DetailPopupContract(args);
             ChildChatLifecycle().GetAwaiter().GetResult();

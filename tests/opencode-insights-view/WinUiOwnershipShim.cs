@@ -117,6 +117,7 @@ namespace Microsoft.UI.Xaml
         public double MaxHeight { get; set; }
         public VerticalAlignment VerticalAlignment { get; set; }
         public HorizontalAlignment HorizontalAlignment { get; set; }
+        public Thickness Margin { get; set; }
         public object? Tag { get; set; }
         public event RoutedEventHandler? Loaded;
         public event Windows.Foundation.TypedEventHandler<FrameworkElement, object>? ActualThemeChanged;
@@ -473,6 +474,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public sealed class FontIcon : FrameworkElement
     {
+        public Style? Style { get; set; }
         public string Glyph { get; set; } = string.Empty;
         public double FontSize { get; set; }
     }

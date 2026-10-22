@@ -108,7 +108,7 @@ public sealed partial class OpenCodePage
     {
         OnRuntimeMessagesAccepted(messages);
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
-            insights.UpdateContext(binding!, messages, IsLoadedMessageHistoryComplete());
+            insights.UpdateContext(binding!, messages, IsLoadedMessageHistoryComplete(), CaptureTodoHistory());
     }
 
     partial void OnRuntimeMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
@@ -241,13 +241,22 @@ public sealed partial class OpenCodePage
         {
             // 同次 LoadAsync 复用可信 Session.Info.Location 发起一次元数据发现；不会读取 Billion 健康/详情或代替确认。
             // 复用已加载、已净化的消息（旧→新）；只有分页链正常结束且无缺口才算历史完整。
-            await insights.LoadAsync(binding, MergeMessageHistory(), IsLoadedMessageHistoryComplete(), operation.Token);
+            await insights.LoadAsync(binding, MergeMessageHistory(), IsLoadedMessageHistoryComplete(), operation.Token,
+                CaptureTodoHistory());
         }
         catch (Exception)
         {
             // 控制器已把未完成分区标为“无法确认”；不在页面弹出原始错误。
         }
     }
+
+    /// <summary>
+    /// to do 派生所需的同源历史证据：分页链异常停止 = 读取失败；撤回位置只有在 Session 状态已确认
+    /// （且不待重新确认）时才算已知。消息本身不在此裁剪，由 <see cref="OpenCodeTodoReplay.Derive"/> 按官方规则裁剪。
+    /// </summary>
+    private OpenCodeTodoHistory CaptureTodoHistory()
+        => new(_messageChainState == MessagePaginationChainState.Stopped,
+            _messageHistoryBoundaryKnown && !_messageHistoryNeedsState, _messageRevertBoundary);
 
     /// <param name="renderedContext">点击时界面显示的上下文；原样交给控制器，不用新绑定替换。</param>
     private async Task ReadBillionInsightsAsync(OpenCodeBillionContext renderedContext)

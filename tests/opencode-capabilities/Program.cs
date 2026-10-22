@@ -106,7 +106,7 @@ internal static class Program
         Check(snapshot.McpServers.Select(row => row.Connection.Availability).SequenceEqual(expected), "all MCP states mapped conservatively");
         Check(snapshot.PluginEntries.All(row => row.Listed) && snapshot.PluginEntries[0].Running == true
             && snapshot.PluginEntries[1].Running == false && snapshot.PluginEntries[2].Running is null, "listed config evidence is separate from running");
-        Check(snapshot.Todo.Availability == OpenCodeCapabilityAvailability.Available && snapshot.Omo.Availability == OpenCodeCapabilityAvailability.Unavailable, "only active server plugin enables feature");
+        Check(snapshot.Todo.Availability == OpenCodeCapabilityAvailability.Unknown && snapshot.Omo.Availability == OpenCodeCapabilityAvailability.Unavailable, "plugin catalog cannot enable native to do");
         Check(snapshot.Lsp.Availability == OpenCodeCapabilityAvailability.Unavailable && snapshot.Lsp.Reason == "OpenCode V2 未公开LSP状态接口", "LSP never inferred from connection");
         Check(snapshot.Billion.Availability == OpenCodeCapabilityAvailability.Unavailable && requests.Count == 2, "Billion remains disabled without a request");
         Check(snapshot.Scope == Scope && snapshot.Complete, "scope/revision/sample time retained");
@@ -171,76 +171,111 @@ internal static class Program
     private static OpenCodeMessage Message(string id, params OpenCodeContentPart[] parts)
         => new() { Id = id, Type = "assistant", Content = [.. parts] };
 
+    private static OpenCodeTodoSnapshot Derive(IEnumerable<OpenCodeMessage?> messages, bool complete = true,
+        OpenCodeTodoConfig config = OpenCodeTodoConfig.Enabled, OpenCodeTodoHistory? history = null, OpenCodeCapabilityScope? scope = null)
+        => OpenCodeTodoReplay.Derive("ses_selected", messages, complete, history ?? OpenCodeTodoHistory.NoRevert, config, scope ?? Scope);
+
+    // A10: official v2.1.1 native derivation (sidebar P$e/US): latest completed todowrite before revert, normalized.
     private static void TodoReplay()
     {
-        var capabilities = Capabilities(TodoPlugin);
         var old = Message("msg_old", Tool("completed", Todos("older")));
         var current = Message("msg_current", Tool("completed", Todos("first in message")), Tool("completed", Todos("latest")));
         var ignored = Message("msg_not_done", Tool("running", Todos("running")), Tool("streaming", "partial JSON"),
-            Tool("error", Todos("failed")), Tool("completed", Todos("read"), "todoread"), Tool("completed", Todos("wrong-case"), "TodoWrite"));
-        var replay = OpenCodeTodoReplay.Replay("ses_selected", new[] { old, current, ignored }, true, capabilities);
-        Check(replay.Complete && replay.SourceMessageId == "msg_current" && replay.Items.Single().Content == "latest", "latest completed write wins including in-message order");
-        Check(replay.Items[0].Status == "in_progress" && replay.Items[0].Priority == "high" && replay.SessionId == "ses_selected" && replay.Scope == Scope, "todo fields and selected scope retained");
+            Tool("error", Todos("failed")), Tool("pending", Todos("pending-call")), Tool("future", Todos("future")),
+            Tool("completed", Todos("read"), "todoread"), Tool("completed", Todos("wrong-case"), "TodoWrite"));
+        var replay = Derive(new[] { old, current, ignored });
+        Check(replay.State == OpenCodeTodoState.Listed && replay.Complete && replay.SourceMessageId == "msg_current"
+            && replay.Items.Single().Content == "latest", "latest completed write wins including in-message order; non-completed/other tools ignored (official findLast)");
+        Check(replay.Items[0] == new OpenCodeTodoItem("latest", "in_progress") && replay.SessionId == "ses_selected" && replay.Scope == Scope
+            && replay.Remaining == 1, "official item shape {content,status}; priority ignored; selected scope retained");
+        Check(typeof(OpenCodeTodoItem).GetProperties().Select(p => p.Name).OrderBy(n => n).SequenceEqual(new[] { "Content", "Status" }),
+            "no priority/id field in the native item model");
+
+        // Cleared → verified Empty (not unknown, not failure).
         var clear = Message("msg_clear", Tool("completed", new { todos = Array.Empty<object>() }));
-        var cleared = OpenCodeTodoReplay.Replay("ses_selected", new[] { old, clear, ignored }, true, capabilities);
-        Check(cleared.Complete && cleared.Items.IsEmpty && cleared.SourceMessageId == "msg_clear" && cleared.Reason.Contains("清空"), "empty array is an explicit clear");
-        var none = OpenCodeTodoReplay.Replay("ses_selected", new[] { ignored }, true, capabilities);
-        Check(none.Complete && none.Items.IsEmpty && none.SourceMessageId is null, "unfinished calls do not invent todos");
-        var incomplete = OpenCodeTodoReplay.Replay("ses_selected", new[] { old }, false, capabilities);
-        Check(!incomplete.Complete && incomplete.Items.Single().Content == "older" && incomplete.Reason.Contains("Incomplete"), "partial history retains reference but cannot claim current completeness");
-        var missing = OpenCodeTodoReplay.Replay("ses_selected", Array.Empty<OpenCodeMessage>(), false, capabilities);
-        Check(!missing.Complete && missing.SourceMessageId is null && missing.Reason.Contains("不能据此断言无任务"), "failed/unfetched history is not no tasks");
-        Check(!OpenCodeTodoReplay.Replay("ses_selected", new[] { clear }, false, capabilities).Complete, "even valid clear never hides pagination incompleteness");
-        foreach (var input in new object[] { new { }, new { todos = "not-array" },
-            new { todos = new[] { new { content = "x", status = "unknown", priority = "high" } } },
-            new { todos = new[] { new { content = "x", status = "pending", priority = 123 } } },
-            "{\"todos\":[]}" })
+        var cleared = Derive(new[] { old, clear, ignored });
+        Check(cleared.State == OpenCodeTodoState.Empty && cleared.Complete && cleared.Items.IsEmpty && cleared.SourceMessageId == "msg_clear"
+            && cleared.Reason.Contains("清空"), "Todos cleared → Empty");
+
+        // Normalization: drop non-object / non-string / empty content; unknown or missing status → pending; extras ignored.
+        var messy = Message("msg_messy", Tool("completed", new
         {
-            var bad = Message("msg_bad", Tool("completed", input));
-            var result = OpenCodeTodoReplay.Replay("ses_selected", new[] { old, bad }, true, capabilities);
-            Check(!result.Complete && result.SourceMessageId == "msg_bad" && result.Items.IsEmpty, "malformed latest completed write must not fall back to old tasks");
-            Check(OpenCodeTodoReplay.Replay("ses_selected", new[] { bad, clear }, true, capabilities).Complete, "later valid replacement repairs older malformed write");
-        }
-        // Wave3 D2: priority is optional in a valid todowrite; omitted/null priority keeps the task (empty priority), in server order.
-        var noPriority = Message("msg_no_priority", Tool("completed", new
-        {
-            todos = new object[]
+            todos = new object?[]
             {
-                new { content = "second-first", status = "pending" },
-                new { content = "with-null", status = "completed", priority = (string?)null },
-                new { content = "with-low", status = "in_progress", priority = "low" },
+                "plain string", 7, null, new { content = "" }, new { content = 5, status = "pending" },
+                new { content = "keeps order 1", status = "completed", priority = "urgent" },
+                new { content = "unknown status", status = "blocked" },
+                new { content = "missing status" },
+                new { content = "numeric status", status = 3 },
+                new { content = "cancelled", status = "cancelled" },
             },
         }));
-        var optional = OpenCodeTodoReplay.Replay("ses_selected", new[] { old, noPriority }, true, capabilities);
-        Check(optional.Complete && optional.SourceMessageId == "msg_no_priority" && optional.Items.Length == 3,
-            "todos without priority are still listed (D2)");
-        Check(optional.Items.Select(item => item.Content).SequenceEqual(new[] { "second-first", "with-null", "with-low" }),
-            "server order kept (no regrouping by status)");
-        Check(optional.Items[0].Priority == "" && optional.Items[1].Priority == "" && optional.Items[2].Priority == "low",
-            "omitted/null priority projects to empty; explicit priority retained");
-        foreach (var badPriority in new object[] { "urgent", 3, true })
-        {
-            var invalid = Message("msg_bad_priority", Tool("completed", new { todos = new[] { new { content = "x", status = "pending", priority = badPriority } } }));
-            var rejected = OpenCodeTodoReplay.Replay("ses_selected", new[] { old, invalid }, true, capabilities);
-            Check(!rejected.Complete && rejected.Items.IsEmpty && rejected.SourceMessageId == "msg_bad_priority",
-                "a present but invalid priority still rejects the whole latest list: " + badPriority);
-        }
-        var future = Message("msg_future", Tool("future", Todos("unknown")));
-        Check(!OpenCodeTodoReplay.Replay("ses_selected", new[] { old, future }, true, capabilities).Complete, "unknown tool state makes replay uncertain");
-        var fakeUser = Message("msg_user", Tool("completed", Todos("in user"))) with { Type = "user" };
-        Check(OpenCodeTodoReplay.Replay("ses_selected", new[] { old, fakeUser }, true, capabilities).SourceMessageId == "msg_old", "non-assistant content not interpreted as tool execution");
-        Check(!OpenCodeTodoReplay.Replay("ses_selected", new[] { old, current with { Content = null } }, true, capabilities).Complete,
-            "missing assistant content is incomplete, not no tasks");
-        Check(!OpenCodeTodoReplay.Replay("ses_selected", new[] { old, Message("msg_null_part", new OpenCodeContentPart[] { null! }) }, true, capabilities).Complete,
-            "null content part is incomplete, not no tasks");
-    }
+        var normalized = Derive(new[] { old, messy });
+        Check(normalized.State == OpenCodeTodoState.Listed && normalized.Items.Select(i => i.Content).SequenceEqual(new[]
+            { "keeps order 1", "unknown status", "missing status", "numeric status", "cancelled" }), "official normalization drops invalid items, keeps server order");
+        Check(normalized.Items.Select(i => i.Status).SequenceEqual(new[] { "completed", "pending", "pending", "pending", "cancelled" })
+            && normalized.Remaining == 3, "unknown/missing status → pending; remaining = pending + in_progress");
+        var onlyInvalid = Derive(new[] { old, Message("msg_invalid_items", Tool("completed", new { todos = new object[] { 1, "x", new { content = "" } } })) });
+        Check(onlyInvalid.State == OpenCodeTodoState.Empty && onlyInvalid.SourceMessageId == "msg_invalid_items",
+            "all-invalid items normalize to empty (official), never back to older list");
 
-    private static IEnumerable<OpenCodeMessage> MustNotReadMessages()
-    {
-        throw new InvalidOperationException("Unavailable plugin must short-circuit replay");
-#pragma warning disable CS0162
-        yield break;
-#pragma warning restore CS0162
+        // Revert cutoff: only messages BEFORE revert messageID count.
+        var afterRevert = Message("msg_after", Tool("completed", Todos("after revert")));
+        var reverted = Derive(new[] { old, afterRevert, current }, history: new(false, true, "msg_after"));
+        Check(reverted.State == OpenCodeTodoState.Listed && reverted.SourceMessageId == "msg_old" && reverted.Items.Single().Content == "older",
+            "revert cutoff hides todowrite at/after revert message");
+        var revertFirst = Derive(new[] { afterRevert, current }, history: new(false, true, "msg_after"));
+        Check(revertFirst.State == OpenCodeTodoState.Empty && revertFirst.SourceMessageId is null,
+            "everything reverted + experimental.todo on → verified Empty");
+        var revertMissingComplete = Derive(new[] { old, current }, history: new(false, true, "msg_gone"));
+        Check(revertMissingComplete.SourceMessageId == "msg_current", "complete history + revert id absent → whole list (official findIndex -1)");
+        var revertMissingPartial = Derive(new[] { old, current }, complete: false, history: new(false, true, "msg_gone"));
+        Check(revertMissingPartial.State == OpenCodeTodoState.Unknown && revertMissingPartial.Items.IsEmpty,
+            "partial window without revert boundary → Unknown, never a guessed list");
+        Check(Derive(new[] { old }, history: new(false, false, null)).State == OpenCodeTodoState.Unknown, "unconfirmed revert boundary → Unknown");
+
+        // Unknown vs failure vs empty.
+        var none = Derive(new[] { ignored });
+        Check(none.State == OpenCodeTodoState.Empty && none.Complete && none.SourceMessageId is null && none.Capability.Availability == OpenCodeCapabilityAvailability.Available,
+            "complete history, no write, experimental.todo=true → Empty");
+        var incomplete = Derive(new[] { old }, complete: false);
+        Check(incomplete.State == OpenCodeTodoState.Unknown && !incomplete.Complete && incomplete.Items.IsEmpty
+            && incomplete.Reason.Contains("未取全"), "partial history is Unknown, never a verified current list or Empty");
+        var missing = Derive(Array.Empty<OpenCodeMessage>(), complete: false);
+        Check(missing.State == OpenCodeTodoState.Unknown && !missing.Complete && missing.Reason.Contains("未取全"), "unfetched history is Unknown, not Empty");
+        var readFailed = Derive(new[] { old }, complete: false, history: new(true, true, null));
+        Check(readFailed.State == OpenCodeTodoState.ReadFailure && readFailed.Items.IsEmpty && readFailed.Reason.Contains("读取失败"),
+            "messages load failure → ReadFailure (not Empty, not Unknown)");
+        Check(!Derive(new[] { clear }, complete: false).Complete, "even valid clear never hides pagination incompleteness");
+        foreach (var input in new object[] { new { }, new { todos = "not-array" }, "{\"todos\":[]}" })
+        {
+            var bad = Message("msg_bad", Tool("completed", input));
+            var result = Derive(new[] { old, bad });
+            Check(result.State == OpenCodeTodoState.Empty && result.SourceMessageId == "msg_bad" && result.Items.IsEmpty,
+                "official US: non-array/missing todos normalizes to empty, never falls back to old tasks");
+            Check(Derive(new[] { bad, clear }).State == OpenCodeTodoState.Empty, "later valid replacement repairs older malformed write");
+        }
+        Check(Derive(new[] { old, current with { Content = null } }).State == OpenCodeTodoState.ReadFailure,
+            "missing assistant content after latest write → ReadFailure, not current list");
+        Check(Derive(new[] { old, Message("msg_null_part", new OpenCodeContentPart[] { null! }) }).State == OpenCodeTodoState.ReadFailure,
+            "null content part → ReadFailure");
+        var fakeUser = Message("msg_user", Tool("completed", Todos("in user"))) with { Type = "user" };
+        Check(Derive(new[] { old, fakeUser }).SourceMessageId == "msg_old", "non-assistant content not interpreted as tool execution");
+        Check(Derive(new[] { old }, scope: Scope with { Stale = true }).State == OpenCodeTodoState.Unknown, "stale scope → Unknown");
+
+        // Native capability gating (no plugin): experimental.todo + history evidence.
+        var off = Derive(new[] { Message("msg_no_tools") }, config: OpenCodeTodoConfig.Disabled);
+        Check(off.State == OpenCodeTodoState.Disabled && off.Reason == "当前后端未启用 to do（experimental.todo）"
+            && off.Capability.Availability == OpenCodeCapabilityAvailability.Unavailable, "experimental.todo off + no writes → honest capability gap");
+        var offWithHistory = Derive(new[] { old }, config: OpenCodeTodoConfig.Disabled);
+        Check(offWithHistory.State == OpenCodeTodoState.Listed && offWithHistory.Capability.Availability == OpenCodeCapabilityAvailability.Available,
+            "native todowrite in history is itself capability evidence");
+        Check(Derive(new[] { ignored }, config: OpenCodeTodoConfig.Disabled).Capability.Availability == OpenCodeCapabilityAvailability.Available,
+            "native todowrite presence proves capability even before completion, without inventing its unfinished list");
+        var configUnknown = Derive(new[] { Message("msg_no_tools") }, config: OpenCodeTodoConfig.Unknown);
+        Check(configUnknown.State == OpenCodeTodoState.Unknown && configUnknown.Capability.Availability == OpenCodeCapabilityAvailability.Unknown
+            && configUnknown.Reason.Contains("experimental.todo"), "config read failure + no writes → Unknown, not Disabled/Empty");
+        Check(Derive(new[] { old }, config: OpenCodeTodoConfig.Unknown).State == OpenCodeTodoState.Listed, "history evidence independent of config read");
     }
 
     private static async Task ServerInfo()
@@ -295,14 +330,14 @@ internal static class Program
     private static void PluginGatesAndCoreChildren()
     {
         var absent = Capabilities();
-        Check(absent.Plugins.Availability == OpenCodeCapabilityAvailability.Available && absent.Todo.Availability == OpenCodeCapabilityAvailability.Unavailable, "successful empty directory distinct from query failure");
+        Check(absent.Plugins.Availability == OpenCodeCapabilityAvailability.Available && absent.Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "successful empty plugin directory says nothing about native to do");
         var unknown = OpenCodeCapabilityStatus.Create(Scope, OpenCodeCapabilityRead<OpenCodeMcpServer>.NotObserved(), OpenCodeCapabilityRead<OpenCodePluginInfo>.NotObserved());
         Check(unknown.Todo.Availability == OpenCodeCapabilityAvailability.Unknown && unknown.Omo.Availability == OpenCodeCapabilityAvailability.Unknown, "unobserved plugins cannot be enabled");
         var local = Capabilities(new OpenCodePluginInfo { Source = new() { Type = "local", Path = "/fake/opencode-todolist" }, Features = new() { Server = true }, State = new() { Status = "active" } });
         Check(local.Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "local path substring is not installation evidence");
         Check(Capabilities(Plugin("not-opencode-todolist")).Todo.Availability != OpenCodeCapabilityAvailability.Available, "substring package match rejected");
-        Check(Capabilities(Plugin("opencode-todolist", server: null)).Todo.Availability == OpenCodeCapabilityAvailability.Unavailable, "active TUI-only declaration does not enable server feature");
-        Check(Capabilities(Plugin("opencode-todolist", "failed")).Todo.Availability == OpenCodeCapabilityAvailability.Unavailable, "listed failed plugin does not enable feature");
+        Check(Capabilities(Plugin("opencode-todolist", server: null)).Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "TUI-only declaration says nothing about native to do");
+        Check(Capabilities(Plugin("opencode-todolist", "failed")).Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "failed plugin says nothing about native to do");
         Check(Capabilities(Plugin("opencode-todolist", "future")).Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "unknown plugin runtime never inferred active");
         Check(Capabilities(TodoPlugin, TodoPlugin).Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "conflicting duplicate identities are uncertain");
         Check(Capabilities(Plugin("billion-context")).Billion.Availability == OpenCodeCapabilityAvailability.Unavailable, "listed active Billion plugin still does not authorize management requests");
@@ -311,8 +346,7 @@ internal static class Program
         Check(stale.Todo.Availability == OpenCodeCapabilityAvailability.Unknown && stale.PluginEntries.All(row => row.Running is null), "stale evidence cannot enable feature or show current running");
         foreach (var gated in new[] { absent, unknown, local, stale })
         {
-            var todo = OpenCodeTodoReplay.Replay("ses_parent", MustNotReadMessages(), true, gated);
-            Check(todo.Capability.Availability != OpenCodeCapabilityAvailability.Available && !todo.Complete && todo.Items.IsEmpty, "missing/unknown/stale plugin stops replay before reading messages");
+            // A10: plugin presence no longer gates native to do (no silent plugin source either way).
             var children = OpenCodeSubagentStatus.ProjectChildren("ses_parent", [], true, [], true, gated);
             Check(children.Capability.Availability != OpenCodeCapabilityAvailability.Available && !children.Complete && children.Children.IsEmpty, "OMO availability follows plugin evidence");
             Check(gated.Lsp.Availability == OpenCodeCapabilityAvailability.Unavailable && gated.Billion.Availability == OpenCodeCapabilityAvailability.Unavailable, "LSP/Billion unavailable regardless of other capabilities");
@@ -342,8 +376,8 @@ internal static class Program
             && !OpenCodeCapabilityStatus.IsBuiltIn(new OpenCodePluginInfo { Id = "builtin", Source = new() { Type = "package", Target = "builtin" } })
             && !OpenCodeCapabilityStatus.IsBuiltIn(new OpenCodePluginInfo()), "only source.type == builtin is built-in (no name/path guessing)");
         var withBuiltin = Capabilities(TodoPlugin, builtin);
-        Check(withBuiltin.Todo.Availability == OpenCodeCapabilityAvailability.Available, "anonymous built-in plugin cannot be the target package");
-        Check(Capabilities(builtin).Todo.Availability == OpenCodeCapabilityAvailability.Unavailable, "built-ins alone: target not listed (not unknown)");
+        Check(withBuiltin.Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "built-in and third-party plugins do not prove native to do capability");
+        Check(Capabilities(builtin).Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "built-ins alone cannot prove native to do capability");
         Check(Capabilities(builtin, new OpenCodePluginInfo { Source = new() { Type = "sdk" }, Features = new() { Server = true }, State = new() { Status = "active" } })
             .Todo.Availability == OpenCodeCapabilityAvailability.Unknown, "anonymous sdk plugin still keeps target uncertain");
         Check(withBuiltin.PluginEntries.Length == 2, "built-ins remain in the snapshot; only the connection view hides them");

@@ -37,6 +37,9 @@ internal static partial class Program
         await DiscoveryFailures();
         await DiscoveryOwnership();
         Console.WriteLine($"PASS: 3 Billion-discovery groups, {_assertions - beforeDiscovery} assertions; total {_assertions}; source-linked fake HTTP only; no plugin/native/Page runtime proof.");
+        var beforeTodo = _assertions;
+        await NativeTodo();
+        Console.WriteLine($"PASS: 1 native to do group, {_assertions - beforeTodo} assertions; total {_assertions}; official v2.1.1 todowrite derivation, experimental.todo gating, stale discard.");
         var beforeContext = _assertions;
         await LiveContextRefresh();
         await LiveContextRaces();
@@ -291,8 +294,8 @@ internal static partial class Program
             Check(s.Capabilities.State == OpenCodeInsightState.Partial
                 && s.Capabilities.Value!.Plugins.Availability == OpenCodeCapabilityAvailability.Unknown,
                 "plugins-failed.unknown-not-empty");
-            Check(s.Todo.State == OpenCodeInsightState.Failed && s.Todo.Value!.Items.IsEmpty && !s.Todo.Value.Complete,
-                "plugins-failed.todo-unknown");
+            Check(s.Todo.State == OpenCodeInsightState.Partial && s.Todo.Value!.State == OpenCodeTodoState.Unknown
+                && s.Todo.Value.Items.IsEmpty && !s.Todo.Value.Complete, "unfetched-history.todo-unknown-not-failure-not-empty");
             Check(s.Children.State == OpenCodeInsightState.Failed, "plugins-failed.children-unknown");
             Check(!fake.Paths.Any(path => path.StartsWith("/prefix/api/session/active")), "plugins-failed.no-active-read");
             Check(s.Pricing.State == OpenCodeInsightState.Loaded && s.Pricing.Value!.Tiers.Length == 2
@@ -346,7 +349,7 @@ internal static partial class Program
             // Same messages, history NOT complete → Todo/Context remain honest.
             await controller.LoadAsync(page.Capture(), messages, historyComplete: false, CancellationToken.None);
             s = controller.Snapshot;
-            Check(s.Todo.State == OpenCodeInsightState.Partial && !s.Todo.Value!.Complete && s.Todo.Value.Reason.StartsWith("Incomplete"),
+            Check(s.Todo.State == OpenCodeInsightState.Partial && !s.Todo.Value!.Complete && s.Todo.Value.Reason.Contains("未取全"),
                 "todo.incomplete-history-not-empty-claim");
             Check(s.Context.State == OpenCodeInsightState.Partial
                 && s.Context.Value!.StaleReasons.Contains(OpenCodeContextStaleReason.HistoryIncomplete), "context.history-incomplete-stale");
@@ -373,7 +376,129 @@ internal static partial class Program
             Check(children.State == OpenCodeInsightState.Loaded && children.Value!.Complete, "omo.children-complete");
             Check(children.Value!.Children.Single(c => c.SessionId == "ses_k1").Active == true
                 && children.Value.Children.Single(c => c.SessionId == "ses_k2").Active == false, "omo.active-tristate");
-            Check(controller.Snapshot.Todo.State == OpenCodeInsightState.Unavailable, "todo.plugin-not-listed-unavailable");
+            Check(controller.Snapshot.Todo.Value!.State == OpenCodeTodoState.Unknown, "todo.no-plugin-gating-history-unknown");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // A10: native to do — experimental.todo gating (GET api/config), revert cutoff, read failure, stale discard.
+    // ------------------------------------------------------------------
+
+    private static string Config(string? todo) => "[{\"type\":\"directory\",\"directory\":\"C:/work\"},"
+        + "{\"type\":\"document\",\"info\":{\"model\":\"prov/model_a\"}}"
+        + (todo is null ? "" : ",{\"type\":\"document\",\"info\":{\"experimental\":{\"todo\":" + todo + "}}}") + "]";
+
+    private static async Task NativeTodo()
+    {
+        Func<HttpRequestMessage, HttpResponseMessage> Routes(string session, Func<HttpResponseMessage> config) => request =>
+            request.RequestUri!.AbsolutePath switch
+            {
+                var p when p == "/prefix/api/session/" + session => Json("{\"data\":" + Session(session, null) + "}"),
+                "/prefix/api/session" => Json("{\"data\":[],\"cursor\":{\"previous\":null,\"next\":null}}"),
+                "/prefix/api/model" => Json(Models),
+                "/prefix/api/mcp" => Json(Mcp),
+                "/prefix/api/plugin" => Json(Plugins(true, false)), // plugin listed: must NOT enable/feed to do
+                "/prefix/api/config" => config(),
+                _ => new HttpResponseMessage(HttpStatusCode.NotFound),
+            };
+        var none = new[] { Assistant("msg_1", 1, 10) };
+
+        // experimental.todo absent (default false) + no todowrite → honest capability gap, no plugin fallback.
+        {
+            var (page, fake, controller) = Fixture("ses_t");
+            fake.Respond = Routes("ses_t", () => Json(Config(null)));
+            await controller.LoadAsync(page.Capture(), none, true, CancellationToken.None);
+            var todo = controller.Snapshot.Todo;
+            Check(todo.State == OpenCodeInsightState.Unavailable && todo.Value!.State == OpenCodeTodoState.Disabled
+                && todo.Value.Reason == "当前后端未启用 to do（experimental.todo）" && todo.Value.Items.IsEmpty,
+                "todo.experimental-off-capability-gap-even-with-plugin-listed");
+            Check(fake.Paths.Any(path => path.StartsWith("/prefix/api/config?") && path.Contains("location%5Bdirectory%5D=C%3A%2Fwork")),
+                "todo.config-read-scoped-to-session-directory");
+            Check(!fake.Paths.Any(path => path.Contains("/message") || path.Contains("todo")), "todo.no-private-todo-route-or-child-message-read");
+        }
+
+        // experimental.todo=false explicitly, last document wins.
+        {
+            var (page, fake, controller) = Fixture("ses_t");
+            fake.Respond = Routes("ses_t", () => Json("[{\"type\":\"document\",\"info\":{\"experimental\":{\"todo\":true}}},{\"type\":\"document\",\"info\":{\"experimental\":{\"todo\":false}}}]"));
+            await controller.LoadAsync(page.Capture(), none, true, CancellationToken.None);
+            Check(controller.Snapshot.Todo.Value!.State == OpenCodeTodoState.Disabled, "todo.config-last-document-wins");
+        }
+
+        // experimental.todo=true + no writes + complete → verified Empty.
+        {
+            var (page, fake, controller) = Fixture("ses_t");
+            fake.Respond = Routes("ses_t", () => Json(Config("true")));
+            await controller.LoadAsync(page.Capture(), none, true, CancellationToken.None);
+            var todo = controller.Snapshot.Todo;
+            Check(todo.State == OpenCodeInsightState.Loaded && todo.Value!.State == OpenCodeTodoState.Empty && todo.Value.Complete,
+                "todo.enabled-no-writes-empty");
+
+            // Same session, latest write before revert point wins; write after revert ignored.
+            var messages = new[]
+            {
+                TodoWrite("msg_a", 1, """[{"content":"keep","status":"in_progress"},{"content":"odd","status":"blocked"},{"content":""}]"""),
+                Assistant("msg_rv", 2, 10),
+                TodoWrite("msg_b", 3, """[{"content":"reverted","status":"pending"}]"""),
+            };
+            await controller.LoadAsync(page.Capture(), messages, true, CancellationToken.None, new OpenCodeTodoHistory(false, true, "msg_rv"));
+            todo = controller.Snapshot.Todo;
+            Check(todo.State == OpenCodeInsightState.Loaded && todo.Value!.State == OpenCodeTodoState.Listed && todo.Value.SourceMessageId == "msg_a"
+                && todo.Value.Items.SequenceEqual(new[] { new OpenCodeTodoItem("keep", "in_progress"), new OpenCodeTodoItem("odd", "pending") }),
+                "todo.revert-cutoff-and-normalization-through-controller");
+            await controller.LoadAsync(page.Capture(), messages, true, CancellationToken.None);
+            Check(controller.Snapshot.Todo.Value!.SourceMessageId == "msg_b", "todo.no-revert-latest-wins");
+
+            // Message history failed → Failed section (never Empty).
+            await controller.LoadAsync(page.Capture(), messages, false, CancellationToken.None, new OpenCodeTodoHistory(true, true, null));
+            todo = controller.Snapshot.Todo;
+            Check(todo.State == OpenCodeInsightState.Failed && todo.Value!.State == OpenCodeTodoState.ReadFailure && todo.Value.Items.IsEmpty,
+                "todo.history-read-failure-is-failure");
+        }
+
+        // Config read fails + no writes → Unknown (not Disabled, not Empty); malformed config also Unknown.
+        foreach (var bad in new Func<HttpResponseMessage>[]
+            { () => new HttpResponseMessage(HttpStatusCode.InternalServerError), () => Json(Config("\"yes\"")) })
+        {
+            var (page, fake, controller) = Fixture("ses_t");
+            fake.Respond = Routes("ses_t", bad);
+            await controller.LoadAsync(page.Capture(), none, true, CancellationToken.None);
+            var todo = controller.Snapshot.Todo;
+            Check(todo.State == OpenCodeInsightState.Partial && todo.Value!.State == OpenCodeTodoState.Unknown
+                && todo.Value.Capability.Availability == OpenCodeCapabilityAvailability.Unknown, "todo.config-failure-unknown");
+        }
+
+        // Stale-session discard: ses_a's config response arrives after switching to ses_b → never shown for ses_b.
+        {
+            var (page, fake, controller) = Fixture("ses_a");
+            var configGate = new TaskCompletionSource<bool>();
+            fake.Gates["/prefix/api/config"] = configGate;
+            fake.Respond = request => request.RequestUri!.AbsolutePath switch
+            {
+                "/prefix/api/session/ses_a" => Json("{\"data\":" + Session("ses_a", null) + "}"),
+                "/prefix/api/session/ses_b" => Json("{\"data\":" + Session("ses_b", null) + "}"),
+                "/prefix/api/session" => Json("{\"data\":[],\"cursor\":{\"previous\":null,\"next\":null}}"),
+                "/prefix/api/model" => Json(Models),
+                "/prefix/api/mcp" => Json(Mcp),
+                "/prefix/api/plugin" => Json(Plugins(false, false)),
+                "/prefix/api/config" => Json(Config("true")),
+                _ => new HttpResponseMessage(HttpStatusCode.NotFound),
+            };
+            var aMessages = new[] { TodoWrite("msg_a_todo", 1, """[{"content":"belongs to A","status":"pending"}]""") };
+            var pendingA = controller.LoadAsync(page.Capture(), aMessages, true, CancellationToken.None);
+            await Task.Delay(20);
+            page.SessionGeneration++;
+            page.SessionId = "ses_b";
+            controller.Reset();
+            configGate.SetResult(true);
+            await pendingA;
+            Check(controller.Snapshot.Todo.Value is null && controller.Snapshot.Todo.State == OpenCodeInsightState.NotLoaded,
+                "todo.late-session-a-result-discarded-after-switch");
+            fake.Gates.Clear();
+            await controller.LoadAsync(page.Capture(), Array.Empty<OpenCodeMessage>(), true, CancellationToken.None);
+            var todo = controller.Snapshot.Todo.Value!;
+            Check(todo.SessionId == "ses_b" && todo.Items.IsEmpty && todo.SourceMessageId is null && controller.Snapshot.SessionId == "ses_b",
+                "todo.session-b-snapshot-keyed-to-b-no-cross-talk");
         }
     }
 
@@ -636,7 +761,7 @@ internal static partial class Program
             Check(fake.Paths.Count(path => path.Contains("parentID=ses_root")) == 2
                 && fake.Paths.Count(path => path.Contains("parentID=ses_child")) == 1,
                 "tree.valid-new-scope-reads-both-pages-and-descendant");
-            Check(controller.OpenCodeReadsStarted == 10, "tree.logical-read-counter-unchanged-by-inner-http-fences");
+            Check(controller.OpenCodeReadsStarted == 12, "tree.logical-read-counter-unchanged-by-inner-http-fences (6 reads/load incl. experimental.todo config)");
         }
 
         // The standalone overload remains usable; the guarded overload rejects before its root GET.

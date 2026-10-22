@@ -109,6 +109,8 @@ namespace AIFrontend.Pages
         partial void OnMessageHistoryReset();
         private List<OpenCodeMessage> MergeMessageHistory() { MergeCalls++; return new(_latestMessages); }
         private bool IsLoadedMessageHistoryComplete() => _messageChainState == MessagePaginationChainState.Exhausted;
+        private bool _messageHistoryBoundaryKnown = true;
+        private string? _messageRevertBoundary = null;
 
         // ---- test surface ----
         internal OpenCodePage() => InitializeSessionInsights();

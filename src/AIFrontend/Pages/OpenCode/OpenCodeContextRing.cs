@@ -41,6 +41,8 @@ internal static class OpenCodeInsightsTheme
     /// <summary>1px 分隔线（Border.Background）。</summary>
     internal static Style? DividerLine() => Get("Border", ("Background", Divider));
 
+    internal static Style? TodoSecondaryIcon() => Get("FontIcon", ("Foreground", "TextFillColorSecondaryBrush"));
+
     private static Style? Get(string targetType, params (string Property, string? Key)[] setters)
     {
         var cacheKey = targetType + "|" + string.Join("|", setters.Select(s => s.Property + "=" + s.Key));
@@ -85,7 +87,7 @@ internal static class OpenCodeInsightsTheme
 /// 颜色：常规 = 强调色；≥80% = 注意（Caution）；≥95% = 严重（Critical）；全部为 ThemeResource 样式。
 /// 百分比只是“最近一次 assistant 请求用量 / 模型上下文上限”的参考值。
 /// ACP·Billion 组（wave5 H11）与 OpenCode TUI 中 billion-context 插件的 <c>/acp</c> 面板同源（Billion 会话记录：上下文、
-/// 压缩块、节省量），压缩块按服务端顺序列成与任务列表相同的“图标 + 文本”行；读取仍须先在 Billion 分区确认地址关联，
+/// 压缩块、节省量），压缩块按服务端顺序列成与 to do 列表相同的“图标 + 文本”行；读取仍须先在 Billion 分区确认地址关联，
 /// 组内只提供“读取”/“去设置”两个显式动作，从不自动读取。
 /// </remarks>
 internal sealed class OpenCodeContextRing

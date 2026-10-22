@@ -1,127 +1,189 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text.Json;
 
 namespace AIFrontend.Services.OpenCode;
 
-public sealed record OpenCodeTodoItem(string Content, string Status, string Priority);
+/// <summary>官方 v2.1.1 原生 to do 条目：只有 content + status（无 id / priority）。</summary>
+public sealed record OpenCodeTodoItem(string Content, string Status);
 
-/// <summary>Complete=false 就是 Incomplete，Items 只能视作部分历史参考，不能宣称无任务。</summary>
+/// <summary>to do 区块的五种互斥状态；“未知 / 读取失败 / 空”绝不互相冒充。</summary>
+public enum OpenCodeTodoState
+{
+    /// <summary>无法判断：消息历史未取全、撤回位置未确认，或 experimental.todo 未能读取。</summary>
+    Unknown,
+
+    /// <summary>消息读取失败，或最新一次已完成的 todowrite 无法解析。</summary>
+    ReadFailure,
+
+    /// <summary>后端未启用原生 to do（experimental.todo 不为 true）且会话里没有 todowrite 记录。</summary>
+    Disabled,
+
+    /// <summary>已核实为空：完整历史中没有 to do，或最新 todowrite 已清空（“Todos cleared”）。</summary>
+    Empty,
+
+    /// <summary>完整历史中已确认有条目。</summary>
+    Listed,
+}
+
+/// <summary>GET api/config 中 experimental.todo 的读取结果。</summary>
+public enum OpenCodeTodoConfig { Unknown, Enabled, Disabled }
+
+/// <summary>
+/// 与消息同源的历史证据：<paramref name="ReadFailed"/> = 分页链异常停止；
+/// <paramref name="RevertKnown"/> = 已从 Session 状态确认撤回位置（<paramref name="RevertMessageId"/> 为 null 表示无撤回）。
+/// </summary>
+public sealed record OpenCodeTodoHistory(bool ReadFailed, bool RevertKnown, string? RevertMessageId)
+{
+    /// <summary>无撤回、读取正常（离线测试与旧调用的默认值）。</summary>
+    public static OpenCodeTodoHistory NoRevert { get; } = new(false, true, null);
+}
+
+/// <summary>同源快照：按会话 id 构造，迟到结果由控制器的请求序号 + 页面绑定丢弃。</summary>
 public sealed record OpenCodeTodoSnapshot(
-    OpenCodeCapabilityScope Scope, string SessionId, ImmutableArray<OpenCodeTodoItem> Items,
-    string? SourceMessageId, bool Complete, OpenCodeCapabilityState Capability, string Reason);
+    OpenCodeCapabilityScope Scope, string SessionId, OpenCodeTodoState State, ImmutableArray<OpenCodeTodoItem> Items,
+    string? SourceMessageId, bool Complete, OpenCodeCapabilityState Capability, string Reason)
+{
+    /// <summary>未完成 = pending + in_progress（官方折叠时显示的数量）。</summary>
+    public int Remaining => Items.IsDefault ? 0 : Items.Count(item => item.Status is "pending" or "in_progress");
+}
 
-/// <summary>从所选会话公开消息回放；不读取工具结果文本、插件 storage 或私有 RPC。</summary>
+/// <summary>
+/// 官方原生 to do 派生（OpenCode v2.1.1 TUI sidebar 同一算法）：取当前会话撤回点之前、助手消息中
+/// 最新一个 state.status == "completed" 的 <c>todowrite</c> 工具片段，规范化其 input.todos。
+/// v2.1.1 没有 to do HTTP 路由或 todo.updated 事件，这就是官方数据源，不是插件回退。
+/// 只读取所选会话已加载消息；不读取工具结果文本、插件 storage、子会话或私有 RPC。
+/// </summary>
 public static class OpenCodeTodoReplay
 {
-    /// <param name="sessionId">消息所属的精确会话；调用方必须先按来源/代际/会话隔离消息。</param>
-    /// <param name="orderedMessages">仅此会话的完整消息投影，按从旧到新排序；同消息按 content 顺序。</param>
-    /// <param name="historyComplete">仅全部分页成功取全时为 true；失败、截断、尚有游标均为 false。</param>
-    /// <param name="capabilities">与消息同源的插件证据；未知、失败、过期时不启用回放。</param>
-    public static OpenCodeTodoSnapshot Replay(
-        string sessionId, IEnumerable<OpenCodeMessage> orderedMessages, bool historyComplete,
-        OpenCodeCapabilitySnapshot capabilities)
+    public const string ToolId = "todowrite";
+    public const string DisabledReason = "当前后端未启用 to do（experimental.todo）";
+
+    private static readonly ImmutableHashSet<string> ValidStatuses =
+        ImmutableHashSet.Create(StringComparer.Ordinal, "pending", "in_progress", "completed", "cancelled");
+
+    /// <param name="sessionId">消息所属的精确会话；调用方必须先按来源/代际/会话隔离消息（不含子会话）。</param>
+    /// <param name="orderedMessages">仅此会话的已加载消息，旧→新；未按撤回点裁剪（本方法按官方规则裁剪）。</param>
+    /// <param name="historyComplete">仅全部分页成功取全时为 true。</param>
+    /// <param name="history">读取失败 / 撤回位置证据。</param>
+    /// <param name="config">experimental.todo 读取结果。</param>
+    public static OpenCodeTodoSnapshot Derive(
+        string sessionId, IEnumerable<OpenCodeMessage?> orderedMessages, bool historyComplete,
+        OpenCodeTodoHistory history, OpenCodeTodoConfig config, OpenCodeCapabilityScope scope)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
         ArgumentNullException.ThrowIfNull(orderedMessages);
-        ArgumentNullException.ThrowIfNull(capabilities);
-        if (capabilities.Todo.Availability != OpenCodeCapabilityAvailability.Available)
-            return new(capabilities.Scope, sessionId, ImmutableArray<OpenCodeTodoItem>.Empty, null,
-                false, capabilities.Todo, capabilities.Todo.Reason);
+        ArgumentNullException.ThrowIfNull(history);
+        ArgumentNullException.ThrowIfNull(scope);
+        var empty = ImmutableArray<OpenCodeTodoItem>.Empty;
+        OpenCodeTodoSnapshot Make(OpenCodeTodoState state, ImmutableArray<OpenCodeTodoItem> items, string? source,
+            bool complete, OpenCodeCapabilityState capability, string reason)
+            => new(scope, sessionId, state, items, source, complete, capability, reason);
 
-        var items = ImmutableArray<OpenCodeTodoItem>.Empty;
-        string? source = null;
-        var latestReadable = true;
-        foreach (var message in orderedMessages)
+        var configCapability = config switch
         {
-            if (message is null)
-            {
-                latestReadable = false;
-                continue;
-            }
+            OpenCodeTodoConfig.Enabled => Available("experimental.todo 已启用（原生 todowrite）"),
+            OpenCodeTodoConfig.Disabled => new(OpenCodeCapabilityAvailability.Unavailable, DisabledReason),
+            _ => new(OpenCodeCapabilityAvailability.Unknown, "无法确认后端是否启用 to do（experimental.todo 未能读取）"),
+        };
+
+        if (history.ReadFailed)
+            return Make(OpenCodeTodoState.ReadFailure, empty, null, false, configCapability,
+                "消息读取失败，无法读取 to do；请刷新消息后重试");
+        if (scope.Stale)
+            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, "状态证据已过期，暂无法确认 to do");
+        if (!history.RevertKnown)
+            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, "撤回位置尚未确认，暂无法确认 to do");
+
+        var messages = orderedMessages.ToList();
+        if (history.RevertMessageId is { } revert)
+        {
+            var cut = messages.FindIndex(message => message?.Id == revert);
+            if (cut >= 0) messages = messages.GetRange(0, cut);
+            // 官方：找不到撤回消息时使用全部消息；但部分窗口里缺少撤回点无法判定其两侧，不能断言。
+            else if (!historyComplete)
+                return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability,
+                    "撤回位置不在已加载的消息中，暂无法确认 to do");
+        }
+
+        // findLast(type==tool && name==todowrite && state.status==completed)；不可读的结构记为“之后不可读”。
+        JsonElement? latest = null;
+        string? source = null;
+        var unreadableAfterLatest = false;
+        foreach (var message in messages)
+        {
+            if (message is null) { unreadableAfterLatest = true; continue; }
             if (message.Type != OpenCodeMessageTypes.Assistant) continue;
-            if (message.Content is null)
-            {
-                latestReadable = false;
-                continue;
-            }
+            if (message.Content is null) { unreadableAfterLatest = true; continue; }
             foreach (var part in message.Content)
             {
-                if (part is null)
+                if (part is null) { unreadableAfterLatest = true; continue; }
+                if (part.Type != OpenCodePartTypes.Tool || part.Name != ToolId) continue;
+                configCapability = Available("会话历史包含原生 todowrite 记录");
+                if (part.State is not { ValueKind: JsonValueKind.Object } state)
                 {
-                    latestReadable = false;
+                    unreadableAfterLatest = true;
                     continue;
                 }
-                if (part.Type != OpenCodePartTypes.Tool || part.Name != "todowrite") continue;
-                if (part.State is not { ValueKind: JsonValueKind.Object } state
-                    || !state.TryGetProperty("status", out var status) || status.ValueKind != JsonValueKind.String)
-                {
-                    latestReadable = false;
-                    continue;
-                }
-                var statusText = status.GetString();
-                if (statusText is OpenCodeToolStatuses.Streaming or OpenCodeToolStatuses.Running or OpenCodeToolStatuses.Error)
-                    continue;
-                if (statusText != OpenCodeToolStatuses.Completed)
-                {
-                    latestReadable = false;
-                    continue;
-                }
-
-                // 最新完成调用无法解析时不可回退到较旧列表并冒充当前任务。
+                if (!state.TryGetProperty("status", out var status) || status.ValueKind != JsonValueKind.String
+                    || status.GetString() != OpenCodeToolStatuses.Completed) continue; // 官方只认 completed。
+                latest = state;
                 source = message.Id;
-                latestReadable = state.TryGetProperty("input", out var input) && TryReadItems(input, out items);
-                if (!latestReadable) items = ImmutableArray<OpenCodeTodoItem>.Empty;
-                if (string.IsNullOrWhiteSpace(source)) latestReadable = false;
+                unreadableAfterLatest = false;
             }
         }
 
-        var complete = historyComplete && latestReadable && !capabilities.Scope.Stale;
-        return new(capabilities.Scope, sessionId, items, source, complete, capabilities.Todo,
-            !complete ? "Incomplete：消息历史未取全、查询失败或最新 todowrite 无法解析；不能据此断言无任务"
-                : source is null ? "完整消息历史中未发现已完成的 todowrite"
-                : items.IsEmpty ? "最新已完成的 todowrite 已清空任务"
-                : "来自最新已完成的 todowrite（公开消息回放）");
-    }
-
-    private static bool TryReadItems(JsonElement input, out ImmutableArray<OpenCodeTodoItem> items)
-    {
-        items = ImmutableArray<OpenCodeTodoItem>.Empty;
-        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty("todos", out var todos)
-            || todos.ValueKind != JsonValueKind.Array) return false;
-        var result = ImmutableArray.CreateBuilder<OpenCodeTodoItem>();
-        foreach (var todo in todos.EnumerateArray())
+        if (latest is { } write)
         {
-            if (todo.ValueKind != JsonValueKind.Object
-                || !TryString(todo, "content", out var content)
-                || !TryString(todo, "status", out var status)
-                || !TryOptionalPriority(todo, out var priority)
-                || status is not ("pending" or "in_progress" or "completed" or "cancelled")) return false;
-            result.Add(new(content, status, priority));
+            var historyCapability = Available("会话历史包含原生 todowrite 记录");
+            if (unreadableAfterLatest)
+                return Make(OpenCodeTodoState.ReadFailure, empty, source, false, historyCapability,
+                    "最新的 to do 记录无法读取；不回退到更早的列表");
+            var items = Normalize(write);
+            if (!historyComplete)
+                return Make(OpenCodeTodoState.Unknown, empty, source, false,
+                    historyCapability, "消息历史未取全，暂无法确认当前 to do；请加载完整历史后重试");
+            return Make(items.IsEmpty ? OpenCodeTodoState.Empty : OpenCodeTodoState.Listed, items, source, true,
+                historyCapability, items.IsEmpty ? "to do 已清空" : "来自最新一次 todowrite");
         }
-        items = result.ToImmutable();
-        return true;
+
+        if (unreadableAfterLatest)
+            return Make(OpenCodeTodoState.ReadFailure, empty, null, false, configCapability,
+                "部分消息无法读取，无法确认 to do");
+        if (!historyComplete)
+            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability,
+                "消息历史未取全，暂无法确认是否有 to do");
+        if (configCapability.Availability == OpenCodeCapabilityAvailability.Available)
+            return Make(OpenCodeTodoState.Empty, empty, null, true, configCapability, "本会话还没有 to do");
+        return config switch
+        {
+            OpenCodeTodoConfig.Enabled => Make(OpenCodeTodoState.Empty, empty, null, true, configCapability, "本会话还没有 to do"),
+            OpenCodeTodoConfig.Disabled => Make(OpenCodeTodoState.Disabled, empty, null, true, configCapability, DisabledReason),
+            _ => Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, configCapability.Reason),
+        };
     }
 
     /// <summary>
-    /// priority 在 todowrite 输入里是可选字段（wave3 D2：服务端接受省略 priority 的任务）。缺省或 null → 空字符串（不显示优先级）；
-    /// 出现时仍必须是 high / medium / low 字符串，否则整份列表按无法解析处理（不回退旧列表）。
+    /// 官方规范化：input.todos 非数组时为空；丢弃非对象 / content 非字符串或为空的条目；
+    /// 未知 status → "pending"。priority 等额外字段忽略（官方 v2.1.1 无此字段）。
     /// </summary>
-    private static bool TryOptionalPriority(JsonElement todo, out string priority)
+    internal static ImmutableArray<OpenCodeTodoItem> Normalize(JsonElement state)
     {
-        priority = "";
-        if (!todo.TryGetProperty("priority", out var element) || element.ValueKind == JsonValueKind.Null) return true;
-        if (element.ValueKind != JsonValueKind.String) return false;
-        priority = element.GetString()!;
-        return priority is "high" or "medium" or "low";
+        if (!state.TryGetProperty("input", out var input) || input.ValueKind != JsonValueKind.Object
+            || !input.TryGetProperty("todos", out var todos) || todos.ValueKind != JsonValueKind.Array) return ImmutableArray<OpenCodeTodoItem>.Empty;
+        var result = ImmutableArray.CreateBuilder<OpenCodeTodoItem>();
+        foreach (var todo in todos.EnumerateArray())
+        {
+            if (todo.ValueKind != JsonValueKind.Object || !todo.TryGetProperty("content", out var content)
+                || content.ValueKind != JsonValueKind.String || content.GetString() is not { Length: > 0 } text) continue;
+            var status = todo.TryGetProperty("status", out var value) && value.ValueKind == JsonValueKind.String
+                && value.GetString() is { } raw && ValidStatuses.Contains(raw) ? raw : "pending";
+            result.Add(new(text, status));
+        }
+        return result.ToImmutable();
     }
 
-    private static bool TryString(JsonElement value, string property, out string text)
-    {
-        text = "";
-        if (!value.TryGetProperty(property, out var element) || element.ValueKind != JsonValueKind.String) return false;
-        text = element.GetString()!;
-        return true;
-    }
+    private static OpenCodeCapabilityState Available(string reason) => new(OpenCodeCapabilityAvailability.Available, reason);
 }

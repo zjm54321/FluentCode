@@ -51,6 +51,12 @@ public sealed partial class OpenCodePage
     private void ScrollToBottom(bool animated) { }
     private void RefreshSessionStateUi() { }
     private void RefreshComposerSessionActivity() { } // Activity presentation is outside the header fixture.
+    private void InvalidateDraftSourceEpoch() { } // Draft storage is outside this fixture.
+    private void ResetHomeSource() { } // Home surface is outside this fixture.
+    private void RefreshCurrentRetry() { } // Runtime feedback is outside this fixture.
+    private void RefreshConversationSessionActivity() { }
+    private void EnsureConversationImages() { } // Markdown image loading is outside this fixture.
+    private void ResetRuntimeFeedback() { }
     private Task RefreshSessionsAsync() => Task.CompletedTask;
     private Task RefreshMessagesAsync() => Task.CompletedTask;
     private void ObserveExecutionState(string session, IReadOnlyList<OpenCodeMessage> messages) { }
