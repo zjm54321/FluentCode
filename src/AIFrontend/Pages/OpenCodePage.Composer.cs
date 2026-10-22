@@ -34,6 +34,7 @@ public sealed partial class OpenCodePage
         ConfigureComposerDelivery(true);
         _composerController = new(OwnsComposerBinding);
         _composerView = new(GetComposerSnapshot, _composerController.BeginCatalogLifetime, _composerController.EndCatalogLifetime);
+        _composerView.MentionSearchProvider = ComposerMentionSearch;
         _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || !_pageActive);
         InitializeComposerLayout();
         ComposerCompanionHost.Children.Add(_composerView);
@@ -72,6 +73,20 @@ public sealed partial class OpenCodePage
             else { _composerController.DiscardDraft(e.Token); if (_newSessionDraftActive) EnsureBlankPreferences(); }
         };
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
+    }
+
+    private OpenCodeComposerMentionSearch? ComposerMentionSearch()
+    {
+        if (_composerBinding is not { Slot: { } slot } binding || !OwnsComposerBinding(binding)
+            || string.IsNullOrWhiteSpace(slot.Directory)) return null;
+        return async (query, ct) =>
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!OwnsComposerBinding(binding)) throw new OperationCanceledException(ct);
+            var rows = await OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct);
+            if (!OwnsComposerBinding(binding)) throw new OperationCanceledException(ct);
+            return rows;
+        };
     }
 
     // Called under the controller/source locks and on worker threads: ONLY captured page field comparisons.

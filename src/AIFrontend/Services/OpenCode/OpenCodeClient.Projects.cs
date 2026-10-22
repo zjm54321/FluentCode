@@ -52,6 +52,30 @@ public sealed partial class OpenCodeClient
     }
 
     /// <summary>
+    /// 服务器文件索引递归排序搜索（GET api/fs/find，operationId fs.find）；返回的 entry.Path 相对于响应 location。
+    /// type 省略时文件与目录都返回；limit 按线格式以字符串发送。只读，不在本机解析路径。
+    /// </summary>
+    public async Task<OpenCodeFileSystemResponse> FindFileSystemAsync(
+        string? directory, string query, int? limit = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        if (limit is <= 0) throw new ArgumentOutOfRangeException(nameof(limit));
+        const string endpoint = "api/fs/find";
+        var parameters = new List<KeyValuePair<string, string>>();
+        if (!string.IsNullOrEmpty(directory)) parameters.Add(new("location[directory]", directory));
+        parameters.Add(new("query", query));
+        if (limit is { } max) parameters.Add(new("limit", max.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        using var document = await SendForJsonAsync(HttpMethod.Get, endpoint, parameters, null, cancellationToken).ConfigureAwait(false);
+        var response = Deserialize<OpenCodeFileSystemResponse>(document, "GET api/fs/find");
+        if (string.IsNullOrWhiteSpace(response.Location?.Directory) || response.Data is null)
+            throw new OpenCodeProtocolException("文件搜索响应缺少 location/data（GET api/fs/find）。");
+        foreach (var entry in response.Data)
+            if (entry is null || entry.Path is null || entry.Type is not ("file" or "directory"))
+                throw new OpenCodeProtocolException("文件搜索条目缺少 path/type 或类型无效（GET api/fs/find）。");
+        return response;
+    }
+
+    /// <summary>
     /// 首次发送时一次性创建并设置 agent/model/variant；不改全局默认，不发创建后的切换请求。
     /// 调用时机、源/草稿所有权、一次发送保护由调用者负责；不自动重试。
     /// null 偏好省略，让服务器采用该目录的默认值。

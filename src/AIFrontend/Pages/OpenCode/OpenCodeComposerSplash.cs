@@ -34,7 +34,7 @@ internal enum OpenCodeComposerSplashCapability
     BlankToolbar = 1 << 8,
     /// <summary>“!” terminal/shell mode (plan B8). NOT shipped: never part of <see cref="OpenCodeComposerSplash.Shipped"/>.</summary>
     ShellMode = 1 << 9,
-    /// <summary>“@” file mentions. NOT shipped: the composer has no @-reference completion.</summary>
+    /// <summary>“@” file mentions (B7): a literal “@” at a line start/after a space lists the server file index (api/fs/find).</summary>
     FileMention = 1 << 10,
 }
 
@@ -59,9 +59,10 @@ internal sealed class OpenCodeComposerSplash
     private const OpenCodeComposerSplashCapability Editor = OpenCodeComposerSplashCapability.LargeEditor;
     private const OpenCodeComposerSplashCapability Bound = OpenCodeComposerSplashCapability.BoundSession;
     private const OpenCodeComposerSplashCapability Blank = OpenCodeComposerSplashCapability.BlankToolbar;
+    private const OpenCodeComposerSplashCapability Mention = OpenCodeComposerSplashCapability.FileMention;
 
     /// <summary>Capabilities this build actually ships (verified in code). Context flags are added per observation.</summary>
-    internal const OpenCodeComposerSplashCapability Shipped = Slash | CtrlSlash | Tab | Attach | Lines | Nav | Editor;
+    internal const OpenCodeComposerSplashCapability Shipped = Slash | CtrlSlash | Tab | Attach | Lines | Nav | Editor | Mention;
 
     /// <summary>How many recent lines a rotation avoids (bounded by the eligible pool size − 1).</summary>
     internal const int RecentWindow = 8;
@@ -129,6 +130,7 @@ internal sealed class OpenCodeComposerSplash
         L("hint.ctrl-slash", "按 Ctrl+/ 随时打开命令目录。", "Press Ctrl+/ to open the command list.", CtrlSlash),
         L("hint.tab", "命令目录打开时，按 Tab 补全。", "With the command list open, Tab completes.", Slash | Tab),
         L("hint.attach", "点左侧 + 可添加图片、PDF 等附件。", "Use + on the left to attach images, PDFs and more.", Attach),
+        L("hint.mention", "用 @ 选择项目文件路径。", "Use @ to insert a project file path.", Mention),
         L("hint.attach-limit", "一次最多附带 10 个文件。", "Attach up to 10 files at a time.", Attach),
         L("hint.multiline", "Shift+Enter 换行，Enter 发送。", "Shift+Enter for a new line, Enter to send.", Lines),
         L("hint.new", "/new 开一个新会话。", "/new starts a new session.", Slash | Nav),
@@ -141,9 +143,8 @@ internal sealed class OpenCodeComposerSplash
         L("hint.blank-toolbar", "下方可先选好智能体和模型。", "Pick the agent and model below first.", Blank),
         L("hint.blank-strength", "下方还能调推理强度。", "Adjust reasoning strength below.", Blank),
 
-        // ---- Unshipped (kept for later; never shown until the capability is actually shipped) ----
+        // ---- Unshipped (kept for later; never shown until the capability is actually shipped; “!” is plan B8) ----
         L("hint.shell", "输入 ! 进入终端模式。", "Type ! for shell mode.", OpenCodeComposerSplashCapability.ShellMode),
-        L("hint.mention", "用 @ 引用项目文件。", "Use @ to reference project files.", OpenCodeComposerSplashCapability.FileMention),
 
         // ---- Seasonal (Minecraft “special splashes”): eligible only on that local date ----
         new OpenCodeComposerSplashLine("date.new-year", "新年快乐！第一行代码写什么？", "Happy New Year! What's the first line?") { OnDate = (1, 1) },

@@ -44,18 +44,18 @@ internal static partial class Program
     {
         var shipped = OpenCodeComposerSplash.Shipped;
         Check((shipped & OpenCodeComposerSplashCapability.ShellMode) == 0, "`!` shell mode is NOT shipped (B8 pending)");
-        Check((shipped & OpenCodeComposerSplashCapability.FileMention) == 0, "`@` file mention is NOT shipped");
+        Check((shipped & OpenCodeComposerSplashCapability.FileMention) != 0, "`@` server file candidates shipped (B7)");
         Check((shipped & (OpenCodeComposerSplashCapability.BoundSession | OpenCodeComposerSplashCapability.BlankToolbar)) == 0,
             "context flags are not static capabilities");
         foreach (var day in Enumerable.Range(0, 366).Select(d => new DateTime(2024, 1, 1).AddDays(d)))
         {
             var eligible = OpenCodeComposerSplash.Eligible(AllContexts, day);
-            Check(!eligible.Any(l => (l.Requires & (OpenCodeComposerSplashCapability.ShellMode | OpenCodeComposerSplashCapability.FileMention)) != 0),
+            Check(!eligible.Any(l => (l.Requires & OpenCodeComposerSplashCapability.ShellMode) != 0),
                 "gated-off hints never eligible: " + day.ToString("MM-dd"));
-            Check(!eligible.Any(l => l.Text.Contains('!') && l.Text.Contains("终端") || l.Text.Contains('@')), "no ! terminal / @ mention text shown");
+            Check(!eligible.Any(l => l.Text.Contains('!') && l.Text.Contains("终端")) && eligible.Any(l => l.Id == "hint.mention"), "@ eligible; ! terminal not shown");
         }
         Check(OpenCodeComposerSplash.Library.Any(l => l.Id == "hint.shell") && OpenCodeComposerSplash.Library.Any(l => l.Id == "hint.mention"),
-            "unshipped hints kept in data for later enablement");
+            "shell and mention hints kept in data");
         var withShell = OpenCodeComposerSplash.Eligible(AllContexts | OpenCodeComposerSplashCapability.ShellMode, new DateTime(2026, 3, 3));
         Check(withShell.Any(l => l.Id == "hint.shell"), "shell hint becomes eligible only once the capability is granted");
 
@@ -114,7 +114,7 @@ internal static partial class Program
             history.Add(splash.Current.Id);
             seen.Add(splash.Current.Id);
             var c = splash.Current;
-            Check((c.Requires & (OpenCodeComposerSplashCapability.ShellMode | OpenCodeComposerSplashCapability.FileMention)) == 0, "never shows gated hint");
+            Check((c.Requires & OpenCodeComposerSplashCapability.ShellMode) == 0, "never shows gated shell hint");
             if (i % 3 == 0) Check((c.Requires & OpenCodeComposerSplashCapability.BoundSession) == 0, "blank context: no session-only hint");
             else Check((c.Requires & OpenCodeComposerSplashCapability.BlankToolbar) == 0, "bound context: no blank-toolbar hint");
         }

@@ -33,6 +33,7 @@ $winRefs += Get-ChildItem "$nuget\microsoft.windowsappsdk.interactiveexperiences
 $winRefs += Get-ChildItem "$nuget\microsoft.windowsappsdk.foundation\1.8.260803002\lib\net6.0-windows10.0.17763.0\*.dll"
 
 $services = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
+$services += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerCharTriggers.cs"
 $notifications = foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) { Get-Item "$repo/src/AIFrontend/Services/Notifications/$name" }
 $headless = foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeSessionControlCoordinator.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs',
         'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerSplash.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }

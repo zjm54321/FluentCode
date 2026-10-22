@@ -73,6 +73,9 @@ internal sealed class OpenCodeComposerView : StackPanel
     private readonly Button _addButton;
     private readonly MenuFlyoutItem _commandItem;
     private readonly MenuFlyoutItem _attachItem;
+    // B7: 上下文（@） inserts a legal literal "@" (real file index candidates); 终端（!） stays disabled until B8.
+    private readonly MenuFlyoutItem _contextItem;
+    private readonly MenuFlyoutItem _terminalItem;
     private readonly MenuFlyoutSeparator _discardSeparator;
     private readonly MenuFlyoutItem _discardItem;
     private readonly Flyout _discardFlyout;
@@ -208,6 +211,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _handoffs = new OpenCodeComposerAcceptedDraftHandoffs(_lifetime, () => _sync);
         // Catalog capability follows the ACTUAL view lifetime: unload/reattach end it; resume/attach begin a fresh one.
         _lifetime.Invalidated += EndCatalogLifetime;
+        _lifetime.Invalidated += CloseMention;
         // Read-only input evidence over the EXISTING ledger (no second ledger/timer); lifetime changes invalidate captures.
         _inputEvidence = new OpenCodeComposerInputEvidenceSource(() => _sync, () => _lifetime.IsLive, () => _lifetime.Generation, () => _composing);
         _lifetime.Invalidated += _inputEvidence.LifetimeChanged;
@@ -224,22 +228,43 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetAutomationId(this, "OpenCodeComposerCompanion");
         AutomationProperties.SetName(this, "命令与附件");
 
-        // ---- Leading "+" button: 添加附件 · 命令… · 丢弃草稿… (native MenuFlyout; page places it left of the editor) ----
-        _attachItem = new MenuFlyoutItem { Text = "添加附件", Icon = new FontIcon { Glyph = "\uE723" } };
-        AutomationProperties.SetAutomationId(_attachItem, "OpenCodeComposerAttachButton");
+        // ---- Leading "+" button (B7): 添加附件 · ── · 命令（/） · 上下文（@） · 终端（!） [· ── · 丢弃草稿…] ----
+        // Built from OpenCodeComposerPlusMenu.Entries so the order/labels are verified offline against the same data.
+        var addMenu = new MenuFlyout { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
+        MenuFlyoutItem? attach = null, command = null, context = null, terminal = null;
+        foreach (var entry in OpenCodeComposerPlusMenu.Entries)
+        {
+            if (entry.Kind == OpenCodeComposerPlusMenuKind.Separator) { addMenu.Items.Add(new MenuFlyoutSeparator()); continue; }
+            var item = new MenuFlyoutItem { Text = entry.Text, Icon = new FontIcon { Glyph = entry.Glyph } };
+            AutomationProperties.SetAutomationId(item, entry.AutomationId);
+            addMenu.Items.Add(item);
+            switch (entry.Kind)
+            {
+                case OpenCodeComposerPlusMenuKind.Attach: attach = item; break;
+                case OpenCodeComposerPlusMenuKind.Command: command = item; break;
+                case OpenCodeComposerPlusMenuKind.Context: context = item; break;
+                case OpenCodeComposerPlusMenuKind.Terminal: terminal = item; break;
+            }
+        }
+        _attachItem = attach!;
         _attachItem.Click += (_, _) => RequestPick();
-        _commandItem = new MenuFlyoutItem { Text = "命令…", Icon = new FontIcon { Glyph = "\uE756" }, KeyboardAcceleratorTextOverride = "Ctrl+/" };
-        AutomationProperties.SetAutomationId(_commandItem, "OpenCodeComposerCommandButton");
-        ToolTipService.SetToolTip(_commandItem, "服务器命令与 AIFrontend 本机操作。也可以在输入框开头输入 /。");
+        _commandItem = command!;
+        _commandItem.KeyboardAcceleratorTextOverride = "Ctrl+/";
+        ToolTipService.SetToolTip(_commandItem, OpenCodeComposerPlusMenu.CommandTooltip);
         _commandItem.Click += (_, _) => RequestCatalog();
+        _contextItem = context!;
+        _contextItem.KeyboardAcceleratorTextOverride = "@";
+        _contextItem.Click += (_, _) => InsertContextTrigger();
+        _terminalItem = terminal!;
+        _terminalItem.KeyboardAcceleratorTextOverride = "!";
+        _terminalItem.IsEnabled = false; // B8 delivers terminal mode; B7 never pretends it works.
+        ToolTipService.SetToolTip(_terminalItem, OpenCodeComposerPlusMenu.TerminalUnavailableTooltip);
+        AutomationProperties.SetHelpText(_terminalItem, OpenCodeComposerPlusMenu.TerminalUnavailableTooltip);
         _discardFlyout = BuildDiscardFlyout();
         _discardSeparator = new MenuFlyoutSeparator { Visibility = Visibility.Collapsed };
         _discardItem = new MenuFlyoutItem { Text = "丢弃草稿…", Icon = new FontIcon { Glyph = "\uE74D" }, Visibility = Visibility.Collapsed };
         AutomationProperties.SetAutomationId(_discardItem, "OpenCodeComposerDiscardButton");
         _discardItem.Click += (_, _) => _discardFlyout.ShowAt(_addButton);
-        var addMenu = new MenuFlyout { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
-        addMenu.Items.Add(_attachItem);
-        addMenu.Items.Add(_commandItem);
         addMenu.Items.Add(_discardSeparator);
         addMenu.Items.Add(_discardItem);
         _addButton = new Button
@@ -253,8 +278,8 @@ internal sealed class OpenCodeComposerView : StackPanel
             Flyout = addMenu,
         };
         AutomationProperties.SetAutomationId(_addButton, "OpenCodeComposerAddButton");
-        AutomationProperties.SetName(_addButton, "添加附件或命令");
-        ToolTipService.SetToolTip(_addButton, "添加附件、命令");
+        AutomationProperties.SetName(_addButton, "添加附件、命令或上下文");
+        ToolTipService.SetToolTip(_addButton, "添加附件、命令、上下文");
 
         _summaryText = Caption(string.Empty, 0.75);
         _summaryText.VerticalAlignment = VerticalAlignment.Center;
@@ -448,6 +473,8 @@ internal sealed class OpenCodeComposerView : StackPanel
         Children.Add(_intentHint);
         Children.Add(_statusBar);
         Children.Add(_menuSlot);
+        _mentionSlot = BuildMentionPopup();
+        Children.Add(_mentionSlot);
     }
 
     /// <summary>The leading "+" button (native Button + MenuFlyout). The page places it left of the editor.</summary>
@@ -482,21 +509,31 @@ internal sealed class OpenCodeComposerView : StackPanel
             previous.TextCompositionStarted -= OnEditorCompositionStarted;
             previous.TextCompositionEnded -= OnEditorCompositionEnded;
             previous.LostFocus -= OnEditorLostFocus;
+            previous.SelectionChanged -= OnEditorSelectionChanged;
         }
+        CloseMention();
+        _mentionArmed = false;
         _editor = editor;
         _editorPlaceholder = editor.PlaceholderText;
         _composing = false;
         // The ONLY application writer of editor.Text: guarded assign + actual read-back inside the sync.
         _sync = new OpenCodeComposerEditorSync(_source, () => editor.Text, text =>
             {
-                editor.Text = text;
-                editor.SelectionStart = (editor.Text ?? string.Empty).Length;
+                _guardedWrite = true; // A guarded application write is never a typed "@" trigger.
+                _mentionArmed = false;
+                try
+                {
+                    editor.Text = text;
+                    editor.SelectionStart = (editor.Text ?? string.Empty).Length;
+                }
+                finally { _guardedWrite = false; }
             }, () => _composing, ApplyEditorInput);
         // Early, synchronous input observation (records only; no rendering, flyouts, focus or tree changes).
         editor.TextChanging += OnEditorTextChanging;
         editor.TextCompositionStarted += OnEditorCompositionStarted;
         editor.TextCompositionEnded += OnEditorCompositionEnded;
         editor.LostFocus += OnEditorLostFocus;
+        editor.SelectionChanged += OnEditorSelectionChanged;
         // Whatever the ledger already holds (including attach-time editor text) is pre-existing, never a slash intent.
         _menuSession.Initialize(_sync.InputRevision);
         _lifetime.OnEditorAttached(); // Fences callbacks/handoffs captured for a previous editor, then renders.
@@ -530,6 +567,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     {
         if (!ReferenceEquals(sender, _editor)) return;
         _inputEvidence.RecordTextChanging(); // Ledger record (unchanged logic) + synchronous C#-only evidence publication.
+        if (!_guardedWrite) _mentionArmed = true; // A real user edit may open "@" candidates on the following TextChanged.
     }
 
     private void OnEditorCompositionStarted(TextBox sender, TextCompositionStartedEventArgs args)
@@ -581,6 +619,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     internal void RevokeSlotGestures()
     {
         if (_menuShown) _menuSession.Dismiss(this, _menuSession.Capture());
+        CloseMention();
         _addButton.Flyout?.Hide();
         _discardFlyout.Hide();
         _picking = false;
@@ -710,9 +749,15 @@ internal sealed class OpenCodeComposerView : StackPanel
         }
 
         // "+" menu
-        _commandItem.IsEnabled = canEdit && !MenuWanted(snapshot);
         var full = snapshot.Attachments.Count >= OpenCodeAttachment.MaxFiles;
-        _attachItem.IsEnabled = canEdit && !full;
+        var mentionAvailable = CurrentMentionSearch() is not null;
+        _commandItem.IsEnabled = OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Command, canEdit, full, MenuWanted(snapshot), mentionAvailable);
+        _attachItem.IsEnabled = OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Attach, canEdit, full, MenuWanted(snapshot), mentionAvailable);
+        _contextItem.IsEnabled = OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Context, canEdit, full, MenuWanted(snapshot), mentionAvailable)
+            && _editor is { IsReadOnly: false };
+        ToolTipService.SetToolTip(_contextItem, mentionAvailable ? OpenCodeComposerPlusMenu.ContextTooltip : OpenCodeComposerPlusMenu.ContextUnavailableTooltip);
+        _terminalItem.IsEnabled = OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, canEdit, full, MenuWanted(snapshot), mentionAvailable);
+        if ((!canEdit || !mentionAvailable) && _mentionShown) CloseMention();
         _attachItem.Text = full ? "添加附件（已达 10 个上限）" : "添加附件";
         ToolTipService.SetToolTip(_attachItem, full
             ? "已达到 10 个附件上限；先移除部分附件再添加。"
@@ -720,7 +765,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         var discard = (enhanced || snapshot.IsBoundDraft) && !inactiveBound ? Visibility.Visible : Visibility.Collapsed;
         _discardItem.Visibility = _discardSeparator.Visibility = discard;
         _discardItem.IsEnabled = !snapshot.IsBusy;
-        _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || (discard == Visibility.Visible && _discardItem.IsEnabled);
+        _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || (discard == Visibility.Visible && _discardItem.IsEnabled);
         long total = 0;
         foreach (var a in snapshot.Attachments) total += a.Bytes;
         _summaryText.Text = OpenCodeComposerInputPolicy.AttachmentSummary(snapshot.Attachments.Count, total,
@@ -732,7 +777,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         RenderMenu(_menuSession.Present(snapshot));
         // Collapsed when empty so the card shows only the editor row (no phantom gap above it).
         var any = _chipRow.Visibility == Visibility.Visible || _intentHint.Visibility == Visibility.Visible
-            || _statusBar.Visibility == Visibility.Visible || _menuShown;
+            || _statusBar.Visibility == Visibility.Visible || _menuShown || _mentionShown;
         Margin = new Thickness(0, 0, 0, any ? 8 : 0);
         _inputEvidence.Refresh(); // After the render's flush/reconcile (no new observation).
 
@@ -779,10 +824,11 @@ internal sealed class OpenCodeComposerView : StackPanel
         if (_sync is null || !_lifetime.IsLive) return;
         var flushed = _sync.Flush();
         _inputEvidence.Refresh();
-        if (flushed != OpenCodeComposerInputState.Clean) { RequestRender(); return; } // Show held status.
+        if (flushed != OpenCodeComposerInputState.Clean) { CloseMention(); RequestRender(); return; } // Show held status.
         // TextChanged (not TextChanging): the tree may change. Evaluate the acknowledged observation and keep a visible
         // menu's filter in step with the text, so key evidence is captured against what the user actually sees.
         if (_menuSession.EvaluateAcknowledged(this) || _menuShown) Render(_source());
+        EvaluateMentionTrigger(); // After the command menu settled: the two lists are never shown together.
     }
 
     /// <summary>
@@ -838,6 +884,11 @@ internal sealed class OpenCodeComposerView : StackPanel
             if (key == OpenCodeComposerKey.Enter && !shift && !isComposing) { e.Handled = true; return new(OpenCodeComposerKeyAction.Swallow, true, true); }
             return OpenCodeComposerKeyDecision.Pass;
         }
+        if (_mentionShown && HandleMentionKey(key, shift, isComposing, sinceCompositionEnded, enterLatched) is { } mention)
+        {
+            if (mention.Handled) e.Handled = true;
+            return mention;
+        }
 
         // Shared boundary (OpenCodeComposerCommandMenuSession.HandleKey): capture the displayed menu evidence at arrival,
         // flush, evaluate the acknowledged observation, recompute the presentation, then decide. Stale/closed/loading/
@@ -873,6 +924,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         FlushForIntent();
         var fresh = _source();
         if (!fresh.IsActive || fresh.IsBusy) return;
+        CloseMention();
         if (_menuShown) _menuSession.Dismiss(this, _menuSession.Capture());
         _picking = true;
         _localNote = null;
@@ -987,6 +1039,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         }
         if (!_menuShown)
         {
+            CloseMention(); // The command catalog and the "@" candidates are mutually exclusive.
             _menuSlot.Visibility = Visibility.Visible;
             _menuSlot.Children.Add(_menu);
             _menuShown = true;
@@ -1035,6 +1088,369 @@ internal sealed class OpenCodeComposerView : StackPanel
         ApplyHighlight(p);
         _menuList.Visibility = p.Rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _menuStatus.Text = _menuSession.Note ?? p.StatusText;
+    }
+
+    // ------------------------------------------------------------------
+    // "@" context candidates (B7). A literal "@" at a line start or after whitespace (OpenCodeComposerCharTriggers) opens
+    // a list whose rows come ONLY from the server file index the page provides (GET api/fs/find / api/fs/list).
+    // Choosing a row edits the editor like typing/paste (native TextBox → TextChanging ledger); it never submits.
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Page-provided real file-index search for the CURRENT workspace, or null when there is no client/directory
+    /// (then "上下文（@）" is disabled with an honest tooltip and a typed "@" stays plain text).
+    /// </summary>
+    internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
+
+    private Grid _mentionSlot = null!;
+    private Border _mentionPanel = null!;
+    private ListView _mentionList = null!;
+    private TextBlock _mentionQueryText = null!;
+    private TextBlock _mentionStatus = null!;
+    private ProgressRing _mentionRing = null!;
+    private bool _mentionShown;
+    private bool _mentionArmed;
+    private bool _guardedWrite;
+    private bool _applyingMentionHighlight;
+    private int _mentionHighlight = -1;
+    private OpenCodeComposerMentionTrigger _mentionTrigger = OpenCodeComposerMentionTrigger.None;
+    private IReadOnlyList<OpenCodeComposerMentionCandidate> _mentionRows = Array.Empty<OpenCodeComposerMentionCandidate>();
+    private readonly OpenCodeComposerMentionQueries _mentionQueries = new();
+
+    /// <summary>Whether the "@" candidate list is visible (UI thread).</summary>
+    internal bool IsMentionVisible => _mentionShown;
+
+    private OpenCodeComposerMentionSearch? CurrentMentionSearch()
+    {
+        try { return MentionSearchProvider?.Invoke(); }
+        catch { return null; } // A failing provider only disables "@"; it never breaks rendering.
+    }
+
+    private Grid BuildMentionPopup()
+    {
+        var glyph = new FontIcon { Glyph = "\uE8A5", FontSize = 13, VerticalAlignment = VerticalAlignment.Center, Opacity = 0.8 };
+        var title = new TextBlock { Text = "上下文", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        _mentionQueryText = new TextBlock
+        {
+            FontFamily = MonoFont,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 260,
+            Opacity = 0.8,
+        };
+        _mentionRing = new ProgressRing { Width = 14, Height = 14, IsActive = false, Visibility = Visibility.Collapsed };
+        _mentionStatus = Caption(string.Empty, 0.7);
+        _mentionStatus.VerticalAlignment = VerticalAlignment.Center;
+        _mentionStatus.TextWrapping = TextWrapping.NoWrap;
+        _mentionStatus.TextTrimming = TextTrimming.CharacterEllipsis;
+        AutomationProperties.SetLiveSetting(_mentionStatus, AutomationLiveSetting.Polite);
+        var close = ChipRemoveButton("OpenCodeComposerMentionClose");
+        AutomationProperties.SetName(close, "关闭上下文候选");
+        ToolTipService.SetToolTip(close, "关闭（Esc）");
+        close.Click += (_, _) => { CloseMention(); if (_editor is { IsEnabled: true }) _editor.Focus(FocusState.Programmatic); };
+        var header = new Grid { ColumnSpacing = 8, Padding = new Thickness(12, 8, 6, 6) };
+        for (var i = 0; i < 5; i++)
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = i == 3 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Place(header, glyph, 0);
+        Place(header, title, 1);
+        Place(header, _mentionQueryText, 2);
+        Place(header, _mentionStatus, 3);
+        Place(header, _mentionRing, 4);
+        Place(header, close, 5);
+
+        _mentionList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            IsItemClickEnabled = true,
+            MaxHeight = 232,
+            Padding = new Thickness(0, 0, 0, 4),
+        };
+        AutomationProperties.SetAutomationId(_mentionList, "OpenCodeComposerMentionList");
+        AutomationProperties.SetName(_mentionList, "上下文文件候选");
+        _mentionList.ItemClick += (_, e) =>
+        {
+            if (e.ClickedItem is FrameworkElement { Tag: OpenCodeComposerMentionCandidate candidate })
+                AcceptMention(IndexOfMention(candidate));
+        };
+        _mentionList.SelectionChanged += (_, _) =>
+        {
+            if (_applyingMentionHighlight) return;
+            if (_mentionList.SelectedItem is FrameworkElement { Tag: OpenCodeComposerMentionCandidate candidate })
+                _mentionHighlight = IndexOfMention(candidate);
+        };
+        _mentionList.KeyDown += (_, e) =>
+        {
+            if (e.Key != VirtualKey.Escape) return;
+            e.Handled = true;
+            CloseMention();
+            if (_editor is { IsEnabled: true }) _editor.Focus(FocusState.Programmatic);
+        };
+
+        var footer = Caption("↑↓ 选择 · Enter / Tab 插入路径文本 · Esc 关闭 · 不上传文件", 0.6);
+        footer.Margin = new Thickness(12, 0, 12, 8);
+        footer.TextWrapping = TextWrapping.NoWrap;
+        footer.TextTrimming = TextTrimming.CharacterEllipsis;
+
+        var stack = new StackPanel();
+        stack.Children.Add(header);
+        stack.Children.Add(_mentionList);
+        stack.Children.Add(footer);
+        _mentionPanel = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            Style = ThemedBorder("LayerFillColorDefaultBrush", "CardStrokeColorDefaultBrush"),
+            Child = stack,
+        };
+        AutomationProperties.SetAutomationId(_mentionPanel, "OpenCodeComposerMention");
+        AutomationProperties.SetName(_mentionPanel, "上下文文件候选");
+        var slot = new Grid { Visibility = Visibility.Collapsed };
+        slot.ChildrenTransitions = new TransitionCollection { new EntranceThemeTransition { FromVerticalOffset = 8 } };
+        return slot;
+    }
+
+    private int IndexOfMention(OpenCodeComposerMentionCandidate candidate)
+    {
+        for (var i = 0; i < _mentionRows.Count; i++) if (ReferenceEquals(_mentionRows[i], candidate)) return i;
+        return -1;
+    }
+
+    private OpenCodeComposerMentionTrigger MentionAtCaret()
+    {
+        if (_editor is not { } editor || editor.SelectionLength != 0) return OpenCodeComposerMentionTrigger.None;
+        return OpenCodeComposerCharTriggers.FindMention(editor.Text, editor.SelectionStart);
+    }
+
+    // Caret moves never OPEN candidates; they only close a list whose "@" token is no longer under the caret.
+    private void OnEditorSelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, _editor) || !_mentionShown) return;
+        if (MentionAtCaret() is not { Present: true } trigger || trigger.Start != _mentionTrigger.Start) CloseMention();
+    }
+
+    /// <summary>
+    /// After a flushed TextChanged: a USER edit (TextChanging outside the guarded writer) leaving a legal "@" token under
+    /// the caret opens/refreshes the list; anything else closes it. Never while composing, read-only, busy, or while the
+    /// command catalog is shown.
+    /// </summary>
+    private void EvaluateMentionTrigger()
+    {
+        var armed = _mentionArmed;
+        _mentionArmed = false;
+        if (!armed && !_mentionShown) return;
+        var s = _source();
+        if (_editor is not { } editor || _composing || editor.IsReadOnly || _menuShown || !s.IsActive || s.IsBusy || _picking)
+        {
+            CloseMention();
+            return;
+        }
+        var trigger = MentionAtCaret();
+        if (!trigger.Present || (!armed && trigger.Start != _mentionTrigger.Start)) { CloseMention(); return; }
+        if (CurrentMentionSearch() is not { } search) { CloseMention(); return; }
+        if (_mentionShown && trigger == _mentionTrigger) return;
+        _mentionTrigger = trigger;
+        ShowMention();
+        _ = QueryMentionsAsync(search, trigger.Query);
+    }
+
+    private void ShowMention()
+    {
+        _mentionQueryText.Text = "@" + OpenCodeComposerInputPolicy.Bound(_mentionTrigger.Query, 48);
+        if (_mentionShown) return;
+        _mentionShown = true;
+        _mentionSlot.Visibility = Visibility.Visible;
+        _mentionSlot.Children.Add(_mentionPanel);
+        if (_editor is not null && !AutomationProperties.GetControlledPeers(_editor).Contains(_mentionList))
+            AutomationProperties.GetControlledPeers(_editor).Add(_mentionList);
+        RequestRender(); // Margin/eligibility follow the visible list.
+    }
+
+    private void CloseMention()
+    {
+        _mentionQueries.Cancel();
+        _mentionRows = Array.Empty<OpenCodeComposerMentionCandidate>();
+        _mentionHighlight = -1;
+        _mentionTrigger = OpenCodeComposerMentionTrigger.None;
+        if (!_mentionShown) return;
+        _mentionShown = false;
+        _mentionSlot.Children.Clear();
+        _mentionSlot.Visibility = Visibility.Collapsed;
+        _mentionList.Items.Clear();
+        if (_editor is not null) AutomationProperties.GetControlledPeers(_editor).Remove(_mentionList);
+        RequestRender();
+    }
+
+    private async Task QueryMentionsAsync(OpenCodeComposerMentionSearch search, string query)
+    {
+        // Never allow an old row to be accepted while a different query is pending.
+        _mentionRows = Array.Empty<OpenCodeComposerMentionCandidate>();
+        _mentionHighlight = -1;
+        _mentionList.Items.Clear();
+        SetMentionStatus(loading: true, "正在读取文件索引…");
+        var result = await _mentionQueries.QueryAsync(search, query);
+        if (result is null) return;
+        void Apply()
+        {
+            if (!_mentionQueries.IsCurrent(result) || !_mentionShown || !_lifetime.IsLive) return;
+            ApplyMentionRows(result.Rows, result.Error, query);
+        }
+        if (_dispatcher.HasThreadAccess) Apply(); else _dispatcher.TryEnqueue(Apply);
+    }
+
+    private void SetMentionStatus(bool loading, string text)
+    {
+        _mentionRing.IsActive = loading;
+        _mentionRing.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        _mentionStatus.Text = text;
+    }
+
+    private void ApplyMentionRows(IReadOnlyList<OpenCodeComposerMentionCandidate> rows, string? failure, string query)
+    {
+        _mentionRows = rows;
+        _mentionList.Items.Clear();
+        foreach (var row in rows) _mentionList.Items.Add(MentionItem(row));
+        _mentionList.Visibility = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SetMentionStatus(false, failure ?? (rows.Count > 0
+            ? (query.Length == 0 ? "工作区根目录" : $"{rows.Count} 个匹配")
+            : (query.Length == 0 ? "工作区根目录为空" : "没有匹配的文件或文件夹")));
+        _mentionHighlight = rows.Count > 0 ? 0 : -1;
+        ApplyMentionHighlight();
+    }
+
+    private ListViewItem MentionItem(OpenCodeComposerMentionCandidate candidate)
+    {
+        var slash = candidate.Path.LastIndexOf('/');
+        var name = slash >= 0 ? candidate.Path[(slash + 1)..] : candidate.Path;
+        var parent = slash > 0 ? candidate.Path[..slash] : string.Empty;
+        var icon = new FontIcon
+        {
+            Glyph = candidate.IsDirectory ? "\uE8B7" : "\uE8A5",
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center,
+            Opacity = candidate.IsDirectory ? 0.9 : 0.75,
+        };
+        var title = new TextBlock
+        {
+            Text = OpenCodeComposerInputPolicy.Bound(name, 64) + (candidate.IsDirectory ? "/" : string.Empty),
+            FontFamily = MonoFont,
+            FontWeight = FontWeights.SemiBold,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var row = new Grid { ColumnSpacing = 10, Padding = new Thickness(0, 5, 0, 5), Tag = candidate };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Place(row, icon, 0);
+        Place(row, title, 1);
+        if (parent.Length > 0)
+        {
+            var where = Caption(OpenCodeComposerInputPolicy.Bound(parent, 96), 0.6);
+            where.FontFamily = MonoFont;
+            where.TextWrapping = TextWrapping.NoWrap;
+            where.TextTrimming = TextTrimming.CharacterEllipsis;
+            where.VerticalAlignment = VerticalAlignment.Center;
+            Place(row, where, 2);
+        }
+        var item = new ListViewItem { Content = row, Tag = candidate, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        AutomationProperties.SetName(item, (candidate.IsDirectory ? "文件夹 " : "文件 ") + candidate.Path);
+        ToolTipService.SetToolTip(item, candidate.Path);
+        return item;
+    }
+
+    private void ApplyMentionHighlight()
+    {
+        _applyingMentionHighlight = true;
+        try
+        {
+            var index = _mentionHighlight;
+            if (index < 0 || index >= _mentionList.Items.Count) { _mentionList.SelectedIndex = -1; return; }
+            _mentionList.SelectedIndex = index;
+            _mentionList.ScrollIntoView(_mentionList.Items[index]);
+            if (_mentionList.Items[index] is ListViewItem item)
+            {
+                var peer = FrameworkElementAutomationPeer.FromElement(item) ?? FrameworkElementAutomationPeer.CreatePeerForElement(item);
+                peer?.RaiseAutomationEvent(AutomationEvents.SelectionItemPatternOnElementSelected);
+            }
+        }
+        finally { _applyingMentionHighlight = false; }
+    }
+
+    /// <summary>
+    /// Keys while the "@" list is visible. Enter never sends, including loading/empty/error states.
+    /// </summary>
+    private OpenCodeComposerKeyDecision? HandleMentionKey(OpenCodeComposerKey key, bool shift, bool isComposing,
+        TimeSpan sinceCompositionEnded, bool enterLatched)
+    {
+        if (isComposing || sinceCompositionEnded < OpenCodeComposerInputPolicy.ImeEnterGuard) return null;
+        var hasRows = _mentionRows.Count > 0;
+        switch (key)
+        {
+            case OpenCodeComposerKey.Up:
+            case OpenCodeComposerKey.Down:
+                if (!hasRows || shift || IsControlDown()) return null;
+                _mentionHighlight = OpenCodeComposerInputPolicy.MoveHighlight(_mentionHighlight, _mentionRows.Count,
+                    key == OpenCodeComposerKey.Up ? -1 : 1);
+                ApplyMentionHighlight();
+                return new(OpenCodeComposerKeyAction.Swallow, true, false);
+            case OpenCodeComposerKey.Escape:
+                CloseMention();
+                return new(OpenCodeComposerKeyAction.Swallow, true, false);
+            case OpenCodeComposerKey.Tab:
+                if (!hasRows || shift || IsControlDown()) return null;
+                AcceptMention(Math.Max(0, _mentionHighlight));
+                return new(OpenCodeComposerKeyAction.Swallow, true, false);
+            case OpenCodeComposerKey.Enter:
+                if (shift) return null;
+                if (!hasRows) return new(OpenCodeComposerKeyAction.Swallow, true, true);
+                if (!enterLatched) AcceptMention(Math.Max(0, _mentionHighlight));
+                return new(OpenCodeComposerKeyAction.Swallow, true, true);
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// Replace the "@query" token under the caret with the chosen server path. A user-gesture edit through the native
+    /// TextBox (exactly like typing/paste): TextChanging records it in the existing ledger and TextChanged flushes it with
+    /// its own token. Never a guarded application write, never a submission.
+    /// </summary>
+    private void AcceptMention(int index)
+    {
+        if (!FlushForIntent()) { CloseMention(); return; }
+        if (_editor is not { } editor || index < 0 || index >= _mentionRows.Count) return;
+        var candidate = _mentionRows[index];
+        var trigger = OpenCodeComposerCharTriggers.FindMention(editor.Text, editor.SelectionStart);
+        var s = _source();
+        if (!trigger.Present || trigger != _mentionTrigger || editor.IsReadOnly || _composing || !s.IsActive || s.IsBusy)
+        {
+            CloseMention();
+            return;
+        }
+        CloseMention();
+        var insertion = OpenCodeComposerCharTriggers.MentionInsertion(candidate);
+        editor.Select(trigger.Start, trigger.Length);
+        editor.SelectedText = insertion;
+        editor.Select(trigger.Start + insertion.Length, 0);
+        if (editor.FocusState == FocusState.Unfocused) editor.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>"+ → 上下文（@）": insert a legal literal "@" at the caret (same native edit path); the list then opens.</summary>
+    private void InsertContextTrigger()
+    {
+        if (_editor is not { } editor || editor.IsReadOnly || _composing || CurrentMentionSearch() is null) return;
+        if (!FlushForIntent()) return;
+        var s = _source();
+        if (!s.IsActive || s.IsBusy) return;
+        if (_menuShown) _menuSession.Dismiss(this, _menuSession.Capture());
+        editor.Focus(FocusState.Programmatic);
+        var text = editor.Text ?? string.Empty;
+        var caret = Math.Clamp(editor.SelectionStart + editor.SelectionLength, 0, text.Length);
+        var (insert, offset) = OpenCodeComposerCharTriggers.ContextInsertion(text, caret);
+        editor.Select(caret, 0);
+        editor.SelectedText = insert;
+        editor.Select(caret + offset, 0);
     }
 
     /// <summary>
