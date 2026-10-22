@@ -28,7 +28,7 @@ $generated = Join-Path $output 'ProductionMembers.cs'
 "using System; using System.Globalization; using AIFrontend.Pages.OpenCode; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Media; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + ($members -join "`n") + "`n} }" | Set-Content -Encoding UTF8 $generated
 $assembly = Join-Path $output 'ComposerA1Tests.dll'
 $sources = @($generated, (Join-Path $PSScriptRoot 'Program.cs'), "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Agents.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
-$sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs","$repo/tests/opencode-tabs/Tab.TestHost.cs")
+$sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs","$repo/tests/opencode-tabs/Tab.TestHost.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs")
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references=@(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll')|ForEach-Object FullName)
 $arguments += $references | ForEach-Object { '/reference:"' + $_ + '"' }
