@@ -59,7 +59,7 @@ internal interface IOpenCodeDetailContentSource
 }
 
 /// <summary>
-/// 工具 / 子代理 / 思考等详情弹出层（G7）：全局同一时刻只有一个，两种形态——
+/// 工具 / 子智能体 / 思考等详情弹出层（G7）：全局同一时刻只有一个，两种形态——
 /// <list type="bullet">
 /// <item><b>悬停预览</b>（AutomationId <c>OpenCodeToolDetailPreview</c>）：鼠标停留 <see cref="HoverOpenDelayMs"/> 后显示的小浮层
 /// （原生 <see cref="FlyoutPresenter"/>：亚克力、Flyout 描边、OverlayCornerRadius + ThemeShadow），紧贴来源行，<b>没有关闭按钮</b>；

@@ -27,6 +27,7 @@ public sealed partial class OpenCodePage
 
     private void StopEventSync()
     {
+        OnAgentTreeReset();
         ResetRuntimeFeedback();
         _eventCts?.Cancel();
         _eventCts = null;
@@ -98,6 +99,7 @@ public sealed partial class OpenCodePage
             if (_messageHistoryWorkflowOwner is null) _ = RefreshMessagesAsync();
         }
         _ = RefreshListedSessionStatusesAsync();
+        OnAgentTreeConnected();
     }
 
     partial void OnMessageHistoryWorkflowEnded()
@@ -189,6 +191,7 @@ public sealed partial class OpenCodePage
         {
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
+            OnAgentTreeEvent(item);
             count++;
             if (item.ReceivedAt < first) first = item.ReceivedAt;
             var id = item.SessionId;
@@ -279,6 +282,11 @@ public sealed partial class OpenCodePage
         }
     }
 
+    partial void OnAgentTreeEvent(OpenCodeEvent item);
+    partial void OnAgentTreeConnected();
+    partial void OnAgentTreeReset();
+    partial void OnAgentTreeActivityChanged();
+
     partial void RefreshConversationSessionActivity()
     {
         if (!_pageActive || !SourceReady || _sessionMissing) return;
@@ -322,6 +330,7 @@ public sealed partial class OpenCodePage
             RefreshSessionStateUi();
             RefreshComposerSessionActivity();
             RefreshConversationSessionActivity();
+            OnAgentTreeActivityChanged();
         }
         catch (OperationCanceledException) { }
         catch (OpenCodeException) { /* Keep last successful foreground observation; retry at fallback. */ }

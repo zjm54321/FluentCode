@@ -1,0 +1,422 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using AIFrontend.Pages.OpenCode;
+using AIFrontend.Services.Notifications;
+using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+
+namespace AIFrontend.Pages;
+
+public sealed partial class OpenCodePage
+{
+    private readonly OpenCodeAgentTreeView _agentTree = new();
+    private readonly List<OpenCodeAgentInfo> _treeAgents = new();
+    private readonly Dictionary<string, OpenCodeSessionInfo> _treeChildren = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeTreeStatus> _treeStatuses = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (string? Agent, OpenCodeModelRef? Model)> _treeObservedSteps = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeTreeShell> _treeShells = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeTreeShellKind> _treeShellKinds = new(StringComparer.Ordinal);
+    private CancellationTokenSource? _treeCts;
+    private TreeBinding? _treeBinding;
+    private long _treeVersion;
+    private bool _treeRefreshQueued;
+    private bool _treeLoading;
+    private bool _treeReload;
+    private string? _treeDirectory;
+    private string? _treeHint;
+    private string? _treeSelectedShell;
+    private string _treeOutput = string.Empty;
+    private long _treeOutputCursor;
+    private bool _treeOutputBusy;
+    private string? _treeOutputError;
+    private long _treeDetailVersion;
+    private DispatcherTimer? _treeOutputTimer;
+
+    private sealed record TreeBinding(OpenCodePageSource Source, long Revision, int SourceGeneration,
+        OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId);
+
+    private void InitializeAgentTree()
+    {
+        LeftAgentTreeSlot.Children.Add(_agentTree);
+        _agentTree.RefreshRequested += QueueAgentTreeRefresh;
+        _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
+        _agentTree.ShellRequested += id =>
+        {
+            _treeDetailVersion++;
+            _treeSelectedShell = id;
+            _treeOutput = _treeShells.GetValueOrDefault(id)?.Output ?? string.Empty;
+            _treeOutputCursor = 0;
+            _treeOutputError = null;
+            ShowAgentTreeOutput();
+            _ = ReadAgentTreeOutputAsync();
+        };
+        _agentTree.OutputRefreshRequested += () => _ = ReadAgentTreeOutputAsync();
+        _agentTree.DetailClosed += () => { _treeDetailVersion++; _treeSelectedShell = null; _treeOutputTimer?.Stop(); };
+        Loaded += (_, _) => QueueAgentTreeRefresh();
+        Unloaded += (_, _) => ResetAgentTree();
+    }
+
+    private TreeBinding? CaptureTreeBinding() => _pageActive && SourceReady && !_sessionMissing
+        && _source is { } source && _client is { } client && _selectedSessionId is { } id
+            ? new(source, _sourceRevision, _sourceGeneration, client, _pageGeneration, _sessionGeneration, id) : null;
+
+    private bool IsTreeCurrent(TreeBinding binding) => CaptureTreeBinding() == binding && !binding.Source.IsRevoked;
+
+    private void ResetAgentTree()
+    {
+        _treeCts?.Cancel();
+        _treeCts?.Dispose();
+        _treeCts = null;
+        _treeBinding = null;
+        _treeVersion++;
+        _treeAgents.Clear();
+        _treeChildren.Clear();
+        _treeStatuses.Clear();
+        _treeObservedSteps.Clear();
+        _treeShells.Clear();
+        _treeShellKinds.Clear();
+        _treeDirectory = null;
+        _treeHint = null;
+        _treeSelectedShell = null;
+        _treeDetailVersion++;
+        _treeOutputError = null;
+        _treeOutputTimer?.Stop();
+        _treeOutput = string.Empty;
+        _treeOutputCursor = 0;
+        _treeLoading = false;
+        _treeReload = false;
+        _agentTree.Reset();
+        LeftAgentTreeSlot.Visibility = Visibility.Collapsed;
+    }
+
+    partial void OnAgentTreeReset()
+    {
+        ResetAgentTree();
+        // Reset is called before a new source/session has finished binding.
+        DispatcherQueue.TryEnqueue(QueueAgentTreeRefresh);
+    }
+
+    partial void OnAgentTreeHistoryReset() => OnAgentTreeReset();
+
+    partial void OnAgentTreeConnected()
+    {
+        // The stream is volatile. Reconnect discards pre-gap overrides so REST can repair them;
+        // events received during the new read will populate fresh overrides and win again.
+        _treeStatuses.Clear();
+        _treeObservedSteps.Clear();
+        QueueAgentTreeRefresh();
+    }
+
+    private void QueueAgentTreeRefresh()
+    {
+        if (_treeRefreshQueued) return;
+        _treeRefreshQueued = true;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _treeRefreshQueued = false;
+            _ = RefreshAgentTreeAsync();
+        });
+    }
+
+    private async Task<T> TreeReadAsync<T>(TreeBinding binding, Func<Task<T>> read, CancellationToken ct)
+    {
+        Task<T>? pending = null;
+        binding.Source.TryExecute(ct, () => { if (IsTreeCurrent(binding)) pending = read(); });
+        if (pending is null) throw new OperationCanceledException(ct);
+        return await pending;
+    }
+
+    private async Task RefreshAgentTreeAsync()
+    {
+        var binding = CaptureTreeBinding();
+        if (binding is null) { ResetAgentTree(); return; }
+        if (_treeBinding != binding)
+        {
+            ResetAgentTree();
+            _treeBinding = binding;
+            _treeCts = CancellationTokenSource.CreateLinkedTokenSource(_pageCts!.Token, binding.Source.RevocationToken);
+        }
+        if (_treeLoading) { _treeReload = true; return; }
+        _treeLoading = true;
+        var ct = _treeCts!.Token;
+        bool Current() => !ct.IsCancellationRequested && IsTreeCurrent(binding) && _treeBinding == binding;
+        LeftAgentTreeSlot.Visibility = Visibility.Visible;
+        try
+        {
+            var session = await TreeReadAsync(binding, () => binding.Client.GetSessionInfoAsync(binding.SessionId, ct), ct);
+            if (!Current()) return;
+            var directory = session.Location?.Directory;
+            if (string.IsNullOrWhiteSpace(directory)) { _treeHint = "会话目录不可用"; RenderAgentTree(); return; }
+            _treeDirectory = directory;
+            var agents = await TreeReadAsync(binding, () => binding.Client.ListAgentsAsync(directory, ct), ct);
+            if (!Current()) return;
+            _treeAgents.Clear();
+            _treeAgents.AddRange(agents.Data ?? new());
+            var children = new Dictionary<string, OpenCodeSessionInfo>(StringComparer.Ordinal);
+            var cursors = new HashSet<string>(StringComparer.Ordinal);
+            string? cursor = null;
+            do
+            {
+                var page = await TreeReadAsync(binding, () => binding.Client.ListSessionsAsync(new()
+                {
+                    ParentFilter = OpenCodeSessionParentFilter.Children, ParentId = binding.SessionId,
+                    Limit = 100, Cursor = cursor, Order = cursor is null ? OpenCodeSessionOrders.Asc : null
+                }, ct), ct);
+                if (!Current()) return;
+                foreach (var child in page.Data ?? new())
+                {
+                    if (child.Id is not { Length: > 0 } id || child.ParentId != binding.SessionId) continue;
+                    // Session.model is a selection; only assistant.model proves the model actually used.
+                    var projected = child with { Model = null };
+                    try
+                    {
+                        var messages = await TreeReadAsync(binding, () => binding.Client.GetMessagesAsync(id,
+                            new() { Type = "assistant", Limit = 1, Order = OpenCodeSessionOrders.Desc }, ct), ct);
+                        if (!Current()) return;
+                        var assistant = messages.Data?.FirstOrDefault(m => m.Type == "assistant");
+                        projected = projected with { Model = assistant?.Model };
+                    }
+                    catch (OpenCodeException) { /* Child remains navigable; model is honestly unavailable. */ }
+                    children[id] = projected;
+                }
+                cursor = page.Cursor?.Next;
+                if (cursor is not null && !cursors.Add(cursor)) throw new OpenCodeProtocolException("子会话分页游标重复。");
+            } while (cursor is not null);
+            if (!Current()) return;
+            _treeChildren.Clear();
+            foreach (var pair in children)
+                _treeChildren[pair.Key] = _treeObservedSteps.TryGetValue(pair.Key, out var step)
+                    ? pair.Value with { Agent = step.Agent ?? pair.Value.Agent, Model = step.Model } : pair.Value;
+            _treeHint = children.Values.Any(s => !_treeAgents.Any(a => a.Id == s.Agent))
+                ? "部分子会话的智能体不在当前有效配置中" : null;
+            try
+            {
+                var shellVersion = _treeVersion;
+                var shells = await TreeReadAsync(binding, () => binding.Client.ListTreeShellsAsync(directory, ct), ct);
+                if (!Current()) return;
+                foreach (var info in shells.Data ?? new())
+                    if (OpenCodeAgentTreeProjection.Shell(info, binding.SessionId) is { } shell
+                        && (shellVersion == _treeVersion || !_treeShells.ContainsKey(shell.Id)))
+                        MergeAgentTreeShell(shell);
+                // /shell lists running commands only. Absence does not prove completion.
+                foreach (var id in _treeShells.Where(p => p.Value.Status == OpenCodeTreeStatus.Running).Select(p => p.Key).ToArray())
+                {
+                    var before = _treeVersion;
+                    try
+                    {
+                        var info = await TreeReadAsync(binding, () => binding.Client.GetTreeShellAsync(id, directory, ct), ct);
+                        if (!Current()) return;
+                        if (before == _treeVersion && OpenCodeAgentTreeProjection.Shell(info, binding.SessionId) is { } shell) MergeAgentTreeShell(shell);
+                    }
+                    catch (OpenCodeException)
+                    {
+                        if (Current() && before == _treeVersion && _treeShells.TryGetValue(id, out var unavailable))
+                            _treeShells[id] = unavailable with { Status = OpenCodeTreeStatus.Unknown };
+                    }
+                }
+            }
+            catch (OpenCodeException) { if (Current()) _treeHint = "后台终端列表不可用"; }
+            if (Current()) RenderAgentTree();
+        }
+        catch (OperationCanceledException) { }
+        catch (OpenCodeException) { if (Current()) { _treeHint = "智能体或子会话读取不可用，请刷新重试"; RenderAgentTree(); } }
+        finally
+        {
+            if (_treeBinding == binding)
+            {
+                _treeLoading = false;
+                if (_treeReload) { _treeReload = false; QueueAgentTreeRefresh(); }
+            }
+        }
+    }
+
+    private void RenderAgentTree()
+    {
+        if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) return;
+        var statuses = new Dictionary<string, OpenCodeTreeStatus>(_treeStatuses, StringComparer.Ordinal);
+        foreach (var id in _treeChildren.Keys)
+            if (!statuses.ContainsKey(id) && _liveSessionStatuses.TryGetValue(id, out var live) && live.Working)
+                statuses[id] = OpenCodeTreeStatus.Running;
+        _agentTree.Render(OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses),
+            _treeShells.Values.ToArray(), _treeHint);
+        ShowAgentTreeOutput();
+    }
+
+    partial void OnAgentTreeActivityChanged()
+    {
+        RenderAgentTree();
+    }
+
+    partial void OnAgentTreeMessages(IReadOnlyList<OpenCodeMessage> messages)
+    {
+        if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) { QueueAgentTreeRefresh(); return; }
+        var changed = false;
+        foreach (var message in messages)
+        {
+            if (OpenCodeAgentTreeProjection.Shell(message) is { } shell) changed |= MergeAgentTreeShell(shell);
+            // Native tool input/metadata identifies background shell jobs; no parsing of prose.
+            foreach (var part in message.Content ?? new())
+            {
+                if (OpenCodeAgentTreeProjection.Shell(part) is { } projected) changed |= MergeAgentTreeShell(projected);
+                if (part.Type != "tool" || OpenCodeToolStates.Read(part.State) is not { } state) continue;
+                var id = OpenCodeAgentTreeProjection.String(state.Metadata, "shellID");
+                if (id is null) continue;
+                var background = OpenCodeAgentTreeProjection.Boolean(state.Input, "background");
+                // The verified shell tool returns metadata.status=running when detached, including
+                // manual backgrounding. A completed tool call is not a completed shell job.
+                var detached = OpenCodeAgentTreeProjection.String(state.Metadata, "status") == "running"
+                    && state.Status == "completed";
+                var kind = background == true || detached ? OpenCodeTreeShellKind.Background
+                    : background == false || part.Name == "shell" ? OpenCodeTreeShellKind.Foreground : OpenCodeTreeShellKind.Unknown;
+                _treeShellKinds[id] = kind;
+                if (_treeShells.TryGetValue(id, out var toolShell) && kind != OpenCodeTreeShellKind.Unknown && toolShell.Kind != kind)
+                {
+                    _treeShells[id] = toolShell with { Kind = kind };
+                    changed = true;
+                }
+            }
+        }
+        if (changed) RenderAgentTree();
+    }
+
+    private bool MergeAgentTreeShell(OpenCodeTreeShell shell)
+    {
+        if (_treeShells.TryGetValue(shell.Id, out var previous))
+            shell = shell with { Cwd = shell.Cwd ?? previous.Cwd, Output = shell.Output ?? previous.Output,
+                Kind = shell.Kind == OpenCodeTreeShellKind.Unknown ? previous.Kind : shell.Kind,
+                Status = shell.Status == OpenCodeTreeStatus.Unknown
+                    || shell.Status == OpenCodeTreeStatus.Running && previous.Status is OpenCodeTreeStatus.Succeeded or OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted
+                    ? previous.Status : shell.Status,
+                Exit = shell.Exit ?? previous.Exit };
+        if (_treeShellKinds.TryGetValue(shell.Id, out var kind) && kind != OpenCodeTreeShellKind.Unknown) shell = shell with { Kind = kind };
+        _treeShells[shell.Id] = shell;
+        return shell != previous;
+    }
+
+    partial void OnAgentTreeEvent(OpenCodeEvent item)
+    {
+        if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) return;
+        var id = item.SessionId;
+        if (item.Type is "agent.updated" or "config.updated" or "session.created" or "session.deleted" or "session.updated"
+            || item.Type == "session.agent.selected") QueueAgentTreeRefresh();
+        if (id is not null)
+        {
+            var status = item.Type switch
+            {
+                "session.execution.started" or "session.step.started" or "session.retry.scheduled" => OpenCodeTreeStatus.Running,
+                "session.execution.succeeded" => OpenCodeTreeStatus.Succeeded,
+                "session.execution.failed" => OpenCodeTreeStatus.Failed,
+                "session.execution.interrupted" => OpenCodeTreeStatus.Interrupted,
+                "session.idle" => OpenCodeTreeStatus.Unknown,
+                _ => (OpenCodeTreeStatus?)null
+            };
+            if (status.HasValue && !(item.Type == "session.idle" && _treeStatuses.GetValueOrDefault(id) is OpenCodeTreeStatus.Succeeded or OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted))
+                _treeStatuses[id] = status.Value;
+            if (item.Type == "session.step.started")
+            {
+                var agent = OpenCodeAgentTreeProjection.String(item.Data, "agent");
+                var model = item.Data.TryGetProperty("model", out var raw) ? raw.Deserialize<OpenCodeModelRef>() : null;
+                _treeObservedSteps[id] = (agent, model);
+                if (_treeChildren.TryGetValue(id, out var child))
+                    _treeChildren[id] = child with { Agent = agent ?? child.Agent, Model = model };
+            }
+            if (status.HasValue) RenderAgentTree();
+        }
+        if (item.Type == "shell.created" && item.Data.TryGetProperty("info", out var info))
+        {
+            var dto = info.Deserialize<OpenCodeTreeShellInfo>();
+            if (dto is not null && OpenCodeAgentTreeProjection.Shell(dto, binding.SessionId) is { } shell)
+            {
+                _treeVersion++;
+                MergeAgentTreeShell(shell);
+                RenderAgentTree();
+            }
+        }
+        else if (item.Type == "shell.exited" && OpenCodeAgentTreeProjection.String(item.Data, "id") is { } shellId
+            && _treeShells.TryGetValue(shellId, out var previous))
+        {
+            double? exit = item.Data.TryGetProperty("exit", out var number) && number.TryGetDouble(out var value) ? value : null;
+            _treeVersion++;
+            _treeShells[shellId] = previous with { Status = OpenCodeAgentTreeProjection.ShellStatus(OpenCodeAgentTreeProjection.String(item.Data, "status"), exit), Exit = exit?.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+            RenderAgentTree();
+            if (_treeSelectedShell == shellId) _ = ReadAgentTreeOutputAsync();
+        }
+        // session.shell.* is owned by the message reducer (B8); accepted messages feed the projection above.
+    }
+
+    private async Task OpenAgentTreeChildAsync(string id)
+    {
+        var binding = _treeBinding;
+        if (binding is null || !IsTreeCurrent(binding) || !_treeChildren.ContainsKey(id) || _subagentNavigationBusy) return;
+        _subagentNavigationBusy = true;
+        var ct = _treeCts!.Token;
+        try
+        {
+            var child = await TreeReadAsync(binding, () => binding.Client.GetSessionInfoAsync(id, ct), ct);
+            if (!IsTreeCurrent(binding) || ct.IsCancellationRequested) return;
+            if (child.ParentId != binding.SessionId) { ShowMessage(InfoBarSeverity.Warning, "无法确认子会话归属", "该子会话不再属于当前会话。"); return; }
+            DismissSidebarDrawers();
+            SelectSessionItem(id);
+            await SwitchToSessionAsync(id, new SessionReturnTarget(binding.SessionId, SessionReturnKind.VisitedOrigin));
+        }
+        catch (OperationCanceledException) { }
+        catch (OpenCodeException) { if (IsTreeCurrent(binding)) ShowMessage(InfoBarSeverity.Warning, "子会话读取不可用", "请稍后重试。"); }
+        finally { _subagentNavigationBusy = false; }
+    }
+
+    private void ShowAgentTreeOutput()
+    {
+        if (_treeSelectedShell is not { } id || !_treeShells.TryGetValue(id, out var shell)) return;
+        _agentTree.ShowOutput(shell, (_treeOutput.Length > 0 ? _treeOutput : shell.Output ?? "尚无输出；可读取更多输出") + _treeOutputError);
+        if (shell.Status == OpenCodeTreeStatus.Running && _pageActive && _treeOutputError is null)
+        {
+            _treeOutputTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _treeOutputTimer.Tick -= AgentTreeOutputTick;
+            _treeOutputTimer.Tick += AgentTreeOutputTick;
+            _treeOutputTimer.Start();
+        }
+        else _treeOutputTimer?.Stop();
+    }
+
+    private void AgentTreeOutputTick(object? sender, object e) => _ = ReadAgentTreeOutputAsync();
+
+    private async Task ReadAgentTreeOutputAsync()
+    {
+        if (_treeOutputBusy || _treeBinding is not { } binding || !IsTreeCurrent(binding)
+            || _treeSelectedShell is not { } id || _treeDirectory is not { } directory || !_treeShells.ContainsKey(id)) return;
+        _treeOutputBusy = true;
+        var ct = _treeCts!.Token;
+        var detailVersion = _treeDetailVersion;
+        try
+        {
+            var output = await TreeReadAsync(binding, () => binding.Client.ReadTreeShellOutputAsync(id, directory, _treeOutputCursor, ct), ct);
+            if (!IsTreeCurrent(binding) || ct.IsCancellationRequested || _treeSelectedShell != id || detailVersion != _treeDetailVersion) return;
+            _treeOutput = (_treeOutputCursor == 0 ? string.Empty : _treeOutput) + output.Output;
+            _treeOutputCursor = output.Cursor ?? _treeOutputCursor;
+            _treeOutputError = null;
+            // Bound only the visible tail, preserving the authoritative byte cursor.
+            if (_treeOutput.Length > 1048576) _treeOutput = "（仅显示最近输出）\n" + _treeOutput[^1048576..];
+            ShowAgentTreeOutput();
+        }
+        catch (OperationCanceledException) { }
+        catch (OpenCodeException)
+        {
+            if (IsTreeCurrent(binding) && _treeSelectedShell == id && detailVersion == _treeDetailVersion)
+            {
+                _treeOutputTimer?.Stop();
+                _treeOutputError = "\n输出读取不可用（任务可能已被服务端移除）";
+                ShowAgentTreeOutput();
+            }
+        }
+        finally
+        {
+            _treeOutputBusy = false;
+            if (detailVersion != _treeDetailVersion && _treeSelectedShell is not null) _ = ReadAgentTreeOutputAsync();
+        }
+    }
+}

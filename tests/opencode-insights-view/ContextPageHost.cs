@@ -12,6 +12,9 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
+    // Optional left-sidebar hooks are declared outside the extracted publication bodies.
+    partial void OnAgentTreeEvent(OpenCodeEvent item);
+    partial void OnAgentTreeReset();
     private CancellationTokenSource? _eventCts;
     #pragma warning disable CS0414 // StopEventSync clears this; subscription startup is outside this publication fixture.
     private TaskCompletionSource? _eventReady;

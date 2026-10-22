@@ -213,6 +213,7 @@ public sealed partial class OpenCodePage : Page
         InitializeSidebars();
         InitializeRightPanelMetadata();
         InitializeWslQuickAccess();
+        InitializeAgentTree();
 
         UpdateConnectionStatus();
         UpdateComposerButtons();

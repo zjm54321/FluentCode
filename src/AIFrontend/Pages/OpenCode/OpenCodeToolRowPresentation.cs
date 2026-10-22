@@ -304,7 +304,7 @@ internal static class OpenCodeToolRowPresentation
         "todoread" => "查看 to do",
         "acp_status" => "ACP状态",
         "compress" => "压缩上下文",
-        "task_message" => "子代理消息",
+        "task_message" => "子智能体消息",
         _ => string.IsNullOrWhiteSpace(name) ? "工具" : name.Trim(),
     };
 

@@ -12,7 +12,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// 时间线中工具样式的紧凑单行（F8 / wave5 G4 / H5）：指令（“指令”）、异步完成（“终端完成”“子任务完成”“后台任务完成”）、
 /// 插件内部自动消息等。外观与工具行一致（高 32、左对齐）：类别字形 | 名称（BodyStrong）| 目标 | 摘要 | 右侧状态字形。
 /// 完整内容只在悬停片刻（延迟见 OpenCodeToolDetailPopup.HoverOpenDelayMs）后于共享的 <see cref="OpenCodeToolDetailPopup"/> 中显示；
-/// 子代理点击直接打开真实子会话小窗，其余点击固定详情，Esc 关闭。调用/结果属性与正文留在悬停详情中。
+/// 子智能体点击直接打开真实子会话小窗，其余点击固定详情，Esc 关闭。调用/结果属性与正文留在悬停详情中。
 /// 普通 sealed 业务类（不是控件子类）：原生 Button（透明工具按钮样式）+ 内置文本样式与主题画刷。
 /// </summary>
 internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource

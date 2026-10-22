@@ -242,7 +242,7 @@ internal sealed class OpenCodeToolGroupView
         };
         AutomationProperties.SetAutomationId(_backgroundButton, "OpenCodeToolGroup.Background." + GroupId);
         AutomationProperties.SetName(_backgroundButton, "将本会话前台工具转入后台");
-        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子代理转入后台");
+        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子智能体转入后台");
         _backgroundButton.Click += (_, _) => { if (!_disposed) _backgroundAction?.Invoke(); };
         Grid.SetColumn(_backgroundButton, 1);
         _headerRow.Children.Add(_backgroundButton);

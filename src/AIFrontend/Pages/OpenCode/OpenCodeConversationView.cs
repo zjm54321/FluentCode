@@ -1150,7 +1150,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 // The exact existing call/real terminal owns that operation; never add a second one.
                 if (_manualBackground.IsNoticeItemRepresented(current.Id, item.Kind, item.Title)) continue;
                 var glyph = item.Kind == "shell" ? OpenCodeStepRunPresentation.TerminalGlyph : OpenCodeStepRunPresentation.SubagentGlyph;
-                var name = item.Kind == "shell" ? "终端（后台）" : "子代理（后台）";
+                var name = item.Kind == "shell" ? "终端（后台）" : "子智能体（后台）";
                 var chip = new OpenCodeTimelineChipView("OpenCodeManualBackgroundNotice", glyph);
                 chip.UpdateRow(new OpenCodeTimelineRowContent(name, item.Title, "后台运行中", OpenCodeToolRowStatus.Running,
                     name + " · " + item.Title + " · 后台运行中（通知时尚未完成）", name,

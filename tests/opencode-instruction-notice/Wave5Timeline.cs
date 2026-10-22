@@ -204,7 +204,7 @@ internal static class Wave5Timeline
         Check(chips[0].Label == "终端（后台）" && chips[0].Content!.Target == "build.py" && chips[0].Content!.Summary == "已完成 · 退出码 0"
               && chips[0].Content!.Status == OpenCodeToolRowStatus.Completed && chips[0].DetailText == "BUILD OK"
               && chips[0].LinkInvoked is null, "g4.shell-completion-row");
-        Check(chips[1].Label == "子代理（后台）" && chips[1].Content!.Target == "fixer 构建" && chips[1].Content!.DetailMarkdown
+        Check(chips[1].Label == "子智能体（后台）" && chips[1].Content!.Target == "fixer 构建" && chips[1].Content!.DetailMarkdown
               && chips[1].Content!.LinkText == "打开子会话" && chips[1].LinkInvoked is not null, "g4.subagent-completion-row");
         chips[1].LinkInvoked!();
         Check(navigation == 1, "g4.subagent-row-navigates-validated-child");

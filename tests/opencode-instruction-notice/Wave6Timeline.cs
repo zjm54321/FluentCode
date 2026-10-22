@@ -83,14 +83,14 @@ internal static class Wave6Timeline
         OpenCodeMessage Child(string state) => M(new { id = "child_done", type = "synthetic", text = "child body", metadata = new { source = "subagent", childID = "ses_child", state } });
         view.ApplyMessages(new[] { Child("completed") });
         var child = Made<OpenCodeTimelineChipView>().Single();
-        Check(child.Label == "子代理（后台）" && child.Content!.Status == OpenCodeToolRowStatus.Completed && ConversationViewTestProbe.IsAttachedTo(child.Element, view), "wave7.completed-child-retains-background-identity-in-process-group");
+        Check(child.Label == "子智能体（后台）" && child.Content!.Status == OpenCodeToolRowStatus.Completed && ConversationViewTestProbe.IsAttachedTo(child.Element, view), "wave7.completed-child-retains-background-identity-in-process-group");
         child.LinkInvoked!();
         view.ApplyMessages(new[] { Child("failed") });
-        Check(child.Label == "子代理（后台）" && child.Content!.Status == OpenCodeToolRowStatus.Error && child.DisposeCount == 0, "wave7.failed-child-same-name-same-row-with-error-status");
+        Check(child.Label == "子智能体（后台）" && child.Content!.Status == OpenCodeToolRowStatus.Error && child.DisposeCount == 0, "wave7.failed-child-same-name-same-row-with-error-status");
         child.LinkInvoked!();
         Check(requests == 2, "wave6.success-failure-use-same-child-conversation-request");
         var invocation = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"type\":\"tool\",\"name\":\"subagent\",\"state\":{\"status\":\"completed\",\"input\":{}}}", OpenCodeJson.Options)!;
-        Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子代理", "wave6.invocation-label-matches-completion-label");
+        Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子智能体", "wave6.invocation-label-matches-completion-label");
         view.ClearMessages();
 
         var root = Path.Combine(repo, "src", "AIFrontend", "Pages", "OpenCode");
@@ -149,7 +149,7 @@ internal static class Wave6Timeline
             && OpenCodeToolRowPresentation.DisplayName("company_read") == "company_read", "wave7.only-exact-built-in-display-names-are-localized");
         var unconfirmed = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"id\":\"bg_unknown\",\"type\":\"tool\",\"name\":\"subagent\",\"state\":{\"status\":\"completed\",\"input\":{\"background\":true}}}", OpenCodeJson.Options)!;
         var unknownModel = OpenCodeToolRowPresentation.Build(unconfirmed);
-        Check(unknownModel.Name == "子代理（后台）" && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
+        Check(unknownModel.Name == "子智能体（后台）" && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
             "wave7.background-return-without-job-state-is-unknown-not-success-and-protocol-is-unchanged");
         Check(chipSource.Contains("OpenCodeStepRunPresentation.TerminalGlyph") && chipSource.Contains("IsSubagentLabel(_content.Name)")
             && chipSource.Contains("owner._detailAnchorOverride ?? owner._chip"), "wave7.background-primary-glyphs-and-actual-child-anchor-adapter-preserved");
@@ -272,7 +272,7 @@ internal static class Wave6Timeline
             "wave8.delivered-only-native-accent-tint-over-opaque-theme-neutral-base-without-content-opacity-or-hardcoded-colors");
         var messageTool = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"id\":\"message_tool\",\"type\":\"tool\",\"name\":\"task_message\",\"state\":{\"status\":\"running\",\"input\":{\"text\":\"hello\"}}}", OpenCodeJson.Options)!;
         var messageModel = OpenCodeToolRowPresentation.Build(messageTool);
-        Check(messageModel.Name == "子代理消息" && messageModel.GlyphOverride == OpenCodeStepRunPresentation.SubagentGlyph
+        Check(messageModel.Name == "子智能体消息" && messageModel.GlyphOverride == OpenCodeStepRunPresentation.SubagentGlyph
             && messageModel.Kind == OpenCodeToolKind.Other && !messageModel.CanMoveToBackground && messageTool.Name == "task_message",
             "wave7.task-message-is-display-only-robot-alias-never-backgroundable-child-execution");
         Check(toolSource.Contains("Grid.SetColumn(_backgroundButton, 2)") && toolSource.Contains("Grid.SetColumn(statusCell, 3)")

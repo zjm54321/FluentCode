@@ -96,10 +96,10 @@ internal sealed record OpenCodeTimelineRowContent(
 /// </summary>
 internal static class OpenCodeStepRunPresentation
 {
-    internal const string SubagentLabel = "子代理";
+    internal const string SubagentLabel = "子智能体";
     internal const string SubagentGlyph = "\uE99A";
     internal const string TerminalGlyph = "\uE756";
-    internal static bool IsSubagentLabel(string name) => name is SubagentLabel or "子代理（后台）";
+    internal static bool IsSubagentLabel(string name) => name is SubagentLabel or "子智能体（后台）";
     internal static string FormatRetryCountdown(int attempt, DateTimeOffset deadline, DateTimeOffset now)
     {
         var seconds = Math.Max(0, Math.Floor((deadline - now).TotalSeconds + 0.5));

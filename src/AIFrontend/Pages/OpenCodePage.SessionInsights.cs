@@ -106,12 +106,15 @@ public sealed partial class OpenCodePage
 
     partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages)
     {
+        OnAgentTreeMessages(messages);
         OnRuntimeMessagesAccepted(messages);
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
             insights.UpdateContext(binding!, messages, IsLoadedMessageHistoryComplete(), CaptureTodoHistory());
     }
 
     partial void OnRuntimeMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
+    partial void OnAgentTreeMessages(IReadOnlyList<OpenCodeMessage> messages);
+    partial void OnAgentTreeHistoryReset();
 
     partial void OnContextSessionMetadata(OpenCodeModelRef? model, string directory, long version)
     {
@@ -128,6 +131,7 @@ public sealed partial class OpenCodePage
 
     private void ResetSessionInsights()
     {
+        OnAgentTreeHistoryReset();
         var clearOrigin = ObserveInsightsSourceLifetime();
         if (clearOrigin)
         {
