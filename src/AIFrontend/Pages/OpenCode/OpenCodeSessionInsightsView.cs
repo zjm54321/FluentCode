@@ -7,6 +7,7 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -36,7 +37,7 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeSessionInsightsView : UserControl
 {
     private readonly TextBlock _scopeText;
-    private readonly Border _usageHost = new();
+    private readonly Border _usageHost = Card();
     private readonly Button _refreshButton;
     private readonly ProgressRing _refreshRing;
     private readonly CheckBox _billionConfirm;
@@ -356,7 +357,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             }
 
             // 常驻上下文在上，A10 原生 to do 卡片在下；子会话只进入用量，不混入 to do。
-            var todoCard = new Border { Padding = new Thickness(12), CornerRadius = new CornerRadius(8), Child = TodoSection(snapshot) };
+            var todoCard = Card();
+            todoCard.Child = TodoSection(snapshot);
             AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
             _overviewPage.Children.Add(todoCard);
             _overviewPage.Children.Add(_agents.Render(snapshot.Children, PrimaryAgent));
@@ -386,7 +388,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
     private static StackPanel Page(string automationId, string name)
     {
-        var page = new StackPanel { Spacing = 24, Visibility = Visibility.Collapsed };
+        // 侧栏间距刻度：卡片内 8/12，卡片之间 12，分区之间 16。
+        var page = new StackPanel { Spacing = 16, Visibility = Visibility.Collapsed };
         AutomationProperties.SetAutomationId(page, automationId);
         AutomationProperties.SetName(page, name);
         return page;
@@ -424,13 +427,16 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(OpenCodeInteractionUi.StyledText("上下文", OpenCodeInteractionUi.BodyStrongStyleKey));
         var turns = Caption(snapshot.Turns is { } count ? count + " 轮" : "轮次不可用");
+        turns.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetAutomationId(turns, "OpenCodeInsightsTurns");
         Grid.SetColumn(turns, 1);
         heading.Children.Add(turns);
         panel.Children.Add(heading);
 
-        var current = Body(CurrentContextLine(snapshot));
+        // 主数字：used / limit (pct%) 用 Subtitle 字阶单行显示，窄抽屉内省略号兜底（Tooltip 仍给出说明）。
+        var current = OpenCodeInteractionUi.StyledText(CurrentContextLine(snapshot), OpenCodeInteractionUi.SubtitleStyleKey, selectable: true);
         current.TextWrapping = TextWrapping.NoWrap;
+        current.TextTrimming = TextTrimming.CharacterEllipsis;
         AutomationProperties.SetAutomationId(current, "OpenCodeInsightsCurrentContext");
         ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
         panel.Children.Add(current);
@@ -451,11 +457,18 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             ("思考 tokens", Token(tokens?.Reasoning)),
         }));
         panel.Children.Add(OpenCodeContextRing.Divider());
-        panel.Children.Add(Table(new List<(string, string)>
+        var totals = Table(new List<(string, string)>
         {
             ("总 tokens", Token(tokens?.Total)),
             ("总费用", knownCost ? prefix + Money(summary!.TotalCost) : "不可用"),
-        }));
+        });
+        // 合计行：标签升为主文字色、数值加粗，与上方明细行（次要标签 / 常规数值）拉开层级。Table 子项按“标签、数值”成对追加。
+        for (var index = 0; index + 1 < totals.Children.Count; index += 2)
+        {
+            if (totals.Children[index] is TextBlock label) label.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
+            if (totals.Children[index + 1] is TextBlock value) value.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodyStrongStyleKey);
+        }
+        panel.Children.Add(totals);
         var note = Caption(summary is null ? "主会话及子会话累计用量：" + snapshot.Cost.Note
             : "主会话及全部子会话，按 parentID 去重累计；输入不含缓存。" + (summary.Incomplete ? "部分数据未能读取。" : ""));
         ToolTipService.SetToolTip(note, "总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入；缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。费用直接累计 Session.Info.cost，不重新计价，不加消息费用或 Billion 账单。");
@@ -555,6 +568,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Padding = new Thickness(4, 2, 4, 2),
+                // 负外边距抵消按钮内边距：可折叠标题与不可折叠标题、列表图标保持同一左缘。
+                Margin = new Thickness(-4, -2, -4, -2),
             };
             if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } style)
             {
@@ -1141,6 +1156,32 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     internal static TextBlock Caption(string text, double emphasis = 0.65)
         => OpenCodeInteractionUi.StyledText(text,
             emphasis >= 0.8 ? OpenCodeInteractionUi.CaptionStyleKey : OpenCodeInteractionUi.CaptionSubtleStyleKey, selectable: true);
+
+    private static Style? _cardStyle;
+    private static bool _cardStyleLoaded;
+
+    /// <summary>右栏卡片：内置卡片画刷 / 描边（ThemeResource，随主题切换），统一 8 圆角、12 内边距。</summary>
+    private static Border Card()
+    {
+        if (!_cardStyleLoaded)
+        {
+            _cardStyleLoaded = true;
+            try
+            {
+                _cardStyle = XamlReader.Load(
+                    "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\">"
+                    + "<Setter Property=\"Background\" Value=\"{ThemeResource CardBackgroundFillColorDefaultBrush}\" />"
+                    + "<Setter Property=\"BorderBrush\" Value=\"{ThemeResource CardStrokeColorDefaultBrush}\" />"
+                    + "<Setter Property=\"BorderThickness\" Value=\"1\" /></Style>") as Style;
+            }
+            catch
+            {
+                _cardStyle = null; // 回退：无底色，仅保留间距（与原来一致）。
+            }
+        }
+
+        return new Border { Style = _cardStyle, Padding = new Thickness(12), CornerRadius = new CornerRadius(8) };
+    }
 
     internal static TextBlock Body(string text)
         => OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey, selectable: true);

@@ -8,9 +8,11 @@ namespace AIFrontend.Pages.OpenCode;
 
 internal sealed class OpenCodeWslQuickAccessView : StackPanel
 {
-    private readonly Button _explorer = new() { Content = "在资源管理器中打开", HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly Button _editor = new() { Content = "在主机文本编辑器中打开", HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBlock _note = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private readonly Button _explorer = Action("\uE838", ExplorerText);
+    private readonly Button _editor = Action("\uE70F", EditorText);
+    private const string ExplorerText = "在资源管理器中打开";
+    private const string EditorText = "在主机文本编辑器中打开";
+    private readonly TextBlock _note = new() { TextWrapping = TextWrapping.Wrap };
     public event EventHandler? ExplorerRequested;
     public event EventHandler? EditorRequested;
     public event EventHandler? EditorMenuRequested;
@@ -18,8 +20,11 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
 
     public OpenCodeWslQuickAccessView()
     {
-        Spacing = 6;
-        Margin = new Thickness(16, 8, 16, 8);
+        // Compact strip on the shared 16epx right-pane column; 4epx between rows keeps the two actions one group.
+        Spacing = 4;
+        Margin = new Thickness(16, 4, 16, 8);
+        _note.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
+        _note.Margin = new Thickness(2, 2, 0, 0);
         Children.Add(_explorer);
         Children.Add(_editor);
         Children.Add(_note);
@@ -49,6 +54,28 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         var explanations = new List<string>();
         foreach (var editor in editors) explanations.Add(editor.Name + "：" + (editor.Reason ?? "支持 WSL 远程模式"));
         ToolTipService.SetToolTip(_editor, state.Reason ?? string.Join("\n", explanations));
+    }
+
+    // Native button, left-aligned glyph + label; explicit automation name because the content is no longer a bare string.
+    private static Button Action(string glyph, string text)
+    {
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(10, 5, 10, 5),
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal, Spacing = 8,
+                Children =
+                {
+                    new FontIcon { Glyph = glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center },
+                    new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis },
+                },
+            },
+        };
+        AutomationProperties.SetName(button, text);
+        return button;
     }
 
     public void ShowFailure() => _note.Text = "无法打开主机应用，请检查安装与目录访问权限";

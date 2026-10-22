@@ -193,7 +193,7 @@
 
             <!-- 左：会话面板（原会话栏，全部 x:Name / AutomationId 保留；关闭时仍在可视树中） -->
             <SplitView.Pane>
-                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="12,12,12,8">
+                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="12">
                     <!-- B4 and B5 own these empty slots; no placeholder data. -->
                     <Grid x:Name="LeftAgentTreeSlot" Grid.Row="0" Visibility="Collapsed" />
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="4,0,0,8">
@@ -331,12 +331,14 @@
                                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
                                     <Grid x:Name="RightPanelHeaderSlot" Grid.Row="0" Visibility="Collapsed" />
                                     <Grid x:Name="WslQuickAccessSlot" Grid.Row="1" Visibility="Collapsed" />
-                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Padding="16,8,8,8">
+                                    <!-- Sidebar spacing scale: 4/8/12/16; content column starts 16 from the pane edge. -->
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4" Padding="16,8,8,8">
                                         <TextBlock
                                             Text="会话概况"
                                             Style="{ThemeResource BodyStrongTextBlockStyle}"
                                             VerticalAlignment="Center" />
                                         <Button x:Name="OverviewRefreshMessagesButton" Grid.Column="1"
+                                                Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
                                                 Click="OverviewRefreshMessagesButton_Click"
                                                 AutomationProperties.AutomationId="OpenCodeRefreshMessagesButton"
                                                 AutomationProperties.Name="刷新消息" ToolTipService.ToolTip="立即刷新当前会话消息">
@@ -345,6 +347,7 @@
                                         <Button
                                             x:Name="InsightsPaneCloseButton"
                                             Grid.Column="2"
+                                            Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
                                             Click="InsightsPaneCloseButton_Click"
                                             AutomationProperties.AutomationId="OpenCodeInsightsPaneClose"
                                             AutomationProperties.Name="关闭会话概况"
@@ -374,12 +377,13 @@
                                     <ScrollViewer
                                         x:Name="RightSessionContent"
                                         Grid.Row="4"
-                                        Padding="16,0,16,16"
+                                        Padding="16,4,16,16"
                                         VerticalScrollBarVisibility="Auto"
                                         HorizontalScrollBarVisibility="Disabled">
                                         <Border x:Name="InsightsPaneHost" />
                                     </ScrollViewer>
-                                    <Grid x:Name="RightPanelFooterSlot" Grid.Row="5" Visibility="Collapsed" />
+                                    <Grid x:Name="RightPanelFooterSlot" Grid.Row="5" Visibility="Collapsed"
+                                          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" />
                                 </Grid>
                             </Border>
                         </SplitView.Pane>

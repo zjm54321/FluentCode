@@ -10,23 +10,26 @@ internal sealed class OpenCodeSessionControlCard : Grid
     internal Button AgentButton { get; } = Entry("OpenCodeSidebarAgent", "选择智能体");
     internal Button ModelButton { get; } = Entry("OpenCodeSidebarModel", "选择模型");
     internal Button VariantButton { get; } = Entry("OpenCodeSidebarVariant", "选择推理强度");
-    private readonly TextBlock _agentName = new() { TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly TextBlock _agentName = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     private readonly Border _chrome = new() { Padding = new Thickness(8), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1) };
 
     internal OpenCodeSessionControlCard()
     {
-        Margin = new Thickness(4, 12, 4, 4);
+        // Same outer edges as the agent-tree card above (pane padding owns the gutter); 12epx gap = sidebar card gap.
+        Margin = new Thickness(0, 12, 0, 0);
         AutomationProperties.SetAutomationId(this, "OpenCodeSessionControlCard");
-        var rows = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+        var rows = new Grid { RowSpacing = 4, ColumnSpacing = 4 };
         rows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rows.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         rows.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        AgentButton.Content = _agentName;
+        AgentButton.Content = WithChevron(_agentName);
         Grid.SetColumnSpan(AgentButton, 2);
         Grid.SetRow(ModelButton, 1);
         Grid.SetRow(VariantButton, 1);
         Grid.SetColumn(VariantButton, 1);
+        // Model keeps the flexible width; effort is short ("高" / "xhigh"), capped so long variants ellipsize.
+        VariantButton.MinWidth = 64;
         VariantButton.MaxWidth = 104;
         rows.Children.Add(AgentButton);
         rows.Children.Add(ModelButton);
@@ -47,9 +50,9 @@ internal sealed class OpenCodeSessionControlCard : Grid
         if (ModelButton.Tag as string != visualKey)
         {
             ModelButton.Tag = visualKey;
-            ModelButton.Content = OpenCodeModelLogo.Label(modelId, modelName);
+            ModelButton.Content = WithChevron(OpenCodeModelLogo.Label(modelId, modelName));
         }
-        VariantButton.Content = new TextBlock { Text = variant, TextTrimming = TextTrimming.CharacterEllipsis };
+        VariantButton.Content = WithChevron(new TextBlock { Text = variant, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
         Describe(AgentButton, "智能体：" + agent, scope);
         Describe(ModelButton, "模型：" + modelName, scope);
         Describe(VariantButton, "推理强度：" + variant, scope);
@@ -67,10 +70,23 @@ internal sealed class OpenCodeSessionControlCard : Grid
     private static Button Entry(string id, string name)
     {
         var button = new Button { HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 5, 8, 5), MinWidth = 0 };
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 6, 4), MinWidth = 0, MinHeight = 32 };
         AutomationProperties.SetAutomationId(button, id);
         AutomationProperties.SetName(button, name);
         return button;
+    }
+
+    // Small trailing chevron: these entries open pickers, so they read as selectors rather than plain buttons.
+    private static Grid WithChevron(FrameworkElement label)
+    {
+        var grid = new Grid { ColumnSpacing = 6 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(label);
+        var chevron = new FontIcon { Glyph = "\uE70D", FontSize = 10, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(chevron, 1);
+        grid.Children.Add(chevron);
+        return grid;
     }
 
     private static void Describe(Button button, string name, string scope)
