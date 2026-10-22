@@ -74,7 +74,9 @@ public sealed record OpenCodeComposerFileSource(string DisplayName, string? Mime
     Func<CancellationToken, Task<Stream>> OpenReadAsync);
 public enum OpenCodeComposerClientActionKind
 {
-    NewSession, ChooseSession, ChooseAgent, ChooseModel, Undo, Redo, EditDraft
+    NewSession, ChooseSession, ChooseAgent, ChooseModel, Undo, Redo, EditDraft,
+    /// <summary>Official /btw side question (session.generate): never a prompt, queue entry or history write.</summary>
+    SideQuestion
 }
 public abstract record OpenCodeComposerCommandIdentity
 {

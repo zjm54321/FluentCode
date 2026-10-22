@@ -32,7 +32,8 @@ foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
 }
-foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs')) {
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSideQuestion.cs"
+foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs', 'SideQuestions.cs')) {
     $sources += Get-Item (Join-Path "$repo/tests/opencode-composer" $name)
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }

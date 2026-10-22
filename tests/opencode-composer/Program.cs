@@ -130,6 +130,7 @@ internal static partial class Program
         await DraftSlots();
         var slotChecks = checks - originalChecks - syncChecks - legacyChecks - builtinChecks - continuationChecks;
         Splash();
+        await SideQuestions();
         Console.WriteLine($"PASS: original {originalChecks} + sync {syncChecks} + legacy {legacyChecks} + builtin {builtinChecks} + continuation {continuationChecks} + slots {slotChecks} + splash {checks - originalChecks - syncChecks - legacyChecks - builtinChecks - continuationChecks - slotChecks}, {checks} assertions; real Core/EditorSync/coordinator/gate/transport, fake HTTP only; ordinary Page/history/native not executed.");
     }
 

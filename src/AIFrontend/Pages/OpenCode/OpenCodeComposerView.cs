@@ -100,6 +100,13 @@ internal sealed class OpenCodeComposerView : StackPanel
     private readonly ProgressRing _statusRing;
     private readonly TextBlock _statusText;
     private readonly Button _statusDiscardButton;
+    private int _sideQuestionPending;
+
+    internal void SetSideQuestionPending(int count)
+    {
+        _sideQuestionPending = count;
+        RequestRender();
+    }
 
     // Catalog menu
     private readonly Grid _menuSlot;
@@ -1364,6 +1371,11 @@ internal sealed class OpenCodeComposerView : StackPanel
             glyph = tone == "caution" ? "\uE7BA" : "\uE946";
         }
 
+        if (_sideQuestionPending > 0)
+        {
+            var pending = $"/btw ({_sideQuestionPending}) · 正在回答旁路问题…";
+            text = text is null ? pending : text + " · " + pending;
+        }
         if (text is null) { _statusBar.Visibility = Visibility.Collapsed; _statusRing.IsActive = false; return; }
         _statusBar.Visibility = Visibility.Visible;
         _statusText.Text = text;

@@ -44,7 +44,8 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         Native(OpenCodeComposerClientActionKind.ChooseModel, "models"),
         Native(OpenCodeComposerClientActionKind.Undo, "undo"),
         Native(OpenCodeComposerClientActionKind.Redo, "redo"),
-        Native(OpenCodeComposerClientActionKind.EditDraft, "editor")
+        Native(OpenCodeComposerClientActionKind.EditDraft, "editor"),
+        Native(OpenCodeComposerClientActionKind.SideQuestion, "btw") // = OpenCodeSideQuestionPolicy.CommandName (official slash name)
     });
     private static OpenCodeComposerCommandRow Native(OpenCodeComposerClientActionKind kind, string name)
         => new(new OpenCodeComposerCommandIdentity.Client(kind), name, null);
@@ -433,13 +434,14 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
 
     private bool ClientEligible(OpenCodeComposerClientActionKind kind, string text) => (!IsUnbound(_binding) || kind is
         OpenCodeComposerClientActionKind.NewSession or OpenCodeComposerClientActionKind.ChooseSession
-        or OpenCodeComposerClientActionKind.EditDraft) && kind switch // Session-dependent actions need a session.
+        or OpenCodeComposerClientActionKind.EditDraft or OpenCodeComposerClientActionKind.SideQuestion) && kind switch
     {
         OpenCodeComposerClientActionKind.NewSession or OpenCodeComposerClientActionKind.ChooseSession
             or OpenCodeComposerClientActionKind.ChooseAgent => string.IsNullOrWhiteSpace(text) && _command is null && _files.Count == 0,
         OpenCodeComposerClientActionKind.Undo => text.Length == 0 && _command is null && _files.Count == 0,
         OpenCodeComposerClientActionKind.ChooseModel or OpenCodeComposerClientActionKind.Redo
             or OpenCodeComposerClientActionKind.EditDraft => true,
+        OpenCodeComposerClientActionKind.SideQuestion => _command is null && _files.Count == 0,
         _ => false
     };
     public void DismissClientIntent(OpenCodeComposerToken token, Guid intentId)

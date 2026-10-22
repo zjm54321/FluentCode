@@ -170,8 +170,8 @@ internal static class Program
             var p = r.Type("/");
             Check(r.Opens.Count == 1 && r.Opens[0].Token == r.Sync.LastAcknowledgment!.Value.Token && !r.Opens[0].Refresh
                 && ReferenceEquals(r.Opens[0].Lifetime, r.Lifetime), "typed '/' raises ONE open carrying the ack token + view lifetime");
-            Check(p.Visible && p.Status == OpenCodeComposerMenuStatus.Loading && p.Rows.Count == 7 && p.Rows.All(x => x.Origin == OpenCodeComposerCommandOrigin.AIFrontend),
-                "loading menu shows the seven native rows");
+            Check(p.Visible && p.Status == OpenCodeComposerMenuStatus.Loading && p.Rows.Count == 8 && p.Rows.All(x => x.Origin == OpenCodeComposerCommandOrigin.AIFrontend),
+                "loading menu shows the eight native rows (incl. /btw)");
             Check(p.Rows.Single(x => x.Identity == Native(OpenCodeComposerClientActionKind.NewSession)).Selectable
                 && p.Rows.All(x => x.Description is { Length: > 0 }), "native rows are usable during loading and carry descriptions");
             p = r.Type("/r");

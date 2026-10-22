@@ -110,6 +110,7 @@ public sealed partial class OpenCodePage
         // RequestRender is coalesced and pulls the latest snapshot on the UI dispatcher. It does not
         // focus the editor. An unloaded page can render its inactive snapshot, never its old context.
         _composerView.RequestRender();
+        TryPresentSideQuestionAnswers();
     }
 
     private (OpenCodeComposerBinding Binding, OpenCodeComposerToken Token, string Text, int Start, int Length)? _expandedComposerSelection;
@@ -183,6 +184,8 @@ public sealed partial class OpenCodePage
             || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
         var snapshot = GetComposerSnapshot();
         if (!snapshot.IsActive || snapshot.IsBusy || !snapshot.HasDraft) return;
+        // A9 /btw: consumed before every send/queue/steer/blank-create route; it is never a prompt.
+        if (TryHandleSideQuestionSubmission(snapshot)) return;
         if (delivery == OpenCodeDeliveryModes.Queue && snapshot.SelectedCommand is not null) return;
         _composerController.RequestSubmit(snapshot.Token, delivery ?? RequestedComposerDelivery);
     }
@@ -200,6 +203,7 @@ public sealed partial class OpenCodePage
             || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
         var snapshot = GetComposerSnapshot();
         if (snapshot.Token != token || !snapshot.IsActive || snapshot.IsBusy || !snapshot.HasDraft) return;
+        if (TryHandleSideQuestionSubmission(snapshot)) return; // Defensive: a "/btw" draft never reaches a sender.
         // IsBoundDraft intentionally does NOT choose transport: removing command/files leaves text bound.
         var route = OpenCodeComposerInputPolicy.Route(snapshot.SelectedCommand is not null, snapshot.Attachments.Count, snapshot.Text);
         if (delivery == OpenCodeDeliveryModes.Queue && snapshot.SelectedCommand is not null) return;

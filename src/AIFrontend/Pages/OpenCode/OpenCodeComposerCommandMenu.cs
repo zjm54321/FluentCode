@@ -465,6 +465,7 @@ internal sealed class OpenCodeComposerCommandMenuSession
         OpenCodeComposerClientActionKind.Undo => "撤回最近一条消息并放回输入框（确认后执行，尽力而为）",
         OpenCodeComposerClientActionKind.Redo => "恢复已撤回的消息（确认后执行）",
         OpenCodeComposerClientActionKind.EditDraft => "在 AIFrontend 的大编辑框中编辑草稿",
+        OpenCodeComposerClientActionKind.SideQuestion => "顺便问一句：基于当前会话上下文一次性回答，不写入会话", // = OpenCodeSideQuestionPolicy.Description
         _ => "本机操作",
     };
 

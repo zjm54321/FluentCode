@@ -47,8 +47,8 @@ internal static partial class Program
             Check(f.Handler.Gets == 0 && f.Core.Snapshot.CatalogHandle is null && f.Core.Snapshot.Text == "", "legacy catalog/selection APIs fail closed");
             await Open(f);
             var s = f.Core.Snapshot;
-            Check(s.Token == token && s.Commands.Count == 10 && s.Commands.Select(r => r.Identity).Distinct().Count() == 10,
-                "seven closed native kinds coexist with three typed server identities without draft-token mutation");
+            Check(s.Token == token && s.Commands.Count == 11 && s.Commands.Select(r => r.Identity).Distinct().Count() == 11,
+                "eight closed native kinds (incl. /btw) coexist with three typed server identities without draft-token mutation");
             Check(s.Commands.Count(r => r.Name == "editor") == 2 && s.Commands.Count(r => r.Name == "models") == 2,
                 "visible collisions have no silent identity winner");
             f.Core.DismissCatalog(token);
@@ -72,7 +72,7 @@ internal static partial class Program
             f.Handler.Send = (_, _) => response.Task;
             f.Text("/"); var openingToken = f.Core.Snapshot.Token;
             var load = Open(f); var handle = f.Core.Snapshot.CatalogHandle!;
-            Check(f.Core.Snapshot.Commands.Count == 7 && f.Core.Snapshot.CatalogState == OpenCodeComposerCatalogState.Loading,
+            Check(f.Core.Snapshot.Commands.Count == 8 && f.Core.Snapshot.CatalogState == OpenCodeComposerCatalogState.Loading,
                 "native rows independent of pending server catalog");
             f.Text("/rev edited arguments");
             response.SetResult(Catalog()); await load;
@@ -99,7 +99,7 @@ internal static partial class Program
         {
             f.Handler.Send = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden));
             await Open(f);
-            Check(f.Core.Snapshot.CatalogState == OpenCodeComposerCatalogState.Failed && f.Core.Snapshot.Commands.Count == 7, "GET failure retains seven independent native rows");
+            Check(f.Core.Snapshot.CatalogState == OpenCodeComposerCatalogState.Failed && f.Core.Snapshot.Commands.Count == 8, "GET failure retains eight independent native rows");
             await Open(f);
             Check(f.Handler.Gets == 2, "failed server response is not cached as success");
             Check(f.Core.TrySelectCommand(f.Core.Snapshot.Token, f.Core.Snapshot.CatalogHandle!, NativeId(OpenCodeComposerClientActionKind.EditDraft)), "native row remains actionable after GET failure");
@@ -209,7 +209,7 @@ internal static partial class Program
             using var f = new Fixture();
             var intent = await Stage(f, kind); var token = f.Core.Snapshot.Token;
             var ticket = f.Core.TryTakeClientAction(token, intent.Id)!;
-            Check(ticket is not null && f.Core.Snapshot.Text == "" && f.Handler.Posts == 0, "all seven kinds stage then explicitly take without mutation transport: " + kind);
+            Check(ticket is not null && f.Core.Snapshot.Text == "" && f.Handler.Posts == 0, "all eight kinds stage then explicitly take without mutation transport: " + kind);
             if (kind is not (OpenCodeComposerClientActionKind.EditDraft or OpenCodeComposerClientActionKind.Undo))
                 Check(f.Core.TryApplyClientText(ticket!, "unauthorized") is null && f.Core.Snapshot.Text == "", "kind cannot acquire text-write authority: " + kind);
             f.Core.CompleteClientAction(ticket!);
