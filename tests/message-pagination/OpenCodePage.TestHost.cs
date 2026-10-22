@@ -135,6 +135,7 @@ namespace AIFrontend.Pages
         private readonly TextBlock EmptyStateText = new();
         private void UpdateScrollToBottomButton() { }
         private void RefreshRightPanelMetadata() { } // B2 native slot projection is outside this pagination host.
+        private void RefreshWslQuickAccess() { } // B12 native quick-access projection is outside this pagination host.
         private void UpdateComposerButtons() { }
         internal Func<bool>? LastAuxiliaryFence;
         internal Func<Task> Auxiliary = () => Task.CompletedTask;

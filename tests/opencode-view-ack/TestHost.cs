@@ -132,6 +132,7 @@ namespace AIFrontend.Pages
         private void HandleApiException(OpenCodeException ex, string context) { }
         private void UpdateEmptyState() { }
         private void UpdateComposerButtons() { }
+        private void BindComposer() { } // Native composer binding is outside this acknowledgement fixture.
         private void CancelSessionOperations() { _sessionCts?.Cancel(); _sessionCts = null; }
         internal object Diagnostics => (_isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow,
             _refreshQueuedExplicit, _firstMessagesLoading, _messagesResponseEmpty, _messagesLoadError, _historyExecutionRebaseline);

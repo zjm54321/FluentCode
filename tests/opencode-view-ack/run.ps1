@@ -2,6 +2,7 @@
 # OpenCodeExecutionStateReader; only the WinUI/XAML page surface and the App glue are stubbed by the
 # test host. Same headless .NET 10 pattern as tests/message-pagination; no restore, UI, or new
 # dependencies, no live HTTP.
+param([string]$EvidenceRoot = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -9,7 +10,7 @@ $dotnetRoot = Split-Path $dotnet
 $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
-$output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-view-ack-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-view-ack-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'ViewAckTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))

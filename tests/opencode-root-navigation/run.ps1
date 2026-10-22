@@ -1,5 +1,6 @@
 # Offline .NET 10 only. Extract current production methods; never copy/fallback to saved algorithms.
 # No restore, production writes, real WinUI, network, SessionReturn or store sources.
+param([string]$EvidenceRoot = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -7,7 +8,7 @@ $dotnetRoot = Split-Path $dotnet
 $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
-$output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-root-navigation-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-root-navigation-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory -Path $output | Out-Null
 
 # Exact declaration plus class-level indentation bounds. A changed signature/format, duplicate
