@@ -66,8 +66,8 @@ internal static class Program
         Check(Named("SessionPane").Name.LocalName == "SplitView" && Named("InsightsPane").Name.LocalName == "SplitView", "native SplitViews retain platform light-dismiss");
         Check(!doc.Descendants().Any(e => e.Name.LocalName == "AdaptiveTrigger"), "no window-width trigger bypasses page hysteresis");
         Check(Named("HomePageHost").Ancestors().Contains(Named("InsightsPane")), "home shares the sidebar shell");
-        Check(Named("SessionStatusLine").Descendants().Contains(Named("AgentSelectorHost"))
-            && Named("SessionStatusLine").Descendants().Contains(Named("RefreshMessagesButton")), "legacy top header remains usable");
+        Check(Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost"))
+            && Named("OverviewRefreshMessagesButton").Ancestors().Contains(Named("InsightsPane")), "retired header capabilities remain in overview drawer");
         Check((string?)Named("SessionPane").Attribute("PaneClosed") == "SessionPane_PaneClosed"
             && (string?)Named("InsightsPane").Attribute("PaneClosed") == "InsightsPane_PaneClosed", "both native light-dismiss callbacks wired");
         var source = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Sidebars.cs"));

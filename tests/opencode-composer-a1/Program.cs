@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using AIFrontend.Services.OpenCode;
+using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
@@ -39,30 +40,49 @@ namespace AIFrontend.Pages
                 page.ApplyBlankAgentColor(invalid);
                 Check(page.BlankAgentButton.Foreground is null && page.BlankAgentButton.Clears == before + 1, "invalid/unset removes local RGB and restores theme style");
             }
-            // Exercise pane budgets down to an intentionally tiny width. This proves allocation,
-            // not native text measurement or a claim about the Windows minimum window size.
-            foreach (var available in new[] { 0d, 12, 64, 140, 200, 320, 500, 900 })
+            foreach (var size in new[] { 0, 1, 3, 4, 5, 7 })
             {
-                var w = BlankToolbarWidths(available);
-                Check(w.Agent >= 0 && w.Model >= 0 && w.Variant >= 0, "nonnegative control budgets");
-                Check(w.Agent + w.Model + w.Variant <= Math.Max(0, available - 12) + 0.001, "controls fit after two gaps");
-                Check(w.Agent <= Math.Max(0,available-12)*0.35+0.001 && w.Model <= 260 && w.Variant <= 112, "full-name wrapping gets responsive agent budget, not old104 cap");
+                var model = new OpenCodeModelInfo { Variants = Enumerable.Range(0, size).Select(i => new OpenCodeModelVariant { Id = "opaque/" + i }).ToList() };
+                var ticks = OpenCodeComposerEffort.Ticks(model, "opaque/1");
+                Check(ticks.Count == size, "tick count comes from current model catalog, never fixed five");
+                Check(ticks.Select(t => t.Id).SequenceEqual(model.Variants.Select(v => v.Id)), "raw variant identities/order retained");
+                Check(ticks.Count(t => t.Selected) == (size > 1 ? 1 : 0), "only exact current variant highlighted");
+                Check(ticks.All(t => double.IsFinite(t.Angle) && t.Angle >= -160 && t.Angle <= -20), "native gauge geometry finite for zero/one/many levels");
+                Check(!OpenCodeComposerEffort.Ticks(model, null).Any(t => t.Selected)
+                    && !OpenCodeComposerEffort.Ticks(model, "not-offered").Any(t => t.Selected), "default/unknown never fabricated as a level");
+                Check(OpenCodeComposerEffort.Ticks(model with { Enabled = false }, "opaque/1").Count == 0, "disabled model does not offer effort levels");
             }
+            Check(OpenCodeComposerEffort.Ticks(null, "high").Count == 0, "unavailable catalog hides gauge honestly");
             var root = args[0];
             var xaml = XDocument.Load(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.xaml"));
             XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
             XElement Named(string name) => xaml.Descendants().Single(n => (string?)n.Attribute(x + "Name") == name);
             string? Attr(XElement node, string name) => (string?)node.Attribute(name);
-            Check(Attr(Named("SessionStatusLine"), "ColumnDefinitions") == "Auto,*,*,Auto"
-                && Attr(Named("AgentSelectorHost"), "Grid.Column") == "1", "normal agent host has finite star-column measure so full names wrap, rather than overflow an Auto column");
+            Check(!xaml.Descendants().Any(n => (string?)n.Attribute(x + "Name") == "SessionStatusLine")
+                && Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "identity row retired; switch diagnostics/recovery retained in overview");
             var logo = Named("NewConversationWordmark");
             Check(Attr(logo, "Width") == "520" && Attr(logo, "Height") == "93.3333333333", "logo grows from 360 to 520 DIP with aspect preserved");
             Check(Attr(logo.Parent!, "StretchDirection") == "DownOnly" && Attr(logo.Parent!, "MaxWidth") == "520", "wordmark can shrink on narrow panes");
             var toolbar = Named("BlankToolbarChoices");
-            Check(Attr(toolbar, "ColumnDefinitions") == "Auto,Auto,Auto" && Attr(toolbar, "HorizontalAlignment") == "Left", "model/variant adjacent rather than spread across row");
-            Check(Attr(toolbar, "Margin") == "0,8,0,4" && Attr(toolbar, "VerticalAlignment") == "Center", "choices share bottom-row inset/center");
+            Check(Attr(toolbar, "ColumnDefinitions") == "Auto,Auto,Auto" && Attr(toolbar, "HorizontalAlignment") == "Left", "agent/model/gauge adjacent in left section");
+            Check(Named("ComposerToolbarLeft").Descendants().Contains(toolbar)
+                && Named("ComposerToolbarLeft").Descendants().Contains(Named("ComposerLeadingHost")), "plus, colored robot, logo and gauge are left section only");
+            Check(Named("ComposerToolbarMiddle").Descendants().Contains(Named("ComposerSubagentsButton"))
+                && Named("ComposerToolbarMiddle").Descendants().Contains(Named("ComposerConnectionButton")), "subagent quick entry and dot are middle section only");
+            Check(Attr(Named("ComposerActions"), "Grid.Column") == "2"
+                && Named("ComposerActions").Descendants().Contains(Named("SendStopButton")), "send/queue stay in right section");
+            Check(Named("ComposerExpandButton").Parent == Named("ComposerEditorHost")
+                && Attr(Named("ComposerExpandButton"), "HorizontalAlignment") == "Right", "fullscreen entry belongs to input top-right, not toolbar");
+            Check(Attr(Named("ComposerInputLayout"), "RowDefinitions") == "Auto,Auto"
+                && Attr(Named("ComposerToolbar").Parent!, "Grid.Row") == "1", "two rows exist in XAML even for empty editor");
+            Check(Attr(Named("ComposerToolbar").Parent!, "HorizontalScrollMode") == "Enabled"
+                && Attr(Named("ComposerToolbar").Parent!, "HorizontalContentAlignment") == "Stretch"
+                && Attr(Named("ComposerToolbar"), "MinWidth") == "312", "toolbar fills pane; extreme narrow widths scroll complete sections rather than overlap");
             foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton" })
-                Check((name=="BlankAgentButton"?Attr(Named(name),"MinHeight")=="32"&&Attr(Named(name),"Height")is null:Attr(Named(name),"Height")=="32") && Attr(Named(name), "MinWidth") == "0" && Attr(Named(name), "VerticalAlignment") == "Center", "choices centered; agent grows for complete wrapped name, others remain32DIP");
+                Check(Attr(Named(name), "Width") == "32" && Attr(Named(name), "Height") == "32"
+                    && Attr(Named(name), "MinWidth") == "0", "compact controls have bounded native hit targets");
+            foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "ComposerSubagentsButton", "ComposerConnectionButton", "ComposerExpandButton", "ComposerQueueButton", "SendStopButton" })
+                Check(Attr(Named(name), "AutomationProperties.Name") is not null && Attr(Named(name), "ToolTipService.ToolTip") is not null, "every compact entry named and tooltip reachable: " + name);
             Check(Named("BlankAgentButton").Descendants().Any(n => Attr(n, "Property") == "Foreground"
                 && Attr(n, "Value") == "{ThemeResource AccentTextFillColorPrimaryBrush}"), "dynamic theme accent setter (not static/cached brush)");
             Check(Attr(Named("ComposerActions"), "HorizontalAlignment") == "Right" && Attr(Named("SendStopButton"), "Height") == "32", "send stays right at same height");
@@ -71,9 +91,14 @@ namespace AIFrontend.Pages
             Check(blank.Contains("ToolTipService.SetToolTip(BlankAgentButton, agent?.Description)") && blank.Contains("ToolTipService.SetToolTip(item, agent.Description)"), "current and candidates expose description");
             Check(!blank.Contains("IsEnabled = agent.Mode"), "subagent entries not rendered disabled");
             var layout = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"));
-            Check(layout.Contains("ComposerLeadingHost.VerticalAlignment = _blankComposerPlacement ? VerticalAlignment.Center : VerticalAlignment.Bottom")
-                && layout.Contains("ComposerActions.VerticalAlignment = _blankComposerPlacement ? VerticalAlignment.Center : VerticalAlignment.Bottom"), "blank centers plus/send, normal session restores bottom");
-            Check(layout.Contains("Grid.SetRow(ComposerLeadingHost, bottom ? 1 : 0)") && layout.Contains("Grid.SetRow(ComposerActions, bottom ? 1 : 0)"), "plus/send share row with choices");
+            Check(!layout.Contains("UseBottomToolbar") && !layout.Contains("Grid.SetRow(ComposerLeadingHost")
+                && layout.Contains("Composer.TextCompositionEnded +="), "fixed row placement is independent of empty/wrapped text; IME-safe measurement retained");
+            var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
+            Check(binding.Contains("OpenCodeComposerEffort.Ticks(model, selected?.Variant)") && binding.Contains("_insights?.CurrentModelInfo")
+                && !binding.Contains("ListModelsAsync"), "gauge reuses existing fenced Model.Info metadata without duplicate reads");
+            Check(binding.Contains("SessionPaneToggleButton_Click(sender, e)") && binding.Contains("OpenSessionControlModelPicker(variantOnly: true)")
+                && binding.Contains("BlankStrengthButton_Click(sender, e)"), "drawer and existing independent strength routes preserved");
+            Check(!binding.Contains("SendStopButton.IsEnabled") && !binding.Contains("ComposerQueueButton.IsEnabled"), "toolbar presentation never changes send/queue availability policy");
             Console.WriteLine($"PASS A1: {count} focused checks (production policy/color + structural XAML/wiring; no native UI)");
         }
     }

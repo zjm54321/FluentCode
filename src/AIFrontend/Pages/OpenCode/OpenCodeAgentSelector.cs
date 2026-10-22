@@ -193,9 +193,8 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         Grid.SetColumn(_modelText, 2);
         Grid.SetRow(_statusRow, 1);
         Grid.SetColumnSpan(_statusRow, 3);
-        line.Children.Add(_currentText);
-        line.Children.Add(_separator);
-        line.Children.Add(_modelText);
+        // Identity entries now live in the sidebar card and composer. Keep only operation status
+        // and the explicit recovery surface here, mounted in the overview drawer.
         line.Children.Add(_statusRow);
 
         AutomationProperties.SetAutomationId(_recoveryEntryButton, "OpenCodeAgentSelectorRecoveryEntry");

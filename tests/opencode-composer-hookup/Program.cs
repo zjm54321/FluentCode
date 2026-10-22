@@ -691,19 +691,17 @@ internal static class Program
         var actions = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "ComposerActions");
         var leading = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "ComposerLeadingHost");
         var actionNames = actions.Elements().Select(e => (string?)e.Attribute(xn + "Name")).ToArray();
-        Check(editor.Parent == actions.Parent && editor.Parent == leading.Parent
-            && (string?)editor.Parent!.Attribute(xn + "Name") == "ComposerInputLayout"
+        Check((string?)editor.Parent!.Attribute(xn + "Name") == "ComposerEditorHost"
+            && actions.Parent == leading.Parent!.Parent && (string?)actions.Parent!.Attribute(xn + "Name") == "ComposerToolbar"
             && actionNames[^2] == "ComposerQueueButton" && actionNames[^1] == "SendStopButton"
             && !xaml.Descendants().Any(e => (string?)e.Attribute(xn + "Name") == "ComposerDeliveryMode"),
-            "actual XAML: same-grid external controls, clock immediately left of primary, no persistent mode selector");
+            "actual XAML: separate input/bottom sections, clock immediately left of primary, no persistent mode selector");
         var layout = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"));
-        Check(layout.Contains("measure.Measure(new Size(inlineWidth") && layout.Contains("ActualWidth - 128")
-            && layout.Contains("Grid.SetColumnSpan(Composer, bottom ? 3 : 1)")
-            && layout.Contains("Grid.SetRow(ComposerLeadingHost, bottom ? 1 : 0)")
-            && layout.Contains("Grid.SetRow(ComposerActions, bottom ? 1 : 0)")
+        Check(layout.Contains("measure.Measure(new Size(editorWidth") && layout.Contains("ActualWidth - horizontalChrome")
+            && !layout.Contains("UseBottomToolbar") && !layout.Contains("Grid.SetRow(ComposerLeadingHost")
             && layout.Contains("Composer.TextCompositionEnded +=") && layout.Contains("if (_isComposing")
             && !layout.Contains("new TextBox") && !layout.Contains("Children.Remove") && !layout.Contains("Composer.Text ="),
-            "native measurement layout source: stable inline-width wrap policy; full upper editor/bottom toolbar; IME-deferred attached properties only");
+            "native measurement layout source: fixed full-width upper editor/bottom toolbar; IME-deferred measurement, no editor replacement");
         Check(layout.Contains("ViewportHeight(line, chrome)") && layout.Contains("CanExpand(measure.DesiredSize.Height, line)")
             && (string?)editor.Attribute("ScrollViewer.VerticalScrollBarVisibility") == "Auto"
             && composer.Contains("InitializeComposerLayout();") && composer.Contains("TryRestoreExpandedComposerSelection();"),

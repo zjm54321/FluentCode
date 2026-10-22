@@ -97,6 +97,8 @@ public sealed partial class OpenCodePage
             SessionInsightsButton.IsChecked = !wide && _sidebarLayout.RightOpen;
             InsightsPaneCloseButton.Visibility = wide ? Visibility.Collapsed : Visibility.Visible;
             RightSessionContent.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
+            RightSessionDiagnostics.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
+            OverviewRefreshMessagesButton.IsEnabled = hasSessionSurface;
             RightPanelExistingActions.Visibility = rightResident ? Visibility.Visible : Visibility.Collapsed;
             MoveExistingSidebarActions(rightResident);
             ContextRingHost.Visibility = (_sidebarLayout.ShowHeaderContext || !workspaceVisible) && hasSessionSurface

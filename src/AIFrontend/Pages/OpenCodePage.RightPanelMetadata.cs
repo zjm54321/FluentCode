@@ -73,12 +73,15 @@ public sealed partial class OpenCodePage
         RefreshRightPanelFooter();
     }
 
+    partial void SetComposerConnectedDot(bool connected);
+
     private void RefreshRightPanelFooter()
     {
         if (_rightPanelMetadata is not { } view) return;
         var info = CurrentServerInfo();
-        view.RenderConnection(info.State == OpenCodeInsightState.Loaded ? info.Version : null,
-            OpenCodeRightPanelPresentation.ShowConnectedDot(_pageActive, SourceReady, _connection == ConnectionState.Connected));
+        var connected = OpenCodeRightPanelPresentation.ShowConnectedDot(_pageActive, SourceReady, _connection == ConnectionState.Connected);
+        view.RenderConnection(info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected);
+        SetComposerConnectedDot(connected);
         RightPanelFooterSlot.Visibility = _pageActive && WorkspaceGrid.Visibility == Visibility.Visible
             ? Visibility.Visible : Visibility.Collapsed;
     }

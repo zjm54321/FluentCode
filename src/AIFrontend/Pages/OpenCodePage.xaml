@@ -50,12 +50,10 @@
                 </VisualState>
                 <VisualState x:Name="NewSessionLayout">
                     <VisualState.Setters>
-                        <Setter Target="SessionStatusLine.Visibility" Value="Collapsed" />
                         <Setter Target="TimelineGrid.Visibility" Value="Collapsed" />
                         <Setter Target="QueuedPromptsHost.Visibility" Value="Collapsed" />
                         <Setter Target="NewSessionHeader.Visibility" Value="Visible" />
                         <Setter Target="BlankPreferencesHost.Visibility" Value="Visible" />
-                        <Setter Target="BlankToolbarChoices.Visibility" Value="Visible" />
                         <!-- Do not squeeze a bottom-aligned brand stack into a shrinking star slot.
                              The two empty star rows center the naturally measured brand/editor group. -->
                         <Setter Target="SessionStatusRow.Height" Value="*" />
@@ -333,14 +331,20 @@
                                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
                                     <Grid x:Name="RightPanelHeaderSlot" Grid.Row="0" Visibility="Collapsed" />
                                     <Grid x:Name="WslQuickAccessSlot" Grid.Row="1" Visibility="Collapsed" />
-                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Padding="16,8,8,8">
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Padding="16,8,8,8">
                                         <TextBlock
                                             Text="会话概况"
                                             Style="{ThemeResource BodyStrongTextBlockStyle}"
                                             VerticalAlignment="Center" />
+                                        <Button x:Name="OverviewRefreshMessagesButton" Grid.Column="1"
+                                                Click="OverviewRefreshMessagesButton_Click"
+                                                AutomationProperties.AutomationId="OpenCodeRefreshMessagesButton"
+                                                AutomationProperties.Name="刷新消息" ToolTipService.ToolTip="立即刷新当前会话消息">
+                                            <FontIcon Glyph="&#xE72C;" FontSize="12" />
+                                        </Button>
                                         <Button
                                             x:Name="InsightsPaneCloseButton"
-                                            Grid.Column="1"
+                                            Grid.Column="2"
                                             Click="InsightsPaneCloseButton_Click"
                                             AutomationProperties.AutomationId="OpenCodeInsightsPaneClose"
                                             AutomationProperties.Name="关闭会话概况"
@@ -350,9 +354,21 @@
                                     </Grid>
                                     <!-- The original context/connection controls move here only in wide mode.
                                          B2/B3 can replace these hosts without reparenting the insights view. -->
-                                    <StackPanel x:Name="RightPanelExistingActions" Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="16,0,16,8">
+                                    <StackPanel Grid.Row="3" Spacing="8" Margin="16,0,16,8">
+                                    <StackPanel x:Name="RightPanelExistingActions" Orientation="Horizontal" Spacing="8">
                                         <Border x:Name="RightContextRingHost" VerticalAlignment="Center" />
                                         <Border x:Name="RightConnectionStatusHost" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
+                                    <Button x:Name="SessionReturnButton" Visibility="Collapsed" IsEnabled="False"
+                                            HorizontalAlignment="Left" Click="SessionReturnButton_Click"
+                                            AutomationProperties.AutomationId="OpenCodeSessionReturnButton" />
+                                    <!-- Preserve switch diagnostics and explicit unknown-outcome recovery, not the retired identity row. -->
+                                    <StackPanel x:Name="AgentSelectorHost" AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
+                                    <TextBlock x:Name="WaitingText" Visibility="Collapsed" TextWrapping="Wrap"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               AutomationProperties.AutomationId="OpenCodeWaitingText" />
+                                    </StackPanel>
                                     </StackPanel>
                                     <!-- B3：常驻上下文 / 分层用量在上，A10 原生 to do 卡片在下；复用同一概况视图。 -->
                                     <ScrollViewer
@@ -384,47 +400,6 @@
                                      <RowDefinition x:Name="NewSessionListRow" Height="Auto" />
                                     <RowDefinition x:Name="NewSessionBottomRow" Height="0" />
                                 </Grid.RowDefinitions>
-
-                                <!-- Row 0 状态行（只读）：← 返回父会话 · Agent / 模型（L7 改为只读文本） · 等待提示 · 刷新 -->
-                                <Grid
-                                    x:Name="SessionStatusLine"
-                                    Grid.Row="0"
-                                    ColumnDefinitions="Auto,*,*,Auto"
-                                    ColumnSpacing="8"
-                                    Margin="0,0,0,4">
-                                    <Button
-                                        x:Name="SessionReturnButton"
-                                        Visibility="Collapsed"
-                                        IsEnabled="False"
-                                        VerticalAlignment="Center"
-                                        Click="SessionReturnButton_Click"
-                                        AutomationProperties.AutomationId="OpenCodeSessionReturnButton" />
-                                    <!-- L7 宿主：Agent（OpenCodeAgentSelectorCurrent）与模型（新 OpenCodeCurrentModel）只读显示。 -->
-                                    <StackPanel
-                                        x:Name="AgentSelectorHost"
-                                        Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
-                                    <TextBlock
-                                        x:Name="WaitingText"
-                                        Grid.Column="2"
-                                        Visibility="Collapsed"
-                                        TextWrapping="Wrap"
-                                        VerticalAlignment="Center"
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        AutomationProperties.AutomationId="OpenCodeWaitingText" />
-                                    <Button
-                                        x:Name="RefreshMessagesButton"
-                                        Grid.Column="3"
-                                        VerticalAlignment="Center"
-                                        Click="RefreshMessagesButton_Click"
-                                        AutomationProperties.AutomationId="OpenCodeRefreshMessagesButton"
-                                        AutomationProperties.Name="刷新消息"
-                                        ToolTipService.ToolTip="立即刷新当前会话消息（另有定时刷新）">
-                                        <FontIcon Glyph="&#xE72C;" FontSize="12" />
-                                    </Button>
-                                </Grid>
 
                                 <!-- Row 1 会话状态说明（F6：横向工作进度线已移除，工作状态由标签栏着色工作环表示） -->
                                 <StackPanel x:Name="SessionStatusHints" Grid.Row="1" Spacing="4">
@@ -610,19 +585,14 @@
                                                 Visibility="Collapsed"
                                                 AutomationProperties.AutomationId="OpenCodeComposerCompanionHost" />
 
-                                             <!-- 固定外侧操作列：单行、换行和滚动时 + / 发送都不进入 TextBox；不预留覆盖按钮的空槽。
-                                                  编辑器保持同一父元素与主题内边距，保留原生 IME、增高和滚动。 -->
-                                             <Grid x:Name="ComposerInputLayout" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                                            <Grid
-                                                x:Name="ComposerLeadingHost"
-                                                Grid.Column="0"
-                                                Margin="0,0,8,4"
-                                                VerticalAlignment="Bottom" />
-                                                 <TextBox
-                                                    x:Name="Composer"
-                                                     Grid.Column="1"
-                                                    AcceptsReturn="True"
-                                                    TextWrapping="Wrap"
+                                             <!-- Always two rows, including an empty draft. Shell mode hides this entire surface. -->
+                                             <Grid x:Name="ComposerInputLayout" RowDefinitions="Auto,Auto" RowSpacing="8">
+                                                 <Grid x:Name="ComposerEditorHost">
+                                                  <TextBox
+                                                     x:Name="Composer"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     Padding="8,8,40,8"
                                                     MinHeight="40"
                                                      MaxHeight="140"
                                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -630,36 +600,60 @@
                                                     KeyDown="Composer_KeyDown"
                                                     KeyUp="Composer_KeyUp"
                                                     AutomationProperties.AutomationId="OpenCodeComposer"
-                                                     AutomationProperties.Name="消息输入" />
-
-                                                 <!-- New landing only: same outside-editor toolbar, immediately after +. -->
-                                                 <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto"
-                                                       ColumnSpacing="6" Margin="0,8,0,4" HorizontalAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center">
-                                                     <DropDownButton x:Name="BlankAgentButton" Content="加载中…" Click="BlankAgentButton_Click"
-                                                              MinHeight="32" MinWidth="0" MaxWidth="260" Padding="8,0" VerticalAlignment="Center" HorizontalContentAlignment="Stretch"
-                                                             AutomationProperties.AutomationId="OpenCodeBlankAgent">
-                                                         <DropDownButton.Style>
-                                                             <Style TargetType="DropDownButton">
+                                                      AutomationProperties.Name="消息输入" />
+                                                     <Button x:Name="ComposerExpandButton" Width="32" Height="32" MinWidth="0" Padding="0"
+                                                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
+                                                             Visibility="Collapsed" Click="ComposerExpandButton_Click"
+                                                             AutomationProperties.AutomationId="OpenCodeComposerExpand"
+                                                             AutomationProperties.Name="展开输入框" ToolTipService.ToolTip="展开输入框">
+                                                         <FontIcon Glyph="&#xE740;" FontSize="14" />
+                                                     </Button>
+                                                 </Grid>
+                                                 <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
+                                                               HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
+                                                 <Grid x:Name="ComposerToolbar" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" MinWidth="312">
+                                                     <StackPanel x:Name="ComposerToolbarLeft" Orientation="Horizontal" Spacing="4">
+                                                         <Grid x:Name="ComposerLeadingHost" VerticalAlignment="Center" />
+                                                  <Grid x:Name="BlankToolbarChoices" ColumnDefinitions="Auto,Auto,Auto"
+                                                        ColumnSpacing="4" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                      <Button x:Name="BlankAgentButton" Click="ComposerAgentButton_Click"
+                                                               Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
+                                                              AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
+                                                              AutomationProperties.AutomationId="OpenCodeBlankAgent">
+                                                          <Button.Style>
+                                                              <Style TargetType="Button">
                                                                  <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                                              </Style>
-                                                         </DropDownButton.Style>
-                                                     </DropDownButton>
-                                                     <Button x:Name="BlankModelButton" Grid.Column="1" Content="模型未就绪" Click="BlankModelButton_Click"
-                                                             Height="32" MinWidth="0" MaxWidth="260" Padding="8,0" HorizontalContentAlignment="Stretch" VerticalAlignment="Center"
-                                                             AutomationProperties.AutomationId="OpenCodeBlankModel" />
-                                                     <DropDownButton x:Name="BlankStrengthButton" Grid.Column="2" Content="强度未就绪" Click="BlankStrengthButton_Click"
-                                                                     Height="32" MinWidth="0" MaxWidth="112" Padding="8,0" VerticalAlignment="Center" AutomationProperties.Name="选择推理强度"
-                                                             AutomationProperties.AutomationId="OpenCodeBlankStrength" />
-                                                 </Grid>
-
-                                                <StackPanel
-                                                    x:Name="ComposerActions"
+                                                          </Button.Style>
+                                                      </Button>
+                                                      <Button x:Name="BlankModelButton" Grid.Column="1" Click="ComposerModelButton_Click"
+                                                              Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
+                                                              AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
+                                                              AutomationProperties.AutomationId="OpenCodeBlankModel" />
+                                                      <Button x:Name="BlankStrengthButton" Grid.Column="2" Click="ComposerEffortButton_Click"
+                                                                      Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="选择推理强度"
+                                                              ToolTipService.ToolTip="选择推理强度"
+                                                              AutomationProperties.AutomationId="OpenCodeBlankStrength" />
+                                                  </Grid>
+                                                     </StackPanel>
+                                                     <StackPanel x:Name="ComposerToolbarMiddle" Grid.Column="1" Orientation="Horizontal" Spacing="4"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                         <Button x:Name="ComposerSubagentsButton" Width="32" Height="32" MinWidth="0" Padding="0"
+                                                                 Click="ComposerSubagentsButton_Click" AutomationProperties.Name="后台子智能体"
+                                                                 ToolTipService.ToolTip="后台子智能体" AutomationProperties.AutomationId="OpenCodeComposerSubagents">
+                                                             <FontIcon Glyph="&#xE902;" FontSize="16" />
+                                                         </Button>
+                                                         <Button x:Name="ComposerConnectionButton" Width="20" Height="32" MinWidth="0" Padding="0" Visibility="Collapsed"
+                                                                 Click="ComposerConnectionButton_Click" AutomationProperties.Name="OpenCode 连接详情"
+                                                                 ToolTipService.ToolTip="OpenCode 连接详情" AutomationProperties.AutomationId="OpenCodeComposerConnection" />
+                                                     </StackPanel>
+                                                 <StackPanel
+                                                     x:Name="ComposerActions"
                                                      Grid.Column="2"
                                                     Orientation="Horizontal"
                                                     Spacing="8"
                                                     HorizontalAlignment="Right"
-                                                    VerticalAlignment="Bottom"
-                                                    Margin="8,0,0,4">
+                                                     VerticalAlignment="Center">
                                                     <ProgressRing
                                                         x:Name="SendProgress"
                                                         Width="16"
@@ -668,16 +662,6 @@
                                                         Visibility="Collapsed"
                                                         VerticalAlignment="Center"
                                                          AutomationProperties.AutomationId="OpenCodeSendProgress" />
-                                                    <Button
-                                                        x:Name="ComposerExpandButton"
-                                                        Width="32" Height="32" MinWidth="0" Padding="0"
-                                                        Visibility="Collapsed"
-                                                        Click="ComposerExpandButton_Click"
-                                                        AutomationProperties.AutomationId="OpenCodeComposerExpand"
-                                                        AutomationProperties.Name="展开输入框"
-                                                        ToolTipService.ToolTip="展开输入框">
-                                                        <FontIcon Glyph="&#xE70E;" FontSize="14" />
-                                                    </Button>
                                                     <Button
                                                         x:Name="ComposerQueueButton"
                                                         Width="32" Height="32" MinWidth="0" Padding="0"
@@ -705,8 +689,10 @@
                                                             Glyph="&#xE724;"
                                                             FontSize="14" />
                                                     </Button>
-                                                </StackPanel>
-                                             </Grid>
+                                                 </StackPanel>
+                                                 </Grid>
+                                                 </ScrollViewer>
+                                              </Grid>
                                         </StackPanel>
                                     </Border>
 

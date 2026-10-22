@@ -231,6 +231,11 @@ public sealed class OpenCodeSessionInsightsController
     /// <summary>快照替换后触发（在调用 LoadAsync/ReadBillionAsync 的同步上下文上）。</summary>
     public event EventHandler? Changed;
 
+    // Read-through only: share the existing fenced Model.Info catalog, never fetch or infer levels.
+    internal OpenCodeModelInfo? CurrentModelInfo(OpenCodeInsightsBinding binding, OpenCodeModelRef model)
+        => OwnsContext(binding) && _contextModels?.Where(m => m.Id == model.Id && m.ProviderId == model.ProviderId).ToArray()
+            is { Length: 1 } matches ? matches[0] : null;
+
     /// <summary>OpenCode 读取起发次数（离线证据：Reset/换代后无迟到起发）。</summary>
     public int OpenCodeReadsStarted { get; private set; }
 
@@ -322,7 +327,8 @@ public sealed class OpenCodeSessionInsightsController
                 if (!OwnsContext(binding) || version != _contextCatalogVersion || location != _contextDirectory) return;
                 _contextModels = models.Data?.ToArray();
                 MatchContextModel();
-                changed = SetContextSnapshot();
+                SetContextSnapshot();
+                changed = true; // Catalog consumers (effort gauge) also need changes without a context-limit change.
             });
             if (changed) Changed?.Invoke(this, EventArgs.Empty);
         }

@@ -11,7 +11,6 @@ public sealed partial class OpenCodePage
 {
     private readonly TextBlock _composerMeasure = new() { TextWrapping = TextWrapping.Wrap };
     private bool _composerLayoutPending;
-    private bool _composerBottomToolbar;
     private bool _composerOverFiveLines;
 
     private void InitializeComposerLayout()
@@ -59,43 +58,16 @@ public sealed partial class OpenCodePage
         var stroke = Composer.BorderThickness;
         var chrome = padding.Top + padding.Bottom + stroke.Top + stroke.Bottom;
         var horizontalChrome = padding.Left + padding.Right + stroke.Left + stroke.Right;
-        // Reserve the maximum inline +/-clock/send footprint even while clock is hidden.
-        // This is measurement only, not an empty gutter in the actual editor.
-        var inlineWidth = Math.Max(1, ComposerInputLayout.ActualWidth - 128 - horizontalChrome);
+        // Two fixed rows: only the input's own fullscreen corner consumes editor width.
+        var editorWidth = Math.Max(1, ComposerInputLayout.ActualWidth - horizontalChrome);
         measure.Text = Composer.Text + "\u200b"; // Preserve a trailing empty line in native text measure.
-        measure.Measure(new Size(inlineWidth, double.PositiveInfinity));
-        var bottom = _blankComposerPlacement || OpenCodeComposerHeightPolicy.UseBottomToolbar(measure.DesiredSize.Height, line);
-        if (_composerBottomToolbar != bottom)
-        {
-            _composerBottomToolbar = bottom;
-            Grid.SetColumn(Composer, bottom ? 0 : 1);
-            Grid.SetColumnSpan(Composer, bottom ? 3 : 1);
-            Grid.SetRow(ComposerLeadingHost, bottom ? 1 : 0);
-            Grid.SetRow(ComposerActions, bottom ? 1 : 0);
-            ComposerLeadingHost.Margin = new Thickness(0, bottom ? 8 : 0, 8, 4);
-            ComposerActions.Margin = new Thickness(8, bottom ? 8 : 0, 0, 4);
-        }
-        ComposerLeadingHost.VerticalAlignment = _blankComposerPlacement ? VerticalAlignment.Center : VerticalAlignment.Bottom;
-        ComposerActions.VerticalAlignment = _blankComposerPlacement ? VerticalAlignment.Center : VerticalAlignment.Bottom;
-        if (_blankComposerPlacement)
-        {
-            // Account for fixed outer buttons and their margins; the three adjacent Auto columns
-            // have finite budgets, so long names cannot displace variant or the right-hand send button.
-            var widths = BlankToolbarWidths(ComposerInputLayout.ActualWidth - ComposerLeadingHost.ActualWidth
-                - ComposerActions.ActualWidth - 16);
-            BlankAgentButton.MaxWidth = widths.Agent;
-            if (BlankAgentButton.Content is TextBlock agentName) agentName.MaxWidth = Math.Max(1, widths.Agent - 40);
-            BlankModelButton.MaxWidth = widths.Model;
-            BlankStrengthButton.MaxWidth = widths.Variant;
-        }
+        measure.Measure(new Size(editorWidth, double.PositiveInfinity));
         var maximum = _blankComposerPlacement ? Math.Max(180, line * 8 + chrome) : OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
         // Reserve room for the naturally measured official brand and external preferences on short windows.
         // Normal-session five-line sizing is unchanged; this is only the empty centered host's initial height.
         var blankMinimum = Math.Clamp(SessionLayoutRoot.ActualHeight * 0.24, 104, 156);
-        Composer.MinHeight = _blankComposerPlacement ? Math.Min(blankMinimum, maximum) : 40;
+        Composer.MinHeight = _blankComposerPlacement ? Math.Min(blankMinimum, maximum) : 64;
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
-        var editorWidth = bottom ? ComposerInputLayout.ActualWidth : inlineWidth + horizontalChrome;
-        measure.Measure(new Size(Math.Max(1, editorWidth - horizontalChrome - 16), double.PositiveInfinity));
         _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(measure.DesiredSize.Height, line);
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -105,12 +77,6 @@ public sealed partial class OpenCodePage
         available = Math.Max(0, available);
         var gutter = !blank && viewport > 0 ? Math.Max(0, available - viewport) : 0;
         return (Math.Min(Math.Max(0, available - gutter), maximum), gutter);
-    }
-
-    internal static (double Agent, double Model, double Variant) BlankToolbarWidths(double available)
-    {
-        var content = Math.Max(0, available - 12); // Two 6-DIP gaps; unused space stays after Variant.
-        return (content * 0.35, Math.Min(260, content * 0.4), Math.Min(112, content * 0.25));
     }
 
     private void UpdateConversationColumns()

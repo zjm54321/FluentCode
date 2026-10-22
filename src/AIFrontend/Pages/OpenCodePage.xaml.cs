@@ -212,6 +212,7 @@ public sealed partial class OpenCodePage : Page
         InitializeSessionInsights();
         InitializeSidebars();
         InitializeRightPanelMetadata();
+        InitializeComposerToolbar();
         InitializeWslQuickAccess();
         InitializeAgentTree();
 
@@ -958,7 +959,7 @@ public sealed partial class OpenCodePage : Page
         _ = RefreshListedSessionStatusesAsync();
     }
 
-    private async void RefreshMessagesButton_Click(object sender, RoutedEventArgs e)
+    private async void OverviewRefreshMessagesButton_Click(object sender, RoutedEventArgs e)
     {
         // 显式刷新：唯一可重建“正常结束/异常停止”消息分页链的入口（分页提示中的恢复路径）。
         await RefreshMessagesAsync(explicitRefresh: true);

@@ -17,7 +17,7 @@ $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
 $layoutPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
 $layout = [IO.File]::ReadAllText($layoutPath)
-foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSelectable'), @($layout, 'BlankToolbarWidths'))) {
+foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSelectable'))) {
     $pattern = if ($spec[1] -eq 'IsBlankAgentSelectable') { '(?ms)^    private static bool IsBlankAgentSelectable\(.*?;' }
         else { '(?ms)^    (?:private|internal) [^\r\n]*\b' + $spec[1] + '\(.*?^    \}' }
     $m = [regex]::Match($spec[0], $pattern)
@@ -29,6 +29,7 @@ $generated = Join-Path $output 'ProductionMembers.cs'
 $assembly = Join-Path $output 'ComposerA1Tests.dll'
 $sources = @($generated, (Join-Path $PSScriptRoot 'Program.cs'), "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Agents.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
 $sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs","$repo/tests/opencode-tabs/Tab.TestHost.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs")
+$sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerEffort.cs","$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Models.cs")
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references=@(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll')|ForEach-Object FullName)
 $arguments += $references | ForEach-Object { '/reference:"' + $_ + '"' }
@@ -36,7 +37,7 @@ $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ComposerA1Tests.runtimeconfig.json')
-$inputs = @($sources + $blankPath + $layoutPath + "$repo/src/AIFrontend/Pages/OpenCodePage.xaml" + $PSCommandPath+$references+$dotnet+$rsp+(Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'))
+$inputs = @($sources + $blankPath + $layoutPath + "$repo/src/AIFrontend/Pages/OpenCodePage.xaml" + "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs" + $PSCommandPath+$references+$dotnet+$rsp+(Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'))
 $before = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
 $before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs.json')
 $before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-before.json')

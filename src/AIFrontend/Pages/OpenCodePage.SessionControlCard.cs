@@ -56,6 +56,7 @@ public sealed partial class OpenCodePage
 
     private void RefreshSessionControlCard()
     {
+        RefreshComposerToolbar();
         if (_sessionControlCard is not { } card) return;
         var visible = _pageActive && !_homeActive && (_selectedSessionId is not null || _newSessionDraftActive);
         LeftBottomCardSlot.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
