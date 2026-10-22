@@ -101,6 +101,7 @@ public sealed partial class OpenCodePage
     private void BindComposer()
     {
         BindDraftSlotComposer();
+        RefreshWslQuickAccess();
     }
 
     private OpenCodeComposerSnapshot GetComposerSnapshot()

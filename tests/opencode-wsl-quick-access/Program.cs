@@ -1,0 +1,114 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using AIFrontend.Models;
+using AIFrontend.Pages.OpenCode;
+
+internal static class Program
+{
+    private static int _assertions;
+    private static void Check(bool condition, string name)
+    {
+        _assertions++;
+        if (!condition) throw new Exception(name);
+    }
+
+    public static async Task Main()
+    {
+        // No real launcher, registry, filesystem, network, or process access in this runner.
+        foreach (var kind in new OpenCodeConnectionKind?[] { null, OpenCodeConnectionKind.Remote, OpenCodeConnectionKind.Wsl })
+        foreach (var connected in new[] { false, true })
+        {
+            var state = OpenCodeWslQuickAccess.Resolve(kind, connected, "测试 Distro", "/work");
+            Check(state.Visible == (kind == OpenCodeConnectionKind.Wsl && connected), "persisted kind + connection gate (URLs never used)");
+            var fake = new RecordingLauncher();
+            await OpenCodeWslQuickAccess.LaunchAsync(state, null, fake);
+            Check(fake.Explorers.Count == (state.Visible ? 1 : 0), "hidden state cannot launch");
+        }
+        Console.WriteLine("PASS visibility gating (Remote includes localhost: URL-independent)");
+
+        WslQuickAccessState Resolve(string? path, string? home = null, string? distro = "发行版 Test")
+            => OpenCodeWslQuickAccess.Resolve(OpenCodeConnectionKind.Wsl, true, distro, path, home);
+        var special = Resolve("/home/真实 用户/中文 项目/$d & 'x';next");
+        Check(special.Target?.UncPath == @"\\wsl.localhost\发行版 Test\home\真实 用户\中文 项目\$d & 'x';next", "UNC preserves argument data");
+        Check(Resolve("/").Target?.UncPath == @"\\wsl.localhost\发行版 Test\", "root UNC");
+        Check(Resolve("/a/./b/../c//").Target?.LinuxDirectory == "/a/c", "normalize Linux components");
+        Check(Resolve("~/项目 空格", "/home/动态 用户").Target?.LinuxDirectory == "/home/动态 用户/项目 空格", "tilde expands from actual home only");
+        Check(Resolve("~", "/root").Target?.LinuxDirectory == "/root", "bare tilde");
+        foreach (var path in new[] { "~", "~/a", "~other/a", "relative", "", "/../escape", "/bad\\name", "/bad\"name", "/bad\nname" })
+            Check(Resolve(path).Target is null && Resolve(path).Reason is not null, "unresolved/invalid path disabled: " + path);
+        Check(Resolve(null).Target is null, "unknown directory disabled");
+        Check(Resolve("/a", distro: "../bad").Target is null, "invalid distro disabled");
+        Check(Resolve("/literal/~folder").Target?.LinuxDirectory == "/literal/~folder", "literal inner tilde untouched");
+        var explorerInfo = OpenCodeWslQuickAccess.ExplorerLaunch(special.Target!, @"C:\Windows").StartInfo();
+        Check(explorerInfo.FileName == @"C:\Windows\explorer.exe" && !explorerInfo.UseShellExecute,
+            "Explorer narrow host fallback without shell");
+        Check(explorerInfo.ArgumentList.Count == 1 && explorerInfo.ArgumentList[0] == special.Target!.UncPath,
+            "Explorer receives a single UNC argument");
+        Console.WriteLine("PASS UNC + Unicode/spaces/special chars + real-data tilde resolution");
+
+        var host = new FakeHost();
+        host.Registry["Code.exe"] = @"C:\Editors\Code.exe";
+        host.Files.Add(@"C:\Editors\Code.exe");
+        host.Registry["VSCodium.exe"] = @"C:\Editors\VSCodium.exe";
+        host.Files.Add(@"C:\Editors\VSCodium.exe");
+        host.Variables["LOCALAPPDATA"] = @"C:\Users\测试 用户\AppData\Local";
+        host.Files.Add(@"C:\Users\测试 用户\AppData\Local\Programs\Zed\zed.exe");
+        host.Variables["PATH"] = @"C:\Emacs\bin;C:\Other\Microsoft VS Code\bin";
+        host.Files.Add(@"C:\Emacs\bin\runemacs.exe");
+        var editors = WslHostEditorDetection.Detect(host);
+        Check(editors.Count == 4, "candidate matrix covers four editors");
+        Check(editors[0].Name == "VS Code" && editors[0].Executable == @"C:\Editors\Code.exe" && editors[0].Reason is null, "VS Code registry first");
+        foreach (var editor in editors.Skip(1))
+            Check(editor.Executable is not null && !editor.VerifiedWsl && editor.Reason!.Contains("尚未核实"), "installed unsupported editor disabled");
+        var launch = OpenCodeWslQuickAccess.VsCodeLaunch(special.Target!, editors[0]);
+        var info = launch.StartInfo(); // This only constructs metadata; never Process.Start.
+        Check(!info.UseShellExecute && info.Arguments == "", "no shell string");
+        Check(info.FileName == @"C:\Editors\Code.exe", "native Windows editor executable (never .cmd)");
+        Check(info.ArgumentList.SequenceEqual(new[] { "--remote", "wsl+发行版 Test", special.Target!.LinuxDirectory }), "VS Code remote distro + Linux path argument boundaries");
+        Check(!info.ArgumentList.Any(a => a.StartsWith(@"\\wsl")), "never downgrade to UNC editor window");
+        var rejected = false;
+        try { OpenCodeWslQuickAccess.VsCodeLaunch(special.Target!, editors[1]); }
+        catch (InvalidOperationException) { rejected = true; }
+        Check(rejected, "unverified invocation cannot launch");
+        host.Registry.Clear();
+        host.Files.Add(@"C:\Other\Microsoft VS Code\Code.exe");
+        Check(WslHostEditorDetection.Detect(host)[0].Executable == @"C:\Other\Microsoft VS Code\Code.exe", "PATH bin resolves native code executable");
+        host.Files.Clear();
+        host.Registry["Code.exe"] = @"C:\stale\Code.exe";
+        Check(WslHostEditorDetection.Detect(host).All(e => e.Executable is null && e.Reason == "未检测到安装"), "stale registry and missing executables not installed");
+        host.Variables["ProgramFiles"] = @"C:\Program Files";
+        host.Files.Add(@"C:\Program Files\Microsoft VS Code\Code.exe");
+        Check(WslHostEditorDetection.Detect(host)[0].Executable == @"C:\Program Files\Microsoft VS Code\Code.exe", "machine installation");
+        Console.WriteLine("PASS fake registry/filesystem editor detection + VS Code ArgumentList");
+
+        var recorder = new RecordingLauncher();
+        await OpenCodeWslQuickAccess.LaunchAsync(Resolve("/old"), null, recorder);
+        await OpenCodeWslQuickAccess.LaunchAsync(Resolve("/new 目录"), null, recorder);
+        await OpenCodeWslQuickAccess.LaunchAsync(Resolve("/new 目录"), editors[0], recorder);
+        Check(recorder.Explorers.Select(t => t.LinuxDirectory).SequenceEqual(new[] { "/old", "/new 目录" }), "directory refresh replaces Explorer target");
+        Check(recorder.Editors.Single().Arguments[2] == "/new 目录", "editor uses refreshed directory");
+        await OpenCodeWslQuickAccess.LaunchAsync(Resolve("~/unresolved"), null, recorder);
+        Check(recorder.Explorers.Count == 2, "unresolved replacement cannot launch stale target");
+        Console.WriteLine("PASS directory refresh + fake launch boundary");
+        Console.WriteLine($"PASS 4 groups / {_assertions} assertions; no external applications launched");
+    }
+
+    private sealed class FakeHost : IWslHostEditorEnvironment
+    {
+        public Dictionary<string, string> Registry { get; } = new();
+        public Dictionary<string, string> Variables { get; } = new();
+        public HashSet<string> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public string? AppPath(string executable) => Registry.GetValueOrDefault(executable);
+        public string? EnvironmentVariable(string name) => Variables.GetValueOrDefault(name);
+        public bool FileExists(string path) => Files.Contains(path);
+    }
+    private sealed class RecordingLauncher : IWslQuickAccessLauncher
+    {
+        public List<WslQuickAccessTarget> Explorers { get; } = new();
+        public List<WslHostLaunch> Editors { get; } = new();
+        public Task OpenExplorerAsync(WslQuickAccessTarget target) { Explorers.Add(target); return Task.CompletedTask; }
+        public Task OpenEditorAsync(WslHostLaunch launch) { Editors.Add(launch); return Task.CompletedTask; }
+    }
+}

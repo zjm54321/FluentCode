@@ -211,6 +211,7 @@ public sealed partial class OpenCodePage : Page
         InitializeSessionInsights();
         InitializeSidebars();
         InitializeRightPanelMetadata();
+        InitializeWslQuickAccess();
 
         UpdateConnectionStatus();
         UpdateComposerButtons();
@@ -3866,6 +3867,7 @@ public sealed partial class OpenCodePage : Page
 
     private void UpdateConnectionStatus()
     {
+        RefreshWslQuickAccess();
         string text;
         string brushKey;
         string tooltip;
@@ -3934,6 +3936,7 @@ public sealed partial class OpenCodePage : Page
     private void UpdateEmptyState()
     {
         RefreshRightPanelMetadata();
+        RefreshWslQuickAccess();
         string? text = null;
         if (_selectedSessionId is null)
         {
