@@ -32,7 +32,8 @@ internal static partial class OpenCodeToolDetailBuiltins
         bool loaded = false;
         async Task Refresh()
         {
-            if (busy || !loaded || lifetime is not { IsCancellationRequested: false } active) return;
+            if (busy || !loaded) return;
+            if (lifetime is not { IsCancellationRequested: false } active) { timer.Stop(); return; }
             var token = active.Token;
             if (!binding.CanRead(session)) { timer.Stop(); text.Text = "当前无法读取该子会话"; return; }
             busy = true;

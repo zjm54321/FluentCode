@@ -35,9 +35,35 @@ internal static partial class OpenCodeToolDetailBuiltins
             OpenCodeBuiltinToolView.Execute => Execute(model, options.Compact),
             OpenCodeBuiltinToolView.Context => Context(model, options.Compact),
             OpenCodeBuiltinToolView.Companion => Companion(model, options),
-            _ => null,
+            _ => Generic(model, options.Compact),
         };
         if (body is not null) AutomationProperties.SetAutomationId(body, "OpenCodeToolDetailBuiltin." + OpenCodeToolDetailBuiltinData.Resolve(model));
+        return body;
+    }
+
+    /// <summary>D1: full body for the row-owned inline expansion, with no popup or nested scroll host.</summary>
+    internal static FrameworkElement? BuildInline(OpenCodeToolRowModel model)
+        => OpenCodeToolDetailBuiltinData.Resolve(model) switch
+        {
+            OpenCodeBuiltinToolView.Todo => Todo(model, false),
+            OpenCodeBuiltinToolView.Question => Question(model),
+            OpenCodeBuiltinToolView.Skill => Skill(model, false),
+            _ => null,
+        };
+
+    /// <summary>Reasoning is shared by hover, detail and D1 inline hosts. Content is never translated.</summary>
+    internal static FrameworkElement BuildReasoning(string? text, bool encrypted = false, bool compact = false, bool running = false)
+    {
+        if (encrypted) return OpenCodeToolDetailContent.Caption("思考内容已加密，无法显示");
+        if (string.IsNullOrWhiteSpace(text)) return OpenCodeToolDetailContent.Caption(running ? "思考中…" : "（没有可显示的思考内容）");
+        var content = text!;
+        if (compact)
+        {
+            var lines = content.Replace("\r", "", StringComparison.Ordinal).Split('\n');
+            content = string.Join('\n', running ? lines.TakeLast(5) : lines.Take(5));
+        }
+        var body = MarkdownBody(content);
+        body.MaxWidth = 820;
         return body;
     }
 
@@ -55,9 +81,14 @@ internal static partial class OpenCodeToolDetailBuiltins
     private static FrameworkElement Todo(OpenCodeToolRowModel model, bool compact)
     {
         var items = OpenCodeToolDetailBuiltinData.Todos(model.State);
-        var panel = new StackPanel { Spacing = 8 };
+        var panel = new StackPanel { Spacing = 12 };
         if (items.Length == 0)
         {
+            if (model.ToolName == "todoread" && !string.IsNullOrWhiteSpace(model.OutputText) && OpenCodeToolDetailBuiltinData.ParseTodoText(model.OutputText!) is null)
+            {
+                panel.Children.Add(RawExcerpt(model.OutputText!, compact ? 8 : int.MaxValue));
+                return panel;
+            }
             panel.Children.Add(OpenCodeToolDetailContent.Caption(model.IsActive ? "正在更新 To Do…" : "这次调用之后 To Do 为空"));
             return panel;
         }
@@ -78,7 +109,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailTodoList");
         var shown = compact ? Math.Min(items.Length, OpenCodeToolDetailBuiltinData.CompactTodoRows) : items.Length;
         for (var index = 0; index < shown; index++)
-            list.Children.Add(OpenCodeSessionInsightsView.TodoRow(items[index], index, "OpenCodeToolDetailTodoItem."));
+            list.Children.Add(TodoDetailRow(items[index].Content, items[index].Status, index));
         panel.Children.Add(list);
         AddMore(panel, items.Length - shown, "项");
         return panel;
@@ -126,7 +157,7 @@ internal static partial class OpenCodeToolDetailBuiltins
             panel.Children.Add(expander);
         }
 
-        var liveOutput = options.Compact && detail.SessionId is { } liveSession && (detail.RecordedStatus == "running" || model.IsActive)
+        var liveOutput = options.Compact && detail.SessionId is { } liveSession && (model.IsActive || status.Contains("运行中", StringComparison.Ordinal))
             ? CreateLiveChildOutput(options, liveSession) : null;
         if (liveOutput is not null)
         {
@@ -154,7 +185,7 @@ internal static partial class OpenCodeToolDetailBuiltins
     {
         var questions = OpenCodeToolDetailBuiltinData.Questions(model.State);
         if (questions.Count == 0) return null;
-        var panel = new StackPanel { Spacing = 16 };
+        var panel = new StackPanel { Spacing = 24 };
         for (var q = 0; q < questions.Count; q++)
         {
             var question = questions[q];
@@ -165,15 +196,30 @@ internal static partial class OpenCodeToolDetailBuiltins
             title.Margin = new Thickness(0, 0, 0, 2);
             block.Children.Add(title);
             var group = "OpenCodeToolDetailQuestion." + model.PartId + "." + q.ToString(CultureInfo.InvariantCulture);
+            var radio = question.Multiple ? null : new RadioButtons { MaxColumns = 1, IsHitTestVisible = false, IsTabStop = false, SelectedIndex = -1 };
+            var selectedIndex = -1;
             for (var o = 0; o < question.Options.Count; o++)
             {
                 var option = question.Options[o];
-                block.Children.Add(Choice(question.Multiple, question.IsSelected(option), option.Label, option.Description, group,
-                    group + "." + o.ToString(CultureInfo.InvariantCulture)));
+                var selected = question.IsSelected(option);
+                if (radio is null)
+                    block.Children.Add(Choice(true, selected, option.Label, option.Description, group, group + "." + o.ToString(CultureInfo.InvariantCulture)));
+                else
+                {
+                    var content = new StackPanel { Spacing = 2 };
+                    content.Children.Add(OpenCodeInteractionUi.StyledText(option.Label, selected ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.BodyStyleKey));
+                    if (option.Description is { } description) content.Children.Add(OpenCodeToolDetailContent.Caption(description));
+                    if (selected) { content.Children.Add(OpenCodeToolDetailContent.Caption("已选")); selectedIndex = o; }
+                    var item = new Border { Child = content, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(6) };
+                    if (selected) OpenCodeToolTheme.Apply(item, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+                    AutomationProperties.SetAutomationId(item, group + "." + o.ToString(CultureInfo.InvariantCulture));
+                    radio.Items.Add(item);
+                }
             }
+            if (radio is not null) { radio.SelectedIndex = selectedIndex; block.Children.Add(radio); }
 
             foreach (var custom in question.CustomAnswers())
-                block.Children.Add(Choice(question.Multiple, true, custom, "自行输入的回答", group, group + ".custom"));
+                block.Children.Add(Section("自行输入", MarkdownBody("> " + custom.Replace("\n", "\n> ", StringComparison.Ordinal))));
 
             if (question.Answers is null)
             {
@@ -196,6 +242,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         text.TextWrapping = TextWrapping.Wrap;
         content.Children.Add(text);
         if (description is not null) content.Children.Add(OpenCodeToolDetailContent.Caption(description));
+        if (selected) content.Children.Add(OpenCodeToolDetailContent.Caption("已选"));
         Control element = multiple
             ? new CheckBox { Content = content, IsChecked = selected }
             : new RadioButton { Content = content, IsChecked = selected, GroupName = group };
@@ -203,6 +250,14 @@ internal static partial class OpenCodeToolDetailBuiltins
         element.IsTabStop = false;
         element.MinWidth = 0;
         element.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        if (selected)
+        {
+            var background = new Border { Child = element, CornerRadius = new CornerRadius(6), Padding = new Thickness(6, 2, 6, 2) };
+            OpenCodeToolTheme.Apply(background, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+            AutomationProperties.SetAutomationId(element, automationId);
+            AutomationProperties.SetName(element, "已选：" + label);
+            return background;
+        }
         AutomationProperties.SetAutomationId(element, automationId);
         AutomationProperties.SetName(element, (selected ? "已选：" : "未选：") + label);
         return element;
@@ -213,8 +268,10 @@ internal static partial class OpenCodeToolDetailBuiltins
     private static FrameworkElement Skill(OpenCodeToolRowModel model, bool compact)
     {
         var detail = OpenCodeToolDetailBuiltinData.Skill(model);
-        var panel = new StackPanel { Spacing = 10 };
+        var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(Header("\uE734", detail.Name ?? "技能", null));
+        if (detail.Source is { } source) panel.Children.Add(OpenCodeToolDetailContent.Caption("来源 · " + source));
+        if (detail.Description is { } description) panel.Children.Add(OpenCodeToolDetailContent.Caption("说明 · " + description));
         if (detail.Directory is { } directory)
         {
             var path = OpenCodeToolDetailContent.Mono(directory);
@@ -227,10 +284,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         if (detail.Content is { } content)
         {
             var (excerpt, remaining) = compact ? OpenCodeToolDetailBuiltinData.Excerpt(content, OpenCodeToolDetailBuiltinData.CompactExcerptLines) : (content, 0);
-            var markdown = new OpenCodeRichTextPresenter();
-            markdown.Render(excerpt, OpenCodeRichTextStyle.Body);
-            OpenCodeToolDetailContent.EnforceWrapping(markdown.Element);
-            panel.Children.Add(Section("已加载的内容", markdown.Element));
+            panel.Children.Add(Section("已加载的内容", compact ? MarkdownBody(excerpt) : ContentSwitch("渲染", "源码", () => MarkdownBody(content), () => RawExcerpt(detail.RawContent ?? content, int.MaxValue))));
             AddMore(panel, remaining, "行");
         }
         else

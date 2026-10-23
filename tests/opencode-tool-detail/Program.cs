@@ -44,6 +44,9 @@ internal static class Program
         Check(statusSections[2].Metrics.Last().Label == "b1 · T1 · Session restore recon", "CS1 block list parsed without translating user title");
         Check(statusSections[3].Raw == "Nudge: future-format", "CS1 unmatched section remains raw");
         Check(OpenCodeContextStatusParser.Parse("Blocks: none (nothing compressed yet)").Single().Metrics.Single().Value == "尚未压缩", "CS1 no blocks is explicit, not inferred");
+        var plainTodos = OpenCodeToolDetailBuiltinData.ParseTodoText("[x] Done\n[•] Running\n[ ] Pending");
+        Check(plainTodos is { } parsedTodos && parsedTodos.Select(t => t.Status).SequenceEqual(new[] { "completed", "in_progress", "pending" }), "D1 todoread fixed text form");
+        Check(OpenCodeToolDetailBuiltinData.ParseTodoText("unrecognized todo output") is null, "D1 unknown todo text stays raw");
         var todo = Model("todowrite", """{"status":"completed","input":{"todos":[{"content":"A","status":"completed"},{"content":"B","status":"in_progress"},{"content":"C","status":"cancelled"},{"content":"D","status":"pending"}]},"content":[{"type":"text","text":"Todos updated: 1/4 completed"}],"metadata":{"todos":[{"content":"A","status":"completed"},{"content":"B","status":"in_progress"},{"content":"C","status":"cancelled"},{"content":"D","status":"weird"}],"truncated":false},"time":{"start":1,"end":2}}""");
         Check(OpenCodeToolDetailBuiltinData.Resolve(todo) == OpenCodeBuiltinToolView.Todo && todo.ToolName == "todowrite", "todowrite → to do view");
         var todos = OpenCodeToolDetailBuiltinData.Todos(todo.State);
@@ -103,8 +106,8 @@ internal static class Program
         Check(OpenCodeToolDetailBuiltinData.CountHeader(grep) == "12 处匹配" && OpenCodeToolDetailBuiltinData.CountHeader(glob) == "26 个文件"
             && OpenCodeToolDetailBuiltinData.CountHeader(Model("grep", """{"status":"completed","input":{},"content":[{"type":"text","text":""}],"metadata":{},"time":{"start":1,"end":2}}""")) is null,
             "grep/glob count header only when metadata reports it");
-        Check(OpenCodeToolDetailBuiltinData.Resolve(grep) == OpenCodeBuiltinToolView.None && OpenCodeToolDetailBuiltinData.Resolve(Model("compress", """{"status":"completed","input":{},"content":[{"type":"text","text":"x"}],"metadata":{},"time":{"start":1,"end":2}}""")) == OpenCodeBuiltinToolView.None,
-            "other tools keep their existing views");
+        Check(OpenCodeToolDetailBuiltinData.Resolve(grep) == OpenCodeBuiltinToolView.None && OpenCodeToolDetailBuiltinData.Resolve(Model("compress", """{"status":"completed","input":{},"content":[{"type":"text","text":"x"}],"metadata":{},"time":{"start":1,"end":2}}""")) == OpenCodeBuiltinToolView.Context,
+            "grep keeps its existing view; context tools get the context view");
         Check(OpenCodeToolDetailBuiltinData.Excerpt("1\n2\n3", 2) == ("1\n2", 1) && OpenCodeToolDetailBuiltinData.Excerpt("1", 2) == ("1", 0), "excerpt counts the rest");
 
         // Source contract: dispatch only in the default branch; hover preview is compact, large view is not.
@@ -139,8 +142,12 @@ internal static class Program
             && results.Contains("255, 204, 204, 204", StringComparison.Ordinal), "normal terminal shares a selectable native terminal-colored surface");
         Check(results.Contains("new AutoSuggestBox", StringComparison.Ordinal) && results.Contains("new TextHighlighter", StringComparison.Ordinal)
             && results.Contains("new TreeView", StringComparison.Ordinal) && results.Contains("new ListView", StringComparison.Ordinal), "search/list use native filtering, highlighting and tree/list controls");
-        Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(", StringComparison.Ordinal) && builtins.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
-            && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "to do reuses the right-panel rows; read-only; theme brushes only");
+        var generic = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailGeneric.cs"));
+        Check(builtins.Contains("TodoDetailRow(", StringComparison.Ordinal) && generic.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
+            && generic.Contains("Width = 16, Height = 16", StringComparison.Ordinal) && generic.Contains("TextDecorations.Strikethrough", StringComparison.Ordinal)
+            && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "To Do native 16px read-only checks and completed strike-through; theme brushes only");
+        Check(builtins.Contains("BuildInline(OpenCodeToolRowModel model)", StringComparison.Ordinal) && builtins.Contains("BuildReasoning(string? text", StringComparison.Ordinal), "D1 reusable full inline builders exposed");
+        Check(generic.Contains("new SelectorBar()", StringComparison.Ordinal) && generic.Contains("depth >= 8", StringComparison.Ordinal) && generic.Contains("2000", StringComparison.Ordinal), "generic native property/JSON switch, depth limit and recoverable cap");
         Check(builtins.Contains("count.HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal)
             && builtins.Contains("Grid.SetColumn(count, 1)", StringComparison.Ordinal)
             && builtins.Contains(" + \"/\" + ", StringComparison.Ordinal)

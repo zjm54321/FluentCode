@@ -72,6 +72,8 @@ internal static partial class OpenCodeToolDetailBuiltins
                 var matches = Regex.Matches(output!, @"(?ms)^(b\d+ \(T\d+\) .+?\[[^\n]+\])\n(.*?)(?=^b\d+ \(T\d+\)|\z)");
                 if (matches.Count > 0)
                 {
+                    var total = Regex.Match(output!, @"^Found (\d+) block\(s\)");
+                    panel.Children.Add(OpenCodeToolDetailContent.Caption(total.Success ? "找到 " + total.Groups[1].Value + " 个块 · 显示 " + (compact ? Math.Min(3, matches.Count) : matches.Count) + " 个" : "显示 " + (compact ? Math.Min(3, matches.Count) : matches.Count) + " 个块"));
                     for (var i = 0; i < (compact ? Math.Min(3, matches.Count) : matches.Count); i++)
                         panel.Children.Add(Disclosure(matches[i].Groups[1].Value, RawExcerpt(matches[i].Groups[2].Value.Trim(), compact ? 1 : int.MaxValue), !compact && i == 0));
                     AddMore(panel, compact ? matches.Count - 3 : 0, "个块");
@@ -101,7 +103,7 @@ internal static partial class OpenCodeToolDetailBuiltins
                     }
                 }
                 else if (content.ValueKind == JsonValueKind.String && content.GetString() is { } summary)
-                    panel.Children.Add(Disclosure("摘要", MarkdownBody(compact ? OpenCodeToolDetailBuiltinData.Excerpt(summary, 4).Excerpt : summary), true));
+                    AddSummarySections(panel, summary, compact);
             }
             else if (OpenCodeToolDetailBuiltinData.StringValue(input, "summary") is { } summary)
                 panel.Children.Add(Disclosure("摘要", MarkdownBody(compact ? OpenCodeToolDetailBuiltinData.Excerpt(summary, 4).Excerpt : summary), true));
@@ -112,13 +114,40 @@ internal static partial class OpenCodeToolDetailBuiltins
 
     private static FrameworkElement RawExcerpt(string text, int lines)
     {
-        var (excerpt, remaining) = OpenCodeToolDetailBuiltinData.Excerpt(text, lines);
+        var maximum = lines == int.MaxValue ? 20000 : lines;
+        var (excerpt, remaining) = OpenCodeToolDetailBuiltinData.Excerpt(text, maximum);
         var panel = new StackPanel { Spacing = 12 };
         var block = OpenCodeToolDetailContent.Mono(excerpt);
         block.TextWrapping = TextWrapping.Wrap;
         panel.Children.Add(block);
-        AddMore(panel, remaining, "行");
+        if (remaining > 0 && lines == int.MaxValue)
+        {
+            var more = new Button { Content = "已显示前 " + maximum + " 行（共 " + (maximum + remaining) + " 行）· 显示全部" };
+            more.Click += (_, _) => { block.Text = text; panel.Children.Remove(more); };
+            SwallowTap(more);
+            panel.Children.Add(more);
+        }
+        else AddMore(panel, remaining, "行");
         return panel;
+    }
+
+    private static void AddSummarySections(Panel panel, string text, bool compact)
+    {
+        var headers = Regex.Matches(text, @"(?m)^m\d+[–-]m\d+[^\r\n]*(?:\r?\n|$)");
+        if (headers.Count == 0)
+        {
+            panel.Children.Add(Disclosure("摘要 · " + text.Length + " 字符", MarkdownBody(compact ? OpenCodeToolDetailBuiltinData.Excerpt(text, 4).Excerpt : text), true));
+            return;
+        }
+        if (headers[0].Index > 0) panel.Children.Add(RawExcerpt(text[..headers[0].Index], compact ? 4 : int.MaxValue));
+        for (var i = 0; i < (compact ? 1 : headers.Count); i++)
+        {
+            var start = headers[i].Index + headers[i].Length;
+            var end = i + 1 < headers.Count ? headers[i + 1].Index : text.Length;
+            var summary = text[start..end].Trim();
+            panel.Children.Add(Disclosure(headers[i].Value.Trim() + " · " + summary.Length + " 字符", MarkdownBody(compact ? OpenCodeToolDetailBuiltinData.Excerpt(summary, 4).Excerpt : summary), i == 0));
+        }
+        if (compact) AddMore(panel, headers.Count - 1, "个区段");
     }
 
     private static FrameworkElement MarkdownBody(string text)

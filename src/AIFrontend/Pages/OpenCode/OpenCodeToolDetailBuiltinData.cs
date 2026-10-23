@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -47,7 +48,7 @@ internal sealed record OpenCodeQuestionDetail(
     }
 }
 
-internal sealed record OpenCodeSkillDetail(string? Name, string? Directory, string? Content);
+internal sealed record OpenCodeSkillDetail(string? Name, string? Directory, string? Content, string? Description = null, string? Source = null, string? RawContent = null);
 
 internal sealed record OpenCodeWebSearchResult(string Title, string? Url, string Snippet);
 
@@ -107,7 +108,30 @@ internal static class OpenCodeToolDetailBuiltinData
             return OpenCodeTodoReplay.Normalize(document.RootElement);
         }
 
-        return OpenCodeTodoReplay.Normalize(root);
+        var normalized = OpenCodeTodoReplay.Normalize(root);
+        if (!normalized.IsEmpty) return normalized;
+        if (root.TryGetProperty("content", out var parts) && parts.ValueKind == JsonValueKind.Array)
+        {
+            var text = new StringBuilder();
+            foreach (var part in parts.EnumerateArray()) if (Str(part, "text") is { } value) text.AppendLine(value);
+            var parsed = ParseTodoText(text.ToString());
+            if (parsed is not null) return parsed.Value;
+        }
+        return normalized;
+    }
+
+    internal static ImmutableArray<OpenCodeTodoItem>? ParseTodoText(string text)
+    {
+        var todos = new List<object>();
+        foreach (var line in text.Trim().Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var match = Regex.Match(line.TrimEnd('\r'), @"^\s*(?:[-*] )?\[([xX• ])\]\s+(.+)$");
+            if (!match.Success) return null;
+            todos.Add(new { content = match.Groups[2].Value, status = match.Groups[1].Value switch { "x" or "X" => "completed", "•" => "in_progress", _ => "pending" } });
+        }
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(new { input = new { todos } }));
+        return OpenCodeTodoReplay.Normalize(document.RootElement);
     }
 
     // ------------------------------------------------------------------ subagent
@@ -188,10 +212,30 @@ internal static class OpenCodeToolDetailBuiltinData
         var input = Object(model.State, "input");
         var metadata = Object(model.State, "metadata");
         var content = string.IsNullOrWhiteSpace(model.OutputText) ? null : SkillWrapper.Replace(model.OutputText!, string.Empty).Trim();
+        var rawContent = content;
+        string? name = null, description = null;
+        if (content is not null)
+        {
+            var frontmatter = Regex.Match(content, @"\A---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)");
+            if (frontmatter.Success)
+            {
+                name = Regex.Match(frontmatter.Groups[1].Value, @"(?m)^name:\s*([^\r\n]+)$") is { Success: true } n ? n.Groups[1].Value.Trim(' ', '\"', '\'') : null;
+                description = Regex.Match(frontmatter.Groups[1].Value, @"(?m)^description:\s*([^\r\n]+)$") is { Success: true } d ? d.Groups[1].Value.Trim(' ', '\"', '\'') : null;
+                // Only supported single-line frontmatter is moved into facts; unknown YAML stays visible in the body.
+                if (description is not "|" and not ">" && frontmatter.Groups[1].Value.Split('\n').All(line => Regex.IsMatch(line, @"^(name|description):[^\n]*\r?$")))
+                    content = content[frontmatter.Length..].TrimStart();
+                else description = null;
+            }
+        }
+        var directory = Str(metadata, "directory");
+        var package = directory is not null ? Regex.Match(directory, @"(?:^|/)([^/]+@\d[^/]+)(?:/|$)") : Match.Empty;
         return new OpenCodeSkillDetail(
-            Str(metadata, "name") ?? Str(input, "id") ?? Str(input, "name"),
-            Str(metadata, "directory"),
-            string.IsNullOrEmpty(content) ? null : content);
+            Str(metadata, "name") ?? name ?? Str(input, "id") ?? Str(input, "name"),
+            directory,
+            string.IsNullOrEmpty(content) ? null : content,
+            description,
+            package.Success ? package.Groups[1].Value : null,
+            rawContent);
     }
 
     // ------------------------------------------------------------------ websearch
