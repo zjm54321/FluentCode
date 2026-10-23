@@ -102,10 +102,13 @@ public sealed partial class OpenCodePage
             OverviewRefreshMessagesButton.IsEnabled = hasSessionSurface;
             RightPanelExistingActions.Visibility = rightResident ? Visibility.Visible : Visibility.Collapsed;
             MoveExistingSidebarActions(rightResident);
+            // Session connection details live in the resident footer or narrow composer dot.
+            ConnectionStatusButton.Visibility = hasSessionSurface ? Visibility.Collapsed : Visibility.Visible;
             ContextRingHost.Visibility = (_sidebarLayout.ShowHeaderContext || !workspaceVisible) && hasSessionSurface
                 ? Visibility.Visible : Visibility.Collapsed;
             RightContextRingHost.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
             RefreshRightPanelMetadata();
+            QueueComposerLayout();
         }
         finally { _sidebarApplying = false; }
     }

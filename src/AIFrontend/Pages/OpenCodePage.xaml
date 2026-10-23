@@ -617,9 +617,16 @@
                                                 Visibility="Collapsed"
                                                 AutomationProperties.AutomationId="OpenCodeComposerCompanionHost" />
 
-                                            <!-- Always two rows, including an empty draft. Shell mode hides this entire surface. -->
-                                            <Grid x:Name="ComposerInputLayout" RowDefinitions="Auto,Auto" RowSpacing="8">
-                                                <Grid x:Name="ComposerEditorHost">
+                                            <!-- Stable parents: wide sessions use one row; narrow and new-session use two. -->
+                                            <Grid x:Name="ComposerInputLayout" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto" RowSpacing="8" ColumnSpacing="8">
+                                                <Grid.Resources>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource OpenCodeTransparentToolButtonStyle}">
+                                                        <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                                                    </Style>
+                                                    <StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                    <StaticResource x:Key="ButtonBorderBrushDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
+                                                </Grid.Resources>
+                                                <Grid x:Name="ComposerEditorHost" Grid.ColumnSpan="3">
                                                     <!-- 右侧内边距 44 = 全屏按钮 32 + 外边距 4 + 与文字的间隔 8。 -->
                                                     <TextBox
                                                         x:Name="Composer"
@@ -648,19 +655,7 @@
                                                         <FontIcon Glyph="&#xE740;" FontSize="12" />
                                                     </Button>
                                                 </Grid>
-                                                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Enabled"
-                                                              HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Disabled" VerticalScrollMode="Disabled">
-                                                    <Grid x:Name="ComposerToolbar" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" MinWidth="312">
-                                                        <!-- 工具栏图标按钮：静止时无填充、无描边，悬停/按下沿用原生按钮状态；禁用时不出现灰色方块。
-                                                             发送按钮显式使用 AccentButtonStyle，不受此隐式样式影响。 -->
-                                                        <Grid.Resources>
-                                                            <Style TargetType="Button" BasedOn="{StaticResource OpenCodeTransparentToolButtonStyle}">
-                                                                <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
-                                                            </Style>
-                                                            <StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
-                                                            <StaticResource x:Key="ButtonBorderBrushDisabled" ResourceKey="SubtleFillColorTransparentBrush" />
-                                                        </Grid.Resources>
-                                                        <StackPanel x:Name="ComposerToolbarLeft" Orientation="Horizontal" Spacing="2">
+                                                        <StackPanel x:Name="ComposerToolbarLeft" Grid.Row="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Bottom">
                                                             <Grid x:Name="ComposerLeadingHost" VerticalAlignment="Center" />
                                                             <Grid x:Name="BlankToolbarChoices" ColumnDefinitions="Auto,Auto,Auto"
                                                                   ColumnSpacing="2" HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -685,7 +680,7 @@
                                                                         AutomationProperties.AutomationId="OpenCodeBlankStrength" />
                                                             </Grid>
                                                         </StackPanel>
-                                                        <StackPanel x:Name="ComposerToolbarMiddle" Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                                        <StackPanel x:Name="ComposerToolbarMiddle" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="2"
                                                                     HorizontalAlignment="Center" VerticalAlignment="Center">
                                                             <Button x:Name="ComposerSubagentsButton" Width="32" Height="32" MinWidth="0" Padding="0"
                                                                     Click="ComposerSubagentsButton_Click" AutomationProperties.Name="后台子智能体"
@@ -697,7 +692,8 @@
                                                                     ToolTipService.ToolTip="OpenCode 连接详情" AutomationProperties.AutomationId="OpenCodeComposerConnection" />
                                                         </StackPanel>
                                                         <StackPanel
-                                                            x:Name="ComposerActions"
+                                                             x:Name="ComposerActions"
+                                                             Grid.Row="1"
                                                             Grid.Column="2"
                                                             Orientation="Horizontal"
                                                             Spacing="6"
@@ -739,8 +735,6 @@
                                                                     FontSize="14" />
                                                             </Button>
                                                         </StackPanel>
-                                                    </Grid>
-                                                </ScrollViewer>
                                             </Grid>
                                         </StackPanel>
                                     </Border>

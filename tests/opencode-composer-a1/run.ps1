@@ -19,6 +19,10 @@ $toolbar = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.Compo
 $expanded = [regex]::Match($toolbar, '(?ms)^    internal static bool ExpandBlankComposerChoices\(.*?;')
 if (!$expanded.Success) { throw 'Missing composer choice width policy' }
 $members += $expanded.Value
+$layout = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs")
+$singleRow = [regex]::Match($layout, '(?m)^    internal static bool UseSingleRowComposer\([^\r\n]*;')
+if (!$singleRow.Success) { throw 'Missing composer row policy' }
+$members += $singleRow.Value
 foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSelectable'))) {
     $pattern = if ($spec[1] -eq 'IsBlankAgentSelectable') { '(?ms)^    private static bool IsBlankAgentSelectable\(.*?;' }
         else { '(?ms)^    (?:private|internal) [^\r\n]*\b' + $spec[1] + '\(.*?^    \}' }

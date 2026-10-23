@@ -13,6 +13,20 @@ public sealed partial class OpenCodePage
     private bool _composerLayoutPending;
     private bool _composerOverFiveLines;
 
+    internal static bool UseSingleRowComposer(bool newSession, bool wide) => !newSession && wide;
+
+    private void ArrangeComposerRows(bool singleRow)
+    {
+        // Change attached layout properties only; never detach the editor or its host.
+        Grid.SetColumn(ComposerEditorHost, singleRow ? 1 : 0);
+        Grid.SetColumnSpan(ComposerEditorHost, singleRow ? 1 : 3);
+        Grid.SetRow(ComposerToolbarLeft, singleRow ? 0 : 1);
+        Grid.SetRow(ComposerActions, singleRow ? 0 : 1);
+        ComposerInputLayout.RowSpacing = singleRow ? 0 : 8;
+        BlankToolbarChoices.Visibility = singleRow ? Visibility.Collapsed : Visibility.Visible;
+        ComposerToolbarMiddle.Visibility = !singleRow && !_newSessionDraftActive ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void InitializeComposerLayout()
     {
         Composer.TextChanged += (_, _) => QueueComposerLayout();
@@ -42,6 +56,8 @@ public sealed partial class OpenCodePage
     private void UpdateComposerLayout()
     {
         UpdateConversationColumns();
+        var singleRow = UseSingleRowComposer(_newSessionDraftActive, _sidebarLayout.IsWide);
+        ArrangeComposerRows(singleRow);
         UpdateComposerToolbarLayout();
         var measure = _composerMeasure;
         measure.FontFamily = Composer.FontFamily;
@@ -59,15 +75,15 @@ public sealed partial class OpenCodePage
         var stroke = Composer.BorderThickness;
         var chrome = padding.Top + padding.Bottom + stroke.Top + stroke.Bottom;
         var horizontalChrome = padding.Left + padding.Right + stroke.Left + stroke.Right;
-        // Two fixed rows: only the input's own fullscreen corner consumes editor width.
-        var editorWidth = Math.Max(1, ComposerInputLayout.ActualWidth - horizontalChrome);
+        // Measure the editor's own arranged width: wide sessions share its row with +/send.
+        var editorWidth = Math.Max(1, ComposerEditorHost.ActualWidth - horizontalChrome);
         measure.Text = Composer.Text + "\u200b"; // Preserve a trailing empty line in native text measure.
         measure.Measure(new Size(editorWidth, double.PositiveInfinity));
         var maximum = _blankComposerPlacement ? Math.Max(180, line * 8 + chrome) : OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
         // Reserve room for the naturally measured official brand and external preferences on short windows.
         // Normal-session five-line sizing is unchanged; this is only the empty centered host's initial height.
         var blankMinimum = Math.Clamp(SessionLayoutRoot.ActualHeight * 0.24, 104, 156);
-        Composer.MinHeight = _blankComposerPlacement ? Math.Min(blankMinimum, maximum) : 64;
+        Composer.MinHeight = _blankComposerPlacement ? Math.Min(blankMinimum, maximum) : singleRow ? line + chrome : 64;
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
         _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(measure.DesiredSize.Height, line);
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;

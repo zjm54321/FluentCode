@@ -27,6 +27,8 @@ namespace AIFrontend.Pages
             var page = new OpenCodePage();
             Check(!ExpandBlankComposerChoices(true, 599.99) && ExpandBlankComposerChoices(true, 600), "new-session labels collapse only below 600 editor epx");
             Check(!ExpandBlankComposerChoices(false, 960), "session never duplicates labeled sidebar choices");
+            Check(UseSingleRowComposer(false, true) && !UseSingleRowComposer(false, false)
+                && !UseSingleRowComposer(true, true) && !UseSingleRowComposer(true, false), "only wide sessions use a single composer row");
             foreach (var literal in new[] { "#123456", "#aBcDeF", "#000000", "#FFFFFF" })
             {
                 page.ApplyBlankAgentColor(literal);
@@ -71,8 +73,13 @@ namespace AIFrontend.Pages
             Check(blank.Contains("ToolTipService.SetToolTip(BlankAgentButton, agent?.Description)") && blank.Contains("ToolTipService.SetToolTip(item, agent.Description)"), "current and candidates expose description");
             Check(!blank.Contains("IsEnabled = agent.Mode"), "subagent entries not rendered disabled");
             var layout = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"));
-            Check(!layout.Contains("UseBottomToolbar") && !layout.Contains("Grid.SetRow(ComposerLeadingHost")
-                && layout.Contains("Composer.TextCompositionEnded +="), "fixed row placement is independent of empty/wrapped text; IME-safe measurement retained");
+            Check(layout.Contains("ArrangeComposerRows(singleRow)") && layout.Contains("Grid.SetRow(ComposerActions, singleRow ? 0 : 1)")
+                && layout.Contains("Grid.SetRow(ComposerToolbarLeft, singleRow ? 0 : 1)")
+                && !layout.Contains("Children.Remove") && layout.Contains("Composer.TextCompositionEnded +="), "responsive rows change attached layout only, never editor parent or identity");
+            Check(Named("ComposerEditorHost").Parent == Named("ComposerInputLayout")
+                && Named("ComposerActions").Parent == Named("ComposerInputLayout")
+                && Named("ComposerToolbarLeft").Parent == Named("ComposerInputLayout")
+                && Named("ComposerExpandButton").Parent == Named("Composer").Parent, "editor, actions and plus share a stable layout; fullscreen stays inside input");
             var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
             Check(binding.Contains("OpenCodeModelLogo.Label(") && binding.Contains("OpenCodeAgentPresentation.Apply(agentLabel, color)")
                 && binding.Contains("expanded ? OpenCodeModelPresentation.VariantLabel(selected?.Variant)"), "expanded choices retain colored agent name, model logo/name and translated effort");
