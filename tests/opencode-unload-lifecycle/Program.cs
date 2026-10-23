@@ -25,7 +25,7 @@ internal static class Program
         {
             var selection = args.Length == 0 ? "All" : args[0];
             if (selection == "AuditOwned" ? !name.StartsWith("Owned", StringComparison.Ordinal)
-                : selection == "All" ? name.StartsWith("Owned", StringComparison.Ordinal) : selection != name) continue;
+                : selection != "All" && selection != name) continue;
             try { test(); Console.WriteLine("PASS " + name); }
             catch (Exception error) { failed++; Console.WriteLine("FAIL " + name + ": " + error.Message); }
         }
@@ -175,7 +175,8 @@ internal static class FontFixture
 }
 namespace AIFrontend.Services.Configuration { public sealed class AppSettingsChangedEventArgs : EventArgs { } }
 
-// Read-only findings in concurrent lanes. Run -Case AuditOwned to reproduce, not as passing acceptance.
+// Former concurrent-lane findings, now fixed and included in All.
+// AuditOwned remains a passing subset selector for these four regressions.
 internal sealed class GroupFixture
 {
     private readonly Element _root = new();
@@ -186,8 +187,12 @@ internal sealed class GroupFixture
     private GroupFixture() { /* GROUP */ }
     internal static void Test()
     {
-        var f = new GroupFixture(); f._root.Load(); f._root.Load(); f._root.Unload(true);
-        Program.Check(f.ticking, "g-group: late unload permanently stopped the active tool-group timer");
+        var f = new GroupFixture(); f._root.Load(); f._root.Load(); f._root.Unload(true); f._root.Unload(true);
+        Program.Check(f.ticking, "late unload permanently stopped the active tool-group timer");
+        f._root.Unload(false);
+        Program.Check(!f.ticking, "actual tool-group detach must stop the timer");
+        f._root.Load();
+        Program.Check(f.ticking, "tool-group reload must restart the active timer");
     }
 }
 internal sealed class IndicatorFixture

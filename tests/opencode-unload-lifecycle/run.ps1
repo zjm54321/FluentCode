@@ -1,5 +1,6 @@
 # Executes verbatim production lifecycle handlers with deterministic element/service doubles.
 # No WinUI runtime or desktop: isolates Loaded -> Loaded -> late Unloaded ordering.
+# All runs all ten regressions; AuditOwned selects the four formerly delegated cases (also expected to pass).
 param([string]$EvidenceRoot, [string]$Case = 'All')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
