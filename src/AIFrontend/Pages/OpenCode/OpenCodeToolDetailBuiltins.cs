@@ -28,6 +28,7 @@ internal static class OpenCodeToolDetailBuiltins
         {
             OpenCodeBuiltinToolView.Todo => Todo(model, options.Compact),
             OpenCodeBuiltinToolView.Subagent => Subagent(model, options),
+            OpenCodeBuiltinToolView.Question => Question(model),
             _ => null,
         };
         if (body is not null) AutomationProperties.SetAutomationId(body, "OpenCodeToolDetailBuiltin." + OpenCodeToolDetailBuiltinData.Resolve(model));
@@ -118,6 +119,66 @@ internal static class OpenCodeToolDetailBuiltins
         }
 
         return panel;
+    }
+
+    // ------------------------------------------------------------------ question
+
+    private static FrameworkElement? Question(OpenCodeToolRowModel model)
+    {
+        var questions = OpenCodeToolDetailBuiltinData.Questions(model.State);
+        if (questions.Count == 0) return null;
+        var panel = new StackPanel { Spacing = 16 };
+        for (var q = 0; q < questions.Count; q++)
+        {
+            var question = questions[q];
+            var block = new StackPanel { Spacing = 4 };
+            if (question.Header is { } header) block.Children.Add(OpenCodeToolDetailContent.Caption(header));
+            var title = OpenCodeInteractionUi.StyledText(question.Text, OpenCodeInteractionUi.BodyStrongStyleKey);
+            title.TextWrapping = TextWrapping.Wrap;
+            title.Margin = new Thickness(0, 0, 0, 2);
+            block.Children.Add(title);
+            var group = "OpenCodeToolDetailQuestion." + model.PartId + "." + q.ToString(CultureInfo.InvariantCulture);
+            for (var o = 0; o < question.Options.Count; o++)
+            {
+                var option = question.Options[o];
+                block.Children.Add(Choice(question.Multiple, question.IsSelected(option), option.Label, option.Description, group,
+                    group + "." + o.ToString(CultureInfo.InvariantCulture)));
+            }
+
+            foreach (var custom in question.CustomAnswers())
+                block.Children.Add(Choice(question.Multiple, true, custom, "自行输入的回答", group, group + ".custom"));
+
+            if (question.Answers is null)
+            {
+                var unanswered = OpenCodeToolDetailContent.Caption(model.IsActive ? "等待回答…" : "未回答");
+                AutomationProperties.SetAutomationId(unanswered, group + ".unanswered");
+                block.Children.Add(unanswered);
+            }
+
+            panel.Children.Add(block);
+        }
+
+        return panel;
+    }
+
+    /// <summary>A read-only native RadioButton (single choice) or CheckBox (multiple); the chosen ones are checked and bold.</summary>
+    private static FrameworkElement Choice(bool multiple, bool selected, string label, string? description, string group, string automationId)
+    {
+        var content = new StackPanel { Spacing = 0 };
+        var text = OpenCodeInteractionUi.StyledText(label, selected ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.BodyStyleKey);
+        text.TextWrapping = TextWrapping.Wrap;
+        content.Children.Add(text);
+        if (description is not null) content.Children.Add(OpenCodeToolDetailContent.Caption(description));
+        Control element = multiple
+            ? new CheckBox { Content = content, IsChecked = selected }
+            : new RadioButton { Content = content, IsChecked = selected, GroupName = group };
+        element.IsHitTestVisible = false;
+        element.IsTabStop = false;
+        element.MinWidth = 0;
+        element.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        AutomationProperties.SetAutomationId(element, automationId);
+        AutomationProperties.SetName(element, (selected ? "已选：" : "未选：") + label);
+        return element;
     }
 
     // ------------------------------------------------------------------ shared pieces
