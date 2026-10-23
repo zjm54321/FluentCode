@@ -18,25 +18,16 @@ internal static class OpenCodeModelLogo
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         host.Children.Add(fallback);
         if (brand == OpenCodeModelBrand.Neutral) return host;
+        // OpenAI: the official monochrome mark with no background tile (white on dark themes).
         var image = new Image { Width = 20, Height = 20, Stretch = Stretch.Uniform };
-        if (brand == OpenCodeModelBrand.OpenAI)
-        {
-            // Official white geometry, unmodified, on the familiar ChatGPT green product tile.
-            // No recoloring or invented replacement for the logo itself.
-            image.Width = image.Height = 16;
-            host.Children.Add(new Border { CornerRadius = new CornerRadius(5), Child = image,
-                Background = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 16, G = 163, B = 127 }) });
-        }
-        else host.Children.Add(image);
-        host.Children.Remove(fallback);
-        host.Children.Add(fallback); // Fallback stays above the opaque OpenAI tile if a local image cannot load.
+        host.Children.Insert(0, image);
         long revision = 0;
         async void Update(object? sender, object args)
         {
             var ticket = ++revision;
             try
             {
-                var asset = OpenCodeModelPresentation.Asset(brand, brand == OpenCodeModelBrand.OpenAI || host.ActualTheme == ElementTheme.Dark)!;
+                var asset = OpenCodeModelPresentation.Asset(brand, host.ActualTheme == ElementTheme.Dark)!;
                 var file = await StorageFile.GetFileFromPathAsync(Path.Combine(AppContext.BaseDirectory, "Assets", "Brands", asset));
                 using var stream = await file.OpenReadAsync();
                 ImageSource source;
