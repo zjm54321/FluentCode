@@ -19,6 +19,7 @@ internal static class Program
 
     private static async Task Main()
     {
+        await ResponseBounds.RunAsync();
         await TransportAndConnectionStates();
         TodoReplay();
         PluginGatesAndCoreChildren();

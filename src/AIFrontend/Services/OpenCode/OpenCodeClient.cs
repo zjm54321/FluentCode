@@ -595,8 +595,8 @@ public sealed partial class OpenCodeClient : IDisposable
                     $"OpenCode 服务返回 HTTP {(int)response.StatusCode}（{label}）。");
             }
 
-            await using var stream = await response.Content.ReadAsStreamAsync(timeoutCts.Token).ConfigureAwait(false);
-            return await JsonDocument.ParseAsync(stream, cancellationToken: timeoutCts.Token).ConfigureAwait(false);
+            var bytes = await ReadResponseBodyAsync(response.Content, timeoutCts.Token).ConfigureAwait(false);
+            return JsonDocument.Parse(bytes);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -618,6 +618,27 @@ public sealed partial class OpenCodeClient : IDisposable
         {
             throw new OpenCodeTransportException($"OpenCode 响应读取失败（{label}）。");
         }
+    }
+
+    private static async Task<ReadOnlyMemory<byte>> ReadResponseBodyAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        const int maxBytes = 64 * 1024 * 1024;
+        if (content.Headers.ContentLength > maxBytes) throw ResponseTooLarge();
+        await using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var buffer = new MemoryStream(content.Headers.ContentLength is { } length && length <= maxBytes
+            ? (int)length : 16 * 1024);
+        var chunk = new byte[64 * 1024];
+        while (true)
+        {
+            var read = await stream.ReadAsync(chunk.AsMemory(), cancellationToken).ConfigureAwait(false);
+            if (read == 0) break;
+            if (buffer.Length > maxBytes - read) throw ResponseTooLarge();
+            buffer.Write(chunk, 0, read);
+        }
+        // Parse retains this memory; disposing MemoryStream does not invalidate its backing array.
+        return buffer.GetBuffer().AsMemory(0, (int)buffer.Length);
+
+        static OpenCodeProtocolException ResponseTooLarge() => new("OpenCode 响应体超过 64 MiB 限制。");
     }
 
     private static T Deserialize<T>(JsonDocument document, string label)

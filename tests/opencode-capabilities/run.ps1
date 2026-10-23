@@ -22,6 +22,7 @@ $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dl
     'OpenCodeCapabilityStatus.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeSubagentStatus.cs'
 ) | ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_) + '"' }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'ResponseBounds.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
