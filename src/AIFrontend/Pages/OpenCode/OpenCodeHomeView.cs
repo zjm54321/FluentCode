@@ -38,11 +38,16 @@ public sealed class OpenCodeHomeSearchEventArgs(long revision, OpenCodeHomeProje
 /// </summary>
 public sealed class OpenCodeHomeView : UserControl
 {
-    internal const double SideCardWidth = 280;
+    // Same geometry as session layout D (OpenCodeSidebarLayout): 264epx floating cards inset 24epx from the edge
+    // with an 8epx inner gap, so the cards and the centre column stay put when switching between 🏠 and a session.
+    internal const double SideCardWidth = 264;
     internal const double SideMargin = 24;
-    internal const double CenterMaxWidth = 800;
-    /// <summary>Both side cards plus their outer and inner gutters next to an 800epx centre column.</summary>
-    internal const double WideThreshold = CenterMaxWidth + 2 * (SideCardWidth + 2 * SideMargin);
+    internal const double InnerGap = 8;
+    internal const double SideColumnWidth = SideMargin + SideCardWidth + InnerGap; // 296 = OpenCodeSessionPaneLength
+    internal const double CenterMaxWidth = 820;
+    internal const double CenterPadding = 32;
+    /// <summary>Same wide threshold as layout D (OpenCodeSidebarLayout.EnterWideWidth = 1444).</summary>
+    internal const double WideThreshold = 2 * SideColumnWidth + CenterMaxWidth + CenterPadding;
     private const string AttentionKey = "attention";
     private const string AllProjectsTag = "all-projects";
 
@@ -421,7 +426,7 @@ public sealed class OpenCodeHomeView : UserControl
         _compactConnection.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
         _chipScroller.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
         _center.Width = width <= 0 ? CenterMaxWidth
-            : Math.Max(0, Math.Min(CenterMaxWidth, _narrow ? width - 2 * SideMargin : width - 2 * (SideCardWidth + 2 * SideMargin)));
+            : Math.Max(0, Math.Min(CenterMaxWidth, _narrow ? width - 2 * SideMargin : width - 2 * SideColumnWidth - CenterPadding));
         var height = ActualHeight;
         if (height > 0) _leftCard.MaxHeight = Math.Max(0, height - 2 * SideMargin);
     }
