@@ -12,18 +12,19 @@ internal static class Program
     private static void Check(bool ok,string name) { if(!ok)throw new Exception(name);checks++; }
     private static void Main()
     {
-        Check(typeof(OpenCodeWorkingPhrases).GetField("EnableModelSatire",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)!.GetRawConstantValue() is false,"satire const disabled by default");
+        Check(typeof(OpenCodeWorkingPhrases).GetField("EnableModelSatire",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)!.GetRawConstantValue() is true,"satire enabled (user confirmed)");
         Check(OpenCodeWorkingPhrases.Playful.Count is >=10 and <=20,"tasteful general pool size");
         foreach(var sample in new[] { ("proxy/claude-sonnet",OpenCodeWorkingFamily.Claude),("gpt-6",OpenCodeWorkingFamily.OpenAI),("gemini-3",OpenCodeWorkingFamily.Gemini),("gateway/deepseek-v4",OpenCodeWorkingFamily.DeepSeek),("opaque-id",OpenCodeWorkingFamily.Unknown),("notclaude",OpenCodeWorkingFamily.Unknown) })
             Check(OpenCodeWorkingPhrases.Family(sample.Item1)==sample.Item2,"actual model family: "+sample.Item1);
         Check(OpenCodeWorkingPhrases.Family(null)==OpenCodeWorkingFamily.Unknown,"missing executing model stays unknown");
-        Check(OpenCodeWorkingPhrases.Satire(OpenCodeWorkingFamily.Claude).SequenceEqual(new[]{"封禁中文中…","封禁中国人中…","检测中国人中…"}),"review-only copy preserved verbatim");
+        Check(OpenCodeWorkingPhrases.Satire(OpenCodeWorkingFamily.Claude).SequenceEqual(new[]{"封禁中文中…","封禁中国人中…","检测中国人中…"}),"user copy preserved verbatim");
+        Check(OpenCodeWorkingPhrases.Satire(OpenCodeWorkingFamily.DeepSeek).SequenceEqual(new[]{"大肥鱼吃白饭中…","大肥鱼娱乐中…"}),"deepseek copy matches the user's words");
         var picker=new OpenCodeWorkingPhrasePicker(()=>0);
         picker.Start(OpenCodeWorkingActivity.Reasoning,OpenCodeWorkingFamily.Claude,0);
         Check(picker.Current=="思考中…" && picker.Tier==OpenCodeWorkingTier.Standard,"working starts with real standard state");
         for(var t=1;t<8000;t+=10) { picker.UpdateContext(OpenCodeWorkingActivity.Reasoning,OpenCodeWorkingFamily.Claude,t);picker.Tick(t); }
         Check(picker.ChangeCount==1,"stream updates never rotate phrases early");
-        picker.Tick(8000);Check(picker.Tier==OpenCodeWorkingTier.Playful,"default picker never enters satire even at lowest roll");
+        picker.Tick(8000);Check(picker.Tier==OpenCodeWorkingTier.Satire && OpenCodeWorkingPhrases.Satire(OpenCodeWorkingFamily.Claude).Contains(picker.Current),"default picker uses the executing family line at the lowest roll");
         Check(!picker.Tick(15999),"next cadence scheduled from last rotation");
         picker.Stop();Check(!picker.Tick(90000),"stopped picker does no work");
         var late=new OpenCodeWorkingPhrasePicker(()=>0.999999);late.Start(OpenCodeWorkingActivity.General,OpenCodeWorkingFamily.Unknown,0);

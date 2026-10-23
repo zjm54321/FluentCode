@@ -18,13 +18,13 @@ internal enum OpenCodeWorkingTier { Standard, Playful, Satire }
 /// </summary>
 /// <remarks>
 /// <para>三层：① 标准状态词（与已知真实活动对应：思考 / 工具 / 一般）；② 通用风趣短句；
-/// ③ 低概率的模型家族段子——仅作为“待 copy 审校”的备选池保存，<see cref="EnableModelSatire"/> 默认关闭，不随默认版本上线。</para>
+/// ③ 低概率的模型家族段子（用户原话），只在实际执行模型属于该家族时可能出现。</para>
 /// <para>纯客户端装饰：从不替换错误、提问、权限等真实状态文本，也不表示模型真的在做这些事。</para>
 /// </remarks>
 internal static class OpenCodeWorkingPhrases
 {
-    /// <summary>模型家族段子开关。待 copy 审校前保持 false：段子池保留但不会被选中。</summary>
-    internal const bool EnableModelSatire = false;
+    /// <summary>模型家族段子开关（用户已确认开启）。</summary>
+    internal const bool EnableModelSatire = true;
 
     /// <summary>首个词之后，最短 / 最长换词间隔（毫秒）：8–12 秒，从不按输出行换词。</summary>
     internal const double MinIntervalMs = 8_000;
@@ -64,7 +64,7 @@ internal static class OpenCodeWorkingPhrases
         "咖啡因注入中…",
     };
 
-    /// <summary>用户提供的段子原文（待 copy 审校；听写词待核准）。仅在 <see cref="EnableModelSatire"/> 开启时可能出现。</summary>
+    /// <summary>用户提供的段子原文。仅在 <see cref="EnableModelSatire"/> 开启且家族匹配时可能出现。</summary>
     internal static IReadOnlyList<string> Satire(OpenCodeWorkingFamily family) => family switch
     {
         OpenCodeWorkingFamily.DeepSeek => SatireDeepSeek,
@@ -74,7 +74,7 @@ internal static class OpenCodeWorkingPhrases
         _ => Array.Empty<string>(),
     };
 
-    private static readonly string[] SatireDeepSeek = { "大肥鱼吃白饭中…", "娱乐中…" };
+    private static readonly string[] SatireDeepSeek = { "大肥鱼吃白饭中…", "大肥鱼娱乐中…" };
     private static readonly string[] SatireClaude = { "封禁中文中…", "封禁中国人中…", "检测中国人中…" };
     private static readonly string[] SatireOpenAI = { "降智中…", "tibo重置中…" };
     private static readonly string[] SatireGemini = { "奉承用户中…" };
