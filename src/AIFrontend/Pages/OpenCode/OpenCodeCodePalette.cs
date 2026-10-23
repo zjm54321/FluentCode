@@ -48,7 +48,11 @@ internal static class OpenCodeCodePalette
             if (!subscribed) { service.Changed += Changed; subscribed = true; }
             Apply();
         };
-        element.Unloaded += (_, _) => { if (subscribed) { service.Changed -= Changed; subscribed = false; } };
+        element.Unloaded += (_, _) =>
+        {
+            if (element.IsLoaded) return; // Old parent unload after the new parent's Loaded.
+            if (subscribed) { service.Changed -= Changed; subscribed = false; }
+        };
         if (element.IsLoaded) { service.Changed += Changed; subscribed = true; }
         Apply();
     }
