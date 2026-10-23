@@ -17,6 +17,7 @@ internal static class OpenCodeModelPickerDialog
 {
     /// <param name="refresh">Optional read-only re-read, run only on an explicit click (single flight, never looped).
     /// Returning null keeps the current presentation.</param>
+    /// <param name="allowStrengthSelection">Retained for caller compatibility; strength is selected only in the separate composer control.</param>
     internal static async Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot? owner, OpenCodeModelPickerPresentation presentation,
         Func<Task<OpenCodeModelPickerPresentation?>>? refresh = null, string? sourceKey = null, bool allowStrengthSelection = true)
     {
@@ -56,17 +57,9 @@ internal static class OpenCodeModelPickerDialog
         var searchRow = new Grid { ColumnSpacing = 4 };
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         searchRow.Children.Add(search);
         Grid.SetColumn(refreshButton, 1);
         searchRow.Children.Add(refreshButton);
-        var strengthButton = new HyperlinkButton { Content = "推理强度", Padding = new Thickness(10, 6, 10, 6), VerticalAlignment = VerticalAlignment.Center,
-            Visibility = allowStrengthSelection ? Visibility.Visible : Visibility.Collapsed,
-            IsEnabled = OpenCodeModelPresentation.CurrentRow(presentation) is not null };
-        AutomationProperties.SetAutomationId(strengthButton, "OpenCodeCurrentStrengthEntry");
-        AutomationProperties.SetName(strengthButton, "修改当前模型的推理强度");
-        Grid.SetColumn(strengthButton, 2);
-        searchRow.Children.Add(strengthButton);
         var body = new StackPanel { Spacing = 16, Width = ModelBodyWidth(owner), Padding = new Thickness(0, 4, 0, 4) };
         body.Children.Add(header);
         body.Children.Add(searchRow);
@@ -90,12 +83,6 @@ internal static class OpenCodeModelPickerDialog
             Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
         };
         var rendering = false;
-        var editStrength = false;
-        strengthButton.Click += (_, _) =>
-        {
-            editStrength = true;
-            dialog.Hide(); // Native dialogs cannot stack; open the independent strength editor after ShowAsync returns.
-        };
 
         void RenderNote()
         {
@@ -121,7 +108,7 @@ internal static class OpenCodeModelPickerDialog
                     if (filter.Length > 0 && !(row.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase)
                         || row.ModelId.Contains(filter, StringComparison.OrdinalIgnoreCase)
                         || (row.ProviderName ?? row.ProviderId).Contains(filter, StringComparison.CurrentCultureIgnoreCase))) continue;
-                    list.Items.Add(RowItem(row, p.Current));
+                    list.Items.Add(RowItem(row));
                 }
                 if (list.Items.Count == 0)
                     list.Items.Add(new ListViewItem { Content = OpenCodeInteractionUi.StyledText(p.Rows.Count == 0 ? "没有可选模型。" : "没有匹配的模型。", OpenCodeInteractionUi.BodySubtleStyleKey), IsEnabled = false, IsTabStop = false, MinHeight = 72, HorizontalContentAlignment = HorizontalAlignment.Center });
@@ -132,7 +119,6 @@ internal static class OpenCodeModelPickerDialog
             }
             finally { rendering = false; }
             dialog.IsPrimaryButtonEnabled = state.CanConfirm;
-            strengthButton.IsEnabled = !state.IsRefreshing && OpenCodeModelPresentation.CurrentRow(state.Presentation) is not null;
         }
 
         list.SelectionChanged += (_, _) =>
@@ -155,7 +141,6 @@ internal static class OpenCodeModelPickerDialog
         {
             if (refresh is null || state.BeginRefresh() is not { } ticket) return;
             refreshButton.IsEnabled = false;
-            strengthButton.IsEnabled = false;
             dialog.IsPrimaryButtonEnabled = false; // No confirmation while a refresh is outstanding.
             OpenCodeModelPickerPresentation? updated = null;
             var failed = false;
@@ -179,16 +164,6 @@ internal static class OpenCodeModelPickerDialog
         {
             var result = await dialog.ShowAsync();
             state.Close();
-            if (editStrength)
-            {
-                var basis = state.Presentation;
-                var currentRow = OpenCodeModelPresentation.CurrentRow(basis);
-                var fresh = refresh is null ? basis : await refresh();
-                var freshRow = fresh is null ? null : OpenCodeModelPresentation.CurrentRow(fresh);
-                if (currentRow is null || freshRow is null || currentRow.ProviderId != freshRow.ProviderId || currentRow.ModelId != freshRow.ModelId)
-                    return new(OpenCodeModelPickerOutcome.Cancelled, null, null); // Never retarget a changed current model.
-                return await OpenCodeVariantPickerDialog.ShowAsync(owner, fresh!);
-            }
             return result == ContentDialogResult.Primary && frozen is { } confirmed
                 ? confirmed : new(OpenCodeModelPickerOutcome.Cancelled, null, null);
         }
@@ -209,27 +184,16 @@ internal static class OpenCodeModelPickerDialog
     private static double ModelListMaxHeight(XamlRoot? owner) =>
         Math.Clamp((owner?.Size.Height ?? 760) - 380, 168, 432);
 
-    private static ListViewItem RowItem(OpenCodeModelPickerRow row, OpenCodeModelCurrent current)
+    private static ListViewItem RowItem(OpenCodeModelPickerRow row)
     {
-        var isCurrent = current is OpenCodeModelCurrent.Explicit e && e.Key.ProviderId == row.ProviderId && e.Key.ModelId == row.ModelId;
         var grid = OpenCodeModelLogo.Label(row.ModelId, row.Name);
         // Roomier row: 12px mark-to-name gap (shared composer label keeps its tighter 8), taller rows with even vertical air.
         grid.ColumnSpacing = 12;
         grid.Padding = new Thickness(0, 10, 0, 10);
-        if (grid.Children[1] is TextBlock title && isCurrent)
-        {
-            title.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
-            // A quiet trailing marker makes the current model findable at a glance; native selection still marks the pending choice.
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var marker = OpenCodeInteractionUi.StyledText("当前", OpenCodeInteractionUi.CaptionSubtleStyleKey);
-            marker.VerticalAlignment = VerticalAlignment.Center;
-            Grid.SetColumn(marker, 2);
-            grid.Children.Add(marker);
-        }
         // Unavailable rows stay visible (and announced) but are disabled; selection is still rejected by the state.
         var item = new ListViewItem { Content = grid, Tag = row, IsEnabled = row.Available, MinHeight = 48, Padding = new Thickness(12, 0, 12, 0),
             Margin = new Thickness(0, 1, 0, 1), HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        AutomationProperties.SetName(item, row.Name + (isCurrent ? "，当前模型" : string.Empty) + (row.Available ? string.Empty : "，不可用"));
+        AutomationProperties.SetName(item, row.Name + (row.Available ? string.Empty : "，不可用"));
         return item;
     }
 }

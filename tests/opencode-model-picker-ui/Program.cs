@@ -76,9 +76,13 @@ internal static class Program
         var dialog = Read("src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs").Split("internal static class OpenCodeRollbackConfirmationDialog")[0];
         Check(dialog.Contains("row.ModelId.Contains(filter") && dialog.Contains("row.ProviderName ?? row.ProviderId") && dialog.Contains("row.Name.Contains(filter"), "search keeps true fields without exposing subtitles");
         Check(dialog.Contains("OpenCodeModelLogo.Label(row.ModelId, row.Name)") && dialog.Contains("Tag = row") && dialog.Contains("ListViewSelectionMode.Single"), "logo plus name preserves native selection identity/keyboard surface");
-        Check(dialog.Contains("OpenCodeCurrentStrengthEntry") && dialog.Contains("dialog.Hide()")
-            && dialog.IndexOf("await dialog.ShowAsync()", StringComparison.Ordinal) < dialog.IndexOf("await OpenCodeVariantPickerDialog.ShowAsync", StringComparison.Ordinal), "normal strength entry closes first dialog before opening independent native editor");
-        Check(dialog.Contains("var fresh = refresh is null ? basis : await refresh()") && dialog.Contains("currentRow.ProviderId != freshRow.ProviderId || currentRow.ModelId != freshRow.ModelId"), "independent strength entry refreshes existing owner-bound catalog and refuses model retargeting");
+        Check(!dialog.Contains("OpenCodeCurrentStrengthEntry") && !dialog.Contains("strengthButton")
+            && !dialog.Contains("OpenCodeVariantPickerDialog.ShowAsync"), "model dialog has no duplicate reasoning-strength entry or variant dialog handoff");
+        Check(dialog.Contains("bool allowStrengthSelection = true") && !dialog.Contains("Visibility = allowStrengthSelection"), "legacy caller argument retained without enabling in-dialog strength selection");
+        var rowView = dialog.Substring(dialog.IndexOf("private static ListViewItem RowItem", StringComparison.Ordinal));
+        Check(!rowView.Contains("当前") && !rowView.Contains("marker") && !rowView.Contains("SemiBold"), "model rows contain only logo and name without current status marker or special emphasis");
+        Check(dialog.Contains("PrimaryButtonText = \"确认修改\"") && dialog.Contains("CloseButtonText = \"取消\"")
+            && dialog.Contains("重新读取失败；列表保持不变。") && dialog.Contains("InformativeNote(p.Note)"), "confirmation, cancellation and real failure notes retained");
         Check(dialog.Contains("OpenCodeModelPresentation.Order(p.Rows, sourceKey)") && !dialog.Contains("await OpenCodeRecentModels.Shared.LoadAsync()"), "dialog only reads in-memory shared MRU and never loads preferences while rendering");
         var blank = Read("src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs");
         Check(blank.Contains("OpenCodeModelLogo.Label(model?.Id, model?.Name") && blank.Contains("ToolTipService.SetToolTip(BlankModelButton, model?.Name)"), "composer brand label and clean friendly tooltip");
