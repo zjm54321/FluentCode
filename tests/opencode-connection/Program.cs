@@ -33,9 +33,10 @@ internal static class Program
         Console.WriteLine("PASS isolated Windows DPAPI migration + failed commit: original ciphertext/reference preserved, no plaintext on disk");
         WslListParsing();
         Console.WriteLine("PASS wsl -l -q parsing (UTF-16LE with/without BOM, CRLF, NUL, UTF-8) + NixOS recognition");
-        ServiceDiscovery();
-        Console.WriteLine("PASS WSL service discovery from official service*.json shape; URL mapping; redaction");
-        Console.WriteLine($"8 groups passed; {_assertions} assertions; no network, fake WSL file systems, isolated settings/DPAPI only.");
+        await ServiceDiscovery();
+        Console.WriteLine("PASS WSL CLI discovery: current service, login environment, URL mapping, password in memory, no configuration-file probes");
+        Console.WriteLine($"8 groups passed; {_assertions} assertions; fake CLI, isolated settings/DPAPI only.");
+        if (args.Contains("--real-wsl", StringComparer.Ordinal)) await RealWsl();
         return 0;
     }
 
@@ -231,58 +232,72 @@ internal static class Program
         Check(WslDistributionListParser.ParseQuietList(Encoding.Unicode.GetBytes("a\\b\r\nok\r\nOK\r\n")).SequenceEqual(new[] { "ok" }), "invalid + duplicate names dropped");
         Check(WslDistributionListParser.ParseQuietList(Array.Empty<byte>()).Count == 0, "empty");
 
-        var fs = new FakeFs();
-        var locator = new WslOpenCodeServiceLocator(fs);
-        Check(locator.IsNixOS(new WslDistributionInfo("anything", false, 2, "nixos", 0)), "flavor nixos");
-        fs.Files[("MyDistro", "/etc/NIXOS")] = string.Empty;
-        Check(locator.IsNixOS(new WslDistributionInfo("MyDistro", false, 2, null, null)), "marker file");
-        fs.Files[("Other", "/usr/lib/os-release")] = "NAME=NixOS\nID=nixos\nVERSION_ID=\"26.11\"\n";
-        Check(locator.IsNixOS(new WslDistributionInfo("Other", false, 2, null, null)), "os-release id");
-        Check(!locator.IsNixOS(new WslDistributionInfo("NixOS", false, 2, "ubuntu", null)), "name alone does not decide");
         Check(WslOsRelease.IsNixOS("ID=\"nixos\"") && !WslOsRelease.IsNixOS("ID=debian\nID_LIKE=\"ubuntu\""), "os-release quoting");
     }
 
-    private static void ServiceDiscovery()
+    private static async Task ServiceDiscovery()
     {
-        var fs = new FakeFs();
+        var runner = new FakeCli();
         const string d = "DistroB";
-        fs.Files[(d, "/etc/passwd")] = "root:x:0:0:System administrator:/root:/bin/sh\nnixbld1:x:30001:30000::/var/empty:/bin/false\nalice:x:1000:100:Alice:/home/alice:/bin/bash\n";
-        string dir = "/home/alice/.local/state/opencode";
-        fs.Dirs[(d, dir)] = new[] { "service-prod.json", "service.json", "service-x.json.bak", "model.json", "service-bad.json" };
-        fs.Files[(d, dir + "/service-prod.json")] = $"{{\"id\":\"00000000-0000-0000-0000-000000000000\",\"version\":\"2.1.1\",\"url\":\"http://0.0.0.0:50003\",\"pid\":1,\"password\":\"{Secret}\"}}";
-        fs.Files[(d, dir + "/service.json")] = "{\"id\":\"x\",\"version\":\"2.1.1\",\"url\":\"http://127.0.0.1:50004\",\"pid\":2}";
-        fs.Files[(d, dir + "/service-bad.json")] = "{\"url\":\"http://u:p@0.0.0.0:1\"}";
-        fs.Dirs[(d, "/root/.local/state/opencode")] = new[] { "service-beta.json" };
-        fs.Files[(d, "/root/.local/state/opencode/service-beta.json")] = "{\"url\":\"http://[::]:50005\",\"password\":\"r\"}";
-        var services = new WslOpenCodeServiceLocator(fs).Discover(new WslDistributionInfo(d, true, 2, null, 0), default);
-        Check(services.Count == 3, "three valid records");
-        Check(services[0].User == "alice" && services[0].Channel == "prod" && services[0].BaseUrl == "http://localhost:50003", "prod mapped to localhost");
-        Check(services[0].AuthenticationMode == OpenCodeAuthenticationMode.Basic && services[0].ToClientOptions().Username == "opencode", "official basic username");
-        Check(services[1].Channel == "默认" && services[1].AuthenticationMode == OpenCodeAuthenticationMode.None, "passwordless default channel");
-        Check(services[2].User == "root" && services[2].BaseUrl == "http://localhost:50005", "root last, ipv6 any mapped");
-        Check(services.All(s => !s.ToString().Contains(Secret, StringComparison.Ordinal)), "service ToString redacted");
-        Check(!JsonSerializer.Serialize(services[0]).Contains(Secret, StringComparison.Ordinal), "service json omits secret");
-        Check(fs.Reads.All(r => r.Path == "/etc/passwd" || r.Path.Contains("/.local/state/opencode/service", StringComparison.Ordinal)), "reads only passwd + service records");
+        var distro = new WslDistributionInfo(d, true, 2, null, 0);
+        var locator = new WslOpenCodeServiceLocator(runner);
+        Check(await locator.IsNixOSAsync(distro with { Flavor = "nixos" }, default), "registry flavor identifies NixOS without a command");
+        Check(runner.Calls.Count == 0, "no unnecessary NixOS metadata probe");
+        runner.Output[WslOpenCodeCommand.OsRelease] = "nixos\n";
+        Check(await locator.IsNixOSAsync(distro, default), "NixOS metadata read inside Linux resolves absolute symlinks");
+        runner.Output[WslOpenCodeCommand.OsRelease] = "ubuntu\n";
+        Check(!await locator.IsNixOSAsync(distro with { Name = "NixOS" }, default), "display name does not decide OS");
+        runner.Calls.Clear();
+        runner.Output[WslOpenCodeCommand.ServiceStatus] = "http://0.0.0.0:49375\n";
+        runner.Output[WslOpenCodeCommand.ServicePassword] = Secret + "\n";
+        var service = await locator.DiscoverAsync(distro, default);
+        Check(service.Distribution == d && service.BaseUrl == "http://localhost:49375", "current CLI service maps wildcard listener to Windows localhost");
+        Check(service.AuthenticationMode == OpenCodeAuthenticationMode.Basic && service.ToClientOptions().Username == "opencode" && service.ToClientOptions().Secret == Secret, "CLI password carried in memory to basic authentication");
+        Check(runner.Calls.SequenceEqual(new[] { (d, WslOpenCodeCommand.ServiceStatus), (d, WslOpenCodeCommand.ServicePassword) }), "only read-only CLI status/password; no config checks, starts, restarts or file reads");
+        Check(!service.ToString().Contains(Secret, StringComparison.Ordinal) && !JsonSerializer.Serialize(service).Contains(Secret, StringComparison.Ordinal), "service display and JSON omit secret");
+        runner.Output[WslOpenCodeCommand.ServicePassword] = "\n";
+        Check((await locator.DiscoverAsync(distro, default)).AuthenticationMode == OpenCodeAuthenticationMode.None, "passwordless service");
+        runner.Output[WslOpenCodeCommand.ServicePassword] = " padded password \r\n";
+        Check((await locator.DiscoverAsync(distro, default)).ToClientOptions().Secret == " padded password ", "do not strip password spaces");
+        runner.Output[WslOpenCodeCommand.ServiceStatus] = "not running";
+        await Throws<OpenCodeConfigurationException>(async () => { await locator.DiscoverAsync(distro, default); }, "unavailable service reported, no guessed port");
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        await Throws<OperationCanceledException>(async () => { await locator.DiscoverAsync(distro, cts.Token); }, "cancellation is not swallowed");
         Check(WslOpenCodeServiceLocator.TryMapUrl("https://192.0.2.10:443/base", out var kept) && kept == "https://192.0.2.10/base", "non-local host kept");
         Check(!WslOpenCodeServiceLocator.TryMapUrl("http://h/?q", out _), "query rejected");
-        Check(!WslOpenCodeServiceLocator.TryParseRecord("{\"url\":\"http://0.0.0.0:1\",\"password\":\"a\\nb\"}", out _, out _, out _), "newline secret rejected");
-        Check(new WslOpenCodeServiceLocator(new FakeFs()).Discover(new WslDistributionInfo("Empty", false, 2, null, null), default).Count == 0, "nothing discovered honestly");
+        Check(!WslOpenCodeServiceLocator.TryMapUrl("http://user:password@host", out _), "credentials in service URL rejected");
+        Check(WslOpenCodeServiceLocator.TryMapUrl("http://[::]:49375", out var ipv6) && ipv6 == "http://localhost:49375", "IPv6 wildcard mapped");
     }
 
-    private sealed class FakeFs : IWslFileSystem
+    private sealed class FakeCli : IWslOpenCodeCommandRunner
     {
-        public Dictionary<(string, string), string> Files { get; } = new();
-        public Dictionary<(string, string), string[]> Dirs { get; } = new();
-        public List<(string Distro, string Path)> Reads { get; } = new();
-        public bool FileExists(string distribution, string linuxPath) => Files.ContainsKey((distribution, linuxPath));
-        public string? ReadText(string distribution, string linuxPath, int maxBytes)
+        public Dictionary<WslOpenCodeCommand, string> Output { get; } = new();
+        public List<(string, WslOpenCodeCommand)> Calls { get; } = new();
+        public Task<string> RunAsync(string distribution, WslOpenCodeCommand command, CancellationToken ct)
         {
-            Reads.Add((distribution, linuxPath));
-            return Files.TryGetValue((distribution, linuxPath), out var text) ? text : null;
+            ct.ThrowIfCancellationRequested();
+            Calls.Add((distribution, command));
+            return Task.FromResult(Output[command]);
         }
+    }
 
-        public IReadOnlyList<string> ListFileNames(string distribution, string linuxDirectory) =>
-            Dirs.TryGetValue((distribution, linuxDirectory), out var names) ? names : Array.Empty<string>();
+    private static async Task RealWsl()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var registry = await new WslRegistryDistributionSource().ListAsync(timeout.Token);
+        var cli = await new WslCliDistributionSource().ListAsync(timeout.Token);
+        Check(cli.Count > 0, "real wsl.exe UTF-16LE output produces distributions");
+        Check(registry.Select(d => d.Name).Order().SequenceEqual(cli.Select(d => d.Name).Order()), "Lxss and decoded quiet list agree");
+        var locator = new WslOpenCodeServiceLocator(new WslOpenCodeCommandRunner());
+        var nixos = registry.First(d => d.IsNixOSByFlavor);
+        Check(await locator.IsNixOSAsync(nixos with { Flavor = null }, timeout.Token), "real NixOS os-release via CLI without Flavor metadata");
+        var service = await locator.DiscoverAsync(nixos, timeout.Token);
+        var options = service.ToClientOptions();
+        using var client = new OpenCodeClient(options);
+        var info = await client.GetServerInfoAsync(timeout.Token);
+        await OpenCodeConnectionCommitter.VerifyWithOpenCodeAsync(options, timeout.Token);
+        Console.WriteLine($"PASS real WSL: {nixos.Name}; registry + UTF-16LE CLI agree; NixOS fallback works; {service.BaseUrl}; GET /api/info version={info.Version}; committer GET /api/location succeeded. No service lifecycle changes or credential-file reads.");
     }
 
     private static void Check(bool condition, string message)

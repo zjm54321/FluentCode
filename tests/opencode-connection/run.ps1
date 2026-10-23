@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$EvidenceRoot)
+param([Parameter(Mandatory=$true)][string]$EvidenceRoot, [switch]$RealWsl)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -33,6 +33,8 @@ $inputs = @($sources + $refs + $compiler + $PSCommandPath)
 if ($LASTEXITCODE -ne 0) { throw "Connection compilation failed: $LASTEXITCODE" }
 Copy-Item -LiteralPath $dpapi -Destination $EvidenceRoot
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'OpenCodeConnectionTests.runtimeconfig.json')
-& $dotnet $assembly (Join-Path $EvidenceRoot 'isolated-data') 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
+$testArgs = @((Join-Path $EvidenceRoot 'isolated-data'))
+if ($RealWsl) { $testArgs += '--real-wsl' }
+& $dotnet $assembly @testArgs 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Connection tests failed: $LASTEXITCODE" }
 Write-Output "PASS connection; evidence: $EvidenceRoot"

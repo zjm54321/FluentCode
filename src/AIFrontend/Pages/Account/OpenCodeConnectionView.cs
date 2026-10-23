@@ -23,10 +23,9 @@ public sealed class OpenCodeConnectionView : UserControl
 {
     private readonly SettingsService _settings;
     private readonly OpenCodeConnectionCommitter _committer;
-    private readonly WslOpenCodeServiceLocator _locator = new(new WslUncFileSystem());
+    private readonly WslOpenCodeServiceLocator _locator = new(new WslOpenCodeCommandRunner());
     private readonly RadioButtons _flow = new() { Header = "连接方式", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly ComboBox _distributions = new() { Header = "WSL 发行版", HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly ComboBox _services = new() { Header = "发现多个服务，请选择一个（只连接此实例）", HorizontalAlignment = HorizontalAlignment.Stretch, Visibility = Visibility.Collapsed };
     private readonly Button _refresh = new() { Content = "刷新 WSL 发行版" };
     private readonly TextBox _address = new() { Header = "远程地址（绝对 http/https URL）", PlaceholderText = "https://服务器" };
     private readonly TextBox _username = new() { Header = "用户名" };
@@ -60,7 +59,6 @@ public sealed class OpenCodeConnectionView : UserControl
         AutomationProperties.SetAutomationId(this, "AccountOpenCodeConnection");
         AutomationProperties.SetAutomationId(_flow, "AccountOpenCodeFlow");
         AutomationProperties.SetAutomationId(_distributions, "AccountOpenCodeDistribution");
-        AutomationProperties.SetAutomationId(_services, "AccountOpenCodeService");
         AutomationProperties.SetAutomationId(_address, "AccountOpenCodeAddress");
         AutomationProperties.SetAutomationId(_username, "AccountOpenCodeUsername");
         AutomationProperties.SetAutomationId(_password, "AccountOpenCodePassword");
@@ -71,7 +69,7 @@ public sealed class OpenCodeConnectionView : UserControl
         foreach (string name in new[] { "WSL 自动发现", "远程地址 + 用户名 + 密码", "远程配对链接" }) _flow.Items.Add(name);
 
         // ① WSL：发行版选择与刷新同一行（刷新按钮与输入框底边对齐），说明为次要 Caption。
-        _wsl.Children.Add(Hint("只读发现已部署服务的标准 service*.json 登记，不猜端口，不启动或修改 OpenCode。NixOS 根据系统元数据识别，不按发行版名称猜测。"));
+        _wsl.Children.Add(Hint("通过所选发行版中的 opencode 命令连接当前后台服务，不启动或修改 OpenCode。"));
         var distributionRow = new Grid { ColumnSpacing = 8 };
         distributionRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         distributionRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -80,8 +78,7 @@ public sealed class OpenCodeConnectionView : UserControl
         distributionRow.Children.Add(_distributions);
         distributionRow.Children.Add(_refresh);
         _wsl.Children.Add(distributionRow);
-        _wsl.Children.Add(_services);
-        _wsl.Children.Add(Hint("当前支持默认 ~/.local/state/opencode 登记。自定义 XDG_STATE_HOME、无登记服务或 WSL localhost 转发不可用时无法自动连接；可改用远程方式。访问发行版文件可能唤醒 WSL。"));
+        _wsl.Children.Add(Hint("使用发行版默认用户的 OpenCode 配置；无需检查配置文件。WSL localhost 转发须可用。"));
 
         // ② 远程密码。
         _remote.Children.Add(_address);
@@ -130,7 +127,6 @@ public sealed class OpenCodeConnectionView : UserControl
         Content = body;
 
         _flow.SelectionChanged += (_, _) => UpdateFlow();
-        _distributions.SelectionChanged += (_, _) => { _services.Items.Clear(); _services.Visibility = Visibility.Collapsed; };
         _refresh.Click += async (_, _) => await RunAsync(RefreshDistributionsAsync);
         _connect.Click += async (_, _) => await RunAsync(ConnectAsync);
         _cancel.Click += (_, _) => _operation?.Cancel();
@@ -254,7 +250,7 @@ public sealed class OpenCodeConnectionView : UserControl
     private void SetBusy(bool busy)
     {
         _flow.IsEnabled = !busy;
-        foreach (var control in new Control[] { _distributions, _services, _refresh, _address, _username, _password, _pairLink, _discardPair })
+        foreach (var control in new Control[] { _distributions, _refresh, _address, _username, _password, _pairLink, _discardPair })
             control.IsEnabled = !busy;
         _connect.IsEnabled = !busy;
         _cancel.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
@@ -268,13 +264,11 @@ public sealed class OpenCodeConnectionView : UserControl
         var items = await Task.Run(async () =>
         {
             var list = await WslDistributionCatalog.CreateDefault().ListAsync(ct);
-            return list.Select(d => (Distribution: d, NixOS: _locator.IsNixOS(d))).ToArray();
+            return await Task.WhenAll(list.Select(async d => (Distribution: d, NixOS: await _locator.IsNixOSAsync(d, ct))));
         }, ct);
         ct.ThrowIfCancellationRequested();
         if (_closed) return;
         _distributions.Items.Clear();
-        _services.Items.Clear();
-        _services.Visibility = Visibility.Collapsed;
         foreach (var item in items)
             _distributions.Items.Add(new ComboBoxItem { Content = item.Distribution.Name + (item.NixOS ? " · NixOS" : string.Empty) + (item.Distribution.IsDefault ? " · 默认" : string.Empty), Tag = item.Distribution });
         if (items.Length > 0) _distributions.SelectedIndex = 0;
@@ -293,25 +287,10 @@ public sealed class OpenCodeConnectionView : UserControl
             if (_distributions.SelectedItem is not ComboBoxItem { Tag: WslDistributionInfo distro })
             { SetStatus("请先选择可用的 WSL 发行版。", StatusTone.Warning); return; }
             distribution = distro.Name;
-            WslOpenCodeService? selected = (_services.SelectedItem as ComboBoxItem)?.Tag as WslOpenCodeService;
-            if (selected is null)
-            {
-                SetStatus("正在发现所选 WSL 发行版中的 OpenCode 服务…");
-                var found = await _locator.DiscoverAsync(distro, ct);
-                ct.ThrowIfCancellationRequested();
-                if (_closed) return;
-                if (found.Count == 0)
-                { SetStatus("未发现标准位置的 OpenCode 服务登记。服务可能未运行、登记不可读，或使用自定义 XDG_STATE_HOME。自动连接不可用；可使用远程方式。本客户端不会启动后端。", StatusTone.Error); return; }
-                if (found.Count > 1)
-                {
-                    _services.Items.Clear();
-                    foreach (var service in found) _services.Items.Add(new ComboBoxItem { Content = service.User + " · " + service.Channel, Tag = service });
-                    _services.Visibility = Visibility.Visible;
-                    SetStatus("发现多个服务；请选择一个后点击“连接 OpenCode”。这不会添加第二个账号。", StatusTone.Warning);
-                    return;
-                }
-                selected = found[0];
-            }
+            SetStatus("正在通过 WSL 中的 opencode 命令连接后台服务…");
+            var selected = await _locator.DiscoverAsync(distro, ct);
+            ct.ThrowIfCancellationRequested();
+            if (_closed) return;
             options = selected.ToClientOptions();
         }
         else if (pairing)
@@ -348,8 +327,6 @@ public sealed class OpenCodeConnectionView : UserControl
         _password.Password = string.Empty;
         _pairingResult = null;
         _pairLink.Password = string.Empty;
-        _services.Items.Clear(); // Drop discovered in-memory secrets after a successful connection.
-        _services.Visibility = Visibility.Collapsed;
         if (_settings.Current is { } current) ShowSummary(current.OpenCode);
         // The new credential reference causes the existing App settings owner to reconnect exactly once.
     }
@@ -361,6 +338,5 @@ public sealed class OpenCodeConnectionView : UserControl
         _pairingResult = null;
         _password.Password = string.Empty;
         _pairLink.Password = string.Empty;
-        _services.Items.Clear();
     }
 }
