@@ -12,6 +12,7 @@ $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where
     $sources += Join-Path "$repo/src/AIFrontend/Services/Notifications" $_
 }
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeProjection.cs", "$PSScriptRoot/Program.cs"
+$sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentIcons.cs", "$PSScriptRoot/AgentColorTests.cs"
 $arguments = @('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+',('/out:"' + $dll + '"'))
 $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }

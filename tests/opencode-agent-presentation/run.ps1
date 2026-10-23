@@ -15,6 +15,7 @@ foreach($spec in @('microsoft.windowsappsdk.winui/1.8.260803003/lib/net6.0-windo
 $sources=@(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs"|Where-Object Name -NE 'OpenCodePairingService.cs'|ForEach-Object FullName)
 $sources+=@('OpenCodeInteractionGate.cs','OpenCodePageSource.cs','OpenCodeExecutionProjection.cs','NotificationInteractions.cs','NotificationArgumentCodec.cs','NotificationActivationInfo.cs','NotificationSource.cs','AgentSwitchCoordinator.cs')|ForEach-Object{"$repo/src/AIFrontend/Services/Notifications/$_"}
 $sources+=@('OpenCodeAgentSelector.cs','OpenCodeAgentPickerDialog.cs','OpenCodeAgentPresentation.cs','OpenCodeAgentIcons.cs','OpenCodePickerFlyout.cs','OpenCodeInteractionUi.cs')|ForEach-Object{"$repo/src/AIFrontend/Pages/OpenCode/$_"}
+$sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentIconTheme.cs"
 $themePath="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailContent.cs"
 $theme=[regex]::Match([IO.File]::ReadAllText($themePath),'(?ms)^internal static class OpenCodeToolTheme\r?\n\{.*?^\}').Value
 if(!$theme){throw 'Missing actual theme style helper'}

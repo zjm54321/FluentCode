@@ -19,6 +19,7 @@ internal static class Program
 
     private static async Task Main(string[] args)
     {
+        AgentColorTests.Run();
         var view = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
         Check(view.Contains("<TreeView x:Name=\"Tree\"") && view.Contains("_tree.RootNodes.Add(group)") && !view.Contains("ItemsRepeater"), "NV2: native TreeView owns the hierarchy");
         Check(view.Contains("Text=\"子智能体\"") && view.Contains("_card.Style = OpenCodeInsightsTheme.DockCard()") && view.Contains("<ThemeShadow />")
@@ -96,11 +97,13 @@ internal static class Program
         Check(groups.SelectMany(g => g.Children).All(c => c.Id != "ses_foreign" && c.Id != "ses_unconfigured"), "exact parent and configured identity only");
         Check(groups[0].Children.Single().Model == "used-model" && groups[0].Children.Single().Status == OpenCodeTreeStatus.Succeeded, "real model and outcome");
         Check(groups[0].Color == "#A1B2C3" && groups[1].Color is null, "AT5: projection carries real agent color, preserving unknown as null");
-        Check(view.Contains("OpenCodeAgentPresentation.Color(color)") && view.Contains("AccentTextFillColorPrimaryBrush")
-            && view.Contains("AgentIcon(glyph, color, dimmed)")
-            && view.Contains("AgentIcon(OpenCodeAgentIcons.Glyph(agent.Name), agent.Color)")
-            && view.Contains("instance.Status, instance, agent)") && view.Contains("icon.Opacity = dimmed ? 0.5 : 1"),
-            "AT5: group and instance glyphs use backend color or live system accent; idle dimming retained");
+        Check(view.Contains("OpenCodeAgentIconTheme.Create(agentName, color)")
+            && view.Contains("OpenCodeAgentIconTheme.Create(agent.Name, agent.Color)")
+            && view.Contains("instance.Status, instance, agent)") && !view.Contains("icon.Opacity = dimmed"),
+            "AC1: group and instance glyphs share agent identity colors at full contrast, including idle agents");
+        var iconTheme = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentIconTheme.cs"));
+        Check(iconTheme.Contains("icon.ActualThemeChanged +=") && iconTheme.Contains("icon.Loaded +=")
+            && iconTheme.Contains("icon.ActualTheme == ElementTheme.Dark"), "AC1: icon palette follows inherited and live theme changes");
         Check(view.Contains("SystemFillColorCriticalBrush") && view.Contains("new ProgressRing"), "AT5: failure and running status indicators retain their own semantics");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count == 0, "default hides completed, unknown and idle agents");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, true).Count == 3, "all includes configured idle and hidden agents with real instances");

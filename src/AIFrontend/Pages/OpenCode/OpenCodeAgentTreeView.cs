@@ -242,7 +242,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             var working = agent.Children.Count(c => c.Status == OpenCodeTreeStatus.Running);
             Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Name),
                 OpenCodeAgentTreeProjection.CountLabel(working, agent.Children.Count, _showAll), rows,
-                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty), agent.Color);
+                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty), agent.Color, agent.Name);
         }
         var shells = OpenCodeAgentTreeProjection.VisibleShells(_shells, _showAll);
         if (shells.Count > 0)
@@ -265,13 +265,17 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     }
 
     private TreeViewNode Group(string key, string name, string glyph, string count,
-        IReadOnlyList<FrameworkElement> rows, bool dimmed, string tooltip, string? color = null)
+        IReadOnlyList<FrameworkElement> rows, bool dimmed, string tooltip, string? color = null, string? agentName = null)
     {
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.Children.Add(AgentIcon(glyph, color, dimmed));
+        var icon = agentName is null
+            ? (FontIcon)XamlReader.Load("<FontIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{ThemeResource AccentTextFillColorPrimaryBrush}\" FontSize=\"14\" />")
+            : OpenCodeAgentIconTheme.Create(agentName, color);
+        icon.Glyph = glyph;
+        content.Children.Add(icon);
         var label = new TextBlock { Text = name, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None, MaxLines = 0,
             VerticalAlignment = VerticalAlignment.Center,
@@ -310,17 +314,6 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         return caption;
     }
 
-    private static FontIcon AgentIcon(string glyph, string? color, bool dimmed = false)
-    {
-        // Reuse the same backend hex parser as agent names. The theme resource remains live
-        // for agents without an explicit color (including future accent/theme changes).
-        var icon = (FontIcon)XamlReader.Load("<FontIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{ThemeResource AccentTextFillColorPrimaryBrush}\" FontSize=\"14\" />");
-        icon.Glyph = glyph;
-        if (OpenCodeAgentPresentation.Color(color) is { } rgb) icon.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(rgb);
-        icon.Opacity = dimmed ? 0.5 : 1;
-        return icon;
-    }
-
     private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag, OpenCodeTreeAgent? agent = null)
     {
         var row = new Grid { Tag = tag, ColumnSpacing = 8 };
@@ -330,7 +323,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         if (agent is not null)
         {
-            var agentIcon = AgentIcon(OpenCodeAgentIcons.Glyph(agent.Name), agent.Color);
+            var agentIcon = OpenCodeAgentIconTheme.Create(agent.Name, agent.Color);
             Grid.SetColumn(agentIcon, 1);
             row.Children.Add(agentIcon);
         }
