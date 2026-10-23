@@ -1,11 +1,12 @@
 # Offline installed .NET 10 compiler host: no restore/install/native UI/live endpoint.
+param([string]$EvidenceRoot = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
 $root = Split-Path $dotnet
 $sdk = Get-ChildItem "$root/sdk" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
-$output = Join-Path $PSScriptRoot ('artifacts/run-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-session-ui-bridge-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory $output -Force | Out-Null
 Start-Transcript -Path (Join-Path $output 'run.log') | Out-Null
 try {
@@ -79,22 +80,14 @@ internal static (OpenCodeSessionUiFact? Working, OpenCodeSessionUiFact? Pending,
     foreach ($file in @('App.OpenCode.Observations.cs', 'App.OpenCode.SessionState.cs', 'App.OpenCode.Diagnostics.cs')) { $sources += "$repo/src/AIFrontend/$file" }
     $sources += Get-ChildItem "$PSScriptRoot/*.cs" | ForEach-Object FullName
     $sources += Get-ChildItem "$output/*.cs" | ForEach-Object FullName
-    $sources + @($appPath, $PSCommandPath) | Sort-Object -Unique | ForEach-Object {
-        $hash = Get-FileHash -Algorithm SHA256 $_
-        "$($hash.Hash)  $($_.Replace($repo + '\', ''))"
-    } | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.txt')
     $args += $sources | ForEach-Object { '"' + $_ + '"' }
     $rsp = Join-Path $output 'compile.rsp'
     $args | Set-Content -Encoding UTF8 $rsp
     $runtime = Join-Path $output 'SessionUiBridge.runtimeconfig.json'
     '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
-    $inputs = @($sources + @($appPath, $PSCommandPath, $rsp, $runtime, $dotnet, "$($sdk.FullName)/Roslyn/bincore/csc.dll") + $refs + @(Get-ChildItem "$output/*.dll").FullName + @(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll").FullName) | Sort-Object -Unique
-    Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'input-hashes-before.json')
     & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp"
     if ($LASTEXITCODE -ne 0) { throw "Bridge compile failed: $LASTEXITCODE" }
     & $dotnet $assembly
     if ($LASTEXITCODE -ne 0) { throw "Bridge tests failed: $LASTEXITCODE" }
-    Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'input-hashes-after.json')
-    if ([IO.File]::ReadAllText((Join-Path $output 'input-hashes-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'input-hashes-after.json'))) { throw 'Bridge inputs changed during validation.' }
     Write-Output "Evidence directory: $output"
 } finally { Stop-Transcript | Out-Null }

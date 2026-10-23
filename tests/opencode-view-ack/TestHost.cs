@@ -91,19 +91,17 @@ namespace AIFrontend
     public class App : Microsoft.UI.Xaml.Application
     {
         public bool ResultUnknown { get; set; }
-        public TaskCompletionSource<double?>? Receipt;
-        public TaskCompletionSource<bool> Finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int Calls, Posts, FenceBlocked;
-        public double? LastSent, Viewed;
+        public double? LastSent;
         public Func<bool>? LastFence;
-        public async Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string sessionId,
+        public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string sessionId,
             double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
         {
             Calls++; LastSent = coveredIdle; LastFence = isStillVisible;
-            if (isStillVisible?.Invoke() == false) { FenceBlocked++; return null; }
-            var receipt = Receipt is { } held ? await held.Task : ResultUnknown ? null : (double?)coveredIdle;
-            if (receipt is null || isStillVisible?.Invoke() == false) { Finished.TrySetResult(true); return null; }
-            Posts++; Viewed = receipt; Finished.TrySetResult(true); return receipt;
+            if (isStillVisible?.Invoke() == false) { FenceBlocked++; return Task.FromResult<double?>(null); }
+            var receipt = ResultUnknown ? null : (double?)coveredIdle;
+            if (receipt is null || isStillVisible?.Invoke() == false) return Task.FromResult<double?>(null);
+            Posts++; return Task.FromResult(receipt);
         }
     }
 }

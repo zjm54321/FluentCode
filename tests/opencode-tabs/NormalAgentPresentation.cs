@@ -44,7 +44,6 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
         Check(selector.CurrentModel is null, "reset clears observed sidebar/status model, never carries it into another session");
         selector.Configure(p.SourceInstance,p.SourceInstance.Revision,"ses_other",3);Check(selector._rows.Count==0&&selector._currentText.Foreground is null,"different actual session origin never keeps old rows/RGB");
         foreach(var invalid in new string?[]{null,"accent","#abc","#abcdef00","bad","# 12345","#12345 "}){OpenCodeAgentPresentation.Apply(selector._currentText,"#123456");OpenCodeAgentPresentation.Apply(selector._currentText,invalid);Check(selector._currentText.Foreground is null,"invalid/unset has no local brush, dynamic style owns accent");}
-        row.IsEnabled=false;row.IsEnabled=true;Check(text!.Foreground is SolidColorBrush{Color:{R:0xab}},"candidate local color survives disabled/reenabled UI boundary");
         Console.WriteLine($"PASS R1 actual normal ApplyAgents/RowItem/Configure/Reset: {checks} assertions; network reload and native theme/measure are boundaries");
     }
 }

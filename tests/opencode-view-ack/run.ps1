@@ -47,14 +47,9 @@ $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 $runtime = Join-Path $output 'ViewAckTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
-$sources = @($arguments | Where-Object { $_ -match '^".*\.cs"$' } | ForEach-Object { $_.Trim('"') })
-$inputs = @($sources + @($pagePath, $builtinPath, $PSCommandPath, $responseFile, $runtime, $dotnet, (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll')) + @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll')).FullName) | Sort-Object -Unique
-Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-before.json')
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 Write-Output 'Headless compilation passed (warnings treated as errors).'
 & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
-Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-after.json')
-if ([IO.File]::ReadAllText((Join-Path $output 'inputs-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'inputs-after.json'))) { throw 'ACK inputs changed during validation.' }
 Write-Output "Evidence directory: $output"

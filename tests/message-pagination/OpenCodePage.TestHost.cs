@@ -181,7 +181,6 @@ namespace AIFrontend.Pages
         private TestReturnContext? _sessionReturnContext = null;
         private bool IsSessionReturnContextCurrent(TestReturnContext context) => ReferenceEquals(_sessionReturnContext, context);
         internal int DeletedBindings, MetadataApplications, Bindings, RemovedTabs;
-        internal string UnrelatedDraft = "keep this draft";
         private void RemoveSessionTab(object tab) { RemovedTabs++; }
         private void DeselectSessionForNewTab() { DeletedBindings++; _selectedSessionId = null; CancelSessionOperations(); ResetMessagePaginationState(); }
         private void BindComposer() { Bindings++; if (_selectedSessionId is { } id) HomeSwitchRequests.Add(id); }

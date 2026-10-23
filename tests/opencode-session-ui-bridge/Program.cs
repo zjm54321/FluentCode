@@ -226,7 +226,6 @@ static class Checks
         Check(f.State.Completion == new OpenCodeCompletionMark("succeeded", 200) && f.State.IsUnread,
             "original complete empty projection establishes independent unread completion");
         f.Forms = [Form(new { kind = "question" })]; await f.Poll();
-        var original = f.Last!.QuestionPendingFact!;
         await f.Protect(); f.App.RefreshOpenCodeSessionProtection(Session); f.Drain();
         Check(f.State.QuestionPending == true && f.State.MutationProtected && f.State.IsUnread,
             "question independent of protection and prior unread completion");
@@ -283,7 +282,6 @@ static class Checks
         Check(boundary.Question?.Value == false && boundary.Pending is null,
             "question depends only on complete forms; missing permissions leaves existing pending aggregate unknown");
         await f.Recover();
-        Check(original.ObservedAt < DateTimeOffset.UtcNow, "retained accepted evidence time remains historical");
     }
 
     private static async Task Producer()

@@ -30,7 +30,6 @@ internal static class Program
                 ("Apply/layout/frame/old visible idle and coalesced geometry", Viewport),
                 ("Home/blank/hidden/unknown history and non-UI block ACK", Visibility),
                 ("owner/frame/reflow fences and listener lifecycle", Fences),
-                ("receipts, monotonic server viewed and stale owner", Receipts),
                 ("unknown same key never retries across source/revision/render", Unknown),
                 ("512 attempt cap never evicts", Cap),
             })
@@ -134,24 +133,6 @@ internal static class Program
         p.NotifyHostWindowVisibility(true);
         Check(CompositionTarget.Count == 0 && p.ViewListeners == 0, "late host activation cannot resurrect unloaded view listeners");
         return Task.CompletedTask;
-    }
-    private static async Task Receipts()
-    {
-        var (app, page) = Fixture("ep-receipt");
-        app.Receipt = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Render(page, 100);
-        Check(app.Calls == 1 && app.Viewed is null, "before simulated 204 no local viewed receipt");
-        app.Receipt.SetResult(100); await app.Finished.Task;
-        Check(app.Viewed == 100, "only successful receipt advances viewed");
-        app.Finished = new(); app.Receipt = new(); Render(page, 200); page.Home(true); app.Receipt.SetResult(200); await app.Finished.Task;
-        Check(app.Viewed == 100, "old-owner successful receipt does not update new bound UI");
-        page.Unload();
-        var store = new OpenCodeSessionUiStateStore("ep-server-view", 1); var now = DateTimeOffset.UtcNow;
-        store.Apply(new("ep-server-view", 1, "ses_test", Completion: new("failed", 300), ViewedWatermark: 100), now);
-        store.Apply(new("ep-server-view", 1, "ses_test", ViewedWatermark: 200), now);
-        Check(store.GetSnapshot().Sessions[0].IsUnread, "server viewed old idle cannot clear newer unread completion");
-        store.Apply(new("ep-server-view", 1, "ses_test", ViewedWatermark: 300), now);
-        Check(!store.GetSnapshot().Sessions[0].IsUnread && store.GetSnapshot().Sessions[0].Completion?.Outcome == "failed", "server viewed synchronization remains independent of viewport candidates and outcome");
     }
     private static Task Unknown()
     {

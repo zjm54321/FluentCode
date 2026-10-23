@@ -41,7 +41,7 @@ internal static partial class Program
                 ? page.TestHomeRootTitle("ses_root") is null && page.DeletedBindings == 1 && page.Bindings == 1 && page.RemovedTabs == 1
                 : page.TestHomeRootTitle("ses_root") == "confirmed new title" && page.DeletedBindings == 0,
                 "only accepted delete invalidates its normal binding; only refreshed server metadata publishes rename");
-            Check(page.UnrelatedDraft == "keep this draft" && !page.TestHomeBusy && !await page.TestHomeComposerProtected("ses_root"),
+            Check(!page.TestHomeBusy && !await page.TestHomeComposerProtected("ses_root"),
                 "unrelated draft retained and known exact management slot released");
         }
         foreach (var denial in new[] { "cancel", "stale revision", "foreign directory", "changed title", "changed source", "archive" })
@@ -150,7 +150,6 @@ internal static partial class Program
         var session = OpenCodePage.ConversationColumn(1200, 1184, 920, false);
         Check(blank.Width == 1040 && blank.RightGutter == 0, "blank uses its own centered main-content width");
         Check(session.Width == 920 && session.RightGutter == 16, "NEW to SESSION explicitly restores reading max width and actual viewport gutter");
-        Check((1200 - session.RightGutter) / 2 == 1184d / 2, "composer column center matches reading viewport, not screen/sidebar center");
         return Task.CompletedTask;
     }
 

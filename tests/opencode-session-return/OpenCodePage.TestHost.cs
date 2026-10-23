@@ -259,11 +259,11 @@ namespace AIFrontend.Pages
         private void BindComposer() { }
         // This return/child fixture has NO controller/editor/slot payload. These represent the
         // real Page's no-composer branches only; actual Prepare/CAS/IME/source-recovery gates run
-        // source-linked with the real core in opencode-draft-slots. Switch/generation guards below stay real.
+        // source-linked with the real core in opencode-tabs. Switch/generation guards below stay real.
         private bool TryPrepareDraftSlotNavigation() => true;
         private void RestoreDraftSlotTabSelection() { }
         private void ForceSuspendDraftSlot(string reason) { }
-        private void SuspendDraftSlotForPageUnload() { } // No composer/editor exists in this navigation-only fixture; real helper covered in opencode-draft-slots.
+        private void SuspendDraftSlotForPageUnload() { } // No composer/editor exists in this navigation-only fixture; real helper covered in opencode-tabs.
         private void InvalidateDraftSourceEpoch() { }
         private void OnSessionContextSelected(string sessionId) => _homeActive = false;
         private void UpdateInteractionsSection() { }

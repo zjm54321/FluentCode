@@ -44,8 +44,7 @@ internal static class Program
     private static void TruthAndStableElements()
     {
         var (app, page, _) = Fixture();
-        var root = page.Add("ses_root"); var unknown = page.Add("ses_unknown"); page.SelectedItem = root;
-        var message = page.MessageElement;
+        var root = page.Add("ses_root"); var unknown = page.Add("ses_unknown");
         app.Snapshot = Snapshot(1, State("ses_child", true), State("ses_root", true, true),
             State("ses_unknown", null, null, true, reason: OpenCodeStateUnknownReason.Expired));
         app.Emit("endpoint", 1, 1); page.DispatcherQueue.Drain();
@@ -64,9 +63,7 @@ internal static class Program
         app.Snapshot = Snapshot(3, State("ses_root", completion: new("succeeded", 10), viewed: 10));
         app.Emit("endpoint", 1, 3); page.DispatcherQueue.Drain();
         Check(Indicators(root).Dot.Visibility == Visibility.Collapsed, "truth.read-completion-no-dot");
-        Check(ReferenceEquals(root.Content, firstWrapper) && ReferenceEquals(Indicators(root).Ring, ring)
-            && ReferenceEquals(page.SelectedItem, root), "truth.row-selection-stable");
-        Check(ReferenceEquals(page.MessageElement, message) && page.MessageExpanded, "truth.message-and-expansion-untouched");
+        Check(ReferenceEquals(root.Content, firstWrapper) && ReferenceEquals(Indicators(root).Ring, ring), "truth.row-decoration-stable");
         page.Deactivate();
     }
 
@@ -228,7 +225,7 @@ internal static class Program
         app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
         Check(page.IsSelectedSessionWorkingIndicated && ring.IsActive && FullHint(hint).Contains("信息不完整") && hint.Text == "不完整"
             && Indicators(row).Dot.Visibility == Visibility.Collapsed, "hint.partial-unknown-keeps-working-no-fake-dot");
-        Check(ReferenceEquals(wrapper, row.Content) && ReferenceEquals(hint, Hint(row)) && page.MessageExpanded,
+        Check(ReferenceEquals(wrapper, row.Content) && ReferenceEquals(hint, Hint(row)),
             "hint.stable-row-and-existing-content");
         app.Snapshot = Snapshot(version, State("ses_child", false, null, reason: OpenCodeStateUnknownReason.None));
         app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();

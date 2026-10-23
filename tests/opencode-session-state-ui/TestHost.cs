@@ -141,9 +141,6 @@ namespace AIFrontend.Pages
         internal readonly List<(ProgressRing Ring, SessionIndicatorTone Tone)> RowTones = new();
         partial void OnSessionStateRowToneApplied(ProgressRing working, SessionIndicatorTone tone) => RowTones.Add((working, tone));
         internal TextBlock SessionStateHint { get; } = new() { Visibility = Visibility.Collapsed };
-        internal object MessageElement { get; } = new();
-        internal bool MessageExpanded { get; set; } = true;
-        internal ListViewItem? SelectedItem { get; set; }
         internal IReadOnlyDictionary<string, ListViewItem> Items => _sessionItems;
         public OpenCodePage() => InitializeSessionStateUi();
         internal void Bind(OpenCodePageSource source, string viewed)

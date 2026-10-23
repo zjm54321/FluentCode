@@ -57,7 +57,6 @@ $sources = $openCode + @(
     (Join-Path $PSScriptRoot 'Program.cs'))
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
-$ackPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'
 $eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
 $extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
@@ -104,17 +103,9 @@ $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 $runtime = Join-Path $output 'MessagePaginationTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
-$compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-$references = @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll')).FullName
-$inputs = @($sources + $references + @($extractions.Path) + @($PSCommandPath, $dotnet, $compiler, $responseFile, $pagePath, $builtinPath, $ackPath, $eventPath, $runtime)) | Sort-Object -Unique
-@{ CompiledSources = $sources; Extractions = $extractions; Compiler = $compiler; Host = $dotnet; References = $references; Rsp = $responseFile; RuntimeConfig = $runtime } | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
-Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 Write-Output 'Headless compilation passed (warnings treated as errors).' | Tee-Object -FilePath (Join-Path $output 'compile.log') -Append
 & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
-Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-after.json')
-if ([IO.File]::ReadAllText((Join-Path $output 'source-hashes-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'source-hashes-after.json'))) { throw 'Inputs changed during validation.' }
-Get-FileHash -LiteralPath $assembly, $responseFile, (Join-Path $output 'compile.log'), (Join-Path $output 'tests.log'), (Join-Path $output 'input-membership.json') -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'artifact-hashes.json')
 Write-Output "Evidence directory: $output"

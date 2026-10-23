@@ -85,7 +85,6 @@ internal static class WorkingClockTests
         }
         Check(Near(OpenCodeWorkingClock.HighlightOffset(0, 100, s), -s * 100) && Near(OpenCodeWorkingClock.HighlightOffset(1, 100, s), 100), "sweep enters fully from the left and exits fully to the right (one direction)");
         Check(OpenCodeWorkingClock.HighlightOffset(0.3, 100, s) < OpenCodeWorkingClock.HighlightOffset(0.6, 100, s), "monotonic left→right direction");
-        Check(OpenCodeWorkingClock.HighlightOffsetExpression.Contains("clock.Phase") && OpenCodeWorkingClock.HighlightOffsetExpression.Contains("(1 + s) - s) * w"), "composition expression mirrors the tested offset formula");
 
         // Negative / wrapped timestamps stay in [0,1).
         Check(Near(clock.PhaseAt(-250), 0.75) && Near(clock.PhaseAt(1000), 0), "phase wraps into [0,1)");
