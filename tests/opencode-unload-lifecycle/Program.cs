@@ -195,14 +195,19 @@ internal sealed class IndicatorFixture
     private readonly Element _label = new();
     private bool _loaded;
     private bool joined;
-    private void WatchVisibility() { }
-    private void UnwatchVisibility() { }
+    private bool watching;
+    private void WatchVisibility() => watching = true;
+    private void UnwatchVisibility() => watching = false;
     private void Update() => joined = _loaded;
     private IndicatorFixture() { /* INDICATOR */ }
     internal static void Test()
     {
-        var f = new IndicatorFixture(); f._label.Load(); f._label.Load(); f._label.Unload(true);
-        Program.Check(f.joined, "m-bubble: late unload removed the visible indicator from the working clock");
+        var f = new IndicatorFixture(); f._label.Load(); f._label.Load(); f._label.Unload(true); f._label.Unload(true);
+        Program.Check(f.joined && f.watching, "late unload removed the visible indicator's clock/visibility watches");
+        f._label.Unload(false);
+        Program.Check(!f.joined && !f.watching, "actual indicator detach must release clock/visibility watches");
+        f._label.Load();
+        Program.Check(f.joined && f.watching, "indicator reload must rejoin the clock and watch visibility");
     }
 }
 internal sealed class BubbleFixture

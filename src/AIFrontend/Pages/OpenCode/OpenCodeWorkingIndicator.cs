@@ -84,7 +84,13 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         Grid.SetColumn(_elapsed, 2);
         AutomationProperties.SetAutomationId(_label, "OpenCodeWorkingIndicator." + automationSuffix);
         _label.Loaded += (_, _) => { _loaded = true; WatchVisibility(); Update(); };
-        _label.Unloaded += (_, _) => { _loaded = false; UnwatchVisibility(); Update(); };
+        _label.Unloaded += (_, _) =>
+        {
+            if (_label.IsLoaded) return; // The old parent's unload can follow the new Loaded.
+            _loaded = false;
+            UnwatchVisibility();
+            Update();
+        };
     }
 
     /// <summary>放在分组头部图标格中的齿轮。</summary>
