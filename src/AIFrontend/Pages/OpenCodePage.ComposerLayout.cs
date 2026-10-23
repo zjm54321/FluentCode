@@ -39,6 +39,11 @@ public sealed partial class OpenCodePage
         Grid.SetColumnSpan(ComposerEditorHost, singleRow ? 1 : 3);
         Grid.SetRow(ComposerToolbarLeft, singleRow ? 0 : 1);
         Grid.SetRow(ComposerActions, singleRow ? 0 : 1);
+        // CP1: in one row, + and send sit on the editor's last line (40 px line, 32 px buttons) as it grows.
+        var lastLine = singleRow ? new Thickness(0, 0, 0, 4) : new Thickness(0);
+        ComposerToolbarLeft.Margin = lastLine;
+        ComposerActions.Margin = lastLine;
+        ComposerActions.VerticalAlignment = singleRow ? VerticalAlignment.Bottom : VerticalAlignment.Center;
         ComposerInputLayout.RowSpacing = singleRow ? 0 : 8;
         BlankToolbarChoices.Visibility = singleRow ? Visibility.Collapsed : Visibility.Visible;
         ComposerToolbarMiddle.Visibility = !singleRow && !_newSessionDraftActive ? Visibility.Visible : Visibility.Collapsed;
