@@ -42,9 +42,14 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
 
 public sealed partial class OpenCodeClient
 {
+    internal static readonly TimeSpan EventReadIdleTimeout = TimeSpan.FromSeconds(45);
+
     /// <summary>One volatile subscription. Caller reconnects and refetches; no Last-Event-ID replay exists.</summary>
-    public async IAsyncEnumerable<OpenCodeEvent> SubscribeEventsAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<OpenCodeEvent> SubscribeEventsAsync(CancellationToken cancellationToken = default)
+        => SubscribeEventsAsync(cancellationToken, EventReadIdleTimeout);
+
+    internal async IAsyncEnumerable<OpenCodeEvent> SubscribeEventsAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken, TimeSpan readIdleTimeout)
     {
         using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         connectTimeout.CancelAfter(_timeout);
@@ -55,10 +60,22 @@ public sealed partial class OpenCodeClient
                 $"OpenCode 服务返回 HTTP {(int)response.StatusCode}（GET api/event）。");
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(stream, Encoding.UTF8);
+        using var readIdle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var data = new StringBuilder();
         string? eventName = null;
-        while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+        while (true)
         {
+            string? line;
+            // Every line counts, including the server's 15-second heartbeat comments.
+            readIdle.CancelAfter(readIdleTimeout);
+            try { line = await reader.ReadLineAsync(readIdle.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                throw new OpenCodeTransportException("OpenCode 事件流读取超时；需要重新订阅并刷新。");
+            }
+            finally { readIdle.CancelAfter(Timeout.InfiniteTimeSpan); }
+            if (line is null) break;
             if (line.Length == 0)
             {
                 if (eventName == "effect/http-api/stream/failure")

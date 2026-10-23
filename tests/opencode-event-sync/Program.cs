@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
 
@@ -80,6 +82,7 @@ internal static class Program
         ManualBackgroundIndex();
 
         await Transport();
+        await StreamReadIdle();
         await HomeDataContracts();
         await DefaultSelectionContracts();
         Console.WriteLine($"PASS event-sync: {checks} assertions (native insert/replace, delta, fetch race, reasoning, stream EOF/reconnect/cancel/auth).");
@@ -571,5 +574,71 @@ internal static class Program
             if (Calls == 2) json = JsonSerializer.Serialize(json); // Effect JSON-string envelope also supported.
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("event: session.text.delta\ndata: " + json + "\n\n", Encoding.UTF8, "text/event-stream") });
         }
+    }
+
+    private static async Task StreamReadIdle()
+    {
+        Check(OpenCodeClient.EventReadIdleTimeout == TimeSpan.FromSeconds(45), "production idle limit covers three server heartbeats");
+        using var handler = new StreamingHandler();
+        using var http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        using var client = new OpenCodeClient(http, new() { BaseUrl = "http://localhost:4096" }, true);
+        using var safety = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using (var idle = client.SubscribeEventsAsync(safety.Token, TimeSpan.FromMilliseconds(100)).GetAsyncEnumerator())
+        {
+            try { await idle.MoveNextAsync(); throw new Exception("missing idle timeout"); }
+            catch (OpenCodeTransportException ex)
+            {
+                Check(ex.Message.Contains("需要重新订阅并刷新", StringComparison.Ordinal), "open silent stream fails for reconnect/refetch without EOF");
+            }
+        }
+        handler.Stream = new LineStream();
+        await using (var heartbeat = client.SubscribeEventsAsync(safety.Token, TimeSpan.FromSeconds(1)).GetAsyncEnumerator())
+        {
+            var next = heartbeat.MoveNextAsync().AsTask();
+            for (var i = 0; i < 6; i++)
+            {
+                handler.Stream.WriteLine(": heartbeat");
+                await Task.Delay(250, safety.Token);
+                Check(!next.IsCompleted, "heartbeat comment keeps subscription alive without publishing an event");
+            }
+            handler.Stream.WriteLine("data: {\"type\":\"server.connected\",\"data\":{}}\n");
+            Check(await next && heartbeat.Current.Type == "server.connected", "event arrives after heartbeat-only interval longer than idle limit");
+        }
+        handler.Stream = new LineStream();
+        using var caller = new CancellationTokenSource();
+        await using var cancelled = client.SubscribeEventsAsync(caller.Token, TimeSpan.FromSeconds(5)).GetAsyncEnumerator();
+        var pending = cancelled.MoveNextAsync().AsTask();
+        caller.Cancel();
+        try { await pending; throw new Exception("missing pending-read cancellation"); }
+        catch (OperationCanceledException ex) { Check(ex.CancellationToken == caller.Token, "caller cancellation during silent read retains caller token, not transport timeout"); }
+    }
+
+    private sealed class StreamingHandler : HttpMessageHandler
+    {
+        internal LineStream Stream = new();
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(Stream) });
+    }
+
+    private sealed class LineStream : Stream
+    {
+        private readonly Channel<byte[]> _lines = Channel.CreateUnbounded<byte[]>();
+        internal void WriteLine(string line) => _lines.Writer.TryWrite(Encoding.UTF8.GetBytes(line + "\n"));
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            var line = await _lines.Reader.ReadAsync(ct);
+            line.AsMemory().CopyTo(buffer);
+            return line.Length;
+        }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }
