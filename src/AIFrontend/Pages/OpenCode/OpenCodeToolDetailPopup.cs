@@ -78,7 +78,7 @@ internal sealed class OpenCodeToolDetailPopup
     internal const int HoverOpenDelayMs = 800;
 
     /// <summary>预览已打开时悬停切换到另一行的延迟（毫秒）。</summary>
-    internal const int HoverSwitchDelayMs = 0;
+    internal const int HoverSwitchDelayMs = HoverOpenDelayMs;
 
     private const string SmokeBrushKey = "SmokeFillColorDefaultBrush";
 
@@ -123,7 +123,7 @@ internal sealed class OpenCodeToolDetailPopup
     // A8：最近一次指针位置（根坐标 DIP）及其所在元素；仅当该元素就是当前预览锚点时才用于横向定位。
     private WeakReference<FrameworkElement>? _pointerElement;
     private double _pointerRootX = double.NaN;
-    private OpenCodeDetailRect _previewRect;
+    private double _previewPointerX = double.NaN;
     private bool _previewPlaced;
 
     /// <summary>消息内容列（OpenCodePage.xaml 的 MessageHost）：预览横向边界的来源，而不是整个窗口。</summary>
@@ -322,10 +322,12 @@ internal sealed class OpenCodeToolDetailPopup
 
     /// <summary>
     /// A8：记录指针在 <paramref name="element"/>（来源行 / 折叠单项分组标题）上的位置。
-    /// 进入时立即调用（不等首次移动），移动时持续调用；若该元素正是当前预览的锚点，预览横向跟随指针。
+    /// W3: only the first entry point is retained. Legacy callers may still report moves;
+    /// those reports must never move an open preview or change a pending entry position.
     /// </summary>
     internal void TrackPointer(FrameworkElement element, PointerRoutedEventArgs e)
     {
+        if (_pointerElement is { } previous && previous.TryGetTarget(out var tracked) && ReferenceEquals(tracked, element)) return;
         double x;
         try
         {
@@ -340,10 +342,6 @@ internal sealed class OpenCodeToolDetailPopup
         if (!double.IsFinite(x)) return;
         _pointerElement = new WeakReference<FrameworkElement>(element);
         _pointerRootX = x;
-        if (_mode == OpenCodeDetailPopupMode.Preview && _previewPlaced && ReferenceEquals(element, _previewAnchor))
-        {
-            MovePreviewToPointer();
-        }
     }
 
     /// <summary>关闭预览或大视图（大视图关闭后把焦点还给打开前的元素）。</summary>
@@ -431,6 +429,8 @@ internal sealed class OpenCodeToolDetailPopup
 
     private void HoverExitCore(object source)
     {
+        if (_pointerElement is { } pointer && pointer.TryGetTarget(out var element) && ReferenceEquals(element, AnchorOf(source)))
+            _pointerElement = null;
         if (ReferenceEquals(_pendingSource, source))
         {
             _pendingSource = null;
@@ -573,6 +573,7 @@ internal sealed class OpenCodeToolDetailPopup
             _hover.Reset();
             _hover.EnterAnchor();
             _previewAnchor = anchor;
+            _previewPointerX = TryAnchorOrigin(anchor, out var entryOrigin) ? PointerX(anchor, entryOrigin) : double.NaN;
             _previewPlaced = false;
             _previewPopup.XamlRoot = root;
             ObserveRoot(root);
@@ -754,7 +755,7 @@ internal sealed class OpenCodeToolDetailPopup
             return;
         }
 
-        var pointerX = PointerX(anchor, origin);
+        var pointerX = _previewPointerX;
         _placingPreview = true;
         try
         {
@@ -776,42 +777,29 @@ internal sealed class OpenCodeToolDetailPopup
         var fit = OpenCodeDetailPopupLayout.FitPreview(anchor.ActualWidth, band, capacity.Height, MeasureFullHeight);
         _previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed;
         var fullHeight = MeasureFullHeight(fit.Width);
-        var rect = OpenCodeDetailPopupLayout.PreviewPlacement(
+        var rect = PlaceBelowByDefault(
             pointerX, origin.Y, anchor.ActualHeight, fit.Width, fullHeight, band, root.Size.Height);
         _previewPresenter.Width = rect.Width;
         // Keep height automatic so streamed text / decoded images can grow naturally up to this side's capacity.
         _previewPresenter.Height = double.NaN;
-        _previewPresenter.MaxHeight = capacity.Height;
+        _previewPresenter.MaxHeight = rect.Height;
         _previewPopup.HorizontalOffset = rect.X;
         _previewPopup.VerticalOffset = rect.Y;
-        _previewRect = rect;
         _previewPlaced = true;
         }
         finally { _placingPreview = false; }
     }
 
-    /// <summary>
-    /// A8：指针在锚点上水平移动时只移动 X（不重建 / 不重新测量内容）；内容列变窄到放不下当前宽度时才完整重排。
-    /// </summary>
-    private void MovePreviewToPointer()
+    /// <summary>W3: below by default; above only when the content does not fit below.</summary>
+    private static OpenCodeDetailRect PlaceBelowByDefault(double pointerX, double anchorY, double anchorHeight,
+        double width, double height, OpenCodeDetailBand band, double rootHeight)
     {
-        if (_placingPreview || _previewAnchor is not { XamlRoot: { } root } anchor) return;
-        if (!anchor.IsLoaded || !TryAnchorOrigin(anchor, out var origin) || !TryContentBand(anchor, root.Size.Width, out var band))
-        {
-            PlacePreview();
-            return;
-        }
-
-        if (band.Width + 0.5 < _previewRect.Width)
-        {
-            PlacePreview();
-            return;
-        }
-
-        var x = OpenCodeDetailPopupLayout.PreviewX(PointerX(anchor, origin), _previewRect.Width, band);
-        if (Math.Abs(x - _previewRect.X) < 0.5) return;
-        _previewRect = _previewRect with { X = x };
-        _previewPopup.HorizontalOffset = x;
+        const double margin = OpenCodeDetailPopupLayout.WindowMargin;
+        const double gap = OpenCodeDetailPopupLayout.PreviewGap;
+        var vertical = OpenCodeProcessedPreviewPlacement.Vertical(anchorY, anchorHeight, height, rootHeight, margin, gap);
+        width = Math.Min(width, band.Width);
+        return new OpenCodeDetailRect(OpenCodeDetailPopupLayout.PreviewX(pointerX, width, band),
+            vertical.Y, width, vertical.Height);
     }
 
     /// <summary>当前指针 X（根坐标）；指针未在该锚点上记录过（键盘 / 其它来源）时退回锚点中心——仍受内容列安全区夹紧。</summary>
