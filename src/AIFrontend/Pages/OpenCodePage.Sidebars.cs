@@ -285,11 +285,13 @@ public sealed partial class OpenCodePage
             {
                 card.ClearValue(Border.BackgroundProperty);
                 card.BorderThickness = new Thickness(1);
+                if (card.Shadow is null) card.Shadow = new ThemeShadow();
             }
             else
             {
                 card.Background = null;
                 card.BorderThickness = new Thickness(0);
+                card.Shadow = null; // The native FlyoutPresenter owns the single narrow surface/shadow.
             }
         }
     }

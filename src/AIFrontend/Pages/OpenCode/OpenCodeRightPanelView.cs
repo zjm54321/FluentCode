@@ -50,9 +50,9 @@ internal sealed class OpenCodeRightPanelView
         _id.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
         _id.IsTextSelectionEnabled = false; // the row is a copy button; selection would swallow its click
         _directory.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
-        // Transparent until hover: reads as metadata, still a focusable native button with the copy glyph.
+        // Native inset copy row: monospace ID and a copy glyph, with the full value in its tooltip.
         CopyButton.Padding = new Thickness(8, 4, 8, 4);
-        // The card supplies padding and scrolling; the copy row's negative margin lines its text up with the title.
+        // The containing card supplies padding and scrolling.
         Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton, _hint } };
         // Read-only directory in a quiet inset box: folder glyph + one-line path (full path in the tooltip; selectable).
         var folder = new FontIcon { Glyph = "\uE8B7", FontSize = 14, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };

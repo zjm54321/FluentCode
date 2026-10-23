@@ -88,18 +88,16 @@ internal static class OpenCodeInsightsTheme
 }
 
 /// <summary>
-/// 页头的“上下文参考”小圆环（wave5 G5：从概况面板移到标签栏右侧，紧挨在“概况”按钮左边，二者同为 32×32 的原生按钮）：
-/// 原生 <see cref="ProgressRing"/>（IsIndeterminate=False，Value=占比）放在透明原生 Button 内；百分比与 “41.2K / 200K”
-/// 在 Tooltip 与无障碍名称中。点击打开原生 Flyout，固定三组：当前上下文 / 用量计费 / ACP·Billion 状态。
+/// 窄屏标签栏右侧的原生上下文 ProgressRing + 百分比 Button；宽屏由右侧文字上下文区替代。
+/// 点击打开原生 Flyout，显示与宽屏同一上下文网格，不再提供价格目录或用量明细。
 /// 纯渲染：不发请求（打开 Flyout 时经 <see cref="DetailsOpening"/> 交给页面决定是否读取）；实例常驻（视图持有），
 /// 每次渲染只改属性与 Flyout 内容。
 /// </summary>
 /// <remarks>
 /// 颜色：常规 = 强调色；≥80% = 注意（Caution）；≥95% = 严重（Critical）；全部为 ThemeResource 样式。
 /// 百分比只是“最近一次 assistant 请求用量 / 模型上下文上限”的参考值。
-/// ACP·Billion 组（wave5 H11）与 OpenCode TUI 中 billion-context 插件的 <c>/acp</c> 面板同源（Billion 会话记录：上下文、
-/// 压缩块、节省量），压缩块按服务端顺序列成与 to do 列表相同的“图标 + 文本”行；读取仍须先在 Billion 分区确认地址关联，
-/// 组内只提供“读取”/“去设置”两个显式动作，从不自动读取。
+/// Billion 压缩块和节省量合入该网格；地址关联已确认且上下文可见时由页面自动读取。
+/// 地址设置仍由原生上下文菜单进入，不推断端口或关联。
 /// </remarks>
 internal sealed class OpenCodeContextRing
 {
