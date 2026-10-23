@@ -27,16 +27,19 @@ internal static partial class Program
         Check(lib.Select(l => l.Id).Distinct(StringComparer.Ordinal).Count() == lib.Count, "splash ids unique");
         Check(lib.Select(l => l.Text).Distinct(StringComparer.Ordinal).Count() == lib.Count, "splash Chinese text unique");
         Check(lib.Select(l => l.English).Distinct(StringComparer.OrdinalIgnoreCase).Count() == lib.Count, "splash English twins unique");
-        Check(lib.All(l => l.Text.Trim().Length > 0 && l.Text == l.Text.Trim() && !l.Text.Contains('\n') && l.Text.Length <= 24),
-            "every splash is one short trimmed line (≤24 chars)");
+        Check(lib.All(l => l.Text.Trim().Length > 0 && l.Text == l.Text.Trim() && !l.Text.Contains('\n') && l.Text.Length <= 25),
+            "every splash is one short trimmed line (≤25 chars, including the user's DeepSeek harness example)");
         Check(lib.All(l => l.English.Length > 0), "every splash carries an English twin for a future locale");
         Check(lib.All(l => l.Text.Any(c => c >= 0x4E00 && c <= 0x9FFF)), "displayed splash text is Chinese");
         var generic = lib.Count(l => !l.IsHint && l.OnDate is null);
         var hints = lib.Count(l => l.IsHint);
         Check(generic >= 40 && hints >= 12, $"diverse mix: {generic} playful/tips, {hints} feature hints");
-        // Ecosystem red line: no unshipped integration is implied.
-        Check(!lib.Any(l => Regex.IsMatch(l.Text + " " + l.English, @"(?i)\bpi\b|deepseek|qwen|kimi|glm|harness")),
-            "no ecosystem easter egg implies an unshipped integration");
+        Check(lib.Any(l => l.Text == "为什么不试试 pi 呢？" && l.English == "Why not try pi?" && !l.IsHint),
+            "user's pi coding agent example is a generic splash, not an integration hint");
+        Check(lib.Any(l => l.Text == "支持国产，使用 DeepSeek harness。" && !l.IsHint),
+            "user's DeepSeek harness example retained as playful copy");
+        Check(lib.Any(l => l.Text == "输入 ! 进入终端模式。" && l.Requires == OpenCodeComposerSplashCapability.ShellMode),
+            "user's real terminal hint remains capability gated");
     }
 
     private static void SplashGating()

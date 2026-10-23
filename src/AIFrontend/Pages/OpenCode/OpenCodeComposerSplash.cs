@@ -103,6 +103,8 @@ internal sealed class OpenCodeComposerSplash
         L("fun.blank-page", "空白页最自由。", "A blank page is the freest."),
         L("fun.today", "今天想造点什么？", "What shall we build today?"),
         L("fun.splash", "也试试 Minecraft 吧！", "Also try Minecraft!"),
+        L("fun.try-pi", "为什么不试试 pi 呢？", "Why not try pi?"),
+        L("fun.deepseek-harness", "支持国产，使用 DeepSeek harness。", "Support homegrown tools, use DeepSeek harness."),
         L("fun.no-bug-is-small", "没有小 bug，只有没找到的 bug。", "No small bugs, only unfound ones."),
         L("fun.ship-it", "写完、测完、交付。", "Write it, test it, ship it."),
         L("fun.typo", "错别字也能看懂，放心打。", "Typos welcome — just type."),
@@ -139,7 +141,7 @@ internal sealed class OpenCodeComposerSplash
         L("hint.blank-toolbar", "下方可先选好智能体和模型。", "Pick the agent and model below first.", Blank),
         L("hint.blank-strength", "下方还能调推理强度。", "Adjust reasoning strength below.", Blank),
 
-        // ---- Unshipped (kept for later; never shown until the capability is actually shipped; “!” is plan B8) ----
+        // ---- Session shell hint (gated by the shipped shell capability) ----
         L("hint.shell", "输入 ! 进入终端模式。", "Type ! for shell mode.", OpenCodeComposerSplashCapability.ShellMode),
 
         // ---- Seasonal (Minecraft “special splashes”): eligible only on that local date ----
