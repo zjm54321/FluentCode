@@ -77,7 +77,10 @@ namespace AIFrontend.Pages
                 && Attr(shellEditor, "FontFamily") == "{ThemeResource AppMonospaceFontFamily}", "prompt and command share the app monospace slot");
             foreach (var mode in new[] { "Default", "Light", "HighContrast" })
             {
-                var palette = terminal.Descendants().Single(n => n.Name.LocalName == "ResourceDictionary" && (string?)n.Attribute(x + "Key") == mode);
+                // The palette lives in the page theme dictionaries: an element cannot resolve its own
+                // attributes from its own Resources, which made the page fail to load.
+                var palette = xaml.Root!.Elements().First(n => n.Name.LocalName == "Page.Resources").Descendants()
+                    .First(n => n.Name.LocalName == "ResourceDictionary" && (string?)n.Attribute(x + "Key") == mode);
                 foreach (var (key, color, systemBrush) in new[] {
                     ("ShellTerminalBackground", "#0C0C0C", "SystemColorWindowColorBrush"),
                     ("ShellTerminalForeground", "#CCCCCC", "SystemColorWindowTextColorBrush"),
