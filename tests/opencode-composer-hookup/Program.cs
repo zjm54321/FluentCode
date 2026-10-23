@@ -883,6 +883,7 @@ namespace AIFrontend.Pages
         internal int FullScreenOpens;
         private void QueueComposerLayout() { }
         private void RefreshWslQuickAccess() { } // B12 quick access is outside this hookup host.
+        private void OpenTerminalView(string shellId) { } // AT6 terminal page is outside this hookup host.
         internal readonly ProgressRing SendProgress = new();
         internal readonly Panel ComposerCompanionHost = new(), AgentSelectorHost = new();
         internal readonly Dispatcher DispatcherQueue = new();
@@ -1101,6 +1102,7 @@ namespace AIFrontend.Pages.OpenCode
     public sealed class OpenCodeConversationView {
         public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
         public event EventHandler? SubagentSessionRequested;
+        public event Action<string>? TerminalRequested;
         public List<OpenCodeMessage> Last = new();
         public bool ContainsRenderedMessage(string id) => Last.Any(message => message.Id == id);
         public void ApplyMessages(List<OpenCodeMessage> messages) => Last = messages;
