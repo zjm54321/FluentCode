@@ -82,6 +82,12 @@ internal static class Program
 
     private static void SessionShellProjection()
     {
+        foreach (var malformed in new[] { """{"type":"session.idle","data":"ses_test"}""", """{"type":null,"data":{}}""", """{"data":{}}""", """{"type":"session.idle"}""", "[]", "\"[1]\"" })
+        {
+            try { OpenCodeEvent.Parse(malformed); Check(false, "malformed V2 envelope accepted: " + malformed); }
+            catch (OpenCodeProtocolException) { Check(true, "malformed V2 envelope rejected at the boundary: " + malformed); }
+        }
+        Check(OpenCodeEvent.Parse("""{"id":"evt_c","type":"server.connected","data":{}}""").SessionId is null, "server.connected empty data object accepted");
         var reducer = new OpenCodeEventReducer("ses_test");
         var start = OpenCodeEvent.Parse("""{"id":"evt_shell1","created":1900000000000,"type":"session.shell.started","metadata":{"origin":"user"},"data":{"sessionID":"ses_test","shell":{"id":"sh_real","command":"printf hi","status":"running","metadata":{"background":true}}}}""");
         var end = OpenCodeEvent.Parse("""{"id":"evt_shell2","created":1900000000100,"type":"session.shell.ended","data":{"sessionID":"ses_test","shell":{"id":"sh_real","command":"printf hi","status":"exited","exit":7,"metadata":{}},"output":{"output":"real stdout\nreal stderr","cursor":23,"size":23,"truncated":false}}}""");

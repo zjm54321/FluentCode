@@ -27,7 +27,12 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
         using var decoded = document.RootElement.ValueKind == JsonValueKind.String
             ? JsonDocument.Parse(document.RootElement.GetString()!) : null;
         var root = decoded?.RootElement ?? document.RootElement;
-        return new(root.GetProperty("type").GetString()!, root.GetProperty("data").Clone(), DateTimeOffset.UtcNow)
+        // Every V2 envelope (server.connected included) carries a string type and an object data; heartbeats are SSE comments.
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String || type.GetString() is not { Length: > 0 } name
+            || !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+            throw new OpenCodeProtocolException("OpenCode 事件流不符合 V2 契约。");
+        return new(name, data.Clone(), DateTimeOffset.UtcNow)
         {
             Id = root.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String ? id.GetString() : null,
             Created = root.TryGetProperty("created", out var created) && created.ValueKind == JsonValueKind.Number
