@@ -92,7 +92,7 @@ internal static class Wave6Timeline
         child.LinkInvoked!();
         Check(requests == 2, "wave6.success-failure-use-same-child-conversation-request");
         var invocation = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"type\":\"tool\",\"name\":\"subagent\",\"state\":{\"status\":\"completed\",\"input\":{}}}", OpenCodeJson.Options)!;
-        Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子代理", "v4.invocation-uses-approved-subagent-label");
+        Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子智能体", "v5.invocation-uses-approved-subagent-label");
         view.ClearMessages();
 
         ConversationViewTestProbe.Reset();
@@ -117,10 +117,10 @@ internal static class Wave6Timeline
         Check(OpenCodeToolRowPresentation.DisplayName("shell") == "终端" && OpenCodeToolRowPresentation.DisplayName("bash") == "终端"
             && OpenCodeToolRowPresentation.DisplayName("grep") == "搜索" && OpenCodeToolRowPresentation.DisplayName("read") == "读取"
             && OpenCodeToolRowPresentation.DisplayName("edit") == "编辑" && OpenCodeToolRowPresentation.DisplayName("write") == "写入"
-            && OpenCodeToolRowPresentation.DisplayName("company_read") == "company_read", "wave7.only-exact-built-in-display-names-are-localized");
+            && OpenCodeToolRowPresentation.DisplayName("company_read") == "读取", "v5.renamed-built-in-display-names-are-localized");
         var unconfirmed = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"id\":\"bg_unknown\",\"type\":\"tool\",\"name\":\"subagent\",\"state\":{\"status\":\"completed\",\"input\":{\"background\":true}}}", OpenCodeJson.Options)!;
         var unknownModel = OpenCodeToolRowPresentation.Build(unconfirmed);
-        Check(unknownModel.Name == "子代理（后台）" && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
+        Check(unknownModel.Name == "子智能体" && unknownModel.IsBackground && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
             "wave7.background-return-without-job-state-is-unknown-not-success-and-protocol-is-unchanged");
 
         ConversationViewTestProbe.Reset();
@@ -244,13 +244,13 @@ internal static class Wave6Timeline
             && ReferenceEquals(view.Children[1], modelChip.Element)
             && Made<OpenCodeToolGroupView>().All(g => !g.ItemsHost.Children.Contains(modelChip.Element)),
             "rp3.instruction-and-model-chips-above-work-never-inside-processing-group");
-        Check(OpenCodeToolRowPresentation.DisplayName("acp_status") == "ACP状态"
+        Check(OpenCodeToolRowPresentation.DisplayName("acp_status") == "上下文状态"
             && OpenCodeToolRowPresentation.DisplayName("compress") == "压缩上下文"
             && OpenCodeToolRowPresentation.DisplayName("third_party_acp_status") == "third_party_acp_status",
             "wave7.confirmed-context-tools-have-exact-display-only-aliases-without-mcp-suffix-renaming");
         var messageTool = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"id\":\"message_tool\",\"type\":\"tool\",\"name\":\"task_message\",\"state\":{\"status\":\"running\",\"input\":{\"text\":\"hello\"}}}", OpenCodeJson.Options)!;
         var messageModel = OpenCodeToolRowPresentation.Build(messageTool);
-        Check(messageModel.Name == "子智能体消息" && messageModel.GlyphOverride == OpenCodeStepRunPresentation.SubagentGlyph
+        Check(messageModel.Name == "给子智能体发消息" && messageModel.GlyphOverride == OpenCodeStepRunPresentation.SubagentGlyph
             && messageModel.Kind == OpenCodeToolKind.Other && !messageModel.CanMoveToBackground && messageTool.Name == "task_message",
             "wave7.task-message-is-display-only-robot-alias-never-backgroundable-child-execution");
         view.ClearMessages();

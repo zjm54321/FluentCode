@@ -247,6 +247,9 @@ internal sealed class OpenCodeToolRowModel
     /// <summary>TL1: the server's tool name (trimmed, original case) and raw part state for built-in detail views.</summary>
     public string ToolName { get; init; } = string.Empty;
     public JsonElement? State { get; init; }
+    public string RawToolLabel => ToolName.Contains('_', StringComparison.Ordinal)
+        && ToolName is not ("apply_patch" or "task_status" or "task_result" or "task_message" or "task_revive" or "task_cancel" or "wait_for_user" or "acp_status" or "search_context" or "acp_run")
+        ? ToolName : string.Empty;
 }
 
 /// <summary>工具组头部摘要。</summary>
@@ -313,7 +316,6 @@ internal static class OpenCodeToolRowPresentation
         _ => OpenCodeToolKind.Other,
     };
 
-    // Exact built-in names only: MCP/custom names keep their original display identity.
     internal static string DisplayName(string? name) => name?.Trim().ToLowerInvariant() switch
     {
         "shell" or "bash" => "终端",
@@ -328,14 +330,53 @@ internal static class OpenCodeToolRowPresentation
         "webfetch" => "获取网页",
         "websearch" => "搜索网页",
         "question" => "提问",
-        "subagent" or "task" => "子代理",
+        "subagent" or "task" => "子智能体",
         "todowrite" => "更新 To Do",
         "todoread" => "查看 To Do",
-        "acp_status" => "ACP状态",
+        "acp_status" => "上下文状态",
         "compress" => "压缩上下文",
-        "task_message" => "子智能体消息",
-        _ => string.IsNullOrWhiteSpace(name) ? "工具" : name.Trim(),
+        "decompress" => "恢复上下文",
+        "search_context" => "搜索上下文",
+        "prune" => "裁剪上下文",
+        "absorb" => "提炼工具结果",
+        "acp_run" => "外部智能体（ACP）",
+        "task_message" => "给子智能体发消息",
+        "task_status" => "查看子智能体状态",
+        "task_result" => "获取子智能体结果",
+        "task_revive" => "恢复子智能体",
+        "task_cancel" => "取消子智能体",
+        "wait_for_user" => "等待你的确认",
+        "skill" => "加载技能",
+        "codesearch" => "搜索代码",
+        "execute" => "运行代码",
+        "ast_grep_search" => "AST 搜索",
+        "ast_grep_replace" => "AST 替换",
+        "session_list" => "会话列表",
+        "pty_spawn" => "启动终端",
+        "git_diff" => "Git 差异",
+        "git_diff_summary" => "Git 差异摘要",
+        "marketplace_inspect" => "查看插件市场",
+        "honcho_create_conclusion" => "记录结论（Honcho）",
+        "interview_submit_state" => "提交访谈状态",
+        "invalid" => "无效的工具调用",
+        _ => DisplayRenamedTool(name),
     };
+
+    private static string DisplayRenamedTool(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "工具";
+        var trimmed = name.Trim();
+        if (trimmed.StartsWith("lsp_", StringComparison.OrdinalIgnoreCase)) return "代码导航";
+        var kind = Classify(trimmed);
+        return kind == OpenCodeToolKind.Other ? trimmed : kind switch
+        {
+            OpenCodeToolKind.Read => "读取", OpenCodeToolKind.Write => "写入", OpenCodeToolKind.Shell => "终端",
+            OpenCodeToolKind.Edit => "编辑", OpenCodeToolKind.MultiEdit => "批量编辑", OpenCodeToolKind.Patch => "应用补丁",
+            OpenCodeToolKind.Grep => "搜索", OpenCodeToolKind.Glob => "查找文件", OpenCodeToolKind.List => "列出目录",
+            OpenCodeToolKind.WebFetch => "获取网页", OpenCodeToolKind.WebSearch => "搜索网页",
+            OpenCodeToolKind.Question => "提问", OpenCodeToolKind.Subagent => "子智能体", _ => trimmed,
+        };
+    }
 
     /// <summary>是否为 question 工具部件（时间线中不显示为工具行，而是提问锚点）。</summary>
     internal static bool IsQuestionTool(OpenCodeContentPart? part)
@@ -413,8 +454,11 @@ internal static class OpenCodeToolRowPresentation
                 var lines = CountNumberedLines(output);
                 if (lines > 0)
                 {
-                    summary = lines.ToString(CultureInfo.InvariantCulture) + " 行";
+                    var first = ReadInt(input, "offset") ?? 1;
+                    summary = "第 " + first.ToString(CultureInfo.InvariantCulture) + "–" + (first + lines - 1).ToString(CultureInfo.InvariantCulture) + " 行";
                 }
+                else if (status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming)
+                    summary = "正在读取…";
 
                 break;
             }
@@ -480,7 +524,11 @@ internal static class OpenCodeToolRowPresentation
 
                 if (kind == OpenCodeToolKind.Write
                     && (FirstString(input, "content") ?? (diffs.Count == 1 ? diffs[0].After : null)) is { } written)
-                    summary = OpenCodeLineDiff.Count(string.Empty, written).Additions.ToString(CultureInfo.InvariantCulture) + " 行";
+                {
+                    var writeMode = diffs.Count == 1 && diffs[0].Status == "added" ? "新文件 · "
+                        : diffs.Count == 1 && diffs[0].Status == "modified" ? "覆盖 · " : string.Empty;
+                    summary = writeMode + OpenCodeLineDiff.Count(string.Empty, written).Additions.ToString(CultureInfo.InvariantCulture) + " 行";
+                }
 
                 target = path ?? (diffs.Count == 1 ? diffs[0].Path : diffs.Count > 1 ? diffs.Count.ToString(CultureInfo.InvariantCulture) + " 个文件" : string.Empty);
                 break;
@@ -504,8 +552,10 @@ internal static class OpenCodeToolRowPresentation
                 target = FirstString(input, "pattern", "query") ?? string.Empty;
                 if (ReadInt(metadata, "matches") is { } matches)
                 {
-                    summary = matches.ToString(CultureInfo.InvariantCulture) + " 处匹配";
+                    summary = matches == 0 ? "（没有结果）" : matches.ToString(CultureInfo.InvariantCulture) + " 处匹配";
                 }
+                else if (status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming)
+                    summary = "正在查找…";
 
                 break;
             }
@@ -529,22 +579,54 @@ internal static class OpenCodeToolRowPresentation
 
             case OpenCodeToolKind.WebSearch:
                 target = FirstString(input, "query", "q") ?? string.Empty;
+                if (output is not null)
+                {
+                    var results = 0;
+                    foreach (var line in output.Split('\n'))
+                        if (line.StartsWith("## [", StringComparison.Ordinal) && line.Contains("](", StringComparison.Ordinal)) results++;
+                    if (results > 0)
+                        summary = results.ToString(CultureInfo.InvariantCulture)
+                            + (metadata is { } searchMetadata && searchMetadata.TryGetProperty("truncated", out var clipped) && clipped.ValueKind == JsonValueKind.True ? "+ 条" : " 条");
+                }
                 break;
 
             case OpenCodeToolKind.Subagent:
             {
                 var agent = FirstString(input, "agent", "subagent_type");
                 var description = FirstString(input, "description");
-                target = agent is null ? description ?? string.Empty : description is null ? agent : agent + " " + description;
+                var displayAgent = agent is { Length: > 0 } ? char.ToUpperInvariant(agent[0]) + agent[1..] : null;
+                target = displayAgent is null ? description ?? string.Empty : description is null ? displayAgent : displayAgent + " · " + description;
                 break;
             }
 
             case OpenCodeToolKind.Question:
                 target = QuestionFallbackTitle(input);
+                var answers = ReadAnswers(metadata);
+                summary = answers.Count > 0 ? "已回答：" + string.Join("；", answers) : "未回答";
+                break;
+
+            case OpenCodeToolKind.Todo:
+                var todoSource = metadata is { } todoMeta && todoMeta.TryGetProperty("todos", out _) ? metadata : input;
+                if (todoSource is { } todoObject && todoObject.TryGetProperty("todos", out var todos) && todos.ValueKind == JsonValueKind.Array)
+                {
+                    var done = 0;
+                    foreach (var todo in todos.EnumerateArray())
+                        if (FirstString(todo, "status") == "completed") done++;
+                    summary = done.ToString(CultureInfo.InvariantCulture) + " / " + todos.GetArrayLength().ToString(CultureInfo.InvariantCulture) + " 完成";
+                }
                 break;
 
             default:
-                target = FirstString(input, "filePath", "path", "command", "pattern", "url", "description", "query", "name") ?? string.Empty;
+                target = FirstString(input, "filePath", "path", "command", "pattern", "url", "description", "query", "name", "reason", "message", "prompt", "task_id", "sessionID", "id") ?? string.Empty;
+                if (part.Name == "skill") target = FirstString(metadata, "name") ?? FirstString(input, "id") ?? target;
+                if (part.Name == "execute" && metadata is { } executeMetadata
+                    && executeMetadata.TryGetProperty("toolCalls", out var calls) && calls.ValueKind == JsonValueKind.Array && calls.GetArrayLength() > 0
+                    && FirstString(calls[0], "tool") is { } firstCall)
+                {
+                    var lastSeparator = firstCall.LastIndexOf('.');
+                    summary = DisplayName(lastSeparator >= 0 ? firstCall[(lastSeparator + 1)..] : firstCall)
+                        + " 等 " + calls.GetArrayLength().ToString(CultureInfo.InvariantCulture) + " 个调用";
+                }
                 break;
         }
 
@@ -589,7 +671,7 @@ internal static class OpenCodeToolRowPresentation
             summary = status == OpenCodeToolRowStatus.Completed ? "后台已完成" : status == OpenCodeToolRowStatus.Error ? "后台失败" : "后台状态未提供";
         }
 
-        if (background && kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent)
+        if (background && kind == OpenCodeToolKind.Shell)
             name += "（后台）";
 
         var statusText = status switch
@@ -605,6 +687,8 @@ internal static class OpenCodeToolRowPresentation
         if (status == OpenCodeToolRowStatus.Error)
         {
             errorText = asyncError ?? DescribeError(state?.Error);
+            name = "失败 · " + name;
+            summary = DescribeRowError(state?.Error, errorText);
         }
 
         string? rawState = null;
@@ -704,6 +788,11 @@ internal static class OpenCodeToolRowPresentation
         };
         var summary = file.Additions is { } add && file.Deletions is { } del
             ? "+" + add.ToString(CultureInfo.InvariantCulture) + " −" + del.ToString(CultureInfo.InvariantCulture) : string.Empty;
+        if (model.Status == OpenCodeToolRowStatus.Error)
+        {
+            name = "失败 · " + name;
+            summary = model.Summary;
+        }
         return new OpenCodeToolRowModel
         {
             PartId = model.PartId + "/file:" + index.ToString(CultureInfo.InvariantCulture),
@@ -1077,6 +1166,18 @@ internal static class OpenCodeToolRowPresentation
         }
 
         return meta.Count > 0 ? message + "（" + string.Join(", ", meta) + "）" : message;
+    }
+
+    private static string DescribeRowError(OpenCodeStructuredError? error, string raw)
+    {
+        if (error?.Status is { } http) return "HTTP " + http.ToString(CultureInfo.InvariantCulture);
+        if (raw.Contains("ENOENT", StringComparison.OrdinalIgnoreCase) || raw.Contains("no such file", StringComparison.OrdinalIgnoreCase))
+            return "文件或路径不存在";
+        if (raw.Contains("tool not found", StringComparison.OrdinalIgnoreCase) || raw.Contains("unknown tool", StringComparison.OrdinalIgnoreCase))
+            return "工具不可用";
+        if (raw.Contains("failed to start", StringComparison.OrdinalIgnoreCase)) return "工具无法启动";
+        var first = FirstLine(raw) ?? "错误详情未提供";
+        return first.Length > 64 ? first[..64] + "…" : first;
     }
 
     private static string? FormatInput(OpenCodeToolState? state)

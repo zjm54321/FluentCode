@@ -48,6 +48,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private readonly TextBlock _summaryText;
     private readonly TextBlock _additionsText;
     private readonly TextBlock _deletionsText;
+    private readonly TextBlock _rowTag;
+    private readonly Border _rowTagBorder;
     private readonly Button _backgroundButton;
     private Action<string, OpenCodeContentPart>? _backgroundAction;
     private OpenCodeContentPart? _lastPart;
@@ -139,6 +141,10 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         OpenCodeToolTheme.Apply(_deletionsText, OpenCodeToolTheme.Text(OpenCodeToolTheme.Critical, OpenCodeInteractionUi.CaptionStyleKey));
         _deletionsText.VerticalAlignment = VerticalAlignment.Center;
         var summaryPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        _rowTag = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
+        _rowTagBorder = new Border { Child = _rowTag, CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 1, 5, 1), Visibility = Visibility.Collapsed };
+        OpenCodeToolTheme.Apply(_rowTagBorder, OpenCodeToolTheme.Border("SubtleFillColorSecondaryBrush"));
+        summaryPanel.Children.Add(_rowTagBorder);
         summaryPanel.Children.Add(_additionsText);
         summaryPanel.Children.Add(_deletionsText);
         summaryPanel.Children.Add(_summaryText);
@@ -208,7 +214,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         };
         AutomationProperties.SetAutomationId(_backgroundButton, "OpenCodeToolBackground");
         AutomationProperties.SetName(_backgroundButton, "将本会话前台工具转入后台");
-        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子代理转入后台（Ctrl+B）");
+        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子智能体转入后台（Ctrl+B）");
         _backgroundButton.Click += (_, _) => RequestBackground();
         Grid.SetColumn(_backgroundButton, 2);
         _root.Children.Add(_backgroundButton);
@@ -425,6 +431,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _kindIcon.Glyph = model.GlyphOverride ?? KindGlyph(model.Kind);
         _nameText.Text = model.Name;
         _targetText.Text = model.Target;
+        _rowTag.Text = model.IsBackground ? "后台" : model.RawToolLabel;
+        _rowTagBorder.Visibility = _rowTag.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _targetText.Visibility = model.Target.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         // A8: no native text tooltip on the row — the custom hover preview already shows name/target.
 
