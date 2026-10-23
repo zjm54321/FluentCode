@@ -71,14 +71,7 @@ public partial class App
     private void OnAppSettingsChanged(object? sender, AppSettingsChangedEventArgs args) =>
         PostToApp(() => RequestOpenCodeConfiguration(_settingsService?.Current));
 
-    /// <summary>UI thread; explicitly re-read credentials even when the reference is unchanged. Does not clear protection.</summary>
-    public void RefreshOpenCodeCredentials()
-    {
-        RequireAppThread();
-        RequestOpenCodeConfiguration(_settingsService?.Current, force: true);
-    }
-
-    private void RequestOpenCodeConfiguration(AppSettings? settings, bool force = false)
+    private void RequestOpenCodeConfiguration(AppSettings? settings)
     {
         if (_closing) return;
         // B11：连接类型 / WSL 发行版只是元数据，不影响端点与凭据；比较前剥离，避免仅写入类型就重建连接（闪断）。
@@ -91,7 +84,7 @@ public partial class App
                 relevant = relevant with { BaseUrl = OpenCodeClient.NormalizeBaseUri(relevant.BaseUrl).AbsoluteUri };
         }
         catch (Exception ex) { RecordDiagnostic("opencode-configuration-invalid", error: ex); }
-        if (!force && _configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
+        if (_configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
         _configurationRequested = true;
         _requestedOpenCodeConfiguration = relevant;
         ResetOpenCodeObservations();

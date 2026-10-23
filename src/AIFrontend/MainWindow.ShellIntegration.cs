@@ -13,7 +13,7 @@ namespace AIFrontend;
 /// <para>线程契约：App 的全部公开事件（OpenCodeSourceChanged / OpenCodeNavigationRequested /
 /// LocalNavigationRequested / OpenCodeInteractionProcessed / IntegrationDiagnosticChanged）由 App 经 UI dispatcher 投递；
 /// 本窗口对 App 的 UI 线程方法（TrackOpenCodeSession / UpdateTaskbarTask / SetOpenCodeNavigationReady /
-/// RefreshOpenCodeCredentials 等）的调用一律发生在这些 UI 回调或页面事件（均为 UI 线程）内。</para>
+/// 等）的调用一律发生在这些 UI 回调或页面事件（均为 UI 线程）内。</para>
 /// <para>顺序契约：构造期完成全部订阅，窗口 Activated 后再调用
 /// <c>App.SetOpenCodeNavigationReady(true)</c>（先订 handler 再置 ready，App 随后才会投递排队中的
 /// 结构化导航目标）；关闭时先置 false 再退订，并清空页面可信身份（禁止旧 client 身份继续操作）。
@@ -234,26 +234,6 @@ public sealed partial class MainWindow
                 ShowObservationNotice(observation);
                 return;
             }
-        }
-    }
-
-    // ---- 设置页：OpenCode 凭据真实保存后的显式刷新 ----
-
-    private void SettingsPage_OpenCodeCredentialsChanged(object? sender, EventArgs e)
-    {
-        if (!AppCallsAllowed)
-        {
-            return;
-        }
-
-        // 同 CredentialId 的密文更新无法由配置差异推断：显式 force 重读，使后台 owner 与 UI 一致。
-        try
-        {
-            _app!.RefreshOpenCodeCredentials();
-        }
-        catch (InvalidOperationException)
-        {
-            // 非 UI 线程不应发生；不虚报刷新。
         }
     }
 }

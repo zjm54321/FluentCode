@@ -64,7 +64,6 @@ public sealed partial class MainWindow : Window
     //    转发保持（App 已订阅本窗口事件发送完成通知；本窗口不注册、不发送任何通知）。
     // 3) OpenCode 页：SessionTracked / ExecutionStateChanged / NavigationHandled / Loaded——
     //    随 Frame 导航挂接/解除（见 AttachPageEvents / DetachPageEvents），页面重建不重复订阅。
-    // 4) 设置页：OpenCodeCredentialsChanged → App.RefreshOpenCodeCredentials()（仅真实保存成功且凭据变更）。
 
     /// <summary>
     /// 由当前 <see cref="Pages.NormalPage"/> 转发的“Local 一轮真实成功完成”事件
@@ -757,7 +756,6 @@ public sealed partial class MainWindow : Window
 
             case Pages.Settings.SettingsPage settingsPage:
                 settingsPage.ThemeChanged += SettingsPage_ThemeChanged;
-                settingsPage.OpenCodeCredentialsChanged += SettingsPage_OpenCodeCredentialsChanged;
                 _subscribedPage = settingsPage;
                 break;
         }
@@ -796,7 +794,6 @@ public sealed partial class MainWindow : Window
 
             case Pages.Settings.SettingsPage settingsPage:
                 settingsPage.ThemeChanged -= SettingsPage_ThemeChanged;
-                settingsPage.OpenCodeCredentialsChanged -= SettingsPage_OpenCodeCredentialsChanged;
                 break;
         }
 

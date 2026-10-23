@@ -34,12 +34,6 @@ public sealed partial class SettingsPage : Page
     /// </summary>
     public event EventHandler<SettingsThemeChangedEventArgs>? ThemeChanged;
 
-    /// <summary>
-    /// 设置页内 OpenCode 后端凭据被<strong>真实保存</strong>（密文写入或清除且配置保存成功）后转发；
-    /// 供主窗口调用 <c>App.RefreshOpenCodeCredentials()</c>。主题 / provider / 模型保存不触发。
-    /// </summary>
-    public event EventHandler? OpenCodeCredentialsChanged;
-
     /// <summary>当前承载的设置视图（导航离开后为 null）。</summary>
     public SettingsView? View => _view;
 
@@ -67,7 +61,6 @@ public sealed partial class SettingsPage : Page
             NormalPage.SharedSecretStore,
             clearCookiesAsync);
         view.ThemeChanged += OnViewThemeChanged;
-        view.OpenCodeCredentialsChanged += OnViewOpenCodeCredentialsChanged;
         _view = view;
         Content = view;
 
@@ -88,7 +81,6 @@ public sealed partial class SettingsPage : Page
         }
 
         view.ThemeChanged -= OnViewThemeChanged;
-        view.OpenCodeCredentialsChanged -= OnViewOpenCodeCredentialsChanged;
         // 离开页面：结束 SettingsView 内仍在等待的内联确认（按“取消”处理），
         // 不依赖其 Unloaded 触发时机，确保等待方不悬挂。
         view.CancelPendingInteractions();
@@ -120,10 +112,5 @@ public sealed partial class SettingsPage : Page
     private void OnViewThemeChanged(object? sender, SettingsThemeChangedEventArgs e)
     {
         ThemeChanged?.Invoke(this, e);
-    }
-
-    private void OnViewOpenCodeCredentialsChanged(object? sender, EventArgs e)
-    {
-        OpenCodeCredentialsChanged?.Invoke(this, e);
     }
 }

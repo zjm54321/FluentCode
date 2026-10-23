@@ -140,14 +140,6 @@ public sealed partial class SettingsView : UserControl
     public event EventHandler<SettingsThemeChangedEventArgs>? ThemeChanged;
 
     /// <summary>
-    /// OpenCode 后端凭据（Bearer token / Basic 密码）已被<strong>真实保存</strong>后触发：
-    /// 密文写入或清除成功<strong>且</strong>配置 <see cref="SettingsService.SaveAsync"/> 成功。
-    /// 供主窗口调用 <c>App.RefreshOpenCodeCredentials()</c> 显式刷新后台 owner
-    /// （同 CredentialId 的密文更新无法由配置差异推断）；主题 / provider / 模型保存不触发。
-    /// </summary>
-    public event EventHandler? OpenCodeCredentialsChanged;
-
-    /// <summary>
     /// 创建设置界面。
     /// </summary>
     /// <param name="settingsService">共享的设置服务（读写 <c>settings.json</c>）。</param>
