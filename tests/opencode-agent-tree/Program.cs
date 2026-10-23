@@ -30,6 +30,12 @@ internal static class Program
         Check(view.Contains("_all.Checked +=") && view.Contains("_all.Unchecked +="), "filter responds to native check state changes including automation");
         Check(view.Contains("OpenCodeAgentIcons.DisplayName(agent.Name)") && view.Contains("OpenCodeAgentIcons.Glyph(agent.Name)"), "L4/L5/AS2/V6: shared agent names and glyphs");
         Check(view.Contains("Group(\"shell\", \"终端\", \"\\uE756\"") && view.Contains("VisibleShells(_shells, _showAll)"), "terminal group shares the filter and terminal glyph");
+        Check(view.Contains("x:Name=\"TerminalDivider\" Height=\"1\"") && !view.Contains("divider.Child = content")
+            && view.Contains("_terminalTree.ItemContainerStyle = _tree.ItemContainerStyle")
+            && view.Contains("_terminalDivider.Visibility = _groups.Count > 0 ? Visibility.Visible : Visibility.Collapsed"),
+            "AT4: standalone divider separates native trees; terminal header shares agent row chrome, not the divider");
+        Check(view.Contains("_tree.ItemInvoked += OnTreeItemInvoked") && view.Contains("_terminalTree.ItemInvoked += OnTreeItemInvoked"),
+            "AT1/AT4: both native trees use the same group and leaf invoke path");
         Check(view.Contains("Grid.SetColumn(model, 2)") && view.Contains("Grid.SetColumn(indicator, 0)")
             && view.Contains("model.HorizontalAlignment = HorizontalAlignment.Right") && !view.Contains("text.Children.Add(model)"),
             "instance status leads; small gray model occupies the trailing column");

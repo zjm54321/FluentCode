@@ -124,6 +124,17 @@ internal static class Program
             "page folds/pops cards only through the system-animation gate");
         Check(sidebars.Contains("MessageScroll.TransformToVisual(SessionPane)") && sidebars.Contains("ComposerCell.TransformToVisual(SessionPane)"),
             "card insets follow the first message row and the composer bottom");
+        var treeView = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
+        var treeMarkup = treeView.Split("\"\"\"", StringSplitOptions.None)[1];
+        var treeCard = XDocument.Parse(treeMarkup);
+        var trees = treeCard.Descendants(ui + "TreeView").ToArray();
+        var terminalDivider = treeCard.Descendants(ui + "Border").Single(e => (string?)e.Attribute(x + "Name") == "TerminalDivider");
+        Check(trees.Length == 2 && trees.All(e => (string?)e.Attribute("SelectionMode") == "None"),
+            "AT3: both agent and terminal native trees disable selection indicators");
+        Check(terminalDivider.Parent == trees[0].Parent && terminalDivider.Parent == trees[1].Parent
+            && !terminalDivider.Elements().Any() && (string?)terminalDivider.Attribute("Height") == "1"
+            && terminalDivider.Attribute("BorderThickness") is null,
+            "AT4: divider is a plain sibling line, not a box around the terminal header");
         Console.WriteLine($"PASS {_checks} sidebar policy/token checks (headless; native visuals require user checks).");
     }
 }

@@ -16,6 +16,8 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeAgentTreeView : UserControl
 {
     private readonly TreeView _tree;
+    private readonly TreeView _terminalTree;
+    private readonly FrameworkElement _terminalDivider;
     private readonly ToggleButton _all;
     private readonly FrameworkElement _card;
     private readonly Button _parentReturn;
@@ -58,7 +60,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </Grid>
                 <TextBlock x:Name="Hint" Grid.Row="1" Margin="4,0,0,0" TextWrapping="Wrap"
                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TreeView x:Name="Tree" Grid.Row="2" SelectionMode="None" CanDragItems="False"
+                <StackPanel Grid.Row="2">
+                <TreeView x:Name="Tree" SelectionMode="None" CanDragItems="False"
                           CanReorderItems="False" AllowDrop="False" AutomationProperties.Name="子智能体会话树">
                   <TreeView.ItemTemplate>
                     <DataTemplate><ContentPresenter Content="{Binding Content}" HorizontalAlignment="Stretch" /></DataTemplate>
@@ -150,6 +153,12 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                     </Style>
                   </TreeView.ItemContainerStyle>
                 </TreeView>
+                <!-- The divider is outside either TreeView: it never shares row hover/focus chrome. -->
+                <Border x:Name="TerminalDivider" Height="1" Margin="4,8,4,8" Visibility="Collapsed"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <TreeView x:Name="TerminalTree" SelectionMode="None" CanDragItems="False"
+                          CanReorderItems="False" AllowDrop="False" Visibility="Collapsed" AutomationProperties.Name="终端会话树" />
+                </StackPanel>
                 <StackPanel x:Name="Details" Grid.Row="3" Visibility="Collapsed" Spacing="8" Margin="4,0,0,0">
                   <TextBlock x:Name="DetailTitle" TextWrapping="Wrap" IsTextSelectionEnabled="True"
                              Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -180,14 +189,12 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _parentReturn = (Button)root.FindName("ParentReturn");
         _parentReturn.Click += (_, _) => ParentReturnRequested?.Invoke();
         _tree = (TreeView)root.FindName("Tree");
-        _tree.ItemInvoked += (_, e) =>
-        {
-            var node = e.InvokedItem as TreeViewNode;
-            var content = node?.Content ?? e.InvokedItem;
-            if (node is not null && _groups.Values.Contains(node)) node.IsExpanded = !node.IsExpanded;
-            if (content is FrameworkElement { Tag: OpenCodeTreeInstance instance }) SessionRequested?.Invoke(instance.Id);
-            if (content is FrameworkElement { Tag: OpenCodeTreeShell shell }) ShellRequested?.Invoke(shell.Id);
-        };
+        _terminalTree = (TreeView)root.FindName("TerminalTree");
+        _terminalDivider = (FrameworkElement)root.FindName("TerminalDivider");
+        _terminalTree.ItemTemplate = _tree.ItemTemplate;
+        _terminalTree.ItemContainerStyle = _tree.ItemContainerStyle;
+        _tree.ItemInvoked += OnTreeItemInvoked;
+        _terminalTree.ItemInvoked += OnTreeItemInvoked;
         _all = (ToggleButton)root.FindName("All");
         _all.IsChecked = _showAll;
         _all.Checked += (_, _) => { _showAll = true; RenderGroups(); };
@@ -202,11 +209,23 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         ((Button)root.FindName("CloseDetail")).Click += (_, _) => { _details.Visibility = Visibility.Collapsed; DetailClosed?.Invoke(); };
     }
 
+    private void OnTreeItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs e)
+    {
+        var node = e.InvokedItem as TreeViewNode;
+        var content = node?.Content ?? e.InvokedItem;
+        if (node is not null && _groups.Values.Contains(node)) node.IsExpanded = !node.IsExpanded;
+        if (content is FrameworkElement { Tag: OpenCodeTreeInstance instance }) SessionRequested?.Invoke(instance.Id);
+        if (content is FrameworkElement { Tag: OpenCodeTreeShell shell }) ShellRequested?.Invoke(shell.Id);
+    }
+
     internal void Reset()
     {
         _card.Visibility = Visibility.Visible;
         _parentReturn.Visibility = Visibility.Collapsed;
         _tree.RootNodes.Clear();
+        _terminalTree.RootNodes.Clear();
+        _terminalTree.Visibility = Visibility.Collapsed;
+        _terminalDivider.Visibility = Visibility.Collapsed;
         _agents = Array.Empty<OpenCodeTreeAgent>();
         _shells = Array.Empty<OpenCodeTreeShell>();
         _expanded.Clear();
@@ -240,6 +259,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         foreach (var (key, node) in _groups) _expanded[key] = node.IsExpanded;
         _groups.Clear();
         _tree.RootNodes.Clear();
+        _terminalTree.RootNodes.Clear();
+        _terminalTree.Visibility = Visibility.Collapsed;
+        _terminalDivider.Visibility = Visibility.Collapsed;
         foreach (var agent in OpenCodeAgentTreeProjection.VisibleAgents(_agents, _showAll))
         {
             var kind = (agent.Mode == "subagent" ? "子智能体" : "智能体")
@@ -255,6 +277,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         var shells = OpenCodeAgentTreeProjection.VisibleShells(_shells, _showAll);
         if (shells.Count > 0)
         {
+            _terminalTree.Visibility = Visibility.Visible;
+            _terminalDivider.Visibility = _groups.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             var rows = new List<FrameworkElement>();
             foreach (var shell in shells)
             {
@@ -288,18 +312,12 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         Grid.SetColumn(counter, 2);
         content.Children.Add(counter);
         ToolTipService.SetToolTip(content, tooltip);
-        FrameworkElement header = content;
-        if (key == "shell" && _groups.Count > 0)
-        {
-            var divider = (Border)XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" BorderBrush=\"{ThemeResource DividerStrokeColorDefaultBrush}\" BorderThickness=\"0,1,0,0\" Padding=\"0,8,0,0\" Margin=\"0,8,0,0\" />");
-            divider.Child = content;
-            header = divider;
-        }
-        NameTreeContent(header, name + "，" + count);
-        var group = new TreeViewNode { Content = header, IsExpanded = !_expanded.TryGetValue(key, out var open) || open };
+        NameTreeContent(content, name + "，" + count);
+        var group = new TreeViewNode { Content = content, IsExpanded = !_expanded.TryGetValue(key, out var open) || open };
         foreach (var row in rows) group.Children.Add(new TreeViewNode { Content = row });
         _groups.Add(key, group);
-        _tree.RootNodes.Add(group);
+        if (key == "shell") _terminalTree.RootNodes.Add(group);
+        else _tree.RootNodes.Add(group);
         return group;
     }
 
