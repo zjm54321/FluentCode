@@ -119,14 +119,14 @@ internal static partial class Program
     {
         var backend = new Backend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
         page.TestActivate(Session, client);
-        var hiddenAlreadyTarget = page.TestPrepareHomeClick("ses_target", "/remote/worktree");
+        var acceptedTarget = page.TestPrepareHomeClick("ses_target", "/remote/worktree");
         var rendered = new OpenCodeHomeSessionRow(new(new("runtime-a", "/remote/worktree"),
             new() { Id = "ses_target", Location = new() { Directory = "/remote/worktree" } }), "SYNTHETIC", "SYNTHETIC",
             OpenCodeHomeTone.Unknown, OpenCodeHomeDateGroup.Today, null);
         var visualContent = new object(); // Native own-container ItemClick's Content, not a ListViewItem/data row.
         Check(ReferenceEquals(OpenCodeHomeClick.Resolve(visualContent, null, rendered), rendered), "actual Home click producer resolves its content's bound row when native container cast/mapping are absent");
         Check(OpenCodeHomeClick.Resolve(visualContent, null, null) is null, "producer never invents session metadata from untagged visual content");
-        Check(page.TestHiddenSelectionIs(hiddenAlreadyTarget) && page.HomeSwitchRequests.Count == 0, "regression setup: hidden native item already selected while page has no selected session");
+        Check(page.TestHomeMetadataIs(acceptedTarget) && page.HomeSwitchRequests.Count == 0, "regression setup: accepted metadata exists while page has no selected session");
         var copies = Windows.ApplicationModel.DataTransfer.Clipboard.Writes;
         page.TestHomeAction(7, "/remote/worktree", "ses_target", OpenCodeHomeSessionAction.CopyId);
         Check(Windows.ApplicationModel.DataTransfer.Clipboard.Text == "ses_target" && Windows.ApplicationModel.DataTransfer.Clipboard.Writes == copies + 1
@@ -136,7 +136,7 @@ internal static partial class Program
         Check(Windows.ApplicationModel.DataTransfer.Clipboard.Writes == copies + 1 && page.HomeSwitchRequests.Count == 0, "stale/unsupported context action cannot copy, navigate, or pretend a server mutation");
         await page.TestOpenHome(7, "/remote/worktree", "ses_target");
         Check(page.HomeSwitchRequests.SequenceEqual(new[] { "ses_target" }) && page.HomeMirrors == 1, "actual production Home router invokes existing switch exactly once and mirrors only the accepted binding");
-        Check(page.TestHiddenSelectionIs(hiddenAlreadyTarget), "navigation does not depend on changing the hidden native item");
+        Check(page.TestHomeMetadataIs(acceptedTarget), "navigation preserves accepted session metadata");
         await page.TestOpenHome(6, "/remote/worktree", "ses_target");
         Check(page.HomeSwitchRequests.Count == 1, "stale Home event cannot invoke switch");
         page.TestHomeUnavailable();
@@ -216,7 +216,7 @@ internal static partial class Program
                 ("healthy SSE skips periodic messages/status HTTP; reconnect and session switch restore fallback", HealthyStreamSkipsPolling),
                 ("SSE execution window excludes retained older history across rollback boundaries", StreamExecutionWindowExcludesOlderHistory),
                 ("Home metadata-only source/directory/date/outcome projection", HomeMetadataProjection),
-                ("Home click does not depend on hidden native selection changing", HomeUnchangedSelectionClick),
+                ("Home click routes directly from accepted session metadata", HomeUnchangedSelectionClick),
                 ("Home actual root action consumer, confirmation/current/source guards and metadata-only refresh", HomeRootActions),
                 ("blank to session restores one finite centered content column", BlankToSessionColumn),
             })

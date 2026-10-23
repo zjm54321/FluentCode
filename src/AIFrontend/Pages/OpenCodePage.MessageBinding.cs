@@ -55,7 +55,7 @@ public sealed partial class OpenCodePage
 
     private string? KnownSessionDirectory(string sessionId)
     {
-        var directory = _sessionItems.TryGetValue(sessionId, out var item) && HomeSessionMetadata.TryGetValue(item, out var info)
+        var directory = _sessionItems.TryGetValue(sessionId, out var info)
             ? info.Location?.Directory : null;
         return string.IsNullOrWhiteSpace(directory) ? null : directory;
     }

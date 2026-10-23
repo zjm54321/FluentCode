@@ -64,6 +64,14 @@ internal static class Program
             System.Globalization.CultureInfo.InvariantCulture);
         Check(Token("OpenCodeSessionPaneLength") == OpenCodeSidebarLayout.LeftWidth
             && Token("OpenCodeInsightsPaneLength") == OpenCodeSidebarLayout.RightWidth, "threshold width budget matches current pane tokens");
+        var page = XDocument.Load(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
+        XNamespace ui = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var pane = page.Descendants(ui + "SplitView").Single(e => (string?)e.Attribute(x + "Name") == "SessionPane");
+        var sidebarContent = pane.Element(ui + "SplitView.Pane")!.Elements().Single();
+        Check(sidebarContent.Elements().Select(e => (string?)e.Attribute(x + "Name")).SequenceEqual(new[] { "LeftAgentTreeSlot", "LeftBottomCardSlot" }),
+            "left sidebar contains only agent tree and control card");
+        Check(!page.Descendants().Any(e => new[] { "SessionList", "NewSessionButton", "RefreshSessionsButton", "SessionsHint", "LoadMoreSessionsButton" }
+            .Contains((string?)e.Attribute(x + "Name"))), "native sidebar list/buttons/hints are deleted, not hidden");
         Console.WriteLine($"PASS {_checks} sidebar policy/token checks (headless; native visuals require user checks).");
     }
 }

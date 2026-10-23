@@ -35,7 +35,7 @@ public sealed partial class OpenCodePage
     private string? _blankWasActiveFor,_convertNewSessionTabTo;private bool _activatingSessionTab;
     private bool _newSessionDraftActive,_newSessionCreatePending,_homeActive=true,_pageActive;
     private int _pageGeneration=1,_sessionGeneration,_sourceGeneration=1;private long _sourceRevision=1;
-    private string? _selectedSessionId;private bool _sessionMissing,_suppressSessionSelection;
+    private string? _selectedSessionId;private bool _sessionMissing;
     private OpenCodePageSource? _source;private OpenCodeClient? _client;
     private OpenCodeComposerController? _composerController;
     private OpenCodeComposerView? _composerView;
@@ -58,7 +58,6 @@ public sealed partial class OpenCodePage
     private sealed class HomeStub{internal OpenCodeHomeProjectKey? SelectedProject;}
     private readonly HomeStub _homeView=new();
     private CancellationTokenSource? _sessionCts;private CancellationTokenSource? _pageCts=new();
-    private readonly Button NewSessionButton=new();
     private enum ConnectionState{Connected,Unknown}
     private void SetConnectionState(ConnectionState state){}
     private void RefreshSessionStateUi(){}
@@ -68,8 +67,7 @@ public sealed partial class OpenCodePage
     private bool HasPendingNativeAction()=>_nativeActionOwner is not null||_nativeDialogPending;
     internal int SubmissionRequests;
     private void RequestComposerSubmission()=>SubmissionRequests++;
-    private readonly Dictionary<string,ListViewItem> _sessionItems=new(StringComparer.Ordinal);
-    private static readonly ConditionalWeakTable<ListViewItem,OpenCodeSessionInfo> HomeSessionMetadata=new();
+    private readonly Dictionary<string,OpenCodeSessionInfo> _sessionItems=new(StringComparer.Ordinal);
     private MessageBinding? _messageBinding;private List<OpenCodeMessage> _olderMessages=new(),_latestMessages=new();private bool _firstMessagesLoading;
     private sealed record SessionReturnTarget(string Id);
     private readonly ViewStub _conversationView=new(),_interactionsView=new();private readonly RecoveryStub _sessionRecoveryPanel=new();
@@ -92,7 +90,7 @@ public sealed partial class OpenCodePage
     private void ResetHomeSource(){_homeCancellation?.Cancel();_homeCancellation?.Dispose();_homeCancellation=null;_homeRuntimeSource=Guid.NewGuid().ToString("N");_blankPickerEpoch++;_blankPickerPending=false;}
     private void BeginHomeSource(){_homeCancellation=new();}
     internal readonly TabView SessionTabs=new();internal TabViewItem HomeTab=new();
-    internal readonly ListView SessionList=new();private readonly PaneStub SessionPane=new(),InsightsPane=new();
+    private readonly PaneStub SessionPane=new(),InsightsPane=new();
     internal readonly TextBox Composer=new();internal readonly DispatcherQueue DispatcherQueue=new();
     internal string LastLayout="";internal int Invalidations,MessageLoads,Binds,Tracking,Requests,Notices,ReturnClears;
     internal string? Current=>_selectedSessionId;internal bool Home=>_homeActive;internal bool Blank=>_newSessionDraftActive;
@@ -149,7 +147,7 @@ public sealed partial class OpenCodePage
     internal void RecordOnly(string text){Composer.Text=text;_composerView!.RecordOnly();}
     internal void FlushInput()=>_composerView!.PrepareClientTextApplication();
     internal Task Directory(string id,string directory)=>SwitchToSessionAsync(id,directory:directory);
-    internal void UnknownDirectory(string id){var item=_sessionItems[id];HomeSessionMetadata.Remove(item);HomeSessionMetadata.Add(item,new(){Id=id});}
+    internal void UnknownDirectory(string id)=>_sessionItems[id]=new(){Id=id};
     internal void ConfirmDirectory(string directory){_messageBinding=_messageBinding! with{Directory=directory};BindComposer();}
     internal async Task File(string name,byte[] bytes,bool reconcile=true)
     {
@@ -213,7 +211,6 @@ public sealed partial class OpenCodePage
         HomeTab.Header=new FontIcon{Glyph=(string)xml.Descendants(ns+"FontIcon").Single().Attribute("Glyph")!};
         SessionTabs.TabItems.Add(HomeTab);SessionTabs.SelectedItem=HomeTab;
         SessionTabs.SelectionChanged+=SessionTabs_SelectionChanged;SessionTabs.TabItemsChanged+=SessionTabs_TabItemsChanged;
-        SessionList.SelectionChanged+=SessionList_SelectionChanged;
         if(connected){_source=new("tabs-source",1,CreateClient);_client=_source.CreateClient();EnsureDraftSourceEpoch(_source);}
         _fixtureAppSource=_source;
         _composerController=new(OwnsComposerBinding);
@@ -229,15 +226,14 @@ public sealed partial class OpenCodePage
     internal void UnloadFixture()=>_pageActive=false;
     internal void AddSession(string id)
     {
-        var item=new ListViewItem{Tag=id,Content=new StackPanel{Children={new TextBlock{Text=id},new TextBlock{Text=id}}}};
-        _sessionItems[id]=item;HomeSessionMetadata.Add(item,new(){Id=id,Location=new(){Directory="/project"}});SessionList.Items.Add(item);
+        _sessionItems[id]=new(){Id=id,Title=id,Location=new(){Directory="/project"}};
         CreateSessionTab(id);
     }
     internal TabViewItem Session(string id)=>_sessionTabs[id].Item;
     internal void RenameSession(string id,string title)
     {
-        var row=_sessionItems[id];((StackPanel)row.Content!).Children.OfType<TextBlock>().First().Text=title;
-        DecorateSessionItem(row); // Actual current-source title-cache/tab decoration, not a copied retirement algorithm.
+        _sessionItems[id]=_sessionItems[id] with {Title=title};
+        OnSessionCatalogChanged();
     }
     internal void Select(object item)=>SessionTabs.SelectedItem=item;
     internal void Close(TabViewItem item)=>SessionTabs_TabCloseRequested(SessionTabs,new(){Tab=item});
@@ -251,7 +247,7 @@ public sealed partial class OpenCodePage
     internal void InsertSessionAt(string id,int index)=>CreateSessionTab(id,index);
     internal void ConvertBlank(string id){RecordCreatedBlankSlot(_source!,_blankPreferences!,new(){Id=id,Location=new(){Directory="/project"}});ConvertCreatedBlankTab(_activeBlankSlotId!.Value,id,true);}
     internal void BackgroundHighlight(string id)
-    {var old=_suppressSessionSelection;_suppressSessionSelection=true;try{SessionList.SelectedItem=_sessionItems[id];}finally{_suppressSessionSelection=old;}}
+    {OnSessionCatalogChanged();}
     internal Func<bool> CaptureBindingFence()
     {var s=_source!;var c=_client!;var r=_sourceRevision;var g=_sourceGeneration;var sg=_sessionGeneration;return()=>IsCurrentBinding(s,r,g,c,sg);}
     internal void ReplaceSource(bool sameIdentity=false)
@@ -259,9 +255,7 @@ public sealed partial class OpenCodePage
         var identity=sameIdentity?_source!.Identity:"new-source";InvalidateDraftSourceEpoch();
         // Source/client transport boundary: the production invalidation also clears current list/binding.
         _source=new(identity,++_sourceRevision,CreateClient);_client=_source.CreateClient();_sourceGeneration++;
-        _selectedSessionId=null;_messageBinding=null;_sessionMissing=false;_sessionItems.Clear();SessionList.Items.Clear();
-        var suppress=_suppressSessionSelection;_suppressSessionSelection=true;
-        try{SessionList.SelectedItem=null;}finally{_suppressSessionSelection=suppress;}
+        _selectedSessionId=null;_messageBinding=null;_sessionMissing=false;_sessionItems.Clear();
     }
     internal Task SwitchAgain(string id)=>SwitchToSessionAsync(id);
     internal void MoveBeforeHome(TabViewItem item)
@@ -289,10 +283,12 @@ public sealed partial class OpenCodePage
     private void OnBlankLabelsRefreshed(){if(!_blankPickerPending){_agentIdle?.TrySetResult();_agentIdle=null;if(_activeBlankSlotId is{} id&&_defaultsReady.TryGetValue(id,out var ready))ready.TrySetResult();}}
     private void InsertSessionItemFirst(OpenCodeSessionInfo info)
     {
-        if(info.Id is not{} id||_sessionItems.ContainsKey(id))return;
-        var item=new ListViewItem{Tag=id,Content=new StackPanel{Children={new TextBlock{Text=info.Title??id}}}};
-        _sessionItems[id]=item;HomeSessionMetadata.Add(item,info);SessionList.Items.Add(item);
+        if(info.Id is not{} id)return;
+        _sessionItems[id]=info;
+        OnSessionCatalogChanged();
     }
+    partial void OnSessionCatalogChanged();
+    private void QueueNewSessionListRefresh(){}
     private void RefreshComposerView()=>_composerView?.RequestRender();
     private void CheckNativeEditorOwnership(){}private void InvalidateNativeActionIfBindingLost(){}
     private void InvalidateLocalSubmissionOwner()=>_isSending=false;

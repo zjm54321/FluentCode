@@ -13,25 +13,7 @@ using Windows.Foundation.Collections;
 
 namespace AIFrontend.Pages;
 
-/// <summary>
-/// 重设计 v3 §2（L1）：会话标签栏、左侧会话面板与右侧概况面板的接线。
-/// </summary>
-/// <remarks>
-/// <para>
-/// TabView 只当“会话切换器”：标签没有内容，页面只有一套时间线/输入区。用户激活标签 =
-/// 设置 <c>SessionList.SelectedItem</c>，由既有 <c>SessionList_SelectionChanged</c> → <c>SwitchToSessionAsync</c>
-/// 受保护路径完成切换（草稿保护、代际、取消全部沿用）；切换未发生时标签选择回退到当前会话的标签。
-/// 本文件从不直接调用 SwitchToSessionAsync，也不改动会话状态机。
-/// </para>
-/// <para>
-/// 反向同步：SessionList 的任何选中变化（含重建/通知/新建等受抑制的程序化选中）都镜像到标签栏；
-/// 用户刚关闭的当前会话在同一会话代际内不会因列表重建的“重新高亮”而自动重新打开。
-/// 子会话（subagent）在当前标签内导航：SessionList 选中被清空时标签保持不变。
-/// </para>
-/// <para>
-/// 会话面板（SplitView Overlay）关闭时 SessionList 仍在可视树中（Pane 内容只折叠，不卸载）。
-/// </para>
-/// </remarks>
+/// <summary>Session tabs mirror accepted bindings and navigate through guarded SwitchToSessionAsync.</summary>
 public sealed partial class OpenCodePage
 {
     private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, ProgressRing working, Ellipse attention, OpenCodeWorkingShimmer shimmer)
@@ -115,17 +97,8 @@ public sealed partial class OpenCodePage
         _sessionTabsInitialized = true;
         VisualStateManager.GoToState(this, _homeActive ? "HomeLayout" : _newSessionDraftActive ? "NewSessionLayout" : "SessionLayout", false);
 
-        SessionList.SelectionChanged += SessionTabs_SessionListSelectionChanged;
-        SessionList.Items.VectorChanged += SessionTabs_SessionItemsChanged;
-        foreach (var item in SessionList.Items.OfType<ListViewItem>())
-        {
-            DecorateSessionItem(item);
-        }
-
-        if (!_homeActive && SessionList.SelectedItem is ListViewItem { Tag: string selected })
-        {
+        if (!_homeActive && _selectedSessionId is { } selected)
             MirrorSessionSelection(selected, userInitiated: false);
-        }
 
         UpdateSessionTabsEmptyState();
     }
@@ -163,65 +136,6 @@ public sealed partial class OpenCodePage
         return null;
     }
 
-    // ------------------------------------------------------------------
-    // 会话行外观（仅呈现；行的结构与选择逻辑仍由 CreateSessionItem / SessionStateUi 负责）
-    // ------------------------------------------------------------------
-
-    private void SessionTabs_SessionItemsChanged(IObservableVector<object> sender, IVectorChangedEventArgs e)
-    {
-        if (e.CollectionChange is not (CollectionChange.ItemInserted or CollectionChange.ItemChanged))
-        {
-            return;
-        }
-
-        var index = (int)e.Index;
-        if (index >= 0 && index < sender.Count && sender[index] is ListViewItem item)
-        {
-            DecorateSessionItem(item);
-        }
-    }
-
-    private void DecorateSessionItem(ListViewItem item)
-    {
-        if (item.Tag is not string id)
-        {
-            return;
-        }
-
-        var panel = item.Content as StackPanel
-            ?? (item.Content as Grid)?.Children.OfType<StackPanel>().FirstOrDefault();
-        if (panel is null || panel.Children.Count < 2
-            || panel.Children[0] is not TextBlock title || panel.Children[1] is not TextBlock idLine)
-        {
-            return;
-        }
-
-        title.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodyStrongStyleKey);
-        // v3 §2.2：会话 ID 不再常显，移入 Tooltip；AutomationProperties.Name 仍为“标题（ses_…）”。
-        idLine.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        idLine.Visibility = Visibility.Collapsed;
-        ToolTipService.SetToolTip(item, title.Text + Environment.NewLine + id);
-        item.Padding = new Thickness(12, 8, 12, 8);
-
-        _sessionTitles[id] = title.Text;
-        if (_sessionTabs.TryGetValue(id, out var tab))
-        {
-            ApplySessionTabState(tab);
-        }
-    }
-
-    partial void OnSessionStateRowCreated(string sessionId, ProgressRing working, Ellipse attention, TextBlock hint)
-    {
-        attention.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.AttentionDotStyleKey);
-        hint.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
-    }
-
-    /// <summary>会话行工作环：只着色（工作中且等待提问/权限 = 注意色），显示/隐藏仍由 SessionStateUi 判定。</summary>
-    partial void OnSessionStateRowToneApplied(ProgressRing working, SessionIndicatorTone tone)
-    {
-        OpenCodeToolTheme.Apply(working, OpenCodeToolTheme.Ring(IndicatorBrushKey(tone)));
-    }
-
     /// <summary>F6 工作环颜色（ThemeResource 前景样式，主题切换自动更新）：等待提问/权限 = 注意（黄），失败/中断 = 严重（红），其余 = 强调色。</summary>
     private static string IndicatorBrushKey(SessionIndicatorTone tone) => tone switch
     {
@@ -253,28 +167,6 @@ public sealed partial class OpenCodePage
             SessionIndicatorTone.Failed => "会话执行失败或已中断",
             _ => "会话工作中",
         });
-    }
-
-    // ------------------------------------------------------------------
-    // SessionList → 标签（镜像）
-    // ------------------------------------------------------------------
-
-    private void SessionTabs_SessionListSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // 既有 SessionList_SelectionChanged（XAML 注册在先）已同步完成切换的同步部分；这里只同步标签栏。
-        if (SessionList.SelectedItem is not ListViewItem { Tag: string sessionId })
-        {
-            return; // 子会话或列表外会话：保持当前标签。
-        }
-
-        var userInitiated = !_suppressSessionSelection;
-        if (userInitiated && _selectedSessionId != sessionId) { RestoreDraftSlotTabSelection(); return; }
-        if (userInitiated && SessionPane.IsPaneOpen)
-        {
-            DismissSidebarDrawers();
-        }
-
-        MirrorSessionSelection(sessionId, userInitiated);
     }
 
     private void MirrorSessionSelection(string sessionId, bool userInitiated)
@@ -402,7 +294,7 @@ public sealed partial class OpenCodePage
     }
 
     // ------------------------------------------------------------------
-    // 标签 → SessionList（经既有受保护选择路径）
+    // Tabs → guarded session navigation
     // ------------------------------------------------------------------
 
     private void SessionTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -435,41 +327,28 @@ public sealed partial class OpenCodePage
         ActivateSessionTab(sessionId);
     }
 
-    private void ActivateSessionTab(string sessionId)
+    private async void ActivateSessionTab(string sessionId)
     {
         if (_draftRecoveryPending) { RestoreDraftSlotTabSelection(); return; }
         if (_homeActive && SourceReady && !_sessionMissing && string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)
             && IsSameMessageBinding(sessionId, _messageBinding?.Directory))
         {
             if (!TryPrepareDraftSlotNavigation()) { RestoreDraftSlotTabSelection(); return; }
-            // Return to the already accepted current session without reselecting an unchanged ListView item.
+            // Return to the already accepted current session through its already accepted binding.
             OnSessionContextSelected(sessionId);
             MirrorSessionSelection(sessionId, userInitiated: false);
             BindComposer();
             UpdateSessionTabsEmptyState();
             return;
         }
-        if (_sessionItems.TryGetValue(sessionId, out var item))
+        if (_sessionItems.ContainsKey(sessionId))
         {
-            // 唯一切换入口：与用户点击会话面板中的行完全相同（SessionList_SelectionChanged → SwitchToSessionAsync）。
-            var previousActivating = _activatingSessionTab;
-            _activatingSessionTab = true; // 标签栏切换：空白“新会话”标签保留（不被转换）。
-            try
-            {
-                SessionList.SelectedItem = item;
-            }
-            finally
-            {
-                _activatingSessionTab = previousActivating;
-            }
-
-            SessionList.ScrollIntoView(item);
+            await SwitchToSessionAsync(sessionId,
+                onBound: () => MirrorSessionSelection(sessionId, userInitiated: true));
         }
         else
         {
-            ShowMessage(
-                InfoBarSeverity.Informational,
-                "无法切换到该会话",
+            ShowMessage(InfoBarSeverity.Informational, "无法切换到该会话",
                 "该会话不在当前已加载的会话列表中。请在首页刷新或加载更多后再打开。");
         }
 

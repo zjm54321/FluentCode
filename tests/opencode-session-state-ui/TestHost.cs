@@ -135,27 +135,15 @@ namespace AIFrontend.Pages
         private long _sourceRevision;
         private bool _pageActive;
         private string? _selectedSessionId;
-        private readonly Dictionary<string, ListViewItem> _sessionItems = new(StringComparer.Ordinal);
         public TestDispatcher DispatcherQueue { get; } = new();
-        // F6: the top horizontal progress bar is gone; row ring tones are reported through the production hook.
-        internal readonly List<(ProgressRing Ring, SessionIndicatorTone Tone)> RowTones = new();
-        partial void OnSessionStateRowToneApplied(ProgressRing working, SessionIndicatorTone tone) => RowTones.Add((working, tone));
         internal TextBlock SessionStateHint { get; } = new() { Visibility = Visibility.Collapsed };
-        internal IReadOnlyDictionary<string, ListViewItem> Items => _sessionItems;
+        internal IReadOnlyDictionary<string, OpenCodeSessionUiState> States = new Dictionary<string, OpenCodeSessionUiState>();
+        partial void OnSessionUiStatesApplied(IReadOnlyDictionary<string, OpenCodeSessionUiState> states) => States = states;
         public OpenCodePage() => InitializeSessionStateUi();
         internal void Bind(OpenCodePageSource source, string viewed)
         { _source = source; _sourceRevision = source.Revision; _selectedSessionId = viewed; }
         internal void Activate() { _pageActive = true; Load(); }
         internal void Deactivate() { _pageActive = false; Unload(); }
         internal void Refresh() => RefreshSessionStateUi();
-        // List fixtures, not reproductions of Rebuild/Append algorithms. Trigger their UI hook directly.
-        internal ListViewItem Add(string id)
-        {
-            var item = new ListViewItem { Content = new StackPanel() };
-            _sessionItems.Add(id, item);
-            RefreshSessionStateUi();
-            return item;
-        }
-        internal void Remove(string id) { _sessionItems.Remove(id); RefreshSessionStateUi(); }
     }
 }

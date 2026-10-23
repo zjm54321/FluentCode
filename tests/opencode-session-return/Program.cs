@@ -36,12 +36,12 @@ internal static class Program
         {
             f.Page.BlankTabActive = true;
             Check(f.Page.Rebuild(new() { Session("ses_root"), Session("ses_other") }) is null
-                && f.Page.SessionList.SelectedItem is null && f.Page.Viewed is null, "blank.rebuild-no-auto-select");
+                && f.Page.Catalog.Count == 2 && f.Page.Viewed is null, "blank.rebuild-no-auto-select");
         }
         using (var f = new Fixture("endpoint_blank_" + Guid.NewGuid().ToString("N")))
         {
             Check(f.Page.Rebuild(new() { Session("ses_root"), Session("ses_other") }) == "ses_root"
-                && f.Page.SessionList.SelectedItem is ListViewItem { Tag: "ses_root" }, "blank.inactive-rebuild-still-auto-selects-first");
+                && f.Page.Catalog.ContainsKey("ses_root"), "blank.inactive-rebuild-still-auto-selects-first");
             Check(f.Page.NewSessionTabRequests == 0, "blank.sessions-present-no-blank-tab-request");
         }
         // A6: zero root sessions → Home, never an automatically manufactured blank tab.
@@ -113,13 +113,13 @@ internal static class Program
             await EnterChild(f, offPage);
             Check(f.Http.Paths.SequenceEqual(new[] { "/api/session/ses_child", "/api/session/ses_mid" }),
                 "card.ancestry-only-no-extra-sidebar-get");
-            Check(!f.Page.SessionList.Items.Cast<ListViewItem>().Any(i => Equals(i.Tag, "ses_child")), "card.child-not-in-sidebar");
+            Check(!f.Page.Catalog.ContainsKey("ses_child"), "card.child-not-in-sidebar");
             var content = RenderTool(f.Page, "msg_child");
             var element = f.Page.Conversation.Children[0];
             var context = f.Page.ContextIdentity;
             var version = f.Page.SessionGeneration;
             Check(f.Page.Rebuild(new() { Session("ses_other") }) is null && f.Page.Viewed == "ses_child", "card.refresh-preserves-child");
-            Check(f.Page.SessionList.SelectedItem is null && ReferenceEquals(context, f.Page.ContextIdentity), "card.refresh-preserves-return-context");
+            Check(ReferenceEquals(context, f.Page.ContextIdentity), "card.refresh-preserves-return-context");
             Check(ReferenceEquals(element, f.Page.Conversation.Children[0]) && content.Element.IsExpanded && content.DisposeCount == 0,
                 "card.refresh-keeps-content-and-expansion");
             await f.Page.Switch("ses_child");
@@ -127,7 +127,7 @@ internal static class Program
             var count = f.Http.Paths.Count;
             await f.Page.Return();
             Check(f.Http.Paths.Skip(count).SequenceEqual(new[] { "/api/session/ses_root" }), "return.exactly-one-origin-get");
-            Check(f.Page.Viewed == "ses_root" && f.Page.SessionList.SelectedItem is null, "return.offpage-root-allowed");
+            Check(f.Page.Viewed == "ses_root" && !f.Page.Catalog.ContainsKey("ses_root"), "return.offpage-root-allowed");
             Check(content.DisposeCount == 1 && f.Page.Conversation.Children.Count == 0, "return.real-clear-after-success");
             Check(f.Page.Label.Length == 0 && f.Page.SessionReturnButton.Visibility == Visibility.Collapsed, "return.root-hides-entry");
         }

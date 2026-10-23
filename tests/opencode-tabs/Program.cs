@@ -51,7 +51,7 @@ internal static class Program
         var rollback=Page();rollback.AddSession("a");rollback.AddSession("missing");rollback.Select(rollback.Session("a"));rollback.ForgetMetadata("missing");rollback.Select(rollback.Session("missing"));
         Check(rollback.Current=="a"&&ReferenceEquals(rollback.SessionTabs.SelectedItem,rollback.Session("a")),"missing-target activation rolls back to real current tab");
         rollback.Close(rollback.Session("a"));Check(rollback.Home&&ReferenceEquals(rollback.SessionTabs.SelectedItem,rollback.HomeTab),"rejected adjacent activation after current close falls to real Home layout, not selected-Home/old-content mismatch");
-        var bg=Page();bg.AddSession("a");bg.BackgroundHighlight("a");Check(bg.Home&&bg.Current is null&&ReferenceEquals(bg.SessionTabs.SelectedItem,bg.HomeTab),"background SessionList highlight while Home cannot navigate or activate tab");
+        var bg=Page();bg.AddSession("a");bg.BackgroundHighlight("a");Check(bg.Home&&bg.Current is null&&ReferenceEquals(bg.SessionTabs.SelectedItem,bg.HomeTab),"background catalog update while Home cannot navigate or activate tab");
         bg.DirectRemove("a");OnlyHome(bg,"HomeActions low-level real session removal preserves actual Home");
         var other=Page();other.AddSession("a");other.AddSession("b");var closedOther=other.Session("b");other.New();other.HomeNow();other.CloseOthers("a");
         Check(other.SessionTabs.TabItems.Contains(other.HomeTab)&&other.SessionTabs.TabItems.Contains(other.BlankTab!)&&!other.SessionTabs.TabItems.Contains(closedOther),"existing close-other-session semantics preserve Home and blank, do not invent CloseAll");

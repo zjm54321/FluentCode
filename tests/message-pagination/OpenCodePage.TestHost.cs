@@ -154,10 +154,7 @@ namespace AIFrontend.Pages
         internal bool TestHomeEvent(long revision, AIFrontend.Pages.OpenCode.OpenCodeHomeProjectKey key) => HomeEventCurrent(revision, key);
         internal void TestHomeDirectory(string directory) { _homeActive = true; _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory); }
         internal void TestReplaceHomeSource() { _homeRuntimeSource = "runtime-b"; _homeRevision++; }
-        // Native selector and existing SwitchToSessionAsync are explicit boundaries here. The actual
-        // extracted Home router must call that switch even when the hidden selected object is unchanged.
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
-        private object? _testHiddenSelection;
+        // The extracted Home router calls the guarded switch directly from accepted DTO metadata.
         private string? _homeMessage;
         internal readonly List<string> HomeSwitchRequests = new();
         internal int HomeMirrors, HomeProjectionRequests;
@@ -197,27 +194,27 @@ namespace AIFrontend.Pages
         private string? RebuildSessionList(List<OpenCodeSessionInfo> sessions)
         {
             MetadataApplications++; _sessionItems.Clear();
-            foreach (var info in sessions) { var item = new object(); _sessionItems[info.Id!] = item; HomeSessionMetadata.Add(item, info); }
+            foreach (var info in sessions) _sessionItems[info.Id!] = info;
             CaptureHomeActionRoots(); return null;
         }
         internal Task TestRunHomeAction(long revision, string directory, string id, OpenCodeHomeSessionAction action)
             => RunHomeSessionActionAsync(revision, new(new(_homeRuntimeSource, directory), new() { Id = id }), action);
         internal void TestAcceptHomeRoot(string id, string directory, string title)
         {
-            TestHomeDirectory(directory); var item = new object(); _sessionItems[id] = item;
-            HomeSessionMetadata.Add(item, new() { Id = id, Title = title, Location = new() { Directory = directory } });
+            TestHomeDirectory(directory);
+            _sessionItems[id] = new() { Id = id, Title = title, Location = new() { Directory = directory } };
             CaptureHomeActionRoots();
         }
         internal void TestHomeCosmeticRefresh() { _homeRevision++; CaptureHomeActionRoots(); }
         internal void TestHomeSelected(string id) { _selectedSessionId = id; _sessionCts = new(); _sessionTabs[id] = new(); }
-        internal string? TestHomeRootTitle(string id) => _sessionItems.TryGetValue(id, out var item) && HomeSessionMetadata.TryGetValue(item, out var info) ? info.Title : null;
+        internal string? TestHomeRootTitle(string id) => _sessionItems.TryGetValue(id, out var info) ? info.Title : null;
         internal bool TestHomeBusy => _homeActionOwner is not null;
         internal string? TestHomeStatus => _homeSessionsMessage ?? _homeMessage;
         internal void TestHomeResetActionScope() { _homeActionOwner = null; TestReplaceHomeSource(); }
         internal async Task<bool> TestHomeComposerProtected(string id)
         { using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(_source!.Identity, id); return !lease.CanSubmitComposer(); }
         private void MirrorSessionSelection(string sessionId, bool userInitiated) { HomeMirrors++; _homeActive = false; }
-        private void SelectSessionItem(string sessionId) { if (_sessionItems.TryGetValue(sessionId, out var item)) _testHiddenSelection = item; }
+        private void SelectSessionItem(string sessionId) { } // Native tab mirror boundary, not a navigation command.
         private sealed record SessionReturnTarget(string Id);
         private void ClearSessionReturnContext() { _sessionReturnContext = null; }
         private void InstallSessionReturnContext(SessionReturnTarget? target) { }
@@ -243,14 +240,15 @@ namespace AIFrontend.Pages
         {
             _homeActive = true; _selectedSessionId = null; _sessionCts = null;
             TestHomeDirectory(directory);
-            var item = new object(); _sessionItems[id] = item; _testHiddenSelection = item;
-            HomeSessionMetadata.Add(item, new() { Id = id, Location = new() { Directory = directory } });
+            var item = new OpenCodeSessionInfo { Id = id, Location = new() { Directory = directory } };
+            _sessionItems[id] = item;
             return item;
         }
         internal Task TestOpenHome(long revision, string directory, string id) => OpenHomeSessionAsync(revision, new(_homeRuntimeSource, directory), id);
         internal void TestHomeAction(long revision, string directory, string id, OpenCodeHomeSessionAction action)
             => CopyHomeSessionId(revision, new(_homeRuntimeSource, directory), id, action);
-        internal bool TestHiddenSelectionIs(object value) => ReferenceEquals(_testHiddenSelection, value);
+        internal bool TestHomeMetadataIs(object value) => value is OpenCodeSessionInfo { Id: { } id }
+            && _sessionItems.TryGetValue(id, out var info) && ReferenceEquals(info, value);
         internal void TestHomeUnavailable() { _homeActive = true; _testSourceReady = false; }
         internal bool TestHomeUnavailableExplained => !string.IsNullOrEmpty(_homeMessage) && HomeProjectionRequests > 0;
 

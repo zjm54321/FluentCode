@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Models;
@@ -20,7 +19,6 @@ public sealed partial class OpenCodePage
 {
     private readonly SettingsService _homeSettings;
     private readonly OpenCodeHomeView _homeView = new();
-    private static readonly ConditionalWeakTable<ListViewItem, OpenCodeSessionInfo> HomeSessionMetadata = new();
     private readonly Dictionary<string, OpenCodeHomeProject> _homeProjects = new(StringComparer.Ordinal);
     private string _homeRuntimeSource = Guid.NewGuid().ToString("N");
     private long _homeRevision;
@@ -33,11 +31,21 @@ public sealed partial class OpenCodePage
     private CancellationTokenSource? _homeCancellation;
     private ContentDialog? _homeDialog;
 
+    partial void OnSessionCatalogChanged()
+    {
+        foreach (var (id, info) in _sessionItems)
+        {
+            _sessionTitles[id] = string.IsNullOrWhiteSpace(info.Title) ? "未命名会话" : info.Title;
+            if (_sessionTabs.TryGetValue(id, out var tab)) ApplySessionTabState(tab);
+        }
+        QueueHomeProjection();
+        QueueNewSessionListRefresh();
+    }
+
     private void InitializeHomePage()
     {
         InitializePinnedHomeTab();
         HomePageHost.Children.Add(_homeView);
-        SessionList.Items.VectorChanged += (_, _) => QueueHomeProjection();
         Loaded += (_, _) => { if (_homeActive) ShowHomePage(); };
         Unloaded += (_, _) => ResetHomeSource();
         ActualThemeChanged += (_, _) => UpdateWordmark();
@@ -99,7 +107,7 @@ public sealed partial class OpenCodePage
     private bool HomeSessionActionTargetCurrent(long revision, OpenCodeHomeProjectKey project, string? sessionId)
     {
         return HomeEventCurrent(revision, project) && sessionId is { Length: > 0 }
-            && _sessionItems.TryGetValue(sessionId, out var item) && HomeSessionMetadata.TryGetValue(item, out var info)
+            && _sessionItems.TryGetValue(sessionId, out var info)
             && info.Id == sessionId && info.ParentId is null && info.Location?.Directory == project.Directory;
     }
 
@@ -140,12 +148,10 @@ public sealed partial class OpenCodePage
             activated = true;
             // Mirror only AFTER the existing switch has installed the real binding. No fake current session.
             MirrorSessionSelection(sessionId, userInitiated: true);
-            SelectSessionItem(sessionId);
         }
         try
         {
-            // Same actual method used by SessionList_SelectionChanged; assigning an unchanged hidden
-            // SelectedItem does not raise that event. Never use a native selection event as a command bus.
+            // Navigate directly through the draft/source/binding guards.
             await SwitchToSessionAsync(sessionId, onBound: MirrorAcceptedSelection, directory: project.Directory);
             if (!activated && _sessionCts is not null) MirrorAcceptedSelection(); // Existing accepted session can return before onBound.
         }
@@ -256,9 +262,9 @@ public sealed partial class OpenCodePage
     {
         var rows = new List<OpenCodeHomeSession>();
         if (SourceReady)
-            foreach (var item in _sessionItems.Values)
+            foreach (var info in _sessionItems.Values)
             {
-                if (!HomeSessionMetadata.TryGetValue(item, out var info) || !IsRootSession(info)
+                if (!IsRootSession(info)
                     || info.Location?.Directory is not { Length: > 0 } directory) continue;
                 if (!_homeProjects.ContainsKey(directory)) RememberHomeProject(directory, null, info.ProjectId);
                 _sessionTabStates.TryGetValue(info.Id!, out var state);

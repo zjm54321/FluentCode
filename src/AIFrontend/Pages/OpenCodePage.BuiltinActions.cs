@@ -104,7 +104,7 @@ public sealed partial class OpenCodePage
                     break;
                 case OpenCodeComposerClientActionKind.ChooseSession:
                     // §7: /sessions opens (or activates) the single blank "新会话" tab, whose list opens a session
-                    // only through the normal guarded SessionList selection. Deferred: never re-enter binding here.
+                    // only through the normal guarded session navigation. Deferred: never re-enter binding here.
                     RequestNewSessionTab();
                     break;
                 case OpenCodeComposerClientActionKind.ChooseAgent:
@@ -390,7 +390,6 @@ public sealed partial class OpenCodePage
         var originBlank = preferences is not null && _blankTabs.TryGetValue(preferences.BlankSlotId, out var blank) ? blank : null;
         var originSlot = originBlank?.Slot;
         if (originSlot is not null) originSlot.CreateOperation = operation;
-        NewSessionButton.IsEnabled = false;
         Task<OpenCodeSessionInfo>? pending = null;
         try
         {
@@ -457,7 +456,6 @@ public sealed partial class OpenCodePage
             if (_newSessionOperation == operation)
             {
                 _newSessionOperation = null;
-                if (_pageActive) NewSessionButton.IsEnabled = SourceReady;
             }
         }
     }

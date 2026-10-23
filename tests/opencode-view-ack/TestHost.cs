@@ -118,8 +118,7 @@ namespace AIFrontend.Pages
         private CancellationTokenSource? _pageCts, _sessionCts;
         private OpenCodeConversationView _conversationView = new();
         private readonly Microsoft.UI.Xaml.Controls.ScrollViewer MessageScroll = new();
-        private readonly Dictionary<string, object> _sessionItems = new();
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
+        private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new();
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
         private readonly Dictionary<string, string> _lastIdleBySession = new();
         private const int MaxScrollSettlePasses = 3;

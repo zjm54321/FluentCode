@@ -56,7 +56,7 @@ $page = [IO.File]::ReadAllText($pagePath)
 $names = @('SourceReady', 'IsCurrentBindingFields', 'IsCurrentBinding', 'CreateOperationToken', 'TryStartRead', 'EnterGateAsync',
     'SendStopButton_Click', 'ShouldStopSelectedSession', 'TryHandleComposerEnter', 'Composer_KeyDown',
     'Composer_PreviewKeyDown', 'Composer_KeyUp', 'Composer_LostFocus', 'Composer_TextChanged', 'UpdateComposerButtons',
-    'InterruptSelectedSessionAsync', 'NewSessionButton_Click', 'OrderMessages', 'ObserveExecutionState',
+    'InterruptSelectedSessionAsync', 'OrderMessages', 'ObserveExecutionState',
     'SettleInteraction', 'HandleProtectedPermissionAtSubmit', 'HandleProtectedFormAtSubmit', 'ApplyNavigationResult')
 $members = @()
 foreach ($name in $names) {

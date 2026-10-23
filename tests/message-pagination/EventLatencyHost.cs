@@ -23,7 +23,7 @@ public sealed partial class OpenCodePage
     private readonly ConcurrentQueue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _eventQueue = new();
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new();
     private long _liveStatusVersion;
-    private readonly Dictionary<string, object> _sessionItems = new();
+    private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new();
     internal int ActivityRefreshes;
     private void RefreshComposerSessionActivity() => ActivityRefreshes++;
     private void RefreshSessionStateUi() { }

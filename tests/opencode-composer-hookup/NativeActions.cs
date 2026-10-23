@@ -95,7 +95,7 @@ internal static class NativeTests
         {
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseSession, "sessions");
             Check(f.Page.InvokeNative(OpenCodeComposerClientActionKind.NewSession), "synchronous Accepted from typed event");
-            Check(f.Page.NewTabRequests == 1 && f.Page.SessionFocus == 0 && f.Http.Posts == 0, "ticket dispatch ignores forged display Kind and opens the blank session tab (L2)");
+            Check(f.Page.NewTabRequests == 1 && f.Http.Posts == 0, "ticket dispatch ignores forged display Kind and opens the blank session tab (L2)");
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseAgent, "agents"); await f.Page.RunNative();
             Check(f.Page.AgentOpens == 1 && f.Http.Posts == 0, "agents opens the selector's picker dialog without switch/HTTP");
             await f.Page.StageNative(OpenCodeComposerClientActionKind.NewSession, "new"); await f.Page.RunNative();
@@ -358,21 +358,17 @@ namespace AIFrontend.Pages
 {
     public sealed partial class OpenCodePage
     {
-        private readonly Button NewSessionButton = new();
-        private readonly ListView SessionList = new();
         private readonly ScrollViewer MessageScroll = new();
         private readonly XamlRoot XamlRoot = new();
         private readonly Dictionary<string, string> _lastIdleBySession = new();
         private const int MaxScrollSettlePasses = 3;
         // Unrelated message-page presentation/metadata surface; the real binding/pagination partials compile.
-        private readonly Dictionary<string, object> _sessionItems = new(StringComparer.Ordinal);
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
+        private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new(StringComparer.Ordinal);
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
         internal object MessagePageDiagnostics => (_isRefreshing, _refreshQueued, _refreshQueuedInitial,
             _refreshQueuedForceFollow, _refreshQueuedExplicit, _firstMessagesLoading, _messagesResponseEmpty, _messagesLoadError);
         internal int AckInvalidations;
         internal string? Created;
-        internal int SessionFocus => SessionList.Focuses;
         internal int NewTabRequests;
         partial void RequestNewSessionTab() => NewTabRequests++;
         internal int AgentOpens => _agentSelector.Opens;
@@ -431,7 +427,6 @@ namespace AIFrontend.Pages
         internal void OpenBlankTab() => OpenNewSessionTab();
         private bool _homeActive, _blankPickerPending;
         private string? _activeTabSessionId;
-        private bool _suppressSessionSelection;
         private long _blankPickerEpoch;
         private string? _blankMetadataRuntime,_blankMetadataDirectory;
         private Guid _blankMetadataDraft,_blankMetadataSlotId;

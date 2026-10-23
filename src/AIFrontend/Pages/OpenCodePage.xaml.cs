@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,7 +85,7 @@ public sealed partial class OpenCodePage : Page
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(12);
 
     private readonly OpenCodeConversationView _conversationView = new();
-    private readonly Dictionary<string, ListViewItem> _sessionItems = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new(StringComparer.Ordinal);
     private readonly List<string> _pendingAckIds = new();
     private readonly OpenCodeInteractionsView _interactionsView = new();
     private readonly OpenCodeSessionRecoveryPanel _sessionRecoveryPanel = new();
@@ -128,7 +129,6 @@ public sealed partial class OpenCodePage : Page
     private bool _refreshQueuedForceFollow;
     private bool _refreshQueuedExplicit;
     private bool _isSending;
-    private bool _suppressSessionSelection;
     private bool _isComposing;
     private bool _shiftDown;
     private bool _enterDown;
@@ -348,10 +348,8 @@ public sealed partial class OpenCodePage : Page
         _workingSessions.Clear();
         PermissionBar.IsOpen = false;
         _sessionItems.Clear();
-        SessionList.Items.Clear();
         ResetSessionPaginationState();
         ResetMessagePaginationState();
-        _suppressSessionSelection = false;
 
         // _selectedSessionId / _pendingAckIds 保留：重新进入本页后恢复选中并继续跟踪待投递条目。
     }
@@ -516,7 +514,6 @@ public sealed partial class OpenCodePage : Page
         DisposeOwnClient();
 
         _sessionItems.Clear();
-        SessionList.Items.Clear();
         ResetSessionPaginationState();
         ResetMessagePaginationState();
         if (retireDraftSource) _selectedSessionId = null;
@@ -583,7 +580,6 @@ public sealed partial class OpenCodePage : Page
         // 刷新开始即递增列表代际并暂停旧分页（隐藏旧游标、保留可见列表）：在途续页响应与该次
         // 刷新的旧首屏响应自此失效；仅当本次新首屏成功后才由 RestartSessionPagination 重建分页。
         var epoch = BeginSessionRefresh();
-        RefreshSessionsButton.IsEnabled = false;
         var homeReadAccepted = false;
 
         try
@@ -667,37 +663,13 @@ public sealed partial class OpenCodePage : Page
         }
         finally
         {
-            // UI 恢复同样按代际校验：已被更新的刷新取代时，按钮由那次刷新负责恢复。
+            // Only the accepted refresh updates the Home projection.
             if (_pageActive && epoch == _sessionListEpoch)
             {
-                RefreshSessionsButton.IsEnabled = true;
                 _homeSessionsMessage = homeReadAccepted ? null : "会话列表未能刷新；仅显示之前已加载的会话，可重试刷新。";
                 QueueHomeProjection();
             }
         }
-    }
-
-    private async void RefreshSessionsButton_Click(object sender, RoutedEventArgs e)
-    {
-        await RefreshSessionsAsync();
-    }
-
-    private async void NewSessionButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!SourceReady || !_pageActive || HasPendingNativeAction() || _isSending || _composerPickerPending) return;
-        var source = _source;
-        var client = _client;
-        if (source is null || client is null) return;
-        var revision = _sourceRevision;
-        var sourceGeneration = _sourceGeneration;
-        var generation = _pageGeneration;
-        var sessionGeneration = _sessionGeneration;
-        var sessionId = _selectedSessionId;
-        bool Owns() => _pageActive && ReferenceEquals(_source, source) && ReferenceEquals(_client, client)
-            && revision == _sourceRevision && sourceGeneration == _sourceGeneration && generation == _pageGeneration
-            && sessionGeneration == _sessionGeneration && sessionId == _selectedSessionId;
-        using var cancellation = CreateOperationToken(source);
-        await CreateNativeSessionAsync(source, client, Owns, Owns, cancellation.Token);
     }
 
     /// <summary>
@@ -710,160 +682,38 @@ public sealed partial class OpenCodePage : Page
     /// <summary>重建会话列表；返回需要切换到（并重新拉取消息）的会话 id（无则 null）。</summary>
     private string? RebuildSessionList(List<OpenCodeSessionInfo> sessions)
     {
-        // 清空/填充/选中同步全程抑制选择事件，避免重建过程被当作切换；结束后恢复进入前的值。
-        var previousSuppress = _suppressSessionSelection;
-        _suppressSessionSelection = true;
-        try
+        _sessionItems.Clear();
+        foreach (var session in sessions)
         {
-            _sessionItems.Clear();
-            SessionList.Items.Clear();
-
-            foreach (var session in sessions)
-            {
-                if (!IsRootSession(session) || session.Id is not { Length: > 0 } id || _sessionItems.ContainsKey(id))
-                {
-                    continue;
-                }
-
-                var item = CreateSessionItem(session);
-                _sessionItems[id] = item;
-                SessionList.Items.Add(item);
-            }
-
-            if (SessionList.Items.Count == 0)
-            {
-                SessionsHint.Text = "当前页没有主会话，可继续加载或创建。";
-                SessionsHint.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                SessionsHint.Text = string.Empty;
-                SessionsHint.Visibility = Visibility.Collapsed;
-            }
-
-            if (_selectedSessionId is { } selected)
-            {
-                // viewed 会话不要求出现在本页列表：命中才同步选中，缺项则清空列表选中并保持 viewed ID 不变。
-                if (_sessionItems.TryGetValue(selected, out var existing))
-                {
-                    SessionList.SelectedItem = existing;
-                    SessionList.ScrollIntoView(existing);
-                }
-                else
-                {
-                    SessionList.SelectedItem = null;
-                }
-
-                // 页面重新加载后（无会话级 CTS）需要重新拉取该会话的消息。
-                return !_homeActive && _sessionCts is null ? selected : null;
-            }
-
-            // 空白“新会话”标签显示中：不自动选中（用户明确选择或创建后才进入会话）。
-            if (!_homeActive && !_newSessionDraftActive &&
-                SessionList.Items.Count > 0 &&
-                SessionList.Items[0] is ListViewItem { Tag: string firstId } &&
-                _sessionItems.TryGetValue(firstId, out var firstItem))
-            {
-                // 无选中时自动选中最近更新的会话（列表按 order=desc 返回）。
-                SessionList.SelectedItem = firstItem;
-                SessionList.ScrollIntoView(firstItem);
-                return firstId;
-            }
-
-            // An empty catalog does not manufacture a blank draft. Home is the native fallback tab.
-            if (!_homeActive && !_newSessionDraftActive && _selectedSessionId is null && SessionList.Items.Count == 0)
-            {
-                ShowHomePage();
-            }
-
-            return null;
+            if (IsRootSession(session) && session.Id is { Length: > 0 } id)
+                _sessionItems.TryAdd(id, session);
         }
-        finally
+        OnSessionCatalogChanged();
+
+        // A viewed session need not occur in the current catalog page.
+        if (_selectedSessionId is { } selected)
+            return !_homeActive && _sessionCts is null ? selected : null;
+
+        if (!_homeActive && !_newSessionDraftActive)
         {
-            _suppressSessionSelection = previousSuppress;
+            if (_sessionItems.Count > 0) return _sessionItems.Keys.First();
+            ShowHomePage();
         }
-    }
-
-    private static ListViewItem CreateSessionItem(OpenCodeSessionInfo session)
-    {
-        var title = new TextBlock
-        {
-            Text = string.IsNullOrWhiteSpace(session.Title) ? "（未命名会话）" : session.Title,
-            FontWeight = FontWeights.SemiBold,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-        // 会话 ID 行：外观（内置 Caption 样式 + 次要文字色，ID 移入 Tooltip）由 OpenCodePage.Tabs.cs 在项加入列表时套用；
-        // 不再用 Opacity 降低对比。
-        var subtitle = new TextBlock
-        {
-            Text = session.Id ?? string.Empty,
-            FontSize = 12,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-
-        var item = new ListViewItem
-        {
-            Tag = session.Id,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Content = new StackPanel { Spacing = 2, Children = { title, subtitle } },
-        };
-        HomeSessionMetadata.Add(item, session);
-        AutomationProperties.SetName(item, title.Text + "（" + (session.Id ?? string.Empty) + "）");
-        return item;
+        return null;
     }
 
     private void InsertSessionItemFirst(OpenCodeSessionInfo session)
     {
-        if (!IsRootSession(session) || session.Id is not { Length: > 0 } id)
-        {
-            return;
-        }
-
-        if (_sessionItems.TryGetValue(id, out var existing))
-        {
-            SessionList.Items.Remove(existing);
-            _sessionItems.Remove(id);
-        }
-
-        var item = CreateSessionItem(session);
-        _sessionItems[id] = item;
-        SessionList.Items.Insert(0, item);
-        SessionsHint.Visibility = Visibility.Collapsed;
+        if (!IsRootSession(session) || session.Id is not { Length: > 0 } id) return;
+        _sessionItems[id] = session;
+        OnSessionCatalogChanged();
     }
 
+    // Existing navigation callers may mirror an accepted root binding, never command a switch.
     private void SelectSessionItem(string sessionId)
     {
-        var previousSuppress = _suppressSessionSelection;
-        _suppressSessionSelection = true;
-        try
-        {
-            if (_sessionItems.TryGetValue(sessionId, out var item))
-            {
-                SessionList.SelectedItem = item;
-                SessionList.ScrollIntoView(item);
-            }
-            else
-            {
-                SessionList.SelectedItem = null;
-            }
-        }
-        finally
-        {
-            _suppressSessionSelection = previousSuppress;
-        }
-    }
-
-    private async void SessionList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressSessionSelection)
-        {
-            return;
-        }
-
-        if (SessionList.SelectedItem is ListViewItem { Tag: string sessionId })
-        {
-            await SwitchToSessionAsync(sessionId);
-        }
+        if (_selectedSessionId == sessionId && _sessionItems.ContainsKey(sessionId))
+            MirrorSessionSelection(sessionId, userInitiated: false);
     }
 
     private async Task SwitchToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null, Action? onBound = null, string? directory = null,

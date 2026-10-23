@@ -18,11 +18,6 @@ internal static class Program
         => new(id, working, pending, protection, completion, viewed, reason);
     private static OpenCodeSessionUiSnapshot Snapshot(long version, params OpenCodeSessionUiState[] states)
         => new("endpoint", 1, version, ImmutableArray.CreateRange(states));
-    private static (ProgressRing Ring, Ellipse Dot) Indicators(ListViewItem item)
-    {
-        var panel = (StackPanel)((Grid)item.Content!).Children[1];
-        return ((ProgressRing)panel.Children[0], (Ellipse)panel.Children[1]);
-    }
     private static (App App, OpenCodePage Page, OpenCodePageSource Source) Fixture()
     {
         var source = new OpenCodePageSource("endpoint", 1);
@@ -33,52 +28,33 @@ internal static class Program
     }
     private static void Main()
     {
-        TruthAndStableElements(); ScopeLifecycleAndQueues(); ListDecorationAndSubscriptions();
+        TruthAndStableElements(); ScopeLifecycleAndQueues(); SnapshotSubscriptions();
         UnknownHintsAndScopeIsolation();
         IndicatorTones();
         VerifyExpiredHintCleanup(unload: true);
         VerifyExpiredHintCleanup(unload: false);
-        Console.WriteLine($"PASS: 5 session-state UI groups, {_assertions} assertions; real UI partial/State records; inert WinUI and App snapshot provider.");
+        Console.WriteLine($"PASS: 5 session-state UI groups without sidebar rows, {_assertions} assertions; real UI partial/State records; inert WinUI and App snapshot provider.");
         Console.WriteLine("BOUNDARIES: no real App mapping, source capability, WinUI layout/animation or list business algorithms are asserted here.");
     }
     private static void TruthAndStableElements()
     {
         var (app, page, _) = Fixture();
-        var root = page.Add("ses_root"); var unknown = page.Add("ses_unknown");
-        app.Snapshot = Snapshot(1, State("ses_child", true), State("ses_root", true, true),
-            State("ses_unknown", null, null, true, reason: OpenCodeStateUnknownReason.Expired));
+        app.Snapshot = Snapshot(1, State("ses_child", true), State("ses_root", true, true));
         app.Emit("endpoint", 1, 1); page.DispatcherQueue.Drain();
-        Check(!page.Items.ContainsKey("ses_child") && page.IsSelectedSessionWorkingIndicated, "truth.off-list-child-working");
-        var firstWrapper = root.Content; var ring = Indicators(root).Ring;
-        Check(ring.IsActive && Indicators(root).Dot.Visibility == Visibility.Visible, "truth.root-working-pending");
-        Check(!Indicators(unknown).Ring.IsActive && Indicators(unknown).Dot.Visibility == Visibility.Collapsed,
-            "truth.unknown-protection-no-indicators");
-        app.Snapshot = Snapshot(2, State("ses_child", false), State("ses_root", false, false,
-            completion: new("succeeded", 10), viewed: 9), State("ses_unknown", false, false, true));
-        app.Emit("endpoint", 1, 2); page.DispatcherQueue.Drain();
-        Check(!page.IsSelectedSessionWorkingIndicated,
-            "truth.false-hides-current-animation");
-        Check(!ring.IsActive && Indicators(root).Dot.Visibility == Visibility.Visible, "truth.unread-only-dot");
-        Check(Indicators(unknown).Dot.Visibility == Visibility.Collapsed, "truth.protection-not-pending");
-        app.Snapshot = Snapshot(3, State("ses_root", completion: new("succeeded", 10), viewed: 10));
-        app.Emit("endpoint", 1, 3); page.DispatcherQueue.Drain();
-        Check(Indicators(root).Dot.Visibility == Visibility.Collapsed, "truth.read-completion-no-dot");
-        Check(ReferenceEquals(root.Content, firstWrapper) && ReferenceEquals(Indicators(root).Ring, ring), "truth.row-decoration-stable");
+        Check(page.IsSelectedSessionWorkingIndicated && page.States["ses_root"].PendingAction == true, "truth.current-and-tabs-share-snapshot");
+        app.Snapshot = Snapshot(2, State("ses_child", false)); app.Emit("endpoint", 1, 2); page.DispatcherQueue.Drain();
+        Check(!page.IsSelectedSessionWorkingIndicated && !page.States.ContainsKey("ses_root"), "truth.new-snapshot-replaces-old");
         page.Deactivate();
     }
 
     private static void VerifyExpiredHintCleanup(bool unload)
     {
         var (app, page, source) = Fixture();
-        var row = page.Add("ses_cleanup");
-        app.Snapshot = Snapshot(1, State("ses_cleanup", reason: OpenCodeStateUnknownReason.Expired));
+        app.Snapshot = Snapshot(1, State("ses_child", reason: OpenCodeStateUnknownReason.Expired));
         app.Emit("endpoint", 1, 1); page.DispatcherQueue.Drain();
-        Check(FullHint(Hint(row)).Contains("已过期"), "hint.cleanup-expired-positive-control");
-        if (unload) page.Deactivate();
-        else { source.IsRevoked = true; page.Refresh(); }
-        Check(FullHint(Hint(row)).Length == 0 && Hint(row).Text.Length == 0
-            && Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(Hint(row)).Length == 0,
-            "hint.cleanup-clears-tooltip-name-text");
+        Check(page.SessionStateHint.Text.Contains("已过期"), "hint.cleanup-positive-control");
+        if (unload) page.Deactivate(); else { source.IsRevoked = true; page.Refresh(); }
+        Check(page.SessionStateHint.Text.Length == 0 && page.States.Count == 0, "hint.cleanup-clears-current-and-tabs");
         page.Deactivate();
     }
     private static void ScopeLifecycleAndQueues()
@@ -119,26 +95,9 @@ internal static class Program
         Check(!page.IsSelectedSessionWorkingIndicated, "scope.revoked-clears");
         page.Deactivate();
     }
-    private static void ListDecorationAndSubscriptions()
+    private static void SnapshotSubscriptions()
     {
         var (app, page, _) = Fixture();
-        app.Snapshot = Snapshot(1, State("ses_a", true, true), State("ses_b", true)); page.Refresh();
-        var a = page.Add("ses_a"); var original = ((Grid)a.Content!).Children[0]; var wrapper = a.Content;
-        var aRing = Indicators(a).Ring;
-        var b = page.Add("ses_b");
-        Check(aRing.IsActive && Indicators(b).Ring.IsActive, "list.new-items-use-existing-snapshot");
-        page.Refresh(); page.Refresh();
-        Check(ReferenceEquals(wrapper, a.Content) && ReferenceEquals(original, ((Grid)a.Content!).Children[0]),
-            "list.no-repeated-wrapping");
-        page.Remove("ses_a");
-        Check(!aRing.IsActive, "list.removed-ring-stopped");
-        var replacement = page.Add("ses_a");
-        Check(!ReferenceEquals(replacement, a) && Indicators(replacement).Ring.IsActive, "list.new-instance-decorated");
-        app.Snapshot = null; page.Refresh();
-        Check(!Indicators(b).Ring.IsActive && Indicators(b).Dot.Visibility == Visibility.Collapsed,
-            "list.null-snapshot-clears-row");
-        Check(!page.IsSelectedSessionWorkingIndicated && page.RowTones.Count > 0,
-            "list.null-snapshot-current-not-working-tones-reported");
         page.Activate(); page.Activate(); page.DispatcherQueue.Drain();
         Check(app.StateSubscribers == 1 && app.SourceSubscribers == 1, "list.no-duplicate-subscriptions");
         app.Snapshot = Snapshot(2, State("ses_child", true));
@@ -171,82 +130,53 @@ internal static class Program
         Check(OpenCodePage.ClassifySessionIndicator(State("s", null, null, true, reason: OpenCodeStateUnknownReason.Expired))
             == OpenCodePage.SessionIndicatorTone.None, "tone.protection-unknown-none");
 
-        var (app, page, _) = Fixture();
-        var row = page.Add("ses_tone");
-        app.Snapshot = Snapshot(1, State("ses_tone", true, true)); app.Emit("endpoint", 1, 1); page.DispatcherQueue.Drain();
-        var ring = Indicators(row).Ring;
-        Check(page.RowTones[^1].Tone == OpenCodePage.SessionIndicatorTone.WorkingNeedsAction && ReferenceEquals(page.RowTones[^1].Ring, ring)
-            && ring.IsActive, "tone.row-hook-receives-caution-for-working-pending");
-        app.Snapshot = Snapshot(2, State("ses_tone", true, false)); app.Emit("endpoint", 1, 2); page.DispatcherQueue.Drain();
-        Check(page.RowTones[^1].Tone == OpenCodePage.SessionIndicatorTone.Working && ring.IsActive, "tone.row-hook-accent-when-working");
-        page.Deactivate();
-    }
 
-    private static TextBlock Hint(ListViewItem item) => (TextBlock)((StackPanel)((Grid)item.Content!).Children[1]).Children[2];
-    private static string FullHint(TextBlock hint) => ToolTipService.GetToolTip(hint) as string ?? string.Empty;
+    }
 
     private static void UnknownHintsAndScopeIsolation()
     {
-        var (app, page, source) = Fixture();
-        var row = page.Add("ses_root");
-        Check(page.SessionStateHint.Text.Contains("尚未观测") && FullHint(Hint(row)).Contains("尚未观测"), "hint.no-snapshot-neutral-unknown");
-        var wrapper = row.Content; var hint = Hint(row); var ring = Indicators(row).Ring;
+        var (app, page, _) = Fixture();
+        Check(page.SessionStateHint.Text.Contains("尚未观测"), "hint.no-snapshot-unknown");
         long version = 1;
-        foreach (var pair in new[]
+        foreach (var pair in new[] { (OpenCodeStateUnknownReason.NotObserved, "尚未观测"), (OpenCodeStateUnknownReason.Expired, "信息已过期"), (OpenCodeStateUnknownReason.Incomplete, "信息不完整") })
         {
-            (OpenCodeStateUnknownReason.NotObserved, "尚未观测"),
-            (OpenCodeStateUnknownReason.Expired, "信息已过期"),
-            (OpenCodeStateUnknownReason.Incomplete, "信息不完整"),
-        })
-        {
-            app.Snapshot = Snapshot(version, State("ses_child", reason: pair.Item1), State("ses_root", reason: pair.Item1));
+            app.Snapshot = Snapshot(version, State("ses_child", reason: pair.Item1));
             app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
-            Check(page.SessionStateHint.Text.Contains(pair.Item2) && FullHint(hint).Contains(pair.Item2), "hint.each-reason-current-and-row");
-            Check(!page.IsSelectedSessionWorkingIndicated && !ring.IsActive && Indicators(row).Dot.Visibility == Visibility.Collapsed,
-                "hint.reason-not-working-or-pending");
+            Check(page.SessionStateHint.Text.Contains(pair.Item2) && !page.IsSelectedSessionWorkingIndicated, "hint.reason-without-invented-working");
         }
         var combined = OpenCodeStateUnknownReason.NotObserved | OpenCodeStateUnknownReason.Expired | OpenCodeStateUnknownReason.Incomplete;
-        app.Snapshot = Snapshot(version, State("ses_child", reason: combined), State("ses_root", reason: combined));
+        app.Snapshot = Snapshot(version, State("ses_child", reason: combined));
         app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
         Check(page.SessionStateHint.Text.Contains("尚未观测") && page.SessionStateHint.Text.Contains("信息已过期")
-            && page.SessionStateHint.Text.Contains("信息不完整") && FullHint(hint) == page.SessionStateHint.Text, "hint.combined-reasons-preserved");
-        Check(hint.Text == "多项未知" && hint.MaxWidth == 72 && hint.TextWrapping == TextWrapping.NoWrap
-            && hint.TextTrimming == TextTrimming.CharacterEllipsis, "hint.compact-bounded-single-line");
-        Check(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(hint) == FullHint(hint), "hint.automation-preserves-full-combination");
+            && page.SessionStateHint.Text.Contains("信息不完整"), "hint.current-combined-reasons-preserved");
         app.Snapshot = Snapshot(version); app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
-        Check(page.SessionStateHint.Text.Contains("尚未观测") && FullHint(hint).Contains("尚未观测") && hint.Text == "未观测", "hint.missing-session-unknown");
-        app.Snapshot = Snapshot(version, State("ses_child", false, false, reason: OpenCodeStateUnknownReason.None),
-            State("ses_root", false, false, reason: OpenCodeStateUnknownReason.None));
+        Check(page.SessionStateHint.Text.Contains("尚未观测"), "hint.missing-current-session-unknown");
+        app.Snapshot = Snapshot(version, State("ses_child", false, false, reason: OpenCodeStateUnknownReason.None));
         app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
-        Check(page.SessionStateHint.Text.Length == 0 && page.SessionStateHint.Visibility == Visibility.Collapsed
-            && hint.Text.Length == 0 && hint.Visibility == Visibility.Collapsed, "hint.reliable-false-clears-caption");
-        app.Snapshot = Snapshot(version, State("ses_child", true, null, true, reason: OpenCodeStateUnknownReason.Incomplete),
-            State("ses_root", true, null, true, reason: OpenCodeStateUnknownReason.Incomplete));
+        Check(page.SessionStateHint.Text.Length == 0 && page.SessionStateHint.Visibility == Visibility.Collapsed, "hint.known-false-clears");
+        app.Snapshot = Snapshot(version, State("ses_child", true, null, true, reason: OpenCodeStateUnknownReason.Incomplete));
         app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
-        Check(page.IsSelectedSessionWorkingIndicated && ring.IsActive && FullHint(hint).Contains("信息不完整") && hint.Text == "不完整"
-            && Indicators(row).Dot.Visibility == Visibility.Collapsed, "hint.partial-unknown-keeps-working-no-fake-dot");
-        Check(ReferenceEquals(wrapper, row.Content) && ReferenceEquals(hint, Hint(row)),
-            "hint.stable-row-and-existing-content");
+        Check(page.IsSelectedSessionWorkingIndicated && page.SessionStateHint.Text.Contains("信息不完整"), "hint.partial-unknown-keeps-working");
         app.Snapshot = Snapshot(version, State("ses_child", false, null, reason: OpenCodeStateUnknownReason.None));
         app.Emit("endpoint", 1, version++); page.DispatcherQueue.Drain();
         Check(page.SessionStateHint.Text.Contains("信息不完整"), "hint.null-field-even-with-none-reason");
         app.Snapshot = Snapshot(version, State("ses_child", reason: OpenCodeStateUnknownReason.Expired));
         app.Emit("endpoint", 1, version++);
-        page.Deactivate(); page.DispatcherQueue.Drain();
-        Check(page.SessionStateHint.Text.Length == 0 && hint.Text.Length == 0, "hint.unload-and-queued-refresh-clear");
+        page.Deactivate();
+        page.DispatcherQueue.Drain();
+        Check(page.SessionStateHint.Text.Length == 0, "hint.unload-and-queued-refresh-clear");
         var replacement = new OpenCodePageSource("endpoint", 2);
         page.Bind(replacement, "ses_child"); app.CurrentOpenCodePageSource = replacement; app.Snapshot = null;
         page.Activate(); page.DispatcherQueue.Drain();
-        Check(page.SessionStateHint.Text.Contains("尚未观测") && !page.SessionStateHint.Text.Contains("已过期"),
-            "hint.new-scope-no-old-reason");
+        Check(page.SessionStateHint.Text.Contains("尚未观测") && !page.SessionStateHint.Text.Contains("已过期"), "hint.new-scope-no-old-reason");
         app.Emit("endpoint", 1, 999, Snapshot(999, State("ses_child", reason: OpenCodeStateUnknownReason.Expired)));
         page.DispatcherQueue.Drain();
-        Check(!page.SessionStateHint.Text.Contains("已过期"), "hint.late-revision-payload-cannot-revive");
+        Check(!page.SessionStateHint.Text.Contains("已过期"), "hint.late-revision-cannot-revive");
         app.Snapshot = new("endpoint", 2, 1000, ImmutableArray.Create(State("ses_child", false, false, reason: OpenCodeStateUnknownReason.None)));
         app.Emit("endpoint", 2, 1000); page.DispatcherQueue.Drain();
         Check(page.SessionStateHint.Text.Length == 0, "hint.current-scope-reliable-state-clears");
-        source.IsRevoked = true; replacement.IsRevoked = true; page.Refresh();
-        Check(page.SessionStateHint.Text.Length == 0 && Hint(row).Text.Length == 0, "hint.invalid-source-clears-all");
+        replacement.IsRevoked = true; page.Refresh();
+        Check(page.SessionStateHint.Text.Length == 0, "hint.invalid-source-clears-current");
         page.Deactivate();
     }
 }

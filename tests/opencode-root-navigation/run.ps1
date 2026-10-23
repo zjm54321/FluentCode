@@ -33,15 +33,14 @@ $pagination = [IO.File]::ReadAllText($paginationPath)
 $methods = @(
     (Extract-Method $page 'private static bool IsRootSession(OpenCodeSessionInfo? session) =>' $true),
     (Extract-Method $page 'private string? RebuildSessionList(List<OpenCodeSessionInfo> sessions)'),
-    (Extract-Method $page 'private static ListViewItem CreateSessionItem(OpenCodeSessionInfo session)'),
     (Extract-Method $page 'private void InsertSessionItemFirst(OpenCodeSessionInfo session)'),
     (Extract-Method $page 'private void SelectSessionItem(string sessionId)'),
-    (Extract-Method $pagination 'private void AppendSessionItems(List<OpenCodeSessionInfo> sessions)'),
-    (Extract-Method $page 'private async void SessionList_SelectionChanged(object sender, SelectionChangedEventArgs e)')
+    (Extract-Method $pagination 'private void AppendSessionItems(List<OpenCodeSessionInfo> sessions)')
 )
 $header = @'
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -71,7 +70,7 @@ $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile"
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeRootNavigationTests.runtimeconfig.json')
-Write-Output 'Headless compilation passed (7 production methods extracted; warnings treated as errors).'
+Write-Output 'Headless compilation passed (5 production methods extracted; warnings treated as errors).'
 & $dotnet $assembly
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
 Write-Output "Evidence directory: $output"

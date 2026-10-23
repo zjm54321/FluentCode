@@ -34,8 +34,8 @@ function Extract-Method([string]$Source, [string]$Name) {
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $page = [IO.File]::ReadAllText($pagePath)
 $names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'CancelSessionOperations',
-    'IsRootSession', 'RebuildSessionList', 'CreateSessionItem', 'InsertSessionItemFirst', 'SelectSessionItem',
-    'SessionList_SelectionChanged', 'IsCurrentBindingFields', 'IsCurrentBinding', 'BindingLost',
+    'IsRootSession', 'RebuildSessionList', 'InsertSessionItemFirst', 'SelectSessionItem',
+    'IsCurrentBindingFields', 'IsCurrentBinding', 'BindingLost',
     'CreateOperationToken', 'TryStartRead', 'ProcessNavigationTargetAsync', 'LocateSessionAsync',
     'DescribeNavigationReadFailure', 'ApplyNavigationResult', 'OnPageUnloaded', 'InvalidateForSourceChange', 'DisposeOwnClient')
 $methods = @($names | ForEach-Object { Extract-Method $page $_ })
@@ -49,6 +49,7 @@ $methods += $sourceReady.Value
 $header = @'
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;

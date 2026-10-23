@@ -36,6 +36,7 @@ namespace AIFrontend.Pages;
 /// </remarks>
 public sealed partial class OpenCodePage
 {
+    partial void OnSessionCatalogChanged();
     /// <summary>续页 limit（与首屏一致；续页只带 cursor + limit，绝不带 order）。</summary>
     private const int SessionPageSize = 50;
 
@@ -160,15 +161,7 @@ public sealed partial class OpenCodePage
     /// <summary>刷新“加载更多”按钮：无 next 或页面未激活时隐藏；在途时禁用并显示“加载中…”。</summary>
     private void UpdateLoadMoreSessionsUi()
     {
-        var hasMore = _pageActive && _sessionNextCursor is not null;
-        LoadMoreSessionsButton.Visibility = hasMore ? Visibility.Visible : Visibility.Collapsed;
-        LoadMoreSessionsButton.IsEnabled = hasMore && !_isLoadingMoreSessions;
-        LoadMoreSessionsText.Text = _isLoadingMoreSessions ? "加载中…" : "加载更多";
-    }
-
-    private async void LoadMoreSessionsButton_Click(object sender, RoutedEventArgs e)
-    {
-        await LoadMoreSessionsAsync();
+        OnSessionCatalogChanged();
     }
 
     /// <summary>
@@ -342,10 +335,9 @@ public sealed partial class OpenCodePage
                 continue;
             }
 
-            var item = CreateSessionItem(session);
-            _sessionItems[id] = item;
-            SessionList.Items.Add(item);
+            _sessionItems[id] = session;
         }
+        OnSessionCatalogChanged();
         RefreshSessionStateUi();
     }
 

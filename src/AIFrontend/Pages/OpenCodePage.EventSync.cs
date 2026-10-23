@@ -301,12 +301,6 @@ public sealed partial class OpenCodePage
         RefreshCurrentRetry();
     }
 
-    partial void ApplyLiveSessionRowHint(string sessionId, ref string hint)
-    {
-        // Compact rows show real activity/attention, not monitor bookkeeping. Query failures stay in connection UI.
-        hint = string.Empty;
-    }
-
     private async Task RefreshListedSessionStatusesAsync()
     {
         if (_statusRefreshRunning || _client is not { } client || _source is not { } source || _pageCts is null || !SourceReady) return;

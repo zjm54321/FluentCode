@@ -25,7 +25,7 @@ public sealed partial class OpenCodePage
     {
         var roots = ImmutableDictionary.CreateBuilder<string, HomeActionRoot>(StringComparer.Ordinal);
         foreach (var pair in _sessionItems)
-            if (HomeSessionMetadata.TryGetValue(pair.Value, out var info) && info.Id == pair.Key && info.ParentId is null
+            if (pair.Value is { } info && info.Id == pair.Key && info.ParentId is null
                 && info.Location?.Directory is { } directory) roots[pair.Key] = new(directory, info.Title);
         _homeActionRoots = roots.ToImmutable();
     }
@@ -46,7 +46,7 @@ public sealed partial class OpenCodePage
     // UI-thread check against the latest accepted actual root metadata after the dialog await.
     private bool HomeActionRootCurrent(HomeActionOwner owner)
         => OwnsHomeAction(owner, owner.Origin) && HomeSessionActionTargetCurrent(_homeRevision, owner.Project, owner.SessionId)
-        && _sessionItems.TryGetValue(owner.SessionId, out var item) && HomeSessionMetadata.TryGetValue(item, out var info)
+        && _sessionItems.TryGetValue(owner.SessionId, out var info)
         && info.Title == owner.Title;
 
     private bool CanStartHomeAction(HomeActionOwner owner, SessionControlOrigin origin)
@@ -62,8 +62,8 @@ public sealed partial class OpenCodePage
         }
         if (!CanRequestHomeSessionAction(revision, session, action) || session.Info.Id is not { } id
             || _source is not { } source || _client is not { } client || _homeCancellation is null) return;
-        // Capture accepted metadata, not an old flyout DTO or hidden SessionList.SelectedItem.
-        if (!_sessionItems.TryGetValue(id, out var item) || !HomeSessionMetadata.TryGetValue(item, out var root)) return;
+        // Capture current accepted metadata, not an old flyout DTO.
+        if (!_sessionItems.TryGetValue(id, out var root)) return;
         var origin = new SessionControlOrigin(source, _sourceRevision, id, 0)
         {
             LocalSubmissionInProgress = _selectedSessionId == id && _isSending,

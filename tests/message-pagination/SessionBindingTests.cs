@@ -66,8 +66,8 @@ internal static partial class Program
             Check(!returning.IsCompleted && !state.Result.Task.IsCompleted && !messages.Result.Task.IsCompleted
                 && LiveText(page) == "ses_A" && page.TestAppliedCount == 1,
                 (home ? "Home consumer" : "direct switch") + " applies first actual cached text body synchronously while BOTH network responses remain held");
-            if (home) Check(page.TestHiddenSelectionIs(selected!) && page.HomeMirrors == 1,
-                "unchanged hidden Home selection still routes directly to real binding and body restore");
+            if (home) Check(page.TestHomeMetadataIs(selected!) && page.HomeMirrors == 1,
+                "accepted Home metadata routes directly to real binding and body restore");
             state.Result.SetResult(backend.State("ses_A"));
             await messages.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
             messages.Result.SetResult(backend.Messages("ses_A")); await returning;

@@ -63,7 +63,7 @@ public sealed partial class OpenCodePage
         }
 
         OpenCodeSessionInfo? known = null;
-        if (owner is not null && _sessionItems.TryGetValue(owner.SessionId, out var item)) HomeSessionMetadata.TryGetValue(item, out known);
+        if (owner is not null) _sessionItems.TryGetValue(owner.SessionId, out known);
         var directory = owner is not null && IsSameMessageBinding(owner.SessionId, _messageBinding?.Directory)
             ? _messageBinding!.Directory : known?.Location?.Directory;
         var session = OpenCodeRightPanelPresentation.Create(hasSession, owner?.SessionId,

@@ -191,70 +191,12 @@
             AutomationProperties.AutomationId="OpenCodeSessionPane"
             AutomationProperties.Name="会话面板">
 
-            <!-- 左：会话面板（原会话栏，全部 x:Name / AutomationId 保留；关闭时仍在可视树中） -->
+            <!-- Left sidebar: agent tree and composer control card only. -->
             <SplitView.Pane>
-                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="12">
+                <Grid RowDefinitions="*,Auto" Padding="12">
                     <!-- B4 and B5 own these empty slots; no placeholder data. -->
                     <Grid x:Name="LeftAgentTreeSlot" Grid.Row="0" Visibility="Collapsed" />
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="4,0,0,8">
-                        <TextBlock
-                            Text="会话"
-                            Style="{ThemeResource SubtitleTextBlockStyle}"
-                            VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                            <Button
-                                x:Name="NewSessionButton"
-                                Click="NewSessionButton_Click"
-                                Style="{ThemeResource AccentButtonStyle}"
-                                AutomationProperties.AutomationId="OpenCodeNewSessionButton"
-                                AutomationProperties.Name="新会话"
-                                ToolTipService.ToolTip="在服务端默认位置创建新会话">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE710;" FontSize="12" />
-                                    <TextBlock Text="新会话" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                x:Name="RefreshSessionsButton"
-                                Click="RefreshSessionsButton_Click"
-                                AutomationProperties.AutomationId="OpenCodeRefreshSessionsButton"
-                                AutomationProperties.Name="刷新会话列表"
-                                ToolTipService.ToolTip="刷新会话列表">
-                                <FontIcon Glyph="&#xE72C;" FontSize="12" />
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-
-                    <ListView
-                        x:Name="SessionList"
-                        Grid.Row="2"
-                        SelectionMode="Single"
-                        SelectionChanged="SessionList_SelectionChanged"
-                        AutomationProperties.AutomationId="OpenCodeSessionList"
-                        AutomationProperties.Name="会话列表" />
-
-                    <!-- 会话列表分页：加载更多（仅追加、不切换选中；游标语义见 OpenCodePage.SessionPagination.cs） -->
-                    <StackPanel Grid.Row="3" Spacing="8" Margin="4,8,4,0">
-                        <TextBlock
-                            x:Name="SessionsHint"
-                            TextWrapping="Wrap"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <Button
-                            x:Name="LoadMoreSessionsButton"
-                            Visibility="Collapsed"
-                            HorizontalAlignment="Stretch"
-                            Click="LoadMoreSessionsButton_Click"
-                            AutomationProperties.AutomationId="OpenCodeLoadMoreSessionsButton"
-                            AutomationProperties.Name="加载更多会话"
-                            ToolTipService.ToolTip="按分页游标加载更早的会话（仅追加，不切换当前会话）">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE70D;" FontSize="12" />
-                                <TextBlock x:Name="LoadMoreSessionsText" Text="加载更多" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <Grid x:Name="LeftBottomCardSlot" Grid.Row="4" Visibility="Collapsed" />
+                    <Grid x:Name="LeftBottomCardSlot" Grid.Row="1" Visibility="Collapsed" />
                 </Grid>
             </SplitView.Pane>
 

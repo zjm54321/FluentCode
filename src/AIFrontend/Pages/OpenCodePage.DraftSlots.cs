@@ -343,13 +343,6 @@ public sealed partial class OpenCodePage
             finally { _suppressTabSelection = suppressTab; }
         }
         else SelectSessionTabSilently(_activeTabSessionId);
-        var suppress = _suppressSessionSelection;
-        _suppressSessionSelection = true;
-        try
-        {
-            SessionList.SelectedItem = _selectedSessionId is { } id && _sessionItems.TryGetValue(id, out var item) ? item : null;
-        }
-        finally { _suppressSessionSelection = suppress; }
     }
 
     private PageDraftSlot GetOrCreateDraftSlot(OpenCodeDraftSlotKey key)

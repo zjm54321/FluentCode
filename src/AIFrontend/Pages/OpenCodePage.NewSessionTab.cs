@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Windows.Foundation.Collections;
 
 namespace AIFrontend.Pages;
 
@@ -26,14 +26,13 @@ namespace AIFrontend.Pages;
 /// 不重试；发送失败：已在新会话标签中，草稿保留，提示由既有发送流程给出；绝不重复发送。
 /// </para>
 /// <para>
-/// 打开已有会话：新会话页的列表只做 <c>SessionList.SelectedItem = …</c>（与会话面板点击相同的受保护路径）；
+/// 打开已有会话：新会话页的列表直接调用受保护的 <c>SwitchToSessionAsync</c>；
 /// 标签栏镜像（OpenCodePage.Tabs.cs）决定空白标签是变为该会话标签，还是在已有标签时关闭。
 /// </para>
 /// </remarks>
 public sealed partial class OpenCodePage
 {
     private TabViewItem? _newSessionTab;
-    private bool _activatingSessionTab;
     private bool _newSessionListWired;
     private bool _newSessionListRefreshQueued;
     private OpenCodeComposerToken? _newSessionHandoffToken;
@@ -141,6 +140,7 @@ public sealed partial class OpenCodePage
         _homeActive = false;
         VisualStateManager.GoToState(this, "SessionLayout", false);
         SetBlankComposerPlacement(false);
+        SelectSessionItem(sessionId);
         if (_newSessionDraftActive)
         {
             ExitNewSessionLayout();
@@ -223,17 +223,6 @@ public sealed partial class OpenCodePage
     /// <summary>与切换会话相同的作废与清理，只是不加载新会话（_selectedSessionId = null）。</summary>
     private void DeselectSessionForNewTab()
     {
-        var previousSuppress = _suppressSessionSelection;
-        _suppressSessionSelection = true;
-        try
-        {
-            SessionList.SelectedItem = null;
-        }
-        finally
-        {
-            _suppressSessionSelection = previousSuppress;
-        }
-
         if (_selectedSessionId is null)
         {
             return;
@@ -264,7 +253,7 @@ public sealed partial class OpenCodePage
     }
 
     // ------------------------------------------------------------------
-    // 已有会话：筛选 + 列表（与会话面板同源：SessionList / _sessionItems，本地筛选）
+    // Existing sessions: filtered projection of the shared metadata catalog.
     // ------------------------------------------------------------------
 
     private void WireNewSessionList()
@@ -283,20 +272,19 @@ public sealed partial class OpenCodePage
             if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput) RefreshNewSessionList();
         };
         NewSessionSearch.QuerySubmitted += (_, _) => RefreshNewSessionList();
-        SessionList.Items.VectorChanged += NewSessionList_SourceChanged;
 
         var loadMore = _newSessionLoadMore = new HyperlinkButton { Content = "加载更多", HorizontalAlignment = HorizontalAlignment.Center };
         AutomationProperties.SetAutomationId(loadMore, "OpenCodeNewSessionLoadMore");
         loadMore.Click += async (_, _) =>
         {
             loadMore.IsEnabled = false;
-            try { await LoadMoreSessionsAsync(); } // 复用会话面板的分页（同一游标与守卫）。
+            try { await LoadMoreSessionsAsync(); } // Shared Home/catalog cursor and guards.
             finally { RefreshNewSessionList(); }
         };
         NewSessionList.Footer = loadMore;
     }
 
-    private void NewSessionList_SourceChanged(IObservableVector<object> sender, IVectorChangedEventArgs e)
+    private void QueueNewSessionListRefresh()
     {
         if (_newSessionDraftActive && !_newSessionListRefreshQueued)
         {
@@ -319,14 +307,10 @@ public sealed partial class OpenCodePage
 
         var filter = NewSessionSearch.Text?.Trim() ?? string.Empty;
         var rows = new List<ListViewItem>();
-        foreach (var source in SessionList.Items)
+        foreach (var source in _sessionItems.Values.OrderByDescending(info => info.Time?.Updated ?? 0))
         {
-            if (source is not ListViewItem { Tag: string id })
-            {
-                continue;
-            }
-
-            var title = SessionTitleFor(id, source as ListViewItem);
+            var id = source.Id!;
+            var title = string.IsNullOrWhiteSpace(source.Title) ? "未命名会话" : source.Title;
             if (filter.Length > 0
                 && !title.Contains(filter, StringComparison.CurrentCultureIgnoreCase)
                 && !id.Contains(filter, StringComparison.OrdinalIgnoreCase))
@@ -352,32 +336,9 @@ public sealed partial class OpenCodePage
 
         if (_newSessionLoadMore is { } loadMore)
         {
-            loadMore.Visibility = LoadMoreSessionsButton.Visibility;
-            loadMore.IsEnabled = LoadMoreSessionsButton.IsEnabled;
-        }
-    }
-
-    private string SessionTitleFor(string id, ListViewItem? item)
-    {
-        if (_sessionTitles.TryGetValue(id, out var known) && known.Length > 0)
-        {
-            return known;
-        }
-
-        var panel = item?.Content as StackPanel ?? FirstStackPanel(item?.Content as Grid);
-        // wave5 H8：新标签页不显示会话 ID；没有标题时显示“未命名会话”（筛选仍可按 ID 匹配）。
-        return panel is { Children.Count: > 0 } && panel.Children[0] is TextBlock title && title.Text.Length > 0
-            && !string.Equals(title.Text, id, StringComparison.Ordinal) ? title.Text : "未命名会话";
-
-        static StackPanel? FirstStackPanel(Grid? grid)
-        {
-            if (grid is null) return null;
-            foreach (var child in grid.Children)
-            {
-                if (child is StackPanel stack) return stack;
-            }
-
-            return null;
+            loadMore.Visibility = _pageActive && _sessionNextCursor is not null ? Visibility.Visible : Visibility.Collapsed;
+            loadMore.IsEnabled = SourceReady && !_isLoadingMoreSessions;
+            loadMore.Content = _isLoadingMoreSessions ? "加载中…" : "加载更多";
         }
     }
 
@@ -410,18 +371,16 @@ public sealed partial class OpenCodePage
         return item;
     }
 
-    private void NewSessionList_ItemClick(object sender, ItemClickEventArgs e)
+    private async void NewSessionList_ItemClick(object sender, ItemClickEventArgs e)
     {
         if ((e.ClickedItem as FrameworkElement)?.Tag is not string id || _newSessionCreatePending)
         {
             return;
         }
 
-        if (_sessionItems.TryGetValue(id, out var item))
+        if (_sessionItems.ContainsKey(id))
         {
-            // 与会话面板点击完全相同：SessionList_SelectionChanged → SwitchToSessionAsync；镜像处理标签。
-            SessionList.SelectedItem = item;
-            SessionList.ScrollIntoView(item);
+            await SwitchToSessionAsync(id, onBound: () => MirrorSessionSelection(id, userInitiated: true));
         }
         else
         {
@@ -572,7 +531,7 @@ public sealed partial class OpenCodePage
             _newSessionCreatedId = sessionId;
         }
 
-        // 列表高亮（受抑制，不触发切换）→ 标签栏镜像创建/转换该会话的标签。
+        // Mirror the accepted binding to its tab; this never commands navigation.
         SelectSessionItem(sessionId);
     }
 }

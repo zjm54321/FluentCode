@@ -152,15 +152,14 @@ namespace AIFrontend.Pages
         internal int NewSessionTabRequests;
         private void RequestNewSessionTab() => NewSessionTabRequests++;
         private CancellationTokenSource? _pageCts, _sessionCts;
-        private bool _suppressSessionSelection, _sessionMissing;
-        private readonly Dictionary<string, ListViewItem> _sessionItems = new(StringComparer.Ordinal);
+        private bool _sessionMissing;
+        private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new(StringComparer.Ordinal);
         private readonly OpenCodeConversationView _conversationView = new();
         private readonly ReturnHostScroll MessageScroll = new();
         private readonly Border _ackRoot = new();
         private readonly ScrollContentPresenter _ackPresenter = new();
         private bool _ackTreeBound;
         private const int MaxScrollSettlePasses = 3;
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, OpenCodeSessionInfo> HomeSessionMetadata = new();
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
         private readonly ReturnHostInteractions _interactionsView = new();
         private readonly ReturnHostRecovery _sessionRecoveryPanel = new();
@@ -174,8 +173,6 @@ namespace AIFrontend.Pages
         private enum ConnectionState { Unknown, Connected, Failed }
         private event EventHandler? TrustedEndpointIdentityChanged { add { } remove { } }
         internal readonly ReturnHostButton SessionReturnButton = new() { Visibility = Visibility.Collapsed };
-        internal readonly ListView SessionList = new();
-        internal readonly ReturnHostTextBlock SessionsHint = new();
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
         public ReturnHostDispatcher DispatcherQueue { get; } = new();
         public new bool IsLoaded => true;
@@ -205,7 +202,6 @@ namespace AIFrontend.Pages
         public OpenCodePage(OpenCodePageSource source)
         {
             BindFixture(source);
-            SessionList.SelectionChanged += SessionList_SelectionChanged;
         }
         // Fixture boot/reload binding, not an imitation of source reconciliation or navigation.
         internal void BindFixture(OpenCodePageSource source)
@@ -225,6 +221,9 @@ namespace AIFrontend.Pages
         internal Task Preview(string messageId, string childId) => ShowSubagentChatAsync(_conversationView, messageId, childId);
         internal Task Notify(NotificationNavigationTarget target, NotificationInteractionResult? result = null)
             => ProcessNavigationTargetAsync(target, result);
+        internal IReadOnlyDictionary<string, OpenCodeSessionInfo> Catalog => _sessionItems;
+        private void OnSessionCatalogChanged() { }
+        private void MirrorSessionSelection(string id, bool userInitiated) { }
         internal string? Rebuild(List<OpenCodeSessionInfo> sessions) => RebuildSessionList(sessions);
         internal Task Return() => ReturnToSessionAsync();
         internal void ClickReturn() => SessionReturnButton_Click(SessionReturnButton, new());
