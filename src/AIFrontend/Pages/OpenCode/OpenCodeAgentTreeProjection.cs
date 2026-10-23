@@ -40,6 +40,9 @@ internal static class OpenCodeAgentTreeProjection
     internal static IReadOnlyList<OpenCodeTreeShell> VisibleShells(IEnumerable<OpenCodeTreeShell> shells, bool showAll)
         => shells.Where(c => showAll || c.Status == OpenCodeTreeStatus.Running).ToArray();
 
+    // NoWrap alone still honors explicit command line breaks. Preserve the original for hover/automation.
+    internal static string RowTitle(string title) => title.ReplaceLineEndings(" ");
+
     internal static string CountLabel(int working, int total, bool showAll)
         => showAll ? $"{working} / {total}" : working.ToString(System.Globalization.CultureInfo.InvariantCulture);
 

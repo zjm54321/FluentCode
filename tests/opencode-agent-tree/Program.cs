@@ -74,7 +74,8 @@ internal static class Program
             && !group.Contains("CharacterEllipsis"), "complete agent group names wrap without ellipsis or line cap");
         Check(view.Contains("x:Name=\"ChevronHover\" Grid.Column=\"2\" Opacity=\"0\"")
             && view.Contains("Target=\"ChevronHover.Opacity\" Value=\"1\"") && view.Contains("x:Name=\"PointerOver\"")
-            && view.Contains("ColumnDefinitions=\"Auto,*,Auto\" HorizontalAlignment=\"Left\""), "AT1/L6: chevron follows the measured name/count, shown only on hover");
+            && view.Contains("ColumnDefinitions=\"Auto,*,Auto\" HorizontalAlignment=\"{TemplateBinding HorizontalContentAlignment}\"")
+            && view.Contains("? HorizontalAlignment.Stretch : HorizontalAlignment.Left;"), "AT1/L6: group chevron follows compact name/count, shown only on hover");
         Check(view.Contains("x:Name=\"ExpandCollapseChevron\"") && view.Contains("TreeViewItemTemplateSettings.CollapsedGlyphVisibility")
             && view.Contains("TreeViewItemTemplateSettings.ExpandedGlyphVisibility") && !view.Contains("UpdateExpansion")
             && !view.Contains("header.Click") && !view.Contains("InstanceButton"), "NV2: native TreeViewItem keeps expansion automation, keyboard and glyph states");
@@ -171,6 +172,31 @@ internal static class Program
             shell! with { Id = "sh_unknown", Status = OpenCodeTreeStatus.Unknown } };
         Check(OpenCodeAgentTreeProjection.VisibleShells(mixedShells, false).Single().Id == "sh_real"
             && OpenCodeAgentTreeProjection.VisibleShells(mixedShells, true).Count == 3, "terminals use the same working/all status filter");
+        var allShellStates = (from kind in new[] { OpenCodeTreeShellKind.Foreground, OpenCodeTreeShellKind.Background }
+            from status in Enum.GetValues<OpenCodeTreeStatus>()
+            select shell! with { Id = kind + ":" + status, Kind = kind, Status = status }).ToArray();
+        var runningShells = OpenCodeAgentTreeProjection.VisibleShells(allShellStates, false);
+        Check(runningShells.Count == 2 && runningShells.All(s => s.Status == OpenCodeTreeStatus.Running)
+            && runningShells.Select(s => s.Kind).Distinct().Count() == 2,
+            "AT8: working-only excludes succeeded/failed/interrupted/unknown for both foreground and background terminals");
+        Check(OpenCodeAgentTreeProjection.VisibleShells(allShellStates, true).SequenceEqual(allShellStates)
+            && OpenCodeAgentTreeProjection.VisibleShells(allShellStates, false).SequenceEqual(runningShells),
+            "AT8: all reveals every terminal; switching back reapplies running-only without retaining history rows");
+        Check(OpenCodeAgentTreeProjection.VisibleShells(allShellStates.Where(s => s.Status != OpenCodeTreeStatus.Running), false).Count == 0
+            && view.Contains("foreach (var shell in shells)") && view.Contains("VisibleShells(_shells, _showAll)"),
+            "AT8: terminal rendering consumes the filtered set and hides the entire group when none are running");
+        Check(OpenCodeAgentTreeProjection.VisibleShells(runningShells.Select(s => s with { Status = OpenCodeTreeStatus.Succeeded }), false).Count == 0,
+            "AT8: a terminal that completes leaves the running-only view");
+        const string multilineCommand = "printf 'first'\r\nprintf 'second'\nprintf 'third'\rprintf 'fourth'\u2028tail";
+        Check(OpenCodeAgentTreeProjection.RowTitle(multilineCommand) == "printf 'first' printf 'second' printf 'third' printf 'fourth' tail"
+            && OpenCodeAgentTreeProjection.RowTitle("short command") == "short command",
+            "AT8: CRLF/LF/CR/Unicode line breaks flatten only in the one-line title");
+        Check(view.Contains("Text = OpenCodeAgentTreeProjection.RowTitle(title)") && view.Contains("MaxLines = 1")
+            && view.Contains("TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis")
+            && view.Contains("content.Tag is OpenCodeTreeInstance or OpenCodeTreeShell")
+            && view.Contains("Grid.SetColumn(task, 2)"), "AT8: terminal and subagent leaf titles share finite-width single-line ellipsis");
+        Check(view.Contains("NameTreeContent(row, title +") && view.Contains("ToolTipService.SetToolTip(row, title +"),
+            "AT8: automation and tooltip retain the unmodified full command, including line breaks");
         Check(OpenCodeAgentTreeProjection.Shell(job, "ses_other") is null && OpenCodeAgentTreeProjection.Shell(job with { Metadata = Json("{}") }, "ses_parent") is null, "cwd never grants session ownership");
         Check(OpenCodeAgentTreeProjection.Shell(job with { Metadata = Json("{\"sessionID\":\"ses_parent\"}") }, "ses_parent")?.Kind == OpenCodeTreeShellKind.Unknown, "missing background flag not guessed");
         Check(OpenCodeAgentTreeProjection.ShellStatus("exited", null) == OpenCodeTreeStatus.Unknown, "exited without exit code not success");

@@ -125,7 +125,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                                   </VisualState>
                                 </VisualStateGroup>
                               </VisualStateManager.VisualStateGroups>
-                              <Grid x:Name="MultiSelectGrid" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left"
+                              <Grid x:Name="MultiSelectGrid" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                     Padding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.Indentation}">
                                 <CheckBox x:Name="MultiSelectCheckBox" Visibility="Collapsed" IsTabStop="False" AutomationProperties.AccessibilityView="Raw" />
                                 <ContentPresenter x:Name="ContentPresenter" Grid.Column="1" Margin="6,0,0,0"
@@ -313,7 +313,15 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         {
             DependencyObject? parent = content;
             while ((parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent)) is not null)
-                if (parent is TreeViewItem item) { AutomationProperties.SetName(item, name); break; }
+                if (parent is TreeViewItem item)
+                {
+                    AutomationProperties.SetName(item, name);
+                    // Leaves need the finite row width for ellipsis; groups remain compact so the
+                    // expansion chevron stays beside the name, not at the far edge of the card.
+                    item.HorizontalContentAlignment = content.Tag is OpenCodeTreeInstance or OpenCodeTreeShell
+                        ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+                    break;
+                }
         };
     }
 
@@ -337,7 +345,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             Grid.SetColumn(agentIcon, 1);
             row.Children.Add(agentIcon);
         }
-        var task = new TextBlock { Text = title, FontSize = 12, LineHeight = 16, VerticalAlignment = VerticalAlignment.Center,
+        var task = new TextBlock { Text = OpenCodeAgentTreeProjection.RowTitle(title), FontSize = 12, LineHeight = 16,
+            VerticalAlignment = VerticalAlignment.Center, MaxLines = 1,
             TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
         if (tag is OpenCodeTreeShell)
         {
