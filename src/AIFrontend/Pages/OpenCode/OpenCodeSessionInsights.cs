@@ -1337,7 +1337,7 @@ public sealed class OpenCodeSessionInsightsController
                 result = OpenCodeTodoReplay.Derive(binding.SessionId, messages, complete, history, _todoConfig, scope);
                 if (result.Complete || result.State == OpenCodeTodoState.ReadFailure || complete) break;
                 if (string.IsNullOrWhiteSpace(next) || next.Any(char.IsControl) || next.Length > 4096 || !used.Add(next))
-                    throw new OpenCodeProtocolException("ToDo 消息分页游标无效或重复。");
+                    throw new OpenCodeProtocolException("To Do 消息分页游标无效或重复。");
                 cursor = next;
             }
         }

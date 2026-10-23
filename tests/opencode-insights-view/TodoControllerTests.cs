@@ -84,7 +84,7 @@ internal static class TodoControllerTests
         http.Config = "false";
         await controller.LoadAsync(binding, [], true, CancellationToken.None);
         Check(controller.Snapshot.Todo.Value?.State == OpenCodeTodoState.Disabled
-            && controller.Snapshot.Todo.Note == "当前后端未启用 ToDo（experimental.todo）", "config disabled → honest text");
+            && controller.Snapshot.Todo.Note == "当前后端未启用 To Do（experimental.todo）", "config disabled → honest text");
         foreach (var config in new[] { "fail", "\"bad\"" })
         {
             http.Config = config;

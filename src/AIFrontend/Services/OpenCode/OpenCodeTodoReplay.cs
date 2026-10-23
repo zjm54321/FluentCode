@@ -59,7 +59,7 @@ public sealed record OpenCodeTodoSnapshot(
 public static class OpenCodeTodoReplay
 {
     public const string ToolId = "todowrite";
-    public const string DisabledReason = "当前后端未启用 ToDo（experimental.todo）";
+    public const string DisabledReason = "当前后端未启用 To Do（experimental.todo）";
 
     private static readonly ImmutableHashSet<string> ValidStatuses =
         ImmutableHashSet.Create(StringComparer.Ordinal, "pending", "in_progress", "completed", "cancelled");
@@ -86,16 +86,16 @@ public static class OpenCodeTodoReplay
         {
             OpenCodeTodoConfig.Enabled => Available("experimental.todo 已启用（原生 todowrite）"),
             OpenCodeTodoConfig.Disabled => new(OpenCodeCapabilityAvailability.Unavailable, DisabledReason),
-            _ => new(OpenCodeCapabilityAvailability.Unknown, "无法确认后端是否启用 ToDo（experimental.todo 未能读取）"),
+            _ => new(OpenCodeCapabilityAvailability.Unknown, "无法确认后端是否启用 To Do（experimental.todo 未能读取）"),
         };
 
         if (history.ReadFailed)
             return Make(OpenCodeTodoState.ReadFailure, empty, null, false, configCapability,
-                "消息读取失败，无法读取 ToDo；请刷新消息后重试");
+                "消息读取失败，无法读取 To Do；请刷新消息后重试");
         if (scope.Stale)
-            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, "状态证据已过期，暂无法确认 ToDo");
+            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, "状态证据已过期，暂无法确认 To Do");
         if (!history.RevertKnown)
-            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, "撤回位置尚未确认，暂无法确认 ToDo");
+            return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, "撤回位置尚未确认，暂无法确认 To Do");
 
         var messages = orderedMessages.ToList();
         if (history.RevertMessageId is { } revert)
@@ -105,7 +105,7 @@ public static class OpenCodeTodoReplay
             // 官方：找不到撤回消息时使用全部消息；但部分窗口里缺少撤回点无法判定其两侧，不能断言。
             else if (!historyComplete)
                 return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability,
-                    "撤回位置不在已加载的消息中，暂无法确认 ToDo");
+                    "撤回位置不在已加载的消息中，暂无法确认 To Do");
         }
 
         // findLast(type==tool && name==todowrite && state.status==completed)；不可读的结构记为“之后不可读”。
@@ -140,23 +140,23 @@ public static class OpenCodeTodoReplay
             var historyCapability = Available("会话历史包含原生 todowrite 记录");
             if (unreadableAfterLatest)
                 return Make(OpenCodeTodoState.ReadFailure, empty, source, false, historyCapability,
-                    "最新的 ToDo 记录无法读取；不回退到更早的列表");
+                    "最新的 To Do 记录无法读取；不回退到更早的列表");
             var items = Normalize(write);
             return Make(items.IsEmpty ? OpenCodeTodoState.Empty : OpenCodeTodoState.Listed, items, source, true,
-                historyCapability, items.IsEmpty ? "ToDo 已清空" : "来自最新一次 todowrite");
+                historyCapability, items.IsEmpty ? "To Do 已清空" : "来自最新一次 todowrite");
         }
 
         if (unreadableAfterLatest)
             return Make(OpenCodeTodoState.ReadFailure, empty, null, false, configCapability,
-                "部分消息无法读取，无法确认 ToDo");
+                "部分消息无法读取，无法确认 To Do");
         if (!historyComplete)
             return Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability,
-                "消息历史未取全，暂无法确认是否有 ToDo");
+                "消息历史未取全，暂无法确认是否有 To Do");
         if (configCapability.Availability == OpenCodeCapabilityAvailability.Available)
-            return Make(OpenCodeTodoState.Empty, empty, null, true, configCapability, "本会话还没有 ToDo");
+            return Make(OpenCodeTodoState.Empty, empty, null, true, configCapability, "本会话还没有 To Do");
         return config switch
         {
-            OpenCodeTodoConfig.Enabled => Make(OpenCodeTodoState.Empty, empty, null, true, configCapability, "本会话还没有 ToDo"),
+            OpenCodeTodoConfig.Enabled => Make(OpenCodeTodoState.Empty, empty, null, true, configCapability, "本会话还没有 To Do"),
             OpenCodeTodoConfig.Disabled => Make(OpenCodeTodoState.Disabled, empty, null, true, configCapability, DisabledReason),
             _ => Make(OpenCodeTodoState.Unknown, empty, null, false, configCapability, configCapability.Reason),
         };

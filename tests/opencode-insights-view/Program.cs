@@ -259,7 +259,7 @@ internal static class Program
             new OpenCodeTodoItem("pending", "pending"), new OpenCodeTodoItem("completed", "completed"),
             new OpenCodeTodoItem("working", "in_progress"), new OpenCodeTodoItem("cancelled", "cancelled"));
         var panel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
-        Check(AllText(panel).Contains("1/4") && AllText(panel).Contains("ToDo"), "RC3 ToDo header counts completed only, no spaces around slash");
+        Check(AllText(panel).Contains("1/4") && AllText(panel).Contains("To Do"), "RC3 To Do header counts completed only, no spaces around slash");
         var heading = (Grid)panel.Children[0];
         var count = heading.Children.OfType<TextBlock>().Last();
         Check(heading.ColumnDefinitions[0].Width.GridUnitType == GridUnitType.Star

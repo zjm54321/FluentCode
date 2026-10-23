@@ -307,7 +307,7 @@ public sealed partial class OpenCodePage
     private void UpdateRightOverviewHeight()
     {
         // A native FlyoutPresenter can scroll oversized content. Give the shared dock a finite budget instead,
-        // leaving room for its anchor/header and presenter insets; only the ToDo viewport consumes the remainder.
+        // leaving room for its anchor/header and presenter insets; only the To Do viewport consumes the remainder.
         RightDock.MaxHeight = _sidebarLayout.IsWide ? double.PositiveInfinity : Math.Max(0, PageRoot.ActualHeight - 96);
     }
 

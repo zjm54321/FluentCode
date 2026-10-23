@@ -410,7 +410,7 @@ internal static partial class Program
             await controller.LoadAsync(page.Capture(), none, true, CancellationToken.None);
             var todo = controller.Snapshot.Todo;
             Check(todo.State == OpenCodeInsightState.Unavailable && todo.Value!.State == OpenCodeTodoState.Disabled
-                && todo.Value.Reason == "当前后端未启用 ToDo（experimental.todo）" && todo.Value.Items.IsEmpty,
+                && todo.Value.Reason == "当前后端未启用 To Do（experimental.todo）" && todo.Value.Items.IsEmpty,
                 "todo.experimental-off-capability-gap-even-with-plugin-listed");
             Check(fake.Paths.Any(path => path.StartsWith("/prefix/api/config?") && path.Contains("location%5Bdirectory%5D=C%3A%2Fwork")),
                 "todo.config-read-scoped-to-session-directory");

@@ -263,7 +263,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     {
         if (snapshot.UnavailableReason is { } reason) return "会话概况：" + reason;
         if (snapshot.Loading) return "会话概况：读取中";
-        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文与 ToDo";
+        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文与 To Do";
         var cost = snapshot.Cost.Value is { Summary.HasKnownCost: true } view
             ? (snapshot.Cost.State == OpenCodeInsightState.Partial ? "已知部分 " : "") + Money(view.Summary.TotalCost)
             : "费用无法确认";
@@ -571,7 +571,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     }
 
     // Read-only native CheckBoxes: completed is checked, cancelled alone is struck through (TD1).
-    internal const string TodoTitle = "ToDo";
+    internal const string TodoTitle = "To Do";
 
     private static FrameworkElement TodoSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
@@ -580,7 +580,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         panel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsTodo");
-        AutomationProperties.SetName(panel, "ToDo：" + DescribeTodoState(todo));
+        AutomationProperties.SetName(panel, "To Do：" + DescribeTodoState(todo));
         var heading = new Grid { ColumnSpacing = 8 };
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -619,7 +619,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
                 VerticalAlignment = VerticalAlignment.Top,
             };
             AutomationProperties.SetAutomationId(_scroll, "OpenCodeInsightsTodoScroll");
-            AutomationProperties.SetName(_scroll, "ToDo 列表");
+            AutomationProperties.SetName(_scroll, "To Do 列表");
             Content = _scroll;
         }
 

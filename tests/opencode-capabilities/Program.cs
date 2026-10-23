@@ -264,7 +264,7 @@ internal static class Program
 
         // Native capability gating (no plugin): experimental.todo + history evidence.
         var off = Derive(new[] { Message("msg_no_tools") }, config: OpenCodeTodoConfig.Disabled);
-        Check(off.State == OpenCodeTodoState.Disabled && off.Reason == "当前后端未启用 ToDo（experimental.todo）"
+        Check(off.State == OpenCodeTodoState.Disabled && off.Reason == "当前后端未启用 To Do（experimental.todo）"
             && off.Capability.Availability == OpenCodeCapabilityAvailability.Unavailable, "experimental.todo off + no writes → honest capability gap");
         var offWithHistory = Derive(new[] { old }, config: OpenCodeTodoConfig.Disabled);
         Check(offWithHistory.State == OpenCodeTodoState.Listed && offWithHistory.Capability.Availability == OpenCodeCapabilityAvailability.Available,

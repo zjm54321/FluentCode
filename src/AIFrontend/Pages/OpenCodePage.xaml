@@ -317,7 +317,7 @@
                                     <Border.Shadow>
                                         <ThemeShadow />
                                     </Border.Shadow>
-                                    <!-- Only ToDo owns a vertical ScrollViewer. Star rows carry the dock's finite height to it. -->
+                                    <!-- Only To Do owns a vertical ScrollViewer. Star rows carry the dock's finite height to it. -->
                                     <Grid x:Name="RightSessionContent" Padding="16" RowSpacing="16" RowDefinitions="Auto,*">
                                         <StackPanel Spacing="16">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">

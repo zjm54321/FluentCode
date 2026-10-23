@@ -55,7 +55,7 @@ internal static class OpenCodeToolDetailBuiltins
         var panel = new StackPanel { Spacing = 8 };
         if (items.Length == 0)
         {
-            panel.Children.Add(OpenCodeToolDetailContent.Caption(model.IsActive ? "正在更新 ToDo…" : "这次调用之后 ToDo 为空"));
+            panel.Children.Add(OpenCodeToolDetailContent.Caption(model.IsActive ? "正在更新 To Do…" : "这次调用之后 To Do 为空"));
             return panel;
         }
 

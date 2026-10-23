@@ -90,7 +90,7 @@ public static class OpenCodeCapabilityStatus
             ReadState(scope, mcp, "MCP 状态目录可用；不表示所有 MCP 已连接"),
             ReadState(scope, plugins, "服务器插件目录可用；配置存在不等于实际运行"),
             Unavailable(LspUnavailableReason),
-            Unknown("原生 ToDo 由 experimental.todo 与当前会话 todowrite 记录确认"),
+            Unknown("原生 To Do 由 experimental.todo 与当前会话 todowrite 记录确认"),
             PluginFeature(scope, plugins, "oh-my-opencode-slim"),
             Unavailable("Billion 未授权连接；压缩控制禁用"),
             mcpRows, pluginRows, !scope.Stale && mcp.Complete && plugins.Complete
