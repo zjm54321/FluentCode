@@ -58,7 +58,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </Grid>
                 <TextBlock x:Name="Hint" Grid.Row="1" Margin="4,0,0,0" TextWrapping="Wrap"
                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TreeView x:Name="Tree" Grid.Row="2" SelectionMode="Single" CanDragItems="False"
+                <TreeView x:Name="Tree" Grid.Row="2" SelectionMode="None" CanDragItems="False"
                           CanReorderItems="False" AllowDrop="False" AutomationProperties.Name="子智能体会话树">
                   <TreeView.ItemTemplate>
                     <DataTemplate><ContentPresenter Content="{Binding Content}" HorizontalAlignment="Stretch" /></DataTemplate>
@@ -66,6 +66,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                   <TreeView.ItemContainerStyle>
                     <Style TargetType="TreeViewItem">
                       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                      <Setter Property="UseSystemFocusVisuals" Value="True" />
                       <Setter Property="MinHeight" Value="30" />
                       <Setter Property="GlyphSize" Value="10" />
                       <Setter Property="Template">
@@ -94,20 +95,17 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                                   <VisualState x:Name="Selected">
                                     <VisualState.Setters>
                                       <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelected}" />
-                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
                                     </VisualState.Setters>
                                   </VisualState>
                                   <VisualState x:Name="PointerOverSelected">
                                     <VisualState.Setters>
                                       <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedPointerOver}" />
-                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
                                       <Setter Target="ChevronHover.Opacity" Value="1" />
                                     </VisualState.Setters>
                                   </VisualState>
                                   <VisualState x:Name="PressedSelected">
                                     <VisualState.Setters>
                                       <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedPressed}" />
-                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
                                       <Setter Target="ChevronHover.Opacity" Value="1" />
                                     </VisualState.Setters>
                                   </VisualState>
@@ -117,14 +115,10 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                                   <VisualState x:Name="SelectedDisabled">
                                     <VisualState.Setters>
                                       <Setter Target="ContentPresenterGrid.Opacity" Value="0.5" />
-                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
                                     </VisualState.Setters>
                                   </VisualState>
                                 </VisualStateGroup>
                               </VisualStateManager.VisualStateGroups>
-                              <Rectangle x:Name="SelectionIndicator" Width="3" Height="16" HorizontalAlignment="Left"
-                                         VerticalAlignment="Center" RadiusX="2" RadiusY="2" Opacity="0"
-                                         Fill="{ThemeResource TreeViewItemSelectionIndicatorForeground}" />
                               <Grid x:Name="MultiSelectGrid" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left"
                                     Padding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.Indentation}">
                                 <CheckBox x:Name="MultiSelectCheckBox" Visibility="Collapsed" IsTabStop="False" AutomationProperties.AccessibilityView="Raw" />

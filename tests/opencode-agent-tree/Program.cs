@@ -47,6 +47,9 @@ internal static class Program
             "AT1: whole group row toggles once; chevron has no competing pointer handler");
         Check(view.Contains("AutomationProperties.SetName(item, name)") && view.Contains("NameTreeContent(row,"), "native node peers announce actual group and instance names");
         Check(view.Contains("SessionRequested?.Invoke(instance.Id)") && view.Contains("ShellRequested?.Invoke(shell.Id)"), "real session and shell navigation retained");
+        Check(view.Contains("SelectionMode=\"None\"") && !view.Contains("SelectionIndicator")
+            && view.Contains("Property=\"UseSystemFocusVisuals\" Value=\"True\"")
+            && view.Contains("TreeViewItemBackgroundPointerOver"), "AT3: agent and terminal rows invoke without a selection pill; focus and hover remain native");
         Check(view.Contains("Content=\"返回主智能体\"") && view.Contains("_card.Visibility = Visibility.Collapsed;")
             && view.Contains("_parentReturn.Visibility = Visibility.Visible;"), "SA1: return button replaces the whole child-session tree card");
         var page = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.AgentTree.cs"));
