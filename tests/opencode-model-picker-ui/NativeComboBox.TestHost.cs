@@ -3,8 +3,8 @@ using System;
 using System.Collections.Generic;
 namespace Microsoft.UI.Xaml
 {
-    public class Application { public static Application Current { get; } = new(); public Dictionary<string, object> Resources { get; } = new() { ["DefaultComboBoxStyle"] = new Style() }; }
-    public class FrameworkElement { public Style? Style { get; set; } public double MinWidth { get; set; } public double MinHeight { get; set; } public HorizontalAlignment HorizontalAlignment { get; set; } public VerticalAlignment VerticalAlignment { get; set; } }
+    public class Application { public static Application Current { get; } = new(); public Dictionary<string, object> Resources { get; } = new() { ["DefaultComboBoxStyle"] = new Style(), ["DefaultComboBoxItemStyle"] = new Style() }; }
+    public class FrameworkElement { public Dictionary<string, object> Resources { get; } = new(); public Style? Style { get; set; } public double MinWidth { get; set; } public double MinHeight { get; set; } public HorizontalAlignment HorizontalAlignment { get; set; } public VerticalAlignment VerticalAlignment { get; set; } }
     public class Style { }
     public class DataTemplate { }
     public enum HorizontalAlignment { Stretch }
@@ -27,9 +27,16 @@ namespace Microsoft.UI.Xaml.Controls
         public Microsoft.UI.Xaml.DataTemplate? ItemTemplate { get; set; }
         public List<object> Items { get; } = new();
         public event EventHandler? SelectionChanged;
+        public event EventHandler? DropDownClosed;
+        public ContentPresenter SelectionPresenter { get; } = new();
+        protected virtual void OnApplyTemplate() { }
+        protected object GetTemplateChild(string name) => SelectionPresenter;
+        public void ApplyTemplate() => OnApplyTemplate();
+        public void CloseDropDown() => DropDownClosed?.Invoke(this, EventArgs.Empty);
         public object? SelectedItem { get => _selected; set { if (Equals(_selected, value)) return; _selected = value; SelectionChanged?.Invoke(this, EventArgs.Empty); } }
     }
     public class ComboBoxItem : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } }
+    public class ContentPresenter : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } }
     public class Button : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } public bool IsEnabled { get; set; } }
     public enum Orientation { Horizontal }
     public class StackPanel : Microsoft.UI.Xaml.FrameworkElement { public Orientation Orientation { get; set; } public double Spacing { get; set; } public List<Microsoft.UI.Xaml.FrameworkElement> Children { get; } = new(); }
@@ -42,7 +49,7 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed record OpenCodeAgentPickerRow(string Id, string Name, string? Description, bool Selectable, string? Reason, string? Color = null);
     internal static class OpenCodeAgentIcons { internal static string Glyph(string id) => id; internal static string DisplayName(string name) => name; }
     internal static class OpenCodeAgentPresentation { internal static object? Color(string? color) => color; }
-    internal static class OpenCodeModelLogo { internal static Microsoft.UI.Xaml.FrameworkElement Label(string? id, string name) { _ = id; return new Microsoft.UI.Xaml.Controls.TextBlock { Text = name }; } internal static Microsoft.UI.Xaml.FrameworkElement Create(string? id, string? name) => Label(id, name ?? ""); }
+    internal static class OpenCodeModelLogo { internal static Microsoft.UI.Xaml.FrameworkElement Label(string? id, string name) { _ = id; return new Microsoft.UI.Xaml.Controls.TextBlock { Text = name }; } internal static Microsoft.UI.Xaml.FrameworkElement Create(string? id, string? name) => new Microsoft.UI.Xaml.Controls.FontIcon { Glyph = "logo:" + id }; }
     internal sealed partial class OpenCodeSessionControlCard
     {
         internal OpenCodeNativeComboBox AgentButton { get; } = new();

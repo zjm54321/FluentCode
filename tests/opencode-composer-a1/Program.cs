@@ -140,7 +140,7 @@ namespace AIFrontend.Pages
                 && Named("ComposerToolbarLeft").Parent == Named("ComposerInputLayout")
                 && Named("ComposerExpandButton").Parent == Named("Composer").Parent, "editor, actions and plus share a stable layout; fullscreen stays inside input");
             var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
-            Check(binding.Contains("RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled)")
+            Check(binding.Contains("RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled, labels.Model)")
                 && combo.Contains("OpenCodeModelLogo.Label(") && combo.Contains("OpenCodeModelPresentation.VariantLabel(id)"), "choices use common native model logo/name and display-only effort labels");
             Check(binding.Contains("description = info?.Description") && binding.Contains("owns ? _agentSelector.CurrentAgentDescription : null")
                 && binding.Contains("ToolTipService.SetToolTip(BlankAgentButton, description ??"), "visible composer agent tooltip uses owned draft/session description in both responsive modes");

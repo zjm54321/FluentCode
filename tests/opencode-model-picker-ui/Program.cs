@@ -109,7 +109,7 @@ internal static class Program
             && flyout.Contains("OpenCodeBlankModel") && flyout.Contains("anchor.Unloaded += Unloaded"), "anchored native flyout supports sidebar/composer callers and dismisses on owner unload");
         var blank = Read("src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs");
         var combo = Read("src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs");
-        Check(combo.Contains("Application.Current.Resources[\"DefaultComboBoxStyle\"]") && !combo.Contains("<ControlTemplate")
+        Check(combo.Contains("Application.Current.Resources[\"DefaultComboBoxStyle\"]") && combo.Contains("Application.Current.Resources[\"DefaultComboBoxItemStyle\"]") && !combo.Contains("<ControlTemplate")
             && flyout.Contains("{ThemeResource OverlayCornerRadius}"), "PK3b derived ComboBoxes use current native WinUI style and flyouts use native overlay radius");
         Check(combo.Contains("OpenCodeModelLogo.Label(model.Id, model.Name!)") && blank.Contains("ToolTipService.SetToolTip(BlankModelButton, model?.Name)"), "composer brand label and clean friendly tooltip");
         Check(blank.Contains("sourceKey: source.Identity"), "blank picker uses captured stable source identity");
@@ -184,6 +184,9 @@ internal static class Program
             && blank.Contains("ChooseBlankModelAsync(basis, token, anchor: sender as FrameworkElement)"), "PK3c restored model buttons pass the invoking anchor through both guarded routes");
         Check(dialog.Contains("search.KeyDown +=") && dialog.Contains("target.Focus(FocusState.Keyboard)")
             && !dialog.Contains("ItemContainerStyle ="), "PK3c search arrows enter the native model ListView without custom selected-item styling");
+        Check(toolbar.Contains("BlankAgentButton.SetLabelExpanded(labels.Agent)") && toolbar.Contains("BlankStrengthButton.SetLabelExpanded(labels.Effort)")
+            && toolbar.Contains("BlankStrengthButton, enabled, labels.Model)") && toolbar.Contains("labels.Agent ? 96 : 0")
+            && toolbar.Contains("labels.Effort ? 64 : 0"), "PK3d all three toolbar controls apply responsive label states and release XAML minimum widths");
         Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
             && cardBinding.Contains("_blankPreferences") && !cardBinding.Contains("GetSessionInfoAsync") && !cardBinding.Contains("ListModelsAsync"),
             "sidebar reads the same session/blank owners, never adds a second selection cache or data fetch");
@@ -239,6 +242,30 @@ internal static class Program
         Check(commits == 1 && !combo.IsEnabled, "disabled child selector cannot commit");
         combo.Render(Array.Empty<OpenCodeNativeComboBox.Choice>(), null, false);
         Check(combo.SelectedItem is null && combo.PlaceholderText == "未知" && !combo.IsEnabled, "unknown value remains a disabled native placeholder");
+        var effort = new OpenCodeNativeComboBox();
+        effort.ApplyTemplate();
+        effort.Render(new[] { OpenCodeNativeComboBox.Effort("high") }, new OpenCodeEffortChoice("high"), true);
+        effort.SetLabelExpanded(false);
+        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uEC4A" }
+            && ((Microsoft.UI.Xaml.Controls.ComboBoxItem)effort.Items[0]).Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 },
+            "PK3d compact selection keeps the gauge while popup items retain icon and full text");
+        effort.CloseDropDown();
+        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon, "PK3d compact selection survives native popup close");
+        effort.SetLabelExpanded(true);
+        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 }, "PK3d expanded selection restores the full label");
+        var agent = new OpenCodeNativeComboBox();
+        agent.ApplyTemplate();
+        agent.Render(new[] { OpenCodeNativeComboBox.Agent(new("raw", "Raw", null, true, null)) }, "raw", true);
+        agent.SetLabelExpanded(false);
+        Check(agent.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "raw" }
+            && ((Microsoft.UI.Xaml.Controls.ComboBoxItem)agent.Items[0]).Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 },
+            "PK3d compact agent retains its glyph and full popup label");
+        var modelButton = new Microsoft.UI.Xaml.Controls.Button();
+        var model = new OpenCodeModelInfo { Id = "claude", ProviderId = "a", Name = "Claude" };
+        OpenCodeSessionControlCard.RenderModelButton(modelButton, model, true, false);
+        Check(modelButton.Content is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "logo:claude" }, "PK3d compact model button retains only its brand logo");
+        OpenCodeSessionControlCard.RenderModelButton(modelButton, model, true, true);
+        Check(modelButton.Content is Microsoft.UI.Xaml.Controls.TextBlock { Text: "Claude" }, "PK3d expanded model button restores its display label");
     }
 
     private static void RunChildSessionChecks()

@@ -140,7 +140,7 @@ public sealed partial class OpenCodePage
     }
 
     private void RenderNativePickerChoices(OpenCodeNativeComboBox agent, Button model,
-        OpenCodeNativeComboBox effort, bool enabled)
+        OpenCodeNativeComboBox effort, bool enabled, bool modelExpanded = true)
     {
         var blank = _newSessionDraftActive;
         var owns = blank ? _blankPreferences is { } value && value.BlankSlotId == _activeBlankSlotId
@@ -155,7 +155,7 @@ public sealed partial class OpenCodePage
         var currentModel = models.FirstOrDefault(m => m.Id == selected?.Id && m.ProviderId == selected?.ProviderId);
         var editable = enabled && owns && (!blank || !_blankPickerPending && !_newSessionCreatePending);
         agent.Render(OpenCodeNativeComboBox.Agents(rows), owns ? blank ? _blankPreferences?.Agent : _agentSelector.CurrentAgentId : null, editable);
-        OpenCodeSessionControlCard.RenderModelButton(model, currentModel, editable);
+        OpenCodeSessionControlCard.RenderModelButton(model, currentModel, editable, modelExpanded);
         effort.Render(OpenCodeNativeComboBox.Efforts(currentModel), selected is null ? null : new OpenCodeEffortChoice(selected.Variant), editable && currentModel is not null);
     }
 }

@@ -14,15 +14,24 @@ internal sealed record OpenCodeEffortChoice(string? Id);
 // Real ComboBox: its template owns the popup, highlight, check, keyboard and disabled states.
 public sealed class OpenCodeNativeComboBox : ComboBox
 {
-    internal sealed record Choice(object Key, string Name, Func<FrameworkElement> CreateVisual, string Identity)
+    internal sealed record Choice(object Key, string Name, Func<FrameworkElement> CreateVisual, string Identity,
+        Func<FrameworkElement>? CreateCompactVisual = null)
     {
         public FrameworkElement Visual => CreateVisual();
         public override string ToString() => Name; // Native incremental text search uses the display name.
+    }
+    private sealed class ChoiceItem(Choice choice) : ComboBoxItem
+    {
+        public override string ToString() => choice.Name;
     }
 
     private bool _rendering;
     private string? _itemsIdentity;
     private object? _current;
+    private bool _labelExpanded = true;
+    private ContentPresenter? _selectionPresenter;
+    private Choice? _selectionVisualChoice;
+    private bool _selectionVisualExpanded;
     internal event Action<object>? ChoiceChanged;
 
     public OpenCodeNativeComboBox()
@@ -30,6 +39,7 @@ public sealed class OpenCodeNativeComboBox : ComboBox
         // Implicit styles are exact-type lookups. This derived control otherwise falls
         // back to the platform ComboBox template, not WinUI's rounded overlay template.
         Style = (Style)Application.Current.Resources["DefaultComboBoxStyle"];
+        Resources["ComboBoxThemeMinWidth"] = 0d; // Stock template background otherwise imposes 64epx in icon-only mode.
         IsTextSearchEnabled = true;
         PlaceholderText = "未知";
         MinWidth = 0;
@@ -40,10 +50,37 @@ public sealed class OpenCodeNativeComboBox : ComboBox
         // Visual getter is not a reliable WinRT property surface in the packaged app.
         SelectionChanged += (_, _) =>
         {
+            UpdateSelectionVisual();
             if (_rendering || !IsEnabled || SelectedItem is not ComboBoxItem { Tag: Choice choice } || Equals(_current, choice.Key)) return;
             _current = choice.Key;
             ChoiceChanged?.Invoke(choice.Key);
         };
+        DropDownClosed += (_, _) => UpdateSelectionVisual(force: true);
+    }
+
+    protected override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        _selectionPresenter = GetTemplateChild("ContentPresenter") as ContentPresenter;
+        UpdateSelectionVisual(force: true);
+    }
+
+    internal void SetLabelExpanded(bool expanded)
+    {
+        _labelExpanded = expanded;
+        UpdateSelectionVisual();
+    }
+
+    private void UpdateSelectionVisual(bool force = false)
+    {
+        if (_selectionPresenter is null) return;
+        var choice = (SelectedItem as ComboBoxItem)?.Tag as Choice;
+        if (!force && ReferenceEquals(choice, _selectionVisualChoice) && _selectionVisualExpanded == _labelExpanded) return;
+        _selectionVisualChoice = choice;
+        _selectionVisualExpanded = _labelExpanded;
+        // Only the closed selection visual changes. Popup containers always keep full labels.
+        _selectionPresenter.Content = choice is null ? new TextBlock { Text = PlaceholderText }
+            : !_labelExpanded && choice.CreateCompactVisual is { } compact ? compact() : choice.CreateVisual();
     }
 
     internal void Render(IReadOnlyList<Choice> choices, object? current, bool enabled)
@@ -58,13 +95,15 @@ public sealed class OpenCodeNativeComboBox : ComboBox
                 Items.Clear();
                 foreach (var choice in choices)
                 {
-                    var item = new ComboBoxItem { Content = choice.CreateVisual(), Tag = choice };
+                    var item = new ChoiceItem(choice) { Style = (Style)Application.Current.Resources["DefaultComboBoxItemStyle"],
+                        Content = choice.CreateVisual(), Tag = choice };
                     AutomationProperties.SetName(item, choice.Name);
                     Items.Add(item);
                 }
             }
             _current = current;
             SelectedItem = Items.OfType<ComboBoxItem>().FirstOrDefault(c => c.Tag is Choice choice && Equals(choice.Key, current));
+            UpdateSelectionVisual();
             IsEnabled = enabled;
         }
         finally { _rendering = false; }
@@ -73,16 +112,21 @@ public sealed class OpenCodeNativeComboBox : ComboBox
     internal static Choice Agent(OpenCodeAgentPickerRow row) => new(row.Id, OpenCodeAgentIcons.DisplayName(row.Name), () =>
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var glyph = new FontIcon { Glyph = OpenCodeAgentIcons.Glyph(row.Id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
-        glyph.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FontIcon\"><Setter Property=\"Foreground\" Value=\"{ThemeResource AccentTextFillColorPrimaryBrush}\"/></Style>");
-        if (OpenCodeAgentPresentation.Color(row.Color) is { } color)
-            glyph.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
-        panel.Children.Add(glyph);
+        panel.Children.Add(AgentGlyph(row));
         panel.Children.Add(new TextBlock { Text = OpenCodeAgentIcons.DisplayName(row.Name), TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center });
         AutomationProperties.SetName(panel, OpenCodeAgentIcons.DisplayName(row.Name));
         return panel;
-    }, row.Id + "\t" + row.Name + "\t" + row.Color);
+    }, row.Id + "\t" + row.Name + "\t" + row.Color, () => AgentGlyph(row));
+
+    private static FontIcon AgentGlyph(OpenCodeAgentPickerRow row)
+    {
+        var glyph = new FontIcon { Glyph = OpenCodeAgentIcons.Glyph(row.Id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
+        glyph.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FontIcon\"><Setter Property=\"Foreground\" Value=\"{ThemeResource AccentTextFillColorPrimaryBrush}\"/></Style>");
+        if (OpenCodeAgentPresentation.Color(row.Color) is { } color)
+            glyph.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        return glyph;
+    }
 
     internal static Choice Model(OpenCodeModelInfo model) => new(new OpenCodeModelChoiceKey(model.ProviderId!, model.Id!, null), model.Name!,
         () => OpenCodeModelLogo.Label(model.Id, model.Name!), model.ProviderId + "\t" + model.Id + "\t" + model.Name);
@@ -97,7 +141,8 @@ public sealed class OpenCodeNativeComboBox : ComboBox
         panel.Children.Add(new TextBlock { Text = label ?? OpenCodeModelPresentation.VariantLabel(id),
             TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
         return panel;
-    }, "effort:" + (id ?? "<null>") + "\t" + label);
+    }, "effort:" + (id ?? "<null>") + "\t" + label,
+        () => new FontIcon { Glyph = "\uEC4A", FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
 
     internal static IReadOnlyList<Choice> Efforts(OpenCodeModelInfo? model) => model is null ? Array.Empty<Choice>()
         : new string?[] { null }.Concat((model.Variants ?? new()).Select(v => v.Id).Where(id => id is not null)).Distinct()
