@@ -50,7 +50,7 @@
         </ResourceDictionary>
     </Page.Resources>
 
-    <Grid x:Name="PageRoot" RowDefinitions="Auto,*">
+    <Grid x:Name="PageRoot" RowDefinitions="Auto,*" Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}">
         <VisualStateManager.VisualStateGroups>
             <!-- 会话布局 / 空白新标签页布局（§3，L2 经 VisualStateManager.GoToState(this, …) 切换）。
                  输入区 ComposerCell 始终是 SessionLayoutRoot 的同一子元素，只改所在行与可见性，绝不换父元素。 -->
@@ -346,9 +346,8 @@
 
                         <Grid>
                             <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
-                            <!-- Opaque reading surface; outer tabs/panes/window retain their existing Mica/acrylic. -->
-                            <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16"
-                                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                            <!-- S2: replies own their card surfaces; the reading host exposes page acrylic. -->
+                            <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
                                 <Grid.RowDefinitions>
                                     <RowDefinition x:Name="SessionStatusRow" Height="Auto" />
                                     <RowDefinition Height="Auto" />
@@ -389,7 +388,7 @@
                                 </StackPanel>
 
                                 <!-- Row 3 时间线（居中，最大宽度见 OpenCodeTimelineMaxWidth）；新标签页布局时换为标题区 -->
-                                <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*">
+                                <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*" ColumnDefinitions="*,56" ColumnSpacing="8">
                                     <ScrollViewer
                                         x:Name="MessageScroll"
                                         VerticalAnchorRatio="NaN"
@@ -397,7 +396,7 @@
                                         HorizontalContentAlignment="Center"
                                         HorizontalScrollMode="Disabled"
                                         HorizontalScrollBarVisibility="Disabled"
-                                        VerticalScrollBarVisibility="Auto"
+                                        VerticalScrollBarVisibility="Hidden"
                                         ViewChanged="MessageScroll_ViewChanged"
                                         AutomationProperties.AutomationId="OpenCodeMessageScroll">
                                         <Grid
@@ -406,6 +405,13 @@
                                             HorizontalAlignment="Center"
                                             Padding="6,0,6,0" />
                                     </ScrollViewer>
+                                    <AnnotatedScrollBar x:Name="ConversationScrollBar" Grid.Row="1" Grid.Column="1"
+                                                        Width="56" SmallChange="40"
+                                                        Loaded="ConversationScrollBar_Loaded" Unloaded="ConversationScrollBar_Unloaded"
+                                                        DetailLabelRequested="ConversationScrollBar_DetailLabelRequested"
+                                                        Scrolling="ConversationScrollBar_Scrolling"
+                                                        AutomationProperties.AutomationId="OpenCodeAnnotatedScrollBar"
+                                                        AutomationProperties.Name="会话消息导航" />
 
                                     <!-- F3 消息历史分页：滚动到顶部附近自动加载更早消息（单飞、预插保持阅读位置；
                                          游标语义见 OpenCodePage.MessagePagination.cs）。加载中时在顶部显示小型进度环（叠放，不推动布局）。 -->
