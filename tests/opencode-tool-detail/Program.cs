@@ -104,6 +104,14 @@ internal static class Program
         Check(popup.Contains("options.Compact = _mode == OpenCodeDetailPopupMode.Preview;", StringComparison.Ordinal), "preview builds compact, large view builds full");
         Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(", StringComparison.Ordinal) && builtins.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
             && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "to do reuses the right-panel rows; read-only; theme brushes only");
+        Check(builtins.Contains("count.HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal)
+            && builtins.Contains("Grid.SetColumn(count, 1)", StringComparison.Ordinal)
+            && builtins.Contains(" + \"/\" + ", StringComparison.Ordinal)
+            && builtins.Contains("正在更新 ToDo…", StringComparison.Ordinal)
+            && builtins.Contains("这次调用之后 ToDo 为空", StringComparison.Ordinal), "RC3 tool detail uses ToDo copy and trailing compact count");
+        var permission = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodePermissionPresentation.cs"));
+        Check(permission.Contains("\"todowrite\" => \"更新 ToDo\"", StringComparison.Ordinal)
+            && permission.Contains("\"todoread\" => \"查看 ToDo\"", StringComparison.Ordinal), "RC3 permission display names match tool rows");
     }
 
     /// <summary>Wave 5 G7/G8: large view ≈80% centered, hover preview small + adjacent, hide-on-leave, wrap-by-default, no truncation.</summary>
@@ -346,7 +354,7 @@ internal static class Program
 
             var todoWrite = Model("todowrite", "{\"status\":\"completed\",\"input\":{\"todos\":[{\"content\":\"待办内容原样保留\",\"status\":\"pending\"}]}}");
             var todoRead = Model("todoread", "{\"status\":\"completed\",\"input\":{}}");
-            Check(todoWrite.Name == "更新 to do" && todoRead.Name == "查看 to do", "A10 app-owned to do tool-row copy");
+            Check(todoWrite.Name == "更新 ToDo" && todoRead.Name == "查看 ToDo", "RC3 app-owned ToDo tool-row copy");
             Check(OpenCodeToolRowPresentation.DisplayName("custom_todowrite") == "custom_todowrite"
                 && Row(todoWrite.InputProperties, "content", 2).Value == "待办内容原样保留"
                 && Row(todoWrite.InputProperties, "status", 2).Value == "pending", "A10 custom ids, protocol fields and tool input content are unchanged");

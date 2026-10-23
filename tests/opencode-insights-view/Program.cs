@@ -261,7 +261,13 @@ internal static class Program
             new OpenCodeTodoItem("pending", "pending"), new OpenCodeTodoItem("completed", "completed"),
             new OpenCodeTodoItem("working", "in_progress"), new OpenCodeTodoItem("cancelled", "cancelled"));
         var panel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
-        Check(AllText(panel).Contains("1 / 4"), "header counts completed only");
+        Check(AllText(panel).Contains("1/4") && AllText(panel).Contains("ToDo"), "RC3 ToDo header counts completed only, no spaces around slash");
+        var heading = (Grid)panel.Children[0];
+        var count = heading.Children.OfType<TextBlock>().Last();
+        Check(heading.ColumnDefinitions[0].Width.GridUnitType == GridUnitType.Star
+            && heading.ColumnDefinitions[1].Width.GridUnitType == GridUnitType.Auto
+            && count.Attached["Grid.Column"] is 1 && count.HorizontalAlignment == HorizontalAlignment.Right,
+            "RC3 completed count is right-aligned in the same native header row");
         var list = (StackPanel)panel.Children[1];
         var boxes = list.Children.Cast<CheckBox>().ToArray();
         Check(boxes.Select(box => box.IsChecked).SequenceEqual(new bool?[] { false, true, null, false }), "native pending/completed/in-progress/cancelled checkbox states");
@@ -384,7 +390,7 @@ internal static class Program
         Check(heading.ColumnDefinitions[0].Width.GridUnitType == GridUnitType.Star
             && heading.ColumnDefinitions[1].Width.GridUnitType == GridUnitType.Auto
             && percent.HorizontalAlignment == HorizontalAlignment.Right
-            && (string)heading.Attached["ToolTip"] == "第 3 轮", "percentage at header trailing edge; turns available by tooltip");
+            && heading.Attached["ToolTip"] is "第 3 轮", "percentage at header trailing edge; turns available by tooltip");
         var current = (StackPanel)panel.Children[1];
         var progress = current.Children.OfType<ProgressBar>().Single();
         Check(panel.Spacing == 16 && current.Spacing == 8 && !progress.IsIndeterminate

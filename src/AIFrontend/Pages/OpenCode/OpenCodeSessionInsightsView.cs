@@ -251,7 +251,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     {
         if (snapshot.UnavailableReason is { } reason) return "会话概况：" + reason;
         if (snapshot.Loading) return "会话概况：读取中";
-        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文与 to do";
+        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文与 ToDo";
         var cost = snapshot.Cost.Value is { Summary.HasKnownCost: true } view
             ? (snapshot.Cost.State == OpenCodeInsightState.Partial ? "已知部分 " : "") + Money(view.Summary.TotalCost)
             : "费用无法确认";
@@ -565,17 +565,23 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     }
 
     // Read-only native CheckBoxes: completed is checked, cancelled alone is struck through (TD1).
-    internal const string TodoTitle = "to do";
+    internal const string TodoTitle = "ToDo";
 
     private static UIElement TodoSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
         var todo = snapshot.Todo.Value!;
         var panel = new StackPanel { Spacing = 8 };
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsTodo");
-        AutomationProperties.SetName(panel, "to do：" + DescribeTodoState(todo));
-        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        AutomationProperties.SetName(panel, "ToDo：" + DescribeTodoState(todo));
+        var heading = new Grid { ColumnSpacing = 8 };
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(OpenCodeInteractionUi.StyledText(TodoTitle, OpenCodeInteractionUi.BodyStrongStyleKey));
-        heading.Children.Add(Caption(todo.Items.Count(item => item.Status == "completed") + " / " + todo.Items.Length));
+        var count = Caption(todo.Items.Count(item => item.Status == "completed") + "/" + todo.Items.Length);
+        count.HorizontalAlignment = HorizontalAlignment.Right;
+        count.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(count, 1);
+        heading.Children.Add(count);
         panel.Children.Add(heading);
         var list = new StackPanel { Spacing = 2 };
         AutomationProperties.SetAutomationId(list, "OpenCodeInsightsTodoList");

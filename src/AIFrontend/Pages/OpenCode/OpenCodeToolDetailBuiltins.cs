@@ -55,15 +55,21 @@ internal static class OpenCodeToolDetailBuiltins
         var panel = new StackPanel { Spacing = 8 };
         if (items.Length == 0)
         {
-            panel.Children.Add(OpenCodeToolDetailContent.Caption(model.IsActive ? "正在更新 to do…" : "这次调用之后 to do 为空"));
+            panel.Children.Add(OpenCodeToolDetailContent.Caption(model.IsActive ? "正在更新 ToDo…" : "这次调用之后 ToDo 为空"));
             return panel;
         }
 
         // Same heading and rows as the right-panel to do card (OpenCodeSessionInsightsView.TodoSection).
-        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var heading = new Grid { ColumnSpacing = 8 };
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(OpenCodeInteractionUi.StyledText(OpenCodeSessionInsightsView.TodoTitle, OpenCodeInteractionUi.BodyStrongStyleKey));
-        heading.Children.Add(OpenCodeToolDetailContent.Caption(
-            items.Count(item => item.Status == "completed").ToString(CultureInfo.InvariantCulture) + " / " + items.Length.ToString(CultureInfo.InvariantCulture)));
+        var count = OpenCodeToolDetailContent.Caption(
+            items.Count(item => item.Status == "completed").ToString(CultureInfo.InvariantCulture) + "/" + items.Length.ToString(CultureInfo.InvariantCulture));
+        count.HorizontalAlignment = HorizontalAlignment.Right;
+        count.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(count, 1);
+        heading.Children.Add(count);
         panel.Children.Add(heading);
         var list = new StackPanel { Spacing = 2 };
         AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailTodoList");
