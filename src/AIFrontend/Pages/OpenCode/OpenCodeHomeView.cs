@@ -81,6 +81,8 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     private readonly ScrollViewer _chipScroller = new() { Visibility = Visibility.Collapsed };
     private readonly StackPanel _chips = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
+    private readonly Grid _chipRow = new() { ColumnSpacing = 8, Visibility = Visibility.Collapsed };
+    private readonly Button _projectOverflow = new() { Content = "…", CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
     private readonly Dictionary<object, TextBlock> _headerCounts = new();
     private readonly Dictionary<OpenCodeHomeProjectKey, (ProgressRing Ring, TextBlock Count)> _projectBadges = new();
     private ListViewItem? _allProjectsItem;
@@ -186,8 +188,14 @@ public sealed class OpenCodeHomeView : UserControl
         ScrollViewer.SetVerticalScrollMode(_chipScroller, ScrollMode.Disabled);
         ScrollViewer.SetVerticalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Disabled);
         SetIdentity(_chipScroller, "OpenCodeHomeProjectChips", "按项目筛选");
-        Grid.SetRow(_chipScroller, 1);
-        _center.Children.Add(_chipScroller);
+        _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _chipRow.Children.Add(_chipScroller);
+        SetIdentity(_projectOverflow, "OpenCodeHomeProjectOverflow", "更多项目和添加项目");
+        Grid.SetColumn(_projectOverflow, 1);
+        _chipRow.Children.Add(_projectOverflow);
+        Grid.SetRow(_chipRow, 1);
+        _center.Children.Add(_chipRow);
 
         SetIdentity(_sessions, "OpenCodeHomeSessions", "会话：需要你处理，然后按日期分组");
         ScrollViewer.SetHorizontalScrollMode(_sessions, ScrollMode.Disabled);
@@ -448,9 +456,7 @@ public sealed class OpenCodeHomeView : UserControl
         var add = new MenuFlyoutItem { Text = "添加项目", Icon = new FontIcon { Glyph = "\uE710" } };
         add.Click += (_, _) => AddProject?.Invoke(this, Context());
         overflow.Items.Add(add);
-        var more = new Button { Content = "…", Flyout = overflow, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
-        SetIdentity(more, "OpenCodeHomeProjectOverflow", "更多项目和添加项目");
-        _chips.Children.Add(more);
+        _projectOverflow.Flyout = overflow;
     }
 
     private ToggleButton Chip(string text, OpenCodeHomeProjectKey? key)
@@ -484,6 +490,7 @@ public sealed class OpenCodeHomeView : UserControl
         _leftCard.Visibility = side;
         _right.Visibility = side;
         _chipScroller.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
+        _chipRow.Visibility = _chipScroller.Visibility;
         _center.Width = width <= 0 ? CenterMaxWidth
             : Math.Max(0, _narrow ? width - 2 * 40 : Math.Min(CenterMaxWidth, width - 2 * SideColumnWidth - CenterPadding));
         var height = ActualHeight;

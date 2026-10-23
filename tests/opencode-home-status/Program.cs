@@ -108,6 +108,7 @@ internal static class Program
         Check(Walk(chips).OfType<ToggleButton>().Count()==6&&Walk(chips).OfType<ToggleButton>().Single(t=>t.IsChecked==true).Content?.ToString()=="全部","narrow project filter uses native selected ToggleButtons and limits visible projects");
         var more=Find<Button>(view,"OpenCodeHomeProjectOverflow");
         Check(more.Content?.ToString()=="…"&&more.Flyout!.Items.OfType<MenuFlyoutItem>().Count()==4,"overflow preserves the remaining projects and 添加项目");
+        Check(!Walk(chips).Contains(more)&&Walk(view).OfType<Grid>().Any(g=>g.Children.Contains(chips)&&g.Children.Contains(more)),"narrow overflow stays pinned outside the chip scroller when project names are long");
         more.Flyout!.Items.OfType<MenuFlyoutItem>().First().RaiseClick();
         Check(view.SelectedProject==manyProjects[5].Key&&Equals(Walk(chips).OfType<ToggleButton>().Single(t=>t.IsChecked==true).Tag,manyProjects[5].Key),"overflow selection stays visible and selected in the chip row");
         view.SetSelectedProject(null);
