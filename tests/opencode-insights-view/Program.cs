@@ -376,12 +376,30 @@ internal static class Program
         Draw(view, sample);
         var host = Field<Border>(view, "_usageHost");
         var texts = AllText(host).Reverse().ToArray();
-        Check(texts.Take(4).SequenceEqual(new[] { "上下文", "第 3 轮", "12.5K / 200K", "6.2%" }),
-            "上下文 + grey 第 N 轮, then main-agent used / limit with % (text only, not tree usage)");
+        Check(texts.Take(3).SequenceEqual(new[] { "上下文", "6.2%", "12.5K / 200K" }),
+            "RC2 context + right-aligned percentage, then main-agent used / limit");
+        var panel = (StackPanel)host.Child!;
+        var heading = (Grid)panel.Children[0];
+        var percent = heading.Children.OfType<TextBlock>().Last();
+        Check(heading.ColumnDefinitions[0].Width.GridUnitType == GridUnitType.Star
+            && heading.ColumnDefinitions[1].Width.GridUnitType == GridUnitType.Auto
+            && percent.HorizontalAlignment == HorizontalAlignment.Right
+            && (string)heading.Attached["ToolTip"] == "第 3 轮", "percentage at header trailing edge; turns available by tooltip");
+        var current = (StackPanel)panel.Children[1];
+        var progress = current.Children.OfType<ProgressBar>().Single();
+        Check(panel.Spacing == 16 && current.Spacing == 8 && !progress.IsIndeterminate
+            && progress.Minimum == 0 && progress.Maximum == 100 && Math.Abs(progress.Value - 6.25) < 1e-9
+            && progress.Visibility == Visibility.Visible, "native determinate context progress under used/limit with section breathing room");
         Check(OpenCodeSessionInsightsView.UsageLabels.SequenceEqual(new[] { "输入", "输出", "思考", "缓存读", "缓存写", "命中率" }), "V4 row order");
         var usage = ((StackPanel)host.Child!).Children.OfType<Grid>().Single(grid => AutomationProperties.GetAutomationId(grid) == "OpenCodeInsightsUsageGrid");
-        Check(usage.ColumnDefinitions.Count == 3 && usage.RowDefinitions.Count == 2, "three-column native grid");
+        Check(usage.ColumnDefinitions.Count == 3 && usage.RowDefinitions.Count == 2
+            && usage.ColumnDefinitions.All(column => column.Width.GridUnitType == GridUnitType.Star && column.Width.Value == 1)
+            && usage.ColumnSpacing == 16 && usage.RowSpacing == 12, "three equal native columns, 16px columns / 12px rows");
         Check(usage.Children.Cast<Grid>().Select(cell => cell.Children.OfType<FontIcon>().Single().Glyph).SequenceEqual(OpenCodeSessionInsightsView.UsageGlyphs), "all metrics use specified Fluent glyphs including hit target");
+        Check(usage.Children.Cast<Grid>().All(cell => cell.Children.OfType<FontIcon>().Single().FontSize == 16), "16px metric icons");
+        var totals = panel.Children.OfType<Grid>().Single(grid => AutomationProperties.GetAutomationId(grid) == "OpenCodeInsightsTotals");
+        Check(totals.ColumnSpacing == 16 && totals.RowSpacing == 12 && panel.Children[panel.Children.IndexOf(totals) - 1] is Border,
+            "totals follow divider with the same spacing");
         Check(usage.Children.Cast<Grid>().All(cell => cell.Attached.ContainsKey("ToolTip")), "metrics expose names and values in tooltip");
         Check(texts.Contains("1.6K") && texts.Contains(OpenCodeSessionInsightsView.Money(6)), "tree totals still include descendants once");
         Check(!texts.Contains("输入") && !texts.Contains("汇总"), "icon-only grid has no visible labels");
@@ -390,6 +408,8 @@ internal static class Program
         Check(OpenCodeSessionInsightsView.CurrentContextLine(child) == "12.5K / 200K · 6.2%", "SA4 child's own assistant usage and model limit, not tree tokens");
         Check(OpenCodeContextRing.Measure(child with { Context = sample.Context }).Tokens is null, "mismatched parent context cannot populate child ring");
         Draw(view, Empty());
+        Check(((StackPanel)((StackPanel)host.Child!).Children[1]).Children.OfType<ProgressBar>().Single().Visibility == Visibility.Collapsed,
+            "unknown context never shows a zero progress bar");
         Check(OpenCodeSessionInsightsView.TurnsText(null) == "" && !AllText(host).Contains("轮次不可用"), "unknown turns hidden");
         Check(!AllText(host).Contains("不可用") && ((StackPanel)host.Child!).Children.OfType<Grid>().SelectMany(grid => grid.Children).OfType<Grid>().All(cell => cell.Visibility == Visibility.Collapsed), "unknown numeric cells hidden, never zero placeholders");
         var stale = sample with { Context = sample.Context with { Value = sample.Context.Value! with { StaleReasons = ImmutableArray.Create(OpenCodeContextStaleReason.CompactionAfterUsage) } } };

@@ -356,6 +356,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public sealed class ProgressBar : Control
     {
+        public bool IsIndeterminate { get; set; }
         public double Minimum { get; set; }
         public double Maximum { get; set; }
         public double Value { get; set; }

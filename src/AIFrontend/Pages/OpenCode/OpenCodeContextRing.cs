@@ -300,7 +300,7 @@ internal sealed class OpenCodeContextRing
 
     internal static FrameworkElement BuildFlyout(OpenCodeSessionInsightsSnapshot snapshot, OpenCodeContextRing? owner = null)
     {
-        var groups = new StackPanel { Spacing = 12, Width = 286 };
+        var groups = new StackPanel { Spacing = 16, Width = 286 };
         AutomationProperties.SetAutomationId(groups, "OpenCodeInsightsContextFlyout");
         AutomationProperties.SetName(groups, "上下文");
         groups.Children.Add(OpenCodeSessionInsightsView.ContextUsageSection(snapshot));

@@ -320,7 +320,7 @@
                                         x:Name="RightSessionContent"
                                         VerticalScrollBarVisibility="Auto"
                                         HorizontalScrollBarVisibility="Disabled">
-                                        <StackPanel Padding="16,14,16,16" Spacing="12">
+                                        <StackPanel Padding="16" Spacing="16">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                                                 <Grid x:Name="RightPanelHeaderSlot" Visibility="Collapsed" />
                                                 <!-- Compatibility hosts; the ring is shown only in the narrow header. -->

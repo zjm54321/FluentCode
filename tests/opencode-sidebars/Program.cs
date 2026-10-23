@@ -85,6 +85,9 @@ internal static class Program
         var names = page.Descendants().Select(e => (string?)e.Attribute(x + "Name")).Where(n => n is not null).ToList();
         int At(string name) => names.IndexOf(name);
         var card = Named("RightSessionCard");
+        var cardContent = Named("RightSessionContent").Elements().Single();
+        Check((string?)cardContent.Attribute("Padding") == "16" && (string?)cardContent.Attribute("Spacing") == "16",
+            "RC2 right card uses 16px padding and section spacing");
         Check(card.Descendants().Contains(Named("RightPanelHeaderSlot")) && card.Descendants().Contains(Named("InsightsPaneHost"))
             && At("RightPanelHeaderSlot") < At("RightSessionDiagnostics") && At("RightSessionDiagnostics") < At("InsightsPaneHost"),
             "right card: title/id first, then usage and to do");

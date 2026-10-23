@@ -16,7 +16,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// Billion 确认 / Billion 读取经事件交回页面，由页面捕获绑定后调用控制器；面板随会话自动读取（页面负责时机）。
 /// </summary>
 /// <remarks>
-/// 布局 D 右侧卡片：上下文（灰色“第 N 轮”）→ 主 agent 用量行 used / limit · % → 两列 emoji 用量格 → 分隔线 →
+/// 布局 D 右侧卡片：上下文 + 百分比 → 主 agent used / limit + 原生进度条 → 三列图标用量格 → 分隔线 →
 /// Σ 汇总 + 💰 花费 → to do。子智能体只在左侧树中显示（不在此重复）；不再有“会话概况”标题与刷新工具行。
 /// 原生 <see cref="SelectorBar"/>（<c>OpenCodeInsightsSections</c>）仍保留两个分区页，但平时隐藏：
 /// 只有经上下文圆环 Flyout 的 ACP·Billion 组“去设置”进入 Billion 分区（地址填写、关联确认与显式读取；常驻文本框/复选框
@@ -191,7 +191,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         setup.Click += (_, _) => { ShowBillionSection(); BillionSetupRequested?.Invoke(this, EventArgs.Empty); };
         _usageHost.ContextFlyout = new MenuFlyout { Items = { setup } };
 
-        var root = new StackPanel { Spacing = 12 };
+        var root = new StackPanel { Spacing = 16 };
         root.Children.Add(_sections);
         root.Children.Add(_statusRow);
         root.Children.Add(_usageHost);
@@ -347,7 +347,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             // 上下文与用量在上，to do 在下（同一张浮动卡片内，以分隔线分段）；子会话只进入用量，不混入 to do。
             if (snapshot.Todo.Value is { State: OpenCodeTodoState.Listed, Items.Length: > 0 })
             {
-                var todoCard = new StackPanel { Spacing = 12 };
+                var todoCard = new StackPanel { Spacing = 16 };
                 if (_showContext) todoCard.Children.Add(OpenCodeContextRing.Divider());
                 todoCard.Children.Add(TodoSection(snapshot));
                 AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
@@ -413,7 +413,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     // 上下文参考圆环（含“当前上下文 / 用量计费 / ACP·Billion 状态”三组 Flyout）见 OpenCodeContextRing；
     // MCP / 插件 / LSP 服务状态移到页头连接状态按钮的 Flyout（OpenCodeConnectionFlyout）。
 
-    /// <summary>两列用量格的固定顺序（emoji + 短标签）；包含全部子会话。</summary>
+    /// <summary>三列用量格的固定顺序（图标 + 数值，标签在工具提示中）；仅当前会话最近请求。</summary>
     internal static readonly string[] UsageLabels = ["输入", "输出", "思考", "缓存读", "缓存写", "命中率"];
     internal static readonly string[] UsageGlyphs = ["\uE896", "\uE898", "\uEA80", "\uE736", "\uE70F", "\uE1D2"];
 
@@ -421,27 +421,26 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
     internal static UIElement ContextUsageSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
-        var panel = new StackPanel { Spacing = 8 };
+        var panel = new StackPanel { Spacing = 16 };
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsLayeredUsage");
+        var line = CurrentContextLine(snapshot);
+        var separator = line.LastIndexOf(" · ", StringComparison.Ordinal);
+        var (ratio, _, _) = OpenCodeContextRing.Measure(snapshot);
         var heading = new Grid { ColumnSpacing = 8 };
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(OpenCodeInteractionUi.StyledText("上下文", OpenCodeInteractionUi.BodyStrongStyleKey));
-        var turns = Caption(TurnsText(snapshot.Turns));
-        turns.Visibility = snapshot.Turns is null ? Visibility.Collapsed : Visibility.Visible;
-        turns.VerticalAlignment = VerticalAlignment.Center;
-        AutomationProperties.SetAutomationId(turns, "OpenCodeInsightsTurns");
-        Grid.SetColumn(turns, 1);
-        heading.Children.Add(turns);
+        var percent = OpenCodeInteractionUi.StyledText(separator < 0 ? "—" : line[(separator + 3)..], OpenCodeInteractionUi.BodyStrongStyleKey);
+        percent.VerticalAlignment = VerticalAlignment.Center;
+        percent.HorizontalAlignment = HorizontalAlignment.Right;
+        AutomationProperties.SetAutomationId(percent, "OpenCodeInsightsCurrentContextPercent");
+        Grid.SetColumn(percent, 1);
+        heading.Children.Add(percent);
+        if (snapshot.Turns is not null) ToolTipService.SetToolTip(heading, TurnsText(snapshot.Turns));
         panel.Children.Add(heading);
 
-        // 主 agent 用量行：used / limit（左）· 百分比（右）。只是文字，不画进度条；不含子会话。
-        var line = CurrentContextLine(snapshot);
-        var separator = line.LastIndexOf(" · ", StringComparison.Ordinal);
-        var currentRow = new Grid { ColumnSpacing = 8 };
-        currentRow.Visibility = line.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        currentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        currentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // 主 agent 用量：used / limit，下方原生确定进度条；未知百分比不画成 0%。
+        var currentRow = new StackPanel { Spacing = 8, Visibility = line.Length == 0 ? Visibility.Collapsed : Visibility.Visible };
         var current = OpenCodeInteractionUi.StyledText(separator < 0 ? line : line[..separator], OpenCodeInteractionUi.BodyStrongStyleKey, selectable: true);
         current.TextWrapping = TextWrapping.NoWrap;
         current.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -449,14 +448,16 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         AutomationProperties.SetName(current, "当前会话上下文：" + line);
         ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
         currentRow.Children.Add(current);
-        if (separator >= 0)
+        var progress = new ProgressBar
         {
-            var percent = OpenCodeInteractionUi.StyledText(line[(separator + 3)..], OpenCodeInteractionUi.BodyStrongStyleKey);
-            percent.VerticalAlignment = VerticalAlignment.Center;
-            AutomationProperties.SetAutomationId(percent, "OpenCodeInsightsCurrentContextPercent");
-            Grid.SetColumn(percent, 1);
-            currentRow.Children.Add(percent);
-        }
+            Minimum = 0, Maximum = 100, IsIndeterminate = false,
+            Value = ratio is { } knownRatio ? knownRatio * 100 : 0,
+            Visibility = ratio is null ? Visibility.Collapsed : Visibility.Visible,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        AutomationProperties.SetAutomationId(progress, "OpenCodeInsightsContextProgress");
+        AutomationProperties.SetName(progress, "上下文参考占比");
+        currentRow.Children.Add(progress);
         panel.Children.Add(currentRow);
 
         var summary = snapshot.Cost.Value?.Summary;
@@ -473,7 +474,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             Token(tokens?.CacheRead), Token(tokens?.CacheWrite),
             tokens?.CacheHitPercent is { } hit ? hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : string.Empty,
         };
-        var grid = new Grid { ColumnSpacing = 12, RowSpacing = 6 };
+        var grid = new Grid { ColumnSpacing = 16, RowSpacing = 12 };
         AutomationProperties.SetAutomationId(grid, "OpenCodeInsightsUsageGrid");
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -490,7 +491,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         panel.Children.Add(grid);
         if (snapshot.Billion is { Phase: OpenCodeBillionPhase.Loaded, Stats: { } stats })
         {
-            var compaction = new Grid { ColumnSpacing = 12 };
+            var compaction = new Grid { ColumnSpacing = 16, RowSpacing = 12 };
             compaction.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             compaction.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             compaction.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -505,7 +506,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         }
 
         // Σ 汇总（总 tokens）+ 💰 花费（Session.Info.cost 累计，不重新计价）。
-        var totals = new Grid { ColumnSpacing = 12 };
+        var totals = new Grid { ColumnSpacing = 16, RowSpacing = 12 };
         AutomationProperties.SetAutomationId(totals, "OpenCodeInsightsTotals");
         totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -533,13 +534,13 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             : stats.Blocks is { } total ? total.ToString(CultureInfo.InvariantCulture) : string.Empty;
     }
 
-    // 一格：灰色 emoji 标签（左）+ 数值（右，等宽数字）。窄列内数值优先，标签省略号兜底。
+    // 一格：16px 图标 + 数值；名称放在工具提示及无障碍名称，未知值保持隐藏。
     private static Grid UsageCell(string glyph, string label, string value, bool strong = false)
     {
         var cell = new Grid { ColumnSpacing = 6, Visibility = value.Length == 0 ? Visibility.Collapsed : Visibility.Visible };
         cell.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         cell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var name = new FontIcon { Glyph = glyph, FontSize = 14, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center };
+        var name = new FontIcon { Glyph = glyph, FontSize = 16, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center };
         var number = OpenCodeInteractionUi.StyledText(value, strong ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.CaptionStyleKey, selectable: true);
         number.TextWrapping = TextWrapping.NoWrap;
         number.TextTrimming = TextTrimming.CharacterEllipsis;
