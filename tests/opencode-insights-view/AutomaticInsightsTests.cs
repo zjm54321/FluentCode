@@ -18,6 +18,7 @@ internal static class AutomaticInsightsTests
     {
         ("auto insights: resident pane loads all sections; streaming/status/to do burst refreshes once", ResidentAndEvents),
         ("auto insights: hidden/drawer/session/source fences cancel queued and late reads", VisibilityAndFences),
+        ("Billion auto-read: visible + confirmed only, one/session, failures do not loop, manual retry retained", BillionAutoRead),
     };
     private static void Check(bool ok, string message) { if (!ok) throw new InvalidOperationException(message); }
     private sealed class Http : HttpMessageHandler
@@ -131,6 +132,79 @@ internal static class AutomaticInsightsTests
         pump.Until(() => lateLoad.IsCompleted && page.Insights.Snapshot.SessionId is null && !page.InsightsRefreshPending);
         Check(http.Reads == 4 && page.Insights.Snapshot.SampledAt is null, "late revoked-source response cannot repopulate panel or launch followups");
     }
+    private sealed class BillionHttp : HttpMessageHandler
+    {
+        internal readonly List<string> Paths = new();
+        internal bool Fail;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Check(request.Method == HttpMethod.Get && request.RequestUri!.Host == "127.0.0.1", "Billion remains read-only loopback");
+            var path = request.RequestUri!.AbsolutePath;
+            Paths.Add(path);
+            if (Fail) return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+            var json = path == "/__bili/health" ? """{"ok":true,"version":"0.1.202"}"""
+                : "{\"id\":\"" + path.Split('/')[3] + "\",\"tokensSaved\":42000,\"blocks\":2}";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) });
+        }
+    }
+
+    private static void BillionAutoRead()
+    {
+        using var pump = new Pump();
+        var opencode = new Http();
+        var transport = new BillionHttp();
+        var client = new OpenCodeClient(new HttpClient(opencode), new() { BaseUrl = "https://offline.invalid", AuthenticationMode = OpenCodeAuthenticationMode.None }, true);
+        var source = new OpenCodePageSource("auto-billion", 1, () => client);
+        var page = new OpenCodePage(origin => new AIFrontend.Services.Billion.BillionContextClient(origin, transport));
+        void Until(Func<bool> ready, string stage)
+        {
+            try { pump.Until(() => { UiQueue.Shared.Drain(); return ready(); }); }
+            catch (TimeoutException error) { throw new InvalidOperationException(stage + ": phase=" + page.Insights.Snapshot.Billion.Phase + "; paths=" + string.Join(",", transport.Paths), error); }
+        }
+        page.Activate();
+        page.InvalidateAndInstall(source, client);
+        page.SelectSession("ses_a");
+        page.ApplyInsightsSurface(Wide);
+        pump.Until(() => !page.InsightsRefreshPending);
+        Check(transport.Paths.Count == 0, "visible but unconfigured never reads");
+        var context = page.Insights.Snapshot.BillionContext!;
+        page.Insights.SetBillionOrigin(context.Binding, context, "http://127.0.0.1:1");
+        pump.Until(() => true);
+        Check(transport.Paths.Count == 0, "valid origin without consent never reads");
+        context = page.Insights.Snapshot.BillionContext!;
+        page.Insights.SetBillionConfirmed(context.Binding, true, context);
+        Until(() => page.Insights.Snapshot.Billion.Phase == OpenCodeBillionPhase.Loaded, "confirmation");
+        Check(page.Insights.BillionReadsStarted == 2 && transport.Paths.Count == 2, "confirmed visible context auto-reads health and one session detail");
+        for (var i = 0; i < 5; i++) page.View.Render(page.Insights.Snapshot);
+        page.ApplyInsightsSurface(Wide);
+        pump.Until(() => true);
+        Check(page.Insights.BillionReadsStarted == 2, "redraw/layout do not loop or poll");
+        page.SelectSession("ses_b");
+        Until(() => page.Insights.Snapshot.Billion.Phase == OpenCodeBillionPhase.Loaded && !page.InsightsRefreshPending, "session switch");
+        Check(page.Insights.BillionReadsStarted == 4 && transport.Paths.Contains("/__bili/sessions/ses_b/detail"), "retained consent reads the newly selected session once");
+        page.ApplyInsightsSurface(new OpenCodeSidebarLayout().Resize(900).ForSession(true));
+        page.SelectSession("ses_c");
+        pump.Until(() => true);
+        Check(page.Insights.BillionReadsStarted == 4, "hidden narrow context does not read");
+        page.View.ContextRing.Flyout.SimulateOpening();
+        Until(() => page.Insights.Snapshot.Billion.Phase == OpenCodeBillionPhase.Loaded && !page.InsightsRefreshPending, "context flyout");
+        Check(page.Insights.BillionReadsStarted == 6, "opening native context flyout reads current session once");
+        transport.Fail = true;
+        page.SelectSession("ses_d");
+        page.View.ContextRing.Flyout.SimulateOpening();
+        Until(() => page.Insights.Snapshot.Billion.Phase == OpenCodeBillionPhase.Failed && !page.InsightsRefreshPending, "failure");
+        var reads = page.Insights.BillionReadsStarted;
+        page.View.Render(page.Insights.Snapshot);
+        page.View.ContextRing.Flyout.SimulateOpening();
+        pump.Until(() => true);
+        Check(page.Insights.BillionReadsStarted == reads, "failure is not retried by a redraw or reopening");
+        transport.Fail = false;
+        var manual = page.ReadWith(page.Insights.Snapshot.BillionContext!);
+        pump.Until(() => manual.IsCompleted);
+        Check(page.Insights.Snapshot.Billion.Phase == OpenCodeBillionPhase.Loaded && page.Insights.BillionReadsStarted == reads + 2, "manual retry remains available");
+        page.Unload();
+    }
+
     private sealed class Pump : SynchronizationContext, IDisposable
     {
         private readonly SynchronizationContext? _previous = Current;

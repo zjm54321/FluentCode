@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages;
+using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
@@ -18,6 +19,7 @@ internal static class ContextPageTests
     {
         ("context: actual REST/SSE publication updates real header with pane/flyout closed, one catalog GET only", ClosedHeader),
         ("context: stale SSE session/owner and revoked source ignored; switch/reset clears header", Fences),
+        ("SA4: child session uses own assistant tokens/model limit; parent and sibling usage excluded", ChildContext),
     };
     private static void Check(bool value, string name) { if (!value) throw new InvalidOperationException(name); }
     private sealed class Http : HttpMessageHandler
@@ -27,7 +29,7 @@ internal static class ContextPageTests
         {
             Paths.Add(request.RequestUri!.AbsolutePath);
             if (request.RequestUri.AbsolutePath != "/api/model") throw new InvalidOperationException("Unexpected automatic full insights/discovery read");
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"location":{"directory":"C:/work"},"data":[{"id":"a","providerID":"p","limit":{"context":200000}}]}""", Encoding.UTF8, "application/json") });
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"location":{"directory":"C:/work"},"data":[{"id":"a","providerID":"p","limit":{"context":200000}},{"id":"b","providerID":"p","limit":{"context":400000}}]}""", Encoding.UTF8, "application/json") });
         }
     }
     private static (OpenCodePage Page, OpenCodePageSource Source, Http Http) Fixture()
@@ -101,5 +103,26 @@ internal static class ContextPageTests
         Check(page.View.ContextRing.Ring.Value == 5, "revoked source cannot publish");
         page.SelectSession("ses_b");
         Check(page.View.ContextRing.Ring.Value == 0 && page.Insights.Snapshot.Context.Value is null, "session reset clears old header without click");
+    }
+
+    private static void ChildContext()
+    {
+        var (page, _, _) = Fixture();
+        page.ContextMetadata(new() { Id = "a", ProviderId = "p" });
+        page.AcceptRest(Usage("msg_parent", 10, 10000));
+        var child = new OpenCodeSessionInfo { Id = "ses_child", ParentId = "ses_a" };
+        Check(child.ParentId == "ses_a", "same session-info parent relation used by the agent selector");
+        page.SelectSession(child.Id);
+        page.ContextMetadata(new() { Id = "b", ProviderId = "p" });
+        page.AcceptRest(Usage("msg_child_old", 20, 50000) with { Model = new() { Id = "b", ProviderId = "p" } },
+            Usage("msg_child_new", 30, 80000) with { Model = new() { Id = "b", ProviderId = "p" } });
+        Check(page.Insights.Snapshot.Context.Value?.SessionId == child.Id
+            && page.Insights.Snapshot.Context.Value?.LatestAssistantUsage?.MessageId == "msg_child_new", "child's own latest assistant reference");
+        Check(page.View.ContextRing.Ring.Value == 20 && OpenCodeSessionInsightsView.CurrentContextLine(page.Insights.Snapshot) == "80K / 400K · 20%",
+            "same right context layout uses child's own model window, not parent or cumulative totals");
+        page.BeginStream();
+        page.AcceptEvent(UsageEnded("ses_a", Usage("msg_parent_late", 99, 190000)));
+        page.AcceptEvent(UsageEnded("ses_sibling", Usage("msg_sibling", 99, 190000)));
+        Check(page.View.ContextRing.Ring.Value == 20, "parent and sibling SSE cannot overwrite child's context");
     }
 }
