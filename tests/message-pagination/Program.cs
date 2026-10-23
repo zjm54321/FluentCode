@@ -637,6 +637,9 @@ internal static partial class Program
         Check(!OpenCodePage.ShouldAutoLoadOlderMessages(150, 100, 1000), "downward scroll near top does not load");
         Check(!OpenCodePage.ShouldAutoLoadOlderMessages(0, 10, 0), "non-scrollable content does not load from ViewChanged");
         Check(OpenCodePage.OlderMessagesAutoLoadThreshold == 200, "threshold is ~200 DIP");
+        Check(OpenCodePage.ShouldFillOlderMessages(200, 800, 0), "short laid-out history automatically fills the viewport");
+        Check(!OpenCodePage.ShouldFillOlderMessages(0, 800, 0), "unlaid-out history cannot start a fill loop");
+        Check(!OpenCodePage.ShouldFillOlderMessages(4000, 800, 3200), "scrollable history does not drain pages while anchor correction is pending");
 
         var backend = new Backend();
         var response = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -660,6 +663,10 @@ internal static partial class Program
         page.TestEndSend(7, reset: false);
         page.TestApplyRefresh(Asc(101, 200), "c100", explicitRefresh: true);
 
+        page.TestScroll(1000, 5000);
+        page.TestScroll(120, 5000, restoringViewport: true);
+        page.TestScroll(80, 5000, restoringViewport: true);
+        Check(backend.Queries.Count == 0, "growth/shrink anchor corrections near top do not request older pages");
         page.TestScroll(1000, 5000);
         page.TestScroll(150, 5000);
         Check(page.TestOlderBusy && page.TestLoadingShown && !page.TestCanAutoLoad && backend.Queries.Count == 1,

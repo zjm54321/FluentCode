@@ -135,6 +135,107 @@ internal static class Windowing
             "new-user-scroll-supersedes-stale-owner");
         scrolling.ClearMessages();
 
+        // Observe actual child geometry after EACH transaction, not the cached height model
+        // after four settling passes. Native ViewChanged also fires for extent-only changes.
+        var jitterView = new OpenCodeConversationView { IsLoaded = true };
+        var jitterViewport = new ScrollViewer { ViewportHeight = 800 };
+        jitterView.TestTransform = _ => new GeneralTransform(-jitterViewport.VerticalOffset);
+        var jitterRows = Enumerable.Range(1000, 2000).Select(i => new OpenCodeMessage
+        { Id = "jitter_" + i, Type = OpenCodeMessageTypes.User, Text = "row " + i }).ToList();
+        var jitterHeights = new Dictionary<string, double>();
+        var lateLayoutPass = 0;
+        var deliverLateHeight = false;
+        double lateHeight = 230;
+        var viewportEvents = new List<bool>();
+        jitterView.HistoryViewportChanged += restoring => viewportEvents.Add(restoring);
+        IEnumerable<(string Key, FrameworkElement Element)> JitterEntries()
+            => ((IEnumerable)entriesField.GetValue(jitterView)!).Cast<object>().Select(entry =>
+                ((string)entry.GetType().GetProperty("Key")!.GetValue(entry)!,
+                 (FrameworkElement)entry.GetType().GetProperty("Element")!.GetValue(entry)!)).Where(row => row.Item2 is not null);
+        jitterViewport.LayoutForTest = () =>
+        {
+            if (deliverLateHeight && ++lateLayoutPass == 2) jitterHeights["jitter_older_195"] = lateHeight;
+            foreach (var (key, element) in JitterEntries())
+                element.ActualHeight = jitterHeights.GetValueOrDefault(key, 80) - element.Margin.Top - element.Margin.Bottom;
+            jitterViewport.ScrollableHeight = jitterView.Padding.Top + jitterView.Padding.Bottom
+                + jitterView.Children.OfType<FrameworkElement>().Sum(Height) - jitterViewport.ViewportHeight;
+        };
+        static double Height(FrameworkElement element) => element.Visibility == Visibility.Collapsed ? 0
+            : element is Border { Child: null } ? element.Height : element.ActualHeight + element.Margin.Top + element.Margin.Bottom;
+        double ScreenOffset()
+        {
+            var model = (OpenCodeConversationWindow)windowField.GetValue(jitterView)!;
+            var top = jitterView.Padding.Top;
+            foreach (var entry in ((IEnumerable)entriesField.GetValue(jitterView)!).Cast<object>())
+            {
+                var key = (string)entry.GetType().GetProperty("Key")!.GetValue(entry)!;
+                if (key == "jitter_1000") break;
+                var element = (FrameworkElement?)entry.GetType().GetProperty("Element")!.GetValue(entry);
+                top += element is null ? model.Height(key) : Height(element);
+            }
+            return top - jitterViewport.VerticalOffset;
+        }
+        jitterView.ApplyMessages(jitterRows);
+        jitterView.RefreshViewport(jitterViewport);
+        jitterViewport.ChangeView(null, 21, null, true);
+        for (var pass = 0; pass < 4; pass++) jitterView.RefreshViewport(jitterViewport);
+        var anchorScreen = ScreenOffset();
+        Check(viewportEvents.Contains(false), "real-user-offset-change-is-published-to-pagination");
+        viewportEvents.Clear();
+        double maxJitter = 0;
+        void Observe(string phase)
+        {
+            var delta = Math.Abs(ScreenOffset() - anchorScreen);
+            maxJitter = Math.Max(maxJitter, delta);
+            Console.WriteLine($"ANCHOR {phase}: screen={ScreenOffset():F2} baseline={anchorScreen:F2} displacement={delta:F2} DIP");
+        }
+        jitterView.PreserveReadingAnchor(jitterViewport, () => true);
+        // Newly realized rows above the anchor differ from their 80-DIP estimates.
+        jitterHeights["jitter_older_190"] = 12;
+        jitterHeights["jitter_older_191"] = 140;
+        jitterViewport.DeferChangeForTest = true;
+        jitterRows.InsertRange(0, Enumerable.Range(0, 200).Select(i => new OpenCodeMessage
+        { Id = "jitter_older_" + i, Type = OpenCodeMessageTypes.User, Text = "older row" }));
+        jitterView.ApplyMessages(jitterRows);
+        // WinUI ChangeView completes asynchronously. Extent notifications can arrive first;
+        // let queued layout run before the requested viewport has been committed.
+        jitterViewport.NotifyExtentForTest();
+        jitterView.RefreshViewport(jitterViewport);
+        var pendingAnchorRetained = jitterView.ContainsRenderedMessage("jitter_1000");
+        Console.WriteLine($"ANCHOR pending-ChangeView retains visible row: {pendingAnchorRetained}");
+        jitterViewport.CommitChangeForTest();
+        jitterViewport.DeferChangeForTest = false;
+        Observe("prepend");
+        for (var pass = 0; pass < 3; pass++) { jitterView.RefreshViewport(jitterViewport); Observe("prepend-settle-" + pass); }
+        // Deferred Markdown/tool layout changes without moving the user's viewport.
+        deliverLateHeight = true;
+        jitterViewport.NotifyExtentForTest();
+        jitterView.RefreshViewport(jitterViewport);
+        Observe("late-layout");
+        for (var pass = 0; pass < 3; pass++) { jitterView.RefreshViewport(jitterViewport); Observe("late-settle-" + pass); }
+        // An unrelated extent notification must not re-capture an outdated height model.
+        jitterViewport.NotifyExtentForTest();
+        jitterView.RefreshViewport(jitterViewport);
+        Observe("extent-only");
+        lateLayoutPass = 0;
+        lateHeight = 20;
+        jitterView.RefreshViewport(jitterViewport);
+        Observe("late-shrink");
+        for (var page = 0; page < 3; page++)
+        {
+            jitterView.PreserveReadingAnchor(jitterViewport, () => true);
+            jitterRows.InsertRange(0, Enumerable.Range(0, 25).Select(i => new OpenCodeMessage
+            { Id = $"jitter_page_{page}_{i}", Type = OpenCodeMessageTypes.User, Text = "older page" }));
+            jitterView.ApplyMessages(jitterRows);
+            Observe("additional-page-" + page);
+        }
+        Console.WriteLine($"ANCHOR maximum transaction displacement: {maxJitter:F2} DIP");
+        Check(maxJitter <= 1, "each-prepend-and-lazy-layout-transaction-keeps-actual-anchor-within-one-pixel");
+        Check(pendingAnchorRetained, "extent-notification-before-ChangeView-ack-does-not-recycle-visible-anchor");
+        Check(viewportEvents.Count > 0 && viewportEvents.All(restoring => restoring),
+            "extent-prepend-shrink-and-ChangeView-ack-events-are-not-user-pagination-triggers");
+        jitterView.ClearMessages();
+
         ConversationViewTestProbe.Reset();
         var chained = new OpenCodeConversationView();
         var calls = Enumerable.Range(0, 2000).Select(i => new OpenCodeMessage

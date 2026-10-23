@@ -361,11 +361,11 @@ namespace AIFrontend.Pages
         internal double TestScrollOffset => MessageScroll.VerticalOffset;
 
         /// <summary>Simulates a timeline ViewChanged at the given offset (drives the production auto-load path).</summary>
-        internal void TestScroll(double offset, double scrollableHeight)
+        internal void TestScroll(double offset, double scrollableHeight, bool restoringViewport = false)
         {
             MessageScroll.ScrollableHeight = scrollableHeight;
             MessageScroll.VerticalOffset = offset;
-            OnMessageScrollViewChangedForHistory();
+            OnMessageScrollViewChangedForHistory(restoringViewport);
         }
 
         internal IReadOnlyList<OpenCodeMessage> TestLastApplied()

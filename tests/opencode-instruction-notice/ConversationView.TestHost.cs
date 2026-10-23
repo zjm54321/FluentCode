@@ -646,9 +646,22 @@ namespace Microsoft.UI.Xaml.Controls
         public double ViewportHeight { get; set; } = 800;
         public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged;
         public Action? LayoutForTest { get; set; }
+        public void NotifyExtentForTest() => ViewChanged?.Invoke(this, new());
+        public bool DeferChangeForTest { get; set; }
+        public double? PendingOffsetForTest { get; private set; }
+        public void CommitChangeForTest()
+        {
+            if (PendingOffsetForTest is not { } offset) return;
+            PendingOffsetForTest = null;
+            VerticalOffset = offset;
+            ViewChanged?.Invoke(this, new());
+        }
         public void UpdateLayout() => LayoutForTest?.Invoke();
         public void ChangeView(double? horizontal, double? vertical, double? zoom, bool disableAnimation)
-        { VerticalOffset = vertical ?? VerticalOffset; ViewChanged?.Invoke(this, new()); }
+        {
+            if (DeferChangeForTest) { PendingOffsetForTest = vertical; return; }
+            VerticalOffset = vertical ?? VerticalOffset; ViewChanged?.Invoke(this, new());
+        }
         public ScrollMode HorizontalScrollMode { get; set; }
         public ScrollBarVisibility VerticalScrollBarVisibility { get; set; }
         public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }

@@ -76,9 +76,14 @@ public sealed class OpenCodeConversationView : StackPanel
     private bool _windowQueued;
     private bool _updatingWindow;
     private double? _requestedOffset;
+    private double _observedViewportOffset = double.NaN;
     private long _windowGeneration;
     private Func<bool>? _scrollOwnerCurrent;
     internal int RealizedRowCount => _entries.Count(entry => entry.Realized);
+    internal bool IsRestoringViewport => _updatingWindow || _idleContentChanging || _requestedOffset is not null || _animatingScroll;
+    // Publish classification from the single scroll owner, independent of native event
+    // subscription order. Pagination observes corrections but never treats them as input.
+    internal event Action<bool>? HistoryViewportChanged;
     internal void RefreshViewport(ScrollViewer viewport) { ConnectViewport(viewport); UpdateWindow(); }
 
     private double WindowOffset()
@@ -95,6 +100,7 @@ public sealed class OpenCodeConversationView : StackPanel
         if (ReferenceEquals(_viewport, viewport)) return;
         DisconnectViewport();
         _viewport = viewport;
+        _observedViewportOffset = viewport.VerticalOffset;
         viewport.ViewChanged += WindowViewChanged;
         viewport.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler(WindowPointerInput), handledEventsToo: true);
         viewport.AddHandler(UIElement.PointerWheelChangedEvent, new PointerEventHandler(WindowPointerInput), handledEventsToo: true);
@@ -139,15 +145,23 @@ public sealed class OpenCodeConversationView : StackPanel
     private void WindowViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
         if (_viewport is not { } viewport) return;
+        var moved = double.IsNaN(_observedViewportOffset) || Math.Abs(viewport.VerticalOffset - _observedViewportOffset) > 0.5;
+        _observedViewportOffset = viewport.VerticalOffset;
+        var restoring = IsRestoringViewport || !moved;
         if (_animatingScroll)
         {
             if (!e.IsIntermediate) { _animatingScroll = false; _requestedOffset = null; }
+            HistoryViewportChanged?.Invoke(true);
             QueueWindowUpdate();
             return;
         }
-        if (_requestedOffset is { } requested && Math.Abs(viewport.VerticalOffset - requested) <= 0.5)
-            _requestedOffset = null;
-        else if (!_updatingWindow)
+        if (_requestedOffset is { } requested)
+        {
+            // ChangeView is asynchronous. Extent/intermediate notifications before its ACK
+            // are not user scrolling and must not replace the retained key or realization range.
+            if (Math.Abs(viewport.VerticalOffset - requested) <= 0.5) _requestedOffset = null;
+        }
+        else if (moved && !_updatingWindow && !_idleContentChanging)
         {
             _requestedOffset = null;
             _scrollOwnerCurrent = null; // A new user viewport supersedes any queued page scroll intent.
@@ -156,6 +170,7 @@ public sealed class OpenCodeConversationView : StackPanel
             _followingBottom = viewport.ScrollableHeight - viewport.VerticalOffset <= 0.5;
             _readAnchor = _window.Capture(WindowOffset());
         }
+        HistoryViewportChanged?.Invoke(restoring);
         QueueWindowUpdate();
     }
 
@@ -212,9 +227,7 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             viewport.UpdateLayout();
             if (_readAnchor is null) _readAnchor = _window.Capture(WindowOffset());
-            foreach (var entry in _entries)
-                if (entry.Realized) changed |= _window.Measure(entry.Key,
-                    entry.Element.Visibility == Visibility.Collapsed ? 0 : entry.Element.ActualHeight + entry.Element.Margin.Top + entry.Element.Margin.Bottom);
+            changed = MeasureRealizedRows();
             var range = WindowRange();
             var replacements = new List<(int Index, bool Realize)>();
             for (var i = 0; i < _entries.Count; i++)
@@ -246,6 +259,14 @@ public sealed class OpenCodeConversationView : StackPanel
                 });
             }
             viewport.UpdateLayout();
+            // Realization, deferred Markdown and tool expansion can change heights in this
+            // very layout pass. Accept them BEFORE restoring the anchor, not next frame.
+            if (MeasureRealizedRows())
+            {
+                changed = true;
+                ChangeIdleContent(AlignWindow);
+                viewport.UpdateLayout();
+            }
             var offset = _followingBottom ? viewport.ScrollableHeight
                 : viewport.VerticalOffset + _window.Restore(_readAnchor, WindowOffset()) - WindowOffset();
             if (!_animatingScroll && Math.Abs(viewport.VerticalOffset - offset) > 0.5)
@@ -259,6 +280,15 @@ public sealed class OpenCodeConversationView : StackPanel
         }
         finally { _updatingWindow = false; }
         if (changed) QueueWindowUpdate();
+    }
+
+    private bool MeasureRealizedRows()
+    {
+        var changed = false;
+        foreach (var entry in _entries)
+            if (entry.Realized) changed |= _window.Measure(entry.Key,
+                entry.Element.Visibility == Visibility.Collapsed ? 0 : entry.Element.ActualHeight + entry.Element.Margin.Top + entry.Element.Margin.Bottom);
+        return changed;
     }
 
     private bool KeepVisual(Entry entry)

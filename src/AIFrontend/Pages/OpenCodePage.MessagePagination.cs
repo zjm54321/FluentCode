@@ -646,16 +646,21 @@ public sealed partial class OpenCodePage
     /// 时间线 ViewChanged（含惯性中间帧）：记录偏移，满足 <see cref="ShouldAutoLoadOlderMessages"/> 时触发续页。
     /// 单飞由 <see cref="LoadOlderMessagesAsync"/> 的在途标记保证；游标/链/代际安全语义全部沿用。
     /// </summary>
-    private void OnMessageScrollViewChangedForHistory()
+    private void OnMessageScrollViewChangedForHistory(bool restoringViewport = false)
     {
         var offset = MessageScroll.VerticalOffset;
         var previous = _olderMessagesLastObservedOffset;
         _olderMessagesLastObservedOffset = offset;
-        if (CanAutoLoadOlderMessages() && ShouldAutoLoadOlderMessages(offset, previous, MessageScroll.ScrollableHeight))
+        if (!restoringViewport && CanAutoLoadOlderMessages() && ShouldAutoLoadOlderMessages(offset, previous, MessageScroll.ScrollableHeight))
         {
             _ = LoadOlderMessagesAsync();
         }
     }
+
+    // Auto-fill genuinely short histories, but do not drain pages merely because a pending
+    // anchor correction still reports a near-top offset. Further full pages need upward input.
+    internal static bool ShouldFillOlderMessages(double extentHeight, double viewportHeight, double scrollableHeight)
+        => extentHeight > 0 && viewportHeight > 0 && scrollableHeight <= 0;
 
     /// <summary>
     /// 续页：仅 cursor + limit（不带 order；type 与首屏一致为无过滤）。空 data / 缺失 next 正常结束
