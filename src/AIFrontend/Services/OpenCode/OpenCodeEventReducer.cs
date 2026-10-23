@@ -14,7 +14,6 @@ public sealed class OpenCodeEventReducer
     private readonly Dictionary<string, OpenCodeMessage> _messageDtos = new(StringComparer.Ordinal);
     private readonly List<string> _order = new();
     private readonly Dictionary<string, long> _changed = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<(string Field, string Text)>> _pending = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeEvent> _pendingShellEnds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _placeholders = new(StringComparer.Ordinal);
     private long _version;
@@ -97,8 +96,6 @@ public sealed class OpenCodeEventReducer
             _placeholders.Remove(id);
             _messages[id] = baseline;
             _messageDtos.Remove(id);
-            foreach (var part in Parts(baseline).OfType<JsonObject>())
-                if (String(part, "id") is { } partId) DrainPending(baseline, id, partId);
             ordered.Add(id);
         }
         var kept = new HashSet<string>(ordered, StringComparer.Ordinal);
@@ -145,55 +142,15 @@ public sealed class OpenCodeEventReducer
             ClearCurrentRetry();
             return false;
         }
-        var activityId = String(data, "assistantMessageID") ?? String(data, "messageID")
-            ?? (data["part"] is JsonObject activityPart ? String(activityPart, "messageID") : null);
+        var activityId = String(data, "assistantMessageID") ?? String(data, "messageID");
         var executionActivity = type == "session.execution.started" || type == "session.step.started"
             || type.StartsWith("session.text.", StringComparison.Ordinal)
             || type.StartsWith("session.reasoning.", StringComparison.Ordinal)
-            || type.StartsWith("session.tool.", StringComparison.Ordinal)
-            || type is "message.part.updated" or "message.part.delta";
+            || type.StartsWith("session.tool.", StringComparison.Ordinal);
         if (item.SessionId == _sessionId && executionActivity && (activityId is null || IsCurrentMessage(activityId)))
         {
             if (type is "session.execution.started" or "session.step.started") _executionTerminal = false;
             ClearCurrentRetry();
-        }
-        if (type == "message.updated" && data["info"] is JsonObject info)
-        {
-            var id = String(info, "id");
-            if (id is null) return false;
-            var message = GetMessage(id);
-            foreach (var field in info) message[field.Key] = field.Value?.DeepClone();
-            Touch(id);
-            return true;
-        }
-        if (type == "message.part.updated" && data["part"] is JsonObject part)
-        {
-            var id = String(part, "messageID") ?? String(data, "messageID");
-            if (id is null || String(part, "id") is not { } partId) return false;
-            var message = GetMessage(id);
-            PutPart(message, part.DeepClone().AsObject());
-            DrainPending(message, id, partId);
-            Touch(id);
-            return true;
-        }
-        if (type == "message.part.delta")
-        {
-            var id = String(data, "messageID");
-            var partId = String(data, "partID");
-            if (id is null || partId is null) return false;
-            var field = String(data, "field") ?? "text";
-            var delta = String(data, "delta") ?? "";
-            var message = GetMessage(id);
-            var target = Parts(message).OfType<JsonObject>().FirstOrDefault(p => String(p, "id") == partId);
-            if (target is null)
-            {
-                var key = id + "/" + partId;
-                if (!_pending.TryGetValue(key, out var waiting)) _pending[key] = waiting = new();
-                waiting.Add((field, delta));
-            }
-            else target[field] = (String(target, field) ?? "") + delta;
-            Touch(id);
-            return true;
         }
         var messageId = String(data, "assistantMessageID");
         if (messageId is null) return false;
@@ -353,11 +310,5 @@ public sealed class OpenCodeEventReducer
         var existing = FindPart(message, part);
         if (existing is null) parts.Add(part);
         else parts[parts.IndexOf(existing)] = part;
-    }
-    private void DrainPending(JsonObject message, string messageId, string partId)
-    {
-        if (!_pending.Remove(messageId + "/" + partId, out var pending)) return;
-        var part = Parts(message).OfType<JsonObject>().First(p => String(p, "id") == partId);
-        foreach (var (field, text) in pending) part[field] = (String(part, field) ?? "") + text;
     }
 }

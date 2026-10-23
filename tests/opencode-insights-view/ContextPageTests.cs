@@ -48,8 +48,8 @@ internal static class ContextPageTests
         Tokens = new() { Input = input, Output = 0, Reasoning = 0, Cache = new() { Read = 0, Write = 0 } },
         Content = text is null ? new() : new() { new() { Type = "text", Text = text } },
     };
-    private static OpenCodeEvent Updated(string session, OpenCodeMessage message)
-        => OpenCodeEvent.Parse(JsonSerializer.Serialize(new { type = "message.updated", data = new { sessionID = session, info = message } }));
+    private static OpenCodeEvent UsageEnded(string session, OpenCodeMessage message)
+        => OpenCodeEvent.Parse(JsonSerializer.Serialize(new { type = "session.step.ended", data = new { sessionID = session, assistantMessageID = message.Id, tokens = message.Tokens } }));
     private static void ClosedHeader()
     {
         var (page, _, http) = Fixture();
@@ -60,9 +60,10 @@ internal static class ContextPageTests
         Check(page.ContextSurfacesClosed && page.View.ContextRing.Ring.Value == 5, "closed header renders 10K/200K after accepted REST");
         Check(page.View.ContextRing.Summary.Contains("10K", StringComparison.Ordinal), "real header summary carries REST reference");
         page.BeginStream();
+        page.AcceptEvent(OpenCodeEvent.Parse("""{"type":"session.step.started","data":{"sessionID":"ses_a","assistantMessageID":"msg_b","started":20,"model":{"id":"a","providerID":"p"}}}"""));
         var merges = page.MergeCalls;
         var projections = page.ProjectionCalls;
-        page.AcceptEvent(Updated("ses_a", Usage("msg_b", 20, 50000)));
+        page.AcceptEvent(UsageEnded("ses_a", Usage("msg_b", 20, 50000)));
         Check(page.MergeCalls == merges + 1, "SSE reuses its single accepted merged projection; ring does not merge again");
         Check(page.ProjectionCalls == projections + 1, "latest-only SSE batch projects history exactly once");
         Check(ReferenceEquals(page.ProjectedWindow, page.ExecutionWindow)
@@ -74,7 +75,8 @@ internal static class ContextPageTests
         page.Insights.Changed += (_, _) => renders++;
         var contextProjections = page.Insights.ContextProjectionCount;
         var todoProjections = page.Insights.TodoProjectionCount;
-        for (var i = 0; i < 20; i++) page.AcceptEvent(Updated("ses_a", Usage("msg_b", 20, 50000, "delta-" + i)));
+        for (var i = 0; i < 20; i++) page.AcceptEvent(OpenCodeEvent.Parse(JsonSerializer.Serialize(new
+            { type = "session.text.delta", data = new { sessionID = "ses_a", assistantMessageID = "msg_b", ordinal = 0, delta = "delta-" + i } })));
         Check(renders == 0, "unchanged usage publications do not redraw full insights/header");
         Check(page.Insights.ContextProjectionCount == contextProjections
             && page.Insights.TodoProjectionCount == todoProjections,
@@ -89,13 +91,13 @@ internal static class ContextPageTests
         page.ContextMetadata(new() { Id = "a", ProviderId = "p" });
         page.AcceptRest(Usage("msg_a", 10, 10000));
         var oldOwner = page.BeginStream();
-        page.AcceptEvent(Updated("ses_other", Usage("msg_wrong", 99, 190000)));
+        page.AcceptEvent(UsageEnded("ses_other", Usage("msg_wrong", 99, 190000)));
         Check(page.View.ContextRing.Ring.Value == 5, "other-session SSE ignored");
         page.BeginStream();
-        page.AcceptEvent(Updated("ses_a", Usage("msg_wrong", 99, 190000)), oldOwner);
+        page.AcceptEvent(UsageEnded("ses_a", Usage("msg_wrong", 99, 190000)), oldOwner);
         Check(page.View.ContextRing.Ring.Value == 5, "old SSE stream owner ignored");
         source.Revoke();
-        page.AcceptEvent(Updated("ses_a", Usage("msg_wrong", 99, 190000)));
+        page.AcceptEvent(UsageEnded("ses_a", Usage("msg_wrong", 99, 190000)));
         Check(page.View.ContextRing.Ring.Value == 5, "revoked source cannot publish");
         page.SelectSession("ses_b");
         Check(page.View.ContextRing.Ring.Value == 0 && page.Insights.Snapshot.Context.Value is null, "session reset clears old header without click");

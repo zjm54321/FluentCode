@@ -197,7 +197,7 @@ public sealed partial class OpenCodePage
             var id = item.SessionId;
             if (id == _selectedSessionId && item.Type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted"
                 && _eventReducer?.IsCurrentAssistantEvent(item) == false) continue;
-            refreshSessionList |= item.Type is "session.created" or "session.deleted" or "session.renamed" or "session.updated";
+            refreshSessionList |= item.Type is "session.created" or "session.deleted" or "session.renamed";
             if (id is not null)
             {
                 var old = _liveSessionStatuses.GetValueOrDefault(id);
@@ -229,12 +229,11 @@ public sealed partial class OpenCodePage
             changed |= _eventReducer?.Apply(item) == true;
             var direct = item.Type.StartsWith("session.text.", StringComparison.Ordinal)
                 || item.Type.StartsWith("session.reasoning.", StringComparison.Ordinal)
-                || item.Type.StartsWith("session.tool.", StringComparison.Ordinal)
-                || item.Type is "message.updated" or "message.part.updated" or "message.part.delta";
+                || item.Type.StartsWith("session.tool.", StringComparison.Ordinal);
             if (!direct && (item.Type.StartsWith("session.", StringComparison.Ordinal)
                 || item.Type.StartsWith("permission.", StringComparison.Ordinal) || item.Type.StartsWith("form.", StringComparison.Ordinal)
                 || item.Type.StartsWith("inbox.", StringComparison.Ordinal) || item.Type.StartsWith("todo.", StringComparison.Ordinal))) refetch = true;
-            if (item.Type is "session.updated" or "session.revert.staged" or "session.revert.cleared" or "session.revert.committed") _messageHistoryNeedsState = true;
+            if (item.Type is "session.revert.staged" or "session.revert.cleared" or "session.revert.committed") _messageHistoryNeedsState = true;
         }
         RefreshCurrentRetry();
         if (statusesChanged)

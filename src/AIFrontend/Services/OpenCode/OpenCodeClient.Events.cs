@@ -16,9 +16,7 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
     public string? Id { get; init; }
     public double? Created { get; init; }
     public JsonElement? Metadata { get; init; }
-    public string? SessionId => Data.TryGetProperty("sessionID", out var id) ? id.GetString()
-        : Data.TryGetProperty("info", out var info) && info.TryGetProperty("sessionID", out id) ? id.GetString()
-        : Data.TryGetProperty("part", out var part) && part.TryGetProperty("sessionID", out id) ? id.GetString() : null;
+    public string? SessionId => Data.TryGetProperty("sessionID", out var id) ? id.GetString() : null;
 
     internal static OpenCodeEvent Parse(string json)
     {

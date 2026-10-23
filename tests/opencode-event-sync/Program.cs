@@ -20,21 +20,17 @@ internal static class Program
     private static async Task Main()
     {
         var reducer = new OpenCodeEventReducer("ses_test");
-        reducer.Apply(Event("message.part.updated", """{"part":{"sessionID":"ses_test","messageID":"msg_a","id":"p1","type":"text","text":"hello"}}"""));
-        Check(Text(reducer) == "hello", "part.updated inserts without message");
-        reducer.Apply(Event("message.part.updated", """{"part":{"sessionID":"ses_test","messageID":"msg_a","id":"p1","type":"text","text":"replace"}}"""));
-        Check(Text(reducer) == "replace", "part.updated replaces by stable part ID");
-        reducer.Apply(Event("message.part.delta", """{"sessionID":"ses_test","messageID":"msg_a","partID":"p1","field":"text","delta":" delta"}"""));
+        reducer.Apply(Event("session.text.started", """{"sessionID":"ses_test","assistantMessageID":"msg_a","ordinal":0}"""));
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_a","ordinal":0,"delta":"hello"}"""));
+        Check(Text(reducer) == "hello", "native text inserts without snapshot message");
+        reducer.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_a","ordinal":0,"text":"replace"}"""));
+        Check(Text(reducer) == "replace", "native ended replaces by kind and ordinal");
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_a","ordinal":0,"delta":" delta"}"""));
         Check(Text(reducer) == "replace delta", "delta appends");
-        Check(!reducer.Apply(Event("message.part.updated", """{"part":{"sessionID":"ses_other","messageID":"msg_a","id":"p1","type":"text","text":"wrong"}}""")), "other session ignored");
-
-        var early = new OpenCodeEventReducer("ses_test");
-        early.Apply(Event("message.part.delta", """{"sessionID":"ses_test","messageID":"msg_a","partID":"p1","field":"text","delta":" after"}"""));
-        early.Apply(Event("message.part.updated", """{"part":{"sessionID":"ses_test","messageID":"msg_a","id":"p1","type":"text","text":"before"}}"""));
-        Check(Text(early) == "before after", "out-of-order delta retained until part arrives");
+        Check(!reducer.Apply(Event("session.text.ended", """{"sessionID":"ses_other","assistantMessageID":"msg_a","ordinal":0,"text":"wrong"}""")), "other session ignored");
 
         var fetch = reducer.Version;
-        reducer.Apply(Event("message.part.delta", """{"sessionID":"ses_test","messageID":"msg_a","partID":"p1","field":"text","delta":" live"}"""));
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_a","ordinal":0,"delta":" live"}"""));
         reducer.MergeSnapshot(new[] { Message("msg_a", "stale") }, fetch);
         Check(Text(reducer) == "replace delta live", "events during fetch win over stale snapshot");
         reducer.MergeSnapshot(new[] { Message("msg_a", "reconnected") }, reducer.Version);
@@ -86,7 +82,7 @@ internal static class Program
         await Transport();
         await HomeDataContracts();
         await DefaultSelectionContracts();
-        Console.WriteLine($"PASS event-sync: {checks} assertions (insert/replace, delta, out-of-order, fetch race, native reasoning, stream EOF/reconnect/cancel/auth).");
+        Console.WriteLine($"PASS event-sync: {checks} assertions (native insert/replace, delta, fetch race, reasoning, stream EOF/reconnect/cancel/auth).");
     }
 
     private static void MessageDtoCache()
@@ -172,7 +168,7 @@ internal static class Program
         Check(reducer.IsCurrentRetryVisible(null) && !reducer.IsCurrentRetryVisible("msg_live")
             && !reducer.IsCurrentRetryVisible("missing_boundary"), "live retry currentness checks actual order and accepted revert boundary without DTO projection");
         reducer.Apply(Event("server.heartbeat", "{}"));
-        reducer.Apply(Event("session.updated", """{"sessionID":"ses_test"}"""));
+        reducer.Apply(Event("session.diff", """{"sessionID":"ses_test","diff":[]}"""));
         reducer.MergeSnapshot(new[] { Message("msg_live", "snapshot") }, reducer.Version);
         Check(reducer.CurrentRetry?.Attempt == 2, "heartbeats unrelated updates and REST do not clear current retry");
         reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_other","assistantMessageID":"msg_live","ordinal":0,"delta":"other"}"""));

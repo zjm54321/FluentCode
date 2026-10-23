@@ -19,8 +19,9 @@ internal static partial class Program
         page.TestViewportLayout(100); Check(page.AckPublications == 0 && page.TestViewportFrames == 1, "layout still waits one captured frame");
         page.TestViewportFrame(); Check(page.AckPublications == 1 && page.TestAckWatermark == 100, "real REST path ACKs exactly proven idle");
         var stream = page.TestBeginEvents();
-        page.TestReceive(stream, Wire("message.updated", """{"info":{"id":"msg_idle_200","sessionID":"ses_A","type":"idle","outcome":"succeeded","time":{"created":200}}}"""));
-        Check(page.TestLastApplied().Count >= 2 && page.AckPublications == 1, "actual SSE Apply invalidates proof without immediate ACK");
+        backend.Rows["ses_A"] = new() { ViewIdle(100), ViewIdle(200) };
+        page.TestReceive(stream, Wire("session.execution.succeeded", """{"sessionID":"ses_A"}"""));
+        Check(page.TestLastApplied().Count >= 2 && page.AckPublications == 1, "native terminal SSE refresh invalidates proof without immediate ACK");
         page.TestViewportLayout(100); page.TestViewportFrame(); Check(page.AckPublications == 1, "only old SSE-visible idle does not expand to newer DTO idle");
         page.TestViewportLayout(200); page.TestViewportFrame(); Check(page.AckPublications == 2 && page.TestAckWatermark == 200, "new SSE idle only ACKs after viewport/frame proof");
         await page.TestSwitchAsync("ses_B", "/B");

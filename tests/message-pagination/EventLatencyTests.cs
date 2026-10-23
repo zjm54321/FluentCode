@@ -60,7 +60,7 @@ internal static partial class Program
         Check(backend.Messages == 2 && backend.States == 2 && LiveText(page) == "gap repaired", "late FIRST readiness repairs uncovered messages and history boundary exactly once");
         page.TestReady(stream);
         Check(backend.Messages == 2, "duplicate first readiness cannot create a repair loop");
-        page.TestReceive(stream, Wire("message.part.delta", """{"sessionID":"ses_test","messageID":"msg_live","partID":"p1","field":"text","delta":" live"}"""));
+        page.TestReceive(stream, Wire("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"delta":" live"}"""));
         Check(LiveText(page) == "gap repaired live" && backend.Messages == 2, "subsequent live deltas require no per-token REST");
         backend.ReadMessages = () => Task.FromResult(Snapshot("reconnected"));
         page.TestReady(stream, reconnect: true);
@@ -71,7 +71,7 @@ internal static partial class Program
         var bufferedBackend = new LatencyBackend(); using var bufferedClient = bufferedBackend.Client();
         var bufferedPage = new OpenCodePage(); bufferedPage.TestActivate(Session, bufferedClient);
         var bufferedStream = bufferedPage.TestBeginEvents();
-        bufferedPage.TestBuffer(bufferedStream, Wire("message.part.updated", """{"part":{"sessionID":"ses_test","messageID":"msg_live","id":"p1","type":"text","text":"buffered before GET"}}"""));
+        bufferedPage.TestBuffer(bufferedStream, Wire("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"text":"buffered before GET"}"""));
         await bufferedPage.TestLatestAsync();
         Check(LiveText(bufferedPage) == "buffered before GET", "pre-drain buffered events also win over the initial stale snapshot");
         var backend = new LatencyBackend();
@@ -80,8 +80,8 @@ internal static partial class Program
         using var client = backend.Client(); var page = new OpenCodePage(); page.TestActivate(Session, client);
         var stream = page.TestBeginEvents();
         var initial = page.TestLatestAsync();
-        page.TestReceive(stream, Wire("message.part.updated", """{"part":{"sessionID":"ses_test","messageID":"msg_live","id":"p1","type":"text","text":"event"}}"""));
-        page.TestReceive(stream, Wire("message.part.delta", """{"sessionID":"ses_test","messageID":"msg_live","partID":"p1","field":"text","delta":" delta"}"""));
+        page.TestReceive(stream, Wire("session.text.started", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0}"""));
+        page.TestReceive(stream, Wire("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"delta":"event delta"}"""));
         backend.ReadMessages = () => Task.FromResult(Snapshot("reconciled"));
         page.TestReady(stream); // Must queue a repair, not invalidate the first snapshot before it paints.
         response.SetResult(Snapshot("stale"));
@@ -110,11 +110,11 @@ internal static partial class Program
         var boundaryBackend = new LatencyBackend(); using var boundaryClient = boundaryBackend.Client();
         var p = new OpenCodePage(); p.TestActivate(Session, boundaryClient); var s = p.TestBeginEvents();
         await p.TestLatestAsync();
-        for (var i = 0; i < 4; i++) p.TestReceive(s, Wire("message.part.delta", """{"sessionID":"ses_test","messageID":"msg_live","partID":"p1","field":"text","delta":" old"}"""));
+        for (var i = 0; i < 4; i++) p.TestReceive(s, Wire("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"delta":" old"}"""));
         boundaryBackend.State = StateResponse("msg_cut"); p.TestRequireBoundary();
         var held = Signal<HttpResponseMessage>(); boundaryBackend.ReadMessages = () => held.Task;
         var boundaryRead = p.TestLatestAsync();
-        p.TestReceive(s, Wire("message.part.updated", """{"part":{"sessionID":"ses_test","messageID":"msg_live","id":"p1","type":"text","text":"after reset"}}"""));
+        p.TestReceive(s, Wire("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"text":"after reset"}"""));
         held.SetResult(Json(new { data = new[] { new OpenCodeMessage { Id = "msg_cut", Type = "user" }, Live("stale") }, cursor = new { next = (string?)null } }));
         await boundaryRead;
         Check(LiveText(p) == "after reset", "replacement reducer events beat snapshot despite old reducer's larger version");

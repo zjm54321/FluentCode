@@ -337,7 +337,7 @@ public sealed partial class OpenCodePage
     {
         if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) return;
         var id = item.SessionId;
-        if (item.Type is "agent.updated" or "config.updated" or "session.created" or "session.deleted" or "session.updated"
+        if (item.Type is "agent.updated" or "config.updated" or "session.created" or "session.deleted"
             || item.Type == "session.agent.selected") QueueAgentTreeRefresh();
         if (id is not null)
         {
