@@ -71,15 +71,12 @@ internal sealed class OpenCodeUserBubbleView
         layout.Children.Add(_toggle);
 
         var surface = new Grid();
-        if (delivered)
+        var tint = new Border { Opacity = 0.12, IsHitTestVisible = false, CornerRadius = new CornerRadius(7) };
+        OpenCodeToolTheme.Apply(tint, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
+        surface.Children.Add(tint);
+        if (!delivered)
         {
-            var tint = new Border { Opacity = 0.12, IsHitTestVisible = false, CornerRadius = new CornerRadius(7) };
-            OpenCodeToolTheme.Apply(tint, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
-            surface.Children.Add(tint);
-        }
-        else
-        {
-            // A1: pending is the same bubble geometry, with only a dashed accent outline.
+            // MQ1b / A1: keep the normal fill and geometry; pending adds only an outline.
             var outline = new Rectangle
             {
                 RadiusX = 8, RadiusY = 8, StrokeThickness = 1.5,
@@ -97,8 +94,7 @@ internal sealed class OpenCodeUserBubbleView
             BorderThickness = new Thickness(1),
         };
         layout.Padding = new Thickness(12, 8, 8, 8);
-        if (delivered)
-            OpenCodeToolTheme.Apply(_bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke));
+        OpenCodeToolTheme.Apply(_bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke));
         // Size against the message column, not the window or a fixed pixel limit.
         _bubble.Loaded += (_, _) =>
         {
