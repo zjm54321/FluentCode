@@ -19,9 +19,13 @@ internal static class Program
         foreach (var (name, test) in new (string, Action)[] {
             ("RichText", RichFixture.Test), ("Palette", PaletteFixture.Test),
             ("TurnChip", TurnFixture.Test), ("Shimmer", ShimmerFixture.Test),
-            ("InstructionDialog", DialogFixture.Test), ("Fonts", FontFixture.Test) })
+            ("InstructionDialog", DialogFixture.Test), ("Fonts", FontFixture.Test),
+            ("OwnedGroup", GroupFixture.Test), ("OwnedIndicator", IndicatorFixture.Test),
+            ("OwnedBubble", BubbleFixture.Test), ("OwnedPicker", PickerFixture.Test) })
         {
-            if (args.Length > 0 && args[0] != "All" && args[0] != name) continue;
+            var selection = args.Length == 0 ? "All" : args[0];
+            if (selection == "AuditOwned" ? !name.StartsWith("Owned", StringComparison.Ordinal)
+                : selection == "All" ? name.StartsWith("Owned", StringComparison.Ordinal) : selection != name) continue;
             try { test(); Console.WriteLine("PASS " + name); }
             catch (Exception error) { failed++; Console.WriteLine("FAIL " + name + ": " + error.Message); }
         }
@@ -32,6 +36,9 @@ internal static class Program
 internal sealed class RoutedEventArgs : EventArgs { }
 internal sealed class Element
 {
+    public Element? Parent { get; set; }
+    public int WidthWatchers { get; private set; }
+    public event Action<object, SizeChangedEventArgs> SizeChanged { add { WidthWatchers++; } remove { WidthWatchers--; } }
     public bool IsLoaded { get; private set; }
     public Dispatcher DispatcherQueue { get; } = new();
     public event Action<object, RoutedEventArgs>? Loaded;
@@ -39,6 +46,8 @@ internal sealed class Element
     public void Load() { IsLoaded = true; Loaded?.Invoke(this, new()); }
     public void Unload(bool stillLoaded) { IsLoaded = stillLoaded; Unloaded?.Invoke(this, new()); }
 }
+internal sealed class SizeChangedEventArgs : EventArgs { }
+internal static class VisualTreeHelper { public static object? GetParent(Element element) => element.Parent; }
 internal sealed class Dispatcher { public bool TryEnqueue(DispatcherQueuePriority priority, Action run) { run(); return true; } }
 internal enum DispatcherQueuePriority { Low }
 internal sealed class Lifetime
@@ -165,3 +174,62 @@ internal static class FontFixture
     }
 }
 namespace AIFrontend.Services.Configuration { public sealed class AppSettingsChangedEventArgs : EventArgs { } }
+
+// Read-only findings in concurrent lanes. Run -Case AuditOwned to reproduce, not as passing acceptance.
+internal sealed class GroupFixture
+{
+    private readonly Element _root = new();
+    private bool _loaded;
+    private bool ticking;
+    private void RefreshWorking() => ticking = _loaded;
+    private void StopTimer() => ticking = false;
+    private GroupFixture() { /* GROUP */ }
+    internal static void Test()
+    {
+        var f = new GroupFixture(); f._root.Load(); f._root.Load(); f._root.Unload(true);
+        Program.Check(f.ticking, "g-group: late unload permanently stopped the active tool-group timer");
+    }
+}
+internal sealed class IndicatorFixture
+{
+    private readonly Element _label = new();
+    private bool _loaded;
+    private bool joined;
+    private void WatchVisibility() { }
+    private void UnwatchVisibility() { }
+    private void Update() => joined = _loaded;
+    private IndicatorFixture() { /* INDICATOR */ }
+    internal static void Test()
+    {
+        var f = new IndicatorFixture(); f._label.Load(); f._label.Load(); f._label.Unload(true);
+        Program.Check(f.joined, "m-bubble: late unload removed the visible indicator from the working clock");
+    }
+}
+internal sealed class BubbleFixture
+{
+    private readonly Element _bubble = new();
+    private Element? _widthOwner;
+    private void FitWidth() { }
+    private void WidthOwnerChanged(object sender, SizeChangedEventArgs args) { }
+    private BubbleFixture() { /* BUBBLE */ }
+    internal static void Test()
+    {
+        var f = new BubbleFixture(); var oldParent = new Element(); var current = new Element();
+        f._bubble.Parent = oldParent; f._bubble.Load(); f._bubble.Parent = current; f._bubble.Load();
+        f._bubble.Unload(true);
+        Program.Check(ReferenceEquals(f._widthOwner, current) && current.WidthWatchers == 1 && oldParent.WidthWatchers == 0,
+            "m-bubble: late unload removed the current width owner; duplicate Loaded also leaked the old subscription");
+    }
+}
+internal static class PickerFixture
+{
+    private sealed class Flyout { public bool Hidden; public void Hide() => Hidden = true; }
+    internal static void Test()
+    {
+        var anchor = new Element(); var completion = new TaskCompletionSource<int>(); var cancelled = -1; var flyout = new Flyout();
+        /* PICKER */
+        anchor.Load(); anchor.Load(); anchor.Unload(true);
+        Program.Check(!completion.Task.IsCompleted && !flyout.Hidden, "c-pickers: late anchor unload completed and hid the live picker");
+        anchor.Unloaded -= Unloaded;
+    }
+}

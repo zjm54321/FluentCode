@@ -25,6 +25,10 @@ $text = $text.Replace('/* SHIMMER */', (Slice 'Pages/OpenCode/OpenCodeWorkingShi
 $text = $text.Replace('/* DIALOG */', (Slice 'Pages/OpenCode/OpenCodeInstructionFileDialog.cs' 'void Unloaded(object sender' '        async void Load()'))
 $fonts = Slice 'Services/Appearance/AppFonts.cs' '    private sealed class ElementTracker' "`n}"
 $text = $text.Replace('/* FONTS */', $fonts)
+$text = $text.Replace('/* GROUP */', (Slice 'Pages/OpenCode/OpenCodeToolGroupView.cs' '_root.Loaded +=' '        ConfigureContainer();'))
+$text = $text.Replace('/* INDICATOR */', (Slice 'Pages/OpenCode/OpenCodeWorkingIndicator.cs' '_label.Loaded +=' "`n    }"))
+$text = $text.Replace('/* BUBBLE */', (Slice 'Pages/OpenCode/OpenCodeUserBubbleView.cs' '_bubble.Loaded +=' '        ApplyToggleText();'))
+$text = $text.Replace('/* PICKER */', (Slice 'Pages/OpenCode/OpenCodePickerFlyout.cs' 'void Unloaded(object sender' "`n        try"))
 $generated = Join-Path $output 'Lifecycle.Generated.cs'
 [IO.File]::WriteAllText($generated, $text)
 $dll = Join-Path $output 'UnloadLifecycle.dll'
