@@ -25,6 +25,27 @@ internal interface IOpenCodeToolDetailSource
     void OnDetailStateChanged(bool shown, bool pinned);
 }
 
+/// <summary>Optional PT1 selector. The exact path wins over the index; projected single-file models need neither.</summary>
+internal interface IOpenCodeToolDetailFileSource
+{
+    int? DetailFileIndex { get; }
+    string? DetailFileKey { get; }
+}
+
+/// <summary>Optional host routes; no global selected-session lookup is used for file or terminal actions.</summary>
+internal interface IOpenCodeToolDetailActionSource
+{
+    Action<string, int?>? OpenDetailFile { get; }
+    Action<string>? RevealDetailFile { get; }
+    Action? OpenDetailTerminal { get; }
+}
+
+/// <summary>Rows with inline/navigation activation can preserve exactly the same action from their hover preview.</summary>
+internal interface IOpenCodeDetailActivationSource
+{
+    void ActivateDetail();
+}
+
 /// <summary>
 /// 通用详情来源的标题信息（思考、子会话预览、提示条等非工具来源）。
 /// <paramref name="Glyph"/> 为 Segoe Fluent Icons 字形；<paramref name="StatusBrushKey"/> 为内置画刷键
@@ -95,7 +116,9 @@ internal sealed class OpenCodeToolDetailPopup
     private readonly Border _smoke;
     private readonly FlyoutPresenter _dialogPresenter;
     private readonly Chrome _dialogChrome;
-    private readonly ToggleButton _viewModeButton;
+    private readonly SelectorBar _viewModeButton;
+    private readonly SelectorBarItem _sideBySideItem;
+    private readonly SelectorBarItem _unifiedItem;
     private readonly Button _closeButton;
 
     private readonly OpenCodeDetailHoverTracker _hover = new();
@@ -178,17 +201,21 @@ internal sealed class OpenCodeToolDetailPopup
         // ---------------- 大详情视图 ----------------
         _dialogChrome = new Chrome(large: true);
 
-        _viewModeButton = new ToggleButton { Content = "统一视图" };
+        _sideBySideItem = new SelectorBarItem { Text = "并排" };
+        _unifiedItem = new SelectorBarItem { Text = "统一" };
+        _viewModeButton = new SelectorBar();
+        _viewModeButton.Items.Add(_sideBySideItem);
+        _viewModeButton.Items.Add(_unifiedItem);
         AutomationProperties.SetAutomationId(_viewModeButton, "OpenCodeToolDetailViewMode");
         AutomationProperties.SetName(_viewModeButton, "并排 / 统一视图");
-        _viewModeButton.Click += (_, _) =>
+        _viewModeButton.SelectionChanged += (_, _) =>
         {
             if (_updatingToggles)
             {
                 return;
             }
 
-            _options.Unified = _viewModeButton.IsChecked == true;
+            _options.Unified = _viewModeButton.SelectedItem == _unifiedItem;
             Rebuild(keepScroll: false);
         };
 
@@ -218,6 +245,7 @@ internal sealed class OpenCodeToolDetailPopup
         _dialogPresenter = CreatePresenter(dialogLayout, new Thickness(0), 128);
         _dialogPresenter.HorizontalAlignment = HorizontalAlignment.Center;
         _dialogPresenter.VerticalAlignment = VerticalAlignment.Center;
+        _dialogPresenter.SizeChanged += (_, _) => ApplyResponsiveDiff();
         _dialogPresenter.Transitions = new TransitionCollection
         {
             new EntranceThemeTransition { FromHorizontalOffset = 0, FromVerticalOffset = 24, IsStaggeringEnabled = false },
@@ -506,6 +534,12 @@ internal sealed class OpenCodeToolDetailPopup
     private void Show(object source, OpenCodeDetailPopupMode mode)
     {
         if (DetailsSuppressed(AnchorOf(source))) return;
+        if (mode == OpenCodeDetailPopupMode.Large && source is IOpenCodeDetailActivationSource activation)
+        {
+            Close();
+            activation.ActivateDetail();
+            return;
+        }
         if (mode == OpenCodeDetailPopupMode.Large && source is IOpenCodeChildChatSource child)
         {
             Close();
@@ -527,6 +561,17 @@ internal sealed class OpenCodeToolDetailPopup
             _source = source;
             Notify(previous, false, false);
         }
+        if (source is IOpenCodeToolDetailFileSource fileSource)
+        {
+            _options.SelectedFile = fileSource.DetailFileIndex ?? 0;
+            _options.SelectedFileKey = fileSource.DetailFileKey;
+        }
+        if (source is IOpenCodeToolDetailActionSource actions)
+        {
+            _options.OpenFile = actions.OpenDetailFile;
+            _options.RevealFile = actions.RevealDetailFile;
+            _options.OpenTerminal = actions.OpenDetailTerminal;
+        }
 
         _closeTimer?.Stop();
         _mode = mode;
@@ -536,6 +581,7 @@ internal sealed class OpenCodeToolDetailPopup
 
         if (mode == OpenCodeDetailPopupMode.Large)
         {
+            _options.Unified = root.Size.Width < 900;
             // 大视图展示完整内容（不截断；长列表由 ItemsRepeater 虚拟化）。
             _options.ShowAll = false;
             _hover.Reset();
@@ -641,8 +687,17 @@ internal sealed class OpenCodeToolDetailPopup
         }
 
         // The terminal body contains the complete command once; don't repeat its first line in chrome.
+        var target = model.Target;
+        if (model.DiffFiles.Count > 0)
+        {
+            var selected = Math.Clamp(_options.SelectedFile, 0, model.DiffFiles.Count - 1);
+            if (_options.SelectedFileKey is { } key)
+                for (var index = 0; index < model.DiffFiles.Count; index++)
+                    if (model.DiffFiles[index].Path == key) { selected = index; break; }
+            target = model.DiffFiles[selected].Path;
+        }
         chrome.Set(OpenCodeToolPartView.KindGlyph(model.Kind), model.Name,
-            model.Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.WebFetch ? string.Empty : model.Target, status, statusKey, model.DurationText);
+            model.Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.WebFetch ? string.Empty : target, status, statusKey, model.DurationText);
 
         // 并排 / 统一视图只在大视图中提供（diff）；没有“换行”开关——详情文字总是换行（G8）。
         _viewModeButton.Visibility = OpenCodeToolRowPresentation.IsDiffKind(model.Kind) && model.DiffFiles.Count > 0
@@ -650,7 +705,7 @@ internal sealed class OpenCodeToolDetailPopup
             ? Visibility.Visible
             : Visibility.Collapsed;
         _updatingToggles = true;
-        _viewModeButton.IsChecked = _options.Unified;
+        _viewModeButton.SelectedItem = _options.Unified ? _unifiedItem : _sideBySideItem;
         _updatingToggles = false;
         var name = "工具详情：" + model.AccessibleName;
         AutomationProperties.SetName(_dialogPresenter, name);
@@ -733,6 +788,19 @@ internal sealed class OpenCodeToolDetailPopup
         _dialogPresenter.MaxHeight = rect.Height;
         _dialogPopup.HorizontalOffset = 0;
         _dialogPopup.VerticalOffset = 0;
+        ApplyResponsiveDiff();
+    }
+
+    private void ApplyResponsiveDiff()
+    {
+        if (_mode != OpenCodeDetailPopupMode.Large || _source is not IOpenCodeToolDetailSource tool
+            || !OpenCodeToolRowPresentation.IsDiffKind(tool.DetailModel.Kind)) return;
+        var narrow = AnchorOf(_source).XamlRoot?.Size.Width < 900;
+        if (_options.AutoUnified == narrow) return;
+        _options.AutoUnified = narrow;
+        _options.Unified = narrow;
+        UpdateTitle(_source);
+        Rebuild(keepScroll: true);
     }
 
     /// <summary>预览：自然内容尺寸，只在来源行上/下方，最大不超过较宽裕一侧。</summary>

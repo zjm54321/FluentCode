@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -179,6 +180,100 @@ internal static partial class OpenCodeToolDetailContent
             if (model.OutputText is { } content) actions.Children.Add(CopyButton("复制内容", content));
             if (Uri.TryCreate(model.Url, UriKind.Absolute, out var uri)) actions.Children.Add(new HyperlinkButton { Content = "在浏览器中打开", NavigateUri = uri });
         }
+        if (model.Kind is OpenCodeToolKind.Read or OpenCodeToolKind.Write or OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Patch)
+        {
+            var path = model.DiffFiles.Count > 0 ? model.DiffFiles[Math.Clamp(options.SelectedFile, 0, model.DiffFiles.Count - 1)].Path : model.Target;
+            var offset = int.TryParse(Field(StateObject(model, "input"), "offset"), out var line) ? line : (int?)null;
+            if (options.RevealFile is { } reveal)
+            {
+                var button = new Button { Content = "在资源管理器中显示" };
+                button.Click += (_, _) => reveal(path);
+                actions.Children.Add(button);
+            }
+            if (options.OpenFile is { } open)
+            {
+                var button = new Button { Content = offset is { } number ? $"在编辑器中打开（第 {number} 行）" : "在编辑器中打开", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
+                button.Click += (_, _) => open(path, offset);
+                actions.Children.Add(button);
+            }
+        }
+        if (model.Kind == OpenCodeToolKind.Shell && options.OpenTerminal is { } terminal)
+        {
+            var button = new Button { Content = "在终端页打开", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
+            button.Click += (_, _) => terminal();
+            actions.Children.Add(button);
+        }
+    }
+
+    private static FrameworkElement Running(string label)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        panel.Children.Add(new ProgressRing { Width = 16, Height = 16, IsActive = true });
+        panel.Children.Add(Caption(label));
+        return panel;
+    }
+
+    private static FrameworkElement? ReadImage(OpenCodeToolRowModel model)
+    {
+        if (model.State is not { ValueKind: JsonValueKind.Object } state || !state.TryGetProperty("content", out var content)
+            || content.ValueKind != JsonValueKind.Array) return null;
+        foreach (var item in content.EnumerateArray())
+        {
+            if (Field(item, "type") != "file" || Field(item, "mime") is not { } mime || !mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) continue;
+            if (Field(item, "url") is not { } url) continue;
+            var markdown = new OpenCodeRichTextPresenter();
+            markdown.Render("![图片](" + url + ")", OpenCodeRichTextStyle.Body);
+            return markdown.Element;
+        }
+        return null;
+    }
+
+    private static bool ShiftPressed() => (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+        & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
+
+    private static void BindDiffSurface(Grid grid, bool added)
+    {
+        void Apply()
+        {
+            var light = grid.ActualTheme == ElementTheme.Light;
+            grid.Background = new SolidColorBrush(light
+                ? added ? Windows.UI.Color.FromArgb(255, 230, 255, 236) : Windows.UI.Color.FromArgb(255, 255, 235, 233)
+                : added ? Windows.UI.Color.FromArgb(51, 46, 160, 67) : Windows.UI.Color.FromArgb(46, 248, 81, 73));
+        }
+        Apply();
+        grid.ActualThemeChanged += (_, _) => Apply();
+    }
+
+    private static void AddDiffNavigation(Grid root, ScrollViewer scroller)
+    {
+        var toolbar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        void Jump(bool previous)
+        {
+            var hunks = new List<FrameworkElement>();
+            void Find(DependencyObject node)
+            {
+                if (node is FrameworkElement { Tag: "OpenCodeDiffHunk" } hunk) hunks.Add(hunk);
+                for (var index = 0; index < VisualTreeHelper.GetChildrenCount(node); index++) Find(VisualTreeHelper.GetChild(node, index));
+            }
+            Find(scroller);
+            var positions = hunks.Select(hunk => hunk.TransformToVisual(scroller).TransformPoint(new Windows.Foundation.Point()).Y + scroller.VerticalOffset).OrderBy(y => y).ToArray();
+            if (positions.Length == 0) return;
+            var position = previous ? positions.LastOrDefault(y => y < scroller.VerticalOffset - 2, positions[^1]) : positions.FirstOrDefault(y => y > scroller.VerticalOffset + 2, positions[0]);
+            scroller.ChangeView(null, position, null, true);
+        }
+        var prev = new Button { Content = "上一处" };
+        var next = new Button { Content = "下一处" };
+        prev.Click += (_, _) => Jump(true);
+        next.Click += (_, _) => Jump(false);
+        toolbar.Children.Add(prev);
+        toolbar.Children.Add(next);
+        ((StackPanel)scroller.Content).Children.Insert(0, toolbar);
+        root.KeyDown += (_, args) =>
+        {
+            if (args.Key != Windows.System.VirtualKey.F7) return;
+            Jump(ShiftPressed());
+            args.Handled = true;
+        };
     }
 
     private static Button CopyButton(string label, string source)

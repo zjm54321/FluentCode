@@ -114,12 +114,19 @@ internal sealed class OpenCodeToolDetailOptions
     public bool Wrap => true;
 
     public bool Unified { get; set; }
+    public bool? AutoUnified { get; set; }
 
     public bool ShowAll { get; set; }
     public bool RawData { get; set; }
 
     public int SelectedFile { get; set; }
+    public string? SelectedFileKey { get; set; }
     public bool ShowSource { get; set; }
+    public bool ShowDifference { get; set; }
+    public Action<string, int?>? OpenFile { get; set; }
+    public Action<string>? RevealFile { get; set; }
+    public Action? OpenTerminal { get; set; }
+    public Dictionary<string, int> FoldVisibleLines { get; } = new(StringComparer.Ordinal);
 
     /// <summary>TL1: true while building the hover preview (built-in views cap their lists; the large view shows everything).</summary>
     public bool Compact { get; set; }
@@ -164,11 +171,17 @@ internal static partial class OpenCodeToolDetailContent
         }
     }
 
-    internal static OpenCodeToolDetailView Build(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options, Action rebuild)
+    internal static OpenCodeToolDetailView Build(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options, Action rebuild,
+        int? selectedFileIndex = null, string? selectedFileKey = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(rebuild);
+        if (selectedFileIndex is { } requestedIndex) options.SelectedFile = requestedIndex;
+        if (selectedFileKey is not null) options.SelectedFileKey = selectedFileKey;
+        if (options.SelectedFileKey is { } key)
+            for (var index = 0; index < model.DiffFiles.Count; index++)
+                if (string.Equals(model.DiffFiles[index].Path, key, StringComparison.Ordinal)) { options.SelectedFile = index; break; }
 
         using var detailScope = DetailBuildScope(!options.Compact);
         var root = new Grid();
@@ -209,6 +222,7 @@ internal static partial class OpenCodeToolDetailContent
         {
             case OpenCodeToolKind.Read:
                 BuildRead(model, rows, top);
+                if (rows.Count == 0 && ReadImage(model) is { } imageBody) body = imageBody;
                 if (rows.Count > 0 && OpenCodeFileDetailPolicy.IsMarkdown(model.Target))
                 {
                     var source = string.Join("\n", rows.ConvertAll(row => row is CodeLine line ? line.Text : string.Empty));
@@ -223,8 +237,8 @@ internal static partial class OpenCodeToolDetailContent
                 if (model.DiffFiles.Count > 0)
                 {
                     var file = model.DiffFiles[Math.Clamp(options.SelectedFile, 0, model.DiffFiles.Count - 1)];
-                    if (OpenCodeFileDetailPolicy.IsFullWrite(model.Kind, file))
-                        body = BuildFileContent(file.Path, file.After!, options, rebuild, top);
+                    if (model.Kind == OpenCodeToolKind.Write && file.After is not null && !options.ShowDifference)
+                        body = BuildFileContent(file.Path, file.After, options, rebuild, top, file.Before is not null);
                     else
                         BuildDiff(model, options, rebuild, rows, top);
                 }
@@ -349,6 +363,8 @@ internal static partial class OpenCodeToolDetailContent
         if (banners.Children.Count > 0) allContent.Children.Add(banners);
         if (top.Children.Count > 0 && !options.RawData) allContent.Children.Add(top);
         allContent.Children.Add(body);
+        if (model.Kind == OpenCodeToolKind.Read && rows.Count > 0 && !options.Compact && rows[^1] is CodeLine { Number: { } last })
+            allContent.Children.Add(Caption($"第 {last} 行之后未被读取；未从磁盘补全。"));
         scroller = new ScrollViewer
         {
             Content = allContent,
@@ -367,6 +383,7 @@ internal static partial class OpenCodeToolDetailContent
         if (!options.Compact) root.Children.Add(FactsBar(model));
         Grid.SetRow(scroller, 1);
         root.Children.Add(scroller);
+        if (!options.Compact && OpenCodeToolRowPresentation.IsDiffKind(model.Kind)) AddDiffNavigation(root, scroller);
         if (!options.Compact)
         {
             var footer = DetailFooter(model, options, rebuild);
@@ -382,12 +399,15 @@ internal static partial class OpenCodeToolDetailContent
         {
             if (model.FileOutputs.Count == 0)
             {
-                top.Children.Add(Caption(model.IsActive ? "正在读取…" : "（没有内容）"));
+                if (model.Status == OpenCodeToolRowStatus.Error) top.Children.Add(PropertyList(model.InputProperties));
+                else if (model.IsActive) top.Children.Add(Running("正在读取…"));
+                else top.Children.Add(Caption("（文件为空）"));
             }
 
             return;
         }
 
+        var offset = int.TryParse(Field(StateObject(model, "input"), "offset"), out var requestedOffset) ? requestedOffset : (int?)null;
         foreach (var line in model.OutputText.Split('\n'))
         {
             if (OpenCodeToolRowPresentation.TrySplitNumberedLine(line, out var number, out var content))
@@ -396,55 +416,63 @@ internal static partial class OpenCodeToolDetailContent
             }
             else if (rows.Count == 0 && line.Length > 0)
             {
-                // 首行“Read file X, lines a-b”等说明作为标题说明。
-                top.Children.Add(Caption(line.TrimEnd('\r')));
+                // The file target is already in shared chrome; do not repeat the protocol's read header.
+                if (!line.StartsWith("Read file ", StringComparison.OrdinalIgnoreCase)
+                    && !line.StartsWith("<", StringComparison.Ordinal))
+                    rows.Add(new CodeLine(offset is { } start ? start + rows.Count : null, line.TrimEnd('\r'), OpenCodeFileDetailPolicy.Language(model.Target)));
             }
             else if (line.Length > 0)
             {
-                rows.Add(new CodeLine(null, line.TrimEnd('\r'), OpenCodeFileDetailPolicy.Language(model.Target)));
+                if (!line.StartsWith("</", StringComparison.Ordinal)) rows.Add(new CodeLine(offset is { } start ? start + rows.Count : null, line.TrimEnd('\r'), OpenCodeFileDetailPolicy.Language(model.Target)));
             }
         }
     }
 
-    private static FrameworkElement BuildFileContent(string path, string source, OpenCodeToolDetailOptions options, Action rebuild, StackPanel top)
+    private static FrameworkElement BuildFileContent(string path, string source, OpenCodeToolDetailOptions options, Action rebuild, StackPanel top, bool canDiff = false)
     {
-        var copy = new Button { Content = "复制源码", HorizontalAlignment = HorizontalAlignment.Left };
-        AutomationProperties.SetAutomationId(copy, "OpenCodeFileCopySource");
-        copy.Click += (_, _) =>
+        var lines = source.Split('\n');
+        var limit = options.Compact ? 8 : options.ShowAll ? lines.Length : MaxRows;
+        var hidden = lines.Length > limit;
+        var shown = hidden ? string.Join("\n", lines, 0, limit) : source;
+        if (!options.Compact)
         {
-            try
-            {
-                var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                data.SetText(source);
-                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
-                copy.Content = "已复制源码";
-            }
-            catch (Exception) { copy.Content = "复制失败，请选择源码复制"; }
-        };
-        top.Children.Add(copy);
-        if (OpenCodeFileDetailPolicy.IsMarkdown(path))
-        {
-            var toggle = new ToggleSwitch { Header = "Markdown", OffContent = "预览", OnContent = "源码", IsOn = options.ShowSource };
+            var toggle = new SelectorBar();
+            var preview = new SelectorBarItem { Text = "预览" };
+            var raw = new SelectorBarItem { Text = "源码" };
+            var diff = new SelectorBarItem { Text = "差异" };
+            toggle.Items.Add(preview);
+            toggle.Items.Add(raw);
+            if (canDiff) toggle.Items.Add(diff);
+            toggle.SelectedItem = options.ShowDifference ? diff : options.ShowSource ? raw : preview;
             AutomationProperties.SetAutomationId(toggle, "OpenCodeFileSourceToggle");
-            toggle.Toggled += (_, _) => { options.ShowSource = toggle.IsOn; rebuild(); };
+            toggle.SelectionChanged += (_, _) => { options.ShowSource = toggle.SelectedItem == raw; options.ShowDifference = toggle.SelectedItem == diff; rebuild(); };
             top.Children.Add(toggle);
-            if (!options.ShowSource)
-            {
-                var markdown = new OpenCodeRichTextPresenter();
-                markdown.Render(source, OpenCodeRichTextStyle.Body);
-                EnforceWrapping(markdown.Element);
-                return markdown.Element;
-            }
         }
 
         var panel = new StackPanel();
         AutomationProperties.SetAutomationId(panel, "OpenCodeFileSource");
+        if (OpenCodeFileDetailPolicy.IsMarkdown(path) && !options.ShowSource)
+        {
+            var markdown = new OpenCodeRichTextPresenter();
+            markdown.Render(shown, OpenCodeRichTextStyle.Body);
+            EnforceWrapping(markdown.Element);
+            panel.Children.Add(markdown.Element);
+        }
+        else
+        {
         var language = OpenCodeFileDetailPolicy.Language(path);
-        foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(source))
+        foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(shown))
         {
             var block = Mono(string.Empty);
             FillSyntax(block, chunk, language);
             panel.Children.Add(block);
+        }
+        }
+        if (hidden)
+        {
+            var more = new HyperlinkButton { Content = options.Compact ? $"还有 {lines.Length - limit} 行 · 点击行打开完整内容" : $"已显示前 {limit} 行（共 {lines.Length} 行）· 显示全部" };
+            more.Click += (_, _) => { options.ShowAll = true; rebuild(); };
+            panel.Children.Add(more);
         }
         var surface = new Border { Child = panel };
         OpenCodeCodePalette.BindSurface(surface);
@@ -531,46 +559,18 @@ internal static partial class OpenCodeToolDetailContent
     {
         var files = model.DiffFiles;
         var index = Math.Clamp(options.SelectedFile, 0, files.Count - 1);
-        if (files.Count > 1)
-        {
-            var list = new RadioButtons { MaxColumns = 1 };
-            AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailFiles");
-            AutomationProperties.SetName(list, "改动的文件");
-            foreach (var file in files)
-            {
-                list.Items.Add(FileLabel(file));
-            }
-
-            list.SelectedIndex = index;
-            list.SelectionChanged += (_, _) =>
-            {
-                if (list.SelectedIndex >= 0 && list.SelectedIndex != options.SelectedFile)
-                {
-                    options.SelectedFile = list.SelectedIndex;
-                    options.ExpandedFolds.Clear();
-                    options.ShowAll = false;
-                    rebuild();
-                }
-            };
-            top.Children.Add(list);
-        }
-        else
-        {
-            var label = OpenCodeInteractionUi.StyledText(FileLabel(files[0]), OpenCodeInteractionUi.CodeStyleKey, true);
-            label.TextWrapping = TextWrapping.Wrap;
-            top.Children.Add(label);
-        }
-
         var selected = files[index];
         List<OpenCodeDiffLine> unified;
         if (!string.IsNullOrEmpty(selected.Patch))
         {
             unified = OpenCodeLineDiff.ParseUnified(selected.Patch);
+            unified.RemoveAll(line => line.Kind == OpenCodeDiffLineKind.Meta);
         }
         else if (selected.After is not null)
         {
             unified = OpenCodeLineDiff.Compute(selected.Before ?? string.Empty, selected.After);
-            top.Children.Add(Caption(model.Kind == OpenCodeToolKind.Write ? "新写入的完整内容（本地计算）" : "根据工具输入本地计算的差异"));
+            // Input fragments have no real file positions. Never present LCS-relative positions as file line numbers.
+            for (var line = 0; line < unified.Count; line++) unified[line] = unified[line] with { OldNumber = null, NewNumber = null };
         }
         else
         {
@@ -578,26 +578,54 @@ internal static partial class OpenCodeToolDetailContent
             return;
         }
 
+        if (model.Kind is OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit && !options.Compact)
+        {
+            top.Children.Add(new Expander { Header = "编辑参数", IsExpanded = false, Content = PropertyList(model.InputProperties) });
+        }
+        if (model.Kind == OpenCodeToolKind.Write && selected.Before is not null && !options.Compact)
+        {
+            var back = new HyperlinkButton { Content = "返回预览 / 源码" };
+            back.Click += (_, _) => { options.ShowDifference = false; rebuild(); };
+            top.Children.Add(back);
+        }
+        if (options.Compact)
+        {
+            var snippets = 0;
+            for (var i = 0; i < unified.Count && snippets < (model.Kind == OpenCodeToolKind.MultiEdit ? 3 : 1); i++)
+            {
+                if (unified[i].Kind is not OpenCodeDiffLineKind.Added and not OpenCodeDiffLineKind.Removed) continue;
+                if (i > 0) rows.Add(unified[i - 1]);
+                do { rows.Add(unified[i++]); }
+                while (i < unified.Count && unified[i].Kind is OpenCodeDiffLineKind.Added or OpenCodeDiffLineKind.Removed);
+                if (i < unified.Count) rows.Add(unified[i]);
+                snippets++;
+            }
+            if (rows.Count == 0) rows.AddRange(unified);
+            return;
+        }
+
         var sideRows = OpenCodeLineDiff.Fold(OpenCodeLineDiff.ToSideBySide(unified));
+        var foldOrdinal = 0;
         foreach (var row in sideRows)
         {
             if (row.IsFold)
             {
-                var foldKey = (row.Folded![0].Left?.Number ?? 0).ToString(CultureInfo.InvariantCulture) + ":" + index.ToString(CultureInfo.InvariantCulture);
-                if (options.ExpandedFolds.Contains(foldKey))
+                var folded = row.Folded!;
+                var foldKey = index.ToString(CultureInfo.InvariantCulture) + ":" + (foldOrdinal++).ToString(CultureInfo.InvariantCulture);
+                var shown = options.ExpandedFolds.Contains(foldKey) ? folded.Count : options.FoldVisibleLines.GetValueOrDefault(foldKey);
+                for (var innerIndex = 0; innerIndex < Math.Min(shown, folded.Count); innerIndex++)
                 {
-                    foreach (var inner in row.Folded)
-                    {
-                        rows.Add(options.Unified ? ToUnified(inner) : inner);
-                    }
+                    var inner = folded[innerIndex];
+                    rows.Add(options.Unified ? ToUnified(inner) : inner);
                 }
-                else
+                if (shown < folded.Count)
                 {
                     rows.Add(new ActionLine(
-                        "⋯ 展开 " + row.Folded.Count.ToString(CultureInfo.InvariantCulture) + " 行未改动 ⋯",
+                        "⋯ 展开 " + (folded.Count - shown).ToString(CultureInfo.InvariantCulture) + " 行未改动 ⋯",
                         () =>
                         {
-                            options.ExpandedFolds.Add(foldKey);
+                            if (ShiftPressed()) options.ExpandedFolds.Add(foldKey);
+                            else options.FoldVisibleLines[foldKey] = shown + 20;
                             rebuild();
                         },
                         "OpenCodeToolDetailExpandFold"));
@@ -820,8 +848,9 @@ internal static partial class OpenCodeToolDetailContent
     {
         if (cell is null)
         {
-            // 对侧无对应行：留空（新增文件左侧为空）。
-            return new Border();
+            var placeholder = Mono("╱    ╱    ╱    ╱    ╱    ╱");
+            placeholder.Opacity = 0.2;
+            return placeholder;
         }
 
         return cell.Kind switch
@@ -837,6 +866,7 @@ internal static partial class OpenCodeToolDetailContent
         var block = OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.CodeStyleKey, true);
         OpenCodeToolTheme.Apply(block, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CodeStyleKey));
         block.Margin = new Thickness(0, 4, 0, 2);
+        block.Tag = "OpenCodeDiffHunk";
         return block;
     }
 
@@ -846,7 +876,7 @@ internal static partial class OpenCodeToolDetailContent
         var grid = new Grid { ColumnSpacing = 8, Padding = new Thickness(4, 0, 8, 0) };
         if (backgroundKey is not null)
         {
-            OpenCodeToolTheme.Apply(grid, OpenCodeToolTheme.Grid(backgroundKey));
+            BindDiffSurface(grid, backgroundKey == OpenCodeToolTheme.SuccessBackground);
         }
 
         var column = 0;

@@ -109,6 +109,12 @@ internal static class Program
             && content.Contains("Content = allContent", StringComparison.Ordinal), "v5 headers and body share the main scroll surface");
         Check(content.Contains("_fullDetailBuild == 0 && OpenCodeDetailTextPolicy.CanCollapseCode", StringComparison.Ordinal)
             && !popup.Contains("_options.ShowAll = true", StringComparison.Ordinal), "v5 full code expansion preserves recoverable row caps");
+        Check(content.Contains("int? selectedFileIndex = null, string? selectedFileKey = null", StringComparison.Ordinal)
+            && !content.Contains("new RadioButtons", StringComparison.Ordinal), "PT1 accepts a per-file selector without a multi-file chooser");
+        Check(popup.Contains("_dialogPresenter.SizeChanged +=", StringComparison.Ordinal)
+            && popup.Contains("Size.Width < 900", StringComparison.Ordinal), "D2 diff responds to window-width changes");
+        Check(content.Contains("OldNumber = null, NewNumber = null", StringComparison.Ordinal)
+            && content.Contains("shown + 20", StringComparison.Ordinal), "local diff line numbers stay unknown and folds expand twenty lines at a time");
         Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(", StringComparison.Ordinal) && builtins.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
             && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "to do reuses the right-panel rows; read-only; theme brushes only");
         Check(builtins.Contains("count.HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal)
