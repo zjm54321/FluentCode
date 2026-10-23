@@ -950,6 +950,7 @@ public sealed class OpenCodeConversationView : StackPanel
     /// </summary>
     private Dictionary<string, OpenCodeAsyncCompletion> _asyncCompletions = new(StringComparer.Ordinal);
     private readonly HashSet<string> _subagentInvocationKeys = new(StringComparer.Ordinal);
+    public event Action<string>? TerminalRequested;
 
     /// <summary>创建空的消息时间线视图。</summary>
     public OpenCodeConversationView()
@@ -2723,6 +2724,8 @@ public sealed class OpenCodeConversationView : StackPanel
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> handler =
                     (_, e) => SubagentSessionRequested?.Invoke(this, e);
                 view.SubagentSessionRequested += handler;
+                Action<string> terminalHandler = shellId => TerminalRequested?.Invoke(shellId);
+                view.TerminalRequested += terminalHandler;
                 return new PartEntry
                 {
                     Key = partKey, FileIndex = fileIndex,
@@ -2740,6 +2743,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     Dispose = () =>
                     {
                         view.SubagentSessionRequested -= handler;
+                        view.TerminalRequested -= terminalHandler;
                         view.Dispose();
                     },
                 };

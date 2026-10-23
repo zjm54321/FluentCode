@@ -107,6 +107,7 @@ namespace AIFrontend.Pages.OpenCode
         internal int? FileIndex { get; private set; }
         internal int UpdateCount { get; private set; }
 
+        public event Action<string>? TerminalRequested { add { } remove { } }
         internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false, int? fileIndex = null)
         {
             _parentMessageId = parentMessageId;

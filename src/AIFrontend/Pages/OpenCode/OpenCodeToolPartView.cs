@@ -102,6 +102,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     /// <see cref="OpenCodeConversationView"/> 将其转发为自己的同名公开事件。
     /// </summary>
     public event EventHandler<OpenCodeSubagentSessionRequestedEventArgs>? SubagentSessionRequested;
+    public event Action<string>? TerminalRequested;
 
     /// <summary>创建空的工具行；通过 <see cref="Update"/> 填充内容。</summary>
     public OpenCodeToolPartView()
@@ -261,7 +262,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _parentMessageId = parentMessageId;
         _lastPart = part;
         _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex);
-        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question)
+        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question
+            || _model is { Kind: OpenCodeToolKind.Shell, IsBackground: true, ShellId.Length: > 0 })
             _rowActionSource ??= new RowActionPreviewSource(this);
         else if (_rowActionSource is { } oldActionSource)
         {
@@ -336,6 +338,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         CloseDetailIfShowing();
         _childSessionId = null;
         SubagentSessionRequested = null;
+        TerminalRequested = null;
     }
 
     /// <summary>
@@ -653,6 +656,12 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     internal void TogglePinnedDetail()
     {
+        if (_model is { Kind: OpenCodeToolKind.Shell, IsBackground: true, ShellId: { Length: > 0 } shellId })
+        {
+            CloseDetailIfShowing();
+            if (!_disposed) TerminalRequested?.Invoke(shellId);
+            return;
+        }
         if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question)
         {
             CloseDetailIfShowing();

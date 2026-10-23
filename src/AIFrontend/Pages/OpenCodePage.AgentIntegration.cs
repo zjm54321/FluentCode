@@ -66,11 +66,17 @@ public sealed partial class OpenCodePage
 
     /// <summary>Loaded 接线：订阅会话视图的子会话导航请求（由 <c>_pageActive</c> 守卫防重复）。</summary>
     private void AttachConversationEvents()
-        => _conversationView.SubagentSessionRequested += OnSubagentSessionRequested;
+    {
+        _conversationView.SubagentSessionRequested += OnSubagentSessionRequested;
+        _conversationView.TerminalRequested += OpenTerminalView;
+    }
 
     /// <summary>Unloaded 清理：退订会话视图事件，避免重复订阅与迟到回调。</summary>
     private void DetachConversationEvents()
-        => _conversationView.SubagentSessionRequested -= OnSubagentSessionRequested;
+    {
+        _conversationView.SubagentSessionRequested -= OnSubagentSessionRequested;
+        _conversationView.TerminalRequested -= OpenTerminalView;
+    }
 
     /// <summary>
     /// 会话上下文变化（选中会话切换，含切走再切回）：递增选择代际并重新 Configure 控件；

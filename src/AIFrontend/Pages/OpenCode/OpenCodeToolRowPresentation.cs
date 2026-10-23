@@ -222,6 +222,7 @@ internal sealed class OpenCodeToolRowModel
 
     /// <summary>shell 命令（仅 Shell）。</summary>
     public string? Command { get; init; }
+    public string? ShellId { get; init; }
 
     /// <summary>网址（仅 WebFetch）。</summary>
     public string? Url { get; init; }
@@ -756,6 +757,7 @@ internal static class OpenCodeToolRowPresentation
             ErrorText = errorText,
             DiffFiles = diffs,
             Command = command,
+            ShellId = FirstString(metadata, "shellID"),
             Url = url,
             RawState = rawState,
             InputProperties = inputProperties,
