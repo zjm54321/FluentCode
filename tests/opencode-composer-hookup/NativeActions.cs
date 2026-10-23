@@ -96,10 +96,15 @@ internal static class NativeTests
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseSession, "sessions");
             Check(f.Page.InvokeNative(OpenCodeComposerClientActionKind.NewSession), "synchronous Accepted from typed event");
             Check(f.Page.NewTabRequests == 1 && f.Http.Posts == 0, "ticket dispatch ignores forged display Kind and opens the blank session tab (L2)");
+            f.Page.DrainDispatcher();
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseAgent, "agents"); await f.Page.RunNative();
             Check(f.Page.AgentOpens == 1 && f.Http.Posts == 0, "agents opens the selector's picker dialog without switch/HTTP");
             await f.Page.StageNative(OpenCodeComposerClientActionKind.NewSession, "new"); await f.Page.RunNative();
-            Check(f.Http.Posts == 1 && f.Http.Path == "/api/session" && f.Page.Created == "ses_created", "new uses create API and owned navigation");
+            Check(f.Page.NewTabRequests == 2 && f.Page.NewTabNavigations == 1 && f.Http.Posts == 0 && f.Page.Created is null,
+                "new requests a deferred blank tab without creating an unnamed backend session");
+            f.Page.DrainDispatcher();
+            Check(f.Page.NewTabNavigations == 2 && !f.Page.NavigationWhileNativeAction && f.Http.Posts == 0,
+                "new navigates only after native ownership settles, still without a backend POST");
         }
         foreach (var scenario in new[] { "explicit", "inherited", "missing", "changed", "later-edit" })
         {
@@ -370,7 +375,13 @@ namespace AIFrontend.Pages
         internal int AckInvalidations;
         internal string? Created;
         internal int NewTabRequests;
-        partial void RequestNewSessionTab() => NewTabRequests++;
+        internal int NewTabNavigations;
+        internal bool NavigationWhileNativeAction;
+        partial void RequestNewSessionTab()
+        {
+            NewTabRequests++;
+            DispatcherQueue.TryEnqueue(() => { NewTabNavigations++; NavigationWhileNativeAction |= _nativeActionOwner is not null; });
+        }
         internal int AgentOpens => _agentSelector.Opens;
         internal long Epoch => _messageHistoryEpoch;
         internal string? Boundary => _messageRevertBoundary;

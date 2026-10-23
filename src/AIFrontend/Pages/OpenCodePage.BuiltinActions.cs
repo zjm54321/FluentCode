@@ -99,8 +99,8 @@ public sealed partial class OpenCodePage
             switch (ticket.Kind)
             {
                 case OpenCodeComposerClientActionKind.NewSession:
-                    await CreateNativeSessionAsync(ticket.Binding.Source, ticket.Binding.Client,
-                        () => CanStartNativeAction(owner, origin), () => OwnsNativeOperation(owner, origin), cancellation.Token);
+                    // Navigation intent only: the existing hook defers the blank tab until this action settles.
+                    RequestNewSessionTab();
                     break;
                 case OpenCodeComposerClientActionKind.ChooseSession:
                     // §7: /sessions opens (or activates) the single blank "新会话" tab, whose list opens a session
