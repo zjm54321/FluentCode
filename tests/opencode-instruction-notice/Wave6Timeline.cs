@@ -167,14 +167,14 @@ internal static class Wave6Timeline
         var foreign = admitted with { Id = "msg_foreign", SessionId = "ses_elsewhere" };
         var originalPayload = admitted.Payload!.Value.GetRawText();
         view.ApplyAdmittedSteer("ses_ui", new[] { admitted, deferred, foreign }, _ => true, _ => true);
-        var steerRow = view.Children.OfType<Microsoft.UI.Xaml.Controls.StackPanel>().Single(p =>
+        var steerRow = view.Children.OfType<Microsoft.UI.Xaml.Controls.Grid>().Single(p =>
             Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(p) == "OpenCodeAdmittedSteer.msg_steer");
         Check(view.Children.Count == 1 && !view.ContainsRenderedMessage("msg_steer") && Made<OpenCodeUserBubbleView>().Length == 1,
             "wave7.admitted-steer-is-normal-chat-bubble-projection-only-not-queue-foreign-session-or-fabricated-history");
         Check(!Made<OpenCodeUserBubbleView>().Single().Delivered,
             "wave8.real-durable-steer-admission-is-neutral-not-delivered-accent");
         Check(!Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.TextBlock>().Any(t => t.Text == "插入当前回合")
-            && Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.Button>().Any(b => b.Content is "投递方式"),
+            && Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.Button>().Any(b => b.Content is "改为排队"),
             "wave8.no-passive-lower-right-steer-label-but-owned-delivery-control-remains");
         Check(ConversationViewTestProbe.Records.Any(r => r.Operation == "Render" && r.Input is "  raw\nbody  ")
             && Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.TextBlock>().Any(t => t.Text == "附件：image.png")
@@ -187,13 +187,13 @@ internal static class Wave6Timeline
         view.PendingSteerWithdrawRequested += (_, id) => { if (id == "msg_steer") withdrawals++; };
         view.PendingSteerDeliveryChangeRequested += (_, request) => { if (request.InboxId == "msg_steer" && request.Delivery == "queue") changes++; };
         var withdrawButton = Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.Button>().Single(b => b.Content is string text && text == "撤回");
-        var deliveryButton = Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.Button>().Single(b => b.Flyout is Microsoft.UI.Xaml.Controls.MenuFlyout);
+        var deliveryButton = Walk(steerRow).OfType<Microsoft.UI.Xaml.Controls.Button>().Single(b => b.Content is "改为排队");
         view.SetPendingSteerBusy(true); withdrawButton.RaiseClickForTest();
-        ((Microsoft.UI.Xaml.Controls.MenuFlyout)deliveryButton.Flyout!).Items.Single().RaiseClickForTest();
+        deliveryButton.RaiseClickForTest();
         Check(withdrawals == 0 && changes == 0 && !withdrawButton.IsEnabled && !deliveryButton.IsEnabled,
             "wave7.steer-actions-respect-existing-single-flight-busy-state");
         view.SetPendingSteerBusy(false); withdrawButton.RaiseClickForTest();
-        ((Microsoft.UI.Xaml.Controls.MenuFlyout)deliveryButton.Flyout!).Items.Single().RaiseClickForTest();
+        deliveryButton.RaiseClickForTest();
         Check(withdrawals == 1 && changes == 1 && admitted.Delivery == "steer", "wave7.steer-actions-forward-real-id-without-optimistic-delivery-rewrite-or-send");
         view.ApplyMessages(new[] { M(new { id = "msg_steer", type = "user", text = "  raw\nbody  " }) });
         withdrawButton.RaiseClickForTest();

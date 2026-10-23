@@ -17,26 +17,28 @@ internal static class RedesignRegression
         void Check(bool value, string message) { checks++; if (!value) throw new InvalidOperationException(message); }
         var view = new OpenCodeQueuedPromptsView();
         Check(typeof(OpenCodeQueuedPromptsView).BaseType == typeof(Grid), "queue view must compose, never subclass the non-composable WinUI Expander");
-        // Wave 7 explicitly replaces the count/expand card with plain rows always above the composer.
-        var scroll = view.Children.OfType<ScrollViewer>().Single();
-        var list = (StackPanel)scroll.Content!;
+        var expander = view.Children.OfType<Expander>().Single();
+        var scroll = (ScrollViewer)expander.Content!;
+        var list = (ListView)scroll.Content!;
         Check(AutomationProperties.GetAutomationId(view) == "OpenCodeQueuedPrompts" && !view.Children.OfType<Button>().Any(),
-            "stable pending-list ID, no generic count/expand card");
+            "stable pending-list ID and native expander composition");
+        Check(expander.ExpandDirection == ExpandDirection.Up && !list.CanReorderItems && !list.CanDragItems && !list.AllowDrop,
+            "A2/A5: native upward queue; server-held order has no reorder or drag affordance");
         Check(scroll.MaxHeight == 240 && scroll.HorizontalScrollMode == ScrollMode.Disabled,
             "plain pending list has bounded vertical scrolling and no sideways pan");
         Check(view.Visibility == Visibility.Collapsed && !view.HasItems, "empty queue is hidden");
         var item = new OpenCodeInboxItem { Id = "msg_queued", SessionId = "ses_test", Type = "user", Delivery = "queue",
             Payload = JsonSerializer.SerializeToElement(new { text = "queued regression" }) };
         view.Apply([item], _ => true, _ => true);
-        Check(scroll.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && view.Children.Single() == scroll,
-            "pending items are directly visible, not hidden in a flyout");
-        var row = (Grid)list.Children.Single();
-        var withdraw = row.Children.OfType<Button>().Single(button => button.Flyout is null);
+        Check(scroll.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && expander.IsExpanded,
+            "one pending item is expanded initially");
+        var row = (Grid)list.Items.Single();
+        var withdraw = row.Children.OfType<Button>().Single(button => button.Content is "撤回");
         Check(view.Visibility == Visibility.Visible && view.HasItems && row.Parent == list, "first queued row attaches once and becomes visible");
         Check(AutomationProperties.GetName(row).Contains("当前回合结束后发送", StringComparison.Ordinal)
             && AutomationProperties.GetAutomationId(withdraw) == "OpenCodeQueuedPromptWithdraw.msg_queued", "actual delivery mode and durable withdraw ID preserved");
         view.Apply([item], _ => true, _ => true);
-        Check(ReferenceEquals(list.Children.Single(), row), "same inbox snapshot does not rebuild/reparent row");
+        Check(ReferenceEquals(list.Items.Single(), row), "same inbox snapshot does not rebuild/reparent row");
         int calls = 0;
         view.WithdrawRequested += (_, id) => { if (id == item.Id) calls++; };
         withdraw.RaiseClickForTest();
@@ -44,29 +46,37 @@ internal static class RedesignRegression
         view.IsWithdrawBusy = true;
         withdraw.RaiseClickForTest();
         Check(!withdraw.IsEnabled && calls == 1, "busy suppresses duplicate withdrawal");
-        var change = row.Children.OfType<Button>().Single(button => button.Flyout is MenuFlyout);
-        var modes = ((MenuFlyout)change.Flyout!).Items;
+        var change = row.Children.OfType<Button>().Single(button => button.Content is "改为插入当前回合");
         int changes = 0;
         view.DeliveryChangeRequested += (_, request) => { if (request.InboxId == item.Id && request.Delivery == "steer") changes++; };
-        modes[0].RaiseClickForTest();
-        Check(changes == 0 && !change.IsEnabled && modes[0].Text == "插入当前回合" && !modes[1].IsEnabled,
-            "mode menu uses actual steer/queue choices; busy/current mode cannot duplicate a mutation");
+        change.RaiseClickForTest();
+        Check(changes == 0 && !change.IsEnabled,
+            "busy suppresses duplicate delivery mutation");
         view.IsWithdrawBusy = false;
-        modes[0].RaiseClickForTest();
+        change.RaiseClickForTest();
         Check(changes == 1, "explicit mode update preserves actual inbox ID and exact protocol steer value");
         view.Apply([]);
         Check(!view.HasItems && view.Visibility == Visibility.Collapsed && row.Parent is null, "withdrawn/delivered pending list clears ownership and hides");
         view.IsWithdrawBusy = false;
         view.Apply([item], _ => false);
-        Check(((Grid)list.Children.Single()).Children.OfType<Button>().Count() == 0, "non-owned queue item remains read-only");
+        Check(((Grid)list.Items.Single()).Children.OfType<Button>().Count() == 0, "non-owned queue item remains read-only");
         var inserted = item with { Id = "msg_inserted", Delivery = "steer", Payload = JsonSerializer.SerializeToElement(new { text = "  first\nsecond  " }) };
         view.Apply([inserted, item]);
-        Check(list.Children.Count == 1 && AutomationProperties.GetAutomationId(list.Children[0]) == "OpenCodeQueuedPrompt.msg_queued",
+        Check(list.Items.Count == 1 && AutomationProperties.GetAutomationId(list.Items[0]) == "OpenCodeQueuedPrompt.msg_queued",
             "admitted steer never appears in lower queue list; actual queue remains in server order");
         view.Apply([inserted with { Delivery = "queue" }, item]);
-        Check(((Grid)list.Children[0]).Children.OfType<TextBlock>().First().Text == "  first\nsecond  "
-            && ((Grid)list.Children[0]).Children.OfType<TextBlock>().First().TextWrapping == TextWrapping.Wrap,
-            "raw pending text/newlines/whitespace retained and selectable wrapped source is not preview-truncated");
+        Check(((Grid)list.Items[0]).Children.OfType<TextBlock>().First().Text == "  first\nsecond  "
+            && ((Grid)list.Items[0]).Children.OfType<TextBlock>().First().TextTrimming == TextTrimming.CharacterEllipsis,
+            "raw pending text retained; compact row uses native ellipsis and full-source tooltip");
+        view.Apply([]);
+        view.Apply([inserted with { Delivery = "queue" }, item]);
+        Check(!expander.IsExpanded && ((TextBlock)expander.Header!).Text.StartsWith("排队 2 条 · 下一条："), "MQ2: multiple items collapse initially with first-message preview");
+        expander.IsExpanded = true;
+        view.Apply([item]);
+        Check(expander.IsExpanded, "inbox refresh retains the user's expanded state");
+        Check(OpenCodeConversationView.AnnotationLabel("  First word") == "Fi"
+            && OpenCodeConversationView.AnnotationLabel("中文消息") == "中文"
+            && OpenCodeConversationView.AnnotationLabel("中") == "中", "A6: Chinese first 1–2 characters and English first two letters");
         if (queueOnly) { Console.WriteLine($"PASS production queue view: {checks} assertions; inert native boundary only."); return checks; }
 
         var previousApp = Application.Current;

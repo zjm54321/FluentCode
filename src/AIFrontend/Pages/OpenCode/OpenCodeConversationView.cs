@@ -86,6 +86,38 @@ public sealed class OpenCodeConversationView : StackPanel
     internal event Action<bool>? HistoryViewportChanged;
     internal void RefreshViewport(ScrollViewer viewport) { ConnectViewport(viewport); UpdateWindow(); }
 
+    // Full retained history, not only realized rows. Estimated offsets converge as rows are measured.
+    internal IReadOnlyList<(string Text, bool User, double Offset)> ScrollAnnotations()
+    {
+        var labels = new List<(string, bool, double)>();
+        double offset = Padding.Top;
+        foreach (var entry in _entries)
+        {
+            var message = entry.Snapshot;
+            var user = message?.Type == OpenCodeMessageTypes.User;
+            var text = user ? message?.Text : message?.Type == OpenCodeMessageTypes.Assistant
+                ? string.Join("\n", message.Content?.Where(p => p.Type == OpenCodePartTypes.Text).Select(p => p.Text) ?? Array.Empty<string>()) : null;
+            if (!string.IsNullOrWhiteSpace(text) && !entry.IsInstructionNotice && !entry.IsInitiatorChip && !entry.IsAsyncCompletion && !entry.IsManualBackgroundNotice)
+                labels.Add((text, user, offset));
+            offset += _window.Height(entry.Key);
+        }
+        return labels;
+    }
+
+    internal static string AnnotationLabel(string text)
+    {
+        text = text.TrimStart();
+        var elements = StringInfo.GetTextElementEnumerator(text);
+        var label = string.Empty;
+        while (elements.MoveNext() && new StringInfo(label).LengthInTextElements < 2)
+        {
+            var next = elements.GetTextElement();
+            if (string.IsNullOrWhiteSpace(next)) break;
+            label += next;
+        }
+        return label;
+    }
+
     private double WindowOffset()
         => _viewport is null ? 0 : Math.Max(0, -TransformToVisual(_viewport).TransformPoint(new Point(0, 0)).Y - Padding.Top);
 
@@ -484,9 +516,10 @@ public sealed class OpenCodeConversationView : StackPanel
     private sealed class SteerRow
     {
         internal required OpenCodeInboxItem Item;
-        internal readonly StackPanel Element = new() { Spacing = 4, Margin = new Thickness(0, 6, 0, 6) };
+        internal readonly Grid Element = new() { Margin = new Thickness(0, 6, 0, 6) };
         internal readonly StackPanel Content = new() { Spacing = 4 };
-        internal readonly StackPanel Actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+        internal readonly StackPanel Actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -32, 0, 0), Opacity = 0 };
         internal readonly OpenCodeRichTextPresenter Presenter = new();
         internal readonly List<Button> Buttons = new();
         internal string Signature = string.Empty;
@@ -527,6 +560,11 @@ public sealed class OpenCodeConversationView : StackPanel
                     var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false);
                     row.Element.Children.Add(bubble.Element);
                     row.Element.Children.Add(row.Actions);
+                    var hoverRow = row;
+                    row.Element.PointerEntered += (_, _) => hoverRow.Actions.Opacity = 1;
+                    row.Element.PointerExited += (_, _) => hoverRow.Actions.Opacity = 0;
+                    row.Element.GotFocus += (_, _) => hoverRow.Actions.Opacity = 1;
+                    row.Element.LostFocus += (_, _) => hoverRow.Actions.Opacity = 0;
                     AutomationProperties.SetAutomationId(row.Element, "OpenCodeAdmittedSteer." + id);
                     _steerRows[id] = row;
                 }
@@ -583,12 +621,9 @@ public sealed class OpenCodeConversationView : StackPanel
         row.Actions.Children.Clear(); row.Buttons.Clear();
         if (change)
         {
-            var button = new Button { Content = "投递方式", IsEnabled = !_steerBusy };
-            var menu = new MenuFlyout();
-            var queue = new MenuFlyoutItem { Text = "当前回合结束后发送" };
-            queue.Click += (_, _) => { if (CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true)
+            var button = new Button { Content = "改为排队", IsEnabled = !_steerBusy };
+            button.Click += (_, _) => { if (CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true)
                 PendingSteerDeliveryChangeRequested?.Invoke(this, new(row.Item.Id!, OpenCodeDeliveryModes.Queue)); };
-            menu.Items.Add(queue); button.Flyout = menu;
             AutomationProperties.SetAutomationId(button, "OpenCodeAdmittedSteerDelivery." + item.Id);
             row.Actions.Children.Add(button); row.Buttons.Add(button);
         }
@@ -2554,7 +2589,13 @@ public sealed class OpenCodeConversationView : StackPanel
                 {
                     Key = partKey,
                     Kind = kind,
-                    Element = presenter.Element,
+                    Element = new Border
+                    {
+                        Child = presenter.Element, Padding = new Thickness(12, 10, 12, 10),
+                        CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
+                        Background = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CardBackgroundBrushKey),
+                        BorderBrush = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CardStrokeBrushKey),
+                    },
                     Update = (p, _, _) => presenter.Render(p.Text, OpenCodeRichTextStyle.Body),
                 };
             }

@@ -26,7 +26,19 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         HorizontalScrollMode = ScrollMode.Disabled,
         MaxHeight = 240,
     };
-    private readonly StackPanel _list = new() { Spacing = 6 };
+    private readonly ListView _list = new()
+    {
+        SelectionMode = ListViewSelectionMode.None, IsItemClickEnabled = false,
+        CanReorderItems = false, CanDragItems = false, AllowDrop = false,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+    };
+    private readonly Expander _expander = new()
+    {
+        ExpandDirection = ExpandDirection.Up, HorizontalAlignment = HorizontalAlignment.Stretch,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+    };
+    private readonly TextBlock _header = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.BodyStyleKey);
+    private bool _hasItems;
     private readonly List<Button> _withdrawButtons = new();
     private readonly List<Button> _deliveryButtons = new();
     private string _signature = string.Empty;
@@ -48,11 +60,16 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         HorizontalAlignment = HorizontalAlignment.Stretch;
         Visibility = Visibility.Collapsed;
         _scroll.Content = _list;
-        Children.Add(_scroll);
+        _expander.Content = _scroll;
+        _expander.Header = _header;
+        _header.TextWrapping = TextWrapping.NoWrap;
+        _header.TextTrimming = TextTrimming.CharacterEllipsis;
+        AutomationProperties.SetAutomationId(_expander, "OpenCodeQueueExpander");
+        Children.Add(_expander);
     }
 
     /// <summary>是否有可显示的排队条目。</summary>
-    internal bool HasItems => _list.Children.Count > 0;
+    internal bool HasItems => _hasItems;
 
     /// <summary>撤回进行中：禁用全部“撤回”按钮（单飞；结果出来前不能再点）。</summary>
     internal bool IsWithdrawBusy
@@ -100,14 +117,19 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
             return;
         }
 
+        var firstItems = !_hasItems;
         _signature = signature;
-        _list.Children.Clear();
+        _list.Items.Clear();
         _withdrawButtons.Clear();
         _deliveryButtons.Clear();
         foreach (var (id, text, delivery, withdrawable, changeable) in rows)
         {
-            _list.Children.Add(CreateRow(id, text, delivery, withdrawable, changeable));
+            _list.Items.Add(CreateRow(id, text, delivery, withdrawable, changeable));
         }
+        _hasItems = rows.Count > 0;
+        if (firstItems) _expander.IsExpanded = rows.Count == 1;
+        _header.Text = rows.Count == 0 ? string.Empty : "排队 " + rows.Count + " 条 · 下一条：" + rows[0].Text;
+        ToolTipService.SetToolTip(_expander, "当前回合结束后发送；顺序由服务器管理");
         Visibility = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -193,7 +215,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         }
 
         var body = OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey, selectable: true);
-        body.TextWrapping = TextWrapping.Wrap;
+        body.TextWrapping = TextWrapping.NoWrap;
+        body.TextTrimming = TextTrimming.CharacterEllipsis;
         body.VerticalAlignment = VerticalAlignment.Center;
         ToolTipService.SetToolTip(body, text);
         grid.Children.Add(body);
@@ -204,15 +227,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         FrameworkElement deliveryControl = mode;
         if (changeable)
         {
-            var change = new Button { Content = mode, IsEnabled = !_withdrawBusy };
-            var menu = new MenuFlyout();
-            foreach (var target in new[] { OpenCodeDeliveryModes.Steer, OpenCodeDeliveryModes.Queue })
-            {
-                var choice = new MenuFlyoutItem { Text = DescribeDelivery(target), IsEnabled = target != delivery };
-                choice.Click += (_, _) => { if (!_withdrawBusy) DeliveryChangeRequested?.Invoke(this, new(id, target)); };
-                menu.Items.Add(choice);
-            }
-            change.Flyout = menu;
+            var change = new Button { Content = "改为插入当前回合", IsEnabled = !_withdrawBusy };
+            change.Click += (_, _) => { if (!_withdrawBusy) DeliveryChangeRequested?.Invoke(this, new(id, OpenCodeDeliveryModes.Steer)); };
             AutomationProperties.SetAutomationId(change, "OpenCodePendingDelivery." + id);
             AutomationProperties.SetName(change, "修改投递方式：" + DescribeDelivery(delivery));
             _deliveryButtons.Add(change);

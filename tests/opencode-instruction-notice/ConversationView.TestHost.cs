@@ -405,6 +405,10 @@ namespace Microsoft.UI.Xaml
     public class DependencyObject { }
     public class UIElement : DependencyObject
     {
+        public event EventHandler<object>? PointerEntered { add { } remove { } }
+        public event EventHandler<object>? PointerExited { add { } remove { } }
+        public event EventHandler<object>? GotFocus { add { } remove { } }
+        public event EventHandler<object>? LostFocus { add { } remove { } }
         public static readonly object PointerPressedEvent = new(), PointerWheelChangedEvent = new(), KeyDownEvent = new();
         public void AddHandler(object routedEvent, object handler, bool handledEventsToo) { }
         public void RemoveHandler(object routedEvent, object handler) { }
@@ -594,8 +598,22 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class Expander : ContentControl
     {
+        public ExpandDirection ExpandDirection { get; set; }
         public object? Header { get; set; }
         public bool IsExpanded { get; set; }
+    }
+
+    public enum ExpandDirection { Down, Up }
+    public enum ListViewSelectionMode { None, Single, Multiple, Extended }
+    public class ListView : ContentControl
+    {
+        public ListView() => Items = new UIElementCollection(this);
+        public UIElementCollection Items { get; }
+        public ListViewSelectionMode SelectionMode { get; set; }
+        public bool IsItemClickEnabled { get; set; }
+        public bool CanReorderItems { get; set; }
+        public bool CanDragItems { get; set; }
+        public bool AllowDrop { get; set; }
     }
 
     public class Button : ContentControl

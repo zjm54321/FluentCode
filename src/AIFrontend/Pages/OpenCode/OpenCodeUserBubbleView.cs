@@ -2,6 +2,8 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -67,8 +69,6 @@ internal sealed class OpenCodeUserBubbleView
         layout.Children.Add(_clip);
         layout.Children.Add(_toggle);
 
-        // A low-opacity native accent layer over an OPAQUE theme surface gives delivered
-        // messages a light accent tint without changing body/code/image opacity or contrast.
         var surface = new Grid();
         if (delivered)
         {
@@ -76,18 +76,38 @@ internal sealed class OpenCodeUserBubbleView
             OpenCodeToolTheme.Apply(tint, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
             surface.Children.Add(tint);
         }
+        else
+        {
+            // A1: pending is the same bubble geometry, with only a dashed accent outline.
+            var outline = new Rectangle
+            {
+                RadiusX = 8, RadiusY = 8, StrokeThickness = 1.5,
+                StrokeDashArray = new DoubleCollection { 4, 3 }, IsHitTestVisible = false,
+                Style = OpenCodeThemedXaml.BrushStyle("Rectangle", ("Stroke", "AccentTextFillColorPrimaryBrush")),
+            };
+            surface.Children.Add(outline);
+        }
         surface.Children.Add(layout);
         _bubble = new Border
         {
             Child = surface,
-            MaxWidth = 640,
             HorizontalAlignment = HorizontalAlignment.Right,
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
         };
         layout.Padding = new Thickness(12, 8, 8, 8);
-        OpenCodeToolTheme.Apply(_bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke));
+        if (delivered)
+            OpenCodeToolTheme.Apply(_bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke));
+        // Size against the message column, not the window or a fixed pixel limit.
+        _bubble.Loaded += (_, _) => FitWidth();
+        _bubble.SizeChanged += (_, _) => FitWidth();
         ApplyToggleText();
+    }
+
+    private void FitWidth()
+    {
+        var parent = VisualTreeHelper.GetParent(_bubble) as FrameworkElement;
+        if (parent is not null && parent.ActualWidth > 0) _bubble.MaxWidth = parent.ActualWidth * 0.72;
     }
 
     internal FrameworkElement Element => _bubble;
