@@ -62,6 +62,52 @@ namespace AIFrontend.Pages
             XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
             XElement Named(string name) => xaml.Descendants().Single(n => (string?)n.Attribute(x + "Name") == name);
             string? Attr(XElement node, string name) => (string?)node.Attribute(name);
+            var terminal = Named("ComposerShellHost");
+            var shellEditor = Named("ShellComposer");
+            var shellPrompt = Named("ShellPromptGlyph");
+            Check(terminal.Elements().Where(n => n.Name.LocalName != "Grid.Resources").SequenceEqual(new[] { shellPrompt, shellEditor })
+                && Attr(terminal, "RowDefinitions") is null && Attr(terminal, "ColumnDefinitions") == "Auto,*",
+                "terminal surface contains only a prompt and editor on one row");
+            Check(Attr(shellPrompt, "Text") == "$ " && Attr(shellEditor, "Grid.Column") == "1"
+                && Attr(shellEditor, "AcceptsReturn") == "False" && Attr(shellEditor, "TextWrapping") == "NoWrap"
+                && Attr(shellEditor, "PlaceholderText") is null, "terminal command starts after dollar-space, without placeholder or extra lines");
+            Check(Attr(shellEditor, "AutomationProperties.Name") == "Shell 命令"
+                && Attr(shellEditor, "AutomationProperties.HelpText")!.Contains("Esc"), "terminal exit instructions remain accessible without visible copy");
+            Check(Attr(shellPrompt, "FontFamily") == "{ThemeResource AppMonospaceFontFamily}"
+                && Attr(shellEditor, "FontFamily") == "{ThemeResource AppMonospaceFontFamily}", "prompt and command share the app monospace slot");
+            foreach (var mode in new[] { "Default", "Light", "HighContrast" })
+            {
+                var palette = terminal.Descendants().Single(n => n.Name.LocalName == "ResourceDictionary" && (string?)n.Attribute(x + "Key") == mode);
+                foreach (var (key, color, systemBrush) in new[] {
+                    ("ShellTerminalBackground", "#0C0C0C", "SystemColorWindowColorBrush"),
+                    ("ShellTerminalForeground", "#CCCCCC", "SystemColorWindowTextColorBrush"),
+                    ("ShellTerminalPrompt", "#13A10E", "SystemColorWindowTextColorBrush") })
+                {
+                    var brush = palette.Elements().Single(n => (string?)n.Attribute(x + "Key") == key);
+                    Check(mode == "HighContrast" ? Attr(brush, "ResourceKey") == systemBrush : Attr(brush, "Color") == color,
+                        "terminal palette follows Campbell in both app themes and system brushes in HC: " + mode + "/" + key);
+                }
+            }
+            foreach (var state in new[] { "", "PointerOver", "Focused", "Disabled" })
+                foreach (var part in new[] { "Background", "BorderBrush", "Foreground" })
+                {
+                    var resource = shellEditor.Descendants().Single(n => (string?)n.Attribute(x + "Key") == "TextControl" + part + state);
+                    Check(Attr(resource, "ResourceKey") == (part == "Foreground" ? "ShellTerminalForeground" : "ShellTerminalBackground"),
+                        "native text control states retain terminal colors: " + part + state);
+                }
+            Check(Attr(shellEditor, "BorderThickness") == "0" && Attr(shellEditor, "UseSystemFocusVisuals") == "False"
+                && shellEditor.Descendants().Single(n => (string?)n.Attribute(x + "Key") == "TextControlBorderThemeThicknessFocused").Value == "0"
+                && !shellEditor.Descendants().Any(n => n.Name.LocalName == "Button"), "terminal has no inner border, focus underline or clear button");
+            var shell = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ShellComposer.cs"));
+            Check(shell.Contains("AppFonts.Apply(ShellComposer, AppFontSlot.Monospace)")
+                && shell.Contains("AppFonts.Apply(ShellPromptGlyph, AppFontSlot.Monospace)")
+                && !shell.Contains("RequestedTheme"), "terminal uses live app fonts without forcing the surrounding card theme");
+            Check(shell.Contains("ShellComposer.IsEnabled = ready;") && shell.Contains("RequestComposerSubmission();")
+                && shell.Contains("ExecuteSessionShellGuardedAsync(binding.SessionId, command")
+                && shell.Contains("InfoBarSeverity.Error, \"Shell 请求失败\""), "terminal retains keyboard submission, busy disabling and error surfacing");
+            foreach (var removed in new[] { "ShellSubmitButton", "ShellExitButton", "ShellModeLabel", "ShellStatusText" })
+                Check(!shell.Contains(removed) && !xaml.Descendants().Any(n => (string?)n.Attribute(x + "Name") == removed),
+                    "removed terminal adornment has no remaining control or handler: " + removed);
             Check(!xaml.Descendants().Any(n => (string?)n.Attribute(x + "Name") == "SessionStatusLine")
                 && Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "identity row retired; switch diagnostics/recovery retained in overview");
             foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "ComposerSubagentsButton", "ComposerConnectionButton", "ComposerExpandButton", "ComposerQueueButton", "SendStopButton" })

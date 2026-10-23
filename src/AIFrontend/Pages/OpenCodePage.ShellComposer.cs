@@ -17,14 +17,12 @@ public sealed partial class OpenCodePage
 {
     private readonly OpenCodeComposerShellState _shellComposer = new();
     private OpenCodeComposerBinding? _shellBinding;
-    private ElementTheme _normalComposerTheme;
     private int _shellDraftStart, _shellDraftLength;
 
     partial void InitializeShellComposer()
     {
         AppFonts.Apply(ShellComposer, AppFontSlot.Monospace);
         AppFonts.Apply(ShellPromptGlyph, AppFontSlot.Monospace);
-        AppFonts.Apply(ShellModeLabel, AppFontSlot.Monospace);
         _composerView!.TerminalRequested += (_, _) => EnterShellComposer();
         _composerView.SlotGesturesRevoked += (_, _) =>
         {
@@ -66,8 +64,6 @@ public sealed partial class OpenCodePage
         ShellComposer.TextCompositionStarted += (_, _) => _shellComposing = true;
         ShellComposer.TextCompositionEnded += (_, _) => { _shellComposing = false; _shellCompositionEnded = DateTimeOffset.UtcNow; };
         ShellComposer.LostFocus += (_, _) => { _shellComposing = false; _shellEnterLatched = false; };
-        ShellSubmitButton.Click += (_, _) => RequestComposerSubmission();
-        ShellExitButton.Click += (_, _) => ExitShellComposer(focus: true);
     }
 
     private bool _shellComposing;
@@ -83,10 +79,8 @@ public sealed partial class OpenCodePage
         _shellBinding = binding;
         _shellDraftStart = Composer.SelectionStart;
         _shellDraftLength = Composer.SelectionLength;
-        _normalComposerTheme = ComposerCard.RequestedTheme;
         _shellComposer.Enter();
         ShellComposer.Text = _shellComposer.Text;
-        ComposerCard.RequestedTheme = ElementTheme.Dark;
         ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Collapsed;
         ComposerShellHost.Visibility = Visibility.Visible;
         FadeInComposerSurface(ComposerShellHost);
@@ -102,7 +96,6 @@ public sealed partial class OpenCodePage
         _shellComposing = false;
         ComposerShellHost.Visibility = Visibility.Collapsed;
         ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Visible;
-        ComposerCard.RequestedTheme = _normalComposerTheme;
         FadeInComposerSurface(ComposerInputLayout);
         // The normal TextBox and controller draft were never overwritten (including chips/attachments).
         if (focus && _pageActive)
@@ -142,10 +135,7 @@ public sealed partial class OpenCodePage
         if (!_shellComposer.Active) return;
         if (_shellBinding is not { } binding || !OwnsComposerBinding(binding)) { ExitShellComposer(focus: false); return; }
         var ready = !GetComposerSnapshot().IsBusy && !HasPendingNativeAction() && !ComposerCoveredByOverlay;
-        ShellComposer.IsReadOnly = !ready;
-        ShellSubmitButton.IsEnabled = ready && _shellComposer.CanSubmit;
-        ShellStatusText.Text = _isSending ? "正在执行 Shell 命令…" : _newSessionCreatePending ? "正在创建会话…"
-            : OpenCodeComposerController.IsUnbound(binding) ? "运行前先创建会话 · 不排队" : "在会话工作目录执行 · 不排队";
+        ShellComposer.IsEnabled = ready;
     }
 
     partial void TrySubmitShell(string? delivery, ref bool handled)
@@ -153,7 +143,7 @@ public sealed partial class OpenCodePage
         if (!_shellComposer.Active) return;
         handled = true;
         if (delivery == OpenCodeDeliveryModes.Queue)
-        { ShowMessage(InfoBarSeverity.Warning, "无法排队", "Shell 命令不能排队；请使用运行或 Enter。"); return; }
+        { ShowMessage(InfoBarSeverity.Warning, "无法排队", "Shell 命令不能排队；请按 Enter 执行。"); return; }
         if (!_pageActive || _shellComposing || !_shellComposer.CanSubmit || _composerBinding is not { } binding
             || !OwnsComposerBinding(binding) || GetComposerSnapshot().IsBusy || HasPendingNativeAction() || ComposerCoveredByOverlay) return;
         if (OpenCodeComposerController.IsUnbound(binding))
