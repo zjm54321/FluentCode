@@ -49,6 +49,7 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         AutomationProperties.SetAccessibilityView(_gear, AccessibilityView.Raw);
 
         _phrase = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
+        _phrase.FontSize = 13;
         _phrase.VerticalAlignment = VerticalAlignment.Center;
         _phrase.TextWrapping = TextWrapping.NoWrap;
         // 窄窗格：状态词 / 当前步骤（可能是长命令或路径）先以省略号收尾，点与耗时始终完整可见。
@@ -57,6 +58,7 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         for (var i = 0; i < _dotTexts.Length; i++)
         {
             var dot = OpenCodeInteractionUi.StyledText(".", OpenCodeInteractionUi.CaptionStyleKey);
+            dot.FontSize = 13;
             dot.VerticalAlignment = VerticalAlignment.Center;
             _dotTexts[i] = dot;
             _dots.Children.Add(dot);
@@ -64,6 +66,7 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
 
         AutomationProperties.SetAccessibilityView(_dots, AccessibilityView.Raw);
         _elapsed = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
+        _elapsed.FontSize = 13;
         OpenCodeToolTheme.Apply(_elapsed, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
         _elapsed.VerticalAlignment = VerticalAlignment.Center;
         _elapsed.TextWrapping = TextWrapping.NoWrap;

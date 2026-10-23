@@ -66,6 +66,7 @@ internal static class Program
         var workingLabel=Walk(group.Element).Single(e=>e.Automation.TryGetValue("Id",out var id)&&id=="OpenCodeWorkingIndicator.group");
         var labelTexts=((Panel)workingLabel).Children.OfType<TextBlock>().ToArray();
         Check(OpenCodeWorkingPhrases.Standard(OpenCodeWorkingActivity.Reasoning).Any(phrase=>OpenCodeWorkingPhrases.Stem(phrase)==labelTexts[0].Text)&&group.IsExpanded,"W1 real reasoning phrase remains the live header even if the timeline requests collapse");
+        Check(labelTexts.All(text=>text.FontSize==13),"W1 live group phrase and elapsed use the approved 13px type size");
         Check(labelTexts[0].TextTrimming==TextTrimming.CharacterEllipsis&&labelTexts[1].TextTrimming==TextTrimming.None&&workingLabel is Grid {HorizontalAlignment:HorizontalAlignment.Left},"long step/phrase trims with ellipsis in a left-aligned star cell; elapsed never trims");
         group.Element.Visibility=Visibility.Collapsed;
         Check(clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"hidden group stops clock and cadence timer");
