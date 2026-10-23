@@ -165,6 +165,10 @@ internal static class Program
         var reducer = new OpenCodeEventReducer("ses_test");
         reducer.MergeSnapshot(new[] { Message("msg_live", "baseline") with { Retry = new() { Attempt = 1, At = 1 } } }, 0);
         Check(reducer.CurrentRetry is null, "REST historical retry never becomes current");
+        Check(!reducer.Apply(Event("session.retry.scheduled", scheduled.Replace("\"at\":1900000000123,", ""))) && reducer.CurrentRetry is null,
+            "RT1.missing-server-deadline-does-not-invent-current-retry");
+        Check(!reducer.Apply(Event("session.retry.scheduled", scheduled.Replace("\"attempt\":2", "\"attempt\":0"))) && reducer.CurrentRetry is null,
+            "RT1.invalid-server-attempt-does-not-invent-countdown");
         Check(!reducer.Apply(Event("session.retry.scheduled", scheduled.Replace("ses_test", "ses_other"))) && reducer.CurrentRetry is null, "retry owner session fenced");
         Check(reducer.Apply(Event("session.retry.scheduled", scheduled)) && reducer.CurrentRetry?.At == 1900000000123
             && reducer.CurrentRetryMessageId == "msg_live" && reducer.Messages.Single().Retry?.Attempt == 2, "real scheduled retry projects absolute Unix milliseconds and assistant identity");

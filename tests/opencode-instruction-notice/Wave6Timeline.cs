@@ -140,16 +140,41 @@ internal static class Wave6Timeline
         Check(foregroundGroup.BackgroundAction is null, "wave7.removing-background-transport-removes-action");
 
         var now = DateTimeOffset.FromUnixTimeMilliseconds(1700000000000);
-        Check(OpenCodeStepRunPresentation.FormatRetryCountdown(2, now.AddMilliseconds(2490), now).Contains("2 秒后重试", StringComparison.Ordinal)
-            && OpenCodeStepRunPresentation.FormatRetryCountdown(2, now.AddSeconds(-1), now).EndsWith("即将重试", StringComparison.Ordinal),
-            "wave7.retry-countdown-is-rounded-absolute-deadline-minus-current-clock-and-never-negative");
-        view.SetCurrentRetry(new OpenCodeMessageRetry { Attempt = 2, At = DateTimeOffset.UtcNow.AddSeconds(8).ToUnixTimeMilliseconds() });
+        Check(OpenCodeStepRunPresentation.FormatRetryCountdown(2, now.AddMilliseconds(2490), now) == "重试中 · 第 2 次 · 3 秒后重试"
+            && OpenCodeStepRunPresentation.FormatRetryCountdown(2, now.AddMilliseconds(1), now).EndsWith("1 秒后重试", StringComparison.Ordinal)
+            && OpenCodeStepRunPresentation.FormatRetryCountdown(2, now, now) == "正在重试…"
+            && OpenCodeStepRunPresentation.FormatRetryCountdown(2, now.AddSeconds(-1), now) == "正在重试…",
+            "RT1.retry-countdown-ceils-real-deadline-and-only-shows-attempting-after-expiry");
+        view.IsLoaded = true;
+        var retryDeadline = DateTimeOffset.UtcNow.AddSeconds(8);
+        view.SetCurrentRetry(new OpenCodeMessageRetry { Attempt = 2, At = retryDeadline.ToUnixTimeMilliseconds(),
+            Error = new OpenCodeStructuredError { Message = "server retry reason" } });
         Check(view.Children.OfType<Microsoft.UI.Xaml.Controls.TextBlock>().Any(t =>
-            Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(t) == "OpenCodeCurrentRetry" && t.Text.StartsWith("正在重试", StringComparison.Ordinal)),
+            Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(t) == "OpenCodeCurrentRetry" && t.Text.StartsWith("重试中", StringComparison.Ordinal)),
             "wave7.live-retry-api-renders-actual-server-deadline-warning");
+        var retryRow = view.Children.OfType<Microsoft.UI.Xaml.Controls.TextBlock>().Single(t =>
+            Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(t) == "OpenCodeCurrentRetry");
+        OpenCodeWorkingClock.Shared.SetMotionEnabled(false);
+        OpenCodeWorkingClock.Shared.TickSeconds(retryDeadline.AddSeconds(-3));
+        Check(retryRow.Text == "重试中 · 第 2 次 · 3 秒后重试" && retryRow.Opacity == 1,
+            "RT1.shared-clock-updates-visible-countdown-even-with-reduced-motion");
+        view.RaiseUnloadedForTest();
+        OpenCodeWorkingClock.Shared.TickSeconds(retryDeadline);
+        Check(retryRow.Text.EndsWith("3 秒后重试", StringComparison.Ordinal) && !OpenCodeWorkingClock.Shared.SecondsRunning,
+            "RT1.unload-leaves-shared-clock-without-background-countdown");
+        view.RaiseLoadedForTest();
+        OpenCodeWorkingClock.Shared.TickSeconds(retryDeadline);
+        Check(retryRow.Text == "正在重试…", "RT1.loaded-countdown-resumes-and-expired-deadline-is-attempting");
         view.SetCurrentTurnActivity(false);
         Check(!view.Children.OfType<Microsoft.UI.Xaml.Controls.TextBlock>().Any(t =>
             Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(t) == "OpenCodeCurrentRetry"), "wave7.authoritative-terminal-clears-live-retry-warning");
+        Check(!OpenCodeWorkingClock.Shared.SecondsRunning, "RT1.terminal-clears-countdown-subscription");
+        foreach (var unknown in new OpenCodeMessageRetry[] { new() { Attempt = 2 }, new() { At = retryDeadline.ToUnixTimeMilliseconds() }, new() { Attempt = 2, At = 123 } })
+        {
+            view.SetCurrentRetry(unknown);
+            Check(!view.Children.Contains(retryRow) && !OpenCodeWorkingClock.Shared.SecondsRunning, "RT1.unknown-or-unverified-fields-never-invent-countdown");
+        }
+        OpenCodeWorkingClock.Shared.SetMotionEnabled(true);
         view.ClearMessages();
 
         ConversationViewTestProbe.Reset();

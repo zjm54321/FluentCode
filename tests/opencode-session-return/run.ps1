@@ -85,7 +85,7 @@ $production = @()
 }
 @('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs',
-    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs') | ForEach-Object {
+    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.

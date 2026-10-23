@@ -90,6 +90,25 @@ internal static class WorkingClockTests
         Check(Near(clock.PhaseAt(-250), 0.75) && Near(clock.PhaseAt(1000), 0), "phase wraps into [0,1)");
         Check(OpenCodeWorkingClock.Shared.Period == OpenCodeWorkingClock.DefaultPeriod, "shared clock uses the single default period");
 
+        var secondsTransitions = new List<bool>();
+        clock.SecondsRunningChanged += secondsTransitions.Add;
+        var ticks = 0;
+        DateTimeOffset seen = default;
+        Action<DateTimeOffset> countdown = value => { ticks++; seen = value; };
+        clock.SetMotionEnabled(false);
+        clock.JoinSeconds(countdown);
+        clock.JoinSeconds(countdown);
+        Check(clock.SecondsRunning && !clock.IsRunning && ticks == 1 && secondsTransitions.Count == 1,
+            "semantic countdown joins once and runs independently of reduced motion");
+        var wallNow = DateTimeOffset.FromUnixTimeMilliseconds(1900000000000);
+        clock.TickSeconds(wallNow);
+        Check(ticks == 2 && seen == wallNow, "countdown receives the shared wall-clock instant");
+        clock.LeaveSeconds(countdown);
+        clock.LeaveSeconds(countdown);
+        clock.TickSeconds(wallNow.AddSeconds(1));
+        Check(!clock.SecondsRunning && ticks == 2 && secondsTransitions.Count == 2 && !secondsTransitions[1],
+            "last semantic subscriber stops second ticks and receives no stale callbacks");
+
         Console.WriteLine($"PASS B13 shared working clock: {checks} assertions (absolute phase join, no reset on add/remove, stop at zero, reduced motion static, width-normalized)");
     }
 }

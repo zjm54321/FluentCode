@@ -130,6 +130,12 @@ namespace AIFrontend.Pages.OpenCode
         }
     }
 
+    // No dispatcher/compositor in headless tests; the real clock receives explicit ticks.
+    internal static class OpenCodeWorkingClockComposition
+    {
+        internal static void EnsureInitialized() { }
+    }
+
     internal sealed class OpenCodeSubagentCompletionView : IDisposable
     {
         private Action<string>? _navigation;

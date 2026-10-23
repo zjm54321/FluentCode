@@ -838,7 +838,6 @@ public sealed class OpenCodeConversationView : StackPanel
     private int _retryAttempt;
     private string? _retryMessage;
     private TextBlock? _retryStatus;
-    private DispatcherQueueTimer? _retryTimer;
 
     /// <summary>Publish only the live selected-session retry state, not an arbitrary historical message.
     /// V2 session.retry.scheduled.at is the absolute Unix-millisecond next-retry deadline. Null clears.</summary>
@@ -865,45 +864,36 @@ public sealed class OpenCodeConversationView : StackPanel
             Margin = new Thickness(37, 4, 8, 4),
         };
         AutomationProperties.SetAutomationId(_retryStatus, "OpenCodeCurrentRetry");
-        UpdateRetryStatus();
+        UpdateRetryStatus(DateTimeOffset.UtcNow);
         if (!Children.Contains(_retryStatus)) Children.Add(_retryStatus);
-        StartRetryTimer();
+        JoinRetryClock();
     }
 
     public void ClearCurrentRetry()
     {
         _retryDeadline = null;
         _retryMessage = null;
-        _retryTimer?.Stop();
+        OpenCodeWorkingClock.Shared.LeaveSeconds(UpdateRetryStatus);
         if (_retryStatus is not null) { _retryStatus.Opacity = 1; Children.Remove(_retryStatus); }
     }
 
-    private void UpdateRetryStatus()
+    private void UpdateRetryStatus(DateTimeOffset now)
     {
         if (_retryStatus is null || _retryDeadline is not { } deadline) return;
-        var now = DateTimeOffset.UtcNow;
         var text = OpenCodeStepRunPresentation.FormatRetryCountdown(_retryAttempt, deadline, now);
         if (_retryStatus.Text != text)
         {
             _retryStatus.Text = text;
             AutomationProperties.SetName(_retryStatus, text);
         }
-        // A gentle two-second amber pulse; text/meaning remain visible throughout.
-        _retryStatus.Opacity = 0.85 + 0.15 * Math.Cos(now.ToUnixTimeMilliseconds() * Math.PI / 1000);
         ToolTipService.SetToolTip(_retryStatus, _retryStatus.Text + (string.IsNullOrWhiteSpace(_retryMessage) ? string.Empty : "：" + _retryMessage));
     }
 
-    private void StartRetryTimer()
+    private void JoinRetryClock()
     {
-        if (_retryDeadline is null) return;
-        if (_retryTimer is null && DispatcherQueue.GetForCurrentThread() is { } queue)
-        {
-            _retryTimer = queue.CreateTimer();
-            _retryTimer.Interval = TimeSpan.FromMilliseconds(200);
-            _retryTimer.IsRepeating = true;
-            _retryTimer.Tick += (_, _) => UpdateRetryStatus();
-        }
-        _retryTimer?.Start();
+        if (_retryDeadline is null || !IsLoaded) return;
+        OpenCodeWorkingClockComposition.EnsureInitialized();
+        OpenCodeWorkingClock.Shared.JoinSeconds(UpdateRetryStatus);
     }
 
     /// <summary>Register only after transport support and selected-session mutation gates are verified.
@@ -966,8 +956,8 @@ public sealed class OpenCodeConversationView : StackPanel
         Orientation = Orientation.Vertical;
         Spacing = 0;
         Padding = new Thickness(0, 4, 0, 4);
-        Unloaded += (_, _) => _retryTimer?.Stop();
-        Loaded += (_, _) => { StartRetryTimer(); ConnectViewport(); };
+        Unloaded += (_, _) => OpenCodeWorkingClock.Shared.LeaveSeconds(UpdateRetryStatus);
+        Loaded += (_, _) => { JoinRetryClock(); ConnectViewport(); };
         Unloaded += (_, _) => DisconnectViewport();
         LayoutUpdated += (_, _) => { _idleLayoutVersion = RenderVersion; QueueWindowUpdate(); };
     }

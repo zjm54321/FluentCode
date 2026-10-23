@@ -36,6 +36,7 @@ internal sealed class OpenCodeWorkingClock
     private readonly Func<long> _timestamp;
     private readonly long _periodTicks;
     private readonly HashSet<IOpenCodeWorkingClockSubscriber> _subscribers = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<Action<DateTimeOffset>> _secondSubscribers = new();
     private bool _motionEnabled = true;
 
     internal OpenCodeWorkingClock(Func<long> timestamp, long frequency, TimeSpan period)
@@ -63,6 +64,29 @@ internal sealed class OpenCodeWorkingClock
 
     /// <summary>运行状态翻转时触发（参数为新的 <see cref="IsRunning"/>）。</summary>
     internal event Action<bool>? RunningChanged;
+
+    // Semantic countdowns continue with reduced motion; only visible owners subscribe.
+    internal bool SecondsRunning => _secondSubscribers.Count > 0;
+    internal event Action<bool>? SecondsRunningChanged;
+
+    internal void JoinSeconds(Action<DateTimeOffset> subscriber)
+    {
+        if (!_secondSubscribers.Add(subscriber)) return;
+        if (_secondSubscribers.Count == 1) SecondsRunningChanged?.Invoke(true);
+        subscriber(DateTimeOffset.UtcNow);
+    }
+
+    internal void LeaveSeconds(Action<DateTimeOffset> subscriber)
+    {
+        if (_secondSubscribers.Remove(subscriber) && _secondSubscribers.Count == 0)
+            SecondsRunningChanged?.Invoke(false);
+    }
+
+    internal void TickSeconds(DateTimeOffset now)
+    {
+        foreach (var subscriber in new List<Action<DateTimeOffset>>(_secondSubscribers))
+            if (_secondSubscribers.Contains(subscriber)) subscriber(now);
+    }
 
     /// <summary>当前全局归一化相位 [0, 1)。</summary>
     internal double Phase => PhaseAt(_timestamp());

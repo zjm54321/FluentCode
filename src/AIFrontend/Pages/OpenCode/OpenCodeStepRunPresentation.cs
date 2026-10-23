@@ -102,9 +102,10 @@ internal static class OpenCodeStepRunPresentation
     internal static bool IsSubagentLabel(string name) => name is SubagentLabel or "子智能体（后台）";
     internal static string FormatRetryCountdown(int attempt, DateTimeOffset deadline, DateTimeOffset now)
     {
-        var seconds = Math.Max(0, Math.Floor((deadline - now).TotalSeconds + 0.5));
-        return "正在重试 · 第 " + attempt.ToString(CultureInfo.InvariantCulture) + " 次 · "
-            + (seconds > 0 ? seconds.ToString(CultureInfo.InvariantCulture) + " 秒后重试" : "即将重试");
+        var seconds = Math.Max(0, Math.Ceiling((deadline - now).TotalSeconds));
+        return seconds > 0
+            ? "重试中 · 第 " + attempt.ToString(CultureInfo.InvariantCulture) + " 次 · " + seconds.ToString(CultureInfo.InvariantCulture) + " 秒后重试"
+            : "正在重试…";
     }
     /// <summary>oh-my-opencode-slim 内部触发消息的机器标记。</summary>
     internal const string InternalInitiatorMarker = "SLIM_INTERNAL_INITIATOR";

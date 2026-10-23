@@ -44,7 +44,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
 # Explicit list excludes all four replaced presenters and every other WinUI test host.
 @('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeQueuedPromptsView.cs',
-    'OpenCodeInteractionUi.cs', 'OpenCodeComposerActivityPolicy.cs') | ForEach-Object {
+    'OpenCodeInteractionUi.cs', 'OpenCodeComposerActivityPolicy.cs', 'OpenCodeWorkingClock.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
 @('Program.cs', 'ConversationLifecycle.cs', 'ConversationView.TestHost.cs', 'RedesignRegression.cs', 'Wave5Timeline.cs', 'Wave6Timeline.cs', 'VisibleIdle.cs', 'Windowing.cs') | ForEach-Object {

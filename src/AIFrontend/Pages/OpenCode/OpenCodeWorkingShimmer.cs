@@ -23,6 +23,7 @@ internal static class OpenCodeWorkingClockComposition
     private static bool _hooked;
     private static UISettings? _uiSettings;
     private static DispatcherQueue? _dispatcher;
+    private static DispatcherQueueTimer? _secondsTimer;
 
     private static OpenCodeWorkingClock Clock => OpenCodeWorkingClock.Shared;
 
@@ -33,6 +34,8 @@ internal static class OpenCodeWorkingClockComposition
         _hooked = true;
         Clock.RunningChanged += OnRunningChanged;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
+        Clock.SecondsRunningChanged += OnSecondsRunningChanged;
+        OnSecondsRunningChanged(Clock.SecondsRunning);
         try
         {
             _uiSettings = new UISettings();
@@ -76,6 +79,19 @@ internal static class OpenCodeWorkingClockComposition
                 // 合成对象随窗口关闭失效时只影响装饰动画，不影响会话状态。
             }
         }
+    }
+
+    private static void OnSecondsRunningChanged(bool running)
+    {
+        if (!running) { _secondsTimer?.Stop(); return; }
+        if (_secondsTimer is null && _dispatcher is { } queue)
+        {
+            _secondsTimer = queue.CreateTimer();
+            _secondsTimer.Interval = TimeSpan.FromSeconds(1);
+            _secondsTimer.IsRepeating = true;
+            _secondsTimer.Tick += (_, _) => Clock.TickSeconds(DateTimeOffset.UtcNow);
+        }
+        _secondsTimer?.Start();
     }
 
     private static void Start(Compositor compositor, CompositionPropertySet set)
