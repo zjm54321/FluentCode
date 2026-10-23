@@ -28,6 +28,9 @@ public sealed partial class OpenCodePage
     private string? _homeMessage;
     private string? _homeSessionsMessage;
     private string? _homeDefaultDirectory;
+    /// <summary>Cursor whose next-page request last failed (with its list epoch); the view then shows 加载失败 · 重试
+    /// instead of requesting again. Any newer cursor or list refresh makes it stale automatically.</summary>
+    private (string Cursor, int Epoch)? _homeLoadMoreFailure;
     private CancellationTokenSource? _homeCancellation;
     private ContentDialog? _homeDialog;
 
@@ -62,12 +65,8 @@ public sealed partial class OpenCodePage
         _homeView.SessionRequested += async (_, e) => await OpenHomeSessionAsync(e.Revision, e.Session.Project, e.Session.Info.Id);
         _homeView.CanRequestSessionAction = CanRequestHomeSessionAction;
         _homeView.SessionActionRequested += async (_, e) => await RunHomeSessionActionAsync(e.Revision, e.Session, e.Action);
-        _homeView.LoadMore += async (_, e) =>
-        {
-            if (!HomeEventCurrent(e.Revision, e.Project)) return;
-            try { await LoadMoreSessionsAsync(); }
-            finally { QueueHomeProjection(); }
-        };
+        // Infinite scroll: the view asks near the bottom of the list (or when the first page does not fill it).
+        _homeView.LoadMore += async (_, e) => { if (HomeEventCurrent(e.Revision, e.Project)) await LoadMoreHomeSessionsAsync(); };
         // No refresh button: session create/delete/rename events and live status snapshots already re-project Home.
         _homeView.SetWordmark(_homeWordmark);
         _homeView.ProjectSelected += (_, _) => RefreshHomeChrome();
@@ -159,6 +158,30 @@ public sealed partial class OpenCodePage
         }
         catch (Exception) { _homeQuickAccess.ShowFailure(); }
     }
+
+    /// <summary>Shared next-page load (same cursor, single-flight and generation/epoch fences as every other
+    /// caller). A request that started but left the same cursor in place failed; that is remembered so the
+    /// view stops auto-loading until the user retries.</summary>
+    private async Task LoadMoreHomeSessionsAsync()
+    {
+        _homeLoadMoreFailure = null; // Every request (automatic or 重试) is a fresh attempt.
+        var cursor = _sessionNextCursor;
+        var started = cursor is not null && !_isLoadingMoreSessions && SourceReady && _pageActive;
+        var generation = _pageGeneration;
+        var epoch = _sessionListEpoch;
+        try { await LoadMoreSessionsAsync(); }
+        finally
+        {
+            if (started && IsCurrentSessionPage(generation, epoch) && !_isLoadingMoreSessions
+                && string.Equals(_sessionNextCursor, cursor, StringComparison.Ordinal))
+                _homeLoadMoreFailure = (cursor!, epoch);
+            QueueHomeProjection();
+        }
+    }
+
+    private bool HomeLoadMoreFailed()
+        => _homeLoadMoreFailure is { } failure && failure.Epoch == _sessionListEpoch
+        && string.Equals(failure.Cursor, _sessionNextCursor, StringComparison.Ordinal);
 
     private void ShowHomePage()
     {
@@ -261,6 +284,7 @@ public sealed partial class OpenCodePage
         _homeCatalogLoading = false;
         _homeMessage = null;
         _homeSessionsMessage = null;
+        _homeLoadMoreFailure = null;
         _homeView.SetSnapshot(new(_homeRevision, Array.Empty<OpenCodeHomeProject>(), Array.Empty<OpenCodeHomeSession>()));
     }
 
@@ -353,7 +377,8 @@ public sealed partial class OpenCodePage
                 rows.Add(new(new(_homeRuntimeSource, directory), info, status));
             }
         _homeView.SetSnapshot(new(++_homeRevision, _homeProjects.Values.ToArray(), rows,
-            _homeCatalogLoading || _isLoadingMoreSessions, _homeSessionsMessage ?? _homeMessage, _sessionNextCursor is not null));
+            _homeCatalogLoading || _isLoadingMoreSessions, _homeSessionsMessage ?? _homeMessage, _sessionNextCursor is not null,
+            _isLoadingMoreSessions, HomeLoadMoreFailed()));
         RefreshHomeChrome();
     }
 

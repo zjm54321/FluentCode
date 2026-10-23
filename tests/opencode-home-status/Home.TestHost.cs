@@ -14,7 +14,10 @@ namespace Microsoft.UI.Xaml
     public readonly record struct Thickness(double Left, double Top, double Right, double Bottom)
     { public Thickness(double all):this(all,all,all,all){} }
     public readonly record struct CornerRadius(double Value);
-    public class DependencyObject { internal Dictionary<string,object?> Attached = new(); }
+    public class DependencyProperty{}
+    public delegate void DependencyPropertyChangedCallback(DependencyObject sender,DependencyProperty dp);
+    public class DependencyObject { internal Dictionary<string,object?> Attached = new();
+        public long RegisterPropertyChangedCallback(DependencyProperty dp,DependencyPropertyChangedCallback callback)=>0; }
     public class UIElement:DependencyObject { public Visibility Visibility {get;set;} public double Opacity{get;set;}=1; public object? Shadow{get;set;} public System.Numerics.Vector3 Translation{get;set;} }
     public class FrameworkElement:UIElement
     {
@@ -31,7 +34,9 @@ namespace Microsoft.UI.Xaml
     public class Style {public Style? BasedOn{get;set;} public string Xml{get;set;}="";}
     public class Application {public static Application? Current{get;set;} public Dictionary<string,object> Resources {get;}=new();}
 }
-namespace Microsoft.UI.Xaml.Media {public class Brush{} public class ThemeShadow{}}
+namespace Microsoft.UI.Xaml.Media {public class Brush{} public class ThemeShadow{}
+    public static class VisualTreeHelper {public static int GetChildrenCount(Microsoft.UI.Xaml.DependencyObject e)=>0;
+        public static Microsoft.UI.Xaml.DependencyObject GetChild(Microsoft.UI.Xaml.DependencyObject e,int i)=>throw new System.InvalidOperationException();}}
 namespace Microsoft.UI.Xaml.Documents {}
 namespace Microsoft.UI.Xaml.Controls.Primitives {}
 namespace Microsoft.UI.Xaml.Markup
@@ -104,6 +109,9 @@ namespace Microsoft.UI.Xaml.Controls
     public class MenuFlyoutItem:MenuFlyoutItemBase{public string Text{get;set;}="";public bool IsEnabled{get;set;}=true;public FontIcon? Icon{get;set;}public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
     public class ScrollViewer:ContentControl
     {public static void SetHorizontalScrollMode(DependencyObject e,ScrollMode m){}public static void SetHorizontalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}
-     public static void SetVerticalScrollMode(DependencyObject e,ScrollMode m){}public static void SetVerticalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}}
+     public static void SetVerticalScrollMode(DependencyObject e,ScrollMode m){}public static void SetVerticalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}
+     public static DependencyProperty ExtentHeightProperty{get;}=new();
+     public double VerticalOffset{get;set;}public double ViewportHeight{get;set;}public double ExtentHeight{get;set;}
+     public event EventHandler? ViewChanged;public void RaiseViewChanged()=>ViewChanged?.Invoke(this,EventArgs.Empty);}
     public static class ToolTipService {public static void SetToolTip(DependencyObject e,object? value)=>e.Attached["Tooltip"]=value;}
 }

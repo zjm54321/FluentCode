@@ -36,6 +36,16 @@ public sealed class OpenCodeHomeSearchEventArgs(long revision, OpenCodeHomeProje
 /// No client, settings store or navigation ownership. All methods are UI-thread-only; the page adapter must
 /// revalidate echoed revision/source before acting.
 /// </summary>
+/// <summary>Infinite-scroll trigger for the Home session list (pure policy, no UI).</summary>
+internal static class OpenCodeHomeInfiniteScroll
+{
+    /// <summary>Ask for the next page when the end of the list is within one viewport (this also covers a first
+    /// page that does not fill the viewport), a next cursor exists, nothing is in flight and the last attempt
+    /// did not fail (a failure waits for the user's retry; there is no automatic retry loop).</summary>
+    public static bool ShouldLoad(double offset, double viewport, double extent, bool hasMore, bool loading, bool failed)
+        => hasMore && !loading && !failed && viewport > 0 && extent - (offset + viewport) <= viewport;
+}
+
 public sealed class OpenCodeHomeView : UserControl
 {
     // Same geometry as session layout D (OpenCodeSidebarLayout): 264epx floating cards inset 24epx from the edge
@@ -50,13 +60,14 @@ public sealed class OpenCodeHomeView : UserControl
     internal const double WideThreshold = 2 * SideColumnWidth + CenterMaxWidth + CenterPadding;
     private const string AttentionKey = "attention";
     private const string AllProjectsTag = "all-projects";
+    private const string LoadingMoreKey = "load-more:loading";
+    private const string LoadMoreFailedKey = "load-more:failed";
 
     private OpenCodeHomeSnapshot _snapshot = new(0, Array.Empty<OpenCodeHomeProject>(), Array.Empty<OpenCodeHomeSession>());
     private readonly ListView _projects = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ListView _sessions = new() { SelectionMode = ListViewSelectionMode.None, IsItemClickEnabled = true };
     private readonly TextBox _search = new() { PlaceholderText = "搜索会话、项目或 session ID", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly HyperlinkButton _more = new() { Content = "加载更多会话", Visibility = Visibility.Collapsed, Padding = new Thickness(0) };
     private readonly ProgressRing _loading = new() { Width = 16, Height = 16, Visibility = Visibility.Collapsed };
     private readonly Border _leftCard = Card();
     private readonly Border _connectionCard = Card();
@@ -78,6 +89,11 @@ public sealed class OpenCodeHomeView : UserControl
     private bool _refreshing;
     private bool _narrow;
     private bool _quickVisible;
+    private ScrollViewer? _listScroller;
+    private (double Offset, double Viewport, double Extent) _scroll;
+    /// <summary>Revision of the snapshot that produced the last automatic request, or -1. Blocks repeat requests
+    /// until a later snapshot shows the page is no longer loading (the page owns the real single-flight guard).</summary>
+    private long _requestedRevision = -1;
 
     public event EventHandler<OpenCodeHomeContextEventArgs>? AddProject;
     public event EventHandler<OpenCodeHomeContextEventArgs>? ProjectSelected;
@@ -196,9 +212,8 @@ public sealed class OpenCodeHomeView : UserControl
         status.Children.Add(_loading);
         status.Children.Add(_message);
         footer.Children.Add(status);
-        footer.Children.Add(_more);
-        _more.Click += (_, _) => LoadMore?.Invoke(this, Context());
-        SetIdentity(_more, "OpenCodeHomeLoadMore", "加载更多已存在的会话");
+        // Infinite scroll: no "load more" button. The list's own ScrollViewer drives the next-page request.
+        _sessions.Loaded += (_, _) => AttachListScroller();
         Grid.SetRow(footer, 4);
         _center.Children.Add(footer);
         Grid.SetColumn(_center, 1);
@@ -273,8 +288,6 @@ public sealed class OpenCodeHomeView : UserControl
     public void SetSnapshot(OpenCodeHomeSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        _more.Visibility = snapshot.HasMoreSessions ? Visibility.Visible : Visibility.Collapsed;
-        _more.IsEnabled = !snapshot.IsLoading;
         var projectsChanged = !_snapshot.Projects.SequenceEqual(snapshot.Projects);
         // Own the collections, not the caller's mutable list containers. DTOs/records remain unchanged.
         _snapshot = snapshot with { Projects = snapshot.Projects.ToArray(), Sessions = snapshot.Sessions.ToArray() };
@@ -282,6 +295,57 @@ public sealed class OpenCodeHomeView : UserControl
         if (projectsChanged) RebuildProjects();
         RefreshProjectBadges();
         RefreshSessions();
+        if (_requestedRevision >= 0 && _snapshot.Revision > _requestedRevision && !_snapshot.IsLoading) _requestedRevision = -1;
+        MaybeLoadMore();
+    }
+
+    /// <summary>Latest list scroll metrics (from the ListView's ScrollViewer: view, size and extent changes).</summary>
+    internal void OnListScrolled(double offset, double viewport, double extent)
+    {
+        _scroll = (offset, viewport, extent);
+        MaybeLoadMore();
+    }
+
+    private void MaybeLoadMore()
+    {
+        if (_requestedRevision >= 0 || !OpenCodeHomeInfiniteScroll.ShouldLoad(_scroll.Offset, _scroll.Viewport, _scroll.Extent,
+            _snapshot.HasMoreSessions, _snapshot.IsLoading, _snapshot.LoadMoreFailed)) return;
+        RequestMore();
+    }
+
+    private void RequestMore()
+    {
+        _requestedRevision = _snapshot.Revision;
+        LoadMore?.Invoke(this, Context());
+    }
+
+    private void AttachListScroller()
+    {
+        if (_listScroller is null && FindScroller(_sessions) is { } scroller)
+        {
+            _listScroller = scroller;
+            scroller.ViewChanged += (_, _) => ReadListScroller();
+            scroller.SizeChanged += (_, _) => ReadListScroller();
+            // Extent grows after layout when rows are appended; a short first page never raises ViewChanged.
+            scroller.RegisterPropertyChangedCallback(ScrollViewer.ExtentHeightProperty, (_, _) => ReadListScroller());
+        }
+        ReadListScroller();
+    }
+
+    private void ReadListScroller()
+    {
+        if (_listScroller is { } scroller) OnListScrolled(scroller.VerticalOffset, scroller.ViewportHeight, scroller.ExtentHeight);
+    }
+
+    private static ScrollViewer? FindScroller(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is ScrollViewer scroller) return scroller;
+            if (FindScroller(child) is { } nested) return nested;
+        }
+        return null;
     }
 
     public void SetSelectedProject(OpenCodeHomeProjectKey? project) => SelectProject(project, notify: false);
@@ -451,6 +515,9 @@ public sealed class OpenCodeHomeView : UserControl
             counts[section] = counts.GetValueOrDefault(section) + 1;
             desired.Add((SessionKey(row), row));
         }
+        // Inline tail row: a small ring while the next page loads, or a quiet failure row with an explicit retry.
+        if (_snapshot.IsLoadingMore) desired.Add((LoadingMoreKey, null));
+        else if (_snapshot.LoadMoreFailed && _snapshot.HasMoreSessions) desired.Add((LoadMoreFailedKey, null));
         for (var index = 0; index < desired.Count; index++)
         {
             var (key, row) = desired[index];
@@ -466,7 +533,7 @@ public sealed class OpenCodeHomeView : UserControl
             }
             else
             {
-                current = row is not null ? SessionItem(row, zone) : HeaderItem(key);
+                current = row is not null ? SessionItem(row, zone) : key is LoadingMoreKey or LoadMoreFailedKey ? TailItem(key) : HeaderItem(key);
                 _sessions.Items.Insert(index, current);
             }
             if (row is null && _headerCounts.TryGetValue(key, out var count))
@@ -480,11 +547,12 @@ public sealed class OpenCodeHomeView : UserControl
             if (_sessions.Items[^1] is ListViewItem { Tag: { } tag } && tag is not OpenCodeHomeSessionRow) _headerCounts.Remove(tag);
             _sessions.Items.RemoveAt(_sessions.Items.Count - 1);
         }
-        _loading.IsActive = _snapshot.IsLoading;
-        _loading.Visibility = _snapshot.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        _message.Text = _snapshot.StatusMessage ?? (rows.Count == 0
-            ? (_snapshot.IsLoading ? "正在加载会话…" : _search.Text.Length > 0 ? "没有匹配的已加载会话" : "暂无已加载会话")
-            : _snapshot.HasMoreSessions ? "仅显示已加载的会话" : string.Empty);
+        // The footer ring is for the catalog/first load; the next page shows its own inline tail row instead.
+        var catalogLoading = _snapshot.IsLoading && !_snapshot.IsLoadingMore;
+        _loading.IsActive = catalogLoading;
+        _loading.Visibility = catalogLoading ? Visibility.Visible : Visibility.Collapsed;
+        _message.Text = _snapshot.StatusMessage ?? (rows.Count > 0 || _snapshot.IsLoadingMore ? string.Empty
+            : _snapshot.IsLoading ? "正在加载会话…" : _search.Text.Length > 0 ? "没有匹配的已加载会话" : "暂无已加载会话");
         _message.Visibility = _message.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
@@ -501,6 +569,38 @@ public sealed class OpenCodeHomeView : UserControl
         _headerCounts[key] = count;
         var item = new ListViewItem { Tag = key, Content = header, IsHitTestVisible = false, IsTabStop = false, Padding = new Thickness(12, 14, 12, 4) };
         AutomationProperties.SetAutomationId(item, attention ? "OpenCodeHomeAttentionHeader" : "OpenCodeHomeDateHeader");
+        return item;
+    }
+
+    private ListViewItem TailItem(object key)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
+        var item = new ListViewItem { Tag = key, Content = panel, IsTabStop = false, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(12, 10, 12, 14) };
+        if (Equals(key, LoadingMoreKey))
+        {
+            // Native ProgressRing: honours the system reduced-motion setting on its own.
+            panel.Children.Add(new ProgressRing { IsActive = true, Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center });
+            var text = Label("正在加载更多会话…", "CaptionTextBlockStyle");
+            OpenCodeToolTheme.Apply(text, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, "CaptionTextBlockStyle"));
+            panel.Children.Add(text);
+            item.IsHitTestVisible = false;
+            AutomationProperties.SetAutomationId(item, "OpenCodeHomeLoadingMore");
+            AutomationProperties.SetName(item, "正在加载更多会话");
+            return item;
+        }
+        var failed = Label("加载失败", "CaptionTextBlockStyle");
+        OpenCodeToolTheme.Apply(failed, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, "CaptionTextBlockStyle"));
+        panel.Children.Add(failed);
+        var dot = Label("·", "CaptionTextBlockStyle");
+        OpenCodeToolTheme.Apply(dot, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+        panel.Children.Add(dot);
+        var retry = new HyperlinkButton { Content = "重试", Padding = new Thickness(4, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center };
+        SetIdentity(retry, "OpenCodeHomeLoadMoreRetry", "重试加载更多会话");
+        retry.Click += (_, _) => RequestMore(); // Explicit user retry only; failures never re-arm the automatic trigger.
+        panel.Children.Add(retry);
+        AutomationProperties.SetAutomationId(item, "OpenCodeHomeLoadMoreFailed");
+        AutomationProperties.SetName(item, "加载更多会话失败");
         return item;
     }
 

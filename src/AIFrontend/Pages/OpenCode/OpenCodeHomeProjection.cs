@@ -46,10 +46,12 @@ public sealed record OpenCodeHomeSession(OpenCodeHomeProjectKey Project, OpenCod
     OpenCodeHomeStatus? Status = null);
 
 /// <summary>Already accepted data only. Root/child policy, pagination and transport belong to the adapter.
-/// Revision is echoed by every request so a consumer can reject a stale source/snapshot action.</summary>
+/// Revision is echoed by every request so a consumer can reject a stale source/snapshot action.
+/// IsLoadingMore is the shared next-page request in flight (also folded into IsLoading); LoadMoreFailed means the
+/// last next-page request for the current cursor failed, so infinite scroll waits for an explicit retry.</summary>
 public sealed record OpenCodeHomeSnapshot(long Revision, IReadOnlyList<OpenCodeHomeProject> Projects,
     IReadOnlyList<OpenCodeHomeSession> Sessions, bool IsLoading = false, string? StatusMessage = null,
-    bool HasMoreSessions = false);
+    bool HasMoreSessions = false, bool IsLoadingMore = false, bool LoadMoreFailed = false);
 
 public enum OpenCodeHomeTone { Unknown, Working, WorkingNeedsAction, NeedsAction, Succeeded, Failed, Interrupted, Unread, QuestionBlocked }
 public enum OpenCodeHomeDateGroup { Today, Yesterday, ThisWeek, Earlier, Future, Unknown }
