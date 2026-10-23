@@ -45,7 +45,6 @@ public sealed partial class OpenCodePage
     private void InitializeAgentTree()
     {
         LeftAgentTreeSlot.Children.Add(_agentTree);
-        _agentTree.RefreshRequested += QueueAgentTreeRefresh;
         _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
         _agentTree.ShellRequested += id =>
         {
@@ -227,7 +226,7 @@ public sealed partial class OpenCodePage
             if (Current()) RenderAgentTree();
         }
         catch (OperationCanceledException) { }
-        catch (OpenCodeException) { if (Current()) { _treeHint = "智能体或子会话读取不可用，请刷新重试"; RenderAgentTree(); } }
+        catch (OpenCodeException) { if (Current()) { _treeHint = "智能体或子会话读取不可用"; RenderAgentTree(); } }
         finally
         {
             if (_treeBinding == binding)

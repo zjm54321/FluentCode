@@ -22,13 +22,26 @@ internal static class OpenCodeAgentTreeProjection
         IReadOnlyDictionary<string, OpenCodeTreeStatus> live)
     {
         var children = sessions.Where(s => s.ParentId == parentId && !string.IsNullOrWhiteSpace(s.Id)).ToArray();
-        return agents.Where(a => !string.IsNullOrWhiteSpace(a.Id)).GroupBy(a => a.Id!, StringComparer.Ordinal)
+        return agents.Where(a => !string.IsNullOrWhiteSpace(a.Id) && a.Mode != "primary").GroupBy(a => a.Id!, StringComparer.Ordinal)
             .Select(g => g.First()).Select(a => new OpenCodeTreeAgent(a.Id!, a.Name ?? a.Id!, a.Description, a.Mode, a.Hidden,
                 children.Where(s => string.Equals(s.Agent, a.Id, StringComparison.Ordinal)).OrderBy(s => s.Time?.Created)
                     .Select(s => new OpenCodeTreeInstance(s.Id!, string.IsNullOrWhiteSpace(s.Title) ? s.Id! : s.Title,
                         s.Model?.Id ?? "模型不可用", live.TryGetValue(s.Id!, out var state) ? state : Outcome(s.Outcome))).ToArray()))
             .Where(a => !a.Hidden || a.Children.Count > 0).ToArray();
     }
+
+    internal static IReadOnlyList<OpenCodeTreeAgent> VisibleAgents(IEnumerable<OpenCodeTreeAgent> agents, bool showAll)
+        => agents.Where(a => a.Mode != "primary" && (!a.Hidden || a.Children.Count > 0)
+            && (showAll || a.Children.Any(c => c.Status == OpenCodeTreeStatus.Running))).ToArray();
+
+    internal static IReadOnlyList<OpenCodeTreeInstance> VisibleInstances(IEnumerable<OpenCodeTreeInstance> instances, bool showAll)
+        => instances.Where(c => showAll || c.Status == OpenCodeTreeStatus.Running).ToArray();
+
+    internal static IReadOnlyList<OpenCodeTreeShell> VisibleShells(IEnumerable<OpenCodeTreeShell> shells, bool showAll)
+        => shells.Where(c => showAll || c.Status == OpenCodeTreeStatus.Running).ToArray();
+
+    internal static string CountLabel(int working, int total, bool showAll)
+        => showAll ? $"{working} / {total}" : working.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     internal static OpenCodeTreeStatus Outcome(string? outcome) => outcome switch
     {
