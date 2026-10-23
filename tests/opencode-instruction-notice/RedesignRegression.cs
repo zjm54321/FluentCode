@@ -9,6 +9,21 @@ using Microsoft.UI.Xaml.Controls;
 
 // Production views with inert UI stand-ins: composition/ownership/IDs/callbacks,
 // not native templates. The native Expander style crash must also be tested in App.
+namespace Microsoft.UI.Xaml.Controls
+{
+    public enum ListViewSelectionMode { None, Single, Multiple, Extended }
+    public class ListView : ContentControl
+    {
+        public ListView() => Items = new UIElementCollection(this);
+        public UIElementCollection Items { get; }
+        public ListViewSelectionMode SelectionMode { get; set; }
+        public bool IsItemClickEnabled { get; set; }
+        public bool CanReorderItems { get; set; }
+        public bool CanDragItems { get; set; }
+        public bool AllowDrop { get; set; }
+    }
+}
+
 internal static class RedesignRegression
 {
     internal static int Run(bool queueOnly = false)
@@ -77,6 +92,18 @@ internal static class RedesignRegression
         Check(OpenCodeConversationView.AnnotationLabel("  First word") == "Fi"
             && OpenCodeConversationView.AnnotationLabel("中文消息") == "中文"
             && OpenCodeConversationView.AnnotationLabel("中") == "中", "A6: Chinese first 1–2 characters and English first two letters");
+        var timeline = new OpenCodeConversationView();
+        timeline.ApplyMessages([
+            new OpenCodeMessage { Id = "anno_user", Type = "user", Text = "First question" },
+            new OpenCodeMessage { Id = "anno_ai", Type = "assistant", Content = [new OpenCodeContentPart { Id = "text", Type = "text", Text = "中文回答" }] },
+            new OpenCodeMessage { Id = "anno_reason", Type = "assistant", Content = [new OpenCodeContentPart { Id = "reason", Type = "reasoning", Text = "Not a reply" }] },
+        ]);
+        var annotations = timeline.ScrollAnnotations();
+        Check(annotations.Count == 2 && annotations[0].User && !annotations[1].User
+            && annotations[0].Text == "First question" && annotations[1].Text == "中文回答" && annotations[1].Offset > annotations[0].Offset,
+            "RP4: ordered native annotations include user and assistant text, never thinking rows");
+        timeline.ClearMessages();
+        Check(timeline.ScrollAnnotations().Count == 0, "session clear removes old annotation source");
         if (queueOnly) { Console.WriteLine($"PASS production queue view: {checks} assertions; inert native boundary only."); return checks; }
 
         var previousApp = Application.Current;

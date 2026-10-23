@@ -12,6 +12,10 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages.OpenCode
 {
+    internal static class OpenCodeThemedXaml
+    {
+        internal static Style BrushStyle(string element, params (string Property, string Resource)[] brushes) => new();
+    }
     internal partial class OpenCodeToolDetailPopup { internal static FrameworkElement? RetainedAnchor => null; }
     internal static class ConversationViewTestProbe
     {
@@ -604,17 +608,6 @@ namespace Microsoft.UI.Xaml.Controls
     }
 
     public enum ExpandDirection { Down, Up }
-    public enum ListViewSelectionMode { None, Single, Multiple, Extended }
-    public class ListView : ContentControl
-    {
-        public ListView() => Items = new UIElementCollection(this);
-        public UIElementCollection Items { get; }
-        public ListViewSelectionMode SelectionMode { get; set; }
-        public bool IsItemClickEnabled { get; set; }
-        public bool CanReorderItems { get; set; }
-        public bool CanDragItems { get; set; }
-        public bool AllowDrop { get; set; }
-    }
 
     public class Button : ContentControl
     {

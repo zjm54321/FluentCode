@@ -25,6 +25,7 @@ internal sealed class OpenCodeUserBubbleView
     private readonly FontIcon _chevron;
     private bool _expanded;
     private bool _overflows;
+    private FrameworkElement? _widthOwner;
 
     /// <param name="content">要承载的内容元素（实例不重建；由本视图入树）。</param>
     internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true)
@@ -99,16 +100,26 @@ internal sealed class OpenCodeUserBubbleView
         if (delivered)
             OpenCodeToolTheme.Apply(_bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke));
         // Size against the message column, not the window or a fixed pixel limit.
-        _bubble.Loaded += (_, _) => FitWidth();
-        _bubble.SizeChanged += (_, _) => FitWidth();
+        _bubble.Loaded += (_, _) =>
+        {
+            _widthOwner = VisualTreeHelper.GetParent(_bubble) as FrameworkElement;
+            if (_widthOwner is not null) _widthOwner.SizeChanged += WidthOwnerChanged;
+            FitWidth();
+        };
+        _bubble.Unloaded += (_, _) =>
+        {
+            if (_widthOwner is not null) _widthOwner.SizeChanged -= WidthOwnerChanged;
+            _widthOwner = null;
+        };
         ApplyToggleText();
     }
 
     private void FitWidth()
     {
-        var parent = VisualTreeHelper.GetParent(_bubble) as FrameworkElement;
-        if (parent is not null && parent.ActualWidth > 0) _bubble.MaxWidth = parent.ActualWidth * 0.72;
+        if (_widthOwner is not null && _widthOwner.ActualWidth > 0) _bubble.MaxWidth = _widthOwner.ActualWidth * 0.72;
     }
+
+    private void WidthOwnerChanged(object sender, SizeChangedEventArgs args) => FitWidth();
 
     internal FrameworkElement Element => _bubble;
 

@@ -2593,8 +2593,8 @@ public sealed class OpenCodeConversationView : StackPanel
                     {
                         Child = presenter.Element, Padding = new Thickness(12, 10, 12, 10),
                         CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
-                        Background = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CardBackgroundBrushKey),
-                        BorderBrush = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CardStrokeBrushKey),
+                        Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", OpenCodeInteractionUi.CardBackgroundBrushKey),
+                            ("BorderBrush", OpenCodeInteractionUi.CardStrokeBrushKey)),
                     },
                     Update = (p, _, _) => presenter.Render(p.Text, OpenCodeRichTextStyle.Body),
                 };
