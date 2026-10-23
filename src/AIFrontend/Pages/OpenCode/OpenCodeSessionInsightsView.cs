@@ -18,7 +18,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// <remarks>
 /// 顶部是原生 <see cref="SelectorBar"/>（<c>OpenCodeInsightsSections</c>）两个分区（F10c）：
 /// 概况（上下文参考小圆环 <see cref="OpenCodeContextRing"/>，点击打开“当前上下文 / 用量计费 / ACP·Billion 状态”三组 Flyout；
-/// 其下依次是任务（Todo）与原 Agents 分区的主 agent 与子会话，见 <see cref="OpenCodeInsightsAgentsSection"/>）、
+/// 其下依次是 to do 与原 Agents 分区的主 agent 与子会话，见 <see cref="OpenCodeInsightsAgentsSection"/>）、
 /// Billion（地址填写、关联确认与显式读取；常驻文本框/复选框需要固定宿主，所以保留为单独分区）。
 /// MCP / 插件 / LSP 服务状态改由页头连接状态按钮的 Flyout 显示（<see cref="OpenCodeConnectionFlyout"/>）。
 /// 两个分区页始终都在可视树内，切换分区只改 Visibility，不重建、不重新挂接任何控件（Billion 文本框焦点约束不受影响）。
@@ -449,12 +449,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         string Token(double? value) => value is { } number ? prefix + Tokens(number) : "不可用";
         panel.Children.Add(Table(new List<(string, string)>
         {
-            ("输入", Token(tokens?.Input)),
-            ("输出", Token(tokens?.Output)),
-            ("缓存读取", Token(tokens?.CacheRead)),
-            ("缓存写入", Token(tokens?.CacheWrite)),
-            ("缓存命中率", tokens?.CacheHitPercent is { } hit ? prefix + hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "不可用"),
-            ("思考 tokens", Token(tokens?.Reasoning)),
+            ("📥 输入", Token(tokens?.Input)),
+            ("📤 输出", Token(tokens?.Output)),
+            ("📖 缓存读取", Token(tokens?.CacheRead)),
+            ("📝 缓存写入", Token(tokens?.CacheWrite)),
+            ("🎯 缓存命中率", tokens?.CacheHitPercent is { } hit ? prefix + hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "不可用"),
+            ("💭 思考 tokens", Token(tokens?.Reasoning)),
         }));
         panel.Children.Add(OpenCodeContextRing.Divider());
         var totals = Table(new List<(string, string)>

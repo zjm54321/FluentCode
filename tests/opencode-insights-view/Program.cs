@@ -463,8 +463,10 @@ internal static class Program
         var host = Field<Border>(view, "_usageHost");
         var texts = AllText(host).Reverse().ToArray();
         Check(texts.Take(3).SequenceEqual(new[] { "上下文", "3 轮", "12.5K / 200K (6.2%)" }), "context title, grey turns and one-line current (not tree usage)");
-        Check(texts.Where(t => new[] { "输入", "输出", "缓存读取", "缓存写入", "缓存命中率", "思考 tokens", "总 tokens", "总费用" }.Contains(t))
-            .SequenceEqual(new[] { "输入", "输出", "缓存读取", "缓存写入", "缓存命中率", "思考 tokens", "总 tokens", "总费用" }), "six rows then total rows in specified order");
+        var usageLabels = new[] { "📥 输入", "📤 输出", "📖 缓存读取", "📝 缓存写入", "🎯 缓存命中率", "💭 思考 tokens", "总 tokens", "总费用" };
+        Check(texts.Where(usageLabels.Contains).SequenceEqual(usageLabels), "six emoji-led rows then total rows in specified order");
+        Check(OpenCodeSessionInsightsView.DescribeEntry(Empty()).Contains("to do", StringComparison.Ordinal)
+            && !OpenCodeSessionInsightsView.DescribeEntry(Empty()).Contains("任务", StringComparison.Ordinal), "entry uses to do, not task wording");
         Check(texts.Contains("1.6K") && texts.Contains("60%") && texts.Contains(OpenCodeSessionInsightsView.Money(6)), "three unique parentID sessions; noncached categories, weighted hit rate and raw cost sum");
         Check(AutomationProperties.GetAutomationId(Field<StackPanel[]>(view, "_pages")[0].Children[0]) == "OpenCodeInsightsTodoCard", "native A10 card container follows context");
         Check(((StackPanel)view.Content!).Children[0] == host, "context is the content region's first element");
