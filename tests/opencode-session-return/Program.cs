@@ -88,6 +88,8 @@ internal static class Program
                 },
             },
         });
+        ConversationViewTestProbe.Records.Where(r => r.Operation == "Construct")
+            .Select(r => r.Subject).OfType<OpenCodeToolGroupView>().Single().OpenLeaf!();
         var tool = ConversationViewTestProbe.Records.Where(r => r.Operation == "Construct")
             .Select(r => r.Subject).OfType<OpenCodeToolPartView>().Single();
         tool.Element.IsExpanded = true;

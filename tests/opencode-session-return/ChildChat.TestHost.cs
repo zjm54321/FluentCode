@@ -13,7 +13,7 @@ internal static class OpenCodeImageContext
     internal static void Unbind(Microsoft.UI.Xaml.FrameworkElement subtree) { }
 }
 
-internal sealed class OpenCodeToolDetailPopup
+    internal sealed partial class OpenCodeToolDetailPopup
 {
     internal static OpenCodeToolDetailPopup Shared { get; } = new();
     internal void Close() { }

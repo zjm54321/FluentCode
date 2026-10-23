@@ -84,6 +84,7 @@ namespace AIFrontend.Pages
     /// <summary>记录每次 ApplyMessages 的应用快照（不渲染）：测试据此断言应用顺序、去重与内容更新。</summary>
     public sealed partial class OpenCodeConversationView
     {
+        public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
         public IReadOnlyList<OpenCodeMessage> Children { get; private set; } = Array.Empty<OpenCodeMessage>();
         public List<IReadOnlyList<OpenCodeMessage>> Applied { get; } = new();
         public bool? TurnActivity { get; private set; }

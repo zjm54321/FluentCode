@@ -72,6 +72,8 @@ internal interface IOpenCodeDetailContentSource
 /// </summary>
 internal sealed class OpenCodeToolDetailPopup
 {
+    internal static FrameworkElement? RetainedAnchor => _shared?._source is { } source ? AnchorOf(source)
+        : _shared?._pendingSource is { } pending ? AnchorOf(pending) : null;
     /// <summary>首次悬停到弹出预览的延迟（毫秒）；800ms 避免鼠标划过即弹出。</summary>
     internal const int HoverOpenDelayMs = 800;
 

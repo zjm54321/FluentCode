@@ -25,7 +25,6 @@ namespace AIFrontend.Pages.OpenCode
 }
 
 namespace Microsoft.UI.Xaml { public class SizeChangedEventArgs : EventArgs { } }
-namespace Microsoft.UI.Xaml.Controls { public class ScrollViewerViewChangedEventArgs : EventArgs { } }
 namespace Microsoft.UI.Xaml.Media
 {
     public static class CompositionTarget
@@ -109,12 +108,6 @@ namespace AIFrontend.Pages
     internal sealed class ReturnHostTimer { internal void Stop() { } }
     internal sealed class ReturnHostScroll : ScrollViewer
     {
-        public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged { add { } remove { } }
-        internal double VerticalOffset { get; private set; }
-        internal double ScrollableHeight => 0;
-        internal void UpdateLayout() { }
-        internal void ChangeView(double? horizontalOffset, double? verticalOffset, double? zoomFactor, bool disableAnimation)
-        { if (verticalOffset is { } offset) VerticalOffset = offset; }
     }
     internal sealed class ReturnHostRecovery
     {
@@ -174,7 +167,7 @@ namespace AIFrontend.Pages
         private event EventHandler? TrustedEndpointIdentityChanged { add { } remove { } }
         internal readonly ReturnHostButton SessionReturnButton = new() { Visibility = Visibility.Collapsed };
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
-        public ReturnHostDispatcher DispatcherQueue { get; } = new();
+        public new ReturnHostDispatcher DispatcherQueue { get; } = new();
         public new bool IsLoaded => true;
         public new double ActualWidth => 800;
         public new double ActualHeight => 600;

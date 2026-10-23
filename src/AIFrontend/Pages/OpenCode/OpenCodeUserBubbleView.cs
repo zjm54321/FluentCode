@@ -108,7 +108,7 @@ internal sealed class OpenCodeUserBubbleView
         _toggle.Visibility = overflows || _expanded ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void SetExpanded(bool expanded)
+    internal void SetExpanded(bool expanded)
     {
         _expanded = expanded;
         _clip.MaxHeight = expanded ? double.PositiveInfinity : CollapsedHeight;

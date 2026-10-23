@@ -19,9 +19,11 @@ internal static class Program
     private static void Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "True") { RedesignRegression.Run(queueOnly: true); return; }
+        if (args.Length > 1 && args[1] == "True") { Windowing.Run(); return; }
         Run().GetAwaiter().GetResult();
         Wave6Timeline.Run();
         VisibleIdle.Run();
+        Windowing.Run();
     }
 
     private static async Task Run()

@@ -79,9 +79,6 @@ public sealed partial class OpenCodePage : Page
 
     private const double ScrollBottomThreshold = 48;
 
-    /// <summary>滚动到真实底部后的有界复核次数：吸收迟到的异步布局增高（富文本/工具部件）；绝不使用计时器循环。</summary>
-    private const int MaxScrollSettlePasses = 3;
-
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(12);
 
     private readonly OpenCodeConversationView _conversationView = new();
@@ -3556,60 +3553,17 @@ public sealed partial class OpenCodePage : Page
     }
 
     /// <summary>
-    /// 滚动到消息底部：捕获滚动原点（页面/会话代际 + 选中会话）后经有界排队执行；
-    /// 排队回调晚于会话切换/页面卸载到达时按原点复核，绝不把旧滚动作用到新会话或已卸载页面。
+    /// The conversation owns bottom-follow and measurement corrections. Capture the page/session/
+    /// history origin here so a queued correction cannot act after a binding/workflow change.
     /// </summary>
     private void ScrollToBottom(bool animated)
     {
         var pageGeneration = _pageGeneration;
         var sessionGeneration = _sessionGeneration;
         var sessionId = _selectedSessionId;
-        TryScrollToBottom(pageGeneration, sessionGeneration, sessionId, animated, pass: 0);
-    }
-
-    /// <summary>
-    /// 有界滚动（绝不使用计时器/无限循环）：同步完成挂起布局后读取真实 ScrollableHeight 作为目标
-    /// 偏移（不依赖 double.MaxValue 的钳制行为）；随后至多复核 <see cref="MaxScrollSettlePasses"/> 次，
-    /// 吸收迟到的异步布局增高（富文本/工具部件在后续帧才完成测量）。
-    /// </summary>
-    private void TryScrollToBottom(int pageGeneration, int sessionGeneration, string? sessionId, bool animated, int pass)
-    {
-        if (!IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId))
-        {
-            return;
-        }
-
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            // 排队期间可能已切换会话/卸载页面：回调内再次复核原点。
-            if (!IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId))
-            {
-                return;
-            }
-
-            MessageScroll.UpdateLayout();
-            var target = MessageScroll.ScrollableHeight;
-            MessageScroll.ChangeView(null, target, null, !animated);
-
-            if (pass >= MaxScrollSettlePasses)
-            {
-                return;
-            }
-
-            // 下一帧复核：可滚动范围仍在增长（迟到布局）才补滚一次，否则结束。
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                if (!IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId))
-                {
-                    return;
-                }
-
-                if (MessageScroll.ScrollableHeight > target + 0.5)
-                {
-                    TryScrollToBottom(pageGeneration, sessionGeneration, sessionId, animated, pass + 1);
-                }
-            });
-        });
+        var historyEpoch = _messageHistoryEpoch;
+        _conversationView.FollowToBottom(MessageScroll,
+            () => IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId) && historyEpoch == _messageHistoryEpoch, animated);
     }
 
     /// <summary>滚动原点是否仍有效：页面存活、页面/会话代际未变、且仍是同一选中会话。</summary>

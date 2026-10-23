@@ -33,8 +33,8 @@ internal static class Wave6Timeline
         view.ApplyMessages(new[] { one, directory, instruction, two });
         var groups = Made<OpenCodeToolGroupView>();
         Check(groups.Length == 4 && groups[0].OpenLeaf is not null && groups[1].OpenLeaf is null, "wave7.one-leaf-direct-and-shared-multi-operation-group");
-        var row = Made<OpenCodeToolPartView>()[0];
         groups[0].OpenLeaf!(); groups[0].EnterLeaf!(); groups[0].ExitLeaf!();
+        var row = Made<OpenCodeToolPartView>()[0];
         Check(ConversationViewTestProbe.Records.Any(r => r.Operation == "OpenLeaf" && ReferenceEquals(r.Subject, row))
             && ConversationViewTestProbe.Records.Any(r => r.Operation == "HoverLeaf" && ReferenceEquals(r.Subject, row)), "wave6.single-header-routes-directly-to-actual-leaf-controller");
         Check(ReferenceEquals(row.DetailAnchorOverride, groups[0].DetailAnchor), "wave6.single-leaf-preview-uses-visible-header-anchor-not-hidden-row");
@@ -58,8 +58,9 @@ internal static class Wave6Timeline
 
         ConversationViewTestProbe.Reset();
         view.ApplyMessages(new[] { Step("reasoning", new { type = "reasoning", text = "only thought" }) });
-        var reasoning = Made<OpenCodeReasoningRowView>().Single();
         var single = Made<OpenCodeToolGroupView>().Single();
+        single.OpenLeaf!();
+        var reasoning = Made<OpenCodeReasoningRowView>().Single();
         Check(single.OpenLeaf is not null && ReferenceEquals(reasoning.DetailAnchorOverride, single.DetailAnchor), "wave6.reasoning-single-leaf-direct-anchor");
         single.OpenLeaf!();
         Check(ConversationViewTestProbe.Records.Any(r => r.Operation == "OpenLeaf" && ReferenceEquals(r.Subject, reasoning)), "wave6.single-reasoning-click-direct-detail");
@@ -228,6 +229,7 @@ internal static class Wave6Timeline
         ConversationViewTestProbe.Reset();
         var manualCall = M(new { id = "manual_parent", type = "assistant", content = new[] { new { id = "manual_tool", type = "tool", name = "shell", time = new { ran = 1000 }, state = new { status = "completed", input = new { command = "inert manual test" } } } } });
         view.ApplyMessages(new[] { manualCall });
+        Made<OpenCodeToolGroupView>().Single().OpenLeaf!();
         var manualController = Made<OpenCodeToolPartView>().Single();
         var beforeManual = manualController.UpdateCount;
         var manualNotice = M(new { id = "manual_notice", type = "synthetic", time = new { created = 2000 }, text = "User requested that active blocking work be moved to the background.\n\nBackgrounded work:\n- shell: inert manual test\n\nThe backgrounded work is still unfinished. Move on to other work if you can. If there is nothing else useful to do, finish your response. Do not wait, sleep, poll, or report the backgrounded work as complete until a later completion notification is added to the conversation." });
@@ -240,6 +242,7 @@ internal static class Wave6Timeline
             "wave7.manual-returned-invocation-renders-background-spinner-not-success-or-new-action");
         view.ClearMessages();
         view.ApplyMessages(new[] { manualCall });
+        Made<OpenCodeToolGroupView>().Last().OpenLeaf!();
         Check(!Made<OpenCodeToolPartView>().Last().ManualBackground, "wave7.manual-binding-reset-clears-fallback-associations");
         view.ClearMessages();
         ConversationViewTestProbe.Reset();
@@ -281,6 +284,7 @@ internal static class Wave6Timeline
         view.ClearMessages(); ConversationViewTestProbe.Reset();
         var suppliedCall = M(new { id = "supplied_parent", type = "assistant", content = new[] { new { id = "supplied_tool", type = "tool", name = "shell", time = new { ran = 1000 }, state = new { status = "completed", input = new { command = noticeCommand } } } } });
         view.ApplyMessages(new[] { suppliedCall, suppliedNotice });
+        Made<OpenCodeToolGroupView>().First(g => g.OpenLeaf is not null).OpenLeaf!();
         Check(Made<OpenCodeToolPartView>().Single().ManualBackground && !Made<OpenCodeTimelineChipView>().Any()
             && Made<OpenCodeToolGroupView>().Count(g => g.Summary is not null && g.Summary.SuccessCount == 0) >= 1,
             "wave13.exact-unique-existing-call-owns-operation-no-duplicate-notice-chip-and-invocation-return-is-not-background-complete");
@@ -291,7 +295,8 @@ internal static class Wave6Timeline
         view.ClearMessages(); ConversationViewTestProbe.Reset();
         var secondCall = suppliedCall with { Id = "second_parent", Content = new() { suppliedCall.Content![0] with { Id = "second_tool" } } };
         view.ApplyMessages(new[] { suppliedCall, secondCall, suppliedNotice });
-        Check(Made<OpenCodeToolPartView>().All(p => !p.ManualBackground)
+        Made<OpenCodeToolGroupView>().First(g => g.HeaderVisible).ToggleForTest();
+        Check(Made<OpenCodeToolPartView>().Length == 2 && Made<OpenCodeToolPartView>().All(p => !p.ManualBackground)
             && Made<OpenCodeTimelineChipView>().Single().Content.Status == OpenCodeToolRowStatus.Running,
             "wave13.ambiguous-history-keeps-notice-truthful-running-without-guessing-an-association");
         view.ClearMessages(); ConversationViewTestProbe.Reset();

@@ -154,7 +154,7 @@ internal static class VisibleIdle
         Check(!stepsGroup.IsExpanded,"manual working collapse is accepted");
         for(var i=3;i<=20;i++)stepsView.ApplyMessages(new[]{StreamingSteps(i)});
         Check(!stepsGroup.IsExpanded&&stepsGroup.CurrentStep!.Contains("file-19.cs",StringComparison.Ordinal),"streaming preserves collapse while latest real step keeps updating");
-        Check(stepsGroup.ItemsHost.Children.Count==20,"all streamed rows retained while collapsed");
+        Check(stepsGroup.ItemsHost.Children.Count==2,"collapsed streaming does not materialize new hidden steps");
         stepsGroup.ToggleForTest();
         Check(stepsGroup.IsExpanded&&stepsGroup.ItemsHost.Children.Count==20,"re-expanding retains every step");
         stepsView.ApplyMessages(new[]{StreamingSteps(21)});stepsView.SetCurrentTurnActivity(false);

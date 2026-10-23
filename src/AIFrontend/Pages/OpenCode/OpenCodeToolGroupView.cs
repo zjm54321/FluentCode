@@ -7,6 +7,62 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages.OpenCode;
 
+// Retained chain state must not allocate a header, timer or items panel offscreen.
+internal sealed class OpenCodeToolGroupView
+{
+    private readonly Action<string, bool> _toggled;
+    private OpenCodeToolGroupVisual? _visual;
+    private OpenCodeStepRunSummary? _summary;
+    private bool _expanded, _headerVisible = true, _inline, _visible = true;
+    private Action? _open, _enter, _exit, _background;
+    private string? _name, _glyph, _model;
+    private OpenCodeToolRowStatus? _status;
+    private string _step = "处理中…";
+    private bool _reasoning, _toolRunning;
+    private bool _disposed;
+
+    internal OpenCodeToolGroupView(string groupId, Action<string, bool> onUserToggled)
+    { GroupId = groupId; _toggled = onUserToggled; }
+    internal string GroupId { get; }
+    internal bool IsExpanded => _expanded;
+    internal bool ShowsItems => _inline || _expanded && (_summary?.IsActive == true || _open is null);
+    internal FrameworkElement DetailAnchor => Visual.DetailAnchor;
+    internal FrameworkElement Element => Visual.Element;
+    internal Panel ItemsHost => Visual.ItemsHost;
+
+    private OpenCodeToolGroupVisual Visual
+    {
+        get
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(OpenCodeToolGroupView));
+            if (_visual is not null) return _visual;
+            _visual = new OpenCodeToolGroupVisual(GroupId, (id, expanded) => { _expanded = expanded; _toggled(id, expanded); });
+            _visual.SetCurrentStep(_step);
+            _visual.SetWorkingContext(_reasoning, _toolRunning, _model);
+            _visual.BindSingleLeaf(_open, _enter, _exit, _name, _glyph, _status);
+            _visual.SetBackgroundAction(_background);
+            _visual.SetInlineLeaf(_inline);
+            if (_summary is not null) _visual.Update(_summary, _expanded, _headerVisible);
+            _visual.Element.Visibility = _visible ? Visibility.Visible : Visibility.Collapsed;
+            return _visual;
+        }
+    }
+
+    internal void SetVisibility(bool visible)
+    { _visible = visible; if (_visual is not null) _visual.Element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; }
+    internal void SetCurrentStep(string step) { _step = step; _visual?.SetCurrentStep(step); }
+    internal void SetWorkingContext(bool reasoning, bool toolRunning, string? model)
+    { _reasoning = reasoning; _toolRunning = toolRunning; _model = model; _visual?.SetWorkingContext(reasoning, toolRunning, model); }
+    internal void BindSingleLeaf(Action? open, Action? enter, Action? exit, string? name = null, string? glyph = null, OpenCodeToolRowStatus? status = null)
+    { _open = open; _enter = enter; _exit = exit; _name = name; _glyph = glyph; _status = status; _visual?.BindSingleLeaf(open, enter, exit, name, glyph, status); }
+    internal void SetBackgroundAction(Action? action) { _background = action; _visual?.SetBackgroundAction(action); }
+    internal void SetInlineLeaf(bool inline) { _inline = inline; _visual?.SetInlineLeaf(inline); }
+    internal void Update(OpenCodeStepRunSummary summary, bool expanded, bool headerVisible)
+    { _summary = summary; _expanded = expanded; _headerVisible = headerVisible; _visual?.Update(summary, expanded, headerVisible); }
+    internal void Dispose()
+    { _disposed = true; _visual?.Dispose(); _visual = null; _open = _enter = _exit = _background = null; }
+}
+
 /// <summary>
 /// 时间线“处理过程”分组（F5，AutomationId <c>OpenCodeToolGroup.{首个部件 id}</c>）：一个助手回合中两段文本输出之间的
 /// 全部思考 / 工具调用折叠为一行：默认进行中展开、终态收起；手动选择在本组整个生命周期内保留。
@@ -17,7 +73,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// （由 <see cref="OpenCodeConversationView"/> 计算并调用 <see cref="Update"/>）。
 /// 原生 Button + StackPanel + Border，内置文本样式与主题画刷；不派生控件、不自定义模板（不使用 Expander 子类）。
 /// </summary>
-internal sealed class OpenCodeToolGroupView
+internal sealed class OpenCodeToolGroupVisual
 {
     private readonly Action<string, bool> _onUserToggled;
     private readonly StackPanel _root;
@@ -112,7 +168,7 @@ internal sealed class OpenCodeToolGroupView
         if (_working.IsActive && _phrases.UpdateContext(_activity, _family, NowMs())) RefreshWorkingText();
     }
 
-    internal OpenCodeToolGroupView(string groupId, Action<string, bool> onUserToggled)
+    internal OpenCodeToolGroupVisual(string groupId, Action<string, bool> onUserToggled)
     {
         GroupId = groupId ?? string.Empty;
         _onUserToggled = onUserToggled ?? throw new ArgumentNullException(nameof(onUserToggled));

@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages.OpenCode
 {
+    internal partial class OpenCodeToolDetailPopup { internal static FrameworkElement? RetainedAnchor => null; }
     internal static class ConversationViewTestProbe
     {
         // A class rather than a record: default ToString must not dump captured input fields.
@@ -184,6 +185,7 @@ namespace AIFrontend.Pages.OpenCode
         internal string GroupId { get; }
         internal FrameworkElement Element => _root;
         internal FrameworkElement DetailAnchor => _root;
+        internal void SetVisibility(bool visible) => _root.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         internal Action? OpenLeaf { get; private set; }
         internal Action? EnterLeaf { get; private set; }
         internal Action? ExitLeaf { get; private set; }
@@ -205,6 +207,7 @@ namespace AIFrontend.Pages.OpenCode
             => (OpenLeaf, EnterLeaf, ExitLeaf, LeafName, LeafGlyph, LeafStatus) = (open, enter, exit, name, glyph, status);
         internal Panel ItemsHost => _items;
         internal bool IsExpanded { get; private set; }
+        internal bool ShowsItems => InlineLeaf || IsExpanded && (Summary?.IsActive == true || OpenLeaf is null);
         internal bool HeaderVisible { get; private set; } = true;
         internal OpenCodeStepRunSummary? Summary { get; private set; }
         internal int DisposeCount { get; private set; }
@@ -305,6 +308,8 @@ namespace AIFrontend.Pages.OpenCode
     // Inert stand-in for the real two-line user bubble (H14): stable Element hosting the presenter root.
     internal sealed class OpenCodeUserBubbleView
     {
+        internal bool IsExpanded { get; private set; }
+        internal void SetExpanded(bool expanded) => IsExpanded = expanded;
         internal FrameworkElement Element { get; }
         internal bool Delivered { get; }
         internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true)
@@ -341,6 +346,7 @@ namespace Microsoft.UI.Dispatching
 {
     public sealed class DispatcherQueue
     {
+        public bool TryEnqueue(Action callback) => true; // inert: tests explicitly stimulate layout/viewport
         public static DispatcherQueue? GetForCurrentThread() => null;
         public DispatcherQueueTimer CreateTimer() => new();
     }
@@ -399,6 +405,9 @@ namespace Microsoft.UI.Xaml
     public class DependencyObject { }
     public class UIElement : DependencyObject
     {
+        public static readonly object PointerPressedEvent = new(), PointerWheelChangedEvent = new(), KeyDownEvent = new();
+        public void AddHandler(object routedEvent, object handler, bool handledEventsToo) { }
+        public void RemoveHandler(object routedEvent, object handler) { }
         public Microsoft.UI.Xaml.Media.RectangleGeometry? Clip { get; set; }
         public Visibility Visibility { get; set; }
         public double Opacity { get; set; } = 1;
@@ -409,6 +418,7 @@ namespace Microsoft.UI.Xaml
 
     public class FrameworkElement : UIElement
     {
+        public Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; } = new();
         public XamlRoot? XamlRoot { get; set; } = new(); // inert root identity, not native window evidence
         public double ActualWidth { get; set; } = 700;
         public double ActualHeight { get; set; } = 600;
@@ -554,6 +564,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class TextBlock : FrameworkElement
     {
+        public string SelectedText { get; set; } = string.Empty;
         private string _text = string.Empty;
         public string Text
         {
@@ -626,8 +637,18 @@ namespace Microsoft.UI.Xaml.Controls
         public string Message { get; set; } = string.Empty;
     }
 
+    public class RichTextBlock : FrameworkElement { public string SelectedText { get; set; } = string.Empty; }
+    public class ScrollViewerViewChangedEventArgs : EventArgs { public bool IsIntermediate { get; set; } }
     public class ScrollViewer : ContentControl
     {
+        public double VerticalOffset { get; set; }
+        public double ScrollableHeight { get; set; }
+        public double ViewportHeight { get; set; } = 800;
+        public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged;
+        public Action? LayoutForTest { get; set; }
+        public void UpdateLayout() => LayoutForTest?.Invoke();
+        public void ChangeView(double? horizontal, double? vertical, double? zoom, bool disableAnimation)
+        { VerticalOffset = vertical ?? VerticalOffset; ViewChanged?.Invoke(this, new()); }
         public ScrollMode HorizontalScrollMode { get; set; }
         public ScrollBarVisibility VerticalScrollBarVisibility { get; set; }
         public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }
@@ -649,6 +670,19 @@ namespace Microsoft.UI.Xaml.Controls.Primitives
     public enum FlyoutPlacementMode { TopEdgeAlignedLeft }
 }
 
+namespace Microsoft.UI.Xaml.Input
+{
+    public class PointerRoutedEventArgs : RoutedEventArgs { }
+    public class KeyRoutedEventArgs : RoutedEventArgs { }
+    public delegate void PointerEventHandler(object sender, PointerRoutedEventArgs e);
+    public delegate void KeyEventHandler(object sender, KeyRoutedEventArgs e);
+    public static class FocusManager
+    {
+        public static object? FocusedForTest { get; set; }
+        public static object? GetFocusedElement(XamlRoot root) => FocusedForTest;
+    }
+}
+
 namespace Windows.Foundation
 {
     public readonly record struct Point(double X, double Y);
@@ -666,7 +700,19 @@ namespace Microsoft.UI.Xaml.Media
     public class Transform { }
     public class Geometry { public Transform? Transform { get; set; } }
     public class RectangleGeometry : Geometry { public Windows.Foundation.Rect Rect { get; set; } }
-    public static class VisualTreeHelper { public static DependencyObject? GetParent(DependencyObject node) => (node as UIElement)?.Parent; }
+    public static class VisualTreeHelper
+    {
+        public static DependencyObject? GetParent(DependencyObject node) => (node as UIElement)?.Parent;
+        private static IReadOnlyList<UIElement> Children(DependencyObject node) => node switch
+        {
+            Panel panel => panel.Children,
+            Border { Child: { } child } => new[] { child },
+            ContentControl { Content: UIElement child } => new[] { child },
+            _ => Array.Empty<UIElement>(),
+        };
+        public static int GetChildrenCount(DependencyObject node) => Children(node).Count;
+        public static DependencyObject GetChild(DependencyObject node, int index) => Children(node)[index];
+    }
     public class Brush { }
     public class FontFamily
     {

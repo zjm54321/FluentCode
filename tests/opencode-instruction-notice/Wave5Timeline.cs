@@ -63,7 +63,7 @@ internal static class Wave5Timeline
               && groups.All(g => g.GroupId.EndsWith("/reasoning:0", StringComparison.Ordinal))
               && groups[0].GroupId.StartsWith("msg_1/", StringComparison.Ordinal), "h1.group-ids-message-qualified");
         var rows = Constructed<OpenCodeReasoningRowView>();
-        Check(rows.Length == 2 && rows[0].RowKey != rows[1].RowKey, "h1.reasoning-row-keys-unique");
+        Check(rows.Length == 0, "h1.collapsed-reasoning-rows-lazy");
         Check(!groups[0].IsExpanded && !groups[1].IsExpanded, "h1.history-collapsed");
         groups[1].ToggleForTest();
         Check(groups[1].IsExpanded && !groups[0].IsExpanded, "h1.toggle-affects-only-clicked-group");
@@ -72,6 +72,8 @@ internal static class Wave5Timeline
         groups[0].ToggleForTest();
         groups[1].ToggleForTest();
         Check(groups[0].IsExpanded && !groups[1].IsExpanded, "h1.each-group-independent");
+        rows = Constructed<OpenCodeReasoningRowView>();
+        Check(rows.Length == 2 && rows[0].RowKey != rows[1].RowKey, "h1.realized-reasoning-row-keys-unique");
         // H2 tally inputs: one successful read per group, no errors.
         Check(groups.All(g => g.Summary is { SuccessCount: 1, ErrorCount: 0 }), "h2.success-tally");
         view.ClearMessages();
@@ -165,6 +167,7 @@ internal static class Wave5Timeline
             time = new { created = T0, completed = T0 + 100 },
         });
         view.ApplyMessages(new[] { origin });
+        Constructed<OpenCodeToolGroupView>().Single().OpenLeaf!();
         var shellRow = Constructed<OpenCodeToolPartView>().Single();
         var pending = OpenCodeToolRowPresentation.Build(origin.Content![0]);
         Check(shellRow.AsyncCompletion is null && pending.Summary == "后台运行中" && pending.Status == OpenCodeToolRowStatus.Running

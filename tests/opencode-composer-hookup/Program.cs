@@ -1058,6 +1058,7 @@ namespace AIFrontend.Pages.OpenCode
 {
     public enum AgentSwitchStatus { Applied, Blocked, OriginLost, OutcomeUnknown, DefinitivelyRejected, ReconciliationRequired, Reconciled }
     public sealed class OpenCodeConversationView {
+        public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
         public event EventHandler? SubagentSessionRequested;
         public List<OpenCodeMessage> Last = new();
         public bool ContainsRenderedMessage(string id) => Last.Any(message => message.Id == id);

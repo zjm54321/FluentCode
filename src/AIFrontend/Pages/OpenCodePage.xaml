@@ -378,6 +378,7 @@
                                 <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*">
                                     <ScrollViewer
                                         x:Name="MessageScroll"
+                                        VerticalAnchorRatio="NaN"
                                         Grid.Row="1"
                                         HorizontalContentAlignment="Center"
                                         HorizontalScrollMode="Disabled"

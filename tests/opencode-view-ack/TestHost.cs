@@ -70,6 +70,7 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
     internal sealed class OpenCodeConversationView : Microsoft.UI.Xaml.Element
     {
+        internal void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
         internal long RenderVersion { get; private set; }
         private OpenCodeVisibleIdle? _candidate;
         internal event EventHandler? IdleViewportInvalidated;

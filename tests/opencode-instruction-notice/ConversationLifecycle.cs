@@ -186,15 +186,12 @@ internal static class ConversationLifecycle
 
         var rows = ConversationViewTestProbe.Records.Where(r => r.Operation == "Construct").Select(r => r.Subject).OfType<OpenCodeReasoningRowView>().ToList();
         var groups = ConversationViewTestProbe.Records.Where(r => r.Operation == "Construct").Select(r => r.Subject).OfType<OpenCodeToolGroupView>().ToList();
-        Check(rows.Count == 3 && groups.Count == 2, "chain.rows-and-groups-constructed");
+        Check(rows.Count == 0 && groups.Count == 2, "chain.collapsed-groups-do-not-construct-reasoning-rows");
         Check(!ConversationViewTestProbe.Records.Any(r => r.Operation == "Render" && r.Input is "THINK_ONE" or "THINK_TWO"),
             "reasoning.not-rendered-inline");
         var leader = groups.Single(g => g.GroupId == "r1");
         var follower = groups.Single(g => g.GroupId == "part_b");
-        Check(rows[0].Text == "THINK_ONE\n\nTHINK_TWO" && rows[0].RowKey == "r1" && !rows[0].Streaming
-              && ReferenceEquals(rows[0].Element.Parent, leader.ItemsHost)
-              && rows[1].Element.Parent is null && rows[2].Element.Parent is null, "reasoning.consecutive-merged-blank-skipped");
-        Check(leader.ItemsHost.Children.Count == 2 && follower.ItemsHost.Children.Count == 1, "chain.rows-per-segment");
+        Check(leader.ItemsHost.Children.Count == 0 && follower.ItemsHost.Children.Count == 0, "chain.collapsed-parts-lazy");
         Check(leader.HeaderVisible && !follower.HeaderVisible && ReferenceEquals(leader.Summary, follower.Summary)
               && leader.Summary is { IsActive: false, ReasoningOnly: false, ErrorCount: 0 }
               && leader.Summary.HeaderText == "已处理 1 分 4 秒"
@@ -204,6 +201,10 @@ internal static class ConversationLifecycle
               && view.Children.All(c => c.Visibility == Microsoft.UI.Xaml.Visibility.Visible), "chain.default-collapsed");
         leader.ToggleForTest();
         Check(leader.IsExpanded && follower.IsExpanded, "chain.follower-follows-leader-expand");
+        rows = ConversationViewTestProbe.Records.Where(r => r.Operation == "Construct").Select(r => r.Subject).OfType<OpenCodeReasoningRowView>().ToList();
+        Check(rows.Count == 1 && rows[0].Text == "THINK_ONE\n\nTHINK_TWO" && rows[0].RowKey == "r1" && !rows[0].Streaming
+              && ReferenceEquals(rows[0].Element.Parent, leader.ItemsHost), "reasoning.consecutive-merged-blank-never-materialized");
+        Check(leader.ItemsHost.Children.Count == 2 && follower.ItemsHost.Children.Count == 1, "chain.expanded-rows-per-segment");
         leader.ToggleForTest();
         Check(!leader.IsExpanded && !follower.IsExpanded, "chain.follower-follows-leader-collapse");
 
@@ -441,9 +442,10 @@ internal static class ConversationLifecycle
         var view = new OpenCodeConversationView();
         var navigationCount = 0;
         view.SubagentSessionRequested += (_, _) => navigationCount++;
-        var ordinary = Ordinary("msg_swap");
+        var ordinary = Ordinary("msg_swap") with { Metadata = null };
         var notice = Notice("msg_swap");
         view.ApplyMessages(new[] { ordinary });
+        Constructed<OpenCodeToolGroupView>().OpenLeaf!();
         var oldTool = Constructed<OpenCodeToolPartView>();
         var oldCompletion = Constructed<OpenCodeSubagentCompletionView>();
         var oldEntry = Entry(view, "msg_swap");
@@ -476,6 +478,7 @@ internal static class ConversationLifecycle
 
         ConversationViewTestProbe.Reset();
         view.ApplyMessages(new[] { ordinary });
+        Constructed<OpenCodeToolGroupView>().OpenLeaf!();
         var newTool = Constructed<OpenCodeToolPartView>();
         var newCompletion = Constructed<OpenCodeSubagentCompletionView>();
         var restoredEntry = Entry(view, "msg_swap");

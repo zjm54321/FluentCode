@@ -900,9 +900,8 @@ public sealed partial class OpenCodePage
     }
 
     /// <summary>
-    /// 应用前置后的显示列表并保持阅读位置：记录预插前的偏移与可滚动高度，应用后按“新增的
-    /// 可滚动高度”平移偏移，使视口内可见内容不变（不跳底也不跳顶）；随后有界复核吸收迟到布局
-    /// （富文本/工具部件的异步测量），用户一旦自行滚动即不争夺。
+    /// Apply the prepend using the conversation's item-key + intra-row anchor. The same owner
+    /// absorbs later measurement growth/shrinkage; the Page only supplies binding/history fences.
     /// </summary>
     private void ApplyOlderPageAndPreserveScroll()
     {
@@ -910,60 +909,12 @@ public sealed partial class OpenCodePage
         var sessionGeneration = _sessionGeneration;
         var sessionId = _selectedSessionId;
         var historyEpoch = _messageHistoryEpoch;
-        var offsetBefore = MessageScroll.VerticalOffset;
-        var heightBefore = MessageScroll.ScrollableHeight;
+        _conversationView.PreserveReadingAnchor(MessageScroll,
+            () => IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId) && historyEpoch == _messageHistoryEpoch);
 
         EnsureConversationImages();
         _conversationView.ApplyMessages(ProjectMessageHistory(MergeMessageHistory()));
         RefreshConversationSessionActivity();
-
-        MessageScroll.UpdateLayout();
-        var target = offsetBefore + (MessageScroll.ScrollableHeight - heightBefore);
-        MessageScroll.ChangeView(null, target, null, disableAnimation: true);
-        SettlePrependScroll(pageGeneration, sessionGeneration, sessionId, historyEpoch, offsetBefore, heightBefore, target, pass: 0);
-    }
-
-    /// <summary>
-    /// 有界复核预插滚动（绝不使用计时器/无限循环）：下一帧若可滚动高度继续增长且用户仍停在
-    /// 我们设置的偏移上，则按同一增量修正；用户已滚动、上下文失效或达到复核上限即停止。
-    /// </summary>
-    private void SettlePrependScroll(
-        int pageGeneration,
-        int sessionGeneration,
-        string? sessionId,
-        long historyEpoch,
-        double offsetBefore,
-        double heightBefore,
-        double target,
-        int pass)
-    {
-        if (pass >= MaxScrollSettlePasses)
-        {
-            return;
-        }
-
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (!IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId) || historyEpoch != _messageHistoryEpoch)
-            {
-                return;
-            }
-
-            // 用户已自行滚动（当前偏移偏离我们设置的目标）＝不争夺阅读位置。
-            if (Math.Abs(MessageScroll.VerticalOffset - target) > 0.5)
-            {
-                return;
-            }
-
-            var next = offsetBefore + (MessageScroll.ScrollableHeight - heightBefore);
-            if (next <= target + 0.5)
-            {
-                return;
-            }
-
-            MessageScroll.ChangeView(null, next, null, disableAnimation: true);
-            SettlePrependScroll(pageGeneration, sessionGeneration, sessionId, historyEpoch, offsetBefore, heightBefore, next, pass + 1);
-        });
     }
 
     /// <summary>安全停止分页：清 next、标记链为 Stopped（轮询不复活）并给出不声称完整的警告提示；可经“刷新消息”重新开始。</summary>
