@@ -99,14 +99,16 @@ namespace AIFrontend.Pages.OpenCode
         // Records the async completion (background shell / subagent) the renderer matched to this call.
         internal OpenCodeAsyncCompletion? AsyncCompletion { get; private set; }
         internal bool ManualBackground { get; private set; }
+        internal int? FileIndex { get; private set; }
         internal int UpdateCount { get; private set; }
 
-        internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false)
+        internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false, int? fileIndex = null)
         {
             _parentMessageId = parentMessageId;
             _lastPart = part;
             AsyncCompletion = asyncCompletion;
             ManualBackground = manualBackground;
+            FileIndex = fileIndex;
             UpdateCount++;
             ConversationViewTestProbe.Record("Update", this, part, parentMessageId);
         }

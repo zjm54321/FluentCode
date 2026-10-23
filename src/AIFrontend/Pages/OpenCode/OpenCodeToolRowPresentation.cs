@@ -361,7 +361,7 @@ internal static class OpenCodeToolRowPresentation
     /// 与该调用关联的异步完成通知（后台终端 / 子任务；由会话视图按 metadata 中的不透明 id 匹配），无则 null。
     /// 有完成通知时行摘要显示“后台已完成 / 失败”（失败时行状态为出错）；后台仍在运行（metadata.status = running）时显示“后台运行中”。
     /// </param>
-    internal static OpenCodeToolRowModel Build(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion = null, bool manualBackground = false)
+    internal static OpenCodeToolRowModel Build(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion = null, bool manualBackground = false, int? fileIndex = null)
     {
         ArgumentNullException.ThrowIfNull(part);
         var kind = Classify(part.Name);
@@ -644,7 +644,7 @@ internal static class OpenCodeToolRowPresentation
             accessible.Append('，').Append(summary);
         }
 
-        return new OpenCodeToolRowModel
+        var model = new OpenCodeToolRowModel
         {
             PartId = part.Id ?? string.Empty,
             Name = name,
@@ -672,6 +672,39 @@ internal static class OpenCodeToolRowPresentation
             AccessibleName = accessible.ToString(),
             IsBackground = background,
             GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph : null,
+        };
+        return fileIndex is { } index ? BuildFileRow(model, index) : model;
+    }
+
+    // TL2: only settled successful calls expand. Partial metadata is not a completed file change.
+    internal static int TimelineRowCount(OpenCodeContentPart part)
+    {
+        if (Classify(part.Name) is not (OpenCodeToolKind.Patch or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Edit)) return 1;
+        var model = Build(part);
+        return model.Status == OpenCodeToolRowStatus.Completed
+            && model.Kind is OpenCodeToolKind.Patch or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Edit
+            && model.DiffFiles.Count > 1 ? model.DiffFiles.Count : 1;
+    }
+
+    private static OpenCodeToolRowModel BuildFileRow(OpenCodeToolRowModel model, int index)
+    {
+        var file = model.DiffFiles[index];
+        var (name, glyph) = file.Status?.ToLowerInvariant() switch
+        {
+            "added" => ("新增", "\uE8E5"),
+            "modified" => ("修改", "\uE70F"),
+            "deleted" => ("删除", "\uE74D"),
+            _ => ("应用补丁", "\uE70F"),
+        };
+        var summary = file.Additions is { } add && file.Deletions is { } del
+            ? "+" + add.ToString(CultureInfo.InvariantCulture) + " −" + del.ToString(CultureInfo.InvariantCulture) : string.Empty;
+        return new OpenCodeToolRowModel
+        {
+            PartId = model.PartId + "/file:" + index.ToString(CultureInfo.InvariantCulture),
+            Name = name, Kind = model.Kind, Status = model.Status, StatusText = model.StatusText,
+            Target = file.Path, Summary = summary, Additions = file.Additions, Deletions = file.Deletions,
+            DurationText = model.DurationText, DiffFiles = new[] { file }, GlyphOverride = glyph,
+            AccessibleName = name + "，" + file.Path + "，" + summary + "，" + model.StatusText,
         };
     }
 

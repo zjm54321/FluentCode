@@ -731,6 +731,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private sealed class PartEntry
     {
         public required string Key { get; init; }
+        public int? FileIndex { get; init; }
         public required string Kind { get; init; }
         public string Fingerprint { get; set; } = string.Empty;
         public FrameworkElement Element { get; set; } = null!;
@@ -1425,17 +1426,13 @@ public sealed class OpenCodeConversationView : StackPanel
             if (!process)
             {
                 var parts = new List<PartEntry>();
-                var seen = new HashSet<string>(StringComparer.Ordinal);
                 var content = current.Content ?? new List<OpenCodeContentPart>();
-                for (var i = 0; i < content.Count; i++)
+                foreach (var (part, partKey, fileIndex) in TimelineParts(content))
                 {
-                    var part = content[i];
                     var kind = part.Type ?? "?";
-                    var partKey = part.Id is { Length: > 0 } id ? id : kind + ":" + i.ToString(CultureInfo.InvariantCulture);
-                    if (!seen.Add(partKey)) partKey += "#" + i.ToString(CultureInfo.InvariantCulture);
                     parts.Add(new PartEntry
                     {
-                        Key = partKey, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool,
+                        Key = partKey, FileIndex = fileIndex, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool,
                         LastPart = part, LastCompletion = ResolveCompletion(part),
                         ManualBackground = current.Id is { } parent && part.Id is { } partId && _manualBackground.Contains(parent, partId),
                         Update = (_, _, _) => { },
@@ -1890,19 +1887,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
         var parts = message.Content ?? new List<OpenCodeContentPart>();
         var newEntries = new List<PartEntry>(parts.Count);
-        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
-
-        for (var i = 0; i < parts.Count; i++)
+        foreach (var (part, partKey, fileIndex) in TimelineParts(parts))
         {
-            var part = parts[i];
             var kind = part.Type ?? "?";
-            var partKey = part.Id is { Length: > 0 } id
-                ? id
-                : kind + ":" + i.ToString(CultureInfo.InvariantCulture);
-            if (!seenKeys.Add(partKey))
-            {
-                partKey = partKey + "#" + i.ToString(CultureInfo.InvariantCulture);
-            }
 
             var completion = ResolveCompletion(part);
             var manual = message.Id is { } parent && part.Id is { } manualPartId && _manualBackground.Contains(parent, manualPartId);
@@ -1942,7 +1929,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
 
                 var entry = kind is OpenCodePartTypes.Tool or OpenCodePartTypes.Reasoning
-                    ? CreateLazyPartEntry(partKey, kind, part, message.Id, completion)
+                    ? CreateLazyPartEntry(partKey, kind, part, message.Id, completion, fileIndex)
                     : CreatePartEntry(partKey, kind, part, message.Id, completion);
                 entry.Fingerprint = fingerprint;
                 entry.LastPart = part;
@@ -2024,6 +2011,22 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             host.Children.Remove(entry.Element);
             entry.Host = null;
+        }
+    }
+
+    // Shared by offscreen descriptors and realized rows, so windowing cannot change counts or keys.
+    private static IEnumerable<(OpenCodeContentPart Part, string Key, int? FileIndex)> TimelineParts(IReadOnlyList<OpenCodeContentPart> parts)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var part = parts[i];
+            var key = part.Id is { Length: > 0 } id ? id : (part.Type ?? "?") + ":" + i.ToString(CultureInfo.InvariantCulture);
+            if (!seen.Add(key)) key += "#" + i.ToString(CultureInfo.InvariantCulture);
+            var count = part.Type == OpenCodePartTypes.Tool ? OpenCodeToolRowPresentation.TimelineRowCount(part) : 1;
+            if (count == 1) yield return (part, key, null);
+            else for (var file = 0; file < count; file++)
+                yield return (part, key + "/file:" + file.ToString(CultureInfo.InvariantCulture), file);
         }
     }
 
@@ -2127,7 +2130,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
                 FlushReasoning(atRunEnd: false);
                 var snapshot = part.LastPart ?? new OpenCodeContentPart();
-                tools.Add(OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground));
+                tools.Add(StepModel(part)!);
                 shown.Add(part);
                 if (snapshot.Time is { } time)
                 {
@@ -2380,6 +2383,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     {
                         // Distinct calls stay distinct even if they reuse one child session.
                         operation = "call:" + (snapshot.Id ?? run.Group.GroupId + "/" + part.Key);
+                        if (part.FileIndex is { } fileIndex) operation += "/file:" + fileIndex.ToString(CultureInfo.InvariantCulture);
                         foreach (var asyncKey in OpenCodeStepRunPresentation.AsyncKeys(snapshot))
                             invocationKeys.Add("async:" + asyncKey);
                         if (part.LastCompletion is { Key.Length: > 0 } completion) invocationKeys.Add("async:" + completion.Key);
@@ -2405,7 +2409,7 @@ public sealed class OpenCodeConversationView : StackPanel
             foreach (var part in leaves)
                 if (part.Presentation is { } presentation) tools.Add(presentation());
                 else if (part.LastPart is { } snapshot && !part.IsReasoning)
-                    tools.Add(OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground));
+                    tools.Add(StepModel(part)!);
 
             var summary = OpenCodeStepRunPresentation.Build(
                 tools,
@@ -2447,7 +2451,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 var leaf = leaves.Count == 1 && k == 0 ? leaves[0] : null;
                 leaf?.SetDetailAnchor?.Invoke(summary.IsActive ? null : chain[k].Group.DetailAnchor);
                 var leafModel = leaf?.Presentation?.Invoke()
-                    ?? (leaf?.LastPart is { } snapshot && !leaf.IsReasoning ? OpenCodeToolRowPresentation.Build(snapshot, leaf.LastCompletion, leaf.ManualBackground) : null);
+                    ?? (leaf is null ? null : StepModel(leaf));
                 chain[k].Group.BindSingleLeaf(leaf?.OpenDetail, leaf?.HoverEnter, leaf?.HoverExit,
                     leaf is null ? null : leafModel?.Name ?? "思考",
                     leaf is null ? null : leaf.Glyph?.Invoke() ?? (leafModel is null ? "\uEA80" : leafModel.GlyphOverride ?? OpenCodeToolPartView.KindGlyph(leafModel.Kind)),
@@ -2509,7 +2513,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private static OpenCodeToolRowModel? StepModel(PartEntry part)
         => part.Presentation?.Invoke() ?? (part.LastPart is { } snapshot && !part.IsReasoning
-            ? OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground) : null);
+            ? OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground, part.FileIndex) : null);
 
     private static void AlignChildren(Panel panel, List<UIElement> elements)
     {
@@ -2531,7 +2535,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
     }
 
-    private PartEntry CreateLazyPartEntry(string key, string kind, OpenCodeContentPart part, string? parent, OpenCodeAsyncCompletion? completion)
+    private PartEntry CreateLazyPartEntry(string key, string kind, OpenCodeContentPart part, string? parent, OpenCodeAsyncCompletion? completion, int? fileIndex = null)
     {
         PartEntry? visual = null;
         PartEntry descriptor = null!;
@@ -2540,13 +2544,13 @@ public sealed class OpenCodeConversationView : StackPanel
         var messageId = parent;
         var notification = completion;
         var disposed = false;
-        OpenCodeToolRowModel Model() => OpenCodeToolRowPresentation.Build(snapshot, notification, descriptor.ManualBackground);
+        OpenCodeToolRowModel Model() => OpenCodeToolRowPresentation.Build(snapshot, notification, descriptor.ManualBackground, fileIndex);
         void Ensure()
         {
             if (disposed) return;
             if (visual is null)
             {
-                visual = CreatePartEntry(key, kind, snapshot, messageId, notification);
+                visual = CreatePartEntry(key, kind, snapshot, messageId, notification, fileIndex);
                 descriptor.Element = visual.Element;
                 visual.SetDetailAnchor?.Invoke(detailAnchor);
                 if (!_idleContentChanging) RaiseQuestionAnchorsChangedIfNeeded();
@@ -2558,7 +2562,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
         descriptor = new PartEntry
         {
-            Key = key, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool,
+            Key = key, FileIndex = fileIndex, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool,
             EnsureVisual = Ensure,
             RefreshVisual = () => { if (visual is not null) Ensure(); },
             Update = (current, id, finished) =>
@@ -2580,7 +2584,7 @@ public sealed class OpenCodeConversationView : StackPanel
         return descriptor;
     }
 
-    private PartEntry CreatePartEntry(string partKey, string kind, OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? completion)
+    private PartEntry CreatePartEntry(string partKey, string kind, OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? completion, int? fileIndex = null)
     {
         switch (kind)
         {
@@ -2683,14 +2687,14 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 var view = new OpenCodeToolPartView();
                 view.SetBackgroundAction(_backgroundAction);
-                view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id));
+                view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id), fileIndex);
                 // subagent 工具行固定详情时的「打开子会话」只向上转发；本视图在移除/替换时退订并 Dispose（无 stale callbacks）。
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> handler =
                     (_, e) => SubagentSessionRequested?.Invoke(this, e);
                 view.SubagentSessionRequested += handler;
                 return new PartEntry
                 {
-                    Key = partKey,
+                    Key = partKey, FileIndex = fileIndex,
                     Kind = kind,
                     IsGroupableTool = true,
                     // 入树的是工具行根元素（同一实例）；控制器由 Update 闭包持有，节点身份跨轮询保持。
@@ -2701,7 +2705,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     SetDetailAnchor = view.SetDetailAnchor,
                     ConfigureBackground = view.SetBackgroundAction,
                     BackgroundAction = () => view.BackgroundAction,
-                    Update = (p, messageId, c) => view.Update(p, messageId, c, messageId is { } parent && p.Id is { } id && _manualBackground.Contains(parent, id)),
+                    Update = (p, messageId, c) => view.Update(p, messageId, c, messageId is { } parent && p.Id is { } id && _manualBackground.Contains(parent, id), fileIndex),
                     Dispose = () =>
                     {
                         view.SubagentSessionRequested -= handler;

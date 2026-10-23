@@ -238,13 +238,13 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     /// <param name="part">assistant 消息中 type=tool 的内容部件。</param>
     /// <param name="parentMessageId">承载该部件的 assistant 消息 id（可为 null；仅随导航事件透传，不做校验/授权）。</param>
     /// <param name="asyncCompletion">与该调用关联的异步完成通知（后台终端 / 子任务）；无则 null（见 <see cref="OpenCodeToolRowPresentation.Build"/>）。</param>
-    internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false)
+    internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false, int? fileIndex = null)
     {
         ArgumentNullException.ThrowIfNull(part);
 
         _parentMessageId = parentMessageId;
         _lastPart = part;
-        _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground);
+        _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex);
         ApplyModel(_model);
         RefreshBackgroundAction();
 

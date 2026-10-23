@@ -280,6 +280,49 @@ internal static class Windowing
         staleOpen!();
         Check(ConversationViewTestProbe.Records.Count(r => r.Operation == "Construct" && r.Subject is OpenCodeToolPartView) == 1,
             "disposed-lazy-detail-callback-cannot-recreate-controller");
+        // TL2: same call projects into stable distinct leaves, including offscreen chain accounting.
+        var patchPart = new OpenCodeContentPart
+        {
+            Id = "call_patch", Type = OpenCodePartTypes.Tool, Name = "patch",
+            State = System.Text.Json.JsonSerializer.SerializeToElement(new
+            {
+                status = "completed", metadata = new { files = Enumerable.Range(0, 16).Select(i => new
+                { file = $"src/file{i}.cs", status = "modified", additions = i, deletions = 1, patch = "@@ -1 +1 @@\n-old\n+new" }).ToArray() },
+            }),
+        };
+        var patchMessage = calls[0] with { Id = "msg_patch", Content = new() { patchPart } };
+        ConversationViewTestProbe.Reset();
+        var patches = new OpenCodeConversationView();
+        patches.ApplyMessages(new[] { patchMessage });
+        var patchGroup = ConversationViewTestProbe.Records.Select(r => r.Subject).OfType<OpenCodeToolGroupView>().Distinct().Single();
+        Check(patchGroup.Summary is { SuccessCount: 16 } && patchGroup.OpenLeaf is null, "multi-file-call-counts-sixteen-not-one-call-or-single-leaf");
+        patchGroup.ToggleForTest();
+        var fileViews = ConversationViewTestProbe.Records.Where(r => r.Operation == "Construct").Select(r => r.Subject).OfType<OpenCodeToolPartView>().ToArray();
+        Check(fileViews.Length == 16 && fileViews.Select(v => v.FileIndex).SequenceEqual(Enumerable.Range(0, 16).Select(i => (int?)i)),
+            "all-sixteen-rows-have-own-file-specific-controller");
+        Check(fileViews.All(v => v.Element.Visibility == Visibility.Visible), "call-dedup-does-not-hide-file-rows");
+        patches.ApplyMessages(new[] { patchMessage with { Content = new() { patchPart with { } } } });
+        Check(fileViews.All(v => !v.IsDisposed) && ConversationViewTestProbe.Records.Count(r => r.Operation == "Construct" && r.Subject is OpenCodeToolPartView) == 16,
+            "file-index-keys-retain-controller-identity-across-snapshots");
+        patches.ClearMessages();
+        Check(fileViews.All(v => v.IsDisposed), "file-rows-disposed-together");
+
+        ConversationViewTestProbe.Reset();
+        var offscreenPatches = new OpenCodeConversationView();
+        var patchHistory = calls.ToList(); patchHistory[^1] = patchMessage;
+        offscreenPatches.ApplyMessages(patchHistory);
+        var patchLeader = ConversationViewTestProbe.Records.Select(r => r.Subject).OfType<OpenCodeToolGroupView>().Distinct().Single(g => g.HeaderVisible);
+        Check(patchLeader.Summary is { SuccessCount: 2015 }, "offscreen-sixteen-file-call-uses-same-per-file-summary");
+        offscreenPatches.ClearMessages();
+
+        ConversationViewTestProbe.Reset();
+        var transitioning = new OpenCodeConversationView();
+        var runningPatch = patchPart with { State = System.Text.Json.JsonSerializer.SerializeToElement(new { status = "running", input = new { patchText = "*** Begin Patch" } }) };
+        transitioning.ApplyMessages(new[] { patchMessage with { Content = new() { runningPatch } } });
+        transitioning.ApplyMessages(new[] { patchMessage });
+        Check(ConversationViewTestProbe.Records.Select(r => r.Subject).OfType<OpenCodeToolGroupView>().Distinct().Any(g => g.Summary is { SuccessCount: 16 }),
+            "streaming-aggregate-transitions-to-file-rows");
+        transitioning.ClearMessages();
         Console.WriteLine($"PASS conversation window: {checks} assertions; 2,000-row production view + production anchor/extent math; inert XAML only.");
     }
 }

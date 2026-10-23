@@ -183,6 +183,44 @@ internal static class Program
         Check(OpenCodeDetailTextPolicy.CanCollapseCode("a\nb\nc\nd\ne\nf\ng") && OpenCodeDetailTextPolicy.CanCollapseCode(new string('x', 241)), "multiline and very long single-line code offer expansion without an inner viewport");
     }
 
+    private static void PatchTimelineContract()
+    {
+        var files = new[]
+        {
+            new { file = "src/new.cs", status = "added", additions = 2, deletions = 0, patch = "@@ -0,0 +1,2 @@\n+new\n+file" },
+            new { file = "src/edit.cs", status = "modified", additions = 1, deletions = 1, patch = "@@ -1 +1 @@\n-old\n+changed" },
+            new { file = "src/old.cs", status = "deleted", additions = 0, deletions = 3, patch = "@@ -1,3 +0,0 @@\n-old\n-file\n-deleted" },
+            new { file = "src/other.cs", status = "renamed", additions = 0, deletions = 0, patch = "" },
+        };
+        foreach (var tool in new[] { "patch", "apply_patch", "edit", "multiedit" })
+        {
+            OpenCodeContentPart Part(string status) => new()
+            {
+                Id = "call_patch", Type = OpenCodePartTypes.Tool, Name = tool,
+                State = JsonSerializer.SerializeToElement(new { status, input = new { patchText = "all files" }, metadata = new { files } }),
+            };
+            var part = Part("completed");
+            Check(OpenCodeToolRowPresentation.TimelineRowCount(part) == 4, tool + " expands completed multi-file calls");
+            var rows = Enumerable.Range(0, 4).Select(i => OpenCodeToolRowPresentation.Build(part, fileIndex: i)).ToArray();
+            Check(rows.Select(r => r.Name).SequenceEqual(new[] { "新增", "修改", "删除", "应用补丁" }), tool + " names reflect real status");
+            Check(rows.Select(r => r.PartId).Distinct().Count() == 4 && rows[2].PartId == "call_patch/file:2", tool + " stable indexed row identity");
+            for (var i = 0; i < rows.Length; i++)
+            {
+                Check(rows[i].Target == files[i].file && rows[i].DiffFiles.Count == 1 && rows[i].DiffFiles[0].Patch == (files[i].patch.Length == 0 ? null : files[i].patch),
+                    tool + " preview/large model contains only its file");
+                Check(rows[i].InputText is null && rows[i].OutputText is null && rows[i].InputProperties.Count == 0,
+                    tool + " per-file preview does not leak aggregate patch input/output");
+            }
+            Check(rows[0].Summary == "+2 −0" && rows[2].Summary == "+0 −3", tool + " per-file counts");
+            Check(rows[0].GlyphOverride == "\uE8E5" && rows[1].GlyphOverride == "\uE70F" && rows[2].GlyphOverride == "\uE74D", tool + " file-status glyphs");
+            Check(OpenCodeToolRowPresentation.BuildGroupSummary(rows).SuccessCount == 4, tool + " counts files consistently");
+            foreach (var status in new[] { "running", "streaming", "error" })
+                Check(OpenCodeToolRowPresentation.TimelineRowCount(Part(status)) == 1, tool + " " + status + " stays aggregate");
+            var single = part with { State = JsonSerializer.SerializeToElement(new { status = "completed", metadata = new { files = files.Take(1) } }) };
+            Check(OpenCodeToolRowPresentation.TimelineRowCount(single) == 1, tool + " single file stays direct");
+        }
+    }
+
     private static int Main()
     {
         try
@@ -243,6 +281,7 @@ internal static class Program
                 && Row(todoWrite.InputProperties, "status", 2).Value == "pending", "A10 custom ids, protocol fields and tool input content are unchanged");
 
             DetailPopupContract();
+            PatchTimelineContract();
             ChildChatLifecycle().GetAwaiter().GetResult();
 
             Console.WriteLine($"PASS: tool detail property list + detail popup (G7/G8), {_assertions} assertions; real OpenCodeToolRowPresentation + OpenCodeDetailPopupLayout, no UI.");
