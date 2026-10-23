@@ -38,6 +38,12 @@ internal static class Program
     /// <summary>TL1: built-in tool detail views read the real v2.1.1 part shapes (samples from the user's DB).</summary>
     private static void BuiltinToolViews()
     {
+        var statusSections = OpenCodeContextStatusParser.Parse("Context (session accounting, host footer scale): 23% (231k / 1.0M) — includes compressed originals; shrinks slower than the sent view\nGrowth: +143k since last nudge\n\nToken Breakdown (sent view):\n  Tool       ███████████░░░░░░░░░  57%  78k\n\nBlocks: 14 active / 14 total (758k tokens compressed, cumulative)\n  [b1] T1 43k→1.5k: Session restore recon\n\nNudge: future-format");
+        Check(statusSections[0].Metrics[0].Percent == 23 && statusSections[0].Metrics[0].Value == "231K tokens / 1M tokens", "CS1 real session accounting parsed with D7 units");
+        Check(statusSections[1].Metrics.Single().Percent == 57 && statusSections[1].Metrics.Single().Label == "工具", "CS1 native progress bar data");
+        Check(statusSections[2].Metrics.Last().Label == "b1 · T1 · Session restore recon", "CS1 block list parsed without translating user title");
+        Check(statusSections[3].Raw == "Nudge: future-format", "CS1 unmatched section remains raw");
+        Check(OpenCodeContextStatusParser.Parse("Blocks: none (nothing compressed yet)").Single().Metrics.Single().Value == "尚未压缩", "CS1 no blocks is explicit, not inferred");
         var todo = Model("todowrite", """{"status":"completed","input":{"todos":[{"content":"A","status":"completed"},{"content":"B","status":"in_progress"},{"content":"C","status":"cancelled"},{"content":"D","status":"pending"}]},"content":[{"type":"text","text":"Todos updated: 1/4 completed"}],"metadata":{"todos":[{"content":"A","status":"completed"},{"content":"B","status":"in_progress"},{"content":"C","status":"cancelled"},{"content":"D","status":"weird"}],"truncated":false},"time":{"start":1,"end":2}}""");
         Check(OpenCodeToolDetailBuiltinData.Resolve(todo) == OpenCodeBuiltinToolView.Todo && todo.ToolName == "todowrite", "todowrite → to do view");
         var todos = OpenCodeToolDetailBuiltinData.Todos(todo.State);

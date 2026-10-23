@@ -19,6 +19,7 @@ internal enum OpenCodeBuiltinToolView
     Skill,
     WebSearch,
     Execute,
+    Context,
 }
 
 internal sealed record OpenCodeSubagentDetail(
@@ -71,6 +72,8 @@ internal static class OpenCodeToolDetailBuiltinData
     {
         ArgumentNullException.ThrowIfNull(model);
         if (model.State is not { ValueKind: JsonValueKind.Object }) return OpenCodeBuiltinToolView.None;
+        if (model.ToolName is "acp_status" or "compress" or "decompress" or "search_context" or "prune" or "absorb" or "acp_run")
+            return OpenCodeBuiltinToolView.Context;
         return model.Kind switch
         {
             OpenCodeToolKind.Todo => OpenCodeBuiltinToolView.Todo,
@@ -288,6 +291,12 @@ internal static class OpenCodeToolDetailBuiltinData
     }
 
     // ------------------------------------------------------------------ helpers
+
+    internal static JsonElement? Input(OpenCodeToolRowModel model) => Object(model.State, "input");
+
+    internal static string? StringValue(JsonElement? element, string name)
+        => element is { ValueKind: JsonValueKind.Object } e && e.TryGetProperty(name, out var value)
+            && value.ValueKind is JsonValueKind.String or JsonValueKind.Number ? value.ToString() : null;
 
     /// <summary>First <paramref name="lines"/> lines of a text and how many more remain.</summary>
     internal static (string Excerpt, int Remaining) Excerpt(string text, int lines)

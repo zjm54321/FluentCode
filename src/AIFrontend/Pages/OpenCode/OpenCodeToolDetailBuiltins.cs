@@ -17,7 +17,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// HyperlinkButton, Expander, ProgressRing — with built-in text styles and ThemeResource brushes.
 /// Data comes from <see cref="OpenCodeToolDetailBuiltinData"/>; unknown values are hidden, never guessed.
 /// </summary>
-internal static class OpenCodeToolDetailBuiltins
+internal static partial class OpenCodeToolDetailBuiltins
 {
     /// <summary>The tool-specific body, or null when the tool has no dedicated view (caller falls back to the property list).</summary>
     internal static FrameworkElement? Build(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
@@ -32,6 +32,7 @@ internal static class OpenCodeToolDetailBuiltins
             OpenCodeBuiltinToolView.Skill => Skill(model, options.Compact),
             OpenCodeBuiltinToolView.WebSearch => WebSearch(model, options.Compact),
             OpenCodeBuiltinToolView.Execute => Execute(model, options.Compact),
+            OpenCodeBuiltinToolView.Context => Context(model, options.Compact),
             _ => null,
         };
         if (body is not null) AutomationProperties.SetAutomationId(body, "OpenCodeToolDetailBuiltin." + OpenCodeToolDetailBuiltinData.Resolve(model));
