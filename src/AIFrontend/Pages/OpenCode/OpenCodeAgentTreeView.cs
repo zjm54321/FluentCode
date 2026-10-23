@@ -268,11 +268,11 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 + (agent.Hidden ? " · 隐藏" : string.Empty);
             var name = OpenCodeAgentIcons.DisplayName(agent.Name);
             var children = OpenCodeAgentTreeProjection.VisibleInstances(agent.Children, _showAll);
-            var rows = children.Select(instance => Row(instance.Title, instance.Model, instance.Status, instance)).ToArray();
+            var rows = children.Select(instance => Row(instance.Title, instance.Model, instance.Status, instance, agent)).ToArray();
             var working = agent.Children.Count(c => c.Status == OpenCodeTreeStatus.Running);
             Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Name),
                 OpenCodeAgentTreeProjection.CountLabel(working, agent.Children.Count, _showAll), rows,
-                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty));
+                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty), agent.Color);
         }
         var shells = OpenCodeAgentTreeProjection.VisibleShells(_shells, _showAll);
         if (shells.Count > 0)
@@ -295,13 +295,13 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     }
 
     private TreeViewNode Group(string key, string name, string glyph, string count,
-        IReadOnlyList<FrameworkElement> rows, bool dimmed, string tooltip)
+        IReadOnlyList<FrameworkElement> rows, bool dimmed, string tooltip, string? color = null)
     {
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.Children.Add(new FontIcon { Glyph = glyph, FontSize = 14 });
+        content.Children.Add(AgentIcon(glyph, color, dimmed));
         var label = new TextBlock { Text = name, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None, MaxLines = 0,
             VerticalAlignment = VerticalAlignment.Center,
@@ -340,12 +340,30 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         return caption;
     }
 
-    private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag)
+    private static FontIcon AgentIcon(string glyph, string? color, bool dimmed = false)
+    {
+        // Reuse the same backend hex parser as agent names. The theme resource remains live
+        // for agents without an explicit color (including future accent/theme changes).
+        var icon = (FontIcon)XamlReader.Load("<FontIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{ThemeResource AccentTextFillColorPrimaryBrush}\" FontSize=\"14\" />");
+        icon.Glyph = glyph;
+        if (OpenCodeAgentPresentation.Color(color) is { } rgb) icon.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(rgb);
+        icon.Opacity = dimmed ? 0.5 : 1;
+        return icon;
+    }
+
+    private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag, OpenCodeTreeAgent? agent = null)
     {
         var row = new Grid { Tag = tag, ColumnSpacing = 8 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        if (agent is not null)
+        {
+            var agentIcon = AgentIcon(OpenCodeAgentIcons.Glyph(agent.Name), agent.Color);
+            Grid.SetColumn(agentIcon, 1);
+            row.Children.Add(agentIcon);
+        }
         var task = new TextBlock { Text = title, FontSize = 12, LineHeight = 16, VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
         if (tag is OpenCodeTreeShell)
@@ -353,13 +371,13 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey) is { } code) task.Style = code;
             else task.FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas");
         }
-        Grid.SetColumn(task, 1);
+        Grid.SetColumn(task, 2);
         row.Children.Add(task);
         var model = Caption(subtitle);
         model.MaxWidth = 90;
         model.VerticalAlignment = VerticalAlignment.Center;
         model.HorizontalAlignment = HorizontalAlignment.Right;
-        Grid.SetColumn(model, 2);
+        Grid.SetColumn(model, 3);
         row.Children.Add(model);
         FrameworkElement indicator;
         var statusText = status switch { OpenCodeTreeStatus.Running => "运行中", OpenCodeTreeStatus.Succeeded => "成功", OpenCodeTreeStatus.Failed => "失败", OpenCodeTreeStatus.Interrupted => "已中断", _ => "状态不可用" };

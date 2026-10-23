@@ -36,7 +36,7 @@ internal static class Program
             "AT4: standalone divider separates native trees; terminal header shares agent row chrome, not the divider");
         Check(view.Contains("_tree.ItemInvoked += OnTreeItemInvoked") && view.Contains("_terminalTree.ItemInvoked += OnTreeItemInvoked"),
             "AT1/AT4: both native trees use the same group and leaf invoke path");
-        Check(view.Contains("Grid.SetColumn(model, 2)") && view.Contains("Grid.SetColumn(indicator, 0)")
+        Check(view.Contains("Grid.SetColumn(model, 3)") && view.Contains("Grid.SetColumn(indicator, 0)")
             && view.Contains("model.HorizontalAlignment = HorizontalAlignment.Right") && !view.Contains("text.Children.Add(model)"),
             "instance status leads; small gray model occupies the trailing column");
         var group = view[view.IndexOf("private TreeViewNode Group", StringComparison.Ordinal)..view.IndexOf("private static TextBlock Caption", StringComparison.Ordinal)];
@@ -70,7 +70,7 @@ internal static class Program
         var agents = new[]
         {
             new OpenCodeAgentInfo { Id = "custom-main", Name = "主配置", Mode = "primary" },
-             new OpenCodeAgentInfo { Id = "custom-worker", Name = "任意配置", Mode = "subagent" },
+             new OpenCodeAgentInfo { Id = "custom-worker", Name = "任意配置", Mode = "subagent", Color = "#A1B2C3" },
             new OpenCodeAgentInfo { Id = "idle-worker", Name = "idle", Mode = "subagent" },
             new OpenCodeAgentInfo { Id = "custom-hidden", Name = "隐藏配置", Mode = "all", Hidden = true },
             new OpenCodeAgentInfo { Id = "compaction", Name = "Compaction", Hidden = true },
@@ -95,6 +95,13 @@ internal static class Program
             "hidden groups disappear only when they have no real child instances");
         Check(groups.SelectMany(g => g.Children).All(c => c.Id != "ses_foreign" && c.Id != "ses_unconfigured"), "exact parent and configured identity only");
         Check(groups[0].Children.Single().Model == "used-model" && groups[0].Children.Single().Status == OpenCodeTreeStatus.Succeeded, "real model and outcome");
+        Check(groups[0].Color == "#A1B2C3" && groups[1].Color is null, "AT5: projection carries real agent color, preserving unknown as null");
+        Check(view.Contains("OpenCodeAgentPresentation.Color(color)") && view.Contains("AccentTextFillColorPrimaryBrush")
+            && view.Contains("AgentIcon(glyph, color, dimmed)")
+            && view.Contains("AgentIcon(OpenCodeAgentIcons.Glyph(agent.Name), agent.Color)")
+            && view.Contains("instance.Status, instance, agent)") && view.Contains("icon.Opacity = dimmed ? 0.5 : 1"),
+            "AT5: group and instance glyphs use backend color or live system accent; idle dimming retained");
+        Check(view.Contains("SystemFillColorCriticalBrush") && view.Contains("new ProgressRing"), "AT5: failure and running status indicators retain their own semantics");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count == 0, "default hides completed, unknown and idle agents");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, true).Count == 3, "all includes configured idle and hidden agents with real instances");
         var librarian = OpenCodeAgentTreeProjection.Agents(new[]

@@ -10,7 +10,7 @@ internal enum OpenCodeTreeStatus { Unknown, Running, Succeeded, Failed, Interrup
 internal enum OpenCodeTreeShellKind { Unknown, Foreground, Background }
 internal sealed record OpenCodeTreeInstance(string Id, string Title, string Model, OpenCodeTreeStatus Status);
 internal sealed record OpenCodeTreeAgent(string Id, string Name, string? Description, string? Mode, bool Hidden,
-    IReadOnlyList<OpenCodeTreeInstance> Children);
+    IReadOnlyList<OpenCodeTreeInstance> Children, string? Color);
 internal sealed record OpenCodeTreeShell(string Id, string Command, string? Cwd, OpenCodeTreeShellKind Kind,
     OpenCodeTreeStatus Status, string? Exit, string? Output);
 
@@ -26,7 +26,7 @@ internal static class OpenCodeAgentTreeProjection
             .Select(g => g.First()).Select(a => new OpenCodeTreeAgent(a.Id!, a.Name ?? a.Id!, a.Description, a.Mode, a.Hidden,
                 children.Where(s => string.Equals(s.Agent, a.Id, StringComparison.Ordinal)).OrderBy(s => s.Time?.Created)
                     .Select(s => new OpenCodeTreeInstance(s.Id!, string.IsNullOrWhiteSpace(s.Title) ? s.Id! : s.Title,
-                        s.Model?.Id ?? "模型不可用", live.TryGetValue(s.Id!, out var state) ? state : Outcome(s.Outcome))).ToArray()))
+                        s.Model?.Id ?? "模型不可用", live.TryGetValue(s.Id!, out var state) ? state : Outcome(s.Outcome))).ToArray(), a.Color))
             .Where(a => !a.Hidden || a.Children.Count > 0).ToArray();
     }
 
