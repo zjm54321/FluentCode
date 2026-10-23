@@ -56,7 +56,7 @@ internal static class Program
 
     private static OpenCodeErrorRecovery P(params OpenCodeMessage[] messages) => OpenCodeErrorRecoveryProjection.Project(messages);
 
-    private static int Main()
+    private static int Main(string[] args)
     {
         // --- classification -------------------------------------------------------------------------
         Check(OpenCodeErrorRecoveryProjection.IsTransientLinkError(Upstream), "upstream breakdown / response interrupted is transient");
@@ -170,6 +170,12 @@ internal static class Program
             Check(OpenCodeProcessedSummaryStyle.RowIconKey(working, OpenCodeToolRowChrome.For(working)) == "TextFillColorSecondaryBrush"
                 && OpenCodeProcessedSummaryStyle.RowLabelKey(working) is null, "B16: " + working + " row keeps its default emphasis");
         }
+
+        var toolView = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs"));
+        Check(toolView.Contains("chrome.TextKey ?? OpenCodeProcessedSummaryStyle.RowLabelKey(model.Status)", StringComparison.Ordinal)
+            && toolView.Contains("OpenCodeToolTheme.Apply(_nameText, textStyle)", StringComparison.Ordinal)
+            && toolView.Contains("OpenCodeToolTheme.Apply(_targetText, textStyle)", StringComparison.Ordinal),
+            "completed tool name/target use secondary text; failure chrome takes precedence and running defaults remain");
 
         Console.WriteLine("B14 error-recovery tests passed: " + _assertions + " assertions");
         return 0;

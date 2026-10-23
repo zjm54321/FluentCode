@@ -452,7 +452,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             ? OpenCodeToolTheme.Text(OpenCodeToolTheme.Critical, OpenCodeInteractionUi.CaptionStyleKey)
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         OpenCodeToolTheme.Apply(_summaryText, summaryStyle);
-        var textStyle = chrome.TextKey is { } textKey
+        // Failure text keeps critical chrome; successful processed tool names/targets recede with their group.
+        var textStyle = (chrome.TextKey ?? OpenCodeProcessedSummaryStyle.RowLabelKey(model.Status)) is { } textKey
             ? OpenCodeToolTheme.Text(textKey, OpenCodeInteractionUi.CaptionStyleKey)
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
         OpenCodeToolTheme.Apply(_nameText, textStyle);
