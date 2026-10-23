@@ -57,7 +57,9 @@ internal sealed class OpenCodeComposerShellState
     internal void Exit() => Active = false;
     internal void Reset() { Active = false; Text = string.Empty; }
     internal static bool IsEntry(string before, string after, int caret, int selectionLength, bool composing, bool menuVisible)
-        => !composing && !menuVisible && caret == 0 && selectionLength == 0 && after == "!" + before;
+        // BeforeTextChanging can expose the native caret AFTER insertion (1), even though Text is still
+        // the old value. The exact text delta, not that event's caret timing, proves insertion at zero.
+        => !composing && !menuVisible && caret is 0 or 1 && selectionLength == 0 && after == "!" + before;
     internal static bool IsExit(bool escape, bool backspace, bool controlC, int caret, string text)
         => escape || backspace && caret == 0 || controlC && text.Length == 0;
 }

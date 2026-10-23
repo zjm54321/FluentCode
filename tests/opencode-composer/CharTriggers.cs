@@ -35,6 +35,8 @@ internal static partial class Program
         Check(!shell.Active && shell.Text == "", "slot reset clears shell without touching a normal draft");
         Check(OpenCodeComposerShellState.IsEntry("", "!", 0, 0, false, false)
             && OpenCodeComposerShellState.IsEntry("normal\r\n你好", "!normal\r\n你好", 0, 0, false, false), "bang at offset zero consumes only bang, preserves normal draft");
+        Check(OpenCodeComposerShellState.IsEntry("", "!", 1, 0, false, false)
+            && OpenCodeComposerShellState.IsEntry("normal", "!normal", 1, 0, false, false), "native post-insertion caret still enters shell for exact leading bang delta");
         Check(!OpenCodeComposerShellState.IsEntry("x", "x!", 1, 0, false, false)
             && !OpenCodeComposerShellState.IsEntry("", "!", 0, 0, true, false)
             && !OpenCodeComposerShellState.IsEntry("", "!", 0, 0, false, true)
