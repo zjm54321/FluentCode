@@ -732,7 +732,12 @@ public static class AppFonts
             Subscribe();
         }
 
-        private void OnUnloaded(object sender, RoutedEventArgs e) => Unsubscribe();
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            // Reparented text can already be loaded again when the old unload arrives.
+            if (sender is FrameworkElement { IsLoaded: true }) return;
+            Unsubscribe();
+        }
 
         private void Subscribe()
         {
