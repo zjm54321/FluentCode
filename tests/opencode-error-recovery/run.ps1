@@ -22,7 +22,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
     'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"'
 }
-@('OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeErrorRecoveryProjection.cs') | ForEach-Object {
+@('OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeContextStatusParser.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'

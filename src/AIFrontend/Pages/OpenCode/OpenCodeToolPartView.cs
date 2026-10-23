@@ -34,7 +34,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// 增量移除 / 替换时由 <see cref="Dispose"/> 退订、关闭弹出层并停用回调，不产生 stale callbacks。
 /// </para>
 /// </remarks>
-public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
+public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeToolDetailOptionsSource
 {
     private readonly Grid _root;
     private readonly Border _selectionBar;
@@ -90,10 +90,20 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private string? _parentMessageId;
 
     private bool _disposed;
+    internal Func<string, (string? Agent, string? Description)?>? FindChild { get; set; }
     internal Action<OpenCodeToolDetailOptions, string?, Func<string, bool>>? ConfigureDetail { get; set; }
     private void ConfigureDetailOptions(OpenCodeToolDetailOptions options)
-        => ConfigureDetail?.Invoke(options, _parentMessageId,
+    {
+        ConfigureDetail?.Invoke(options, _parentMessageId,
             child => !_disposed && child == _childSessionId && OpenCodeSubagentPresentation.IsOpaqueSessionId(child));
+        options.OpenChildSession = child =>
+        {
+            if (_disposed || !OpenCodeSubagentPresentation.IsOpaqueSessionId(child)) return;
+            OpenCodeToolDetailPopup.Shared.Close();
+            RaiseSubagentSessionRequested(child);
+        };
+    }
+    void IOpenCodeToolDetailOptionsSource.ConfigureDetailOptions(OpenCodeToolDetailOptions options) => ConfigureDetailOptions(options);
     private FrameworkElement? _detailAnchorOverride;
     internal void SetDetailAnchor(FrameworkElement? anchor) => _detailAnchorOverride = anchor;
 
@@ -236,7 +246,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         Grid.SetColumn(_inlineRegion, 1);
         Grid.SetColumnSpan(_inlineRegion, 3);
         _root.Children.Add(_inlineRegion);
-        _root.ActualThemeChanged += (_, _) => ApplyRunningTint();
+        _root.ActualThemeChanged += (_, _) => { ApplyRunningTint(); ApplyAgentColor(_model); };
     }
 
     /// <summary>当前行模型（供分组摘要与详情弹出层使用）。</summary>
@@ -265,7 +275,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
         _parentMessageId = parentMessageId;
         _lastPart = part;
-        _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex);
+        _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex, FindChild);
         if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question
             || _model is { Kind: OpenCodeToolKind.Shell, IsBackground: true, ShellId.Length: > 0 })
             _rowActionSource ??= new RowActionPreviewSource(this);
@@ -338,6 +348,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
         _disposed = true;
         ConfigureDetail = null;
+        FindChild = null;
         _backgroundAction = null;
         _lastPart = null;
         CloseDetailIfShowing();
@@ -456,7 +467,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     private void ApplyModel(OpenCodeToolRowModel model)
     {
-        _kindIcon.Glyph = model.GlyphOverride ?? KindGlyph(model.Kind);
+        _kindIcon.Glyph = model.AgentName is { Length: > 0 } agentName ? OpenCodeAgentIcons.Glyph(agentName) : model.GlyphOverride ?? KindGlyph(model.Kind);
         _nameText.Text = model.Name;
         _targetText.Text = model.Target;
         _rowTag.Text = model.IsBackground ? "后台" : model.RawToolLabel;
@@ -501,6 +512,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         OpenCodeToolTheme.Apply(_targetText, textStyle);
         // B16: a completed row's kind glyph recedes; failure chrome (critical) and running rows are unchanged.
         OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(OpenCodeProcessedSummaryStyle.RowIconKey(model.Status, chrome)));
+        ApplyAgentColor(model);
 
         var active = model.IsActive;
         _progress.IsActive = active;
@@ -551,6 +563,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _root.Style = null;
         _root.Background = _model.IsActive
             ? new SolidColorBrush(ActualRowTint()) : null;
+    }
+
+    private void ApplyAgentColor(OpenCodeToolRowModel model)
+    {
+        if (model.Status != OpenCodeToolRowStatus.Error && model.AgentName is { Length: > 0 } agent)
+            _kindIcon.Foreground = new SolidColorBrush(OpenCodeAgentPresentation.Color(
+                OpenCodeAgentIcons.Color(agent, null, _root.ActualTheme == ElementTheme.Dark))!.Value);
+        else _kindIcon.ClearValue(FontIcon.ForegroundProperty);
     }
 
     private Color ActualRowTint() => _root.ActualTheme == ElementTheme.Dark

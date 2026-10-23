@@ -72,7 +72,7 @@ $production = @()
     'OpenCodeClient.SessionInfo.cs', 'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs', 'OpenCodeClient.ImageFiles.cs', 'OpenCodeImageFile.cs', 'OpenCodeAttachment.cs', 'OpenCodeDtos.Commands.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
     'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeManualBackgroundIndex.cs', 'OpenCodeNoticeDismissals.cs', 'OpenCodeSessionAncestry.cs',
     'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Inbox.cs',
-    'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Sessions.cs') | ForEach-Object {
+    'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeCapabilityStatus.cs', 'OpenCodeDtos.Capabilities.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_
 }
 @('OpenCodePageSource.cs', 'OpenCodeInteractionGate.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs',
@@ -84,7 +84,7 @@ $production = @()
     $production += Join-Path "$repo/src/AIFrontend/Pages" $_
 }
 @('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
-    'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs',
+    'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
     'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_
 }

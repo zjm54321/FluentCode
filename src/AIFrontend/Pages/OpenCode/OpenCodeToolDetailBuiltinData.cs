@@ -58,12 +58,29 @@ internal sealed record OpenCodeExecuteCall(string Tool, string? Status, string? 
 
 internal sealed record OpenCodeExecuteDetail(string? Code, IReadOnlyList<OpenCodeExecuteCall> Calls, string? Output);
 
+internal sealed record OpenCodeCompanionDetail(IReadOnlyDictionary<string, string> Values, string? State, string? SessionId);
+
 /// <summary>
 /// TL1: pure (WinUI-free) readers for the built-in tool detail views. Every value comes from the real
 /// v2.1.1 part state (input / metadata / text output); missing fields stay null and the view hides them.
 /// </summary>
 internal static class OpenCodeToolDetailBuiltinData
 {
+    internal static OpenCodeCompanionDetail Companion(OpenCodeToolRowModel model)
+    {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        var output = Regex.Replace(model.OutputText ?? "", @"<task_error>[\s\S]*?</task_error>", "");
+        foreach (var line in output.Split('\n'))
+        {
+            var match = Regex.Match(line.TrimEnd('\r'), @"^([A-Za-z_][A-Za-z0-9_]*): (.*)$");
+            if (match.Success) values.TryAdd(match.Groups[1].Value, match.Groups[2].Value);
+        }
+        values.TryGetValue("state", out var state);
+        var session = values.TryGetValue("sessionID", out var returned) ? returned
+            : StringValue(Input(model), "sessionID") ?? StringValue(Input(model), "task_id");
+        return new(values, state, session);
+    }
+
     /// <summary>Hover-preview caps (the large view shows everything).</summary>
     internal const int CompactTodoRows = 8;
     internal const int CompactSearchResults = 4;

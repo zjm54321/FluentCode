@@ -32,6 +32,11 @@ internal interface IOpenCodeToolDetailFileSource
     string? DetailFileKey { get; }
 }
 
+internal interface IOpenCodeToolDetailOptionsSource
+{
+    void ConfigureDetailOptions(OpenCodeToolDetailOptions options);
+}
+
 /// <summary>Optional host routes; no global selected-session lookup is used for file or terminal actions.</summary>
 internal interface IOpenCodeToolDetailActionSource
 {
@@ -740,6 +745,7 @@ internal sealed class OpenCodeToolDetailPopup
         OpenCodeToolDetailView view;
         try
         {
+            if (_source is IOpenCodeToolDetailOptionsSource optionsSource) optionsSource.ConfigureDetailOptions(_options);
             view = _source switch
             {
                 IOpenCodeToolDetailSource tool => OpenCodeToolDetailContent.Build(tool.DetailModel, Compact(_options), () => Rebuild(keepScroll: true)),

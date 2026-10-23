@@ -953,6 +953,9 @@ public sealed class OpenCodeConversationView : StackPanel
     /// </summary>
     private Dictionary<string, OpenCodeAsyncCompletion> _asyncCompletions = new(StringComparer.Ordinal);
     private readonly HashSet<string> _subagentInvocationKeys = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (string? Agent, string? Description)> _childToolTargets = new(StringComparer.Ordinal);
+    private (string? Agent, string? Description)? FindChildTool(string child)
+        => _childToolTargets.TryGetValue(child, out var target) ? target : null;
     public event Action<string>? TerminalRequested;
 
     /// <summary>创建空的消息时间线视图。</summary>
@@ -1006,6 +1009,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void ClearMessagesCore()
     {
+        _childToolTargets.Clear();
         _windowGeneration++;
         _windowQueued = false;
         _window.Reset();
@@ -1075,6 +1079,16 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void ApplyMessagesCore(IReadOnlyList<OpenCodeMessage> messages)
     {
+        _childToolTargets.Clear();
+        foreach (var message in messages)
+            if (message.Content is { } parts)
+                foreach (var part in parts)
+                    try
+                    {
+                        if (OpenCodeSubagentPresentation.TryReadToolPart(part, out var child) && child.ChildSessionId is { } id)
+                            _childToolTargets[id] = (child.Agent, child.Description);
+                    }
+                    catch (OpenCodeProtocolException) { } // Malformed invocations cannot supply a related-child identity.
         _messageIdCounts.Clear();
         // Accepted raw order, before safe presentation copies and before any provisional chat rows.
         _manualBackground.Update(messages);
@@ -2550,9 +2564,9 @@ public sealed class OpenCodeConversationView : StackPanel
         ReconcileSteerRows();
     }
 
-    private static OpenCodeToolRowModel? StepModel(PartEntry part)
+    private OpenCodeToolRowModel? StepModel(PartEntry part)
         => part.Presentation?.Invoke() ?? (part.LastPart is { } snapshot && !part.IsReasoning
-            ? OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground, part.FileIndex) : null);
+            ? OpenCodeToolRowPresentation.Build(snapshot, part.LastCompletion, part.ManualBackground, part.FileIndex, FindChildTool) : null);
 
     private static void AlignChildren(Panel panel, List<UIElement> elements)
     {
@@ -2583,7 +2597,7 @@ public sealed class OpenCodeConversationView : StackPanel
         var messageId = parent;
         var notification = completion;
         var disposed = false;
-        OpenCodeToolRowModel Model() => OpenCodeToolRowPresentation.Build(snapshot, notification, descriptor.ManualBackground, fileIndex);
+        OpenCodeToolRowModel Model() => OpenCodeToolRowPresentation.Build(snapshot, notification, descriptor.ManualBackground, fileIndex, FindChildTool);
         void Ensure()
         {
             if (disposed) return;
@@ -2674,6 +2688,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 // 回答在输入区的提问遮罩中进行；提交 / 取消 / 重查路径不变。
                 var view = new OpenCodeToolPartView();
                 view.ConfigureDetail = (options, parent, canRead) => ConfigureToolDetail?.Invoke(options, parent, canRead);
+                view.FindChild = FindChildTool;
                 view.SetBackgroundAction(_backgroundAction);
                 view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id));
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> questionHandler =
@@ -2728,6 +2743,7 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 var view = new OpenCodeToolPartView();
                 view.ConfigureDetail = (options, parent, canRead) => ConfigureToolDetail?.Invoke(options, parent, canRead);
+                view.FindChild = FindChildTool;
                 view.SetBackgroundAction(_backgroundAction);
                 view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id), fileIndex);
                 // subagent 工具行固定详情时的「打开子会话」只向上转发；本视图在移除/替换时退订并 Dispose（无 stale callbacks）。

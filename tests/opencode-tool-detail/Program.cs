@@ -38,6 +38,28 @@ internal static class Program
     /// <summary>TL1: built-in tool detail views read the real v2.1.1 part shapes (samples from the user's DB).</summary>
     private static void BuiltinToolViews()
     {
+        using var encryptedProvider = JsonDocument.Parse("""{"reasoningEncryptedContent":"provider-ciphertext"}""");
+        var encryptedPart = new OpenCodeContentPart { Type = "reasoning", Text = "", State = encryptedProvider.RootElement.Clone() };
+        Check(OpenCodeStepRunPresentation.IsEncryptedReasoning(encryptedPart), "D1 verified empty provider reasoning ciphertext gets explicit notice");
+        Check(!OpenCodeStepRunPresentation.IsEncryptedReasoning(encryptedPart with { Text = "visible reasoning" }), "D1 do not hide plaintext when provider also supplies ciphertext");
+        Check(!OpenCodeStepRunPresentation.IsEncryptedReasoning(encryptedPart with { State = null }), "D1 empty is not guessed to mean encrypted");
+        OpenCodeToolRowModel OutputModel(string name, string output) => Model(name, JsonSerializer.Serialize(new
+        {
+            status = "completed", input = new { task_id = "ses_child" }, content = new[] { new { type = "text", text = output } },
+        }));
+        Check(OutputModel("compress", "[Compressed m1–m2 → 1 block(s), ~59700 tokens saved.]").Summary == "节省约 59.7K tokens", "wire compress real saved tokens");
+        Check(OutputModel("compress", "probably saved many tokens").Summary == "", "wire context prose is not a fact");
+        Check(OutputModel("decompress", "[Block b7 content — 80 item(s), full]\nContent (80800 chars) written to: /tmp/result.txt").Summary == "完整 · 80 项", "wire decompress count and full flag");
+        Check(OpenCodeToolDetailBuiltinData.DecompressPath(OutputModel("decompress", "Content (80800 chars) written to: /tmp/result.txt")) == "/tmp/result.txt", "wire decompress literal saved file");
+        Check(OutputModel("search_context", "Found 8 block(s) for query:\n\nb1 (T1) title [m1–m2 · 2 msgs]\n excerpt").Summary == "1 / 8 个块", "wire search actual shown and total");
+        Check(OutputModel("prune", "Pruned 608 message(s) into 1 pruned section(s) (b1). Context is now ~183,764 tokens").Summary == "608 条 → b1", "wire real prune format");
+        Check(OutputModel("task_revive", "sessionID: ses_child\nstate: running\nstatus: started\nstatus_uncertain: true").Summary == "已启动（未确认）", "wire acknowledgement distinct from uncertain runtime state");
+        Check(OutputModel("task_message", "Message queued for ses_child (ses_child) without launching or resuming it.").Summary == "已接收", "wire exact queued acknowledgement");
+        Check(OutputModel("task_message", "This message might be accepted").Summary == "", "wire no acknowledgement guessed from prose");
+        var relatedModel = OutputModel("task_result", "sessionID: ses_child\nstate: completed");
+        var relatedRow = OpenCodeToolRowPresentation.Build(new OpenCodeContentPart { Type = "tool", Name = "task_result", State = relatedModel.State },
+            findChild: child => child == "ses_child" ? ("fixer", "真实任务") : null);
+        Check(relatedRow.Target == "Fixer · 真实任务" && relatedRow.AgentName == "fixer", "wire companion target and color identity resolve real invocation");
         var statusSections = OpenCodeContextStatusParser.Parse("Context (session accounting, host footer scale): 23% (231k / 1.0M) — includes compressed originals; shrinks slower than the sent view\nGrowth: +143k since last nudge\n\nToken Breakdown (sent view):\n  Tool       ███████████░░░░░░░░░  57%  78k\n\nBlocks: 14 active / 14 total (758k tokens compressed, cumulative)\n  [b1] T1 43k→1.5k: Session restore recon\n\nNudge: future-format");
         Check(statusSections[0].Metrics[0].Percent == 23 && statusSections[0].Metrics[0].Value == "231K tokens / 1M tokens", "CS1 real session accounting parsed with D7 units");
         Check(statusSections[1].Metrics.Single().Percent == 57 && statusSections[1].Metrics.Single().Label == "工具", "CS1 native progress bar data");
@@ -98,6 +120,7 @@ internal static class Program
             && executeDetail.Calls[1].Status == "error" && executeDetail.Calls[1].Input == "{}" && executeDetail.Output!.Contains("ses_1"), "execute: code, nested tool calls, result");
         Check(OpenCodeExecuteInnerCatalog.Entries.Count == 50, "D6 all 50 catalog ids");
         Check(OpenCodeExecuteInnerCatalog.Target(executeDetail) == "移动会话目录 等 2 个调用", "D6 discovery counts but is not outer target");
+        Check(execute.Target == "移动会话目录 等 2 个调用" && execute.Summary.Length == 0, "D6 actual outer row uses catalog target once");
         Check(OpenCodeExecuteInnerCatalog.Summary(executeDetail.Calls[0]) == "query: codegraph_explore · limit: 1", "D6 fixed keys, not compact JSON");
         Check(OpenCodeExecuteInnerCatalog.Find("future.plugin") is null, "D6 unknown id not guessed");
 
@@ -115,9 +138,24 @@ internal static class Program
         var content = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailContent.cs"));
         var popup = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailPopup.cs"));
         var builtins = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltins.cs"));
+        var rowHost = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs"));
+        var liveHost = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.RuntimeFeedback.cs"));
+        var markdownHost = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
+        Check(rowHost.Contains("OpenCodeToolDetailBuiltins.BuildInline(_model)", StringComparison.Ordinal), "D1 row host actually uses shared inline builder");
+        Check(liveHost.Contains("BindLiveChildOutput(options, client", StringComparison.Ordinal)
+            && liveHost.Contains("IsCurrentMessageHistoryRead(read)", StringComparison.Ordinal)
+            && liveHost.Contains("ContainsRenderedMessage(parent)", StringComparison.Ordinal)
+            && rowHost.Contains("child == _childSessionId", StringComparison.Ordinal), "D9 live host has binding, parent and child guards");
+        Check(rowHost.Contains("DetailFileIndex => _detailModel.SourceFileIndex", StringComparison.Ordinal)
+            && rowHost.Contains("_detailModel.DiffFiles[0].Path", StringComparison.Ordinal), "PT1 row supplies original file index and exact projected key");
+        Check(markdownHost.Contains("_expandCodeBlocks = OpenCodeToolDetailContent.IsFullDetailBuild", StringComparison.Ordinal)
+            && markdownHost.Contains("DetailBuildScope(_expandCodeBlocks)", StringComparison.Ordinal), "full Markdown policy survives deferred rerender");
         Check(content.Contains("OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);", StringComparison.Ordinal), "built-in views dispatched before the generic dump");
         Check(popup.Contains("options.Compact = _mode == OpenCodeDetailPopupMode.Preview;", StringComparison.Ordinal), "preview builds compact, large view builds full");
         var surface = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailSurface.cs"));
+        Check(surface.Contains("PathAction(\"打开技能目录\"", StringComparison.Ordinal)
+            && surface.Contains("PathAction(\"打开文件\"", StringComparison.Ordinal)
+            && surface.Contains("IsEnabled = reason is null", StringComparison.Ordinal), "path footer actions use host policy or disabled reason");
         Check(surface.Contains("Orientation = Orientation.Horizontal, Spacing = 28", StringComparison.Ordinal)
             && surface.Contains("Content = \"原始数据\"", StringComparison.Ordinal), "v5 native horizontal facts and raw-data footer");
         Check(content.Contains("allContent.Children.Add(top)", StringComparison.Ordinal)

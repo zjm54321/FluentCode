@@ -62,8 +62,12 @@ namespace AIFrontend.Pages.OpenCode
             => ConversationViewTestProbe.Record("Render", this, source, style);
     }
 
+    internal sealed class OpenCodeToolDetailOptions { }
+
     public sealed class OpenCodeToolPartView
     {
+        internal Action<OpenCodeToolDetailOptions, string?, Func<string, bool>>? ConfigureDetail { get; set; }
+        internal Func<string, (string? Agent, string? Description)?>? FindChild { get; set; }
         private Action<string, OpenCodeContentPart>? _backgroundAction;
         private OpenCodeContentPart? _lastPart;
         internal void SetBackgroundAction(Action<string, OpenCodeContentPart>? action) => _backgroundAction = action;

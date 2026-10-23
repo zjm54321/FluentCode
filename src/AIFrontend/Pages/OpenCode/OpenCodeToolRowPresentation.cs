@@ -243,6 +243,7 @@ internal sealed class OpenCodeToolRowModel
 
     public bool IsBackground { get; init; }
     public string? GlyphOverride { get; init; }
+    public string? AgentName { get; init; }
     public bool CanMoveToBackground => IsActive && !IsBackground && Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent;
 
     public bool IsActive => Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
@@ -409,7 +410,8 @@ internal static class OpenCodeToolRowPresentation
     /// 与该调用关联的异步完成通知（后台终端 / 子任务；由会话视图按 metadata 中的不透明 id 匹配），无则 null。
     /// 有完成通知时行摘要显示“后台已完成 / 失败”（失败时行状态为出错）；后台仍在运行（metadata.status = running）时显示“后台运行中”。
     /// </param>
-    internal static OpenCodeToolRowModel Build(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion = null, bool manualBackground = false, int? fileIndex = null)
+    internal static OpenCodeToolRowModel Build(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion = null, bool manualBackground = false, int? fileIndex = null,
+        Func<string, (string? Agent, string? Description)?>? findChild = null)
     {
         ArgumentNullException.ThrowIfNull(part);
         var kind = Classify(part.Name);
@@ -427,6 +429,8 @@ internal static class OpenCodeToolRowPresentation
         var input = state?.Input is { ValueKind: JsonValueKind.Object } i ? i : (JsonElement?)null;
         var metadata = state?.Metadata is { ValueKind: JsonValueKind.Object } m ? m : (JsonElement?)null;
         var output = JoinTextOutput(state);
+        var builtinModel = new OpenCodeToolRowModel { ToolName = part.Name?.Trim() ?? "", State = part.State, OutputText = output };
+        var agentName = kind == OpenCodeToolKind.Subagent ? FirstString(input, "agent", "subagent_type") : null;
         var fileOutputs = new List<string>();
         if (state?.Content is { } contents)
         {
@@ -624,13 +628,21 @@ internal static class OpenCodeToolRowPresentation
             default:
                 target = FirstString(input, "filePath", "path", "command", "pattern", "url", "description", "query", "name", "reason", "message", "prompt", "task_id", "sessionID", "id") ?? string.Empty;
                 if (part.Name == "skill") target = FirstString(metadata, "name") ?? FirstString(input, "id") ?? target;
-                if (part.Name == "execute" && metadata is { } executeMetadata
-                    && executeMetadata.TryGetProperty("toolCalls", out var calls) && calls.ValueKind == JsonValueKind.Array && calls.GetArrayLength() > 0
-                    && FirstString(calls[0], "tool") is { } firstCall)
+                if (part.Name == "execute")
                 {
-                    var lastSeparator = firstCall.LastIndexOf('.');
-                    summary = DisplayName(lastSeparator >= 0 ? firstCall[(lastSeparator + 1)..] : firstCall)
-                        + " 等 " + calls.GetArrayLength().ToString(CultureInfo.InvariantCulture) + " 个调用";
+                    target = OpenCodeExecuteInnerCatalog.Target(OpenCodeToolDetailBuiltinData.Execute(builtinModel)) ?? string.Empty;
+                }
+                if (OpenCodeToolDetailBuiltinData.Resolve(builtinModel) == OpenCodeBuiltinToolView.Companion)
+                {
+                    var child = OpenCodeToolDetailBuiltinData.Companion(builtinModel).SessionId;
+                    var related = child is null ? null : findChild?.Invoke(child);
+                    agentName = related?.Agent;
+                    if (part.Name is "task_status" or "task_result")
+                        target = related is { } known
+                            ? string.IsNullOrWhiteSpace(known.Agent) ? known.Description ?? target
+                                : char.ToUpperInvariant(known.Agent[0]) + known.Agent[1..] + (string.IsNullOrWhiteSpace(known.Description) ? "" : " · " + known.Description)
+                            : child is null ? target : child[..Math.Min(12, child.Length)];
+                    else target = FirstLine(FirstString(input, "reason", "message", "prompt")) ?? target;
                 }
                 break;
         }
@@ -766,6 +778,7 @@ internal static class OpenCodeToolRowPresentation
             AccessibleName = accessible.ToString(),
             IsBackground = background,
             GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph : null,
+            AgentName = agentName,
             ToolName = part.Name?.Trim() ?? string.Empty,
             State = part.State,
         };
