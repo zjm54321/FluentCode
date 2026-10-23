@@ -10,10 +10,6 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
-    // Compatibility seam for the independently owned agent-tree partial. No right-side return UI remains;
-    // calls are erased by the compiler when there is no implementation.
-    partial void UpdateSessionReturnUi();
-
     /// <summary>已完成验证的返回目标来源类型。</summary>
     private enum SessionReturnKind
     {

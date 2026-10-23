@@ -250,14 +250,11 @@ public sealed partial class OpenCodePage
         {
             // The current GET/session's verified direct parent, never a sidebar or visited-origin guess.
             InstallSessionReturnContext(parent);
-            var task = ReturnToSessionAsync();
-            UpdateSessionReturnUi();
-            await task;
+            await ReturnToSessionAsync();
         }
         finally
         {
             _treeParentReturnBusy = false;
-            UpdateSessionReturnUi();
             if (IsTreeCurrent(binding)) _agentTree.ShowParentReturn(true);
         }
     }
