@@ -62,6 +62,14 @@ internal static class Program
         joined.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_j","ordinal":0,"text":"hello world"}"""));
         Check(Text(joined) == "hello world", "native ended restores authoritative text after mid-stream join");
 
+        var dropped = new OpenCodeEventReducer("ses_test");
+        dropped.MergeSnapshot(new[] { Message("msg_x", "old"), Message("msg_y", "kept") }, dropped.Version);
+        dropped.MergeSnapshot(new[] { Message("msg_y", "kept") }, dropped.Version);
+        dropped.Apply(Event("session.text.started", """{"sessionID":"ses_test","assistantMessageID":"msg_x","ordinal":0}"""));
+        dropped.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_x","ordinal":0,"text":"revived"}"""));
+        Check(dropped.Messages.Select(m => m.Id).SequenceEqual(new[] { "msg_y", "msg_x" }) && dropped.Messages.Last().Content!.Single().Text == "revived",
+            "message dropped by a snapshot becomes visible again when later events arrive");
+
         var observed = new OpenCodeEventReducer("ses_test");
         var observedFetch = observed.Version;
         observed.Apply(Event("session.text.started", """{"sessionID":"ses_test","assistantMessageID":"msg_o","ordinal":0}"""));

@@ -79,8 +79,16 @@ public sealed class OpenCodeEventReducer
                 if (String(part, "id") is { } partId) DrainPending(baseline, id, partId);
             ordered.Add(id);
         }
+        var kept = new HashSet<string>(ordered, StringComparer.Ordinal);
         foreach (var id in _order)
-            if (!ordered.Contains(id, StringComparer.Ordinal) && _changed.GetValueOrDefault(id) > fetchVersion) ordered.Add(id);
+            if (_changed.GetValueOrDefault(id) > fetchVersion && kept.Add(id)) ordered.Add(id);
+        // Dropped messages leave every index: a retained hidden entry would swallow later events for that ID.
+        foreach (var id in _messages.Keys.Where(id => !kept.Contains(id)).ToList())
+        {
+            _messages.Remove(id);
+            _changed.Remove(id);
+            _placeholders.Remove(id);
+        }
         _order.Clear();
         _order.AddRange(ordered);
         return Messages;
