@@ -519,7 +519,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var total = UsageCell("\uE81E", "汇总", knownTokens ? prefix + Token(summary!.Tokens.Total) : string.Empty, strong: true);
         ToolTipService.SetToolTip(total, "汇总：" + (knownTokens ? Token(summary!.Tokens.Total) : "") + "；总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入");
         var cost = UsageCell("\uE8C7", "花费", knownCost ? prefix + Money(summary!.TotalCost) : string.Empty, strong: true);
-        ToolTipService.SetToolTip(cost, "花费：" + (knownCost ? Money(summary!.TotalCost) : "") + "；本会话及全部子代理的合计，直接累计 Session.Info.cost，不重新计价。");
+        ToolTipService.SetToolTip(cost, "花费：" + (knownCost ? Money(summary!.TotalCost) : "") + "；本会话及全部子智能体的合计，直接累计 Session.Info.cost，不重新计价。");
         Grid.SetColumn(cost, 1);
         totals.Children.Add(total);
         totals.Children.Add(cost);
