@@ -21,7 +21,8 @@ internal sealed class OpenCodeTurnChipView
     internal OpenCodeTurnChipView(OpenCodeMessage message)
     {
         _button.Loaded += (_, _) => Enrich();
-        _button.Unloaded += (_, _) => _read?.Cancel();
+        // A late unload of the old message container must not cancel its new enrichment.
+        _button.Unloaded += (_, _) => { if (!_button.IsLoaded) _read?.Cancel(); };
         Update(message);
     }
 
