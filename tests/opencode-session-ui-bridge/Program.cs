@@ -448,7 +448,6 @@ static partial class Checks
         Check(f.State.ViewedWatermark == 100 && f.State.Completion!.IdleWatermark == 600 && f.State.IsUnread && f.State.MutationProtected,
             "successful older receipt cannot clear protection or overwrite newer completion");
         var version = f.App.GetOpenCodeSessionUiSnapshot(f.Source, 1)!.Version;
-        Check(await f.App.AcknowledgeOpenCodeSessionAsync(f.Source, 1, Session) is null, "compatibility ACK without rendered watermark yields no receipt");
         Check(await f.App.AcknowledgeOpenCodeSessionAsync(f.Source, 1, Session, 501) is null, "covered beyond fresh server idle yields null");
         Check(await f.App.AcknowledgeOpenCodeSessionAsync(f.Source, 1, Session, 200, () => false) is null, "visibility fence cancels ACK");
         f.FailView = true;

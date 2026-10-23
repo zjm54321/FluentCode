@@ -106,10 +106,6 @@ public partial class App
     /// Pass the idle watermark actually rendered by the page, never a subsequently refreshed watermark.
     /// Returns that exact acknowledged watermark, or null if no safe receipt was obtained.
     /// No permission/form acknowledgement; no automatic retry after an uncertain POST.</summary>
-    public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
-        string sessionId, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
-        => Task.FromResult<double?>(null); // Compatibility only: no rendered watermark means NO receipt.
-
     public async Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
         string sessionId, double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
     {

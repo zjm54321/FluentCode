@@ -92,8 +92,6 @@ static partial class Checks
         void Observe(OpenCodeSessionObservation value) { app.Observe(monitor, value); app.Drain(); }
         Observe(Terminal());
         Check(app.Snapshot.Status == TaskbarStatus.Completed, "actual App maps corroborated terminal to unified aggregate");
-        Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test") is null && posts == 0,
-            "legacy App ACK with no rendered watermark never posts newest idle");
         Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test", 100) == 100 && sent == 100 && posts == 1,
             "actual App ACK preserves rendered100 even after fresh server idle advances to200");
         app.Drain();

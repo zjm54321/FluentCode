@@ -289,9 +289,8 @@ internal static partial class Program
         using (var f = new Fixture())
         {
             await f.File(); var context = f.Context();
-            Check(await f.Core.SubmitAsync(context.Basis.Token, () => true) is OpenCodeComposerSubmitOutcome.NotStarted
-                && await f.Core.SubmitAsync((OpenCodeComposerSendContext)null!) is OpenCodeComposerSubmitOutcome.NotStarted
-                && f.Handler.StateReads == 0 && f.Handler.Posts == 0, "old overload and missing context cannot bypass stage preflight");
+            Check(await f.Core.SubmitAsync((OpenCodeComposerSendContext)null!) is OpenCodeComposerSubmitOutcome.NotStarted
+                && f.Handler.StateReads == 0 && f.Handler.Posts == 0, "missing context cannot bypass stage preflight");
             var forged = context with { Origin = context.Origin with { SessionId = "ses_other" } };
             Check(await f.Core.SubmitAsync(forged) is OpenCodeComposerSubmitOutcome.NotStarted, "origin/basis route binding mismatch rejected");
             f.Core.RemoveAttachment(f.Core.Snapshot.Token, f.Core.Snapshot.Attachments.Single().Id); f.Text("ordinary");

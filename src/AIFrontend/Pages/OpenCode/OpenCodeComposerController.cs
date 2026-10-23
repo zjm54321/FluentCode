@@ -680,12 +680,6 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         Edited();
     }
 
-    // Compatibility is source-only: an old caller cannot skip the fresh stage preflight.
-    public Task<OpenCodeComposerSubmitOutcome> SubmitAsync(OpenCodeComposerToken token,
-        Func<bool> ownsLocalSubmission, CancellationToken ct = default,
-        OpenCodeComposerAcceptedDraftHandoff? acceptedDraftHandoff = null)
-        => Task.FromResult<OpenCodeComposerSubmitOutcome>(new OpenCodeComposerSubmitOutcome.NotStarted());
-
     internal async Task<OpenCodeComposerSubmitOutcome> SubmitAsync(OpenCodeComposerSendContext context,
         CancellationToken ct = default, OpenCodeComposerAcceptedDraftHandoff? acceptedDraftHandoff = null,
         Action<SessionControlModelRef?>? promptAccepted = null)
