@@ -731,9 +731,7 @@ public sealed class OpenCodeHomeView : UserControl
             {
                 var action = (OpenCodeHomeSessionAction)entry.Tag;
                 entry.IsEnabled = target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true;
-                ToolTipService.SetToolTip(entry, entry.IsEnabled ? null : action == OpenCodeHomeSessionAction.Archive
-                    ? "归档暂不可用：此版本尚未接入会话归档。"
-                    : "此会话正在进行其他操作，或列表已变化；请稍后重试。");
+                ToolTipService.SetToolTip(entry, entry.IsEnabled ? null : "此会话正在进行其他操作，或列表已变化；请稍后重试。");
             }
         };
         return menu;

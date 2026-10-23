@@ -32,6 +32,8 @@ public sealed partial class OpenCodePage
     /// instead of requesting again. Any newer cursor or list refresh makes it stale automatically.</summary>
     private (string Cursor, int Epoch)? _homeLoadMoreFailure;
     private CancellationTokenSource? _homeCancellation;
+    /// <summary>Sessions whose archive the server accepted (204) in this source; hidden until a re-read carries time.archived.</summary>
+    private readonly HashSet<string> _homeArchivedSessions = new(StringComparer.Ordinal);
     private ContentDialog? _homeDialog;
 
     partial void OnSessionCatalogChanged()
@@ -285,6 +287,7 @@ public sealed partial class OpenCodePage
         _homeMessage = null;
         _homeSessionsMessage = null;
         _homeLoadMoreFailure = null;
+        _homeArchivedSessions.Clear();
         _homeView.SetSnapshot(new(_homeRevision, Array.Empty<OpenCodeHomeProject>(), Array.Empty<OpenCodeHomeSession>()));
     }
 
@@ -368,7 +371,8 @@ public sealed partial class OpenCodePage
         if (SourceReady)
             foreach (var info in _sessionItems.Values)
             {
-                if (!IsRootSession(info)
+                // Archived sessions (server time.archived, or an archive the server just accepted) leave Home.
+                if (!IsRootSession(info) || info.Time?.Archived is not null || _homeArchivedSessions.Contains(info.Id!)
                     || info.Location?.Directory is not { Length: > 0 } directory) continue;
                 if (!_homeProjects.ContainsKey(directory)) RememberHomeProject(directory, null, info.ProjectId);
                 _sessionTabStates.TryGetValue(info.Id!, out var state);

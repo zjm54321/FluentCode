@@ -157,6 +157,7 @@ namespace AIFrontend.Pages
         internal void TestReplaceHomeSource() { _homeRuntimeSource = "runtime-b"; _homeRevision++; }
         // The extracted Home router calls the guarded switch directly from accepted DTO metadata.
         private string? _homeMessage;
+        private readonly System.Collections.Generic.HashSet<string> _homeArchivedSessions = new(System.StringComparer.Ordinal);
         internal readonly List<string> HomeSwitchRequests = new();
         internal int HomeMirrors, HomeProjectionRequests;
         private void QueueHomeProjection() { CaptureHomeActionRoots(); HomeProjectionRequests++; }

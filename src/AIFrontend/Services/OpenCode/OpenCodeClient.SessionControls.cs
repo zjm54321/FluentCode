@@ -143,7 +143,7 @@ public sealed partial class OpenCodeClient
             {
                 // The documented Basic-auth middleware can reject before the route with a plain-text
                 // 401 challenge rather than an API JSON error. This is a pre-effect interrupt rejection.
-                if (mutation is SessionControlKind.Interrupt or SessionControlKind.Background or SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot && status == 401)
+                if (mutation is SessionControlKind.Interrupt or SessionControlKind.Background or SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot && status == 401)
                     foreach (var challenge in response.Headers.WwwAuthenticate)
                         if (string.Equals(challenge.Scheme, "Basic", StringComparison.OrdinalIgnoreCase))
                             throw new OpenCodeSessionControlException(status, SessionControlErrorKind.Unauthorized, true);
@@ -194,7 +194,7 @@ public sealed partial class OpenCodeClient
                 if (property.Name is not ("_tag" or "message" or "sessionID") && !(messageField && property.Name == "messageID")) return false;
             return true;
         }
-        if (mutation is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot)
+        if (mutation is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot)
         {
             // Exact 2.0.32 management error schemas. No arbitrary fields or backend messages escape.
             bool Keys(params string[] optional)
@@ -209,7 +209,7 @@ public sealed partial class OpenCodeClient
             if (status == 401 && tag == "UnauthorizedError" && Keys()) return new(status, SessionControlErrorKind.Unauthorized, true);
             if (status == 404 && tag == "SessionNotFoundError" && Keys("sessionID") && Matches("sessionID", sessionId))
                 return new(status, SessionControlErrorKind.SessionNotFound, true);
-            if (mutation == SessionControlKind.RenameRoot && status == 404 && tag == "LocationNotFoundError" && Keys("location")
+            if (mutation is SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot && status == 404 && tag == "LocationNotFoundError" && Keys("location")
                 && value.TryGetProperty("location", out var location) && location.ValueKind == JsonValueKind.Object)
             {
                 SessionControlJson.Object(location);

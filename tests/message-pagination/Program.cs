@@ -19,7 +19,7 @@ internal static partial class Program
 
     private static async Task HomeRootActions()
     {
-        foreach (var action in new[] { OpenCodeHomeSessionAction.Delete, OpenCodeHomeSessionAction.Rename })
+        foreach (var action in new[] { OpenCodeHomeSessionAction.Delete, OpenCodeHomeSessionAction.Rename, OpenCodeHomeSessionAction.Archive })
         {
             var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
             page.TestActivate("ses_unrelated", client, backend.CreateClient);
@@ -39,12 +39,14 @@ internal static partial class Program
                 "actual production consumer reaches one real target mutation and authoritative metadata refresh, never navigation");
             Check(action == OpenCodeHomeSessionAction.Delete
                 ? page.TestHomeRootTitle("ses_root") is null && page.DeletedBindings == 1 && page.Bindings == 1 && page.RemovedTabs == 1
-                : page.TestHomeRootTitle("ses_root") == "confirmed new title" && page.DeletedBindings == 0,
-                "only accepted delete invalidates its normal binding; only refreshed server metadata publishes rename");
+                : action == OpenCodeHomeSessionAction.Archive
+                    ? page.TestHomeRootTitle("ses_root") == "actual root title" && page.DeletedBindings == 0 && backend.Archived
+                    : page.TestHomeRootTitle("ses_root") == "confirmed new title" && page.DeletedBindings == 0,
+                "only accepted delete invalidates its normal binding; only refreshed server metadata publishes rename; archive sends only archived:true");
             Check(!page.TestHomeBusy && !await page.TestHomeComposerProtected("ses_root"),
                 "unrelated draft retained and known exact management slot released");
         }
-        foreach (var denial in new[] { "cancel", "stale revision", "foreign directory", "changed title", "changed source", "archive" })
+        foreach (var denial in new[] { "cancel", "stale revision", "foreign directory", "changed title", "changed source" })
         {
             var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
             page.TestActivate("ses_other", client, backend.CreateClient); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
@@ -55,7 +57,7 @@ internal static partial class Program
                 return Task.FromResult<string?>(denial == "cancel" ? null : "new title");
             };
             await page.TestRunHomeAction(denial == "stale revision" ? 6 : 7, denial == "foreign directory" ? "/wrong" : "/remote/worktree", "ses_root",
-                denial == "archive" ? OpenCodeHomeSessionAction.Archive : OpenCodeHomeSessionAction.Rename);
+                OpenCodeHomeSessionAction.Rename);
             Check(backend.Requests.Count == 0 && page.HomeSwitchRequests.Count == 0 && page.MetadataApplications == 0,
                 "actual Home action denies without HTTP/navigation/optimism: " + denial);
         }
@@ -90,9 +92,10 @@ internal static partial class Program
         internal bool Unknown;
         internal Action? BeforeMutation;
         private bool _deleted;
+        internal bool Archived;
         private string _title = "actual root title";
         private string Info => "{\"id\":\"ses_root\",\"projectID\":\"p\",\"title\":" + JsonSerializer.Serialize(_title)
-            + ",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/remote/worktree\"}}";
+            + ",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3" + (Archived ? ",\"archived\":4" : "") + "},\"location\":{\"directory\":\"/remote/worktree\"}}";
         private static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         internal OpenCodeClient CreateClient() => new(new HttpClient(new Handler(async (request, ct) =>
         {
@@ -103,7 +106,16 @@ internal static partial class Program
                 Check(path == "/api/session/ses_root", "consumer mutates actual context root, not selected/hidden session");
                 if (Unknown) throw new HttpRequestException("offline");
                 if (request.Method == HttpMethod.Delete) _deleted = true;
-                else { using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct)); _title = body.RootElement.GetProperty("title").GetString()!; }
+                else
+                {
+                    using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+                    if (body.RootElement.TryGetProperty("archived", out var archived))
+                    {
+                        Check(archived.GetBoolean() && body.RootElement.EnumerateObject().Count() == 1, "archive body is exactly {archived:true}");
+                        Archived = true;
+                    }
+                    else _title = body.RootElement.GetProperty("title").GetString()!;
+                }
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
             if (path == "/api/session") { ListReads++; return Json("{\"data\":[" + (_deleted ? "" : Info) + "],\"cursor\":{}}"); }

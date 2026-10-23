@@ -152,6 +152,8 @@ public sealed class OpenCodeSessionControlCoordinator
                     await client.DeleteSessionGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.RenameRoot:
                     await client.RenameSessionGuardedAsync(origin.SessionId, preview.Request.NewTitle!, preview.Request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
+                case SessionControlKind.ArchiveRoot:
+                    await client.ArchiveSessionGuardedAsync(origin.SessionId, preview.Request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
                 default: throw new InvalidOperationException("Continuation uses the already-held-lease seam.");
             }
             accepted = true;
@@ -247,7 +249,7 @@ public sealed class OpenCodeSessionControlCoordinator
         var state = await Get(() => client.GetSessionControlStateAsync(origin.SessionId, ct)).ConfigureAwait(false);
         bool RootMatches(SessionControlState candidate) => candidate.ParentId is null && candidate.Directory == request.Directory
             && candidate.Title == request.ExpectedTitle;
-        var rootAction = request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot;
+        var rootAction = request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot;
         if (rootAction && !RootMatches(state)) return new(SessionControlStatus.ConfirmationRequired, null);
         SessionControlModels? catalog = null; SessionControlDefaultModel? inherited = null;
         if (request.Kind == SessionControlKind.SwitchModel)
@@ -325,7 +327,7 @@ public sealed class OpenCodeSessionControlCoordinator
         if (!Enum.IsDefined(request.Kind) || request.Kind is SessionControlKind.Interrupt or SessionControlKind.Background || string.IsNullOrWhiteSpace(draft.Fingerprint)
             || !origin.SessionId.StartsWith("ses", StringComparison.Ordinal) || !NotificationArgumentCodec.IsValidRequestId(origin.SessionId))
             throw new ArgumentException("Invalid session control context.");
-        if (request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot)
+        if (request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(request.Directory);
             if (request.Kind == SessionControlKind.RenameRoot) ArgumentException.ThrowIfNullOrWhiteSpace(request.NewTitle);

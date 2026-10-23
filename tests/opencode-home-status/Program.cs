@@ -82,7 +82,7 @@ internal static class Program
         var labels=menu.Items.Select(i=>i is MenuFlyoutItem m?m.Text:"-").ToArray();
         Check(string.Join("|",labels)=="修改名称|复制 session ID|-|归档此会话|删除此会话","Fluent menu order with separator before archive/delete");
         view.CanRequestSessionAction=(_,_,a)=>a!=OpenCodeHomeSessionAction.Archive;menu.RaiseOpening();
-        Check(menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="归档此会话").IsEnabled==false&&menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="删除此会话").Style?.Xml.Contains("SystemFillColorCriticalBrush")==true,"archive stays disabled without a client endpoint; delete is critical-coloured");
+        Check(menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="归档此会话").IsEnabled==false&&menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="删除此会话").Style?.Xml.Contains("SystemFillColorCriticalBrush")==true,"menu items follow the page action gate; delete is critical-coloured");
         view.SetConnection("1.4.2",true,"WSL · NixOS");
         Check(Walk(view).OfType<TextBlock>().Any(t=>t.Text=="v1.4.2 · WSL · NixOS"),"connection line shows real version + identity");
         view.SetConnection(null,false,null);

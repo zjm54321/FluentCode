@@ -32,7 +32,8 @@ public sealed partial class OpenCodePage
 
     private bool CanRequestHomeSessionAction(long revision, OpenCodeHomeSession session, OpenCodeHomeSessionAction action)
         => HomeSessionActionTargetCurrent(revision, session.Project, session.Info.Id)
-        && (action == OpenCodeHomeSessionAction.CopyId || action is OpenCodeHomeSessionAction.Delete or OpenCodeHomeSessionAction.Rename
+        && (action == OpenCodeHomeSessionAction.CopyId
+            || action is OpenCodeHomeSessionAction.Delete or OpenCodeHomeSessionAction.Rename or OpenCodeHomeSessionAction.Archive
             && _homeActionOwner is null && _homeDialog is null && !HasPendingNativeAction());
 
     // Used under Source.TryExecute/on coordinator workers: immutable identity and page fields only.
@@ -77,7 +78,12 @@ public sealed partial class OpenCodePage
         {
             var title = await ConfirmHomeSessionActionAsync(owner, action);
             if (title is null || !HomeActionRootCurrent(owner)) return;
-            var kind = action == OpenCodeHomeSessionAction.Delete ? SessionControlKind.DeleteRoot : SessionControlKind.RenameRoot;
+            var kind = action switch
+            {
+                OpenCodeHomeSessionAction.Delete => SessionControlKind.DeleteRoot,
+                OpenCodeHomeSessionAction.Archive => SessionControlKind.ArchiveRoot,
+                _ => SessionControlKind.RenameRoot,
+            };
             var request = new SessionControlRequest(kind, Directory: owner.Project.Directory, ExpectedTitle: owner.Title,
                 NewTitle: kind == SessionControlKind.RenameRoot ? title : null);
             // Root management neither reads nor restores the composer draft. This is the exact action
@@ -95,6 +101,7 @@ public sealed partial class OpenCodePage
                 o => OwnsHomeAction(owner, o), ct);
             if (!OwnsHomeAction(owner, origin) || source.IsRevoked) return;
             if (result.AcceptanceKnown && kind == SessionControlKind.DeleteRoot) InvalidateDeletedHomeSession(owner);
+            if (result.AcceptanceKnown && kind == SessionControlKind.ArchiveRoot) _homeArchivedSessions.Add(owner.SessionId);
             SetHomeActionStatus(owner, result.Status);
             if (result.AcceptanceKnown || result.MutationStarted && result.Status == SessionControlStatus.OutcomeUnknown)
                 await RefreshHomeActionMetadataAsync(owner, ct); // Read-only; never replay or release unknown protection.
@@ -124,14 +131,16 @@ public sealed partial class OpenCodePage
     {
         if (XamlRoot is null || _homeDialog is not null || !HomeActionRootCurrent(owner)) return null;
         var rename = action == OpenCodeHomeSessionAction.Rename;
+        var archive = action == OpenCodeHomeSessionAction.Archive;
         var input = new TextBox { Text = owner.Title ?? "", AcceptsReturn = false };
         var body = new StackPanel { Spacing = 12 };
         body.Children.Add(new TextBlock { Text = (owner.Title ?? "（未命名会话）") + Environment.NewLine + owner.SessionId,
             TextWrapping = TextWrapping.Wrap });
         if (rename) body.Children.Add(input);
-        else body.Children.Add(new TextBlock { Text = "这将永久删除此会话及其所有子会话，无法撤销。", TextWrapping = TextWrapping.Wrap });
-        var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = rename ? "修改会话名称" : "删除此会话及子会话？",
-            Content = body, PrimaryButtonText = rename ? "保存名称" : "永久删除", CloseButtonText = "取消",
+        else body.Children.Add(new TextBlock { Text = archive ? "归档后此会话不再显示在主页列表中；会话内容不会被删除。"
+            : "这将永久删除此会话及其所有子会话，无法撤销。", TextWrapping = TextWrapping.Wrap });
+        var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = rename ? "修改会话名称" : archive ? "归档此会话？" : "删除此会话及子会话？",
+            Content = body, PrimaryButtonText = rename ? "保存名称" : archive ? "归档" : "永久删除", CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.None, Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
             IsPrimaryButtonEnabled = !rename || !string.IsNullOrWhiteSpace(input.Text) };
         input.TextChanged += (_, _) => dialog.IsPrimaryButtonEnabled = !string.IsNullOrWhiteSpace(input.Text);

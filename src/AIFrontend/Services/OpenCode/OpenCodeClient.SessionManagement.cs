@@ -25,4 +25,14 @@ public sealed partial class OpenCodeClient
         using var ignored = await StartSessionControlAsync(sessionId, "", HttpMethod.Patch, new { title },
             204, SessionControlKind.RenameRoot, null, tryStart, ct, directory).ConfigureAwait(false);
     }
+
+    /// <summary>V2 session.update with only <c>archived: true</c> (live OpenAPI: "Archive the session with true or
+    /// restore it with false"). Same route, location and 204 acceptance as rename; nothing is deleted.</summary>
+    public async Task ArchiveSessionGuardedAsync(string sessionId, string directory, Func<Action, bool> tryStart, CancellationToken ct = default)
+    {
+        ValidateInteractionId(sessionId, "ses", nameof(sessionId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        using var ignored = await StartSessionControlAsync(sessionId, "", HttpMethod.Patch, new { archived = true },
+            204, SessionControlKind.ArchiveRoot, null, tryStart, ct, directory).ConfigureAwait(false);
+    }
 }

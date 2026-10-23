@@ -37,17 +37,22 @@ internal static class Program
 
     private static async Task RootManagement()
     {
-        foreach (var kind in new[] { SessionControlKind.DeleteRoot, SessionControlKind.RenameRoot })
+        foreach (var kind in new[] { SessionControlKind.DeleteRoot, SessionControlKind.RenameRoot, SessionControlKind.ArchiveRoot })
         {
             using var server = new Server { Title = "actual title" }; using var client = server.Client();
-            Task Send(Func<Action, bool> start) => kind == SessionControlKind.DeleteRoot
-                ? client.DeleteSessionGuardedAsync("ses_control", start) : client.RenameSessionGuardedAsync("ses_control", "new title", "/work space", start);
+            Task Send(Func<Action, bool> start) => kind switch
+            {
+                SessionControlKind.DeleteRoot => client.DeleteSessionGuardedAsync("ses_control", start),
+                SessionControlKind.ArchiveRoot => client.ArchiveSessionGuardedAsync("ses_control", "/work space", start),
+                _ => client.RenameSessionGuardedAsync("ses_control", "new title", "/work space", start),
+            };
             await Throws<OperationCanceledException>(() => Send(_ => false), "root guard denied");
             Check(server.Requests.Count == 0, "denied root guard has zero HTTP");
             await Send(Start);
             Check(server.Requests.Last().Method == (kind == SessionControlKind.DeleteRoot ? "DELETE" : "PATCH")
                 && server.Requests.Last().Path == "/api/session/ses_control" && server.Requests.Last().Query == ""
-                && server.LastBody == (kind == SessionControlKind.DeleteRoot ? "" : "{\"title\":\"new title\"}"), "exact V2 method/path/body/204 " + kind);
+                && server.LastBody == (kind switch { SessionControlKind.DeleteRoot => "", SessionControlKind.ArchiveRoot => "{\"archived\":true}", _ => "{\"title\":\"new title\"}" }),
+                "exact V2 method/path/body/204 " + kind);
             foreach (var rejection in new[] { (400, "InvalidRequestError"), (401, "UnauthorizedError"), (404, "SessionNotFoundError") })
             {
                 server.OnMutation = _ => Task.FromResult(Server.Json(rejection.Item1, Error(rejection.Item2)));
@@ -59,7 +64,7 @@ internal static class Program
                 "root InvalidRequest accepts only documented optional typed kind/field");
             server.OnMutation = _ => Task.FromResult(Server.Json(400, "{\"_tag\":\"InvalidRequestError\",\"message\":\"PRIVATE\",\"field\":123}"));
             Check(!(await Throws<OpenCodeSessionControlException>(() => Send(Start), "malformed error field")).VerifiedPreEffect, "malformed root rejection cannot release protection");
-            if (kind == SessionControlKind.RenameRoot)
+            if (kind is SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot)
             {
                 server.OnMutation = _ => Task.FromResult(Server.Json(404, "{\"_tag\":\"LocationNotFoundError\",\"message\":\"PRIVATE\",\"location\":{\"directory\":\"/work space\"}}"));
                 Check((await Throws<OpenCodeSessionControlException>(() => Send(Start), "documented rename location 404")).VerifiedPreEffect,
@@ -71,7 +76,7 @@ internal static class Program
             server.OnMutation = _ => Task.FromResult(Server.Json(200, "{}"));
             await Throws<OpenCodeProtocolException>(() => Send(Start), "root success must be exactly 204, no Session.Info assumed");
         }
-        foreach (var kind in new[] { SessionControlKind.DeleteRoot, SessionControlKind.RenameRoot })
+        foreach (var kind in new[] { SessionControlKind.DeleteRoot, SessionControlKind.RenameRoot, SessionControlKind.ArchiveRoot })
         foreach (var outcome in new[] { "accepted", "rejected", "unknown" })
         {
             using var server = new Server { Title = "actual title" };
