@@ -98,12 +98,14 @@ internal sealed class OpenCodeUserBubbleView
         // Size against the message column, not the window or a fixed pixel limit.
         _bubble.Loaded += (_, _) =>
         {
+            if (_widthOwner is not null) _widthOwner.SizeChanged -= WidthOwnerChanged;
             _widthOwner = VisualTreeHelper.GetParent(_bubble) as FrameworkElement;
             if (_widthOwner is not null) _widthOwner.SizeChanged += WidthOwnerChanged;
             FitWidth();
         };
         _bubble.Unloaded += (_, _) =>
         {
+            if (_bubble.IsLoaded) return; // Keep the newer parent's width subscription.
             if (_widthOwner is not null) _widthOwner.SizeChanged -= WidthOwnerChanged;
             _widthOwner = null;
         };

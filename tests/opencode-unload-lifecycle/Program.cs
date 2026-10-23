@@ -221,9 +221,19 @@ internal sealed class BubbleFixture
     {
         var f = new BubbleFixture(); var oldParent = new Element(); var current = new Element();
         f._bubble.Parent = oldParent; f._bubble.Load(); f._bubble.Parent = current; f._bubble.Load();
-        f._bubble.Unload(true);
+        f._bubble.Unload(true); f._bubble.Unload(true);
         Program.Check(ReferenceEquals(f._widthOwner, current) && current.WidthWatchers == 1 && oldParent.WidthWatchers == 0,
-            "m-bubble: late unload removed the current width owner; duplicate Loaded also leaked the old subscription");
+            "late unload removed the current width owner; duplicate Loaded also leaked the old subscription");
+        f._bubble.Load();
+        Program.Check(current.WidthWatchers == 1, "duplicate Loaded in the same parent must not duplicate the width watch");
+        f._bubble.Unload(false);
+        Program.Check(f._widthOwner is null && current.WidthWatchers == 0 && oldParent.WidthWatchers == 0,
+            "actual bubble detach must release every width watch");
+        f._bubble.Unload(false);
+        Program.Check(current.WidthWatchers == 0, "repeated detach must be idempotent");
+        f._bubble.Load();
+        Program.Check(ReferenceEquals(f._widthOwner, current) && current.WidthWatchers == 1,
+            "bubble reload must re-arm the width watch exactly once");
     }
 }
 internal static class PickerFixture
