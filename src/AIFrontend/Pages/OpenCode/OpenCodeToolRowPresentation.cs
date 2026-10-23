@@ -217,6 +217,8 @@ internal sealed class OpenCodeToolRowModel
     public string? ErrorText { get; init; }
 
     public IReadOnlyList<OpenCodeToolDiffFile> DiffFiles { get; init; } = Array.Empty<OpenCodeToolDiffFile>();
+    /// <summary>PT1: source file index; DiffFiles already contains only this file, never the aggregate patch.</summary>
+    public int? SourceFileIndex { get; init; }
 
     /// <summary>shell 命令（仅 Shell）。</summary>
     public string? Command { get; init; }
@@ -469,6 +471,8 @@ internal static class OpenCodeToolRowPresentation
             case OpenCodeToolKind.Write:
             {
                 ReadServerDiffs(metadata, diffs);
+                if (kind == OpenCodeToolKind.Patch && diffs.Count == 0 && FirstString(input, "patchText", "patch") is { } patchText)
+                    ReadInputPatchFiles(patchText, diffs);
                 var path = FirstString(input, "path", "filePath", "file");
                 if (diffs.Count == 0 && path is not null)
                 {
@@ -766,14 +770,12 @@ internal static class OpenCodeToolRowPresentation
         return fileIndex is { } index ? BuildFileRow(model, index) : model;
     }
 
-    // TL2: only settled successful calls expand. Partial metadata is not a completed file change.
+    // PT1: per-file data stays per-file in every state; the state is not evidence of a successful change.
     internal static int TimelineRowCount(OpenCodeContentPart part)
     {
         if (Classify(part.Name) is not (OpenCodeToolKind.Patch or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Edit)) return 1;
         var model = Build(part);
-        return model.Status == OpenCodeToolRowStatus.Completed
-            && model.Kind is OpenCodeToolKind.Patch or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Edit
-            && model.DiffFiles.Count > 1 ? model.DiffFiles.Count : 1;
+        return Math.Max(1, model.DiffFiles.Count);
     }
 
     private static OpenCodeToolRowModel BuildFileRow(OpenCodeToolRowModel model, int index)
@@ -799,6 +801,7 @@ internal static class OpenCodeToolRowPresentation
             Name = name, Kind = model.Kind, Status = model.Status, StatusText = model.StatusText,
             Target = file.Path, Summary = summary, Additions = file.Additions, Deletions = file.Deletions,
             DurationText = model.DurationText, DiffFiles = new[] { file }, GlyphOverride = glyph,
+            SourceFileIndex = index, ToolName = model.ToolName, ErrorText = model.ErrorText, Truncated = model.Truncated,
             AccessibleName = name + "，" + file.Path + "，" + summary + "，" + model.StatusText,
         };
     }
@@ -1251,6 +1254,33 @@ internal static class OpenCodeToolRowPresentation
                 Patch = FirstString(file, "patch", "diff"),
             });
         }
+    }
+
+    private static void ReadInputPatchFiles(string text, List<OpenCodeToolDiffFile> files)
+    {
+        string? path = null;
+        string? status = null;
+        var patch = new StringBuilder();
+        void Flush()
+        {
+            if (path is not null) files.Add(new OpenCodeToolDiffFile { Path = path, Status = status, Patch = patch.ToString().TrimEnd('\n') });
+            patch.Clear();
+        }
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.TrimEnd('\r');
+            string? nextStatus = line.StartsWith("*** Add File: ", StringComparison.Ordinal) ? "added"
+                : line.StartsWith("*** Update File: ", StringComparison.Ordinal) ? "modified"
+                : line.StartsWith("*** Delete File: ", StringComparison.Ordinal) ? "deleted" : null;
+            if (nextStatus is not null)
+            {
+                Flush();
+                path = line[(line.IndexOf(": ", StringComparison.Ordinal) + 2)..];
+                status = nextStatus;
+            }
+            else if (path is not null && !line.StartsWith("*** ", StringComparison.Ordinal)) patch.AppendLine(line);
+        }
+        Flush();
     }
 
     private static List<string> ReadAnswers(JsonElement? metadata)

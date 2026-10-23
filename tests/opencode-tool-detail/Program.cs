@@ -338,7 +338,12 @@ internal static class Program
             Check(rows[0].GlyphOverride == "\uE8E5" && rows[1].GlyphOverride == "\uE70F" && rows[2].GlyphOverride == "\uE74D", tool + " file-status glyphs");
             Check(OpenCodeToolRowPresentation.BuildGroupSummary(rows).SuccessCount == 4, tool + " counts files consistently");
             foreach (var status in new[] { "running", "streaming", "error" })
-                Check(OpenCodeToolRowPresentation.TimelineRowCount(Part(status)) == 1, tool + " " + status + " stays aggregate");
+            {
+                Check(OpenCodeToolRowPresentation.TimelineRowCount(Part(status)) == 4, tool + " " + status + " stays per-file");
+                var fileRow = OpenCodeToolRowPresentation.Build(Part(status), fileIndex: 2);
+                Check(fileRow.SourceFileIndex == 2 && fileRow.DiffFiles.Count == 1 && fileRow.Target == files[2].file,
+                    tool + " " + status + " scoped detail keeps exact source index");
+            }
             var single = part with { State = JsonSerializer.SerializeToElement(new { status = "completed", metadata = new { files = files.Take(1) } }) };
             Check(OpenCodeToolRowPresentation.TimelineRowCount(single) == 1, tool + " single file stays direct");
         }

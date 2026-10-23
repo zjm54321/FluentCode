@@ -2018,7 +2018,12 @@ public sealed class OpenCodeConversationView : StackPanel
             var key = part.Id is { Length: > 0 } id ? id : (part.Type ?? "?") + ":" + i.ToString(CultureInfo.InvariantCulture);
             if (!seen.Add(key)) key += "#" + i.ToString(CultureInfo.InvariantCulture);
             var count = part.Type == OpenCodePartTypes.Tool ? OpenCodeToolRowPresentation.TimelineRowCount(part) : 1;
-            if (count == 1) yield return (part, key, null);
+            if (count == 1)
+            {
+                var model = part.Type == OpenCodePartTypes.Tool ? OpenCodeToolRowPresentation.Build(part) : null;
+                var file = model is { DiffFiles.Count: 1, Kind: OpenCodeToolKind.Patch or OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit };
+                yield return (part, file ? key + "/file:0" : key, file ? 0 : null);
+            }
             else for (var file = 0; file < count; file++)
                 yield return (part, key + "/file:" + file.ToString(CultureInfo.InvariantCulture), file);
         }
