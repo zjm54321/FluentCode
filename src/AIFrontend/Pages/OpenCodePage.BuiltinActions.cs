@@ -23,9 +23,6 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerClientActionTicket? _nativeEditorTicket;
     private bool _applyingNativeText;
     private Guid? _newSessionOperation;
-    // Retained only in this Page. Not a second draft and never automatically applied to any session.
-    private sealed record NativeTextCandidate(OpenCodeComposerBinding Binding, string Text);
-    private NativeTextCandidate? _nativeTextCandidate;
     private sealed record ModelPickerBasis(NativeActionOwner Owner, SessionControlState State,
         SessionControlModels Catalog, SessionControlDefaultModel? Inherited);
 
@@ -284,12 +281,12 @@ public sealed partial class OpenCodePage
         ApplyNativeHistoryChange(owner, undo ? preview.Target!.Id : null, result.Observed);
         if (undo && result.Restoration is { } restoration)
         {
-            if (!TryApplyNativeText(owner, restoration.Text)) KeepNativeTextCandidate(owner.Ticket.Binding, restoration.Text);
+            if (!TryApplyNativeText(owner, restoration.Text)) ShowNativeTextCandidate(restoration.Text);
         }
         else if (undo)
         {
             // Acceptance without a matched observed boundary does not authorize automatic restoration.
-            KeepNativeTextCandidate(owner.Ticket.Binding, preview.Target!.Text ?? string.Empty);
+            ShowNativeTextCandidate(preview.Target!.Text ?? string.Empty);
         }
         else ShowMessage(InfoBarSeverity.Success, "撤回状态已清除", "整个撤回状态已清除；输入框内容保持不变。");
         await RefreshMessagesAsync(explicitRefresh: true);
@@ -324,16 +321,12 @@ public sealed partial class OpenCodePage
         finally { _nativeDialogPending = false; _nativeEditor = null; _nativeEditorTicket = null; }
         if (result.Outcome == OpenCodeDraftEditorOutcome.Applied && OwnsComposerBinding(owner.Ticket.Binding))
             RestoreExpandedComposerSelection(owner.Ticket.Binding, dialog.SelectionStart, dialog.SelectionLength);
-        if (result.RetainedText is { } retained)
-        {
-            _nativeTextCandidate = new(owner.Ticket.Binding, retained);
-            if (CanPublishNativeOperation(owner)) KeepNativeTextCandidate(owner.Ticket.Binding, retained);
-        }
+        if (result.RetainedText is { } retained && CanPublishNativeOperation(owner))
+            ShowNativeTextCandidate(retained);
     }
 
-    private void KeepNativeTextCandidate(OpenCodeComposerBinding binding, string text)
+    private void ShowNativeTextCandidate(string text)
     {
-        _nativeTextCandidate = new(binding, text);
         ShowMessage(InfoBarSeverity.Warning, "保留的文字候选（未写入草稿）", text);
     }
 

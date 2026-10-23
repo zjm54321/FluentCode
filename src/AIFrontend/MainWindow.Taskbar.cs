@@ -160,48 +160,6 @@ public sealed partial class MainWindow
         }
     }
 
-    /// <summary>真实 pending 请求出现：把该会话“进行中”的执行映射为等待处理（终态/未知保持原状态）。</summary>
-    private void MarkOpenCodeSessionTaskPending(string sessionId)
-    {
-        if (!AppCallsAllowed)
-        {
-            return;
-        }
-
-        if (!_openCodeExecBySession.TryGetValue(sessionId, out string? execId) || IsAcknowledged(execId))
-        {
-            return; // 无进行中执行：仅提示，不创建无主任务。
-        }
-
-        if (!_trackedTaskIndex.TryGetValue(execId, out TrackedTask? task) || task.State != TaskbarTaskState.Working)
-        {
-            return; // 仅 Working → Pending；不覆盖等待处理/结果未知/终态。
-        }
-
-        ForwardTaskbarTask(execId, TrackedTaskKind.OpenCode, sessionId, TaskbarTaskState.Pending);
-    }
-
-    /// <summary>明确的提交结果未知：映射到该会话当前执行（终态锁定的执行保持不变）。</summary>
-    private void MarkOpenCodeSessionTaskUnknown(string sessionId)
-    {
-        if (!AppCallsAllowed)
-        {
-            return;
-        }
-
-        if (!_openCodeExecBySession.TryGetValue(sessionId, out string? execId) || IsAcknowledged(execId))
-        {
-            return; // 无进行中执行：仅提示，不创建无主任务。
-        }
-
-        if (_trackedTaskIndex.TryGetValue(execId, out TrackedTask? task) && task.IsTerminal)
-        {
-            return;
-        }
-
-        ForwardTaskbarTask(execId, TrackedTaskKind.OpenCode, sessionId, TaskbarTaskState.OutcomeUnknown);
-    }
-
     // ---- Local 完成导航运行期映射（不逆解析摘要） ----
 
     private void RememberLocalRequestSession(string sourceRequestId, string sessionId)

@@ -4622,22 +4622,4 @@ public sealed partial class OpenCodePage : Page
         handler(this, EventArgs.Empty);
     }
 
-    /// <summary>安全取主题画刷：键不存在时返回 null（不抛异常，控件回退默认外观）。</summary>
-    private static Brush? TryBrush(string key)
-    {
-        try
-        {
-            if (Application.Current?.Resources is { } resources)
-            {
-                // 用索引器读取；键缺失抛 KeyNotFoundException，由外层 catch 兜底。
-                return resources[key] as Brush;
-            }
-        }
-        catch
-        {
-            // 资源字典在极端时机（关闭中）可能不可用；回退默认外观即可。
-        }
-
-        return null;
-    }
 }

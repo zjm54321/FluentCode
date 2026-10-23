@@ -58,7 +58,6 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerToken? _newSessionHandoffActivationToken;
     private PageDraftSlot? _draftRecoverySlot;
     private object? _draftRecoveryTab;
-    private OpenCodeComposerEditorRecovery? _draftRecovery;
     private int _draftRecoveryStart, _draftRecoveryLength;
     private object? _draftRecoveryActor;
 
@@ -92,7 +91,6 @@ public sealed partial class OpenCodePage
             // Empty clean editors need no copy/discard barrier. Never erase a nonempty/held/composing recovery.
             _draftRecoveryPending = controller.Snapshot.HasDraft || recovery.Text.Length != 0
                 || recovery.State != OpenCodeComposerInputState.Clean || recovery.IsComposing;
-            _draftRecovery = recovery;
             _draftRecoveryStart = Composer.SelectionStart;
             _draftRecoveryLength = Composer.SelectionLength;
             if (!_draftRecoveryPending) _composerView?.ResolveDraftSlotRecovery();
@@ -117,7 +115,7 @@ public sealed partial class OpenCodePage
         ReleaseDraftSlot(_draftRecoverySlot);
         var retiredTab = _draftRecoveryTab as TabViewItem;
         // Other retired slots remain independently available for readonly recovery/explicit close.
-        _draftRecoverySlot = null; _draftRecoveryTab = null; _draftRecovery = null; _draftRecoveryPending = false; _draftRecoveryActor = null;
+        _draftRecoverySlot = null; _draftRecoveryTab = null; _draftRecoveryPending = false; _draftRecoveryActor = null;
         _composerView?.ResolveDraftSlotRecovery();
         if (retiredTab is not null) RemoveRetiredDraftTab(retiredTab);
         _draftNavigationPrepared = _composerController?.Snapshot.Token;
@@ -267,7 +265,7 @@ public sealed partial class OpenCodePage
         _draftRecoverySlot = slot; _draftRecoveryTab = item; _draftRecoveryPending = true;
         _draftRecoveryStart = slot?.SelectionStart ?? 0; _draftRecoveryLength = slot?.SelectionLength ?? 0;
         _homeActive = false; _newSessionDraftActive = false; _activeBlankSlotId = null; _activeTabSessionId = null;
-        _draftRecovery = _composerView?.SuspendDraftSlotForRecovery("旧来源草稿只读保留。请复制需要的内容，再明确丢弃或关闭此标签。");
+        _composerView?.SuspendDraftSlotForRecovery("旧来源草稿只读保留。请复制需要的内容，再明确丢弃或关闭此标签。");
         Microsoft.UI.Xaml.VisualStateManager.GoToState(this, "NewSessionLayout", false);
         SetBlankComposerPlacement(true);
         UpdateComposerButtons(); // A disconnected editor must become enabled/read-only for native copying.
@@ -330,7 +328,6 @@ public sealed partial class OpenCodePage
         if (!preserveCreate) _newSessionOperation = null;
         _expandedComposerSelection = null;
         _nativeActionOwner = null;
-        _nativeTextCandidate = null;
         InvalidateLocalSubmissionOwner();
         _composerView?.RevokeSlotGestures();
         CheckNativeEditorOwnership();

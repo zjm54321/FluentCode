@@ -124,8 +124,6 @@ public sealed partial class OpenCodePage
         finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
     }
 
-    private static string BlankAgentName(string name) => name.Length == 0 ? name : name[..1].ToUpper(CultureInfo.CurrentUICulture) + name[1..];
-
     private OpenCodeAgentInfo? BlankSelectedAgent(OpenCodeBlankDraftPreferences basis, string? configuredAgentId)
     {
         var selectable = _blankAgents.Where(IsBlankAgentSelectable).ToArray();

@@ -244,7 +244,7 @@ internal static class NativeTests
             Check(f.Http.Posts == 1 && f.LastMutationBody == "{\"messageID\":\"msg_newer\",\"files\":false}", "fresh nearest user and explicit default files false");
             Check(f.Page.Epoch == epoch + 1 && f.Page.Boundary == "msg_newer" && f.Page.AckInvalidations == 1, "accepted undo changes same-session history epoch/ACK baseline");
             Check(f.Page.Snapshot.Text == (lateEdit ? "newer typing" : "newer text"), "original-ticket restoration or newer draft preservation");
-            if (lateEdit) Check(f.Page.Candidate == "newer text" && f.Page.Messages.Any(m => m.Contains("newer text")), "later edit retains visible text candidate");
+            if (lateEdit) Check(f.Page.Messages.Any(m => m.Contains("newer text")), "later edit displays text candidate");
             using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test");
             Check(lease.GetSessionControlProtection() is null, "accepted settlement survives later draft edit");
         }
@@ -266,7 +266,6 @@ internal static class NativeTests
             };
             await f.Page.StageNative(OpenCodeComposerClientActionKind.EditDraft, "editor", "initial"); await f.Page.RunNative();
             Check(f.Page.Snapshot.Text == (stale ? "later" : "detached") && f.Http.Posts == 0, "editor not external process or send");
-            if (stale) Check(f.Page.Candidate == "detached", "closed stale buffer retained without writeback");
         }
     }
     private static async Task GuardsAndEpoch()
@@ -277,7 +276,7 @@ internal static class NativeTests
             await f.Page.SendLegacyDirect(); f.Page.Click();
             Check(f.Http.Posts == 0, "pending intent blocks actual send/button");
             f.Page.EndCatalogLifetime(); await f.Page.RunNative();
-            Check(f.Http.Posts == 0 && f.Page.Candidate is null, "expired view lifetime yields no action ticket");
+            Check(f.Http.Posts == 0, "expired view lifetime yields no action ticket");
         }
         using (var f = new Fixture())
         {
@@ -379,7 +378,6 @@ namespace AIFrontend.Pages
         internal int AgentOpens => _agentSelector.Opens;
         internal long Epoch => _messageHistoryEpoch;
         internal string? Boundary => _messageRevertBoundary;
-        internal string? Candidate => _nativeTextCandidate?.Text;
         internal IEnumerable<string?> VisibleIds => _conversationView.Last.Select(m => m.Id);
         internal async Task StageNative(OpenCodeComposerClientActionKind kind, string name, string args = "")
         {
@@ -476,7 +474,6 @@ namespace AIFrontend.Pages
             _blankAgents = agents; _blankModels = models; _blankModelChosen = chosenModel;
             ApplyBlankDefaults(basis ?? _blankPreferences!, configuredAgent, configuredModel, directoryModel);
         }
-        internal static string AgentCaption(string name) => BlankAgentName(name);
         internal static string StrengthCaption(OpenCodeModelInfo model, OpenCodeModelRef selected) => BlankStrengthText(model, selected);
         private readonly Dictionary<(string SourceIdentity, Guid BlankSlotId), string?> _blankCreationResults = new();
         internal void SetupBlankPreferences(string directory = "/synthetic", string? agent = null, OpenCodeModelRef? model = null)

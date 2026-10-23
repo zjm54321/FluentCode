@@ -147,28 +147,6 @@ public sealed partial class SettingsView : UserControl
     /// </summary>
     public event EventHandler? OpenCodeCredentialsChanged;
 
-    /// <summary>安全触发 <see cref="OpenCodeCredentialsChanged"/>：订阅者异常不影响保存流程与界面。</summary>
-    private void RaiseOpenCodeCredentialsChanged()
-    {
-        EventHandler? handler = OpenCodeCredentialsChanged;
-        if (handler is null)
-        {
-            return;
-        }
-
-        foreach (EventHandler subscriber in handler.GetInvocationList())
-        {
-            try
-            {
-                subscriber(this, EventArgs.Empty);
-            }
-            catch
-            {
-                // 订阅者异常不影响保存结果与界面。
-            }
-        }
-    }
-
     /// <summary>
     /// 创建设置界面。
     /// </summary>

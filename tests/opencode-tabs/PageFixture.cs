@@ -41,7 +41,7 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerView? _composerView;
     private OpenCodeComposerBinding? _composerBinding;
     private bool _isComposing,_isSending,_composerPickerPending,_nativeDialogPending;
-    private object? _nativeActionOwner,_nativeTextCandidate,_expandedComposerSelection;
+    private object? _nativeActionOwner,_expandedComposerSelection;
     private OpenCodeComposerToken? _newSessionHandoffToken,_newSessionCreatedToken;
     private string? _newSessionCreatedId; private OpenCodeComposerBinding? _newSessionCreatedBinding;
     private Guid? _newSessionOperation; private long _newSessionCreateEpoch,_blankPickerEpoch;

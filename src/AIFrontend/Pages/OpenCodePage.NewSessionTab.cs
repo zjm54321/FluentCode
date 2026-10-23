@@ -166,8 +166,6 @@ public sealed partial class OpenCodePage
         }
     }
 
-    private int NewSessionTabIndex() => _newSessionTab is null ? -1 : SessionTabs.TabItems.IndexOf(_newSessionTab);
-
     private void RemoveNewSessionTab(TabViewItem? target = null, bool releasePayload = true)
     {
         if (!TryGetBlankTab(target ?? _newSessionTab, out var blank))

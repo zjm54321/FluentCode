@@ -663,11 +663,6 @@ public sealed partial class OpenCodePage
     /// <summary>“+”（L2）：打开或激活唯一的空白“新会话”标签（OpenCodeSessionTab.New）。</summary>
     private void SessionTabs_AddTabButtonClick(TabView sender, object args) => OpenNewSessionTab();
 
-    private void OpenSessionPane()
-    {
-        ShowHomePage();
-    }
-
     private void LocateSessionInPane(string sessionId)
     {
         ShowHomePage();

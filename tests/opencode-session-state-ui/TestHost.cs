@@ -157,6 +157,5 @@ namespace AIFrontend.Pages
             return item;
         }
         internal void Remove(string id) { _sessionItems.Remove(id); RefreshSessionStateUi(); }
-        private static Microsoft.UI.Xaml.Media.Brush? TryBrush(string key) => null;
     }
 }

@@ -331,7 +331,6 @@ internal static class Program
         f.Page.ResolveBlankDefaults(new[] { agent }, models, "catalog-agent", configRef, directory);
         var resolved = f.Page.BlankPreferences;
         Check(resolved.Agent == "catalog-agent" && resolved.Model?.Id == "agent-model" && resolved.Model.Variant == "reasoned", "actual selected agent model/variant outranks both configured and directory defaults");
-        Check(OpenCodePage.AgentCaption(agent.Name!) == "WeAVER" && agent.Name == "weAVER" && agent.Id == "catalog-agent", "only first display letter is uppercase; full name and backend identity are retained");
         Check(OpenCodePage.StrengthCaption(agentModel, resolved.Model!) == "reasoned", "actual offered selected variant is the only strength label");
         var manual = resolved with { Model = configRef, Version = resolved.Version + 1 };
         f.Page.UseBlankSelection(manual);
