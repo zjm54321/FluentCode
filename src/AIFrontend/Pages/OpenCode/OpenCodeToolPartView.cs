@@ -469,13 +469,11 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         var active = model.IsActive;
         _progress.IsActive = active;
         _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        _statusIcon.Visibility = active || !chrome.ShowsStatusIcon ? Visibility.Collapsed : Visibility.Visible;
+        // PG2: successful child rows need no green check; group totals still carry success counts.
+        _statusIcon.Visibility = active || model.Status == OpenCodeToolRowStatus.Completed || !chrome.ShowsStatusIcon
+            ? Visibility.Collapsed : Visibility.Visible;
         switch (model.Status)
         {
-            case OpenCodeToolRowStatus.Completed:
-                _statusIcon.Glyph = "\uE73E";
-                OpenCodeToolTheme.Apply(_statusIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.Success));
-                break;
             case OpenCodeToolRowStatus.Error:
                 _statusIcon.Glyph = "\uE711";
                 OpenCodeToolTheme.Apply(_statusIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.Critical));

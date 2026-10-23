@@ -20,7 +20,6 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
     private readonly Border _selectionBar;
     private readonly Button _row;
     private readonly FontIcon _icon;
-    private readonly FontIcon _statusIcon;
     private readonly ProgressRing _progress;
     private readonly TextBlock _nameText;
     private readonly TextBlock _previewText;
@@ -32,8 +31,6 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
     internal OpenCodeReasoningRowView()
     {
         _icon = new FontIcon { Glyph = "\uEA80", FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        _statusIcon = new FontIcon { Glyph = "\uE73E", FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
-        OpenCodeToolTheme.Apply(_statusIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.Success));
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
         _progress = new ProgressRing
         {
@@ -46,7 +43,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
             VerticalAlignment = VerticalAlignment.Center,
         };
         var statusCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
-        statusCell.Children.Add(_statusIcon);
+        // PG2: finished reasoning has no green check; keep the aligned slot for live progress.
         statusCell.Children.Add(_progress);
 
         _nameText = OpenCodeInteractionUi.StyledText("思考", OpenCodeInteractionUi.CaptionStyleKey);
@@ -167,7 +164,6 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         _previewText.Text = preview;
         _progress.IsActive = streaming;
         _progress.Visibility = streaming ? Visibility.Visible : Visibility.Collapsed;
-        _statusIcon.Visibility = streaming ? Visibility.Collapsed : Visibility.Visible;
         // B16: finished reasoning recedes (secondary label, tertiary glyph); streaming keeps the default emphasis.
         var labelKey = OpenCodeProcessedSummaryStyle.RowLabelKey(_model.Status);
         OpenCodeToolTheme.Apply(_nameText, labelKey is null

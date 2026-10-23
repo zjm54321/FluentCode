@@ -28,6 +28,12 @@ foreach ($presenter in @($chipSource, $reasoningSource)) {
 if ($reasoningSource -notmatch 'TrackPointer\(_row, e\); OpenCodeToolDetailPopup.Shared.HoverEnter\(this\)') {
     throw 'Reasoning preview must capture the pointer before hover entry.'
 }
+$toolRowSource = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs")
+if ($toolRowSource -notmatch '(?s)_statusIcon.Visibility = active \|\| model.Status == OpenCodeToolRowStatus.Completed \|\| !chrome.ShowsStatusIcon\s*\? Visibility.Collapsed : Visibility.Visible;' -or
+    $toolRowSource.Contains('Glyph = "\uE73E"') -or $reasoningSource.Contains('_statusIcon')) {
+    throw 'PG2 successful tool/reasoning rows must not show a green check; progress and failure chrome stay separate.'
+}
+Write-Output 'PASS PG2 child-row source contract (tool/reasoning no green check; native classes compiled by app build, not rendered).'
 $arguments = @('/nologo', '/target:exe', '/debug:embedded', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += '"' + $metricsSource + '"'
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
