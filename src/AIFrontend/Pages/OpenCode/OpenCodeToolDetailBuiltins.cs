@@ -27,6 +27,7 @@ internal static class OpenCodeToolDetailBuiltins
         FrameworkElement? body = OpenCodeToolDetailBuiltinData.Resolve(model) switch
         {
             OpenCodeBuiltinToolView.Todo => Todo(model, options.Compact),
+            OpenCodeBuiltinToolView.Subagent => Subagent(model, options),
             _ => null,
         };
         if (body is not null) AutomationProperties.SetAutomationId(body, "OpenCodeToolDetailBuiltin." + OpenCodeToolDetailBuiltinData.Resolve(model));
@@ -58,6 +59,64 @@ internal static class OpenCodeToolDetailBuiltins
             list.Children.Add(OpenCodeSessionInsightsView.TodoRow(items[index], index, "OpenCodeToolDetailTodoItem."));
         panel.Children.Add(list);
         AddMore(panel, items.Length - shown, "项");
+        return panel;
+    }
+
+    // ------------------------------------------------------------------ subagent
+
+    private static FrameworkElement Subagent(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
+    {
+        var detail = OpenCodeToolDetailBuiltinData.Subagent(model);
+        var panel = new StackPanel { Spacing = 10 };
+        // Background jobs: the row's async-completion summary ("后台已完成") is newer than the launch record (metadata.status).
+        var status = model.IsBackground && model.Summary.Length > 0
+            ? model.Summary
+            : OpenCodeSubagentPresentation.DescribeRecordedStatus(detail.RecordedStatus, model.IsBackground) ?? model.StatusText;
+        var meta = string.Join(" · ", new[] { detail.Agent is { } agent ? OpenCodeAgentIcons.DisplayName(agent) : null, status }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        panel.Children.Add(Header(OpenCodeAgentIcons.Glyph(detail.Agent), detail.Description ?? (detail.Agent is null ? "子代理任务" : OpenCodeAgentIcons.DisplayName(detail.Agent)), meta));
+
+        if (detail.SessionId is { } session && options.OpenChildSession is { } open)
+        {
+            var link = new HyperlinkButton { Content = LinkContent("\uE8A7", "打开子智能体会话"), Padding = new Thickness(6, 4, 6, 4) };
+            AutomationProperties.SetAutomationId(link, "OpenCodeToolDetailOpenChildSession");
+            ToolTipService.SetToolTip(link, session);
+            link.Click += (_, _) => open(session);
+            SwallowTap(link);
+            panel.Children.Add(link);
+        }
+
+        if (detail.Prompt is { } prompt)
+        {
+            var markdown = new OpenCodeRichTextPresenter();
+            markdown.Render(prompt, OpenCodeRichTextStyle.Body);
+            OpenCodeToolDetailContent.EnforceWrapping(markdown.Element);
+            var expander = new Expander
+            {
+                Header = "任务说明",
+                Content = markdown.Element,
+                IsExpanded = false,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            AutomationProperties.SetAutomationId(expander, "OpenCodeToolDetailSubagentPrompt");
+            SwallowTap(expander);
+            panel.Children.Add(expander);
+        }
+
+        if (detail.Output is { } output)
+        {
+            var text = OpenCodeInteractionUi.StyledText(output, OpenCodeInteractionUi.BodyStyleKey);
+            text.TextWrapping = TextWrapping.Wrap;
+            text.TextTrimming = TextTrimming.CharacterEllipsis;
+            if (options.Compact) text.MaxLines = 6;
+            panel.Children.Add(Section("结果", text));
+        }
+        else if (!model.IsActive && model.Status != OpenCodeToolRowStatus.Error && detail.SessionId is null)
+        {
+            panel.Children.Add(OpenCodeToolDetailContent.Caption("（没有返回内容）"));
+        }
+
         return panel;
     }
 
