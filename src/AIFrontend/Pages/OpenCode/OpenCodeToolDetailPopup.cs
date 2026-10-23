@@ -133,7 +133,7 @@ internal sealed class OpenCodeToolDetailPopup
     {
         // ---------------- 悬停预览 ----------------
         _previewChrome = new Chrome(large: false);
-        _previewHint = OpenCodeInteractionUi.StyledText("点击查看完整内容", OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
+        _previewHint = OpenCodeInteractionUi.StyledText("点击行打开完整内容", OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
         _previewHint.TextWrapping = TextWrapping.Wrap;
         _previewHint.Visibility = Visibility.Collapsed;
         var previewLayout = new Grid { RowSpacing = 8 };
@@ -142,11 +142,10 @@ internal sealed class OpenCodeToolDetailPopup
         previewLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         previewLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         AddRow(previewLayout, _previewChrome.TitleBar, 0);
-        AddRow(previewLayout, _previewChrome.Target, 1);
         AddRow(previewLayout, _previewChrome.ContentHost, 2);
         AddRow(previewLayout, _previewHint, 3);
 
-        _previewPresenter = CreatePresenter(previewLayout, new Thickness(12, 10, 12, 10), 32);
+        _previewPresenter = CreatePresenter(previewLayout, new Thickness(14, 10, 14, 10), 32);
         AutomationProperties.SetAutomationId(_previewPresenter, "OpenCodeToolDetailPreview");
         _previewPresenter.PointerEntered += (_, _) =>
         {
@@ -196,6 +195,7 @@ internal sealed class OpenCodeToolDetailPopup
         _closeButton = new Button
         {
             Content = new FontIcon { Glyph = "\uE711", FontSize = 14 },
+            Width = 32, Height = 32, Padding = new Thickness(0),
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
             VerticalAlignment = VerticalAlignment.Top,
         };
@@ -212,11 +212,10 @@ internal sealed class OpenCodeToolDetailPopup
         dialogLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         dialogLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         AddRow(dialogLayout, _dialogChrome.TitleBar, 0);
-        AddRow(dialogLayout, _dialogChrome.Target, 1);
         AddRow(dialogLayout, _dialogChrome.ContentHost, 2);
 
         // ContentDialog 同级的阴影高度与 24px 内边距。
-        _dialogPresenter = CreatePresenter(dialogLayout, new Thickness(24, 16, 16, 24), 128);
+        _dialogPresenter = CreatePresenter(dialogLayout, new Thickness(0), 128);
         _dialogPresenter.HorizontalAlignment = HorizontalAlignment.Center;
         _dialogPresenter.VerticalAlignment = VerticalAlignment.Center;
         _dialogPresenter.Transitions = new TransitionCollection
@@ -538,7 +537,7 @@ internal sealed class OpenCodeToolDetailPopup
         if (mode == OpenCodeDetailPopupMode.Large)
         {
             // 大视图展示完整内容（不截断；长列表由 ItemsRepeater 虚拟化）。
-            _options.ShowAll = true;
+            _options.ShowAll = false;
             _hover.Reset();
             if (_previewPopup.IsOpen)
             {
@@ -643,7 +642,7 @@ internal sealed class OpenCodeToolDetailPopup
 
         // The terminal body contains the complete command once; don't repeat its first line in chrome.
         chrome.Set(OpenCodeToolPartView.KindGlyph(model.Kind), model.Name,
-            model.Kind == OpenCodeToolKind.Shell ? string.Empty : model.Target, status, statusKey, model.DurationText);
+            model.Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.WebFetch ? string.Empty : model.Target, status, statusKey, model.DurationText);
 
         // 并排 / 统一视图只在大视图中提供（diff）；没有“换行”开关——详情文字总是换行（G8）。
         _viewModeButton.Visibility = OpenCodeToolRowPresentation.IsDiffKind(model.Kind) && model.DiffFiles.Count > 0
@@ -673,6 +672,7 @@ internal sealed class OpenCodeToolDetailPopup
             follow = old.ScrollableHeight > 0 && old.VerticalOffset >= old.ScrollableHeight - 4;
         }
 
+        using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(_mode == OpenCodeDetailPopupMode.Large);
         OpenCodeToolDetailView view;
         try
         {
@@ -700,6 +700,7 @@ internal sealed class OpenCodeToolDetailPopup
         _previewViewportWidth = -1;
         if (_scroller is { } currentScroller) currentScroller.LayoutUpdated += OnPreviewContentLayoutUpdated;
         _previewTruncated = view.IsTruncated;
+        _previewHint.Text = view.HiddenLineCount > 0 ? $"还有 {view.HiddenLineCount} 行 · 点击行打开完整内容" : "点击行打开完整内容";
         if (_mode == OpenCodeDetailPopupMode.Preview) PlacePreview();
         if (_scroller is { } scroller && (offset is not null || follow))
         {
@@ -727,7 +728,9 @@ internal sealed class OpenCodeToolDetailPopup
         _overlay.Width = rootSize.Width;
         _overlay.Height = rootSize.Height;
         _dialogPresenter.Width = rect.Width;
-        _dialogPresenter.Height = rect.Height;
+        _dialogPresenter.Height = double.NaN;
+        _dialogPresenter.MinHeight = Math.Min(320, rect.Height);
+        _dialogPresenter.MaxHeight = rect.Height;
         _dialogPopup.HorizontalOffset = 0;
         _dialogPopup.VerticalOffset = 0;
     }
@@ -765,8 +768,11 @@ internal sealed class OpenCodeToolDetailPopup
         _placingPreview = true;
         try
         {
-        var (_, maxWidth) = OpenCodeDetailPopupLayout.PreviewWidths(anchor.ActualWidth, band);
-        var height = OpenCodeDetailPopupLayout.PreviewHeightLimit(root.Size.Height);
+        // Widths are column-based; keep the existing safe band and frozen entry X.
+        var columnWidth = band.Width / (1 - 2 * OpenCodeDetailPopupLayout.ContentEdgeFraction);
+        var sizingAnchor = Math.Min(columnWidth, band.Width / OpenCodeDetailPopupLayout.PreviewMaxRowFraction);
+        var maxWidth = band.Width;
+        var height = Math.Min(340, OpenCodeDetailPopupLayout.PreviewHeightLimit(root.Size.Height));
         var capacity = OpenCodeDetailPopupLayout.PreviewPlacement(
             pointerX, origin.Y, anchor.ActualHeight, maxWidth, height, band, root.Size.Height);
         _previewHint.Visibility = Visibility.Collapsed;
@@ -780,7 +786,7 @@ internal sealed class OpenCodeToolDetailPopup
             _previewPresenter.Measure(new Size(width, double.PositiveInfinity));
             return _previewPresenter.DesiredSize.Height;
         }
-        var fit = OpenCodeDetailPopupLayout.FitPreview(anchor.ActualWidth, band, capacity.Height, MeasureFullHeight);
+        var fit = OpenCodeDetailPopupLayout.FitPreview(sizingAnchor, band, Math.Min(height, capacity.Height), MeasureFullHeight);
         _previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed;
         var fullHeight = MeasureFullHeight(fit.Width);
         var rect = PlaceBelowByDefault(
@@ -1020,16 +1026,20 @@ internal sealed class OpenCodeToolDetailPopup
     {
         internal Chrome(bool large)
         {
-            Icon = new FontIcon { FontSize = large ? 16 : 14, VerticalAlignment = VerticalAlignment.Center };
+            Icon = new FontIcon { FontSize = large ? 20 : 14, VerticalAlignment = VerticalAlignment.Center };
             Name = OpenCodeInteractionUi.StyledText(string.Empty, large ? OpenCodeInteractionUi.SubtitleStyleKey : OpenCodeInteractionUi.BodyStrongStyleKey, false);
             Name.VerticalAlignment = VerticalAlignment.Center;
             Name.TextWrapping = TextWrapping.Wrap;
             Target = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CodeStyleKey, false);
-            Target.TextWrapping = TextWrapping.Wrap;
+            Target.TextWrapping = TextWrapping.NoWrap;
+            Target.TextTrimming = TextTrimming.CharacterEllipsis;
+            Target.FontSize = large ? 13 : 12;
+            Target.VerticalAlignment = VerticalAlignment.Center;
             Status = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey, false);
             Status.VerticalAlignment = VerticalAlignment.Center;
             Status.TextWrapping = TextWrapping.Wrap;
             Status.TextAlignment = TextAlignment.Right;
+            StatusCapsule = new Border { Child = Status, Padding = new Thickness(8, 3, 8, 3), CornerRadius = new CornerRadius(12), VerticalAlignment = VerticalAlignment.Center };
             Duration = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
             Duration.VerticalAlignment = VerticalAlignment.Center;
             Duration.TextWrapping = TextWrapping.Wrap;
@@ -1037,8 +1047,8 @@ internal sealed class OpenCodeToolDetailPopup
             ContentHost = new Border();
             OpenCodeToolTheme.Apply(ContentHost, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase));
 
-            TitleBar = new Grid { ColumnSpacing = large ? 12 : 8 };
-            foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), large ? GridLength.Auto : new GridLength(1, GridUnitType.Star), GridLength.Auto })
+            TitleBar = new Grid { ColumnSpacing = 12, Height = large ? 56 : 22, Padding = large ? new Thickness(24, 0, 16, 0) : new Thickness(0) };
+            foreach (var width in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
             {
                 TitleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
             }
@@ -1046,15 +1056,17 @@ internal sealed class OpenCodeToolDetailPopup
             var statusLine = new Grid { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Center };
             statusLine.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             statusLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            statusLine.Children.Add(Status);
+            statusLine.Children.Add(StatusCapsule);
             Grid.SetColumn(Duration, 1);
             statusLine.Children.Add(Duration);
             Grid.SetColumn(Icon, 0);
             Grid.SetColumn(Name, 1);
-            Grid.SetColumn(statusLine, 2);
-            Grid.SetColumn(Actions, 3);
+            Grid.SetColumn(Target, 2);
+            Grid.SetColumn(statusLine, 3);
+            Grid.SetColumn(Actions, 4);
             TitleBar.Children.Add(Icon);
             TitleBar.Children.Add(Name);
+            TitleBar.Children.Add(Target);
             TitleBar.Children.Add(statusLine);
             TitleBar.Children.Add(Actions);
         }
@@ -1066,6 +1078,7 @@ internal sealed class OpenCodeToolDetailPopup
         internal TextBlock Target { get; }
 
         internal TextBlock Status { get; }
+        internal Border StatusCapsule { get; }
 
         internal TextBlock Duration { get; }
 
@@ -1080,9 +1093,14 @@ internal sealed class OpenCodeToolDetailPopup
             Icon.Glyph = glyph;
             Name.Text = name;
             Target.Text = target;
+            ToolTipService.SetToolTip(Target, target);
             Target.Visibility = string.IsNullOrEmpty(target) ? Visibility.Collapsed : Visibility.Visible;
             Status.Text = status;
             OpenCodeToolTheme.Apply(Status, OpenCodeToolTheme.Text(statusBrushKey, OpenCodeInteractionUi.CaptionStyleKey));
+            OpenCodeToolTheme.Apply(StatusCapsule, OpenCodeToolTheme.Border(statusBrushKey == OpenCodeToolTheme.Success
+                ? OpenCodeToolTheme.SuccessBackground : statusBrushKey == OpenCodeToolTheme.Critical
+                    ? OpenCodeToolTheme.CriticalBackground : OpenCodeToolTheme.SubtleSecondary));
+            StatusCapsule.Visibility = string.IsNullOrEmpty(status) ? Visibility.Collapsed : Visibility.Visible;
             Duration.Text = duration;
         }
     }

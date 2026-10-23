@@ -116,6 +116,7 @@ internal sealed class OpenCodeToolDetailOptions
     public bool Unified { get; set; }
 
     public bool ShowAll { get; set; }
+    public bool RawData { get; set; }
 
     public int SelectedFile { get; set; }
     public bool ShowSource { get; set; }
@@ -131,7 +132,7 @@ internal sealed class OpenCodeToolDetailOptions
 }
 
 /// <summary>构建结果：根元素 + 主滚动区（用于运行中刷新时保持/跟随滚动位置）。</summary>
-internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewer? Scroller, bool IsTruncated = false);
+internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewer? Scroller, bool IsTruncated = false, int HiddenLineCount = 0);
 
 /// <summary>
 /// 工具详情弹出层的内容构建（§6.3）：read 带行号全文；edit/patch/write/multiedit 并排 diff（可切统一视图），
@@ -139,7 +140,7 @@ internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewe
 /// 长内容经 ItemsRepeater 虚拟化，超过 <see cref="MaxRows"/> 行先显示前段并提供“显示全部”。
 /// 全部使用原生控件 + 内置文本样式 + 主题画刷（经 <see cref="OpenCodeToolTheme"/>），不定义颜色、不自定义模板。
 /// </summary>
-internal static class OpenCodeToolDetailContent
+internal static partial class OpenCodeToolDetailContent
 {
     internal const int MaxRows = 20000;
 
@@ -169,12 +170,13 @@ internal static class OpenCodeToolDetailContent
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(rebuild);
 
-        var root = new Grid { RowSpacing = 8 };
+        using var detailScope = DetailBuildScope(!options.Compact);
+        var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var banners = new StackPanel { Spacing = 4 };
+        var banners = new StackPanel { Spacing = 12 };
         if (model.Status == OpenCodeToolRowStatus.Error)
         {
             banners.Children.Add(new InfoBar
@@ -182,7 +184,7 @@ internal static class OpenCodeToolDetailContent
                 Severity = InfoBarSeverity.Error,
                 IsOpen = true,
                 IsClosable = false,
-                Title = "工具出错",
+                Title = ErrorTitle(model.ErrorText),
                 Message = model.ErrorText ?? "（服务端未提供错误详情）",
             });
         }
@@ -198,12 +200,7 @@ internal static class OpenCodeToolDetailContent
             });
         }
 
-        Grid.SetRow(banners, 0);
-        root.Children.Add(banners);
-
-        var top = new StackPanel { Spacing = 4 };
-        Grid.SetRow(top, 1);
-        root.Children.Add(top);
+        var top = new StackPanel { Spacing = 12 };
 
         var rows = new List<object>();
         FrameworkElement? body = null;
@@ -313,14 +310,17 @@ internal static class OpenCodeToolDetailContent
 
         ScrollViewer? scroller = null;
         var isTruncated = false;
+        var hiddenLines = 0;
         if (body is null)
         {
-            if (!options.ShowAll && rows.Count > MaxRows)
+            var rowLimit = options.Compact ? CompactRowLimit(model.Kind) : MaxRows;
+            if ((!options.ShowAll || options.Compact) && rows.Count > rowLimit)
             {
                 isTruncated = true;
                 var total = rows.Count;
-                rows.RemoveRange(MaxRows, rows.Count - MaxRows);
-                rows.Add(new ActionLine(
+                hiddenLines = total - rowLimit;
+                rows.RemoveRange(rowLimit, rows.Count - rowLimit);
+                if (!options.Compact) rows.Add(new ActionLine(
                     "已显示前 " + MaxRows.ToString(CultureInfo.InvariantCulture) + " 行（共 " + total.ToString(CultureInfo.InvariantCulture) + " 行）· 显示全部",
                     () =>
                     {
@@ -344,18 +344,36 @@ internal static class OpenCodeToolDetailContent
             }
         }
 
+        if (options.RawData && !options.Compact) body = RawProperties(model);
+        var allContent = new StackPanel { Spacing = 20 };
+        if (banners.Children.Count > 0) allContent.Children.Add(banners);
+        if (top.Children.Count > 0 && !options.RawData) allContent.Children.Add(top);
+        allContent.Children.Add(body);
         scroller = new ScrollViewer
         {
-            Content = body,
+            Content = allContent,
             // G8：内容总是换行 → 无横向滚动，宽度受限于详情视图，长行在行内折行。
             HorizontalScrollMode = ScrollMode.Disabled,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = options.Compact ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Auto,
+            VerticalScrollMode = options.Compact ? ScrollMode.Disabled : ScrollMode.Auto,
+            MaxHeight = options.Compact ? 260 : double.PositiveInfinity,
+            Padding = options.Compact ? new Thickness(0) : new Thickness(24, 16, 24, 16),
         };
         AutomationProperties.SetAutomationId(scroller, "OpenCodeToolDetailScroller");
-        Grid.SetRow(scroller, 2);
+        root.RowDefinitions[0].Height = GridLength.Auto;
+        root.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+        root.RowDefinitions[2].Height = GridLength.Auto;
+        if (!options.Compact) root.Children.Add(FactsBar(model));
+        Grid.SetRow(scroller, 1);
         root.Children.Add(scroller);
-        return new OpenCodeToolDetailView(root, scroller, isTruncated);
+        if (!options.Compact)
+        {
+            var footer = DetailFooter(model, options, rebuild);
+            Grid.SetRow(footer, 2);
+            root.Children.Add(footer);
+        }
+        return new OpenCodeToolDetailView(root, scroller, isTruncated, hiddenLines);
     }
 
     private static void BuildRead(OpenCodeToolRowModel model, List<object> rows, StackPanel top)
@@ -390,7 +408,6 @@ internal static class OpenCodeToolDetailContent
 
     private static FrameworkElement BuildFileContent(string path, string source, OpenCodeToolDetailOptions options, Action rebuild, StackPanel top)
     {
-        top.Children.Add(Caption(path));
         var copy = new Button { Content = "复制源码", HorizontalAlignment = HorizontalAlignment.Left };
         AutomationProperties.SetAutomationId(copy, "OpenCodeFileCopySource");
         copy.Click += (_, _) =>
@@ -697,7 +714,7 @@ internal static class OpenCodeToolDetailContent
 
     private static FrameworkElement BuildGeneric(OpenCodeToolRowModel model)
     {
-        var panel = new StackPanel { Spacing = 16 };
+        var panel = new StackPanel { Spacing = 20 };
         if (model.InputProperties.Count > 0)
         {
             panel.Children.Add(Section("输入", PropertyList(model.InputProperties)));
@@ -896,12 +913,21 @@ internal static class OpenCodeToolDetailContent
     internal static FrameworkElement PropertyList(IReadOnlyList<OpenCodeToolProperty> properties)
     {
         ArgumentNullException.ThrowIfNull(properties);
-        var list = new StackPanel { Spacing = 6 };
+        var list = new StackPanel { Spacing = 12 };
         AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailProperties");
-        foreach (var property in properties)
+        void Populate(bool all)
         {
-            list.Children.Add(PropertyRow(property));
+            list.Children.Clear();
+            var count = all ? properties.Count : Math.Min(2000, properties.Count);
+            for (var index = 0; index < count; index++) list.Children.Add(PropertyRow(properties[index]));
+            if (count < properties.Count)
+            {
+                var expand = new HyperlinkButton { Content = $"已显示 2 000 / {properties.Count} 项 · 显示全部" };
+                expand.Click += (_, _) => Populate(true);
+                list.Children.Add(expand);
+            }
         }
+        Populate(false);
 
         return list;
     }
@@ -910,13 +936,27 @@ internal static class OpenCodeToolDetailContent
     internal static FrameworkElement CodeBlock(string text)
     {
         var panel = new StackPanel();
-        foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(text))
+        void Populate(bool all)
         {
-            var block = OpenCodeInteractionUi.StyledText(chunk, OpenCodeInteractionUi.CodeStyleKey, true);
-            block.TextWrapping = TextWrapping.Wrap;
-            OpenCodeCodePalette.BindText(block, chunk, "text");
-            panel.Children.Add(block);
+            panel.Children.Clear();
+            var lines = text.Split('\n');
+            var count = all ? lines.Length : Math.Min(MaxRows, lines.Length);
+            var shown = count == lines.Length ? text : string.Join("\n", lines, 0, count);
+            foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(shown))
+            {
+                var block = OpenCodeInteractionUi.StyledText(chunk, OpenCodeInteractionUi.CodeStyleKey, true);
+                block.TextWrapping = TextWrapping.Wrap;
+                OpenCodeCodePalette.BindText(block, chunk, "text");
+                panel.Children.Add(block);
+            }
+            if (count < lines.Length)
+            {
+                var expand = new HyperlinkButton { Content = $"已显示前 {count} 行（共 {lines.Length} 行）· 显示全部" };
+                expand.Click += (_, _) => Populate(true);
+                panel.Children.Add(expand);
+            }
         }
+        Populate(_fullDetailBuild == 0);
 
         return CodeBlockFrame(panel, text);
     }
@@ -926,7 +966,7 @@ internal static class OpenCodeToolDetailContent
     internal static FrameworkElement CodeBlockFrame(FrameworkElement content, string source, string? language = null)
     {
         var excerpt = OpenCodeDetailTextPolicy.CodePreview(source);
-        var canCollapse = OpenCodeDetailTextPolicy.CanCollapseCode(source);
+        var canCollapse = _fullDetailBuild == 0 && OpenCodeDetailTextPolicy.CanCollapseCode(source);
         var preview = Mono(excerpt);
         preview.MaxLines = OpenCodeDetailTextPolicy.CodePreviewLines;
         preview.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -1088,6 +1128,7 @@ internal static class OpenCodeToolDetailContent
                     _ => OpenCodeInteractionUi.StyledText(property.Value, OpenCodeInteractionUi.BodyStyleKey, false),
                 };
                 value.TextWrapping = TextWrapping.Wrap;
+                value.IsTextSelectionEnabled = true;
                 value.VerticalAlignment = VerticalAlignment.Center;
                 if (property.Key.Length == 0)
                 {
@@ -1149,7 +1190,7 @@ internal static class OpenCodeToolDetailContent
 
     private static UIElement Section(string label, UIElement child)
     {
-        var panel = new StackPanel { Spacing = 8 };
+        var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(OpenCodeInteractionUi.StyledText(label, OpenCodeInteractionUi.BodyStrongStyleKey, false));
         panel.Children.Add(child);
         return panel;

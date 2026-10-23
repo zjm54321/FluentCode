@@ -102,6 +102,13 @@ internal static class Program
         var builtins = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltins.cs"));
         Check(content.Contains("body = OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);", StringComparison.Ordinal), "built-in views dispatched before the generic dump");
         Check(popup.Contains("options.Compact = _mode == OpenCodeDetailPopupMode.Preview;", StringComparison.Ordinal), "preview builds compact, large view builds full");
+        var surface = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailSurface.cs"));
+        Check(surface.Contains("Orientation = Orientation.Horizontal, Spacing = 28", StringComparison.Ordinal)
+            && surface.Contains("Content = \"原始数据\"", StringComparison.Ordinal), "v5 native horizontal facts and raw-data footer");
+        Check(content.Contains("allContent.Children.Add(top)", StringComparison.Ordinal)
+            && content.Contains("Content = allContent", StringComparison.Ordinal), "v5 headers and body share the main scroll surface");
+        Check(content.Contains("_fullDetailBuild == 0 && OpenCodeDetailTextPolicy.CanCollapseCode", StringComparison.Ordinal)
+            && !popup.Contains("_options.ShowAll = true", StringComparison.Ordinal), "v5 full code expansion preserves recoverable row caps");
         Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(", StringComparison.Ordinal) && builtins.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
             && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "to do reuses the right-panel rows; read-only; theme brushes only");
         Check(builtins.Contains("count.HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal)
