@@ -86,8 +86,11 @@ internal static class ContinuationTests
         foreach (var enhanced in new[] { false, true })
         {
             using var f = new NativeTests.Fixture(); Stage(f); Confirm(); if (enhanced) await f.Page.File(); f.Page.Text("submitted");
-            var response = Program.Signal<HttpResponseMessage>(); f.Mutation = _ => response.Task;
+            var response = Program.Signal<HttpResponseMessage>(); var entered = Program.Signal<bool>();
+            f.Mutation = _ => { entered.TrySetResult(true); return response.Task; };
             var send = f.Page.Send();
+            // Attached prompts prepare their request off-thread; Send need not reach HTTP synchronously.
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Check(f.Http.Posts == 1 && f.Page.HistoryDeferred, "staged send holds history through HTTP");
             f.Page.DrainView(); f.Page.Text("later input"); response.SetResult(Program.Receipt()); await send;
             using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test");
