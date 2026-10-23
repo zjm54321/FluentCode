@@ -18,19 +18,8 @@ public sealed partial class OpenCodeClient
     {
         if (files is null || files.Count == 0)
             return await SendPromptAsync(sessionId, text, cancellationToken).ConfigureAwait(false);
-        ValidateSessionId(sessionId);
-        ArgumentNullException.ThrowIfNull(text);
-        var body = new OpenCodeAttachedPromptBody(text, OpenCodeAttachment.ValidateFiles(files)!);
-        OpenCodeAttachment.ValidateRequestSize(body);
-        cancellationToken.ThrowIfCancellationRequested();
-        using var content = CreateJsonContent(body);
-        using var document = await SendForJsonAsync(HttpMethod.Post,
-            "api/session/" + Uri.EscapeDataString(sessionId) + "/prompt", null, content, cancellationToken).ConfigureAwait(false);
-        var inboxUser = RequireData<OpenCodeInboxUser>(document, "POST api/session/{sessionID}/prompt");
-        if (string.IsNullOrWhiteSpace(inboxUser.Id) || inboxUser.SessionId != sessionId
-            || inboxUser.Type != OpenCodeInboxItemTypes.User || inboxUser.Payload?.Text is null)
-            throw new OpenCodeProtocolException("接纳回执缺少关联字段或所属会话不匹配（POST api/session/{sessionID}/prompt）。");
-        return inboxUser;
+        return await SendPromptGuardedAsync(sessionId, text, files,
+            action => { action(); return true; }, cancellationToken).ConfigureAwait(false);
     }
 
     internal async Task<OpenCodeInboxUser> SendPromptGuardedAsync(string sessionId, string text,
@@ -42,11 +31,7 @@ public sealed partial class OpenCodeClient
         if (delivery is not null and not "steer" and not "queue")
             throw new ArgumentException("Delivery must be steer or queue.", nameof(delivery));
         var validated = OpenCodeAttachment.ValidateFiles(files);
-        object body = validated is null || validated.Count == 0
-            ? new PromptBody(text) : new OpenCodeAttachedPromptBody(text, validated);
-        if (delivery is not null)
-            body = validated is null || validated.Count == 0
-                ? (object)new { text, delivery } : new { text, files = validated, delivery };
+        var body = BuildPromptBody(text, validated is { Count: > 0 } ? validated : null, delivery);
         OpenCodeAttachment.ValidateRequestSize(body);
         cancellationToken.ThrowIfCancellationRequested();
         using var content = CreateJsonContent(body);
@@ -55,10 +40,6 @@ public sealed partial class OpenCodeClient
             "api/session/" + Uri.EscapeDataString(sessionId) + "/prompt", null, content, cancellationToken)))
             throw new OperationCanceledException(cancellationToken);
         using var document = await (pending ?? throw new InvalidOperationException("Transport starter did not execute.")).ConfigureAwait(false);
-        var receipt = RequireData<OpenCodeInboxUser>(document, "POST api/session/{sessionID}/prompt");
-        if (string.IsNullOrWhiteSpace(receipt.Id) || receipt.SessionId != sessionId
-            || receipt.Type != OpenCodeInboxItemTypes.User || receipt.Payload?.Text is null)
-            throw new OpenCodeProtocolException("接纳回执缺少关联字段或所属会话不匹配（POST api/session/{sessionID}/prompt）。");
-        return receipt;
+        return ParsePromptReceipt(document, sessionId);
     }
 }

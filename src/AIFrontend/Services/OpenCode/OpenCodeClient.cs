@@ -219,16 +219,9 @@ public sealed partial class OpenCodeClient : IDisposable
 
         var endpoint = "api/session/" + Uri.EscapeDataString(sessionId) + "/prompt";
 
-        using var content = CreateJsonContent(new PromptBody(text));
+        using var content = CreateJsonContent(BuildPromptBody(text));
         using var document = await SendForJsonAsync(HttpMethod.Post, endpoint, query: null, content: content, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var inboxUser = RequireData<OpenCodeInboxUser>(document, "POST api/session/{sessionID}/prompt");
-        if (string.IsNullOrWhiteSpace(inboxUser.Id) || inboxUser.SessionId != sessionId
-            || inboxUser.Type != OpenCodeInboxItemTypes.User || inboxUser.Payload?.Text is null)
-        {
-            throw new OpenCodeProtocolException("接纳回执缺少关联字段或所属会话不匹配（POST api/session/{sessionID}/prompt）。");
-        }
-
-        return inboxUser;
+        return ParsePromptReceipt(document, sessionId);
     }
 
     /// <summary>
@@ -719,6 +712,22 @@ public sealed partial class OpenCodeClient : IDisposable
 
     private static StringContent CreateJsonContent<T>(T body)
         => new(JsonSerializer.Serialize(body, OpenCodeJson.Options), Encoding.UTF8, "application/json");
+
+    private static OpenCodeInboxUser ParsePromptReceipt(JsonDocument document, string sessionId)
+    {
+        var receipt = RequireData<OpenCodeInboxUser>(document, "POST api/session/{sessionID}/prompt");
+        if (string.IsNullOrWhiteSpace(receipt.Id) || receipt.SessionId != sessionId
+            || receipt.Type != OpenCodeInboxItemTypes.User || receipt.Payload?.Text is null)
+            throw new OpenCodeProtocolException("接纳回执缺少关联字段或所属会话不匹配（POST api/session/{sessionID}/prompt）。");
+        return receipt;
+    }
+
+    private static object BuildPromptBody(string text, object? files = null, string? delivery = null)
+    {
+        if (delivery is not null)
+            return files is null ? new { text, delivery } : new { text, files, delivery };
+        return files is null ? new PromptBody(text) : new { text, files };
+    }
 }
 
 /// <summary>POST api/session 请求体；Location 为 null 时序列化为 {}。</summary>
