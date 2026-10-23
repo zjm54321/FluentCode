@@ -294,8 +294,8 @@ internal static partial class Program
             Check(s.Capabilities.State == OpenCodeInsightState.Partial
                 && s.Capabilities.Value!.Plugins.Availability == OpenCodeCapabilityAvailability.Unknown,
                 "plugins-failed.unknown-not-empty");
-            Check(s.Todo.State == OpenCodeInsightState.Partial && s.Todo.Value!.State == OpenCodeTodoState.Unknown
-                && s.Todo.Value.Items.IsEmpty && !s.Todo.Value.Complete, "unfetched-history.todo-unknown-not-failure-not-empty");
+            Check(s.Todo.State == OpenCodeInsightState.Failed && s.Todo.Value!.State == OpenCodeTodoState.ReadFailure
+                && s.Todo.Value.Items.IsEmpty && !s.Todo.Value.Complete, "unfetched-history.todo-message-404-is-genuine-failure-not-empty");
             Check(s.Children.State == OpenCodeInsightState.Failed, "plugins-failed.children-unknown");
             Check(!fake.Paths.Any(path => path.StartsWith("/prefix/api/session/active")), "plugins-failed.no-active-read");
             Check(s.Pricing.State == OpenCodeInsightState.Loaded && s.Pricing.Value!.Tiers.Length == 2
@@ -346,11 +346,11 @@ internal static partial class Program
             Check(s.Context.Value!.ReferenceTokens == 1010 && s.Context.Value.ContextLimit == 200000
                 && s.Context.State == OpenCodeInsightState.Loaded, "context.reference-and-limit-no-percentage");
 
-            // Same messages, history NOT complete → Todo/Context remain honest.
+            // Latest completed todowrite suffices even when earlier conversation messages are not loaded.
             await controller.LoadAsync(page.Capture(), messages, historyComplete: false, CancellationToken.None);
             s = controller.Snapshot;
-            Check(s.Todo.State == OpenCodeInsightState.Partial && !s.Todo.Value!.Complete && s.Todo.Value.Reason.Contains("未取全"),
-                "todo.incomplete-history-not-empty-claim");
+            Check(s.Todo.State == OpenCodeInsightState.Loaded && s.Todo.Value!.Complete && s.Todo.Value.SourceMessageId == "msg_3",
+                "todo.latest-completed-write-suffices-without-older-history");
             Check(s.Context.State == OpenCodeInsightState.Partial
                 && s.Context.Value!.StaleReasons.Contains(OpenCodeContextStaleReason.HistoryIncomplete), "context.history-incomplete-stale");
         }
@@ -376,7 +376,7 @@ internal static partial class Program
             Check(children.State == OpenCodeInsightState.Loaded && children.Value!.Complete, "omo.children-complete");
             Check(children.Value!.Children.Single(c => c.SessionId == "ses_k1").Active == true
                 && children.Value.Children.Single(c => c.SessionId == "ses_k2").Active == false, "omo.active-tristate");
-            Check(controller.Snapshot.Todo.Value!.State == OpenCodeTodoState.Unknown, "todo.no-plugin-gating-history-unknown");
+            Check(controller.Snapshot.Todo.Value!.State == OpenCodeTodoState.ReadFailure, "todo.no-plugin-fallback-history-404-is-failure");
         }
     }
 

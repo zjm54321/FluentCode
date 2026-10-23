@@ -23,10 +23,12 @@ internal static class AutomaticInsightsTests
     private sealed class Http : HttpMessageHandler
     {
         internal int Reads;
+        internal int MessageReads;
         internal TaskCompletionSource<HttpResponseMessage>? Held;
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            Reads++;
+            if (request.RequestUri!.AbsolutePath.EndsWith("/message", StringComparison.Ordinal)) MessageReads++;
+            else Reads++;
             return Held?.Task ?? Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }
@@ -54,6 +56,8 @@ internal static class AutomaticInsightsTests
         pump.Until(() => !page.InsightsRefreshPending);
         var snapshot = page.Insights.Snapshot;
         Check(http.Reads == 1 && snapshot.SampledAt is not null, "resident panel loads without a click");
+        Check(http.MessageReads == 1 && snapshot.Todo.Value?.State == OpenCodeTodoState.ReadFailure,
+            "resident panel also resolves partial to do history; genuine HTTP failure is not empty");
         Check(snapshot.Context.State != OpenCodeInsightState.NotLoaded && snapshot.Cost.State != OpenCodeInsightState.NotLoaded
             && snapshot.Pricing.State != OpenCodeInsightState.NotLoaded && snapshot.Capabilities.State != OpenCodeInsightState.NotLoaded
             && snapshot.Todo.State != OpenCodeInsightState.NotLoaded && snapshot.Children.State != OpenCodeInsightState.NotLoaded,

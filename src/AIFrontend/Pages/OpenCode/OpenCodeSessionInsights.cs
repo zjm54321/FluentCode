@@ -158,7 +158,7 @@ public sealed record OpenCodeSessionInsightsSnapshot(
 /// 同次显式加载在已核实的会话目录发起一次 Billion 地址元数据 RPC；手动覆盖优先，不自动重试。
 /// Billion 只在 <see cref="ReadBillionAsync"/>（单独点击且已确认当前来源的地址）时读取 health + 单会话 detail。
     /// 上下文另由已接纳消息本地更新；每个绑定最多自动读取一次模型目录，不读取费用/能力/Billion。
-    /// 本类没有计时器或后台轮询；to do 使用已接纳消息本地派生，配置开关仅在显式加载时读取。
+    /// 本类没有计时器或后台轮询；to do 优先本地派生，缺少最新记录时独立分页并缓存结果，配置在加载时读取。
 /// </para>
 /// <para>
 /// 代际：每次读取捕获 <see cref="OpenCodeInsightsBinding"/>，经来源 TryExecute 起发，await 后以
@@ -198,6 +198,13 @@ public sealed class OpenCodeSessionInsightsController
     private string? _contextInputSignature;
     private string? _todoInputSignature;
     private OpenCodeTodoConfig _todoConfig = OpenCodeTodoConfig.Unknown;
+    // Cache only the derived list (not entire histories), scoped to the live source/client/session.
+    private sealed record TodoCache(string Signature, OpenCodeTodoSnapshot Snapshot);
+    private readonly Dictionary<OpenCodeInsightsBinding, TodoCache> _todoCache = new();
+    private CancellationTokenSource? _todoCts;
+    private Task? _todoTask;
+    private string? _todoAttemptSignature;
+    private long _todoReadId;
     private OpenCodeModelRef? _contextModel;
     private string? _contextDirectory;
     private OpenCodeModelInfo[]? _contextModels;
@@ -275,7 +282,7 @@ public sealed class OpenCodeSessionInsightsController
             }
             if (todoHistory is not null)
             {
-                var todoSignature = TodoInputSignature(orderedMessages, _todoHistory);
+                var todoSignature = TodoHistorySignature();
                 if (_todoInputSignature == todoSignature) return;
                 _todoInputSignature = todoSignature;
                 _todoHistory = todoHistory;
@@ -499,6 +506,10 @@ public sealed class OpenCodeSessionInsightsController
 
     private void ClearContext()
     {
+        CancelAndForget(ref _todoCts);
+        _todoReadId++;
+        _todoTask = null;
+        _todoAttemptSignature = null;
         _todoHistory = OpenCodeTodoHistory.NoRevert;
         _todoConfig = OpenCodeTodoConfig.Unknown;
         CancelAndForget(ref _contextCts);
@@ -538,6 +549,7 @@ public sealed class OpenCodeSessionInsightsController
         }
         else if (clearBillionOrigin)
         {
+            _todoCache.Clear();
             _retainedContextCatalogBinding = null;
             _retainedContextModels = null;
             _retainedContextDirectory = null;
@@ -624,6 +636,12 @@ public sealed class OpenCodeSessionInsightsController
 
         AdoptBinding(binding);
         var id = ++_loadId;
+        if (_todoCache.TryGetValue(TodoCacheKey(binding), out var failedTodo)
+            && failedTodo.Snapshot.State == OpenCodeTodoState.ReadFailure)
+        {
+            _todoCache.Remove(TodoCacheKey(binding));
+            _todoAttemptSignature = null;
+        }
         // Capture BEFORE any await/publish callback: a later origin edit/confirmation must win over this load.
         var discoveryContext = Snapshot.BillionContext;
         CancelDiscovery(clearResult: false);
@@ -741,7 +759,7 @@ public sealed class OpenCodeSessionInsightsController
                 directory is null ? "无法确认会话目录，MCP / 插件状态未查询。"
                     : capabilities.Complete ? "采样时刻的公开状态目录。" : "部分状态未能确认；未确认项不代表未安装或未连接。");
 
-            // 4) 上下文参考 / Todo：只复用已加载消息；历史未取全时如实标记。
+            // 4) 上下文参考复用已加载消息；to do 另行补齐它所需的历史，不扩张正文窗口。
             if (info is not null && contextModelVersion == _contextModelVersion) SetContextModel(info.Model, directory);
             if (directory == _contextDirectory && models.Value?.Data is { } catalog)
             {
@@ -758,6 +776,8 @@ public sealed class OpenCodeSessionInsightsController
                     false => OpenCodeTodoConfig.Disabled,
                     null => OpenCodeTodoConfig.Unknown,
                 };
+            await EnsureTodoHistoryAsync(binding, ct);
+            if (!IsOwner(id, binding)) return;
             // A message/revert publication received during the HTTP read always wins over its starting input.
             var todo = BuildTodo(scope);
             capabilities = capabilities with { Todo = todo.Value!.Capability };
@@ -1220,8 +1240,23 @@ public sealed class OpenCodeSessionInsightsController
     private OpenCodeInsightSection<OpenCodeTodoSnapshot> BuildTodo(OpenCodeCapabilityScope scope)
     {
         TodoProjectionCount++;
+        return ResolveTodo(scope);
+    }
+
+    private OpenCodeInsightSection<OpenCodeTodoSnapshot> ResolveTodo(OpenCodeCapabilityScope scope)
+    {
         var todo = OpenCodeTodoReplay.Derive(_binding!.SessionId, _contextMessages, _contextHistoryComplete,
             _todoHistory, _todoConfig, scope);
+        var key = TodoCacheKey(_binding);
+        var signature = TodoHistorySignature();
+        if (todo.Complete)
+            _todoCache[key] = new(signature, todo);
+        else if (!_todoHistory.ReadFailed && _todoHistory.RevertKnown
+            && _todoCache.TryGetValue(key, out var cached) && cached.Signature == signature)
+            todo = cached.Snapshot.SourceMessageId is not null || cached.Snapshot.State == OpenCodeTodoState.ReadFailure
+                ? cached.Snapshot with { Scope = scope }
+                : OpenCodeTodoReplay.Derive(_binding.SessionId, [], true,
+                    OpenCodeTodoHistory.NoRevert, _todoConfig, scope);
         return new(todo.State switch
         {
             OpenCodeTodoState.ReadFailure => OpenCodeInsightState.Failed,
@@ -1229,6 +1264,103 @@ public sealed class OpenCodeSessionInsightsController
             _ when !todo.Complete => OpenCodeInsightState.Partial,
             _ => OpenCodeInsightState.Loaded,
         }, todo, todo.Reason);
+    }
+
+    private static OpenCodeInsightsBinding TodoCacheKey(OpenCodeInsightsBinding binding)
+        => binding with { SessionGeneration = 0 };
+
+    private string TodoHistorySignature()
+        => (_contextHistoryComplete ? "1|" : "0|") + TodoInputSignature(_contextMessages, _todoHistory);
+
+    /// <summary>Invalidate remote evidence on native todowrite completion or revert, including inactive sessions.</summary>
+    public void InvalidateTodo(string sessionId)
+    {
+        foreach (var key in _todoCache.Keys.Where(key => key.SessionId == sessionId).ToArray()) _todoCache.Remove(key);
+        if (_binding?.SessionId != sessionId) return;
+        CancelAndForget(ref _todoCts);
+        _todoReadId++;
+        _todoTask = null;
+        _todoAttemptSignature = null;
+    }
+
+    /// <summary>Independent read-only history scan: never changes the conversation window or scroll position.</summary>
+    public Task EnsureTodoHistoryAsync(OpenCodeInsightsBinding binding, CancellationToken outer)
+    {
+        if (outer.IsCancellationRequested || !OwnsContext(binding) || !_contextHasMessages
+            || !_todoHistory.RevertKnown || _todoHistory.ReadFailed) return Task.CompletedTask;
+        var scope = new OpenCodeCapabilityScope(binding.Source.Identity, binding.Revision, _contextDirectory, DateTimeOffset.UtcNow);
+        var todo = ResolveTodo(scope);
+        if (todo.Value!.Complete || todo.Value.State == OpenCodeTodoState.ReadFailure) return Task.CompletedTask;
+        // Exhausted history with an unreadable config needs config, not another message scan.
+        if (_contextHistoryComplete) return Task.CompletedTask;
+        var signature = TodoHistorySignature();
+        if (_todoAttemptSignature == signature) return _todoTask ?? Task.CompletedTask;
+        CancelAndForget(ref _todoCts);
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(outer, binding.Source.RevocationToken);
+        _todoCts = cts;
+        _todoAttemptSignature = signature;
+        var id = ++_todoReadId;
+        return _todoTask = ReadTodoHistoryAsync(binding, signature, id, scope, cts);
+    }
+
+    private async Task ReadTodoHistoryAsync(OpenCodeInsightsBinding binding, string signature, long id,
+        OpenCodeCapabilityScope scope, CancellationTokenSource owner)
+    {
+        var ct = owner.Token;
+        bool Current() => !ct.IsCancellationRequested && id == _todoReadId && OwnsContext(binding)
+            && signature == TodoHistorySignature();
+        var history = _todoHistory;
+        var messages = new List<OpenCodeMessage>();
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        string? cursor = null;
+        OpenCodeTodoSnapshot? result = null;
+        try
+        {
+            while (Current())
+            {
+                Task<OpenCodeSessionMessagesResponse>? pending = null;
+                binding.Source.TryExecute(ct, () =>
+                {
+                    if (!Current()) return;
+                    pending = binding.Client.GetMessagesAsync(binding.SessionId,
+                        new() { Limit = 100, Order = cursor is null ? OpenCodeSessionOrders.Desc : null, Cursor = cursor }, ct);
+                    OpenCodeReadsStarted++;
+                });
+                if (pending is null) return;
+                var page = await pending;
+                if (!Current()) return;
+                var data = page.Data!;
+                // Descending pages are reversed individually; each older page precedes the accumulated suffix.
+                messages.InsertRange(0, data.AsEnumerable().Reverse());
+                var next = page.Cursor?.Next;
+                var complete = data.Count == 0 || next is null;
+                result = OpenCodeTodoReplay.Derive(binding.SessionId, messages, complete, history, _todoConfig, scope);
+                if (result.Complete || result.State == OpenCodeTodoState.ReadFailure || complete) break;
+                if (string.IsNullOrWhiteSpace(next) || next.Any(char.IsControl) || next.Length > 4096 || !used.Add(next))
+                    throw new OpenCodeProtocolException("to do 消息分页游标无效或重复。");
+                cursor = next;
+            }
+        }
+        catch (OperationCanceledException) { return; }
+        catch (OpenCodeException)
+        {
+            result = OpenCodeTodoReplay.Derive(binding.SessionId, [], false, history with { ReadFailed = true }, _todoConfig, scope);
+        }
+        finally
+        {
+            if (ReferenceEquals(_todoCts, owner)) _todoCts = null;
+            owner.Dispose();
+        }
+        if (!Current() || result is null) return;
+        _todoCache[TodoCacheKey(binding)] = new(signature, result);
+        var capabilities = Snapshot.Capabilities.Value;
+        Publish(Snapshot with
+        {
+            Todo = new(result.State == OpenCodeTodoState.ReadFailure ? OpenCodeInsightState.Failed
+                : result.Complete ? OpenCodeInsightState.Loaded : OpenCodeInsightState.Partial, result, result.Reason),
+            Capabilities = capabilities is null ? Snapshot.Capabilities
+                : Snapshot.Capabilities with { Value = capabilities with { Todo = result.Capability } },
+        });
     }
 
     private void AdoptBinding(OpenCodeInsightsBinding binding)

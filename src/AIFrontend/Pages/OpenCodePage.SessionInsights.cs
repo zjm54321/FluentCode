@@ -112,6 +112,7 @@ public sealed partial class OpenCodePage
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
         {
             insights.UpdateContext(binding!, messages, IsLoadedMessageHistoryComplete(), CaptureTodoHistory());
+            if (_insightsVisible) _ = EnsureSessionTodoAsync(insights, binding!);
             if (_insightsVisible && !insights.HasResultFor(binding!)) OpenSessionInsightsPane();
         }
     }
@@ -165,6 +166,11 @@ public sealed partial class OpenCodePage
 
     partial void OnSessionInsightsEvent(OpenCodeEvent item)
     {
+        if (item.SessionId is { } todoSession && (item.Type.StartsWith("session.revert.", StringComparison.Ordinal)
+            || (item.Type == "session.tool.success" && (todoSession != _selectedSessionId
+                || (item.Data.TryGetProperty("name", out var name)
+                    && name.ValueKind == System.Text.Json.JsonValueKind.String && name.GetString() == OpenCodeTodoReplay.ToolId)))))
+            _insights?.InvalidateTodo(todoSession);
         if (item.SessionId != _selectedSessionId || item.SessionId is null
             || !TryCaptureInsightsBinding(out var binding)) return;
         if (!item.Type.StartsWith("session.", StringComparison.Ordinal)
@@ -336,6 +342,12 @@ public sealed partial class OpenCodePage
     private OpenCodeTodoHistory CaptureTodoHistory()
         => new(_messageChainState == MessagePaginationChainState.Stopped,
             _messageHistoryBoundaryKnown && !_messageHistoryNeedsState, _messageRevertBoundary);
+
+    private async Task EnsureSessionTodoAsync(OpenCodeSessionInsightsController insights, OpenCodeInsightsBinding binding)
+    {
+        using var operation = CreateOperationToken(binding.Source);
+        await insights.EnsureTodoHistoryAsync(binding, operation.Token);
+    }
 
     /// <param name="renderedContext">点击时界面显示的上下文；原样交给控制器，不用新绑定替换。</param>
     private async Task ReadBillionInsightsAsync(OpenCodeBillionContext renderedContext)

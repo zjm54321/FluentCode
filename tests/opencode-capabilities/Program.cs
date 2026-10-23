@@ -237,14 +237,15 @@ internal static class Program
         Check(none.State == OpenCodeTodoState.Empty && none.Complete && none.SourceMessageId is null && none.Capability.Availability == OpenCodeCapabilityAvailability.Available,
             "complete history, no write, experimental.todo=true → Empty");
         var incomplete = Derive(new[] { old }, complete: false);
-        Check(incomplete.State == OpenCodeTodoState.Unknown && !incomplete.Complete && incomplete.Items.IsEmpty
-            && incomplete.Reason.Contains("未取全"), "partial history is Unknown, never a verified current list or Empty");
+        Check(incomplete.State == OpenCodeTodoState.Listed && incomplete.Complete && incomplete.SourceMessageId == "msg_old",
+            "latest completed write in a contiguous suffix is authoritative without older pages");
         var missing = Derive(Array.Empty<OpenCodeMessage>(), complete: false);
         Check(missing.State == OpenCodeTodoState.Unknown && !missing.Complete && missing.Reason.Contains("未取全"), "unfetched history is Unknown, not Empty");
         var readFailed = Derive(new[] { old }, complete: false, history: new(true, true, null));
         Check(readFailed.State == OpenCodeTodoState.ReadFailure && readFailed.Items.IsEmpty && readFailed.Reason.Contains("读取失败"),
             "messages load failure → ReadFailure (not Empty, not Unknown)");
-        Check(!Derive(new[] { clear }, complete: false).Complete, "even valid clear never hides pagination incompleteness");
+        Check(Derive(new[] { clear }, complete: false) is { Complete: true, State: OpenCodeTodoState.Empty },
+            "latest completed clear is authoritative without older pages");
         foreach (var input in new object[] { new { }, new { todos = "not-array" }, "{\"todos\":[]}" })
         {
             var bad = Message("msg_bad", Tool("completed", input));

@@ -24,7 +24,7 @@ public enum OpenCodeTodoState
     /// <summary>已核实为空：完整历史中没有 to do，或最新 todowrite 已清空（“Todos cleared”）。</summary>
     Empty,
 
-    /// <summary>完整历史中已确认有条目。</summary>
+    /// <summary>最新已完成 todowrite 中已确认有条目；更早历史不影响此列表。</summary>
     Listed,
 }
 
@@ -54,7 +54,7 @@ public sealed record OpenCodeTodoSnapshot(
 /// 官方原生 to do 派生（OpenCode v2.1.1 TUI sidebar 同一算法）：取当前会话撤回点之前、助手消息中
 /// 最新一个 state.status == "completed" 的 <c>todowrite</c> 工具片段，规范化其 input.todos。
 /// v2.1.1 没有 to do HTTP 路由或 todo.updated 事件，这就是官方数据源，不是插件回退。
-/// 只读取所选会话已加载消息；不读取工具结果文本、插件 storage、子会话或私有 RPC。
+/// 不读取工具结果文本、插件 storage、子会话或私有 RPC；调用方按需向前分页寻找最新记录。
 /// </summary>
 public static class OpenCodeTodoReplay
 {
@@ -142,9 +142,6 @@ public static class OpenCodeTodoReplay
                 return Make(OpenCodeTodoState.ReadFailure, empty, source, false, historyCapability,
                     "最新的 to do 记录无法读取；不回退到更早的列表");
             var items = Normalize(write);
-            if (!historyComplete)
-                return Make(OpenCodeTodoState.Unknown, empty, source, false,
-                    historyCapability, "消息历史未取全，暂无法确认当前 to do；请加载完整历史后重试");
             return Make(items.IsEmpty ? OpenCodeTodoState.Empty : OpenCodeTodoState.Listed, items, source, true,
                 historyCapability, items.IsEmpty ? "to do 已清空" : "来自最新一次 todowrite");
         }
