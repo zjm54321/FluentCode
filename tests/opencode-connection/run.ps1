@@ -21,6 +21,9 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Open
 }
 $sources += Join-Path $repo 'src/AIFrontend/Services/Appearance/AppFontSettings.cs'
 $sources += Join-Path $PSScriptRoot 'Program.cs'
+# ContentDialog reparents its content (Unloaded then Loaded) while opening; the owner closes the view after ShowAsync.
+$viewSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/Account/OpenCodeConnectionView.cs')
+if ($viewSource -match 'Unloaded\s*\+=') { throw 'Connection view must not close itself on Unloaded (dialog reparenting froze WSL enumeration).' }
 $refs = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object FullName) + @($dpapi)
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += $refs | ForEach-Object { '/reference:"' + $_ + '"' }

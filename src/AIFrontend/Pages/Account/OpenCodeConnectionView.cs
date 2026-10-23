@@ -145,7 +145,6 @@ public sealed class OpenCodeConnectionView : UserControl
                 await RefreshDistributionsAsync(ct);
             });
         };
-        Unloaded += (_, _) => Close();
     }
 
     private static TextBlock Text(string value, string styleKey)
