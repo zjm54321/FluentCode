@@ -50,7 +50,12 @@ internal static class OpenCodePickerFlyout
         wireChoice(value => { completion.TrySetResult(value); flyout.Hide(); });
         flyout.Closed += (_, _) => completion.TrySetResult(cancelled);
         flyout.Opened += (_, _) => opened?.Invoke();
-        void Unloaded(object sender, RoutedEventArgs args) { completion.TrySetResult(cancelled); flyout.Hide(); }
+        void Unloaded(object sender, RoutedEventArgs args)
+        {
+            if (anchor.IsLoaded) return; // Ignore the previous parent's late unload.
+            completion.TrySetResult(cancelled);
+            flyout.Hide();
+        }
         anchor.Unloaded += Unloaded;
         try
         {

@@ -243,8 +243,13 @@ internal static class PickerFixture
     {
         var anchor = new Element(); var completion = new TaskCompletionSource<int>(); var cancelled = -1; var flyout = new Flyout();
         /* PICKER */
-        anchor.Load(); anchor.Load(); anchor.Unload(true);
-        Program.Check(!completion.Task.IsCompleted && !flyout.Hidden, "c-pickers: late anchor unload completed and hid the live picker");
+        anchor.Load(); anchor.Load(); anchor.Unload(true); anchor.Unload(true);
+        Program.Check(!completion.Task.IsCompleted && !flyout.Hidden, "late anchor unload completed and hid the live picker");
+        anchor.Unload(false);
+        Program.Check(completion.Task.IsCompletedSuccessfully && completion.Task.Result == cancelled && flyout.Hidden,
+            "actual picker anchor detach must cancel selection and hide the flyout");
+        anchor.Unload(false);
+        Program.Check(completion.Task.Result == cancelled, "repeated anchor detach must remain cancelled");
         anchor.Unloaded -= Unloaded;
     }
 }
