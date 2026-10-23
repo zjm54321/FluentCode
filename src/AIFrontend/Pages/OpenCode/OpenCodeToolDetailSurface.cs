@@ -89,6 +89,9 @@ internal static partial class OpenCodeToolDetailContent
                 Add("URL", model.Url, true);
                 Add("格式", Field(input, "format"));
                 break;
+            case OpenCodeToolKind.WebSearch:
+                Add("provider", Field(metadata, "provider"));
+                break;
             case OpenCodeToolKind.Grep:
             case OpenCodeToolKind.Glob:
             case OpenCodeToolKind.List:
@@ -120,8 +123,8 @@ internal static partial class OpenCodeToolDetailContent
     private static string? ReadTotal(string? output)
     {
         if (output is null) return null;
-        var match = System.Text.RegularExpressions.Regex.Match(output, @"(?:of|共|Total lines:)\s*(\d+)\s*(?:total|lines|行)?", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        return match.Success ? match.Groups[1].Value : null;
+        var match = System.Text.RegularExpressions.Regex.Match(output, @"(?:of\s+(?<total>\d+)\s+total|total\s+(?<total>\d+)\s+lines|Total lines:\s*(?<total>\d+)|共\s*(?<total>\d+)\s*行)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups["total"].Value : null;
     }
 
     private static FrameworkElement RawProperties(OpenCodeToolRowModel model)

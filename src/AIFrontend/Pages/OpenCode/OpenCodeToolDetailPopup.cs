@@ -89,7 +89,7 @@ internal interface IOpenCodeDetailContentSource
 /// 约为应用窗口的 80%、居中，系统遮罩层（SmokeFillColorDefaultBrush）+ 原生 FlyoutPresenter 表面，内容完整（不截断）纵向滚动；
 /// ✕ 按钮 / Esc / 点击遮罩关闭，随窗口大小改变；打开时焦点移入（Tab 在视图内循环），关闭后还给原焦点（与 ContentDialog 一致）。</item>
 /// </list>
-/// 所有详情文字默认换行（G8），没有“换行”开关；不提供复制按钮（F2）。
+    /// 所有详情文字默认换行（G8），没有“换行”开关；复制等工具操作集中在详情页脚。
 /// </summary>
 internal sealed class OpenCodeToolDetailPopup
 {
@@ -680,10 +680,10 @@ internal sealed class OpenCodeToolDetailPopup
             OpenCodeToolRowStatus.Error => OpenCodeToolTheme.Critical,
             _ => OpenCodeToolTheme.TextSecondary,
         };
-        if (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0)
+        if (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit)
         {
             status = "退出码 " + exit.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            statusKey = OpenCodeToolTheme.Critical;
+            if (exit != 0) statusKey = OpenCodeToolTheme.Critical;
         }
 
         // The terminal body contains the complete command once; don't repeat its first line in chrome.
@@ -696,8 +696,17 @@ internal sealed class OpenCodeToolDetailPopup
                     if (model.DiffFiles[index].Path == key) { selected = index; break; }
             target = model.DiffFiles[selected].Path;
         }
-        chrome.Set(OpenCodeToolPartView.KindGlyph(model.Kind), model.Name,
-            model.Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.WebFetch ? string.Empty : target, status, statusKey, model.DurationText);
+        var timing = model.DurationText;
+        if (model.Kind == OpenCodeToolKind.Shell) target = string.Empty;
+        if (model.Kind == OpenCodeToolKind.WebFetch)
+        {
+            target = _mode == OpenCodeDetailPopupMode.Preview && Uri.TryCreate(model.Url, UriKind.Absolute, out var uri)
+                ? uri.Host + "/" + uri.Segments[^1] : string.Empty;
+            if (_mode == OpenCodeDetailPopupMode.Preview && OpenCodeToolDetailContent.PreviewFormat(model) is { } format) timing = format;
+        }
+        if (_mode == OpenCodeDetailPopupMode.Preview && model.Kind == OpenCodeToolKind.WebSearch
+            && OpenCodeToolDetailContent.PreviewProvider(model) is { } provider) timing = provider;
+        chrome.Set(OpenCodeToolPartView.KindGlyph(model.Kind), model.Name, target, status, statusKey, timing);
 
         // 并排 / 统一视图只在大视图中提供（diff）；没有“换行”开关——详情文字总是换行（G8）。
         _viewModeButton.Visibility = OpenCodeToolRowPresentation.IsDiffKind(model.Kind) && model.DiffFiles.Count > 0
@@ -755,7 +764,7 @@ internal sealed class OpenCodeToolDetailPopup
         _previewViewportWidth = -1;
         if (_scroller is { } currentScroller) currentScroller.LayoutUpdated += OnPreviewContentLayoutUpdated;
         _previewTruncated = view.IsTruncated;
-        _previewHint.Text = view.HiddenLineCount > 0 ? $"还有 {view.HiddenLineCount} 行 · 点击行打开完整内容" : "点击行打开完整内容";
+        _previewHint.Text = view.PreviewHint ?? (view.HiddenLineCount > 0 ? $"还有 {view.HiddenLineCount} 行 · 点击行打开完整内容" : "点击行打开完整内容");
         if (_mode == OpenCodeDetailPopupMode.Preview) PlacePreview();
         if (_scroller is { } scroller && (offset is not null || follow))
         {

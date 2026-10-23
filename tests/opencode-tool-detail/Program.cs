@@ -100,7 +100,7 @@ internal static class Program
         var content = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailContent.cs"));
         var popup = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailPopup.cs"));
         var builtins = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltins.cs"));
-        Check(content.Contains("body = OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);", StringComparison.Ordinal), "built-in views dispatched before the generic dump");
+        Check(content.Contains("OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);", StringComparison.Ordinal), "built-in views dispatched before the generic dump");
         Check(popup.Contains("options.Compact = _mode == OpenCodeDetailPopupMode.Preview;", StringComparison.Ordinal), "preview builds compact, large view builds full");
         var surface = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailSurface.cs"));
         Check(surface.Contains("Orientation = Orientation.Horizontal, Spacing = 28", StringComparison.Ordinal)
@@ -115,6 +115,18 @@ internal static class Program
             && popup.Contains("Size.Width < 900", StringComparison.Ordinal), "D2 diff responds to window-width changes");
         Check(content.Contains("OldNumber = null, NewNumber = null", StringComparison.Ordinal)
             && content.Contains("shown + 20", StringComparison.Ordinal), "local diff line numbers stay unknown and folds expand twenty lines at a time");
+        var grouped = OpenCodeToolDetailResultData.Grep("Found 3 matches\n/tmp/a.cs:\n  Line 7: alpha\n  Line 9: beta\n/tmp/b.cs:14: gamma\ntruncated by server");
+        Check(grouped.Files.Count == 2 && grouped.Files[0].Matches.Count == 2 && grouped.Files[1].Matches[0].Line == 14,
+            "grep groups server file headers and inline rg paths with real line numbers");
+        Check(grouped.Unparsed == "truncated by server" && OpenCodeToolDetailResultData.Grep("unrecognized result").Files.Count == 0,
+            "unknown grep text stays verbatim, never invents file/line metadata");
+        Check(OpenCodeToolDetailResultData.HtmlText("<style>ignore</style><p>A &amp; B</p><script>bad()</script><p>C</p>").Contains("A & B", StringComparison.Ordinal)
+            && !OpenCodeToolDetailResultData.HtmlText("<script>bad()</script><p>C</p>").Contains("bad", StringComparison.Ordinal), "web HTML text extraction omits scripts and decodes entities");
+        var results = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailResults.cs"));
+        Check(results.Contains("new RichTextBlock", StringComparison.Ordinal) && results.Contains("255, 12, 12, 12", StringComparison.Ordinal)
+            && results.Contains("255, 204, 204, 204", StringComparison.Ordinal), "normal terminal shares a selectable native terminal-colored surface");
+        Check(results.Contains("new AutoSuggestBox", StringComparison.Ordinal) && results.Contains("new TextHighlighter", StringComparison.Ordinal)
+            && results.Contains("new TreeView", StringComparison.Ordinal) && results.Contains("new ListView", StringComparison.Ordinal), "search/list use native filtering, highlighting and tree/list controls");
         Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(", StringComparison.Ordinal) && builtins.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
             && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "to do reuses the right-panel rows; read-only; theme brushes only");
         Check(builtins.Contains("count.HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal)

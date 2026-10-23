@@ -126,6 +126,7 @@ internal sealed class OpenCodeToolDetailOptions
     public Action<string, int?>? OpenFile { get; set; }
     public Action<string>? RevealFile { get; set; }
     public Action? OpenTerminal { get; set; }
+    internal string? PreviewHint { get; set; }
     public Dictionary<string, int> FoldVisibleLines { get; } = new(StringComparer.Ordinal);
 
     /// <summary>TL1: true while building the hover preview (built-in views cap their lists; the large view shows everything).</summary>
@@ -139,7 +140,7 @@ internal sealed class OpenCodeToolDetailOptions
 }
 
 /// <summary>构建结果：根元素 + 主滚动区（用于运行中刷新时保持/跟随滚动位置）。</summary>
-internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewer? Scroller, bool IsTruncated = false, int HiddenLineCount = 0);
+internal sealed record OpenCodeToolDetailView(FrameworkElement Root, ScrollViewer? Scroller, bool IsTruncated = false, int HiddenLineCount = 0, string? PreviewHint = null);
 
 /// <summary>
 /// 工具详情弹出层的内容构建（§6.3）：read 带行号全文；edit/patch/write/multiedit 并排 diff（可切统一视图），
@@ -177,6 +178,7 @@ internal static partial class OpenCodeToolDetailContent
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(rebuild);
+        options.PreviewHint = null;
         if (selectedFileIndex is { } requestedIndex) options.SelectedFile = requestedIndex;
         if (selectedFileKey is not null) options.SelectedFileKey = selectedFileKey;
         if (options.SelectedFileKey is { } key)
@@ -217,6 +219,7 @@ internal static partial class OpenCodeToolDetailContent
 
         var rows = new List<object>();
         FrameworkElement? body = null;
+        var toolHidden = 0;
 
         switch (model.Kind)
         {
@@ -249,65 +252,27 @@ internal static partial class OpenCodeToolDetailContent
 
                 break;
             case OpenCodeToolKind.Shell:
-            {
-                top.Children.Add(CodeBlock("$ " + (model.Command ?? model.Target)));
-                var extra = new List<OpenCodeToolProperty>();
-                var skippingCommand = false;
-                foreach (var property in model.InputProperties)
-                {
-                    // 命令本身已在上方代码块中显示；其余输入（说明、超时、工作目录等）以属性列表补充。
-                    if (property.Depth == 0)
-                    {
-                        skippingCommand = property.Key is "command" or "cmd";
-                    }
-
-                    if (!skippingCommand)
-                    {
-                        extra.Add(property);
-                    }
-                }
-
-                if (extra.Count > 0)
-                {
-                    top.Children.Add(PropertyList(extra));
-                }
-
-                AddPlainLines(model.OutputText, rows);
-                if (rows.Count == 0)
-                {
-                    top.Children.Add(Caption(model.IsActive ? "命令运行中，暂无输出…" : "（没有输出）"));
-                }
-
+                body = BuildTerminal(model, options, rebuild, out toolHidden);
                 break;
-            }
-
             case OpenCodeToolKind.Grep:
+                body = BuildGrep(model, options, rebuild, out toolHidden);
+                break;
             case OpenCodeToolKind.Glob:
             case OpenCodeToolKind.List:
-                if (OpenCodeToolDetailBuiltins.CountHeader(model) is { } countHeader) top.Children.Add(countHeader);
-                AddPlainLines(model.OutputText, rows);
-                if (rows.Count == 0)
-                {
-                    top.Children.Add(Caption(model.IsActive ? "正在查找…" : "（没有结果）"));
-                }
-
+                body = BuildPaths(model, options, rebuild, out toolHidden);
                 break;
             case OpenCodeToolKind.WebFetch:
-            {
-                if (!string.IsNullOrEmpty(model.Url))
-                {
-                    var url = OpenCodeInteractionUi.StyledText(model.Url!, OpenCodeInteractionUi.CodeStyleKey, true);
-                    url.TextWrapping = TextWrapping.Wrap;
-                    top.Children.Add(url);
-                }
-
-                AddPlainLines(model.OutputText, rows);
+                body = BuildWebFetch(model, options, rebuild, out toolHidden);
                 break;
-            }
+            case OpenCodeToolKind.WebSearch:
+                body = BuildWebResults(model, options, rebuild, false, out toolHidden);
+                break;
 
             default:
                 // TL1: built-in tools (todowrite, subagent, question, skill, websearch, execute) get their own view.
-                body = OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);
+                body = model.ToolName == "codesearch" || model.ToolName.EndsWith("_codesearch", StringComparison.Ordinal)
+                    ? BuildWebResults(model, options, rebuild, true, out toolHidden)
+                    : OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);
                 break;
         }
 
@@ -323,8 +288,8 @@ internal static partial class OpenCodeToolDetailContent
         }
 
         ScrollViewer? scroller = null;
-        var isTruncated = false;
-        var hiddenLines = 0;
+        var isTruncated = toolHidden > 0;
+        var hiddenLines = toolHidden;
         if (body is null)
         {
             var rowLimit = options.Compact ? CompactRowLimit(model.Kind) : MaxRows;
@@ -364,7 +329,8 @@ internal static partial class OpenCodeToolDetailContent
         if (top.Children.Count > 0 && !options.RawData) allContent.Children.Add(top);
         allContent.Children.Add(body);
         if (model.Kind == OpenCodeToolKind.Read && rows.Count > 0 && !options.Compact && rows[^1] is CodeLine { Number: { } last })
-            allContent.Children.Add(Caption($"第 {last} 行之后未被读取；未从磁盘补全。"));
+            allContent.Children.Add(Caption(int.TryParse(ReadTotal(model.OutputText), out var totalLines) && last < totalLines
+                ? $"第 {last} 行之后未被读取；未从磁盘补全。" : "仅显示本次读取返回的内容；未从磁盘补全。"));
         scroller = new ScrollViewer
         {
             Content = allContent,
@@ -390,7 +356,7 @@ internal static partial class OpenCodeToolDetailContent
             Grid.SetRow(footer, 2);
             root.Children.Add(footer);
         }
-        return new OpenCodeToolDetailView(root, scroller, isTruncated, hiddenLines);
+        return new OpenCodeToolDetailView(root, scroller, isTruncated, hiddenLines, options.PreviewHint);
     }
 
     private static void BuildRead(OpenCodeToolRowModel model, List<object> rows, StackPanel top)
