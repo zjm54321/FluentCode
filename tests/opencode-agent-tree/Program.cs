@@ -88,6 +88,14 @@ internal static class Program
         Check(groups[0].Children.Single().Model == "used-model" && groups[0].Children.Single().Status == OpenCodeTreeStatus.Succeeded, "real model and outcome");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count == 0, "default hides completed, unknown and idle agents");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, true).Count == 3, "all includes configured idle and hidden agents with real instances");
+        var librarian = OpenCodeAgentTreeProjection.Agents(new[]
+        {
+            new OpenCodeAgentInfo { Id = "librarian", Name = "librarian", Mode = "subagent" }
+        }, Array.Empty<OpenCodeSessionInfo>(), "ses_parent", live);
+        Check(OpenCodeAgentTreeProjection.VisibleAgents(librarian, true).Single().Id == "librarian"
+            && OpenCodeAgentTreeProjection.VisibleAgents(librarian, false).Count == 0,
+            "AT2: configured librarian follows the same all/working-only rule as every other subagent");
+        Check(groups.All(g => g.Id != "librarian"), "AT2: absent runtime agent never produces a fabricated librarian row");
         var workingCount = OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count;
         Check(OpenCodeAgentTreeProjection.EmptyHint(workingCount, false) == "暂无运行中的子智能体或终端；点击“全部”查看历史会话。",
             "completed-only session explains the empty working filter and how to reveal history");
