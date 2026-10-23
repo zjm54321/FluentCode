@@ -145,6 +145,9 @@ internal sealed class OpenCodeContextRing
             VerticalAlignment = VerticalAlignment.Center,
         };
         OpenCodeToolStyle(_button);
+        var setup = new MenuFlyoutItem { Text = "Billion 设置" };
+        setup.Click += (_, _) => BillionSetupRequested?.Invoke(this, EventArgs.Empty);
+        _button.ContextFlyout = new MenuFlyout { Items = { setup } };
         AutomationProperties.SetAutomationId(_button, "OpenCodeInsightsContextRingButton");
 
         _root = new Grid { VerticalAlignment = VerticalAlignment.Center };
@@ -210,7 +213,6 @@ internal sealed class OpenCodeContextRing
     internal event EventHandler? DetailsOpening;
 
     /// <summary>ACP·Billion 组内“读取”按钮（仅当地址已确认）：由视图按界面显示的上下文转发。</summary>
-    internal event EventHandler? BillionReadRequested;
 
     /// <summary>ACP·Billion 组内“去设置”按钮：打开概况面板的 Billion 分区（地址与关联确认只在那里进行）。</summary>
     internal event EventHandler? BillionSetupRequested;
@@ -262,7 +264,11 @@ internal sealed class OpenCodeContextRing
 
     internal static (double? Ratio, double? Tokens, double? Limit) Measure(OpenCodeSessionInsightsSnapshot snapshot)
     {
-        if (snapshot.Context.Value is not { ReferenceTokens: { } tokens } estimate || !double.IsFinite(tokens))
+        if (snapshot.UnavailableReason is not null
+            || snapshot.Context.Value is not { ReferenceTokens: { } tokens } estimate || !double.IsFinite(tokens)
+            || estimate.SessionId != snapshot.SessionId
+            || estimate.StaleReasons.Any(reason => reason is not AIFrontend.Services.OpenCode.OpenCodeContextStaleReason.HistoryIncomplete
+                and not AIFrontend.Services.OpenCode.OpenCodeContextStaleReason.ModelLimitUnavailable))
         {
             return (null, null, null);
         }
@@ -292,20 +298,11 @@ internal sealed class OpenCodeContextRing
 
     internal static FrameworkElement BuildFlyout(OpenCodeSessionInsightsSnapshot snapshot, OpenCodeContextRing? owner = null)
     {
-        var groups = new StackPanel { Spacing = 16, Width = 340 };
+        var groups = new StackPanel { Spacing = 12, Width = 286 };
         AutomationProperties.SetAutomationId(groups, "OpenCodeInsightsContextFlyout");
-        AutomationProperties.SetName(groups, "上下文与用量详情");
-        if (snapshot.UnavailableReason is { } reason)
-        {
-            groups.Children.Add(OpenCodeSessionInsightsView.Caption(reason, 0.85));
-            return Scroll(groups);
-        }
-
-        groups.Children.Add(ContextGroup(snapshot));
-        groups.Children.Add(Divider());
-        groups.Children.Add(BillingGroup(snapshot));
-        groups.Children.Add(Divider());
-        groups.Children.Add(AcpGroup(snapshot, owner));
+        AutomationProperties.SetName(groups, "上下文");
+        groups.Children.Add(OpenCodeSessionInsightsView.ContextUsageSection(snapshot));
+        groups.Children.Add(OpenCodeSessionInsightsView.Caption("花费为本会话及全部子代理的合计。", 0.65));
         return Scroll(groups);
     }
 
@@ -326,319 +323,6 @@ internal sealed class OpenCodeContextRing
         }
 
         return line;
-    }
-
-    /// <summary>组一：当前上下文（ID OpenCodeInsightsContextDetail）。</summary>
-    private static UIElement ContextGroup(OpenCodeSessionInsightsSnapshot snapshot)
-    {
-        var section = snapshot.Context;
-        var (panel, content) = OpenCodeSessionInsightsView.Section("当前上下文", section.State, "OpenCodeInsightsContextDetail");
-        if (section.Value is not { } estimate)
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Caption(section.Note));
-            return panel;
-        }
-
-        var (ratio, tokens, limit) = Measure(snapshot);
-        if (tokens is { } used)
-        {
-            if (limit is { } max && ratio is { } r)
-            {
-                var percent = FormatPercent(r * 100);
-                content.Children.Add(OpenCodeSessionInsightsView.Figure(
-                    OpenCodeSessionInsightsView.Compact(used) + " / " + OpenCodeSessionInsightsView.Compact(max),
-                    "约占模型上下文上限的 " + percent));
-            }
-            else
-            {
-                content.Children.Add(OpenCodeSessionInsightsView.Figure(OpenCodeSessionInsightsView.Tokens(used) + " tokens", "模型上下文上限未知"));
-            }
-        }
-        else
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Caption("暂无可参考的用量。"));
-        }
-
-        if (estimate.LatestAssistantUsage?.Tokens is { } breakdown)
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Table(new List<(string, string)>
-            {
-                ("输入（未缓存）", OpenCodeSessionInsightsView.Tokens(breakdown.Input)),
-                ("输出", OpenCodeSessionInsightsView.Tokens(breakdown.Output)),
-                ("推理", OpenCodeSessionInsightsView.Tokens(breakdown.Reasoning)),
-                ("缓存读取", OpenCodeSessionInsightsView.Tokens(breakdown.CacheRead)),
-                ("缓存写入", OpenCodeSessionInsightsView.Tokens(breakdown.CacheWrite)),
-            }));
-        }
-
-        content.Children.Add(OpenCodeSessionInsightsView.Caption("最近一次 assistant 请求的五类用量合计，只是参考值，不是精确的当前上下文占用。", 0.55));
-        if (estimate.Stale)
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Bullets("可能已过时：", estimate.StaleReasons.Select(OpenCodeSessionInsightsView.DescribeStale)));
-        }
-
-        if (!snapshot.HistoryComplete)
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Caption("提示：本页尚未加载到最早的消息。向上滚动加载完整历史后再刷新概况，可排除“历史未取全”。", 0.55));
-        }
-
-        return panel;
-    }
-
-    /// <summary>组二：用量计费（ID OpenCodeInsightsCost；价目子块 ID OpenCodeInsightsPricing）。</summary>
-    private static UIElement BillingGroup(OpenCodeSessionInsightsSnapshot snapshot)
-    {
-        var section = snapshot.Cost;
-        var (panel, content) = OpenCodeSessionInsightsView.Section("用量计费", section.State, "OpenCodeInsightsCost");
-        if (section.Value is not { } view)
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Caption(section.Note));
-        }
-        else
-        {
-            FillUsage(content, view);
-        }
-
-        content.Children.Add(PricingBlock(snapshot));
-        return panel;
-    }
-
-    private static void FillUsage(StackPanel content, OpenCodeCostView view)
-    {
-        var summary = view.Summary;
-        var tokens = summary.Tokens;
-        var prefix = summary.Incomplete ? "已知部分 " : "";
-        string Token(double value) => summary.HasKnownTokens ? prefix + OpenCodeSessionInsightsView.Tokens(value) : "不可用";
-        var figures = new Grid { ColumnSpacing = 16 };
-        figures.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        figures.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var tokenFigure = OpenCodeSessionInsightsView.Figure(Token(tokens.Total),
-            "已用 tokens");
-        var costFigure = OpenCodeSessionInsightsView.Figure(summary.HasKnownCost ? prefix + OpenCodeSessionInsightsView.Money(summary.TotalCost) : "不可用", "费用（Core 累计估算）");
-        Grid.SetColumn(costFigure, 1);
-        figures.Children.Add(tokenFigure);
-        figures.Children.Add(costFigure);
-        content.Children.Add(figures);
-
-        content.Children.Add(OpenCodeSessionInsightsView.Caption(view.Scope.SelectedIsRoot
-            ? "主会话及全部后代，共 " + summary.SessionCount + " 个会话"
-            : "当前是子会话：统计范围为已核实的主会话及全部后代，共 " + summary.SessionCount + " 个会话", 0.75));
-
-        var rows = new List<(string, string)>
-        {
-            ("输入（未缓存）", Token(tokens.Input)),
-            ("输出", Token(tokens.Output)),
-            ("推理", Token(tokens.Reasoning)),
-            ("缓存读取", Token(tokens.CacheRead)),
-            ("缓存写入", Token(tokens.CacheWrite)),
-            ("主会话自身费用", summary.RootCost is { } rootCost ? OpenCodeSessionInsightsView.Money(rootCost) : "无法确认"),
-        };
-        if (!view.Scope.SelectedIsRoot)
-        {
-            rows.Add(("当前子会话自身费用", view.SelectedOwn?.CoreCost is { } own ? OpenCodeSessionInsightsView.Money(own) : "不在已读取范围内"));
-        }
-
-        content.Children.Add(OpenCodeSessionInsightsView.Table(rows));
-        if (summary.Incomplete)
-        {
-            content.Children.Add(OpenCodeSessionInsightsView.Bullets("部分数据：",
-                summary.IncompleteReasons.Select(issue => OpenCodeSessionInsightsView.DescribeUsage(issue.Reason)).Distinct()));
-        }
-
-        content.Children.Add(OpenCodeSessionInsightsView.Caption("来自各会话 Session.Info 的累计值，每个会话只计一次。金额为 0 不代表免费；"
-            + "不保证与外部账单一致，也不与 Billion 的数字相加。", 0.55));
-    }
-
-    private static UIElement PricingBlock(OpenCodeSessionInsightsSnapshot snapshot)
-    {
-        var section = snapshot.Pricing;
-        var block = new StackPanel { Spacing = 8 };
-        AutomationProperties.SetAutomationId(block, "OpenCodeInsightsPricing");
-        AutomationProperties.SetName(block, "当前模型价目：" + OpenCodeSessionInsightsView.DescribeState(section.State));
-        block.Children.Add(OpenCodeInteractionUi.StyledText("当前模型价目", OpenCodeInteractionUi.CaptionStyleKey));
-        if (section.Value is not { } pricing)
-        {
-            block.Children.Add(OpenCodeSessionInsightsView.Caption(section.Note));
-            return block;
-        }
-
-        block.Children.Add(OpenCodeSessionInsightsView.Body(pricing.ProviderId + " / " + pricing.ModelId
-            + (pricing.Variant is { Length: > 0 } v ? "（" + v + "）" : "")));
-        if (pricing.Tiers.IsEmpty)
-        {
-            block.Children.Add(OpenCodeSessionInsightsView.Caption(section.Note));
-            return block;
-        }
-
-        foreach (var tier in pricing.Tiers)
-        {
-            var rows = new List<(string, string)>
-            {
-                ("输入", OpenCodeSessionInsightsView.Price(tier.Input)),
-                ("输出", OpenCodeSessionInsightsView.Price(tier.Output)),
-                ("缓存读取", OpenCodeSessionInsightsView.Price(tier.CacheRead)),
-                ("缓存写入", OpenCodeSessionInsightsView.Price(tier.CacheWrite)),
-            };
-            if (tier.Multipliers is { } multipliers)
-            {
-                rows.Add(("缓存读取 / 输入", OpenCodeSessionInsightsView.Ratio(multipliers.Read)));
-                rows.Add(("缓存写入 / 输入", OpenCodeSessionInsightsView.Ratio(multipliers.Write)));
-            }
-
-            block.Children.Add(OpenCodeSessionInsightsView.Caption(OpenCodeSessionInsightsView.DescribeTier(tier.Tier), 0.85));
-            block.Children.Add(OpenCodeSessionInsightsView.Table(rows));
-        }
-
-        block.Children.Add(OpenCodeSessionInsightsView.Caption("单价为 USD / 百万 tokens，倍率只在同一档位内换算。这是模型目录的当前价，"
-            + "历史费用不会按它重新计算，也不会自动判断适用哪一档。", 0.55));
-        return block;
-    }
-
-    /// <summary>
-    /// 组三：ACP / Billion 状态（ID OpenCodeInsightsAcpStatus；wave5 H11）。内容与 billion-context 的 <c>/acp</c> 面板同源：
-    /// 上下文占比、压缩块（活跃 / 总数）、节省量与缓存命中；压缩块按服务端顺序列成“图标 + 文本”的行（ID OpenCodeInsightsAcpBlocks）。
-    /// 只显示最近一次显式读取的结果；地址已确认时组内可“读取”，否则“去设置”跳到 Billion 分区，从不自动读取。
-    /// </summary>
-    private static UIElement AcpGroup(OpenCodeSessionInsightsSnapshot snapshot, OpenCodeContextRing? owner)
-    {
-        var billion = snapshot.Billion;
-        var state = OpenCodeSessionInsightsView.BillionState(billion);
-        var (panel, content) = OpenCodeSessionInsightsView.Section("ACP / Billion 状态", state, "OpenCodeInsightsAcpStatus");
-        if (billion.Phase == OpenCodeBillionPhase.Loaded && billion.Stats is { } stats)
-        {
-            var rows = new List<(string, string)>();
-            if (stats.ContextTokens is { } ctx)
-            {
-                var window = stats.ContextWindow is { } w && w > 0 ? w : (long?)null;
-                rows.Add(("上下文", (window is { } total ? FormatPercent(Math.Clamp(ctx * 100.0 / total, 0, 100)) + " · " : "")
-                    + OpenCodeSessionInsightsView.Count(ctx) + (window is { } limit ? " / " + OpenCodeSessionInsightsView.Count(limit) : "")));
-            }
-            else
-            {
-                rows.Add(("上下文", "未知"));
-            }
-
-            var active = stats.BlockDetails.Count(block => block.Active == true);
-            rows.Add(("压缩块", stats.BlockDetails.IsEmpty
-                ? OpenCodeSessionInsightsView.Count(stats.Blocks)
-                : active + " 活跃 / " + OpenCodeSessionInsightsView.Count(stats.Blocks ?? stats.BlockDetails.Length)));
-            rows.Add(("节省 tokens", OpenCodeSessionInsightsView.Count(stats.TokensSaved)));
-            rows.Add(("缓存命中率", stats.CacheHitPct is { } pct && double.IsFinite(pct)
-                ? pct.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "未知"));
-            rows.Add(("请求数", OpenCodeSessionInsightsView.Count(stats.Requests)));
-            rows.Add(("Billion 版本", billion.Health?.Version ?? stats.BiliVersion ?? "未知"));
-            rows.Add(("读取时间", OpenCodeSessionInsightsView.Time(stats.FetchedAt)));
-            content.Children.Add(OpenCodeSessionInsightsView.Table(rows));
-            content.Children.Add(BlockList(stats));
-        }
-        else
-        {
-            var origin = snapshot.BillionOriginState switch
-            {
-                OpenCodeBillionOriginState.Confirmed => "已确认",
-                OpenCodeBillionOriginState.Unconfirmed => "待确认",
-                OpenCodeBillionOriginState.Invalid => "地址无效",
-                _ => snapshot.BillionDiscoveryLoading ? "正在发现…" : "未取得",
-            };
-            content.Children.Add(OpenCodeSessionInsightsView.Table(new List<(string, string)>
-            {
-                ("本机 Billion", DescribePhase(billion.Phase)),
-                ("地址", origin),
-            }));
-            if (billion.Phase is OpenCodeBillionPhase.Failed or OpenCodeBillionPhase.NoRecord)
-            {
-                content.Children.Add(OpenCodeSessionInsightsView.Caption(billion.Note, 0.75));
-            }
-        }
-
-        if (owner is not null)
-        {
-            content.Children.Add(AcpAction(snapshot, owner));
-        }
-
-        return panel;
-    }
-
-    /// <summary>与 /acp 面板 “Blocks” 段同源的压缩块行：活跃 = 勾选框字形，已失效 = 空框 + 次要文字；按服务端顺序。</summary>
-    private static UIElement BlockList(BillionSessionStats stats)
-    {
-        var list = new StackPanel { Spacing = 8 };
-        AutomationProperties.SetAutomationId(list, "OpenCodeInsightsAcpBlocks");
-        AutomationProperties.SetName(list, "压缩块列表");
-        if (stats.BlockDetails.IsEmpty)
-        {
-            list.Children.Add(OpenCodeSessionInsightsView.Caption(stats.Blocks is > 0 ? "未提供压缩块明细。" : "还没有压缩块。", 0.75));
-            return list;
-        }
-
-        for (var index = 0; index < stats.BlockDetails.Length; index++)
-        {
-            var block = stats.BlockDetails[index];
-            var isActive = block.Active == true;
-            var row = new Grid { ColumnSpacing = 8 };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.Children.Add(new FontIcon { Glyph = isActive ? "\uE73A" : "\uE739", FontSize = 16, VerticalAlignment = VerticalAlignment.Top });
-            var name = (block.Id is { Length: > 0 } id ? id : "块 " + (index + 1))
-                + (block.Tier is { } tier ? " · T" + tier.ToString(CultureInfo.InvariantCulture) : "");
-            var label = OpenCodeInteractionUi.StyledText(name,
-                isActive ? OpenCodeInteractionUi.BodyStyleKey : OpenCodeInteractionUi.BodySubtleStyleKey, selectable: true);
-            Grid.SetColumn(label, 1);
-            row.Children.Add(label);
-            var size = OpenCodeInteractionUi.StyledText(block.CompressedTokens is { } compressed ? OpenCodeSessionInsightsView.Count(compressed) : "—",
-                OpenCodeInteractionUi.CaptionSubtleStyleKey);
-            size.VerticalAlignment = VerticalAlignment.Top;
-            Grid.SetColumn(size, 2);
-            row.Children.Add(size);
-            AutomationProperties.SetAutomationId(row, "OpenCodeInsightsAcpBlock." + index);
-            AutomationProperties.SetName(row, name + "，" + (isActive ? "活跃" : block.Active == false ? "已失效" : "状态未知")
-                + "，压缩 " + (block.CompressedTokens is { } t ? OpenCodeSessionInsightsView.Count(t) : "未知") + " tokens");
-            list.Children.Add(row);
-        }
-
-        if (stats.BlockDetailsTruncated)
-        {
-            list.Children.Add(OpenCodeSessionInsightsView.Caption("仅列出前 " + BillionSessionStats.MaximumBlockDetails + " 个压缩块。", 0.55));
-        }
-
-        return list;
-    }
-
-    private static UIElement AcpAction(OpenCodeSessionInsightsSnapshot snapshot, OpenCodeContextRing owner)
-    {
-        var canRead = snapshot.BillionContext is not null && snapshot.BillionConfirmed;
-        var button = new Button
-        {
-            Content = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                Children =
-                {
-                    new FontIcon { Glyph = canRead ? "\uE72C" : "\uE713", FontSize = 12 },
-                    OpenCodeInteractionUi.StyledText(canRead
-                        ? (snapshot.Billion.Phase == OpenCodeBillionPhase.Loaded ? "重新读取" : "读取")
-                        : "设置 Billion 地址", OpenCodeInteractionUi.BodyStyleKey),
-                },
-            },
-            IsEnabled = snapshot.Billion.Phase != OpenCodeBillionPhase.Loading && snapshot.UnavailableReason is null,
-        };
-        if (canRead)
-        {
-            AutomationProperties.SetAutomationId(button, "OpenCodeInsightsAcpRead");
-            AutomationProperties.SetName(button, "读取本机 Billion 记录");
-            button.Click += (_, _) => owner.BillionReadRequested?.Invoke(owner, EventArgs.Empty);
-        }
-        else
-        {
-            AutomationProperties.SetAutomationId(button, "OpenCodeInsightsAcpSetup");
-            AutomationProperties.SetName(button, "打开 Billion 分区设置地址");
-            ToolTipService.SetToolTip(button, "读取前需要在概况面板的 Billion 分区确认地址关联");
-            button.Click += (_, _) => owner.BillionSetupRequested?.Invoke(owner, EventArgs.Empty);
-        }
-
-        return button;
     }
 
     internal static string DescribePhase(OpenCodeBillionPhase phase) => phase switch

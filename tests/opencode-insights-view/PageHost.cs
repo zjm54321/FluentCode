@@ -35,7 +35,8 @@ namespace AIFrontend.Pages
         private readonly Border ContextRingHost = new();
         private readonly Border InsightsPaneHost = new();
         private readonly SplitView InsightsPane = new();
-        private readonly ToggleButton SessionInsightsButton = new();
+        private readonly Button SessionInsightsButton = new();
+        private void OpenBillionSettingsPane() { }
 
         // ---- doubles for unrelated services referenced by the extracted InvalidateForSourceChange ----
         private enum ConnectionState { Unknown }
@@ -81,7 +82,16 @@ namespace AIFrontend.Pages
         private string? _messageRevertBoundary = null;
 
         // ---- test surface ----
-        internal OpenCodePage() => InitializeSessionInsights();
+        internal OpenCodePage(Func<string, AIFrontend.Services.Billion.BillionContextClient>? billionFactory = null)
+        {
+            InitializeSessionInsights();
+            // Synthetic setup replaces the empty controller only, before any binding; real page subscribers use this field.
+            if (billionFactory is not null)
+            {
+                _insights = new(IsCurrentInsightsBinding, billionFactory);
+                _insights.Changed += (_, _) => RenderSessionInsights();
+            }
+        }
 
         internal OpenCodeSessionInsightsController Insights => _insights!;
         internal OpenCodeSessionInsightsView View => _insightsView;

@@ -8,7 +8,7 @@ namespace AIFrontend.Pages.OpenCode;
 
 internal sealed class OpenCodeWslQuickAccessView : StackPanel
 {
-    private readonly Button _explorer = Action("\uE838", ExplorerText);
+    private readonly Button _explorer = Action("\uEC50", ExplorerText);
     private readonly Button _editor = Action("\uE70F", EditorText);
     private const string ExplorerText = "在资源管理器中打开";
     private const string EditorText = "在主机文本编辑器中打开";
@@ -22,7 +22,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
 
     public OpenCodeWslQuickAccessView()
     {
-        // Layout D: two calm icon buttons beside the read-only directory in the bottom-right card.
+        // Session card: two native icon buttons directly below the session ID.
         Orientation = Orientation.Horizontal;
         Spacing = 2;
         _note.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);

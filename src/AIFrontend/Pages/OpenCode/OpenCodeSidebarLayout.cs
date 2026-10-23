@@ -15,14 +15,14 @@ internal readonly record struct OpenCodeSidebarLayout(
     // page edge, plus DockInnerGap so the card shadow is not clipped by the pane. Wide mode
     // starts only when the reading column keeps its full OpenCodeTimelineMaxWidth (820) plus the
     // reading surface's 16px padding on either side. A 48px dead band prevents resize oscillation.
-    internal const double DockCardWidth = 264;
+    internal const double DockCardWidth = 300;
     internal const double DockOuterMargin = 24;
     internal const double DockInnerGap = 8;
-    internal const double LeftWidth = DockOuterMargin + DockCardWidth + DockInnerGap; // 296
-    internal const double RightWidth = LeftWidth; // 296
+    internal const double LeftWidth = DockOuterMargin + DockCardWidth + DockInnerGap; // 332
+    internal const double RightWidth = LeftWidth; // 332
     internal const double ReadingWidth = 820 + 32;
-    internal const double EnterWideWidth = LeftWidth + RightWidth + ReadingWidth; // 1444
-    internal const double LeaveWideWidth = EnterWideWidth - 48; // 1396
+    internal const double EnterWideWidth = LeftWidth + RightWidth + ReadingWidth; // 1516
+    internal const double LeaveWideWidth = EnterWideWidth - 48; // 1468
 
     internal bool IsWide => Mode == OpenCodeSidebarMode.Wide;
     internal bool LeftOpen => IsWide || Drawer == OpenCodeSidebarDrawer.Left;

@@ -7,6 +7,7 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Windows.UI.Text;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -39,6 +40,19 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     private readonly TextBlock _scopeText;
     private readonly StackPanel _statusRow;
     private readonly Border _usageHost = new();
+    private bool _showContext = true;
+
+    internal bool ShowContext
+    {
+        get => _showContext;
+        set
+        {
+            if (_showContext == value) return;
+            _showContext = value;
+            ShowSelectedSection();
+            if (_latest is { } latest) RenderFull(latest);
+        }
+    }
     private readonly ProgressRing _refreshRing;
     private readonly CheckBox _billionConfirm;
     private readonly Button _billionButton;
@@ -167,13 +181,15 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
         // 页头圆环：Flyout 打开（页面决定是否读取）、ACP 组“读取”（与 Billion 分区按钮同一路径、同一显示上下文）、“设置地址”。
         _contextRing.DetailsOpening += (_, _) => ContextDetailsOpening?.Invoke(this, EventArgs.Empty);
-        _contextRing.BillionReadRequested += (_, _) => RaiseRead();
         _contextRing.BillionSetupRequested += (_, _) =>
         {
             _contextRing.Flyout.Hide();
             ShowBillionSection();
             BillionSetupRequested?.Invoke(this, EventArgs.Empty);
         };
+        var setup = new MenuFlyoutItem { Text = "Billion 设置" };
+        setup.Click += (_, _) => { ShowBillionSection(); BillionSetupRequested?.Invoke(this, EventArgs.Empty); };
+        _usageHost.ContextFlyout = new MenuFlyout { Items = { setup } };
 
         var root = new StackPanel { Spacing = 12 };
         root.Children.Add(_sections);
@@ -329,11 +345,14 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             }
 
             // 上下文与用量在上，to do 在下（同一张浮动卡片内，以分隔线分段）；子会话只进入用量，不混入 to do。
-            var todoCard = new StackPanel { Spacing = 12 };
-            todoCard.Children.Add(OpenCodeContextRing.Divider());
-            todoCard.Children.Add(TodoSection(snapshot));
-            AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
-            _overviewPage.Children.Add(todoCard);
+            if (snapshot.Todo.Value is { State: OpenCodeTodoState.Listed, Items.Length: > 0 })
+            {
+                var todoCard = new StackPanel { Spacing = 12 };
+                if (_showContext) todoCard.Children.Add(OpenCodeContextRing.Divider());
+                todoCard.Children.Add(TodoSection(snapshot));
+                AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
+                _overviewPage.Children.Add(todoCard);
+            }
             _billionPage.Children.Add(BillionSection(snapshot));
             _visual = snapshot;
 
@@ -384,7 +403,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
         // 分区栏平时隐藏；只在 Billion 设置页显示，供返回概况。用量只属于概况。
         _sections.Visibility = index == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _usageHost.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _usageHost.Visibility = index == 0 && _showContext ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ------------------------------------------------------------------
@@ -395,11 +414,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     // MCP / 插件 / LSP 服务状态移到页头连接状态按钮的 Flyout（OpenCodeConnectionFlyout）。
 
     /// <summary>两列用量格的固定顺序（emoji + 短标签）；包含全部子会话。</summary>
-    internal static readonly string[] UsageLabels = ["📥 输入", "📤 输出", "📖 缓存读", "📝 缓存写", "🎯 命中率", "💭 思考"];
+    internal static readonly string[] UsageLabels = ["输入", "输出", "思考", "缓存读", "缓存写", "命中率"];
+    internal static readonly string[] UsageGlyphs = ["\uE896", "\uE898", "\uEA80", "\uE736", "\uE70F", "\uE1D2"];
 
-    internal static string TurnsText(int? turns) => turns is { } count ? "第 " + count + " 轮" : "轮次不可用";
+    internal static string TurnsText(int? turns) => turns is { } count ? "第 " + count + " 轮" : string.Empty;
 
-    private static UIElement ContextUsageSection(OpenCodeSessionInsightsSnapshot snapshot)
+    internal static UIElement ContextUsageSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
         var panel = new StackPanel { Spacing = 8 };
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsLayeredUsage");
@@ -408,6 +428,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(OpenCodeInteractionUi.StyledText("上下文", OpenCodeInteractionUi.BodyStrongStyleKey));
         var turns = Caption(TurnsText(snapshot.Turns));
+        turns.Visibility = snapshot.Turns is null ? Visibility.Collapsed : Visibility.Visible;
         turns.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetAutomationId(turns, "OpenCodeInsightsTurns");
         Grid.SetColumn(turns, 1);
@@ -418,13 +439,14 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var line = CurrentContextLine(snapshot);
         var separator = line.LastIndexOf(" · ", StringComparison.Ordinal);
         var currentRow = new Grid { ColumnSpacing = 8 };
+        currentRow.Visibility = line.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         currentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         currentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var current = OpenCodeInteractionUi.StyledText(separator < 0 ? line : line[..separator], OpenCodeInteractionUi.BodyStrongStyleKey, selectable: true);
         current.TextWrapping = TextWrapping.NoWrap;
         current.TextTrimming = TextTrimming.CharacterEllipsis;
         AutomationProperties.SetAutomationId(current, "OpenCodeInsightsCurrentContext");
-        AutomationProperties.SetName(current, "主智能体上下文：" + line);
+        AutomationProperties.SetName(current, "当前会话上下文：" + line);
         ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
         currentRow.Children.Add(current);
         if (separator >= 0)
@@ -440,66 +462,93 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var summary = snapshot.Cost.Value?.Summary;
         var knownTokens = summary?.HasKnownTokens == true;
         var knownCost = summary?.HasKnownCost == true;
-        var tokens = knownTokens ? summary!.Tokens : null;
+        // Always the selected session's assistant usage, including when ParentId identifies a child.
+        // Tree totals belong only to the separated 汇总 / 花费 row.
+        var tokens = line.Length > 0 ? snapshot.Context.Value?.LatestAssistantUsage?.Tokens : null;
         var prefix = summary?.Incomplete == true ? "已知部分 " : "";
-        string Token(double? value) => value is { } number ? prefix + Tokens(number) : "不可用";
+        string Token(double? value) => value is { } number ? Compact(number) : string.Empty;
         var values = new[]
         {
-            Token(tokens?.Input), Token(tokens?.Output), Token(tokens?.CacheRead), Token(tokens?.CacheWrite),
-            tokens?.CacheHitPercent is { } hit ? prefix + hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "不可用",
-            Token(tokens?.Reasoning),
+            Token(tokens?.Input), Token(tokens?.Output), Token(tokens?.Reasoning),
+            Token(tokens?.CacheRead), Token(tokens?.CacheWrite),
+            tokens?.CacheHitPercent is { } hit ? hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : string.Empty,
         };
         var grid = new Grid { ColumnSpacing = 12, RowSpacing = 6 };
         AutomationProperties.SetAutomationId(grid, "OpenCodeInsightsUsageGrid");
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (var index = 0; index < UsageLabels.Length; index++)
         {
-            if (index % 2 == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var cell = UsageCell(UsageLabels[index], values[index]);
-            Grid.SetRow(cell, index / 2);
-            Grid.SetColumn(cell, index % 2);
+            if (index % 3 == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var cell = UsageCell(UsageGlyphs[index], UsageLabels[index], values[index]);
+            Grid.SetRow(cell, index / 3);
+            Grid.SetColumn(cell, index % 3);
             grid.Children.Add(cell);
         }
-        ToolTipService.SetToolTip(grid, (summary is null ? "主会话及子会话累计用量：" + snapshot.Cost.Note
-            : "主会话及全部子会话，按 parentID 去重累计；输入不含缓存。" + (summary.Incomplete ? "部分数据未能读取。" : ""))
-            + "\n缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。");
+        ToolTipService.SetToolTip(grid, "当前会话最近一次 assistant 请求的用量，不含父会话或子会话。\n缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。");
         panel.Children.Add(grid);
-        panel.Children.Add(OpenCodeContextRing.Divider());
+        if (snapshot.Billion is { Phase: OpenCodeBillionPhase.Loaded, Stats: { } stats })
+        {
+            var compaction = new Grid { ColumnSpacing = 12 };
+            compaction.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            compaction.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            compaction.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var blocks = UsageCell("\uE73F", "压缩块（活跃 / 总数）", CompactionBlocksText(stats));
+            var saved = UsageCell("\uEB05", "压缩节省 tokens", Token(stats.TokensSaved));
+            Grid.SetColumn(saved, 1);
+            compaction.Children.Add(blocks);
+            compaction.Children.Add(saved);
+            AutomationProperties.SetAutomationId(compaction, "OpenCodeInsightsCompactionGrid");
+            if (stats.Blocks is not null || !stats.BlockDetails.IsEmpty || stats.TokensSaved is not null)
+                panel.Children.Add(compaction);
+        }
 
         // Σ 汇总（总 tokens）+ 💰 花费（Session.Info.cost 累计，不重新计价）。
         var totals = new Grid { ColumnSpacing = 12 };
         AutomationProperties.SetAutomationId(totals, "OpenCodeInsightsTotals");
         totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var total = UsageCell("Σ 汇总", Token(tokens?.Total), strong: true);
-        ToolTipService.SetToolTip(total, "总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入");
-        var cost = UsageCell("💰 花费", knownCost ? prefix + Money(summary!.TotalCost) : "不可用", strong: true);
-        ToolTipService.SetToolTip(cost, "直接累计 Session.Info.cost，不重新计价，不加消息费用或 Billion 账单。");
+        var total = UsageCell("\uE81E", "汇总", knownTokens ? prefix + Token(summary!.Tokens.Total) : string.Empty, strong: true);
+        ToolTipService.SetToolTip(total, "汇总：" + (knownTokens ? Token(summary!.Tokens.Total) : "") + "；总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入");
+        var cost = UsageCell("\uE8C7", "花费", knownCost ? prefix + Money(summary!.TotalCost) : string.Empty, strong: true);
+        ToolTipService.SetToolTip(cost, "花费：" + (knownCost ? Money(summary!.TotalCost) : "") + "；本会话及全部子代理的合计，直接累计 Session.Info.cost，不重新计价。");
         Grid.SetColumn(cost, 1);
         totals.Children.Add(total);
         totals.Children.Add(cost);
-        panel.Children.Add(totals);
+        if (knownTokens || knownCost)
+        {
+            panel.Children.Add(OpenCodeContextRing.Divider());
+            panel.Children.Add(totals);
+        }
         return panel;
     }
 
-    // 一格：灰色 emoji 标签（左）+ 数值（右，等宽数字）。窄列内数值优先，标签省略号兜底。
-    private static Grid UsageCell(string label, string value, bool strong = false)
+    internal static string CompactionBlocksText(BillionSessionStats stats)
     {
-        var cell = new Grid { ColumnSpacing = 4 };
-        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var complete = !stats.BlockDetailsTruncated && !stats.BlockDetails.IsEmpty
+            && stats.BlockDetails.All(block => block.Active is not null)
+            && (stats.Blocks is null || stats.Blocks == stats.BlockDetails.Length);
+        return complete ? stats.BlockDetails.Count(block => block.Active == true) + " / " + (stats.Blocks ?? stats.BlockDetails.Length)
+            : stats.Blocks is { } total ? total.ToString(CultureInfo.InvariantCulture) : string.Empty;
+    }
+
+    // 一格：灰色 emoji 标签（左）+ 数值（右，等宽数字）。窄列内数值优先，标签省略号兜底。
+    private static Grid UsageCell(string glyph, string label, string value, bool strong = false)
+    {
+        var cell = new Grid { ColumnSpacing = 6, Visibility = value.Length == 0 ? Visibility.Collapsed : Visibility.Visible };
         cell.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var name = Caption(label);
-        name.TextWrapping = TextWrapping.NoWrap;
-        name.TextTrimming = TextTrimming.CharacterEllipsis;
-        name.VerticalAlignment = VerticalAlignment.Center;
+        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var name = new FontIcon { Glyph = glyph, FontSize = 14, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center };
         var number = OpenCodeInteractionUi.StyledText(value, strong ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.CaptionStyleKey, selectable: true);
         number.TextWrapping = TextWrapping.NoWrap;
+        number.TextTrimming = TextTrimming.CharacterEllipsis;
         number.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(number, 1);
         cell.Children.Add(name);
         cell.Children.Add(number);
         AutomationProperties.SetName(cell, label + "：" + value);
+        ToolTipService.SetToolTip(cell, label + "：" + value);
         return cell;
     }
 
@@ -507,186 +556,58 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     {
         if (snapshot.UnavailableReason is not null || snapshot.Context.Value is not { } estimate
             || estimate.StaleReasons.Any(reason => reason is not OpenCodeContextStaleReason.HistoryIncomplete
-                and not OpenCodeContextStaleReason.ModelLimitUnavailable)) return "不可用";
+                and not OpenCodeContextStaleReason.ModelLimitUnavailable)) return string.Empty;
         var (_, tokens, limit) = OpenCodeContextRing.Measure(snapshot);
-        if (tokens is not { } used) return "不可用";
-        return Compact(used) + " / " + (limit is { } max ? Compact(max) + " · "
-            + Math.Round(used / max * 100, 1).ToString("0.#", CultureInfo.InvariantCulture) + "%" : "上限未知");
+        if (tokens is not { } used) return string.Empty;
+        return Compact(used) + (limit is { } max ? " / " + Compact(max) + " · "
+            + Math.Round(used / max * 100, 1).ToString("0.#", CultureInfo.InvariantCulture) + "%" : string.Empty);
     }
 
-    // ------------------------------------------------------------------
-    // to do（概况分区内）— 对齐官方 v2.1.1 sidebar：标题 "to do"；超过 2 项时标题可折叠，
-    // 折叠后显示“（N 项未完成）”，N = pending + in_progress；展开状态在本次应用运行期间记住。
-    // ------------------------------------------------------------------
-
+    // Read-only native CheckBoxes: completed is checked, cancelled alone is struck through (TD1).
     internal const string TodoTitle = "to do";
-
-    /// <summary>官方超过此数量才允许折叠（≤2 项始终展开）。</summary>
-    internal const int TodoCollapsibleThreshold = 2;
-
-    /// <summary>官方默认展开；本次应用运行期间记住用户的折叠选择（不落盘）。</summary>
-    internal static bool TodoExpanded { get; set; } = true;
-
-    /// <summary>
-    /// 每行状态图标（Segoe Fluent Icons，只读外观，不是可勾选控件），与官方 [✓] [•] [ ] [-] 一一对应。
-    /// 保持服务端原始顺序、不按状态分组。
-    /// </summary>
-    internal static string TodoGlyph(string status) => status switch
-    {
-        "completed" => "\uE73E",   // CheckMark          ≈ [✓]
-        "in_progress" => "\uECCC", // RadioBtnOn（实心点）≈ [•]
-        "cancelled" => "\uE738",   // Remove（短横）      ≈ [-]
-        _ => "\uECCA",             // RadioBtnOff（空圈） ≈ [ ]（pending / 规范化后的未知状态）
-    };
-
-    internal static string TodoRemainingText(int remaining) => "（" + remaining + " 项未完成）";
 
     private static UIElement TodoSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
-        var section = snapshot.Todo;
-        var todo = section.Value;
-        var collapsible = todo is { State: OpenCodeTodoState.Listed } && todo.Items.Length > TodoCollapsibleThreshold;
-        var expanded = !collapsible || TodoExpanded;
-
+        var todo = snapshot.Todo.Value!;
         var panel = new StackPanel { Spacing = 8 };
-        var content = new StackPanel { Spacing = 8 };
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsTodo");
-        AutomationProperties.SetName(panel, TodoTitle + "：" + (todo is null ? DescribeState(section.State) : DescribeTodoState(todo)));
-        var badge = todo is null ? Badge(section.State) : TodoBadge(todo);
-
-        var heading = new Grid { ColumnSpacing = 6 };
-        if (collapsible)
-        {
-            heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        }
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var column = 0;
-        FontIcon? chevron = null;
-        if (collapsible)
-        {
-            chevron = new FontIcon { Glyph = expanded ? "\uE70D" : "\uE76C", FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
-            heading.Children.Add(chevron);
-            column++;
-        }
-        var title = OpenCodeInteractionUi.StyledText(TodoTitle, OpenCodeInteractionUi.BodyStrongStyleKey);
-        title.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(title, column++);
-        heading.Children.Add(title);
-        var remaining = OpenCodeInteractionUi.StyledText(TodoRemainingText(todo?.Remaining ?? 0), OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        remaining.VerticalAlignment = VerticalAlignment.Center;
-        remaining.TextWrapping = TextWrapping.NoWrap;
-        remaining.Visibility = collapsible && !expanded ? Visibility.Visible : Visibility.Collapsed;
-        AutomationProperties.SetAutomationId(remaining, "OpenCodeInsightsTodoRemaining");
-        Grid.SetColumn(remaining, column++);
-        heading.Children.Add(remaining);
-        if (badge is not null)
-        {
-            Grid.SetColumn(badge, column);
-            heading.Children.Add(badge);
-        }
-
-        if (collapsible)
-        {
-            var toggle = new Button
-            {
-                Content = heading,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                Padding = new Thickness(4, 2, 4, 2),
-                // 负外边距抵消按钮内边距：可折叠标题与不可折叠标题、列表图标保持同一左缘。
-                Margin = new Thickness(-4, -2, -4, -2),
-            };
-            if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } style)
-            {
-                toggle.Style = style;
-            }
-            AutomationProperties.SetAutomationId(toggle, "OpenCodeInsightsTodoToggle");
-            AutomationProperties.SetName(toggle, TodoToggleName(expanded, todo!.Remaining));
-            toggle.Click += (_, _) =>
-            {
-                TodoExpanded = !TodoExpanded;
-                var open = TodoExpanded;
-                chevron!.Glyph = open ? "\uE70D" : "\uE76C";
-                remaining.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
-                content.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-                AutomationProperties.SetName(toggle, TodoToggleName(open, todo.Remaining));
-            };
-            panel.Children.Add(toggle);
-        }
-        else
-        {
-            panel.Children.Add(heading);
-        }
-        panel.Children.Add(content);
-        content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-
-        if (todo is null)
-        {
-            content.Children.Add(Caption(section.Note));
-            return panel;
-        }
-
-        if (todo.State != OpenCodeTodoState.Listed)
-        {
-            // 未知 / 读取失败 / 未启用 / 空：只保留一行说明（空态最淡，接近官方“空则隐藏”）。
-            content.Children.Add(Caption(todo.Reason, todo.State == OpenCodeTodoState.Empty ? 0.55 : 0.75));
-            return panel;
-        }
-
-        var list = new StackPanel { Spacing = 6 };
+        AutomationProperties.SetName(panel, "to do：" + DescribeTodoState(todo));
+        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        heading.Children.Add(OpenCodeInteractionUi.StyledText(TodoTitle, OpenCodeInteractionUi.BodyStrongStyleKey));
+        heading.Children.Add(Caption(todo.Items.Count(item => item.Status == "completed") + " / " + todo.Items.Length));
+        panel.Children.Add(heading);
+        var list = new StackPanel { Spacing = 2 };
         AutomationProperties.SetAutomationId(list, "OpenCodeInsightsTodoList");
-        AutomationProperties.SetName(list, TodoTitle + " 列表（服务端顺序）");
-        for (var index = 0; index < todo.Items.Length; index++)
-        {
-            list.Children.Add(TodoRow(todo.Items[index], index));
-        }
-
-        content.Children.Add(list);
-        if (!todo.Complete)
-        {
-            // 只有“可能不完整”才需要说明。
-            content.Children.Add(Caption(todo.Reason, 0.55));
-        }
-
+        for (var index = 0; index < todo.Items.Length; index++) list.Children.Add(TodoRow(todo.Items[index], index));
+        panel.Children.Add(list);
         return panel;
     }
-
-    private static string TodoToggleName(bool expanded, int remaining)
-        => TodoTitle + "，" + (expanded ? "已展开" : "已折叠") + "，" + remaining + " 项未完成";
 
     private static UIElement TodoRow(OpenCodeTodoItem item, int index)
     {
         var finished = item.Status is "completed" or "cancelled";
-        var row = new Grid { ColumnSpacing = 8 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        // 图标与首行文字基线对齐；完成 / 取消弱化，进行中加粗强调（对应官方的高亮行）。
-        var icon = new FontIcon
-        {
-            Glyph = TodoGlyph(item.Status), FontSize = 14, VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 3, 0, 0), Opacity = finished ? 0.55 : 1,
-        };
-        if (finished) icon.Style = OpenCodeInsightsTheme.TodoSecondaryIcon();
         var text = OpenCodeInteractionUi.StyledText(item.Content,
             item.Status == "in_progress" ? OpenCodeInteractionUi.BodyStrongStyleKey
-                : finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey, selectable: true);
-        Grid.SetColumn(text, 1);
-        row.Children.Add(icon);
-        row.Children.Add(text);
-        AutomationProperties.SetAutomationId(row, "OpenCodeInsightsTodoItem." + index);
-        AutomationProperties.SetName(row, DescribeTodoStatus(item.Status) + "：" + item.Content);
-        return row;
+                : finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey);
+        text.FontSize = 13;
+        text.TextDecorations = item.Status == "cancelled" ? TextDecorations.Strikethrough : TextDecorations.None;
+        var check = new CheckBox
+        {
+            Content = text, IsThreeState = true,
+            IsChecked = TodoChecked(item.Status),
+            IsHitTestVisible = false, IsTabStop = false, MinWidth = 0, MinHeight = 26,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        };
+        AutomationProperties.SetAutomationId(check, "OpenCodeInsightsTodoItem." + index);
+        AutomationProperties.SetName(check, DescribeTodoStatus(item.Status) + "：" + item.Content);
+        return check;
     }
 
-    private static Border? TodoBadge(OpenCodeTodoSnapshot todo) => todo.State switch
+    internal static bool? TodoChecked(string status) => status switch
     {
-        OpenCodeTodoState.Unknown => BadgeOf("未知", "OpenCodeNeutralBadgeStyle"),
-        OpenCodeTodoState.ReadFailure => BadgeOf("读取失败", "OpenCodeCriticalBadgeStyle"),
-        OpenCodeTodoState.Disabled => BadgeOf("未启用", "OpenCodeNeutralBadgeStyle"),
-        _ when !todo.Complete => BadgeOf("部分", "OpenCodeCautionBadgeStyle"),
-        _ => null,
+        "completed" => true,
+        "in_progress" => null,
+        _ => false,
     };
 
     private static string DescribeTodoState(OpenCodeTodoSnapshot todo) => todo.State switch
@@ -874,6 +795,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         FillBillionResult(_billionResult, snapshot.Billion);
         // 圆环 Flyout 的“ACP / Billion 状态”组随之更新（Flyout 内容不含常驻文本框）。
         _contextRing.RenderFlyoutOnly(snapshot);
+        _usageHost.Child = ContextUsageSection(snapshot);
     }
 
     // ------------------------------------------------------------------

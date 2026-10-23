@@ -109,10 +109,12 @@ namespace Microsoft.UI.Xaml
 
     public class FrameworkElement : UIElement
     {
+        public Controls.Primitives.FlyoutBase? ContextFlyout { get; set; }
         public DependencyObject? Parent => ShimTree.ParentVisible ? Owner : null;
         public double Width { get; set; }
         public double Height { get; set; }
         public double MinWidth { get; set; }
+        public double MinHeight { get; set; }
         public double MaxWidth { get; set; }
         public double MaxHeight { get; set; }
         public VerticalAlignment VerticalAlignment { get; set; }
@@ -131,6 +133,11 @@ namespace Microsoft.UI.Xaml
 namespace Windows.Foundation
 {
     public delegate void TypedEventHandler<TSender, TResult>(TSender sender, TResult args);
+}
+
+namespace Windows.UI.Text
+{
+    [Flags] public enum TextDecorations { None = 0, Underline = 1, Strikethrough = 2 }
 }
 
 namespace Microsoft.UI.Dispatching
@@ -290,6 +297,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class Control : FrameworkElement
     {
+        public bool IsTabStop { get; set; }
         public bool IsEnabled { get; set; } = true;
         public Thickness Padding { get; set; }
         public Style? Style { get; set; }
@@ -319,6 +327,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public sealed class CheckBox : Button
     {
+        public bool IsThreeState { get; set; }
         private bool? _isChecked = false;
         public event RoutedEventHandler? Checked;
         public event RoutedEventHandler? Unchecked;
@@ -453,15 +462,28 @@ namespace Microsoft.UI.Xaml.Controls
 
     public sealed class Flyout : Primitives.FlyoutBase
     {
+        public event EventHandler<object>? Closed;
+        public void ShowAt(FrameworkElement target) => SimulateOpening();
         public UIElement? Content { get; set; }
         public event EventHandler<object>? Opening;
         public int HideCalls { get; private set; }
-        public void Hide() => HideCalls++;
+        public void Hide() { HideCalls++; Closed?.Invoke(this, new object()); }
         public void SimulateOpening() => Opening?.Invoke(this, new object());
+    }
+
+    public sealed class MenuFlyout : Primitives.FlyoutBase
+    {
+        public List<MenuFlyoutItem> Items { get; } = new();
+    }
+
+    public sealed class MenuFlyoutItem : Button
+    {
+        public string Text { get; set; } = string.Empty;
     }
 
     public class TextBlock : FrameworkElement
     {
+        public Windows.UI.Text.TextDecorations TextDecorations { get; set; }
         public string Text { get; set; } = string.Empty;
         public Style? Style { get; set; }
         public FontWeight FontWeight { get; set; }

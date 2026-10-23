@@ -4,6 +4,7 @@ using System.Linq;
 using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -30,9 +31,18 @@ public sealed partial class OpenCodePage
     private bool _sidebarSuppressSlide;
     private readonly CompositeTransform _leftDockTransform = new();
     private readonly CompositeTransform _rightDockTransform = new();
+    private readonly Flyout _overviewFlyout = new() { Placement = FlyoutPlacementMode.BottomEdgeAlignedRight };
 
     private void InitializeSidebars()
     {
+        _overviewFlyout.Closed += (_, _) =>
+        {
+            if (!_sidebarLayout.IsWide && !_sidebarApplying)
+            {
+                _sidebarLayout = _sidebarLayout.Dismiss(OpenCodeSidebarDrawer.Right);
+                ApplySidebarLayout();
+            }
+        };
         PageRoot.SizeChanged += (_, e) => OnSidebarWidthChanged(e.NewSize.Width);
         LeftDock.RenderTransform = _leftDockTransform;
         LeftDock.RenderTransformOrigin = new Point(0, 0.5);
@@ -169,7 +179,7 @@ public sealed partial class OpenCodePage
         var inner = OpenCodeSidebarLayout.DockInnerGap;
         LeftDock.Padding = new Thickness(outer, top, inner, bottom);
         // Narrow: 概况 opens just under the header buttons as a floating panel.
-        RightDock.Padding = _sidebarLayout.IsWide ? new Thickness(inner, top, outer, bottom) : new Thickness(inner, 8, outer, 16);
+        RightDock.Padding = _sidebarLayout.IsWide ? new Thickness(inner, top, outer, bottom) : new Thickness(0);
     }
 
     private void ApplySidebarLayout()
@@ -199,7 +209,8 @@ public sealed partial class OpenCodePage
             InsightsPane.OpenPaneLength = wide ? OpenCodeSidebarLayout.RightWidth
                 : System.Math.Max(0, System.Math.Min(OpenCodeSidebarLayout.RightWidth, PageRoot.ActualWidth - 48));
             SessionPane.IsPaneOpen = surface.LeftOpen;
-            InsightsPane.IsPaneOpen = surface.RightOpen;
+            ConfigureRightOverview(wide);
+            InsightsPane.IsPaneOpen = wide && surface.RightOpen;
             // Wide: the dock columns continue the opaque reading surface so the cards float on one plane.
             // Narrow: drawers are only their floating card (transparent around it, light-dismiss outside).
             ApplyDockSurface(LeftDock, wide);
@@ -211,7 +222,6 @@ public sealed partial class OpenCodePage
             SessionPaneToggleButton.IsChecked = surface.ShowDrawerButtons && surface.LeftOpen;
             SessionInsightsButton.Visibility = hasSessionSurface && (surface.ShowDrawerButtons || !workspaceVisible)
                 ? Visibility.Visible : Visibility.Collapsed;
-            SessionInsightsButton.IsChecked = surface.ShowDrawerButtons && surface.RightOpen;
             RightSessionContent.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
             RightSessionDiagnostics.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
             RightPanelExistingActions.Visibility = rightResident ? Visibility.Visible : Visibility.Collapsed;
@@ -220,9 +230,12 @@ public sealed partial class OpenCodePage
             ConnectionStatusButton.Visibility = hasSessionSurface ? Visibility.Collapsed : Visibility.Visible;
             ContextRingHost.Visibility = (_sidebarLayout.ShowHeaderContext || !workspaceVisible) && hasSessionSurface
                 ? Visibility.Visible : Visibility.Collapsed;
-            RightContextRingHost.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
+            RightContextRingHost.Visibility = Visibility.Collapsed;
+            RightContextDivider.Visibility = wide ? Visibility.Visible : Visibility.Collapsed;
+            _insightsView.ShowContext = wide;
             RefreshRightPanelMetadata();
             OnSessionInsightsVisibilityChanged(hasSessionSurface && workspaceVisible && surface.RightOpen);
+            if (!hasSessionSurface || (!wide && !surface.RightOpen)) _overviewFlyout.Hide();
             QueueSessionControlCardRefresh();
             UpdateDockInsets();
             QueueComposerLayout();
@@ -246,14 +259,38 @@ public sealed partial class OpenCodePage
             RightConnectionStatusHost.Child = null;
             SidebarHeaderActions.Children.Insert(1, ConnectionStatusButton);
         }
-        _insightsView.ContextRing.ShowPercent = !wide;
-        var target = wide ? RightContextRingHost : ContextRingHost;
-        var previous = wide ? ContextRingHost : RightContextRingHost;
-        if (previous.Child is { } ring)
+        _insightsView.ContextRing.ShowPercent = true;
+    }
+
+    private void ConfigureRightOverview(bool wide)
+    {
+        // Move only the root: the native Billion inputs keep their immediate parents and draft state.
+        if (wide && InsightsPane.Pane is null)
         {
-            _insightsView.ContextRing.Flyout.Hide();
-            previous.Child = null;
-            target.Child = ring;
+            _overviewFlyout.Hide();
+            _overviewFlyout.Content = null;
+            InsightsPane.Pane = RightDock;
+        }
+        else if (!wide && InsightsPane.Pane is not null)
+        {
+            InsightsPane.Pane = null;
+            _overviewFlyout.Content = RightDock;
+        }
+        RightDock.Width = wide ? double.NaN : 304;
+        RightDock.RowDefinitions[0].Height = wide ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        RightDock.RowSpacing = wide ? 12 : 0;
+        foreach (var card in new[] { RightSessionCard, RightFooterCard })
+        {
+            if (wide)
+            {
+                card.ClearValue(Border.BackgroundProperty);
+                card.BorderThickness = new Thickness(1);
+            }
+            else
+            {
+                card.Background = null;
+                card.BorderThickness = new Thickness(0);
+            }
         }
     }
 
@@ -316,7 +353,20 @@ public sealed partial class OpenCodePage
     {
         _sidebarLayout = _sidebarLayout.Toggle(OpenCodeSidebarDrawer.Right);
         ApplySidebarLayout();
-        if (_sidebarLayout.RightOpen) OpenSessionInsightsPane();
+        if (_sidebarLayout.RightOpen)
+        {
+            OpenSessionInsightsPane();
+            if (!_sidebarLayout.IsWide) _overviewFlyout.ShowAt(SessionInsightsButton);
+        }
+    }
+
+    private void OpenBillionSettingsPane()
+    {
+        if (_sidebarLayout.IsWide) return;
+        if (_sidebarLayout.Drawer != OpenCodeSidebarDrawer.Right)
+            _sidebarLayout = _sidebarLayout.Toggle(OpenCodeSidebarDrawer.Right);
+        ApplySidebarLayout();
+        _overviewFlyout.ShowAt(SessionInsightsButton);
     }
 
     private void DismissSidebarDrawers()

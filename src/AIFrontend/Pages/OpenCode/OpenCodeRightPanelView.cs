@@ -20,7 +20,7 @@ internal sealed class OpenCodeRightPanelView
     public FrameworkElement Directory { get; }
     public Button Footer { get; }
     public Button CopyButton { get; }
-    private readonly TextBlock _title = new() { FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, MaxLines = 3, TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly TextBlock _title = new() { FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _id = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _directory = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _hint = new() { FontSize = 12, Visibility = Visibility.Collapsed };
@@ -52,10 +52,8 @@ internal sealed class OpenCodeRightPanelView
         _directory.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
         // Transparent until hover: reads as metadata, still a focusable native button with the copy glyph.
         CopyButton.Padding = new Thickness(8, 4, 8, 4);
-        CopyButton.Margin = new Thickness(-8, 0, -8, 0);
-        if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) CopyButton.Style = quiet;
         // The card supplies padding and scrolling; the copy row's negative margin lines its text up with the title.
-        Header = new StackPanel { Spacing = 2, Children = { _title, CopyButton, _hint } };
+        Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton, _hint } };
         // Read-only directory in a quiet inset box: folder glyph + one-line path (full path in the tooltip; selectable).
         var folder = new FontIcon { Glyph = "\uE8B7", FontSize = 14, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
         var directoryRow = new Grid
@@ -106,7 +104,7 @@ internal sealed class OpenCodeRightPanelView
     public void RenderSession(OpenCodeRightPanelPresentation? session)
     {
         _title.Text = session?.Title ?? string.Empty;
-        ToolTipService.SetToolTip(_title, string.IsNullOrEmpty(_title.Text) ? null : _title.Text); // full title when clamped to 3 lines
+        ToolTipService.SetToolTip(_title, string.IsNullOrEmpty(_title.Text) ? null : _title.Text);
         _id.Text = session?.SessionId ?? string.Empty;
         _directory.Text = session?.Directory ?? string.Empty;
         ToolTipService.SetToolTip(_directory, string.IsNullOrEmpty(_directory.Text) ? null : _directory.Text);

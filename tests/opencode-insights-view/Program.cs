@@ -65,10 +65,10 @@ internal static class Program
         Run("visible: renders raise no confirmation/refresh/read events; user toggle still raises one", true, Events);
         Run("sections: SelectorBar switch only toggles page visibility (no rebuild, Billion owner kept, no events)", true, Sections);
         Run("layout D: no duplicate Agents section or refresh toolbar on the right (subagents live in the left tree)", true, NoRightAgents);
-        Run("to do: official look, glyphs, collapse w/ remaining, unknown/failure/empty/disabled/partial states", true, TodoList);
+        Run("to do: native checkbox states, TD1 strike semantics, hide empty/unknown", true, TodoList);
         Run("to do: real controller config, local derivation and stale-session/epoch fences", true, _ => TodoControllerTests.Run());
-        Run("context ring: header 32x32 button, compact numbers, thresholds, ACP block list, Billion in-place refreshes flyout", true, ContextRing);
-        Run("layered usage: current context, tree totals, honest missing fields and A10 container", true, LayeredUsage);
+        Run("context ring: compact shared grid, thresholds, hide unknown, Billion in-place refresh", true, ContextRing);
+        Run("context grid: Fluent icon order, selected child usage, tree totals and hidden unknowns", true, LayeredUsage);
         Run("connection flyout: concise rows, built-ins silently hidden, clickable MCP/plugin detail + MCP control actions", true, ConnectionFlyout);
 
         ShimTree.ParentVisible = true;
@@ -219,7 +219,7 @@ internal static class Program
             ("ses_c1", "explorer", true, "Search codebase"),
             ("ses_c2", "explorer", false, "Read config")));
         var overview = Field<StackPanel[]>(view, "_pages")[0];
-        Check(overview.Children.Select(child => AutomationProperties.GetAutomationId(child)).SequenceEqual(new[] { "OpenCodeInsightsTodoCard" }),
+        Check(overview.Children.Count == 0,
             "overview holds only to do below the usage block");
         var texts = AllText((UIElement)view.Content!).ToList();
         Check(!texts.Contains("Search codebase") && !texts.Contains("Read config") && !texts.Contains("会话概况"),
@@ -257,73 +257,26 @@ internal static class Program
     // A10: official v2.1.1 sidebar look — "to do" header, [✓][•][ ][-] glyph equivalents, >2 collapsible with remaining count.
     private static void TodoList(OpenCodeSessionInsightsView view)
     {
-        OpenCodeSessionInsightsView.TodoExpanded = true;
-        var four = TodoSnapshot(OpenCodeTodoState.Listed, true, "来自最新一次 todowrite",
-            new OpenCodeTodoItem("first pending", "pending"), new OpenCodeTodoItem("second completed", "completed"),
-            new OpenCodeTodoItem("third in progress", "in_progress"), new OpenCodeTodoItem("fourth cancelled", "cancelled"));
-        var todoPanel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
-        Check(AutomationProperties.GetAutomationId(todoPanel) == "OpenCodeInsightsTodo", "section id stable");
-        var toggle = todoPanel.Children[0] as Button;
-        Check(toggle is not null && AutomationProperties.GetAutomationId(toggle) == "OpenCodeInsightsTodoToggle", ">2 items → clickable header");
-        var heading = (Grid)toggle!.Content!;
-        var texts = heading.Children.OfType<TextBlock>().ToList();
-        Check(texts[0].Text == "to do", "header copy is \"to do\"");
-        var chevron = heading.Children.OfType<FontIcon>().Single();
-        var remaining = texts.Single(t => AutomationProperties.GetAutomationId(t) == "OpenCodeInsightsTodoRemaining");
-        Check(chevron.Glyph == "\uE70D" && remaining.Visibility == Visibility.Collapsed && TodoContent(todoPanel).Visibility == Visibility.Visible,
-            "default expanded (official open:true): chevron down, remaining hidden");
-        Check(remaining.Text == "（2 项未完成）", "remaining = pending + in_progress");
-        Check(BadgeText(todoPanel) == "", "complete list has no badge");
-        var list = TodoContent(todoPanel).Children.OfType<StackPanel>()
-            .Single(p => AutomationProperties.GetAutomationId(p) == "OpenCodeInsightsTodoList");
-        Check(list.Children.Count == 4, "all todos shown");
-        var rows = list.Children.Cast<Grid>().ToList();
-        Check(rows.Select(row => row.Children.OfType<TextBlock>().First().Text).SequenceEqual(new[]
-            { "first pending", "second completed", "third in progress", "fourth cancelled" }), "server original order preserved (no grouping by status)");
-        var glyphs = rows.Select(row => row.Children.OfType<FontIcon>().Single()).ToList();
-        Check(glyphs.Select(g => g.Glyph).SequenceEqual(new[] { "\uECCA", "\uE73E", "\uECCC", "\uE738" }),
-            "glyphs ≈ official [ ] [✓] [•] [-]");
-        Check(glyphs[1].Opacity < 1 && glyphs[3].Opacity < 1 && glyphs[0].Opacity == 1 && glyphs[2].Opacity == 1, "completed/cancelled de-emphasized");
-        Check(rows.Select(row => AutomationProperties.GetName(row)).SequenceEqual(new[]
-            { "未开始：first pending", "已完成：second completed", "进行中：third in progress", "已取消：fourth cancelled" }),
-            "row accessible names carry status; no priority");
-        Check(!HasText(todoPanel, "优先级") && !HasText(todoPanel, "已完成 1 / 4"), "no priority / summary UI the official one lacks");
-
-        // Collapse → remembered for this app run across re-render.
-        toggle.SimulateClick();
-        Check(!OpenCodeSessionInsightsView.TodoExpanded && chevron.Glyph == "\uE76C" && remaining.Visibility == Visibility.Visible
-            && TodoContent(todoPanel).Visibility == Visibility.Collapsed && AutomationProperties.GetName(toggle)!.Contains("已折叠"),
-            "collapse: chevron right, \"（N 项未完成）\" shown, list hidden");
-        todoPanel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
-        Check(TodoContent(todoPanel).Visibility == Visibility.Collapsed
-            && ((Grid)((Button)todoPanel.Children[0]).Content!).Children.OfType<FontIcon>().Single().Glyph == "\uE76C",
-            "collapsed state remembered across re-render");
-        ((Button)todoPanel.Children[0]).SimulateClick();
-        Check(OpenCodeSessionInsightsView.TodoExpanded && TodoContent(todoPanel).Visibility == Visibility.Visible, "expand again");
-
-        // ≤2 items: always expanded, no toggle, even if user collapsed before.
-        OpenCodeSessionInsightsView.TodoExpanded = false;
-        todoPanel = DrawTodo(view, OpenCodeInsightState.Loaded,
-            TodoSnapshot(OpenCodeTodoState.Listed, true, "ok", new OpenCodeTodoItem("a", "pending"), new OpenCodeTodoItem("b", "in_progress")));
-        Check(todoPanel.Children[0] is Grid && TodoContent(todoPanel).Visibility == Visibility.Visible
-            && ((Grid)todoPanel.Children[0]).Children.OfType<FontIcon>().Count() == 0, "≤2 items: plain header, always expanded");
-        OpenCodeSessionInsightsView.TodoExpanded = true;
-
-        // Three distinct non-list states + disabled + partial.
-        var unknown = DrawTodo(view, OpenCodeInsightState.Partial, TodoSnapshot(OpenCodeTodoState.Unknown, false, "消息历史未取全，暂无法确认是否有 to do"));
-        Check(BadgeText(unknown) == "未知" && HasText(unknown, "暂无法确认") && AutomationProperties.GetName(unknown) == "to do：状态未知", "Unknown state");
-        var failure = DrawTodo(view, OpenCodeInsightState.Failed, TodoSnapshot(OpenCodeTodoState.ReadFailure, false, "消息读取失败，无法读取 to do；请刷新消息后重试"));
-        Check(BadgeText(failure) == "读取失败" && HasText(failure, "消息读取失败") && AutomationProperties.GetName(failure) == "to do：读取失败", "ReadFailure state");
-        var empty = DrawTodo(view, OpenCodeInsightState.Loaded, TodoSnapshot(OpenCodeTodoState.Empty, true, "to do 已清空"));
-        Check(BadgeText(empty) == "" && HasText(empty, "to do 已清空") && AutomationProperties.GetName(empty) == "to do：空"
-            && !TodoContent(empty).Children.OfType<StackPanel>().Any(), "Empty state: minimal, no badge, no list");
-        var disabled = DrawTodo(view, OpenCodeInsightState.Unavailable, TodoSnapshot(OpenCodeTodoState.Disabled, true, "当前后端未启用 to do（experimental.todo）"));
-        Check(BadgeText(disabled) == "未启用" && HasText(disabled, "当前后端未启用 to do（experimental.todo）"), "capability-off message");
-        var partial = DrawTodo(view, OpenCodeInsightState.Partial,
-            TodoSnapshot(OpenCodeTodoState.Unknown, false, "消息历史未取全，暂无法确认当前 to do"));
-        Check(BadgeText(partial) == "未知" && HasText(partial, "未取全"), "incomplete pagination remains Unknown, not Empty");
-        var notLoaded = DrawTodo(view, OpenCodeInsightState.NotLoaded, null, "尚未读取");
-        Check(BadgeText(notLoaded) == "未读取" && HasText(notLoaded, "尚未读取"), "not loaded section");
+        var four = TodoSnapshot(OpenCodeTodoState.Listed, true, "latest",
+            new OpenCodeTodoItem("pending", "pending"), new OpenCodeTodoItem("completed", "completed"),
+            new OpenCodeTodoItem("working", "in_progress"), new OpenCodeTodoItem("cancelled", "cancelled"));
+        var panel = DrawTodo(view, OpenCodeInsightState.Loaded, four);
+        Check(AllText(panel).Contains("1 / 4"), "header counts completed only");
+        var list = (StackPanel)panel.Children[1];
+        var boxes = list.Children.Cast<CheckBox>().ToArray();
+        Check(boxes.Select(box => box.IsChecked).SequenceEqual(new bool?[] { false, true, null, false }), "native pending/completed/in-progress/cancelled checkbox states");
+        Check(boxes.All(box => box.IsThreeState && !box.IsHitTestVisible && !box.IsTabStop), "todos are view-only native checkboxes");
+        var texts = boxes.Select(box => (TextBlock)box.Content!).ToArray();
+        Check(texts[1].TextDecorations == Windows.UI.Text.TextDecorations.None
+            && texts[3].TextDecorations == Windows.UI.Text.TextDecorations.Strikethrough, "TD1 completed is not struck, cancelled alone is struck");
+        Check(texts.Select(text => text.Text).SequenceEqual(new[] { "pending", "completed", "working", "cancelled" }), "server order preserved");
+        foreach (var state in new[] { OpenCodeTodoState.Empty, OpenCodeTodoState.Unknown, OpenCodeTodoState.ReadFailure, OpenCodeTodoState.Disabled })
+        {
+            Draw(view, Empty() with { Todo = new(OpenCodeInsightState.Loaded, TodoSnapshot(state, true, "hidden"), "hidden") });
+            Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 0, "empty/unknown/unsupported to do hides whole section and divider");
+        }
+        Draw(view, Empty());
+        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 0, "not-loaded todo hidden");
     }
 
     private static IEnumerable<string?> FlyoutGroupIds(OpenCodeContextRing ring)
@@ -371,9 +324,9 @@ internal static class Program
         Check(ring.Summary.Contains("8%") && ring.Summary.Contains("82.3K / 1M tokens"),
             "G5/H10: tooltip and summary carry percent and compact used / limit");
         var detail = AllText((UIElement)((Flyout)ring.Button.Flyout!).Content!).ToList();
-        Check(detail.Contains("当前上下文") && detail.Contains("用量计费") && detail.Contains("ACP / Billion 状态"), "three group titles");
-        Check(detail.Contains("82.3K / 1M") && detail.Contains("82.3K"), "H10: flyout context figure and breakdown use compact format");
-        Check(detail.Contains("推理") && detail.Contains("缓存读取") && detail.Contains("缓存写入"), "context breakdown rows");
+        Check(detail.Contains("上下文") && !detail.Contains("用量计费") && !detail.Contains("当前模型价目") && !detail.Contains("ACP / Billion 状态"), "flyout is the same compact context grid only");
+        Check(detail.Contains("82.3K / 1M"), "flyout context uses compact format");
+        Check(!detail.Contains("输入") && !detail.Contains("思考"), "metrics use icons, names are tooltips only");
         Check(!detail.Any(text => text.Contains("加载更早消息", StringComparison.Ordinal)), "no stale 'load earlier' button hint");
 
         Draw(view, WithContext(159_999, 200_000));
@@ -388,30 +341,23 @@ internal static class Program
         Check(ring.Ring.Value == 0 && ring.Summary.Contains("—") && ring.ToneKey == "AccentFillColorDefaultBrush",
             "unknown limit: no fake percentage");
 
-        // Billion-only change takes the in-place path (no reparenting) and still refreshes the flyout ACP group + todo-like block list (H11).
-        var before = ((Flyout)ring.Button.Flyout!).Content;
-        var billionSection = Field<StackPanel>(view, "_billionSection");
-        var blocks = ImmutableArray.Create(
-            new BillionBlockInfo("b1", 1, 12_300, true),
-            new BillionBlockInfo("b2", 2, 4_500, false));
+        var before = ring.Flyout.Content;
+        var section = Field<StackPanel>(view, "_billionSection");
         var loaded = WithContext(1_000, null) with
         {
-            Billion = new OpenCodeBillionView(OpenCodeBillionPhase.Loaded, "ses_synthetic", null,
-                new BillionSessionStats { ContextTokens = 82_300, ContextWindow = 1_000_000, Blocks = 2, BlockDetails = blocks, TokensSaved = 42_000, CacheHitPct = 95.5, FetchedAt = DateTimeOffset.UnixEpoch }, "synthetic note"),
+            Billion = new(OpenCodeBillionPhase.Loaded, "ses_synthetic", null,
+                new BillionSessionStats { Blocks = 2, BlockDetails = ImmutableArray.Create(new BillionBlockInfo("b1", 1, 123, true), new BillionBlockInfo("b2", 2, 45, false)), TokensSaved = 42_000 }, "loaded"),
         };
         Draw(view, loaded);
-        var after = ((Flyout)ring.Button.Flyout!).Content!;
-        var afterTexts = AllText((UIElement)after).ToList();
-        Check(!ReferenceEquals(before, after) && afterTexts.Contains("42K") && afterTexts.Contains("1 活跃 / 2")
-            && afterTexts.Contains("b1 · T1") && afterTexts.Contains("12.3K") && afterTexts.Contains("b2 · T2") && afterTexts.Contains("4.5K"),
-            "H10/H11: in-place Billion update rebuilt the flyout ACP group with compact stats and todo-style block list");
-        Check(ReferenceEquals(Field<StackPanel>(view, "_billionSection"), billionSection), "Billion-only change took the in-place path");
-        // Font change flips the theme twice (AppFonts refresh): panel re-renders from the latest snapshot, never refetches.
-        view.SimulateThemeChanged();
-        view.SimulateThemeChanged();
-        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 1
-            && AllText((UIElement)((Flyout)ring.Button.Flyout!).Content!).Contains("42K"), "double theme flip: no read, content intact");
-        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 1, "overview page intact");
+        Check(!ReferenceEquals(before, ring.Flyout.Content) && AllText(ring.Flyout.Content!).Contains("42K")
+            && AllText(ring.Flyout.Content!).Contains("1 / 2"), "Billion-only update refreshes compact flyout grid");
+        Check(ReferenceEquals(section, Field<StackPanel>(view, "_billionSection")), "Billion inputs not reparented");
+        Check(AllText(Field<Border>(view, "_usageHost")).Contains("42K"), "wide grid also refreshes in place");
+        Check(OpenCodeSessionInsightsView.CompactionBlocksText(loaded.Billion.Stats! with { BlockDetailsTruncated = true }) == "2", "partial block details never invent active count");
+        view.ShowContext = false;
+        Check(Field<Border>(view, "_usageHost").Visibility == Visibility.Collapsed, "narrow overview excludes context");
+        view.ShowContext = true;
+        Check(Field<Border>(view, "_usageHost").Visibility == Visibility.Visible, "wide restores context");
     }
 
     private static void LayeredUsage(OpenCodeSessionInsightsView view)
@@ -432,26 +378,22 @@ internal static class Program
         var texts = AllText(host).Reverse().ToArray();
         Check(texts.Take(4).SequenceEqual(new[] { "上下文", "第 3 轮", "12.5K / 200K", "6.2%" }),
             "上下文 + grey 第 N 轮, then main-agent used / limit with % (text only, not tree usage)");
-        var usageLabels = new[] { "📥 输入", "📤 输出", "📖 缓存读", "📝 缓存写", "🎯 命中率", "💭 思考", "Σ 汇总", "💰 花费" };
-        Check(texts.Where(usageLabels.Contains).SequenceEqual(usageLabels), "two-column emoji grid (input, output, cache read/write, hit rate, thinking) then Σ 汇总 + 💰 花费");
-        Check(OpenCodeSessionInsightsView.UsageLabels.SequenceEqual(usageLabels.Take(6)), "grid label constant matches the specified order");
-        Check(OpenCodeSessionInsightsView.DescribeEntry(Empty()).Contains("to do", StringComparison.Ordinal)
-            && !OpenCodeSessionInsightsView.DescribeEntry(Empty()).Contains("任务", StringComparison.Ordinal), "entry uses to do, not task wording");
-        Check(texts.Contains("1.6K") && texts.Contains("60%") && texts.Contains(OpenCodeSessionInsightsView.Money(6)), "three unique parentID sessions; noncached categories, weighted hit rate and raw cost sum");
-        Check(AutomationProperties.GetAutomationId(Field<StackPanel[]>(view, "_pages")[0].Children[0]) == "OpenCodeInsightsTodoCard", "native A10 card container follows context");
-        var root = (StackPanel)view.Content!;
-        Check(root.Children.IndexOf(host) == 2 && Field<SelectorBar>(view, "_sections").Visibility == Visibility.Collapsed
-            && Field<StackPanel>(view, "_statusRow").Visibility == Visibility.Collapsed,
-            "context is the first visible element (bar and status row hidden once loaded)");
+        Check(OpenCodeSessionInsightsView.UsageLabels.SequenceEqual(new[] { "输入", "输出", "思考", "缓存读", "缓存写", "命中率" }), "V4 row order");
+        var usage = ((StackPanel)host.Child!).Children.OfType<Grid>().Single(grid => AutomationProperties.GetAutomationId(grid) == "OpenCodeInsightsUsageGrid");
+        Check(usage.ColumnDefinitions.Count == 3 && usage.RowDefinitions.Count == 2, "three-column native grid");
+        Check(usage.Children.Cast<Grid>().Select(cell => cell.Children.OfType<FontIcon>().Single().Glyph).SequenceEqual(OpenCodeSessionInsightsView.UsageGlyphs), "all metrics use specified Fluent glyphs including hit target");
+        Check(usage.Children.Cast<Grid>().All(cell => cell.Attached.ContainsKey("ToolTip")), "metrics expose names and values in tooltip");
+        Check(texts.Contains("1.6K") && texts.Contains(OpenCodeSessionInsightsView.Money(6)), "tree totals still include descendants once");
+        Check(!texts.Contains("输入") && !texts.Contains("汇总"), "icon-only grid has no visible labels");
+        var child = sample with { SessionId = "ses_child", Context = sample.Context with { Value = sample.Context.Value! with { SessionId = "ses_child" } } };
+        Draw(view, child);
+        Check(OpenCodeSessionInsightsView.CurrentContextLine(child) == "12.5K / 200K · 6.2%", "SA4 child's own assistant usage and model limit, not tree tokens");
+        Check(OpenCodeContextRing.Measure(child with { Context = sample.Context }).Tokens is null, "mismatched parent context cannot populate child ring");
         Draw(view, Empty());
-        Check(AllText(host).Count(t => t == "不可用") == 9 && !AllText(host).Contains("0"), "missing context and eight usage fields never show fabricated zero");
-        var missing = OpenCodeUsageAggregator.Aggregate("ses_missing", Array.Empty<OpenCodeSessionInfo>(), Array.Empty<OpenCodeUsageIssue>());
-        Draw(view, sample with { Cost = new(OpenCodeInsightState.Partial, new(missing, new("ses_missing", true, 0), null, DateTimeOffset.UnixEpoch), "missing") });
-        Check(AllText(host).Count(t => t == "不可用") == 8, "failed tree reads do not render accumulator zero as measured usage");
-        var flyoutTexts = AllText((UIElement)((Flyout)view.ContextRing.Button.Flyout!).Content!).ToArray();
-        Check(!flyoutTexts.Any(t => t.StartsWith("已知部分 0", StringComparison.Ordinal)), "ring flyout shares the honest missing-data convention");
+        Check(OpenCodeSessionInsightsView.TurnsText(null) == "" && !AllText(host).Contains("轮次不可用"), "unknown turns hidden");
+        Check(!AllText(host).Contains("不可用") && ((StackPanel)host.Child!).Children.OfType<Grid>().SelectMany(grid => grid.Children).OfType<Grid>().All(cell => cell.Visibility == Visibility.Collapsed), "unknown numeric cells hidden, never zero placeholders");
         var stale = sample with { Context = sample.Context with { Value = sample.Context.Value! with { StaleReasons = ImmutableArray.Create(OpenCodeContextStaleReason.CompactionAfterUsage) } } };
-        Check(OpenCodeSessionInsightsView.CurrentContextLine(stale) == "不可用", "compaction awaits fresh main-agent usage");
+        Check(OpenCodeSessionInsightsView.CurrentContextLine(stale) == "", "compaction awaits fresh session usage");
     }
 
     private static void ConnectionFlyout(OpenCodeSessionInsightsView _)
@@ -651,15 +593,12 @@ internal static class Program
         // Wave 3 F10 + Wave 5 G5: SelectorBar pages — 概况 (任务 + Agents; context ring moved to header), Billion.
         // Usage/cost, pricing and ACP/Billion status live in the header ring's Flyout (three groups); MCP/plugins/LSP moved to the
         // header connection Flyout (see ConnectionFlyout case).
-        Check(pages.Length == 2 && pages[0].Children.Count == 1
-            && ReferenceEquals(body, pages[1]) && body.Children.Count == 1, "two section pages with their sections");
-        Check(new[] { "OpenCodeInsightsTodoCard" }
-                .SequenceEqual(pages[0].Children.Select(child => AutomationProperties.GetAutomationId(child))),
-            "概况 shows to do only (subagents live in the left tree)");
+        var hasTodo = snapshot.Todo.Value is { State: OpenCodeTodoState.Listed, Items.Length: > 0 };
+        Check(pages.Length == 2 && pages[0].Children.Count == (hasTodo ? 1 : 0)
+            && ReferenceEquals(body, pages[1]) && body.Children.Count == 1, "empty todo omits its section");
         var ring = Field<OpenCodeContextRing>(view, "_contextRing");
-        Check(!pages[0].Children.Contains(ring.Root) && ring.Button.Flyout is Flyout { Content: not null }, "ring is outside 概况 pane and owns a flyout with content");
-        Check(FlyoutGroupIds(ring).SequenceEqual(new[] { "OpenCodeInsightsContextDetail", "OpenCodeInsightsCost", "OpenCodeInsightsAcpStatus" }),
-            "flyout has exactly three groups: 当前上下文 / 用量计费 / ACP·Billion");
+        Check(!pages[0].Children.Contains(ring.Root) && ring.Button.Flyout is Flyout { Content: not null }, "ring remains in header");
+        Check(FlyoutGroupIds(ring).SequenceEqual(new[] { "OpenCodeInsightsLayeredUsage" }), "flyout contains shared context grid only");
         var section = (StackPanel)body.Children[0];
         Check(AutomationProperties.GetAutomationId(section) == "OpenCodeInsightsBillion", "Billion section on its own page");
         var content = (StackPanel)section.Children[1];

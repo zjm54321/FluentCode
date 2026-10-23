@@ -18,19 +18,19 @@ internal static class Program
     {
         var narrow = new OpenCodeSidebarLayout();
         Check(!narrow.IsWide && !narrow.LeftOpen && !narrow.RightOpen, "initial narrow drawers closed");
-        // Layout D: 264 card + 24 outer + 8 inner gap per side, reading column 820 + 2×16 padding.
-        Check(OpenCodeSidebarLayout.LeftWidth == 296 && OpenCodeSidebarLayout.RightWidth == 296
-            && OpenCodeSidebarLayout.EnterWideWidth == 1444 && OpenCodeSidebarLayout.LeaveWideWidth == 1396, "D dock budget 296+852+296");
-        Check(!narrow.Resize(1443).IsWide, "enter threshold exclusive below 1444");
-        var wide = narrow.Resize(1444);
-        Check(wide.IsWide && wide.LeftOpen && wide.RightOpen, "both resident at 1444 epx");
+        // Layout D: 300 card + 24 outer + 8 inner gap per side, reading column 820 + 2×16 padding.
+        Check(OpenCodeSidebarLayout.LeftWidth == 332 && OpenCodeSidebarLayout.RightWidth == 332
+            && OpenCodeSidebarLayout.EnterWideWidth == 1516 && OpenCodeSidebarLayout.LeaveWideWidth == 1468, "D dock budget 332+852+332");
+        Check(!narrow.Resize(1515).IsWide, "enter threshold exclusive below 1516");
+        var wide = narrow.Resize(1516);
+        Check(wide.IsWide && wide.LeftOpen && wide.RightOpen, "both resident at 1516 epx");
         Check(wide.ForSession(true) == new OpenCodeSidebarSurface(true, true, true, false), "session owns wide resident panels");
         Check(wide.ForSession(false) == default, "home and new-session have no residents or drawer entries at wide width");
         Check(narrow.Toggle(OpenCodeSidebarDrawer.Left).ForSession(false) == default, "leaving session hides an open narrow drawer and its entry");
         Check(narrow.ForSession(true).ShowDrawerButtons, "narrow session retains drawer entries");
-        Check(wide.Resize(1396).IsWide, "leave boundary inclusive at 1396");
-        Check(wide.Resize(1420).IsWide && !narrow.Resize(1420).IsWide, "hysteresis depends on previous mode");
-        Check(!wide.Resize(1395.99).IsWide, "leave wide below 1396");
+        Check(wide.Resize(1468).IsWide, "leave boundary inclusive at 1468");
+        Check(wide.Resize(1492).IsWide && !narrow.Resize(1492).IsWide, "hysteresis depends on previous mode");
+        Check(!wide.Resize(1467.99).IsWide, "leave wide below 1468");
         foreach (var width in new[] { 0d, -1d, double.NaN, double.PositiveInfinity })
             Check(wide.Resize(width) == wide, "ignore unmeasured/invalid page width " + width);
         Check(narrow.ShowHeaderContext && !narrow.ShowHeaderConnection && narrow.ShowHeaderOverview,
@@ -50,7 +50,7 @@ internal static class Program
         Check(wide.Toggle(OpenCodeSidebarDrawer.Left) == wide && wide.Toggle(OpenCodeSidebarDrawer.Right) == wide,
             "resident panels cannot be toggled shut");
         Check(wide.Escape() == wide && wide.Dismiss(OpenCodeSidebarDrawer.Left) == wide, "Esc/light-dismiss cannot hide residents");
-        Check(left.Resize(1444) == wide && wide.Resize(1200) == narrow, "mode transitions clear transient drawer state");
+        Check(left.Resize(1516) == wide && wide.Resize(1200) == narrow, "mode transitions clear transient drawer state");
         Check(narrow.Toggle(OpenCodeSidebarDrawer.None) == narrow, "None is not a drawer");
         Check(left.AnimateDrawers(true) && !left.AnimateDrawers(false), "reduced motion disables drawer animation");
         Check(!wide.AnimateDrawers(true) && !wide.AnimateDrawers(false), "resident cards never slide as drawers");
@@ -62,18 +62,16 @@ internal static class Program
             "no mode change, no fold/pop");
         for (var i = 0; i < 100; i++)
         {
-            wide = wide.Resize(i % 2 == 0 ? 1400 : 1440);
-            narrow = narrow.Resize(i % 2 == 0 ? 1400 : 1440);
+            wide = wide.Resize(i % 2 == 0 ? 1470 : 1510);
+            narrow = narrow.Resize(i % 2 == 0 ? 1470 : 1510);
         }
         Check(wide.IsWide && !narrow.IsWide, "resize jitter inside dead band does not oscillate");
 
         var repo = args[0];
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var tokens = XDocument.Load(Path.Combine(repo, "src/AIFrontend/Styles/AppTokens.xaml"));
-        double Token(string key) => double.Parse(tokens.Descendants().Single(e => (string?)e.Attribute(x + "Key") == key).Value,
-            System.Globalization.CultureInfo.InvariantCulture);
-        Check(Token("OpenCodeSessionPaneLength") == OpenCodeSidebarLayout.LeftWidth
-            && Token("OpenCodeInsightsPaneLength") == OpenCodeSidebarLayout.RightWidth, "threshold width budget matches current pane tokens");
+        var layoutCode = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Sidebars.cs"));
+        Check(layoutCode.Contains("wide ? OpenCodeSidebarLayout.LeftWidth") && layoutCode.Contains("wide ? OpenCodeSidebarLayout.RightWidth"),
+            "runtime pane lengths override legacy initial XAML tokens with 300px card budgets");
         var page = XDocument.Load(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
         XNamespace ui = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         var pane = page.Descendants(ui + "SplitView").Single(e => (string?)e.Attribute(x + "Name") == "SessionPane");
@@ -93,8 +91,9 @@ internal static class Program
         var footer = Named("RightFooterCard");
         Check(footer.Descendants().Contains(Named("RightPanelDirectorySlot")) && footer.Descendants().Contains(Named("RightPanelFooterSlot"))
             && At("RightPanelDirectorySlot") < At("RightPanelFooterSlot"), "bottom-right card: directory above logo/version");
-        Check(footer.Descendants().Contains(Named("WslQuickAccessSlot")) && footer.Descendants().Contains(Named("WslQuickAccessNoteSlot")),
-            "WSL quick access stays, placed in the bottom-right card");
+        Check(card.Descendants().Contains(Named("WslQuickAccessSlot")) && card.Descendants().Contains(Named("WslQuickAccessNoteSlot"))
+            && At("RightPanelHeaderSlot") < At("WslQuickAccessSlot") && At("WslQuickAccessSlot") < At("InsightsPaneHost"),
+            "WSL quick access follows title/id and precedes context in top-right card");
         foreach (var dockCard in new[] { card, footer })
             Check((string?)dockCard.Attribute("Background") == "{ThemeResource AcrylicInAppFillColorDefaultBrush}"
                 && (string?)dockCard.Attribute("BorderBrush") == "{ThemeResource CardStrokeColorDefaultBrush}"

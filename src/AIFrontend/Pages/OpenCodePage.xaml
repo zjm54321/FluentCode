@@ -167,7 +167,7 @@
                         VerticalAlignment="Center"
                         AutomationProperties.AutomationId="OpenCodeContextRingHost" />
                     <!-- 布局 D 窄模式：“概况”按钮（图标 + 文字）把右侧会话卡片作为浮动面板打开（轻点外部关闭）。宽模式不显示。 -->
-                    <ToggleButton
+                    <Button
                         x:Name="SessionInsightsButton"
                         Height="32"
                         MinWidth="0"
@@ -177,16 +177,16 @@
                         AutomationProperties.AutomationId="OpenCodeSessionInsightsButton"
                         AutomationProperties.Name="概况"
                         ToolTipService.ToolTip="概况">
-                        <ToggleButton.Style>
-                            <Style TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
                                 <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
                             </Style>
-                        </ToggleButton.Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE9D2;" FontSize="14" VerticalAlignment="Center" />
                             <TextBlock Text="概况" VerticalAlignment="Center" />
                         </StackPanel>
-                    </ToggleButton>
+                    </Button>
                 </StackPanel>
             </TabView.TabStripFooter>
         </TabView>
@@ -301,13 +301,19 @@
                                         <StackPanel Padding="16,14,16,16" Spacing="12">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                                                 <Grid x:Name="RightPanelHeaderSlot" Visibility="Collapsed" />
-                                                <!-- The context ring (flyout: 当前上下文 / 用量计费 / ACP·Billion 状态) docks here in wide mode. -->
+                                                <!-- Compatibility hosts; the ring is shown only in the narrow header. -->
                                                 <StackPanel x:Name="RightPanelExistingActions" Grid.Column="1" Orientation="Horizontal"
                                                             Spacing="4" VerticalAlignment="Top" Margin="0,-4,-8,0">
                                                     <Border x:Name="RightContextRingHost" VerticalAlignment="Center" />
                                                     <Border x:Name="RightConnectionStatusHost" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Grid>
+                                            <StackPanel x:Name="WslQuickAccessSection" Visibility="Collapsed" Spacing="12">
+                                                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                                <Grid x:Name="WslQuickAccessSlot" Visibility="Collapsed" HorizontalAlignment="Left" />
+                                                <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" />
+                                            </StackPanel>
+                                            <Border x:Name="RightContextDivider" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                                             <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
                                                 <Button x:Name="SessionReturnButton" Visibility="Collapsed" IsEnabled="False"
                                                         HorizontalAlignment="Left" Click="SessionReturnButton_Click"
@@ -331,12 +337,7 @@
                                         <ThemeShadow />
                                     </Border.Shadow>
                                     <StackPanel Spacing="6">
-                                        <!-- Read-only current directory; WSL quick access stays as two calm icon buttons beside it. -->
-                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
-                                            <Grid x:Name="RightPanelDirectorySlot" Visibility="Collapsed" />
-                                            <Grid x:Name="WslQuickAccessSlot" Grid.Column="1" Visibility="Collapsed" VerticalAlignment="Center" />
-                                        </Grid>
-                                        <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" />
+                                        <Grid x:Name="RightPanelDirectorySlot" Visibility="Collapsed" />
                                         <Grid x:Name="RightPanelFooterSlot" Visibility="Collapsed" />
                                     </StackPanel>
                                 </Border>

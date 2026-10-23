@@ -45,6 +45,8 @@ public sealed partial class OpenCodePage
     private CancellationTokenSource? _insightsRefreshCts;
     private Task? _insightsLoadTask;
     private OpenCodeInsightsBinding? _insightsLoadBinding;
+    private bool _contextDetailsVisible;
+    private bool _billionAutoReadQueued;
 
     // 上次在重置回调中观察到的来源生命周期标记（与是否选中会话无关）。
     private OpenCodePageSource? _insightsObservedSource;
@@ -73,14 +75,19 @@ public sealed partial class OpenCodePage
             }
         };
         // wave5 G5：页头上下文圆环（“概况”按钮左侧）。打开其 Flyout 与打开概况面板同一读取时机：当前会话尚无结果才读取一次。
-        _insightsView.ContextDetailsOpening += (_, _) => OpenContextDetails();
+        _insightsView.ContextDetailsOpening += (_, _) =>
+        {
+            _contextDetailsVisible = true;
+            OpenContextDetails();
+            QueueVisibleBillionRead();
+        };
+        _insightsView.ContextRing.Flyout.Closed += (_, _) => _contextDetailsVisible = false;
         // ACP 组“设置 Billion 地址”：视图已切到 Billion 分区，这里打开右侧面板（与点“概况”开关相同的路径）。
         _insightsView.BillionSetupRequested += (_, _) =>
         {
             if (SessionInsightsButton.IsEnabled)
             {
-                SessionInsightsButton.IsChecked = true;
-                InsightsPane.IsPaneOpen = true;
+                OpenBillionSettingsPane();
                 OpenSessionInsightsPane();
             }
         };
@@ -130,6 +137,8 @@ public sealed partial class OpenCodePage
 
     private void ResetSessionInsights()
     {
+        _contextDetailsVisible = false;
+        _insightsView.ContextRing.Flyout.Hide();
         CancelScheduledInsightsRefresh();
         _insightsRefreshNeeded = false;
         _insightsLoadTask = null;
@@ -156,6 +165,7 @@ public sealed partial class OpenCodePage
         if (visible && (!wasVisible || (_insights is { } insights && TryCaptureInsightsBinding(out var binding)
             && !insights.HasResultFor(binding!)))) OpenSessionInsightsPane();
         else if (!visible) CancelScheduledInsightsRefresh();
+        if (visible) QueueVisibleBillionRead();
     }
 
     partial void OnSessionInsightsEvent(OpenCodeEvent item)
@@ -376,6 +386,7 @@ public sealed partial class OpenCodePage
         if (snapshot.BillionContext is { } context
             && (!IsCurrentInsightsBinding(context.Binding) || context.Binding.Source.IsRevoked)) return;
         _insightsView.Render(snapshot);
+        QueueVisibleBillionRead();
         var description = OpenCodeSessionInsightsView.DescribeEntry(snapshot);
         // wave5 G5：图标按钮的 Tooltip 固定为“概况”；采样说明只作为无障碍帮助文本。
         AutomationProperties.SetHelpText(SessionInsightsButton, description);
@@ -384,5 +395,21 @@ public sealed partial class OpenCodePage
 
     /// <summary>概况渲染后的扩展点：页头连接详情 Flyout（OpenCodePage.ConnectionFlyout.cs）在打开时据最新快照重建 MCP / 插件。</summary>
     partial void OnSessionInsightsRendered();
+
+    private void QueueVisibleBillionRead()
+    {
+        if (_billionAutoReadQueued || !ContextStatsVisible || _insights?.Snapshot is not
+            { BillionConfirmed: true, Billion.Phase: OpenCodeBillionPhase.Idle, BillionContext: not null }) return;
+        _billionAutoReadQueued = true;
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            _billionAutoReadQueued = false;
+            if (ContextStatsVisible && _insights?.Snapshot is
+                { BillionConfirmed: true, Billion.Phase: OpenCodeBillionPhase.Idle, BillionContext: { } context })
+                _ = ReadBillionInsightsAsync(context);
+        })) _billionAutoReadQueued = false;
+    }
+
+    private bool ContextStatsVisible => _contextDetailsVisible || (_insightsVisible && _insightsView.ShowContext);
 
 }
