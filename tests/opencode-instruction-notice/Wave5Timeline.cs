@@ -22,6 +22,7 @@ internal static class Wave5Timeline
         AsyncCompletionRows();
         InstructionRows();
         UserBubble();
+        AssistantCard();
         ConversationViewTestProbe.Reset();
         return _assertions;
     }
@@ -276,6 +277,33 @@ internal static class Wave5Timeline
         Check(Constructed<OpenCodeUserBubbleView>().Length == 1
               && ConversationViewTestProbe.Records.Any(r => r.Operation == "Render" && ReferenceEquals(r.Subject, presenter) && r.Input is "edited"),
             "h14.bubble-reused-on-update");
+        view.ClearMessages();
+    }
+
+    // MB1: check the real renderer's card style at the inert native-XAML boundary, not pixels.
+    private static void AssistantCard()
+    {
+        ConversationViewTestProbe.Reset();
+        var view = new OpenCodeConversationView();
+        OpenCodeMessage Text(string text) => Message(new
+        {
+            id = "msg_assistant_card", type = "assistant",
+            content = new object[] {new {type = "text", text}},
+            time = new {created = T0, completed = T0 + 1_000},
+        });
+        view.ApplyMessages(new[] {Text("ANSWER")});
+        var presenter = Constructed<OpenCodeRichTextPresenter>().Single();
+        var card = (Microsoft.UI.Xaml.Controls.Border)presenter.Element.Parent!;
+        Check(card.Style?.BrushKeys["Background"] == "SolidBackgroundFillColorTertiaryBrush"
+              && card.Style.BrushKeys["BorderBrush"] == OpenCodeInteractionUi.CardStrokeBrushKey,
+            "mb1.assistant-card-solid-theme-fill-keeps-stroke");
+        Check(card.Padding.Left == 12 && card.Padding.Top == 10 && card.Padding.Right == 12 && card.Padding.Bottom == 10
+              && card.CornerRadius.TopLeft == 8 && card.BorderThickness.Left == 1,
+            "mb1.assistant-card-keeps-padding-radius-border");
+        view.ApplyMessages(new[] {Text("EDITED ANSWER")});
+        Check(ReferenceEquals(presenter.Element.Parent, card) && Constructed<OpenCodeRichTextPresenter>().Length == 1
+              && card.Style?.BrushKeys["Background"] == "SolidBackgroundFillColorTertiaryBrush",
+            "mb1.assistant-card-reused-with-solid-fill-on-update");
         view.ClearMessages();
     }
 

@@ -2594,7 +2594,8 @@ public sealed class OpenCodeConversationView : StackPanel
                     {
                         Child = presenter.Element, Padding = new Thickness(12, 10, 12, 10),
                         CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
-                        Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", OpenCodeInteractionUi.CardBackgroundBrushKey),
+                        // MB1: assistant text owns a solid theme surface rather than showing Mica through its card.
+                        Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SolidBackgroundFillColorTertiaryBrush"),
                             ("BorderBrush", OpenCodeInteractionUi.CardStrokeBrushKey)),
                     },
                     Update = (p, _, _) => presenter.Render(p.Text, OpenCodeRichTextStyle.Body),

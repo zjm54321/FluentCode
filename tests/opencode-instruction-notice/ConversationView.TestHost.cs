@@ -14,7 +14,12 @@ namespace AIFrontend.Pages.OpenCode
 {
     internal static class OpenCodeThemedXaml
     {
-        internal static Style BrushStyle(string element, params (string Property, string Resource)[] brushes) => new();
+        internal static Style BrushStyle(string element, params (string Property, string Resource)[] brushes)
+        {
+            var style = new Style();
+            foreach(var (property, resource) in brushes) style.BrushKeys[property] = resource;
+            return style;
+        }
     }
     internal partial class OpenCodeToolDetailPopup { internal static FrameworkElement? RetainedAnchor => null; }
     internal static class ConversationViewTestProbe
@@ -471,7 +476,7 @@ namespace Microsoft.UI.Xaml
         public Style? Style { get; set; }
     }
 
-    public class Style { }
+    public class Style { public Dictionary<string,string> BrushKeys { get; } = new(); }
     public class XamlRoot { public Windows.Foundation.Size Size { get; set; } = new(800, 600); }
     public class ResourceDictionary : Dictionary<object, object> { }
     public class Application
