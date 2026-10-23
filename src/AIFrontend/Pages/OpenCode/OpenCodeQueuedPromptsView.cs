@@ -63,6 +63,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         _expander.Content = _scroll;
         _expander.Header = _header;
         _header.TextWrapping = TextWrapping.NoWrap;
+        _header.MaxLines = 1;
         _header.TextTrimming = TextTrimming.CharacterEllipsis;
         AutomationProperties.SetAutomationId(_expander, "OpenCodeQueueExpander");
         Children.Add(_expander);
@@ -217,6 +218,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
 
         var body = OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey, selectable: true);
         body.TextWrapping = TextWrapping.NoWrap;
+        body.MaxLines = 1;
         body.TextTrimming = TextTrimming.CharacterEllipsis;
         body.VerticalAlignment = VerticalAlignment.Center;
         ToolTipService.SetToolTip(body, text);

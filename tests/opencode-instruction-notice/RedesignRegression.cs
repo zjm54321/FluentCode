@@ -81,7 +81,8 @@ internal static class RedesignRegression
             "admitted steer never appears in lower queue list; actual queue remains in server order");
         view.Apply([inserted with { Delivery = "queue" }, item]);
         Check(((Grid)list.Items[0]).Children.OfType<TextBlock>().First().Text == "  first\nsecond  "
-            && ((Grid)list.Items[0]).Children.OfType<TextBlock>().First().TextTrimming == TextTrimming.CharacterEllipsis,
+            && ((Grid)list.Items[0]).Children.OfType<TextBlock>().First().TextTrimming == TextTrimming.CharacterEllipsis
+            && ((Grid)list.Items[0]).Children.OfType<TextBlock>().First().MaxLines == 1 && ((TextBlock)expander.Header!).MaxLines == 1,
             "raw pending text retained; compact row uses native ellipsis and full-source tooltip");
         view.Apply([]);
         view.Apply([inserted with { Delivery = "queue" }, item]);

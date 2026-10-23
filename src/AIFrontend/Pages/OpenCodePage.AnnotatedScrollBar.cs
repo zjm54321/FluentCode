@@ -4,17 +4,28 @@ using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Text;
+using Microsoft.UI.Composition;
+using Microsoft.UI.Xaml.Hosting;
 
 namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
     private IReadOnlyList<(string Text, bool User, double Offset)> _scrollAnnotations = Array.Empty<(string, bool, double)>();
+    private CompositionPropertySet? _annotatedSources;
 
     // Native AnnotatedScrollBar controller, bridged to the existing single ScrollViewer owner.
     // Keeping that owner preserves pagination ACKs, idle visibility proof and virtual-window anchors.
     private void ConversationScrollBar_Loaded(object sender, RoutedEventArgs e)
     {
+        _annotatedSources = ElementCompositionPreview.GetElementVisual(ConversationScrollBar).Compositor.CreatePropertySet();
+        _annotatedSources.InsertScalar("MinOffset", 0);
+        _annotatedSources.InsertScalar("MaxOffset", (float)MessageScroll.ScrollableHeight);
+        _annotatedSources.InsertScalar("Offset", (float)MessageScroll.VerticalOffset);
+        _annotatedSources.InsertScalar("Multiplier", -1);
+        // The native panning implementation owns its thumb expression and movement ratio.
+        ConversationScrollBar.ScrollController.PanningInfo?.SetPanningElementExpressionAnimationSources(
+            _annotatedSources, "MinOffset", "MaxOffset", "Offset", "Multiplier");
         MessageScroll.ViewChanged += AnnotatedViewportChanged;
         MessageScroll.LayoutUpdated += AnnotatedLayoutUpdated;
         UpdateAnnotatedScrollBar();
@@ -24,6 +35,9 @@ public sealed partial class OpenCodePage
     {
         MessageScroll.ViewChanged -= AnnotatedViewportChanged;
         MessageScroll.LayoutUpdated -= AnnotatedLayoutUpdated;
+        ConversationScrollBar.ScrollController.PanningInfo?.SetPanningElementExpressionAnimationSources(null!, "", "", "", "");
+        _annotatedSources?.Dispose();
+        _annotatedSources = null;
         _scrollAnnotations = Array.Empty<(string, bool, double)>();
     }
 
@@ -35,6 +49,8 @@ public sealed partial class OpenCodePage
         var controller = ConversationScrollBar.ScrollController;
         controller.SetIsScrollable(MessageScroll.ScrollableHeight > 0);
         controller.SetValues(0, Math.Max(0, MessageScroll.ScrollableHeight), MessageScroll.VerticalOffset, MessageScroll.ViewportHeight);
+        _annotatedSources?.InsertScalar("MaxOffset", (float)Math.Max(0, MessageScroll.ScrollableHeight));
+        _annotatedSources?.InsertScalar("Offset", (float)MessageScroll.VerticalOffset);
         var annotations = _conversationView.ScrollAnnotations();
         if (annotations.SequenceEqual(_scrollAnnotations)) return;
         _scrollAnnotations = annotations;
