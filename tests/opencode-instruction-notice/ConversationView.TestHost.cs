@@ -671,6 +671,12 @@ namespace Microsoft.UI.Xaml.Controls
         public double ViewportHeight { get; set; } = 800;
         public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged;
         public Action? LayoutForTest { get; set; }
+        public List<double> ProgrammaticOffsetsForTest { get; } = new();
+        public void ScrollForTest(double offset, bool intermediate)
+        {
+            VerticalOffset = offset;
+            ViewChanged?.Invoke(this, new() { IsIntermediate = intermediate });
+        }
         public void NotifyExtentForTest() => ViewChanged?.Invoke(this, new());
         public bool DeferChangeForTest { get; set; }
         public double? PendingOffsetForTest { get; private set; }
@@ -684,6 +690,7 @@ namespace Microsoft.UI.Xaml.Controls
         public void UpdateLayout() => LayoutForTest?.Invoke();
         public void ChangeView(double? horizontal, double? vertical, double? zoom, bool disableAnimation)
         {
+            if (vertical is { } offset) ProgrammaticOffsetsForTest.Add(offset);
             if (DeferChangeForTest) { PendingOffsetForTest = vertical; return; }
             VerticalOffset = vertical ?? VerticalOffset; ViewChanged?.Invoke(this, new());
         }

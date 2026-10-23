@@ -133,6 +133,41 @@ internal static class Windowing
         viewport.ChangeView(null, 20021, null, true); Settle();
         Check(scrolling.RealizedRowCount <= 42 && viewport.VerticalOffset == 20021,
             "new-user-scroll-supersedes-stale-owner");
+
+        // Native composition pans independently of the UI-thread VerticalOffset. Vary the
+        // viewport transform between ViewChanged and layout, with NO height/extent change:
+        // the old owner counter-scrolled on every frame (the real-app wheel loop).
+        viewport.Content = new Grid();
+        double compositorLead = 0;
+        scrolling.TestTransform = target => new GeneralTransform(ReferenceEquals(target, viewport)
+            ? -viewport.VerticalOffset - compositorLead : 0);
+        viewport.ProgrammaticOffsetsForTest.Clear();
+        for (var frame = 0; frame < 12; frame++)
+        {
+            var nativeOffset = 20021 - (frame + 1) * 173;
+            compositorLead = 5;
+            viewport.ScrollForTest(nativeOffset, intermediate: true);
+            compositorLead = 51;
+            scrolling.RefreshViewport(viewport);
+            Check(viewport.VerticalOffset == nativeOffset && viewport.ProgrammaticOffsetsForTest.Count == 0,
+                "inertial-frame-" + frame + "-never-counter-scrolls-to-compositor-transform");
+        }
+        viewport.ScrollForTest(viewport.VerticalOffset, intermediate: false);
+        compositorLead = 19;
+        Settle();
+        Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "inertia-final-layout-does-not-replay-stale-pan-anchor");
+
+        // Deferred measurement above the live reader must not cancel native inertia either.
+        var panWindow = (OpenCodeConversationWindow)windowField.GetValue(scrolling)!;
+        var panAnchor = panWindow.Capture(viewport.VerticalOffset - scrolling.Padding.Top)!.Value;
+        var precedingKey = live[live.FindIndex(m => m.Id == panAnchor.Key) - 1].Id!;
+        heights[precedingKey] = 143;
+        viewport.ScrollForTest(viewport.VerticalOffset - 7, intermediate: true);
+        scrolling.RefreshViewport(viewport);
+        Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "lazy-height-during-inertia-never-issues-ChangeView");
+        viewport.ScrollForTest(viewport.VerticalOffset, intermediate: false);
+        Settle();
+        Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "lazy-height-pan-end-adopts-live-reader-instead-of-snapping-back");
         scrolling.ClearMessages();
 
         // Observe actual child geometry after EACH transaction, not the cached height model

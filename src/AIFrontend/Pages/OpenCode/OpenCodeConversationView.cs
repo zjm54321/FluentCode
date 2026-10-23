@@ -75,6 +75,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private bool _animatingScroll;
     private bool _windowQueued;
     private bool _updatingWindow;
+    private bool _userScrolling;
     private double? _requestedOffset;
     private double _observedViewportOffset = double.NaN;
     private long _windowGeneration;
@@ -105,7 +106,15 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     private double WindowOffset()
-        => _viewport is null ? 0 : Math.Max(0, -TransformToVisual(_viewport).TransformPoint(new Point(0, 0)).Y - Padding.Top);
+    {
+        if (_viewport is null) return 0;
+        // A transform to the viewport includes the compositor's in-flight pan, which can
+        // be ahead of VerticalOffset. Never subtract that transform from a logical offset:
+        // the resulting "anchor correction" fights the next native inertia frame.
+        var top = _viewport.Content is UIElement content
+            ? TransformToVisual(content).TransformPoint(new Point(0, 0)).Y : 0;
+        return Math.Max(0, _viewport.VerticalOffset - top - Padding.Top);
+    }
 
     private void ConnectViewport()
     {
@@ -136,6 +145,7 @@ public sealed class OpenCodeConversationView : StackPanel
             _viewport.RemoveHandler(UIElement.KeyDownEvent, new KeyEventHandler(WindowKeyInput));
         }
         _viewport = null;
+        _userScrolling = false;
         _windowGeneration++;
         _windowQueued = false;
     }
@@ -181,6 +191,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
         else if (moved && !_updatingWindow && !_idleContentChanging)
         {
+            _userScrolling = e.IsIntermediate;
             _requestedOffset = null;
             _scrollOwnerCurrent = null; // A new user viewport supersedes any queued page scroll intent.
             _windowGeneration++;
@@ -188,6 +199,7 @@ public sealed class OpenCodeConversationView : StackPanel
             _followingBottom = viewport.ScrollableHeight - viewport.VerticalOffset <= 0.5;
             _readAnchor = _window.Capture(WindowOffset());
         }
+        if (!e.IsIntermediate) _userScrolling = false;
         HistoryViewportChanged?.Invoke(restoring);
         QueueWindowUpdate();
     }
@@ -209,6 +221,7 @@ public sealed class OpenCodeConversationView : StackPanel
         if (_animatingScroll && !animated) CaptureInteractionAnchor();
         _scrollOwnerCurrent = ownerCurrent;
         _followingBottom = true;
+        _userScrolling = false;
         _animateNextScroll = animated;
         QueueWindowUpdate();
     }
@@ -230,7 +243,7 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         var height = _viewport?.ViewportHeight ?? 800;
         if (height <= 0) height = 800;
-        var offset = _animatingScroll ? WindowOffset() : _followingBottom ? Math.Max(0, _window.Extent - height)
+        var offset = _animatingScroll || _userScrolling ? WindowOffset() : _followingBottom ? Math.Max(0, _window.Extent - height)
             : _window.Restore(_readAnchor, _viewport is null ? 0 : WindowOffset());
         return _window.Select(offset, height, Math.Max(height, 800));
     }
@@ -285,9 +298,13 @@ public sealed class OpenCodeConversationView : StackPanel
                 ChangeIdleContent(AlignWindow);
                 viewport.UpdateLayout();
             }
+            // Realize at the live logical position during a pan, but let native input own
+            // the offset until its final ViewChanged. Do not retain a pre-pan anchor for
+            // a deferred correction when inertia ends.
+            if (_userScrolling) _readAnchor = _window.Capture(WindowOffset());
             var offset = _followingBottom ? viewport.ScrollableHeight
                 : viewport.VerticalOffset + _window.Restore(_readAnchor, WindowOffset()) - WindowOffset();
-            if (!_animatingScroll && Math.Abs(viewport.VerticalOffset - offset) > 0.5)
+            if (!_animatingScroll && !_userScrolling && Math.Abs(viewport.VerticalOffset - offset) > 0.5)
             {
                 _requestedOffset = Math.Clamp(offset, 0, viewport.ScrollableHeight);
                 var animated = _followingBottom && _animateNextScroll;
@@ -997,6 +1014,7 @@ public sealed class OpenCodeConversationView : StackPanel
         _windowGeneration++;
         _windowQueued = false;
         _window.Reset();
+        _userScrolling = false;
         _readAnchor = null;
         _followingBottom = false;
         _animateNextScroll = _animatingScroll = false;
