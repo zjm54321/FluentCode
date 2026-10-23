@@ -230,7 +230,7 @@ public sealed partial class SettingsView
             return;
         }
 
-        await SaveAsync(_settings with { SelectedModel = target }, "已更新选中模型。");
+        await SaveAsync(settings => settings with { SelectedModel = target }, "已更新选中模型。");
     }
 
     /// <summary>手动添加表单是否存在未提交的输入（模型 ID 或展示名非空）。</summary>
@@ -302,7 +302,7 @@ public sealed partial class SettingsView
             Capabilities = ModelCapabilities.Unknown,
         };
 
-        if (await SaveAsync(_settings with { Models = _settings.Models.Append(model).ToArray() }, "已添加模型。"))
+        if (await SaveAsync(settings => settings with { Models = settings.Models.Append(model).ToArray() }, "已添加模型。"))
         {
             ResetModelForm();
             return true;
@@ -324,15 +324,17 @@ public sealed partial class SettingsView
             return;
         }
 
-        ModelDescriptor[] remaining = _settings.Models
-            .Where(m => !(m.ProviderId == model.ProviderId && m.ModelId == model.ModelId))
-            .ToArray();
-        ModelRef? selected = _settings.SelectedModel is { } sel &&
-            remaining.Any(m => m.ProviderId == sel.ProviderId && m.ModelId == sel.ModelId)
-            ? _settings.SelectedModel
-            : null;
-
-        await SaveAsync(_settings with { Models = remaining, SelectedModel = selected }, "已删除模型。");
+        await SaveAsync(settings =>
+        {
+            ModelDescriptor[] remaining = settings.Models
+                .Where(m => !(m.ProviderId == model.ProviderId && m.ModelId == model.ModelId))
+                .ToArray();
+            ModelRef? selected = settings.SelectedModel is { } sel &&
+                remaining.Any(m => m.ProviderId == sel.ProviderId && m.ModelId == sel.ModelId)
+                ? settings.SelectedModel
+                : null;
+            return settings with { Models = remaining, SelectedModel = selected };
+        }, "已删除模型。");
     }
 
     // ---- 发现 ----
@@ -455,15 +457,20 @@ public sealed partial class SettingsView
 
         // 合并策略（契约 §7.4）：保留该 provider 的 Manual 条目，加入新的 Discovered 条目并去重。
         string providerId = toAdd[0].ProviderId;
-        ModelDescriptor[] retained = _settings.Models
-            .Where(m => m.ProviderId != providerId || m.Origin == ModelOrigin.Manual)
-            .ToArray();
         ModelDescriptor[] added = toAdd
-            .Where(m => !retained.Any(o => o.ProviderId == m.ProviderId && o.ModelId == m.ModelId))
+            .Where(m => !_settings.Models.Any(o => o.ProviderId == m.ProviderId && o.ModelId == m.ModelId))
             .ToArray();
-        ModelDescriptor[] merged = retained.Concat(added).ToArray();
 
-        if (await SaveAsync(_settings with { Models = merged }, $"已加入 {added.Length} 个模型。"))
+        if (await SaveAsync(settings =>
+        {
+            ModelDescriptor[] latestRetained = settings.Models
+                .Where(m => m.ProviderId != providerId || m.Origin == ModelOrigin.Manual)
+                .ToArray();
+            ModelDescriptor[] latestAdded = toAdd
+                .Where(m => !latestRetained.Any(o => o.ProviderId == m.ProviderId && o.ModelId == m.ModelId))
+                .ToArray();
+            return settings with { Models = latestRetained.Concat(latestAdded).ToArray() };
+        }, $"已加入 {added.Length} 个模型。"))
         {
             _discoverResultsPanel.Children.Clear();
             _discoverResults.Clear();
@@ -616,10 +623,12 @@ public sealed partial class SettingsView
         }
 
         ModelDescriptor updated = editing with { Capabilities = result };
-        ModelDescriptor[] models = _settings.Models
-            .Select(m => m.ProviderId == editing.ProviderId && m.ModelId == editing.ModelId ? updated : m)
-            .ToArray();
-        return await SaveAsync(_settings with { Models = models }, "已保存模型能力。");
+        return await SaveAsync(settings => settings with
+        {
+            Models = settings.Models
+                .Select(m => m.ProviderId == editing.ProviderId && m.ModelId == editing.ModelId ? updated : m)
+                .ToArray(),
+        }, "已保存模型能力。");
     }
 
     private void CloseCapabilityEditor()

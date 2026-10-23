@@ -23,6 +23,8 @@ internal static class Program
         Directory.CreateDirectory(evidence);
         await KindPersistence(Path.Combine(evidence, "kind"));
         Console.WriteLine("PASS connection kind persistence: Wsl stays Wsl, Remote stays Remote, validation rejects mixed fields");
+        await AtomicUpdates(Path.Combine(evidence, "updates"));
+        Console.WriteLine("PASS atomic settings updates: concurrent field transforms retain both fields");
         await LegacyMigration(Path.Combine(evidence, "legacy"));
         Console.WriteLine("PASS legacy migration: read-only Remote interpretation, profile + credential reference preserved, file not rewritten");
         await SingleAccount();
@@ -33,7 +35,7 @@ internal static class Program
         Console.WriteLine("PASS wsl -l -q parsing (UTF-16LE with/without BOM, CRLF, NUL, UTF-8) + NixOS recognition");
         ServiceDiscovery();
         Console.WriteLine("PASS WSL service discovery from official service*.json shape; URL mapping; redaction");
-        Console.WriteLine($"7 groups passed; {_assertions} assertions; no network, fake WSL file systems, isolated settings/DPAPI only.");
+        Console.WriteLine($"8 groups passed; {_assertions} assertions; no network, fake WSL file systems, isolated settings/DPAPI only.");
         return 0;
     }
 
@@ -76,6 +78,19 @@ internal static class Program
             "ftp://x", OpenCodeAuthenticationMode.None, null, null), "url scheme");
         Throws<OpenCodeConfigurationException>(() => OpenCodeConnectionProfile.Replace(new(), OpenCodeConnectionKind.Remote,
             "https://x", OpenCodeAuthenticationMode.Basic, "a:b", null), "basic username");
+    }
+
+    private static async Task AtomicUpdates(string dir)
+    {
+        var service = new SettingsService(dir);
+        await service.SaveAsync(AppSettings.Empty);
+        await Task.WhenAll(
+            service.UpdateAsync(settings => settings with { Theme = AppTheme.Dark }),
+            service.UpdateAsync(settings => settings with { CodeTheme = AppCodeTheme.OneDarkPro }));
+
+        AppSettings result = await new SettingsService(dir).LoadAsync();
+        Check(result.Theme == AppTheme.Dark && result.CodeTheme == AppCodeTheme.OneDarkPro,
+            "concurrent field transforms retain both updates");
     }
 
     private static async Task LegacyMigration(string dir)
@@ -127,8 +142,7 @@ internal static class Program
                 if (failVerify) throw new InvalidOperationException("boom " + options.Secret);
             },
             (id, secret, ct) => { store[id] = secret; return Task.CompletedTask; },
-            ct => Task.FromResult(saved),
-            (next, ct) => { if (failSave) throw new IOException("test-only failure"); saved = next; return Task.CompletedTask; },
+            (transform, ct) => { if (failSave) throw new IOException("test-only failure"); saved = transform(saved); return Task.FromResult(saved); },
             (id, ct) => { store.Remove(id); return Task.CompletedTask; });
 
         failVerify = true;
@@ -186,8 +200,8 @@ internal static class Program
         Check(loaded.OpenCode == original.OpenCode && originalSettings.SequenceEqual(File.ReadAllBytes(settings.SettingsFilePath)), "legacy profile/reference and settings bytes unchanged");
         Check(originalCiphertext.SequenceEqual(File.ReadAllBytes(secretPath)) && await secrets.GetAsync(oldId) == Secret, "legacy DPAPI bytes and decryptability unchanged");
         Check(!Encoding.UTF8.GetString(originalCiphertext).Contains(Secret, StringComparison.Ordinal), "DPAPI contains no plaintext");
-        var committer = new OpenCodeConnectionCommitter((o, ct) => Task.CompletedTask, secrets.SetAsync, settings.LoadAsync,
-            (s, ct) => throw new IOException("test-only save failure"), async (id, ct) => { await secrets.RemoveAsync(id, ct); });
+        var committer = new OpenCodeConnectionCommitter((o, ct) => Task.CompletedTask, secrets.SetAsync,
+            (transform, ct) => throw new IOException("test-only save failure"), async (id, ct) => { await secrets.RemoveAsync(id, ct); });
         var failed = await committer.CommitAsync(OpenCodeConnectionKind.Remote, Basic("https://new.invalid", "new-user", "synthetic-new-password"), null, default);
         Check(failed.Stage == OpenCodeCommitStage.SaveFailed && !failed.Message.Contains(Secret, StringComparison.Ordinal), "safe DPAPI failure result");
         Check(originalCiphertext.SequenceEqual(File.ReadAllBytes(secretPath)) && originalSettings.SequenceEqual(File.ReadAllBytes(settings.SettingsFilePath)), "failed replacement leaves legacy settings and DPAPI bytes intact");
@@ -196,8 +210,8 @@ internal static class Program
         bool laterObserverRan = false;
         settings.Changed += (_, _) => throw new InvalidOperationException("test-only observer failure");
         settings.Changed += (_, _) => laterObserverRan = true;
-        var observed = new OpenCodeConnectionCommitter((o, ct) => Task.CompletedTask, secrets.SetAsync, ct => Task.FromResult(settings.Current!),
-            settings.SaveAsync, async (id, ct) => { await secrets.RemoveAsync(id, ct); });
+        var observed = new OpenCodeConnectionCommitter((o, ct) => Task.CompletedTask, secrets.SetAsync,
+            settings.UpdateAsync, async (id, ct) => { await secrets.RemoveAsync(id, ct); });
         var committed = await observed.CommitAsync(OpenCodeConnectionKind.Remote, Basic("https://observed.invalid", "new-user", "synthetic-observed-password"), null, default);
         string activeId = settings.Current!.OpenCode.CredentialId!;
         Check(committed.Succeeded && settings.Current.OpenCode.BaseUrl == "https://observed.invalid" && laterObserverRan, "throwing Changed observer after commit neither fails the commit nor skips later observers");

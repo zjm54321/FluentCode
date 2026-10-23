@@ -24,22 +24,19 @@ public sealed class OpenCodeConnectionCommitter
 {
     private readonly Func<OpenCodeClientOptions, CancellationToken, Task> _verify;
     private readonly Func<string, string, CancellationToken, Task> _writeSecret;
-    private readonly Func<CancellationToken, Task<AppSettings>> _loadLatest;
-    private readonly Func<AppSettings, CancellationToken, Task> _save;
+    private readonly Func<Func<AppSettings, AppSettings>, CancellationToken, Task<AppSettings>> _update;
     private readonly Func<string, CancellationToken, Task> _removeSecret;
     private static int _busy;
 
     public OpenCodeConnectionCommitter(
         Func<OpenCodeClientOptions, CancellationToken, Task> verify,
         Func<string, string, CancellationToken, Task> writeSecret,
-        Func<CancellationToken, Task<AppSettings>> loadLatest,
-        Func<AppSettings, CancellationToken, Task> save,
+        Func<Func<AppSettings, AppSettings>, CancellationToken, Task<AppSettings>> update,
         Func<string, CancellationToken, Task> removeSecret)
     {
         _verify = verify ?? throw new ArgumentNullException(nameof(verify));
         _writeSecret = writeSecret ?? throw new ArgumentNullException(nameof(writeSecret));
-        _loadLatest = loadLatest ?? throw new ArgumentNullException(nameof(loadLatest));
-        _save = save ?? throw new ArgumentNullException(nameof(save));
+        _update = update ?? throw new ArgumentNullException(nameof(update));
         _removeSecret = removeSecret ?? throw new ArgumentNullException(nameof(removeSecret));
     }
 
@@ -86,11 +83,16 @@ public sealed class OpenCodeConnectionCommitter
 
             try
             {
-                AppSettings latest = await _loadLatest(cancellationToken).ConfigureAwait(false);
-                OpenCodeSettings next = OpenCodeConnectionProfile.Replace(latest.OpenCode, kind, options.BaseUrl,
-                    options.AuthenticationMode, options.Username, wslDistribution);
-                next = next with { CredentialId = stagedId ?? latest.OpenCode.CredentialId };
-                try { await _save(latest with { OpenCode = next }, cancellationToken).ConfigureAwait(false); }
+                try
+                {
+                    await _update(latest =>
+                    {
+                        OpenCodeSettings next = OpenCodeConnectionProfile.Replace(latest.OpenCode, kind, options.BaseUrl,
+                            options.AuthenticationMode, options.Username, wslDistribution);
+                        next = next with { CredentialId = stagedId ?? latest.OpenCode.CredentialId };
+                        return latest with { OpenCode = next };
+                    }, cancellationToken).ConfigureAwait(false);
+                }
                 catch (SettingsChangeNotificationException)
                 {
                     // Committed: the saved profile references stagedId, so a failing observer must not orphan it.

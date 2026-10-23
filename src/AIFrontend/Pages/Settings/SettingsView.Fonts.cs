@@ -405,7 +405,7 @@ public sealed partial class SettingsView
         try
         {
             await SaveAsync(
-                _settings with { Fonts = normalized },
+                settings => settings with { Fonts = normalized },
                 normalized is null ? "已恢复默认字体与字号。" : "已保存字体与字号。");
         }
         finally

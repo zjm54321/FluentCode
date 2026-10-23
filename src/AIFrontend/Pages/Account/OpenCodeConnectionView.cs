@@ -56,7 +56,7 @@ public sealed class OpenCodeConnectionView : UserControl
     {
         _settings = settings;
         _committer = new(OpenCodeConnectionCommitter.VerifyWithOpenCodeAsync, secrets.SetAsync,
-            settings.LoadAsync, settings.SaveAsync, async (id, ct) => { await secrets.RemoveAsync(id, ct); });
+            settings.UpdateAsync, async (id, ct) => { await secrets.RemoveAsync(id, ct); });
         AutomationProperties.SetAutomationId(this, "AccountOpenCodeConnection");
         AutomationProperties.SetAutomationId(_flow, "AccountOpenCodeFlow");
         AutomationProperties.SetAutomationId(_distributions, "AccountOpenCodeDistribution");

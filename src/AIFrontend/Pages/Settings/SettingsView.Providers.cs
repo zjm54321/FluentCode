@@ -299,11 +299,12 @@ public sealed partial class SettingsView
             CredentialId = credentialId,
         };
 
-        AppSettings next = editing
-            ? _settings with { Providers = _settings.Providers.Select(p => p.Id == id ? endpoint : p).ToArray() }
-            : _settings with { Providers = _settings.Providers.Append(endpoint).ToArray() };
-
-        if (await SaveAsync(next, editing ? "已更新 provider。" : "已添加 provider。"))
+        if (await SaveAsync(settings => settings with
+        {
+            Providers = editing
+                ? settings.Providers.Select(p => p.Id == id ? endpoint : p).ToArray()
+                : settings.Providers.Append(endpoint).ToArray(),
+        }, editing ? "已更新 provider。" : "已添加 provider。"))
         {
             ResetProviderForm();
             return true;
@@ -338,13 +339,6 @@ public sealed partial class SettingsView
             return;
         }
 
-        ProviderEndpoint[] remainingProviders = _settings.Providers.Where(p => p.Id != provider.Id).ToArray();
-        ModelDescriptor[] remainingModels = _settings.Models.Where(m => m.ProviderId != provider.Id).ToArray();
-        ModelRef? selected = _settings.SelectedModel is { } sel &&
-            remainingModels.Any(m => m.ProviderId == sel.ProviderId && m.ModelId == sel.ModelId)
-            ? _settings.SelectedModel
-            : null;
-
         if (provider.CredentialId is not null)
         {
             try
@@ -358,7 +352,16 @@ public sealed partial class SettingsView
         }
 
         await SaveAsync(
-            _settings with { Providers = remainingProviders, Models = remainingModels, SelectedModel = selected },
+            settings =>
+            {
+                ProviderEndpoint[] remainingProviders = settings.Providers.Where(p => p.Id != provider.Id).ToArray();
+                ModelDescriptor[] remainingModels = settings.Models.Where(m => m.ProviderId != provider.Id).ToArray();
+                ModelRef? selected = settings.SelectedModel is { } sel &&
+                    remainingModels.Any(m => m.ProviderId == sel.ProviderId && m.ModelId == sel.ModelId)
+                    ? settings.SelectedModel
+                    : null;
+                return settings with { Providers = remainingProviders, Models = remainingModels, SelectedModel = selected };
+            },
             "已删除 provider。");
     }
 
@@ -388,10 +391,12 @@ public sealed partial class SettingsView
             return;
         }
 
-        ProviderEndpoint[] providers = _settings.Providers
-            .Select(p => p.Id == provider.Id ? p with { CredentialId = null } : p)
-            .ToArray();
-        await SaveAsync(_settings with { Providers = providers }, "已清除该 provider 的密钥。");
+        await SaveAsync(settings => settings with
+        {
+            Providers = settings.Providers
+                .Select(p => p.Id == provider.Id ? p with { CredentialId = null } : p)
+                .ToArray(),
+        }, "已清除该 provider 的密钥。");
     }
 
     private async void OnProviderTestClick(object sender, RoutedEventArgs e)

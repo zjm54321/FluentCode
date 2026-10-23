@@ -680,7 +680,7 @@ public sealed partial class SettingsView : UserControl
         if (_suppressUiEvents || _codeThemeCombo.SelectedIndex < 0) return;
         var theme = _codeThemeCombo.SelectedIndex == 1 ? AppCodeTheme.OneDarkPro : AppCodeTheme.Fluent;
         if (theme == _settings.CodeTheme) return;
-        if (!await SaveAsync(_settings with { CodeTheme = theme }, "已保存代码配色。"))
+        if (!await SaveAsync(settings => settings with { CodeTheme = theme }, "已保存代码配色。"))
             ApplySettingsToUi(preserveEdits: true);
     }
 
@@ -703,7 +703,7 @@ public sealed partial class SettingsView : UserControl
             return;
         }
 
-        if (await SaveAsync(_settings with { Theme = theme }, "已保存主题。"))
+        if (await SaveAsync(settings => settings with { Theme = theme }, "已保存主题。"))
         {
             ThemeChanged?.Invoke(this, new SettingsThemeChangedEventArgs(theme));
         }
@@ -716,12 +716,11 @@ public sealed partial class SettingsView : UserControl
 
     // ---- 通用保存 / 状态 / 校验 ----
 
-    private async Task<bool> SaveAsync(AppSettings next, string successMessage)
+    private async Task<bool> SaveAsync(Func<AppSettings, AppSettings> transform, string successMessage)
     {
         try
         {
-            await _settingsService.SaveAsync(next, _lifetimeCts.Token);
-            _settings = next;
+            _settings = await _settingsService.UpdateAsync(transform, _lifetimeCts.Token);
             ShowStatus(InfoBarSeverity.Success, successMessage, null);
             ApplySettingsToUi(preserveEdits: true);
             return true;

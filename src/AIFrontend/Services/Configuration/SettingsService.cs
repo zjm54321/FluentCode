@@ -129,6 +129,42 @@ public sealed class SettingsService
         RaiseChanged(snapshot);
     }
 
+    /// <summary>在同一存储锁内读取、变换并提交设置，避免并发读改写丢失字段。</summary>
+    public async Task<AppSettings> UpdateAsync(
+        Func<AppSettings, AppSettings> transform,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(transform);
+
+        AppSettings snapshot;
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            byte[]? existing = await AtomicFile.ReadAllBytesOrNullAsync(_settingsFilePath, cancellationToken).ConfigureAwait(false);
+            AppSettings current = existing is null ? AppSettings.Empty : ParseSettings(existing);
+            AppSettings next = transform(current) ?? throw new InvalidOperationException("设置变换不能返回 null。");
+
+            List<string> errors = CollectErrors(next);
+            if (errors.Count > 0)
+            {
+                throw new SettingsValidationException(
+                    $"设置未通过校验，未写入任何文件；问题：{string.Join("；", errors)}", errors);
+            }
+
+            byte[] bytes = ConfigurationJson.SerializeToUtf8Bytes(next);
+            snapshot = ConfigurationJson.Deserialize<AppSettings>(bytes);
+            await AtomicFile.WriteAllBytesAsync(_settingsFilePath, bytes, cancellationToken).ConfigureAwait(false);
+            Current = snapshot;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        RaiseChanged(snapshot);
+        return snapshot;
+    }
+
     /// <summary>通知每个订阅者；单个订阅者失败不阻断其余订阅者，也不把已提交的写入伪装成失败。</summary>
     private void RaiseChanged(AppSettings settings)
     {
