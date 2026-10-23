@@ -20,6 +20,6 @@ $arguments | Set-Content -Encoding UTF8 $rsp
 & $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Right panel compile failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'RightPanelTests.runtimeconfig.json')
-& $dotnet $dll 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
+& $dotnet $dll $repo 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Right panel tests failed: $LASTEXITCODE" }
 Write-Output "PASS right-panel behavior checks; evidence $EvidenceRoot"

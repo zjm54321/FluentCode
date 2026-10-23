@@ -12,7 +12,9 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     private readonly Button _editor = Action("\uE70F", EditorText);
     private const string ExplorerText = "在资源管理器中打开";
     private const string EditorText = "在主机文本编辑器中打开";
-    private readonly TextBlock _note = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _note = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
+    /// <summary>Reason / failure line; the page places it under the directory row (hidden when there is nothing to explain).</summary>
+    public TextBlock Note => _note;
     public event EventHandler? ExplorerRequested;
     public event EventHandler<WslEditorRequestedEventArgs>? EditorRequested;
     public event EventHandler? EditorMenuRequested;
@@ -20,14 +22,12 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
 
     public OpenCodeWslQuickAccessView()
     {
-        // Compact strip on the shared 16epx right-pane column; 4epx between rows keeps the two actions one group.
-        Spacing = 4;
-        Margin = new Thickness(16, 4, 16, 8);
+        // Layout D: two calm icon buttons beside the read-only directory in the bottom-right card.
+        Orientation = Orientation.Horizontal;
+        Spacing = 2;
         _note.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        _note.Margin = new Thickness(2, 2, 0, 0);
         Children.Add(_explorer);
         Children.Add(_editor);
-        Children.Add(_note);
         AutomationProperties.SetAutomationId(_explorer, "OpenCodeWslExplorer");
         AutomationProperties.SetAutomationId(_editor, "OpenCodeWslHostEditor");
         _explorer.Click += (_, _) => ExplorerRequested?.Invoke(this, EventArgs.Empty);
@@ -50,35 +50,33 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
             _editors.Items.Add(item);
         }
         _editor.IsEnabled = supported;
-        _note.Text = state.Reason ?? (supported ? state.Target?.LinuxDirectory : "未检测到支持 WSL 的主机编辑器");
-        ToolTipService.SetToolTip(_explorer, state.Reason ?? state.Target?.UncPath);
+        // The directory row already shows the path; only explain what is unavailable.
+        SetNote(state.Reason ?? (supported ? null : "未检测到支持 WSL 的主机编辑器"));
+        ToolTipService.SetToolTip(_explorer, ExplorerText + "\n" + (state.Reason ?? state.Target?.UncPath));
         var explanations = new List<string>();
         foreach (var editor in editors) explanations.Add(editor.Name + "：" + (editor.Reason
             ?? (editor.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : "打开 WSL UNC 文件夹")));
-        ToolTipService.SetToolTip(_editor, state.Reason ?? string.Join("\n", explanations));
+        ToolTipService.SetToolTip(_editor, EditorText + "\n" + (state.Reason ?? string.Join("\n", explanations)));
     }
 
-    // Native button, left-aligned glyph + label; explicit automation name because the content is no longer a bare string.
+    private void SetNote(string? text)
+    {
+        _note.Text = text ?? string.Empty;
+        _note.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // Native transparent icon button; the label lives in the tooltip and automation name.
     private static Button Action(string glyph, string text)
     {
         var button = new Button
         {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-            Padding = new Thickness(10, 5, 10, 5),
-            Content = new StackPanel
-            {
-                Orientation = Orientation.Horizontal, Spacing = 8,
-                Children =
-                {
-                    new FontIcon { Glyph = glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center },
-                    new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis },
-                },
-            },
+            Width = 30, Height = 30, MinWidth = 0, Padding = new Thickness(0),
+            Content = new FontIcon { Glyph = glyph, FontSize = 14 },
         };
+        if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) button.Style = quiet;
         AutomationProperties.SetName(button, text);
         return button;
     }
 
-    public void ShowFailure() => _note.Text = "无法打开主机应用，请检查安装与目录访问权限";
+    public void ShowFailure() => SetNote("无法打开主机应用，请检查安装与目录访问权限");
 }

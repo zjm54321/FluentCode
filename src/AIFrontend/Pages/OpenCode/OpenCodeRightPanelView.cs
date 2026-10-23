@@ -9,15 +9,20 @@ using Microsoft.UI.Xaml.Shapes;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>Native controls mounted only in B2's two slots; no session-content ownership.</summary>
+/// <summary>
+/// Layout D metadata: <see cref="Header"/> (title → copyable session id) opens the right session card;
+/// <see cref="Directory"/> (read-only cwd) sits above <see cref="Footer"/> (OpenCode logo · version · green dot)
+/// in the bottom-right card. No session-content ownership.
+/// </summary>
 internal sealed class OpenCodeRightPanelView
 {
     public FrameworkElement Header { get; }
+    public FrameworkElement Directory { get; }
     public Button Footer { get; }
     public Button CopyButton { get; }
     private readonly TextBlock _title = new() { FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, MaxLines = 3, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly TextBlock _id = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _directory = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private readonly TextBlock _id = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _directory = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _hint = new() { FontSize = 12, Visibility = Visibility.Collapsed };
     private readonly TextBlock _version = new() { VerticalAlignment = VerticalAlignment.Center, FontSize = 12, TextLineBounds = TextLineBounds.Tight };
     private readonly Image _logo = new() { Width = 72, Height = 14, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center };
@@ -49,33 +54,49 @@ internal sealed class OpenCodeRightPanelView
         CopyButton.Padding = new Thickness(8, 4, 8, 4);
         CopyButton.Margin = new Thickness(-8, 0, -8, 0);
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) CopyButton.Style = quiet;
-        var directoryLabel = new TextBlock { Text = "工作目录", Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey) };
-        Header = new ScrollViewer
+        // The card supplies padding and scrolling; the copy row's negative margin lines its text up with the title.
+        Header = new StackPanel { Spacing = 2, Children = { _title, CopyButton, _hint } };
+        // Read-only directory in a quiet inset box: folder glyph + one-line path (full path in the tooltip; selectable).
+        var folder = new FontIcon { Glyph = "\uE8B7", FontSize = 14, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
+        var directoryRow = new Grid
         {
-            MaxHeight = 240,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Content = new StackPanel
-            {
-                Margin = new Thickness(16, 16, 16, 8), Spacing = 4,
-                Children =
-                {
-                    _title, CopyButton, _hint,
-                    new StackPanel { Spacing = 2, Margin = new Thickness(0, 4, 0, 0), Children = { directoryLabel, _directory } },
-                },
-            },
+            ColumnSpacing = 8,
+            ColumnDefinitions = { new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) } },
+            Children = { folder, _directory },
         };
+        Grid.SetColumn(_directory, 1);
+        var directoryBox = new Border
+        {
+            Padding = new Thickness(8, 5, 8, 5), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1),
+            Child = directoryRow,
+        };
+        directoryBox.Style = OpenCodeInsightsTheme.InsetBox(); // ThemeResource setters follow light / dark / high contrast
+        AutomationProperties.SetAutomationId(directoryBox, "OpenCodeRightPanelDirectory");
+        Directory = directoryBox;
         _dot.Style = OpenCodeInsightsTheme.Dot(OpenCodeInsightsTheme.Success);
         _version.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        // Content starts at the 16epx column shared by header/overview (8 margin + 8 padding); quiet until hover.
+        // Logo · version · green dot (no connected label); chevron says it opens details. Quiet until hover.
+        var chevron = new FontIcon { Glyph = "\uE76C", FontSize = 10, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center };
+        var footerRow = new Grid
+        {
+            ColumnSpacing = 8,
+            ColumnDefinitions = { new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }, new ColumnDefinition { Width = GridLength.Auto } },
+            Children =
+            {
+                new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { _logo, _version, _dot } },
+                chevron,
+            },
+        };
+        Grid.SetColumn(chevron, 1);
         Footer = new Button
         {
-            Margin = new Thickness(8, 4, 8, 8), Padding = new Thickness(8, 6, 8, 6),
+            Margin = new Thickness(-4, 0, -4, 0), Padding = new Thickness(4, 6, 4, 6),
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { _logo, _version, _dot } },
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Content = footerRow,
         };
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } footerStyle) Footer.Style = footerStyle;
+        Footer.BorderThickness = new Thickness(0); // a quiet row on the card; hover/pressed fill still marks it as a button
         AutomationProperties.SetAutomationId(Footer, "OpenCodeRightPanelConnection");
         ToolTipService.SetToolTip(Footer, "查看 OpenCode 服务版本、MCP 与 LSP 详情");
         Footer.ActualThemeChanged += (_, _) => UpdateLogo();
@@ -88,6 +109,8 @@ internal sealed class OpenCodeRightPanelView
         ToolTipService.SetToolTip(_title, string.IsNullOrEmpty(_title.Text) ? null : _title.Text); // full title when clamped to 3 lines
         _id.Text = session?.SessionId ?? string.Empty;
         _directory.Text = session?.Directory ?? string.Empty;
+        ToolTipService.SetToolTip(_directory, string.IsNullOrEmpty(_directory.Text) ? null : _directory.Text);
+        Directory.Visibility = string.IsNullOrEmpty(_directory.Text) ? Visibility.Collapsed : Visibility.Visible;
         ToolTipService.SetToolTip(CopyButton, session is null ? null : "复制会话 ID：" + session.SessionId);
         CopyButton.IsEnabled = session is not null;
     }

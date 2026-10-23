@@ -28,6 +28,7 @@ public sealed partial class OpenCodePage
     {
         _wslQuickAccessView = new();
         WslQuickAccessSlot.Children.Add(_wslQuickAccessView);
+        WslQuickAccessNoteSlot.Children.Add(_wslQuickAccessView.Note);
         _selectedWslEditor = _wslEditorPreference.Load();
         _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(null);
         _wslQuickAccessView.EditorRequested += async (_, e) => await LaunchWslQuickAccessAsync(e.Name);
@@ -42,6 +43,7 @@ public sealed partial class OpenCodePage
             _homeSettings!.Changed -= WslQuickAccessSettingsChanged;
             ResetWslQuickAccessHome();
             WslQuickAccessSlot.Visibility = Visibility.Collapsed;
+            WslQuickAccessNoteSlot.Visibility = Visibility.Collapsed;
         };
     }
 
@@ -90,6 +92,7 @@ public sealed partial class OpenCodePage
             _ = CompleteWslQuickAccessHomeAsync(_wslHomeRead);
         }
         WslQuickAccessSlot.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
+        WslQuickAccessNoteSlot.Visibility = WslQuickAccessSlot.Visibility;
         _wslQuickAccessView.Render(state, _wslEditors, _selectedWslEditor);
     }
 

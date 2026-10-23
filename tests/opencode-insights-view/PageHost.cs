@@ -120,6 +120,7 @@ namespace AIFrontend.Pages
         internal OpenCodeSessionInsightsView View => _insightsView;
         internal Border PaneHost => InsightsPaneHost;
         internal System.Threading.Tasks.Task OpenChild(string childSessionId) => OpenInsightsChildSessionAsync(childSessionId);
+        internal System.Threading.Tasks.Task Reload() => LoadSessionInsightsAsync();
 
         /// <summary>Modelled: page Loaded state flag only (OnPageLoaded itself is not linked).</summary>
         internal void Activate() => _pageActive = true;

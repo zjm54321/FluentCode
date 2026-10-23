@@ -11,7 +11,7 @@ internal static class Program
         Console.WriteLine("PASS " + name);
     }
 
-    private static void Main()
+    private static void Main(string[] args)
     {
         foreach (var missing in new string?[] { null, "", "  " })
         {
@@ -30,6 +30,14 @@ internal static class Program
         foreach (var connected in new[] { false, true })
             Check(OpenCodeRightPanelPresentation.ShowConnectedDot(page, source, connected) == (page && source && connected), "dot requires active page, live source and connected state");
 
+        // Layout D bottom-right card: read-only directory above logo · version · green dot (no "已连接"), clickable for details.
+        var view = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeRightPanelView.cs"));
+        var metadata = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.RightPanelMetadata.cs"));
+        Check(view.Contains("public FrameworkElement Directory { get; }") && view.Contains("Children = { _logo, _version, _dot }")
+            && !view.Contains("已连接") && view.Contains("IsTextSelectionEnabled = true"), "D: read-only directory row separate from the logo/version/dot row");
+        Check(metadata.IndexOf("RightPanelDirectorySlot.Children.Add", System.StringComparison.Ordinal) >= 0
+            && metadata.Contains("ConnectionFlyout.ShowAt(_rightPanelMetadata.Footer)"), "D: directory docks in the bottom-right card; version row opens version/MCP/LSP details");
+        Check(view.Contains("Header = new StackPanel { Spacing = 2, Children = { _title, CopyButton, _hint } }"), "D: right card opens with title then copyable session id");
         Console.WriteLine($"PASS {_checks} right-panel presentation checks; native clipboard/flyout visuals require Windows GUI acceptance.");
     }
 }

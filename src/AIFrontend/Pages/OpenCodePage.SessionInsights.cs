@@ -62,7 +62,6 @@ public sealed partial class OpenCodePage
     {
         _insights = new OpenCodeSessionInsightsController(IsCurrentInsightsBinding);
         _insights.Changed += (_, _) => RenderSessionInsights();
-        _insightsView.RefreshRequested += (_, _) => _ = LoadSessionInsightsAsync();
         _insightsView.BillionReadRequested += (_, context) => _ = ReadBillionInsightsAsync(context);
         _insightsView.BillionOriginEdited += (_, edit) =>
         {
@@ -79,7 +78,6 @@ public sealed partial class OpenCodePage
                 RenderSessionInsights();
             }
         };
-        _insightsView.ChildSessionRequested += (_, childSessionId) => _ = OpenInsightsChildSessionAsync(childSessionId);
         // wave5 G5：页头上下文圆环（“概况”按钮左侧）。打开其 Flyout 与打开概况面板同一读取时机：当前会话尚无结果才读取一次。
         _insightsView.ContextDetailsOpening += (_, _) => OpenContextDetails();
         // ACP 组“设置 Billion 地址”：视图已切到 Billion 分区，这里打开右侧面板（与点“概况”开关相同的路径）。

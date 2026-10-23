@@ -19,6 +19,7 @@ public sealed partial class OpenCodePage
     {
         _rightPanelMetadata = new();
         RightPanelHeaderSlot.Children.Add(_rightPanelMetadata.Header);
+        RightPanelDirectorySlot.Children.Add(_rightPanelMetadata.Directory);
         RightPanelFooterSlot.Children.Add(_rightPanelMetadata.Footer);
         // B1 still moves/restores the original button for narrow layouts. In wide
         // mode only its old host is retired; the footer opens the very same Flyout.
@@ -70,6 +71,8 @@ public sealed partial class OpenCodePage
             _rightPanelSessionState?.Title ?? known?.Title, directory);
         view.RenderSession(session);
         RightPanelHeaderSlot.Visibility = session is null ? Visibility.Collapsed : Visibility.Visible;
+        // Bottom-right card: read-only current directory above the OpenCode version row.
+        RightPanelDirectorySlot.Visibility = session is null ? Visibility.Collapsed : Visibility.Visible;
         RefreshRightPanelFooter();
     }
 
@@ -84,6 +87,7 @@ public sealed partial class OpenCodePage
         SetComposerConnectedDot(connected);
         RightPanelFooterSlot.Visibility = _pageActive && WorkspaceGrid.Visibility == Visibility.Visible
             ? Visibility.Visible : Visibility.Collapsed;
+        RightFooterCard.Visibility = RightPanelFooterSlot.Visibility;
     }
 
     private void CopyRightPanelSessionId()

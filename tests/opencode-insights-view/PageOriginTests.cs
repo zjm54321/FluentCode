@@ -219,7 +219,7 @@ internal static class PageOriginTests
         // A non-Billion change while focused forces a full rebuild: same instances, single owner, focus/caret restored.
         box.SelectionStart = 3;
         box.SelectionLength = 2;
-        Field<Button>(view, "_refreshButton").SimulateClick();
+        _ = f.Page.Reload(); // layout D: automatic page read (no refresh button on the card)
         f.Pump.RunUntil(() => !f.Page.Insights.Snapshot.Loading);
         var newContent = (StackPanel)((StackPanel)body.Children[0]).Children[1];
         Check(!ReferenceEquals(newContent, content) && ReferenceEquals(panel.Owner, newContent)
@@ -290,7 +290,7 @@ internal static class PageOriginTests
         Check(http.DiscoveryRequests == 1 && edits == 3, "late completion starts no retry or origin edit");
 
         http.RpcReply = _ => Task.FromResult(OfflineOpenCode.Ready(freshOrigin));
-        Field<Button>(view, "_refreshButton").SimulateClick();
+        _ = f.Page.Reload(); // layout D: automatic page read (no refresh button on the card)
         f.Pump.RunUntil(() => !insights.Snapshot.Loading);
         UiQueue.Shared.Drain();
         Check(http.DiscoveryRequests == 2 && insights.BillionDiscoveryAttemptsStarted == 2
@@ -316,7 +316,7 @@ internal static class PageOriginTests
         Check(ReferenceEquals(f.Page.PaneHost.Child, f.Page.View), "view hosted once in the pane host");
         // Offline fixture: OMO is not verified, so the snapshot lists no children for ses_a.
         f.Page.OpenChild("ses_not_listed").GetAwaiter().GetResult();
-        EventField<EventHandler<string>>(f.Page.View, "ChildSessionRequested")!.Invoke(f.Page.View, "ses_other");
+        f.Page.OpenChild("ses_other").GetAwaiter().GetResult(); // the view no longer raises child requests (left tree owns them)
         f.Pump.RunUntil(() => true);
         Check(f.Page.ReadsStarted == 0 && f.Page.Switches.Count == 0 && f.Page.SelectedItems.Count == 0 && f.Page.Messages.Count == 0,
             "unlisted child id: no ancestry read, no selection, no switch");

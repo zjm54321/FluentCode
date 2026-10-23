@@ -7,19 +7,19 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
 /// 会话概况的原生详情面板（放在页面右侧概况面板 <c>InsightsPaneHost</c> 内，重设计 v3 §10）。纯渲染：不发请求，
-/// 刷新 / Billion 确认 / Billion 读取 / 打开子会话经事件交回页面，由页面捕获绑定后调用控制器。
+/// Billion 确认 / Billion 读取经事件交回页面，由页面捕获绑定后调用控制器；面板随会话自动读取（页面负责时机）。
 /// </summary>
 /// <remarks>
-/// 顶部是原生 <see cref="SelectorBar"/>（<c>OpenCodeInsightsSections</c>）两个分区（F10c）：
-/// 概况（上下文参考小圆环 <see cref="OpenCodeContextRing"/>，点击打开“当前上下文 / 用量计费 / ACP·Billion 状态”三组 Flyout；
-/// 其下依次是 to do 与原 Agents 分区的主 agent 与子会话，见 <see cref="OpenCodeInsightsAgentsSection"/>）、
-/// Billion（地址填写、关联确认与显式读取；常驻文本框/复选框需要固定宿主，所以保留为单独分区）。
+/// 布局 D 右侧卡片：上下文（灰色“第 N 轮”）→ 主 agent 用量行 used / limit · % → 两列 emoji 用量格 → 分隔线 →
+/// Σ 汇总 + 💰 花费 → to do。子智能体只在左侧树中显示（不在此重复）；不再有“会话概况”标题与刷新工具行。
+/// 原生 <see cref="SelectorBar"/>（<c>OpenCodeInsightsSections</c>）仍保留两个分区页，但平时隐藏：
+/// 只有经上下文圆环 Flyout 的 ACP·Billion 组“去设置”进入 Billion 分区（地址填写、关联确认与显式读取；常驻文本框/复选框
+/// 需要固定宿主）时才显示，用于返回概况。
 /// MCP / 插件 / LSP 服务状态改由页头连接状态按钮的 Flyout 显示（<see cref="OpenCodeConnectionFlyout"/>）。
 /// 两个分区页始终都在可视树内，切换分区只改 Visibility，不重建、不重新挂接任何控件（Billion 文本框焦点约束不受影响）。
 /// 只显示白名单字段：数字、固定状态与原因文案；不显示原始错误体、metadata JSON，
@@ -37,8 +37,8 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeSessionInsightsView : UserControl
 {
     private readonly TextBlock _scopeText;
-    private readonly Border _usageHost = Card();
-    private readonly Button _refreshButton;
+    private readonly StackPanel _statusRow;
+    private readonly Border _usageHost = new();
     private readonly ProgressRing _refreshRing;
     private readonly CheckBox _billionConfirm;
     private readonly Button _billionButton;
@@ -51,7 +51,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     private readonly StackPanel _overviewPage;
     private readonly StackPanel _billionPage;
     private readonly StackPanel[] _pages;
-    private readonly OpenCodeInsightsAgentsSection _agents = new();
     // wave5 G5：上下文圆环移到页头（“概况”按钮左侧）；实例仍由本视图持有并随快照渲染，页面把 ContextRing.Root 挂进页头宿主。
     private readonly OpenCodeContextRing _contextRing = new();
 
@@ -85,31 +84,15 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         AutomationProperties.SetAutomationId(this, "OpenCodeSessionInsightsPanel");
         AutomationProperties.SetName(this, "会话概况");
 
-        _refreshRing = new ProgressRing { Width = 16, Height = 16, IsActive = false, VerticalAlignment = VerticalAlignment.Center };
+        _refreshRing = new ProgressRing { Width = 14, Height = 14, IsActive = false, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(_refreshRing, "概况读取中");
-        _refreshButton = new Button
-        {
-            Content = new FontIcon { Glyph = "\uE72C", FontSize = 12 },
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        AutomationProperties.SetAutomationId(_refreshButton, "OpenCodeInsightsRefreshButton");
-        AutomationProperties.SetName(_refreshButton, "重新读取会话概况");
-        ToolTipService.SetToolTip(_refreshButton, "重新读取用量、费用、上下文、to do、Agents 与服务状态（不含 Billion）");
-        _refreshButton.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
-
-        // 工具行：采样说明（左）+ 读取中 / 刷新（右）。面板标题与关闭按钮由页面面板头提供。
+        // 只在有话要说时出现：读取中 / 不可用原因。读取由页面自动进行，这里没有刷新按钮。
         _scopeText = Caption(string.Empty);
         _scopeText.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetAutomationId(_scopeText, "OpenCodeInsightsScope");
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Top };
-        actions.Children.Add(_refreshRing);
-        actions.Children.Add(_refreshButton);
-        var toolbar = new Grid { ColumnSpacing = 12 };
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        toolbar.Children.Add(_scopeText);
-        Grid.SetColumn(actions, 1);
-        toolbar.Children.Add(actions);
+        _statusRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Visibility = Visibility.Collapsed };
+        _statusRow.Children.Add(_refreshRing);
+        _statusRow.Children.Add(_scopeText);
 
         _billionOriginBox = new TextBox
         {
@@ -182,7 +165,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         _sections.SelectedItem = _sections.Items[0];
         ShowSelectedSection();
 
-        _agents.ChildSessionRequested += (_, childSessionId) => ChildSessionRequested?.Invoke(this, childSessionId);
         // 页头圆环：Flyout 打开（页面决定是否读取）、ACP 组“读取”（与 Billion 分区按钮同一路径、同一显示上下文）、“设置地址”。
         _contextRing.DetailsOpening += (_, _) => ContextDetailsOpening?.Invoke(this, EventArgs.Empty);
         _contextRing.BillionReadRequested += (_, _) => RaiseRead();
@@ -194,10 +176,10 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         };
 
         var root = new StackPanel { Spacing = 12 };
+        root.Children.Add(_sections);
+        root.Children.Add(_statusRow);
         root.Children.Add(_usageHost);
         root.Children.Add(pagesHost);
-        root.Children.Add(toolbar);
-        root.Children.Add(_sections);
         Content = root;
 
         // 卸载后排队的界面更新作废；重新加载时补上仍待显示的状态（不在任何输入回调内）。
@@ -213,8 +195,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         ("Billion", "Billion"),
     ];
 
-    internal event EventHandler? RefreshRequested;
-
     /// <summary>显式读取：携带当前界面显示的渲染上下文（页面不得替换为新上下文）。</summary>
     internal event EventHandler<OpenCodeBillionContext>? BillionReadRequested;
 
@@ -226,12 +206,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     /// 且不得在回调内改动可视树。
     /// </summary>
     internal event EventHandler<OpenCodeBillionOriginEdit>? BillionOriginEdited;
-
-    /// <summary>
-    /// Agents 分区详情页点击“打开子会话”：只携带当前已显示快照中的子会话 ID，属导航提示、不构成授权；
-    /// 页面须自行复核归属后才切换。
-    /// </summary>
-    internal event EventHandler<string>? ChildSessionRequested;
 
     /// <summary>页头圆环的 Flyout 正在打开（页面在当前会话尚无概况结果时显式读取一次）。</summary>
     internal event EventHandler? ContextDetailsOpening;
@@ -335,11 +309,10 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         {
             _refreshRing.IsActive = snapshot.Loading;
             _refreshRing.Visibility = snapshot.Loading ? Visibility.Visible : Visibility.Collapsed;
-            _refreshButton.IsEnabled = snapshot.UnavailableReason is null && !snapshot.Loading;
             _scopeText.Text = snapshot.UnavailableReason
-                ?? (snapshot.SampledAt is { } sampled
-                    ? "更新于 " + Time(sampled) + "；随会话事件自动更新。"
-                    : snapshot.Loading ? "正在读取…" : "等待加载会话概况…");
+                ?? (snapshot.Loading ? "正在读取…" : snapshot.SampledAt is null ? "等待加载会话概况…" : string.Empty);
+            _statusRow.Visibility = _scopeText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (snapshot.SampledAt is { } sampled) ToolTipService.SetToolTip(_usageHost, "更新于 " + Time(sampled) + "；随会话事件自动更新。");
 
             ReleaseBillionControls();
             foreach (var page in _pages)
@@ -356,12 +329,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
                 return;
             }
 
-            // 常驻上下文在上，A10 原生 to do 卡片在下；子会话只进入用量，不混入 to do。
-            var todoCard = Card();
-            todoCard.Child = TodoSection(snapshot);
+            // 上下文与用量在上，to do 在下（同一张浮动卡片内，以分隔线分段）；子会话只进入用量，不混入 to do。
+            var todoCard = new StackPanel { Spacing = 12 };
+            todoCard.Children.Add(OpenCodeContextRing.Divider());
+            todoCard.Children.Add(TodoSection(snapshot));
             AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
             _overviewPage.Children.Add(todoCard);
-            _overviewPage.Children.Add(_agents.Render(snapshot.Children, PrimaryAgent));
             _billionPage.Children.Add(BillionSection(snapshot));
             _visual = snapshot;
 
@@ -409,6 +382,10 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         {
             _pages[i].Visibility = i == index ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        // 分区栏平时隐藏；只在 Billion 设置页显示，供返回概况。用量只属于概况。
+        _sections.Visibility = index == 0 ? Visibility.Collapsed : Visibility.Visible;
+        _usageHost.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ------------------------------------------------------------------
@@ -418,6 +395,11 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     // 上下文参考圆环（含“当前上下文 / 用量计费 / ACP·Billion 状态”三组 Flyout）见 OpenCodeContextRing；
     // MCP / 插件 / LSP 服务状态移到页头连接状态按钮的 Flyout（OpenCodeConnectionFlyout）。
 
+    /// <summary>两列用量格的固定顺序（emoji + 短标签）；包含全部子会话。</summary>
+    internal static readonly string[] UsageLabels = ["📥 输入", "📤 输出", "📖 缓存读", "📝 缓存写", "🎯 命中率", "💭 思考"];
+
+    internal static string TurnsText(int? turns) => turns is { } count ? "第 " + count + " 轮" : "轮次不可用";
+
     private static UIElement ContextUsageSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
         var panel = new StackPanel { Spacing = 8 };
@@ -426,20 +408,35 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(OpenCodeInteractionUi.StyledText("上下文", OpenCodeInteractionUi.BodyStrongStyleKey));
-        var turns = Caption(snapshot.Turns is { } count ? count + " 轮" : "轮次不可用");
+        var turns = Caption(TurnsText(snapshot.Turns));
         turns.VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetAutomationId(turns, "OpenCodeInsightsTurns");
         Grid.SetColumn(turns, 1);
         heading.Children.Add(turns);
         panel.Children.Add(heading);
 
-        // 主数字：used / limit (pct%) 用 Subtitle 字阶单行显示，窄抽屉内省略号兜底（Tooltip 仍给出说明）。
-        var current = OpenCodeInteractionUi.StyledText(CurrentContextLine(snapshot), OpenCodeInteractionUi.SubtitleStyleKey, selectable: true);
+        // 主 agent 用量行：used / limit（左）· 百分比（右）。只是文字，不画进度条；不含子会话。
+        var line = CurrentContextLine(snapshot);
+        var separator = line.LastIndexOf(" · ", StringComparison.Ordinal);
+        var currentRow = new Grid { ColumnSpacing = 8 };
+        currentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        currentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var current = OpenCodeInteractionUi.StyledText(separator < 0 ? line : line[..separator], OpenCodeInteractionUi.BodyStrongStyleKey, selectable: true);
         current.TextWrapping = TextWrapping.NoWrap;
         current.TextTrimming = TextTrimming.CharacterEllipsis;
         AutomationProperties.SetAutomationId(current, "OpenCodeInsightsCurrentContext");
+        AutomationProperties.SetName(current, "主智能体上下文：" + line);
         ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
-        panel.Children.Add(current);
+        currentRow.Children.Add(current);
+        if (separator >= 0)
+        {
+            var percent = OpenCodeInteractionUi.StyledText(line[(separator + 3)..], OpenCodeInteractionUi.BodyStrongStyleKey);
+            percent.VerticalAlignment = VerticalAlignment.Center;
+            AutomationProperties.SetAutomationId(percent, "OpenCodeInsightsCurrentContextPercent");
+            Grid.SetColumn(percent, 1);
+            currentRow.Children.Add(percent);
+        }
+        panel.Children.Add(currentRow);
 
         var summary = snapshot.Cost.Value?.Summary;
         var knownTokens = summary?.HasKnownTokens == true;
@@ -447,33 +444,64 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var tokens = knownTokens ? summary!.Tokens : null;
         var prefix = summary?.Incomplete == true ? "已知部分 " : "";
         string Token(double? value) => value is { } number ? prefix + Tokens(number) : "不可用";
-        panel.Children.Add(Table(new List<(string, string)>
+        var values = new[]
         {
-            ("📥 输入", Token(tokens?.Input)),
-            ("📤 输出", Token(tokens?.Output)),
-            ("📖 缓存读取", Token(tokens?.CacheRead)),
-            ("📝 缓存写入", Token(tokens?.CacheWrite)),
-            ("🎯 缓存命中率", tokens?.CacheHitPercent is { } hit ? prefix + hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "不可用"),
-            ("💭 思考 tokens", Token(tokens?.Reasoning)),
-        }));
-        panel.Children.Add(OpenCodeContextRing.Divider());
-        var totals = Table(new List<(string, string)>
+            Token(tokens?.Input), Token(tokens?.Output), Token(tokens?.CacheRead), Token(tokens?.CacheWrite),
+            tokens?.CacheHitPercent is { } hit ? prefix + hit.ToString("0.#", CultureInfo.InvariantCulture) + "%" : "不可用",
+            Token(tokens?.Reasoning),
+        };
+        var grid = new Grid { ColumnSpacing = 12, RowSpacing = 6 };
+        AutomationProperties.SetAutomationId(grid, "OpenCodeInsightsUsageGrid");
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (var index = 0; index < UsageLabels.Length; index++)
         {
-            ("总 tokens", Token(tokens?.Total)),
-            ("总费用", knownCost ? prefix + Money(summary!.TotalCost) : "不可用"),
-        });
-        // 合计行：标签升为主文字色、数值加粗，与上方明细行（次要标签 / 常规数值）拉开层级。Table 子项按“标签、数值”成对追加。
-        for (var index = 0; index + 1 < totals.Children.Count; index += 2)
-        {
-            if (totals.Children[index] is TextBlock label) label.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
-            if (totals.Children[index + 1] is TextBlock value) value.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodyStrongStyleKey);
+            if (index % 2 == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var cell = UsageCell(UsageLabels[index], values[index]);
+            Grid.SetRow(cell, index / 2);
+            Grid.SetColumn(cell, index % 2);
+            grid.Children.Add(cell);
         }
+        ToolTipService.SetToolTip(grid, (summary is null ? "主会话及子会话累计用量：" + snapshot.Cost.Note
+            : "主会话及全部子会话，按 parentID 去重累计；输入不含缓存。" + (summary.Incomplete ? "部分数据未能读取。" : ""))
+            + "\n缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。");
+        panel.Children.Add(grid);
+        panel.Children.Add(OpenCodeContextRing.Divider());
+
+        // Σ 汇总（总 tokens）+ 💰 花费（Session.Info.cost 累计，不重新计价）。
+        var totals = new Grid { ColumnSpacing = 12 };
+        AutomationProperties.SetAutomationId(totals, "OpenCodeInsightsTotals");
+        totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var total = UsageCell("Σ 汇总", Token(tokens?.Total), strong: true);
+        ToolTipService.SetToolTip(total, "总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入");
+        var cost = UsageCell("💰 花费", knownCost ? prefix + Money(summary!.TotalCost) : "不可用", strong: true);
+        ToolTipService.SetToolTip(cost, "直接累计 Session.Info.cost，不重新计价，不加消息费用或 Billion 账单。");
+        Grid.SetColumn(cost, 1);
+        totals.Children.Add(total);
+        totals.Children.Add(cost);
         panel.Children.Add(totals);
-        var note = Caption(summary is null ? "主会话及子会话累计用量：" + snapshot.Cost.Note
-            : "主会话及全部子会话，按 parentID 去重累计；输入不含缓存。" + (summary.Incomplete ? "部分数据未能读取。" : ""));
-        ToolTipService.SetToolTip(note, "总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入；缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。费用直接累计 Session.Info.cost，不重新计价，不加消息费用或 Billion 账单。");
-        panel.Children.Add(note);
         return panel;
+    }
+
+    // 一格：灰色 emoji 标签（左）+ 数值（右，等宽数字）。窄列内数值优先，标签省略号兜底。
+    private static Grid UsageCell(string label, string value, bool strong = false)
+    {
+        var cell = new Grid { ColumnSpacing = 4 };
+        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var name = Caption(label);
+        name.TextWrapping = TextWrapping.NoWrap;
+        name.TextTrimming = TextTrimming.CharacterEllipsis;
+        name.VerticalAlignment = VerticalAlignment.Center;
+        var number = OpenCodeInteractionUi.StyledText(value, strong ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.CaptionStyleKey, selectable: true);
+        number.TextWrapping = TextWrapping.NoWrap;
+        number.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(number, 1);
+        cell.Children.Add(name);
+        cell.Children.Add(number);
+        AutomationProperties.SetName(cell, label + "：" + value);
+        return cell;
     }
 
     internal static string CurrentContextLine(OpenCodeSessionInsightsSnapshot snapshot)
@@ -483,8 +511,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
                 and not OpenCodeContextStaleReason.ModelLimitUnavailable)) return "不可用";
         var (_, tokens, limit) = OpenCodeContextRing.Measure(snapshot);
         if (tokens is not { } used) return "不可用";
-        return Compact(used) + " / " + (limit is { } max ? Compact(max) + " ("
-            + Math.Round(used / max * 100, 1).ToString("0.#", CultureInfo.InvariantCulture) + "%)" : "- (-)");
+        return Compact(used) + " / " + (limit is { } max ? Compact(max) + " · "
+            + Math.Round(used / max * 100, 1).ToString("0.#", CultureInfo.InvariantCulture) + "%" : "上限未知");
     }
 
     // ------------------------------------------------------------------
@@ -1156,32 +1184,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     internal static TextBlock Caption(string text, double emphasis = 0.65)
         => OpenCodeInteractionUi.StyledText(text,
             emphasis >= 0.8 ? OpenCodeInteractionUi.CaptionStyleKey : OpenCodeInteractionUi.CaptionSubtleStyleKey, selectable: true);
-
-    private static Style? _cardStyle;
-    private static bool _cardStyleLoaded;
-
-    /// <summary>右栏卡片：内置卡片画刷 / 描边（ThemeResource，随主题切换），统一 8 圆角、12 内边距。</summary>
-    private static Border Card()
-    {
-        if (!_cardStyleLoaded)
-        {
-            _cardStyleLoaded = true;
-            try
-            {
-                _cardStyle = XamlReader.Load(
-                    "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\">"
-                    + "<Setter Property=\"Background\" Value=\"{ThemeResource CardBackgroundFillColorDefaultBrush}\" />"
-                    + "<Setter Property=\"BorderBrush\" Value=\"{ThemeResource CardStrokeColorDefaultBrush}\" />"
-                    + "<Setter Property=\"BorderThickness\" Value=\"1\" /></Style>") as Style;
-            }
-            catch
-            {
-                _cardStyle = null; // 回退：无底色，仅保留间距（与原来一致）。
-            }
-        }
-
-        return new Border { Style = _cardStyle, Padding = new Thickness(12), CornerRadius = new CornerRadius(8) };
-    }
 
     internal static TextBlock Body(string text)
         => OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey, selectable: true);

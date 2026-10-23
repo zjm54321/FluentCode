@@ -64,7 +64,7 @@ internal static class Program
         });
         Run("visible: renders raise no confirmation/refresh/read events; user toggle still raises one", true, Events);
         Run("sections: SelectorBar switch only toggles page visibility (no rebuild, Billion owner kept, no events)", true, Sections);
-        Run("agents: grouped list, child title shown (no id/foreground text), Running/All filter, click opens child directly", true, Agents);
+        Run("layout D: no duplicate Agents section or refresh toolbar on the right (subagents live in the left tree)", true, NoRightAgents);
         Run("to do: official look, glyphs, collapse w/ remaining, unknown/failure/empty/disabled/partial states", true, TodoList);
         Run("to do: real controller config, local derivation and stale-session/epoch fences", true, _ => TodoControllerTests.Run());
         Run("context ring: header 32x32 button, compact numbers, thresholds, ACP block list, Billion in-place refreshes flyout", true, ContextRing);
@@ -153,7 +153,7 @@ internal static class Program
     private static void Events(OpenCodeSessionInsightsView view)
     {
         var confirmations = new List<bool>();
-        var refresh = 0;
+        var refresh = 0; // layout D: the view has no refresh entry; reads are automatic (page-owned)
         var reads = 0;
         var edits = 0;
         view.BillionConfirmationChanged += (_, request) =>
@@ -161,7 +161,6 @@ internal static class Program
             Check(ReferenceEquals(request.Context, SyntheticContext), "confirmation carries the rendered context");
             confirmations.Add(request.Confirmed);
         };
-        view.RefreshRequested += (_, _) => refresh++;
         view.BillionReadRequested += (_, context) =>
         {
             Check(ReferenceEquals(context, SyntheticContext), "read carries the rendered context");
@@ -185,10 +184,9 @@ internal static class Program
 
     private static void Sections(OpenCodeSessionInsightsView view)
     {
-        var refresh = 0;
-        view.RefreshRequested += (_, _) => refresh++;
         Draw(view, Billion(OpenCodeBillionPhase.Idle, confirmed: true));
         var bar = Field<SelectorBar>(view, "_sections");
+        var usage = Field<Border>(view, "_usageHost");
         var pages = Field<StackPanel[]>(view, "_pages");
         // Wave 3 F10c: 任务 and Agents are merged into 概况 (ring + 任务 + Agents); only Billion (consent workflow) stays separate.
         Check(AutomationProperties.GetAutomationId(bar) == "OpenCodeInsightsSections" && bar.Items.Count == 2
@@ -198,74 +196,41 @@ internal static class Program
             "two native sections");
         Check(ReferenceEquals(bar.SelectedItem, bar.Items[0]) && pages[0].Visibility == Visibility.Visible
             && pages.Skip(1).All(page => page.Visibility == Visibility.Collapsed), "概况 selected by default");
+        Check(bar.Visibility == Visibility.Collapsed && usage.Visibility == Visibility.Visible,
+            "layout D: section bar hidden on the overview card (Billion setup is reached from the ring flyout)");
         var confirm = Field<CheckBox>(view, "_billionConfirm");
         var owner = confirm.Owner;
         var adds = ShimTree.AddCalls;
         bar.SelectedItem = bar.Items[1];
         Check(pages[1].Visibility == Visibility.Visible && pages[0].Visibility == Visibility.Collapsed,
             "Billion page shown");
+        Check(bar.Visibility == Visibility.Visible && usage.Visibility == Visibility.Collapsed, "Billion setup shows the bar to return to 概况");
         Check(ShimTree.AddCalls == adds && ReferenceEquals(confirm.Owner, owner), "switching sections adds nothing and never reparents");
         bar.SelectedItem = null;
         Check(ReferenceEquals(bar.SelectedItem, bar.Items[0]) && pages[0].Visibility == Visibility.Visible, "no-selection falls back to 概况");
-        Check(refresh == 0, "section switching triggers no read");
+        Check(bar.Visibility == Visibility.Collapsed, "back on 概况 the bar hides again");
+        view.ShowBillionSection();
+        Check(pages[1].Visibility == Visibility.Visible && bar.Visibility == Visibility.Visible, "ring flyout 去设置 path still opens the Billion page");
     }
 
-    private static void Agents(OpenCodeSessionInsightsView view)
+    private static void NoRightAgents(OpenCodeSessionInsightsView view)
     {
-        var requested = new List<string>();
-        view.ChildSessionRequested += (_, id) => requested.Add(id);
         view.PrimaryAgent = "build";
         Draw(view, WithChildren(
             ("ses_c1", "explorer", true, "Search codebase"),
-            ("ses_c2", "explorer", false, "Read config"),
-            ("ses_c3", "fixer", null, null)));
-        var agents = (StackPanel)Field<StackPanel[]>(view, "_pages")[0].Children[1];
-        Check(AutomationProperties.GetAutomationId(agents) == "OpenCodeInsightsAgents", "Agents root in 概况 after 任务 (context ring moved to header in G5)");
-        var section = Field<OpenCodeInsightsAgentsSection>(view, "_agents");
-        var listPage = Field<StackPanel>(section, "_listPage");
-        var filter = Field<SelectorBar>(section, "_filter");
-        Check(AutomationProperties.GetAutomationId(filter) == "OpenCodeInsightsAgentsFilter" && filter.Items.Count == 2
-            && filter.Items.Select(i => i.Text).SequenceEqual(new[] { "运行中", "全部" })
-            && !section.RunningOnly, "H7: Running / All SelectorBar defaults to All");
-        var children = (StackPanel)((StackPanel)listPage.Children[1]).Children[1];
-        var groups = children.Children.OfType<StackPanel>()
-            .Where(panel => AutomationProperties.GetAutomationId(panel)?.StartsWith("OpenCodeInsightsAgentGroup.", StringComparison.Ordinal) == true)
-            .ToList();
-        Check(groups.Count == 2 && AutomationProperties.GetAutomationId(groups[0]) == "OpenCodeInsightsAgentGroup.explorer"
-            && AutomationProperties.GetAutomationId(groups[1]) == "OpenCodeInsightsAgentGroup.fixer", "grouped by agent, running/larger group first");
-        var list = (ListView)groups[0].Children[1];
-        Check(list.Items.Count == 2 && list.IsItemClickEnabled && list.SelectionMode == ListViewSelectionMode.None, "native click list");
-        var second = (ListViewItem)list.Items[1];
-        Check(AutomationProperties.GetAutomationId(second) == "OpenCodeInsightsAgent.ses_c2", "item AutomationId");
-        var texts = AllText(listPage).ToList();
-        Check(texts.Contains("build"), "primary agent shown");
-        Check(texts.Contains("Search codebase") && texts.Contains("Read config") && texts.Contains("未命名子会话"),
-            "H7: row titles show child session title or fallback");
-        Check(!texts.Any(t => t.Contains("ses_c", StringComparison.Ordinal))
-            && !texts.Any(t => t.Contains("前台运行中", StringComparison.Ordinal) || t.Contains("前台未运行", StringComparison.Ordinal)),
-            "H7: no session id line and no foreground wording on rows");
-        Check(AutomationProperties.GetName(second)!.Contains("不代表已完成", StringComparison.Ordinal),
-            "not-completed distinction preserved in accessibility name");
-
-        // Clicking a subagent row opens the child session directly (no intermediate detail page).
-        list.SimulateItemClick(second);
-        Check(requested.SequenceEqual(new[] { "ses_c2" }), "H7: item click directly raises child session id");
-
-        // Toggle filter to Running only.
-        filter.SelectedItem = filter.Items[0];
-        Check(section.RunningOnly, "Running filter active");
-        var runningTexts = AllText(listPage).ToList();
-        Check(runningTexts.Contains("Search codebase") && !runningTexts.Contains("Read config") && !runningTexts.Contains("未命名子会话"),
-            "H7: Running filter shows only active children");
-
-        // Refresh while Running filter is active: filter choice survives; when none are running, empty state shown.
-        Draw(view, WithChildren(("ses_c1", "explorer", false, "Search codebase"), ("ses_c2", "explorer", false, "Read config")));
-        Check(section.RunningOnly && AllText(listPage).Contains("没有运行中的子会话。"), "H7: Running filter survives refresh and shows empty caption when none running");
-        filter.SelectedItem = null;
-        Check(!section.RunningOnly && AllText(listPage).Contains("Read config"), "null selection falls back to All");
-        var backAgain = Field<StackPanel>(section, "_listPage");
-        Check(ReferenceEquals(backAgain, listPage), "list page instance stable");
-        Check(requested.Count == 1, "renders and filter switches raise no navigation");
+            ("ses_c2", "explorer", false, "Read config")));
+        var overview = Field<StackPanel[]>(view, "_pages")[0];
+        Check(overview.Children.Select(child => AutomationProperties.GetAutomationId(child)).SequenceEqual(new[] { "OpenCodeInsightsTodoCard" }),
+            "overview holds only to do below the usage block");
+        var texts = AllText((UIElement)view.Content!).ToList();
+        Check(!texts.Contains("Search codebase") && !texts.Contains("Read config") && !texts.Contains("会话概况"),
+            "no subagent rows and no old 会话概况 heading on the right");
+        var type = typeof(OpenCodeSessionInsightsView);
+        Check(type.GetEvent("RefreshRequested", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public) is null
+            && type.GetEvent("ChildSessionRequested", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public) is null
+            && type.GetField("_refreshButton", BindingFlags.Instance | BindingFlags.NonPublic) is null
+            && type.GetField("_agents", BindingFlags.Instance | BindingFlags.NonPublic) is null,
+            "refresh toolbar and duplicate Agents section removed (not hidden)");
     }
 
     private static OpenCodeTodoSnapshot TodoSnapshot(OpenCodeTodoState state, bool complete, string reason, params OpenCodeTodoItem[] items)
@@ -279,7 +244,7 @@ internal static class Program
         {
             Todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(state, todo, note),
         });
-        return (StackPanel)((Border)Field<StackPanel[]>(view, "_pages")[0].Children[0]).Child!;
+        return (StackPanel)((StackPanel)Field<StackPanel[]>(view, "_pages")[0].Children[0]).Children[1];
     }
 
     private static StackPanel TodoContent(StackPanel panel) => (StackPanel)panel.Children[1];
@@ -392,7 +357,13 @@ internal static class Program
             && OpenCodeSessionInsightsView.Compact(10_200_000) == "10.2M", "H10: compact number formatting");
         Draw(view, WithContext(82_300, 1_000_000));
         Check(ring.Button.Width == 32 && ring.Button.Height == 32 && AllText(ring.Root).Count() == 0,
-            "G5: header ring button is a 32x32 icon-only button");
+            "wide card: ring button is a 32x32 icon-only button");
+        ring.ShowPercent = true;
+        Check(double.IsNaN(ring.Button.Width) && AllText(ring.Root).SequenceEqual(new[] { "8%" }),
+            "layout D narrow header: ring shows its context % beside it");
+        ring.ShowPercent = false;
+        Check(ring.Button.Width == 32 && AllText(ring.Root).Count() == 0 && ReferenceEquals(ring.Button.Content, ring.Ring),
+            "back to wide: same ring instance, icon only");
         Check(!ring.Ring.IsIndeterminate && ring.Ring.IsActive && ring.Ring.Minimum == 0 && ring.Ring.Maximum == 100
             && Math.Abs(ring.Ring.Value - 8.23) < 1e-9, "determinate native ProgressRing at 8.23%");
         Check(AutomationProperties.GetAutomationId(ring.Ring) == "OpenCodeInsightsContextRing"
@@ -437,13 +408,11 @@ internal static class Program
             "H10/H11: in-place Billion update rebuilt the flyout ACP group with compact stats and todo-style block list");
         Check(ReferenceEquals(Field<StackPanel>(view, "_billionSection"), billionSection), "Billion-only change took the in-place path");
         // Font change flips the theme twice (AppFonts refresh): panel re-renders from the latest snapshot, never refetches.
-        var refreshes = 0;
-        view.RefreshRequested += (_, _) => refreshes++;
         view.SimulateThemeChanged();
         view.SimulateThemeChanged();
-        Check(refreshes == 0 && Field<StackPanel[]>(view, "_pages")[0].Children.Count == 2
+        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 1
             && AllText((UIElement)((Flyout)ring.Button.Flyout!).Content!).Contains("42K"), "double theme flip: no read, content intact");
-        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 2, "overview page intact");
+        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 1, "overview page intact");
     }
 
     private static void LayeredUsage(OpenCodeSessionInsightsView view)
@@ -462,14 +431,19 @@ internal static class Program
         Draw(view, sample);
         var host = Field<Border>(view, "_usageHost");
         var texts = AllText(host).Reverse().ToArray();
-        Check(texts.Take(3).SequenceEqual(new[] { "上下文", "3 轮", "12.5K / 200K (6.2%)" }), "context title, grey turns and one-line current (not tree usage)");
-        var usageLabels = new[] { "📥 输入", "📤 输出", "📖 缓存读取", "📝 缓存写入", "🎯 缓存命中率", "💭 思考 tokens", "总 tokens", "总费用" };
-        Check(texts.Where(usageLabels.Contains).SequenceEqual(usageLabels), "six emoji-led rows then total rows in specified order");
+        Check(texts.Take(4).SequenceEqual(new[] { "上下文", "第 3 轮", "12.5K / 200K", "6.2%" }),
+            "上下文 + grey 第 N 轮, then main-agent used / limit with % (text only, not tree usage)");
+        var usageLabels = new[] { "📥 输入", "📤 输出", "📖 缓存读", "📝 缓存写", "🎯 命中率", "💭 思考", "Σ 汇总", "💰 花费" };
+        Check(texts.Where(usageLabels.Contains).SequenceEqual(usageLabels), "two-column emoji grid (input, output, cache read/write, hit rate, thinking) then Σ 汇总 + 💰 花费");
+        Check(OpenCodeSessionInsightsView.UsageLabels.SequenceEqual(usageLabels.Take(6)), "grid label constant matches the specified order");
         Check(OpenCodeSessionInsightsView.DescribeEntry(Empty()).Contains("to do", StringComparison.Ordinal)
             && !OpenCodeSessionInsightsView.DescribeEntry(Empty()).Contains("任务", StringComparison.Ordinal), "entry uses to do, not task wording");
         Check(texts.Contains("1.6K") && texts.Contains("60%") && texts.Contains(OpenCodeSessionInsightsView.Money(6)), "three unique parentID sessions; noncached categories, weighted hit rate and raw cost sum");
         Check(AutomationProperties.GetAutomationId(Field<StackPanel[]>(view, "_pages")[0].Children[0]) == "OpenCodeInsightsTodoCard", "native A10 card container follows context");
-        Check(((StackPanel)view.Content!).Children[0] == host, "context is the content region's first element");
+        var root = (StackPanel)view.Content!;
+        Check(root.Children.IndexOf(host) == 2 && Field<SelectorBar>(view, "_sections").Visibility == Visibility.Collapsed
+            && Field<StackPanel>(view, "_statusRow").Visibility == Visibility.Collapsed,
+            "context is the first visible element (bar and status row hidden once loaded)");
         Draw(view, Empty());
         Check(AllText(host).Count(t => t == "不可用") == 9 && !AllText(host).Contains("0"), "missing context and eight usage fields never show fabricated zero");
         var missing = OpenCodeUsageAggregator.Aggregate("ses_missing", Array.Empty<OpenCodeSessionInfo>(), Array.Empty<OpenCodeUsageIssue>());
@@ -678,11 +652,11 @@ internal static class Program
         // Wave 3 F10 + Wave 5 G5: SelectorBar pages — 概况 (任务 + Agents; context ring moved to header), Billion.
         // Usage/cost, pricing and ACP/Billion status live in the header ring's Flyout (three groups); MCP/plugins/LSP moved to the
         // header connection Flyout (see ConnectionFlyout case).
-        Check(pages.Length == 2 && pages[0].Children.Count == 2
+        Check(pages.Length == 2 && pages[0].Children.Count == 1
             && ReferenceEquals(body, pages[1]) && body.Children.Count == 1, "two section pages with their sections");
-        Check(new[] { "OpenCodeInsightsTodoCard", "OpenCodeInsightsAgents" }
+        Check(new[] { "OpenCodeInsightsTodoCard" }
                 .SequenceEqual(pages[0].Children.Select(child => AutomationProperties.GetAutomationId(child))),
-            "概况 shows 任务 and Agents together (ring moved to header in G5)");
+            "概况 shows to do only (subagents live in the left tree)");
         var ring = Field<OpenCodeContextRing>(view, "_contextRing");
         Check(!pages[0].Children.Contains(ring.Root) && ring.Button.Flyout is Flyout { Content: not null }, "ring is outside 概况 pane and owns a flyout with content");
         Check(FlyoutGroupIds(ring).SequenceEqual(new[] { "OpenCodeInsightsContextDetail", "OpenCodeInsightsCost", "OpenCodeInsightsAcpStatus" }),
