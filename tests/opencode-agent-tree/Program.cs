@@ -21,7 +21,7 @@ internal static class Program
     {
         var view = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
         Check(view.Contains("<TreeView x:Name=\"Tree\"") && view.Contains("_tree.RootNodes.Add(group)") && !view.Contains("ItemsRepeater"), "NV2: native TreeView owns the hierarchy");
-        Check(view.Contains("Text=\"子智能体\"") && view.Contains("AcrylicInAppFillColorDefaultBrush") && view.Contains("<ThemeShadow />")
+        Check(view.Contains("Text=\"子智能体\"") && view.Contains("_card.Style = OpenCodeInsightsTheme.DockCard()") && view.Contains("<ThemeShadow />")
             && view.Contains("Translation=\"0,0,16\"") && !view.Contains("MaxHeight=\"280\""), "D: floating 子智能体 card; tree fills the card height");
         Check(view.Contains("Style = OpenCodeInsightsTheme.TreeLabel(dimmed)") && view.Contains("agent.Children.Count == 0"), "idle configured groups use theme styling");
         Check(view.Contains("<ToggleButton x:Name=\"All\"") && view.Contains("Text=\"全部\"") && view.Contains("&#xE71C;")

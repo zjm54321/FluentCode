@@ -42,9 +42,9 @@ internal static class OpenCodeInsightsTheme
 
     internal static Style? TodoSecondaryIcon() => Get("FontIcon", ("Foreground", "TextFillColorSecondaryBrush"));
 
-    /// <summary>布局 D 浮动卡片（Border）：应用内亚克力 + 卡片描边（ThemeResource，随浅色 / 深色 / 高对比度切换）。</summary>
+    /// <summary>四张停靠卡片共用的实色主题样式；ClearValue 后仍保留样式提供的背景。</summary>
     internal static Style? DockCard()
-        => Get("Border", ("Background", "AcrylicInAppFillColorDefaultBrush"), ("BorderBrush", "CardStrokeColorDefaultBrush"));
+        => OpenCodeInteractionUi.TryStyle("DockCard");
 
     /// <summary>卡片内只读信息框（目录行）：次级控件填充 + 卡片描边。</summary>
     internal static Style? InsetBox()
@@ -129,7 +129,11 @@ internal sealed class OpenCodeContextRing
         };
         AutomationProperties.SetAutomationId(_ring, "OpenCodeInsightsContextRing");
 
-        _flyout = new Flyout { Placement = FlyoutPlacementMode.BottomEdgeAlignedRight };
+        _flyout = new Flyout
+        {
+            Placement = FlyoutPlacementMode.BottomEdgeAlignedRight,
+            FlyoutPresenterStyle = OpenCodeInteractionUi.TryStyle("DockCardFlyoutPresenterStyle"),
+        };
         _flyout.Opening += (_, _) => DetailsOpening?.Invoke(this, EventArgs.Empty);
         _button = new Button
         {

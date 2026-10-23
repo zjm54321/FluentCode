@@ -95,10 +95,20 @@ internal static class Program
             && At("RightPanelHeaderSlot") < At("WslQuickAccessSlot") && At("WslQuickAccessSlot") < At("InsightsPaneHost"),
             "WSL quick access follows title/id and precedes context in top-right card");
         foreach (var dockCard in new[] { card, footer })
-            Check((string?)dockCard.Attribute("Background") == "{ThemeResource AcrylicInAppFillColorDefaultBrush}"
-                && (string?)dockCard.Attribute("BorderBrush") == "{ThemeResource CardStrokeColorDefaultBrush}"
-                && (string?)dockCard.Attribute("CornerRadius") == "8" && (string?)dockCard.Attribute("Translation") == "0,0,16"
-                && dockCard.Descendants(ui + "ThemeShadow").Any(), "floating acrylic card with theme shadow: " + dockCard.Attribute(x + "Name")!.Value);
+            Check((string?)dockCard.Attribute("Style") == "{StaticResource DockCard}"
+                && dockCard.Attribute("Background") is null && (string?)dockCard.Attribute("Translation") == "0,0,16"
+                && dockCard.Descendants(ui + "ThemeShadow").Any(), "shared solid card survives ClearValue with theme shadow: " + dockCard.Attribute(x + "Name")!.Value);
+        var app = XDocument.Load(Path.Combine(repo, "src/AIFrontend/App.xaml"));
+        var chrome = app.Descendants(ui + "Style").Single(e => (string?)e.Attribute(x + "Key") == "DockCard");
+        string? Setter(string property) => (string?)chrome.Elements(ui + "Setter").Single(e => (string?)e.Attribute("Property") == property).Attribute("Value");
+        Check(Setter("Background") == "{ThemeResource SolidBackgroundFillColorQuarternaryBrush}"
+            && Setter("BorderBrush") == "{ThemeResource CardStrokeColorDefaultBrush}"
+            && Setter("BorderThickness") == "1" && Setter("CornerRadius") == "8", "RC1 deterministic theme-solid shared card chrome");
+        Check(app.Descendants(ui + "Style").Single(e => (string?)e.Attribute(x + "Key") == "DockCardFlyoutPresenterStyle")
+            .Elements(ui + "Setter").Any(e => (string?)e.Attribute("Property") == "Background"
+                && (string?)e.Attribute("Value") == Setter("Background"))
+            && layoutCode.Contains("_overviewFlyout.FlyoutPresenterStyle = OpenCodeInteractionUi.TryStyle(\"DockCardFlyoutPresenterStyle\")"),
+            "RC1 narrow overview uses the same opaque theme surface");
         Check(!page.Descendants().Any(e => (string?)e.Attribute("Text") == "会话概况")
             && !names.Contains("OverviewRefreshMessagesButton") && !names.Contains("InsightsPaneCloseButton"),
             "old 会话概况 heading, refresh toolbar and close button removed from the right");

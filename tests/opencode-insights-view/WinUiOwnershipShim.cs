@@ -462,6 +462,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public sealed class Flyout : Primitives.FlyoutBase
     {
+        public Style? FlyoutPresenterStyle { get; set; }
         public event EventHandler<object>? Closed;
         public void ShowAt(FrameworkElement target) => SimulateOpening();
         public UIElement? Content { get; set; }

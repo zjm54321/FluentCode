@@ -15,7 +15,7 @@ using Windows.UI.ViewManagement;
 namespace AIFrontend.Pages;
 
 /// <summary>
-/// Layout D (对齐停靠): wide pages dock floating acrylic cards beside the reading column (top aligned with the
+/// Layout D (对齐停靠): wide pages dock floating theme-solid cards beside the reading column (top aligned with the
 /// first message, bottom cards aligned with the composer); narrow pages fold them into the composer's second
 /// row plus the header's context % and 概况 entries. Session identity, drafts, controls and the insights view
 /// retain their owners and never change parent.
@@ -35,6 +35,7 @@ public sealed partial class OpenCodePage
 
     private void InitializeSidebars()
     {
+        _overviewFlyout.FlyoutPresenterStyle = OpenCodeInteractionUi.TryStyle("DockCardFlyoutPresenterStyle");
         _overviewFlyout.Closed += (_, _) =>
         {
             if (!_sidebarLayout.IsWide && !_sidebarApplying)
@@ -283,6 +284,7 @@ public sealed partial class OpenCodePage
         {
             if (wide)
             {
+                // Restore the shared DockCard style, not a local XAML Background (which ClearValue removes).
                 card.ClearValue(Border.BackgroundProperty);
                 card.BorderThickness = new Thickness(1);
                 if (card.Shadow is null) card.Shadow = new ThemeShadow();

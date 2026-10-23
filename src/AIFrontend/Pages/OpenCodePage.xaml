@@ -231,7 +231,7 @@
             AutomationProperties.Name="会话面板">
 
             <!-- Layout D left dock: floating 子智能体 card on top, agent/model card aligned with the composer.
-                 The cards own their acrylic chrome; insets are set by OpenCodePage.Sidebars.cs (UpdateDockInsets). -->
+                 The cards share solid theme chrome; insets are set by OpenCodePage.Sidebars.cs (UpdateDockInsets). -->
             <SplitView.Pane>
                 <Grid x:Name="LeftDock" Style="{StaticResource OpenCodeDockSurfaceStyle}" RowDefinitions="*,Auto" RowSpacing="12" Padding="24,12,8,16">
                     <!-- B4 and B5 own these empty slots; no placeholder data. -->
@@ -310,10 +310,8 @@
                             <!-- Layout D right dock: session card (title → id → 上下文 → usage → 汇总/花费 → to do) on top,
                                  directory + OpenCode version card aligned with the composer. Insets: UpdateDockInsets. -->
                             <Grid x:Name="RightDock" Style="{StaticResource OpenCodeDockSurfaceStyle}" RowDefinitions="*,Auto" RowSpacing="12" Padding="8,12,24,16">
-                                <Border x:Name="RightSessionCard" VerticalAlignment="Top"
-                                        Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                        CornerRadius="8" Translation="0,0,16"
+                                <Border x:Name="RightSessionCard" VerticalAlignment="Top" Style="{StaticResource DockCard}"
+                                        Translation="0,0,16"
                                         AutomationProperties.AutomationId="OpenCodeRightSessionCard">
                                     <Border.Shadow>
                                         <ThemeShadow />
@@ -352,10 +350,8 @@
                                         </StackPanel>
                                     </ScrollViewer>
                                 </Border>
-                                <Border x:Name="RightFooterCard" Grid.Row="1" Visibility="Collapsed"
-                                        Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                        CornerRadius="8" Translation="0,0,16" Padding="12,12,12,8"
+                                <Border x:Name="RightFooterCard" Grid.Row="1" Visibility="Collapsed" Style="{StaticResource DockCard}"
+                                        Translation="0,0,16" Padding="12,12,12,8"
                                         AutomationProperties.AutomationId="OpenCodeRightFooterCard">
                                     <Border.Shadow>
                                         <ThemeShadow />

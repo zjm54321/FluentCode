@@ -93,6 +93,23 @@
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
             </Style>
 
+            <!-- RC1: all four dock cards share opaque, theme-aware chrome. Unlike acrylic,
+                 this stays gray regardless of backdrop availability or the pane's composition layer. -->
+            <Style x:Key="DockCard" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <Style x:Key="DockCardFlyoutPresenterStyle" TargetType="FlyoutPresenter"
+                   BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+
             <!-- 设置卡片（SettingsCard 式布局，原生画刷 + 内置圆角；设置页字体卡片使用）。 -->
             <Style x:Key="AppSettingsCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />

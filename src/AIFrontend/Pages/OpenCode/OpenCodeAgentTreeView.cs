@@ -10,7 +10,7 @@ using Microsoft.UI.Xaml.Markup;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// Native acrylic 子智能体 card. The working-only filter is the default; the app-wide in-memory toggle
+/// Native theme-solid 子智能体 card. The working-only filter is the default; the app-wide in-memory toggle
 /// and collapsed groups survive session/stream updates. Only real child sessions are navigable.
 /// </summary>
 internal sealed class OpenCodeAgentTreeView : UserControl
@@ -40,10 +40,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         Content = (FrameworkElement)XamlReader.Load("""
             <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-            <Border x:Name="Card"
-                    Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                    CornerRadius="8" Padding="8,8,8,8" Translation="0,0,16">
+            <Border x:Name="Card" Padding="8,8,8,8" Translation="0,0,16">
               <Border.Shadow>
                 <ThemeShadow />
               </Border.Shadow>
@@ -183,6 +180,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         var root = (FrameworkElement)Content;
         VerticalAlignment = VerticalAlignment.Top;
         _card = (FrameworkElement)root.FindName("Card");
+        _card.Style = OpenCodeInsightsTheme.DockCard();
         _parentReturn = (Button)root.FindName("ParentReturn");
         _parentReturn.Click += (_, _) => ParentReturnRequested?.Invoke();
         _tree = (TreeView)root.FindName("Tree");
