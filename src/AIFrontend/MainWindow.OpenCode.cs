@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.Notifications;
-using AIFrontend.Services.Taskbar;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

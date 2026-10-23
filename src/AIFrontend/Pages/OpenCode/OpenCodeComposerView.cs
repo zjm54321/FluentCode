@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.Appearance;
 using AIFrontend.Services.OpenCode;
-using Microsoft.UI.Dispatching;
 using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 using Microsoft.UI.Input;
 using Microsoft.UI.Text;

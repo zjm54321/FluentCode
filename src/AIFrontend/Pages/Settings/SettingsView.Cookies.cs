@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using AIFrontend.Pages.Web;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;

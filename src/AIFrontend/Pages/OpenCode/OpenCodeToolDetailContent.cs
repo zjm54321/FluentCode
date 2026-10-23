@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Markup;
-using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;

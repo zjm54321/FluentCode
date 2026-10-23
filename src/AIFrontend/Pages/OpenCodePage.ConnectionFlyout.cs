@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
-using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages;
 

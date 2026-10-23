@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 
 namespace AIFrontend.Pages;

@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml;

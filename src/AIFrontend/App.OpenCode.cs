@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -9,7 +8,6 @@ using AIFrontend.Models;
 using AIFrontend.Services.Configuration;
 using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.Taskbar;
 using Microsoft.UI.Dispatching;
 
 namespace AIFrontend;

@@ -4,7 +4,6 @@ using Microsoft.UI.Dispatching;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using AIFrontend.Services.Appearance;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
