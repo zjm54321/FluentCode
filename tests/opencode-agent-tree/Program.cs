@@ -37,10 +37,14 @@ internal static class Program
         Check(group.Contains("TextWrapping.Wrap") && group.Contains("TextTrimming.None") && group.Contains("MaxLines = 0")
             && !group.Contains("CharacterEllipsis"), "complete agent group names wrap without ellipsis or line cap");
         Check(view.Contains("x:Name=\"ChevronHover\" Grid.Column=\"2\" Opacity=\"0\"")
-            && view.Contains("Target=\"ChevronHover.Opacity\" Value=\"1\"") && view.Contains("x:Name=\"PointerOver\""), "L6: native chevron is trailing and shown only on hover");
+            && view.Contains("Target=\"ChevronHover.Opacity\" Value=\"1\"") && view.Contains("x:Name=\"PointerOver\"")
+            && view.Contains("ColumnDefinitions=\"Auto,*,Auto\" HorizontalAlignment=\"Left\""), "AT1/L6: chevron follows the measured name/count, shown only on hover");
         Check(view.Contains("x:Name=\"ExpandCollapseChevron\"") && view.Contains("TreeViewItemTemplateSettings.CollapsedGlyphVisibility")
             && view.Contains("TreeViewItemTemplateSettings.ExpandedGlyphVisibility") && !view.Contains("UpdateExpansion")
-            && !view.Contains("header.Click") && !view.Contains("InstanceButton"), "NV2: native TreeViewItem expansion, glyph states and selection replace handwritten tree interaction");
+            && !view.Contains("header.Click") && !view.Contains("InstanceButton"), "NV2: native TreeViewItem keeps expansion automation, keyboard and glyph states");
+        Check(view.Contains("_groups.Values.Contains(node)) node.IsExpanded = !node.IsExpanded")
+            && view.Contains("x:Name=\"ExpandCollapseChevron\" Width=\"20\" IsHitTestVisible=\"False\""),
+            "AT1: whole group row toggles once; chevron has no competing pointer handler");
         Check(view.Contains("AutomationProperties.SetName(item, name)") && view.Contains("NameTreeContent(row,"), "native node peers announce actual group and instance names");
         Check(view.Contains("SessionRequested?.Invoke(instance.Id)") && view.Contains("ShellRequested?.Invoke(shell.Id)"), "real session and shell navigation retained");
         Check(view.Contains("Content=\"返回主智能体\"") && view.Contains("_card.Visibility = Visibility.Collapsed;")

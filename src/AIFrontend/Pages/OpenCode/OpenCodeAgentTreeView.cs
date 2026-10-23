@@ -71,7 +71,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                       <Setter Property="Template">
                         <Setter.Value>
                           <!-- Native TreeViewItem named parts and template settings retain native keyboard,
-                               ExpandCollapse automation, selection and chevron input. Only layout is changed. -->
+                                ExpandCollapse automation and keyboard input. Row invocation owns pointer toggling. -->
                           <ControlTemplate TargetType="TreeViewItem">
                             <Grid x:Name="ContentPresenterGrid" Background="{TemplateBinding Background}"
                                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
@@ -125,7 +125,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                               <Rectangle x:Name="SelectionIndicator" Width="3" Height="16" HorizontalAlignment="Left"
                                          VerticalAlignment="Center" RadiusX="2" RadiusY="2" Opacity="0"
                                          Fill="{ThemeResource TreeViewItemSelectionIndicatorForeground}" />
-                              <Grid x:Name="MultiSelectGrid" ColumnDefinitions="Auto,*,Auto"
+                              <Grid x:Name="MultiSelectGrid" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left"
                                     Padding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.Indentation}">
                                 <CheckBox x:Name="MultiSelectCheckBox" Visibility="Collapsed" IsTabStop="False" AutomationProperties.AccessibilityView="Raw" />
                                 <ContentPresenter x:Name="ContentPresenter" Grid.Column="1" Margin="6,0,0,0"
@@ -133,7 +133,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                                                   ContentTransitions="{TemplateBinding ContentTransitions}"
                                                   Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                                 <Grid x:Name="ChevronHover" Grid.Column="2" Opacity="0">
-                                  <Grid x:Name="ExpandCollapseChevron" Width="20" Background="Transparent" Opacity="{TemplateBinding GlyphOpacity}">
+                                  <!-- Let the whole row invoke once, including the inline glyph; the native
+                                       chevron must not also toggle independently on the same pointer input. -->
+                                  <Grid x:Name="ExpandCollapseChevron" Width="20" IsHitTestVisible="False" Opacity="{TemplateBinding GlyphOpacity}">
                                     <TextBlock x:Name="CollapsedGlyph" Text="{TemplateBinding CollapsedGlyph}"
                                                Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.CollapsedGlyphVisibility}"
                                                FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="{TemplateBinding GlyphSize}"
@@ -186,7 +188,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _tree = (TreeView)root.FindName("Tree");
         _tree.ItemInvoked += (_, e) =>
         {
-            var content = e.InvokedItem is TreeViewNode node ? node.Content : e.InvokedItem;
+            var node = e.InvokedItem as TreeViewNode;
+            var content = node?.Content ?? e.InvokedItem;
+            if (node is not null && _groups.Values.Contains(node)) node.IsExpanded = !node.IsExpanded;
             if (content is FrameworkElement { Tag: OpenCodeTreeInstance instance }) SessionRequested?.Invoke(instance.Id);
             if (content is FrameworkElement { Tag: OpenCodeTreeShell shell }) ShellRequested?.Invoke(shell.Id);
         };
