@@ -78,7 +78,9 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
 
     private readonly object _sync = new();
     private readonly SemaphoreSlim _poll = new(1, 1);
+    private readonly SemaphoreSlim _ack = new(1, 1);
     private readonly Dictionary<string, StreamState> _tracked = new(StringComparer.Ordinal);
+    private string? _prioritySession;
     private readonly TrustedOpenCodeNotificationSource _source;
     private readonly IOpenCodeNotificationSink _sink;
     private readonly TimeSpan _interval;
@@ -113,6 +115,7 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            _prioritySession = sessionId;
             if (_tracked.ContainsKey(sessionId)) return false;
             if (_tracked.Count >= 128) throw new InvalidOperationException("Tracked session capacity reached.");
             _tracked.Add(sessionId, new());
@@ -161,6 +164,10 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         Task? run;
         lock (_sync) { _runCancellation?.Cancel(); run = _run; }
         if (run is not null) await run.ConfigureAwait(false);
+        await _poll.WaitAsync().ConfigureAwait(false);
+        _poll.Release();
+        await _ack.WaitAsync().ConfigureAwait(false);
+        _ack.Release();
     }
 
     internal async Task PollOnceAsync(CancellationToken token = default)
@@ -169,16 +176,28 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         try
         {
             KeyValuePair<string, StreamState>[] streams;
-            lock (_sync) { if (_disposed) return; streams = _tracked.ToArray(); }
-            foreach (var pair in streams)
+            string? priority;
+            lock (_sync) { if (_disposed) return; streams = _tracked.ToArray(); priority = _prioritySession; }
+            if (streams.Length == 0) return;
+            IReadOnlyDictionary<string, OpenCodeActiveSessionState>? active = null;
+            var activeAt = DateTimeOffset.UtcNow;
+            try { active = (await _source.Client.GetActiveSessionsAsync(token).ConfigureAwait(false)).Data; }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (Exception error) when (IsObservationFailure(error)) { }
+            var ordered = streams.OrderByDescending(p => p.Key == priority)
+                .ThenByDescending(p => active?.TryGetValue(p.Key, out var value) == true && value?.Type == "running").ToArray();
+            foreach (var batch in ordered.Chunk(4))
+                await Task.WhenAll(batch.Select(ObserveStreamAsync)).ConfigureAwait(false);
+
+            async Task ObserveStreamAsync(KeyValuePair<string, StreamState> pair)
             {
                 token.ThrowIfCancellationRequested();
-                if (!Active(pair.Key, pair.Value)) continue;
+                if (!Active(pair.Key, pair.Value)) return;
                 // Retain still-valid evidence during refresh. App expires it using its original evidence time.
                 await MessagesAsync(pair.Key, pair.Value, token).ConfigureAwait(false);
                 await PendingAsync(pair.Key, pair.Value, false, token).ConfigureAwait(false);
                 await PendingAsync(pair.Key, pair.Value, true, token).ConfigureAwait(false);
-                try { await ExecutionAsync(pair.Key, pair.Value, token).ConfigureAwait(false); }
+                try { await ExecutionAsync(pair.Key, pair.Value, active, activeAt, token).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
                 catch (Exception error) when (IsObservationFailure(error)) { PublishUnknown(pair.Key, pair.Value); }
             }

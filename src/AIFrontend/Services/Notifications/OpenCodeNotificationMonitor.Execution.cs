@@ -49,16 +49,6 @@ public sealed partial class OpenCodeNotificationMonitor
     private Task<OpenCodeSessionInfo> ReadSessionAsync(string session, CancellationToken token)
         => _source.Client.GetSessionInfoAsync(session, token);
 
-    private async Task ExecutionAsync(string session, StreamState state, CancellationToken token)
-    {
-        var at = DateTimeOffset.UtcNow;
-        IReadOnlyDictionary<string, OpenCodeActiveSessionState>? active = null;
-        try { active = (await _source.Client.GetActiveSessionsAsync(token).ConfigureAwait(false)).Data; }
-        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch (Exception error) when (IsObservationFailure(error)) { }
-        await ExecutionAsync(session, state, active, at, token).ConfigureAwait(false);
-    }
-
     private async Task ExecutionAsync(string session, StreamState state,
         IReadOnlyDictionary<string, OpenCodeActiveSessionState>? activeSessions, DateTimeOffset activeAt, CancellationToken token)
     {
@@ -214,7 +204,7 @@ public sealed partial class OpenCodeNotificationMonitor
     internal async Task<double?> AcknowledgeSessionAsync(string session, double coveredIdle, Func<Action, bool> fence, CancellationToken token)
     {
         if (!double.IsFinite(coveredIdle)) return null;
-        await _poll.WaitAsync(token).ConfigureAwait(false);
+        await _ack.WaitAsync(token).ConfigureAwait(false);
         try
         {
             StreamState? state;
@@ -236,6 +226,6 @@ public sealed partial class OpenCodeNotificationMonitor
                 await _sink.ReconcileViewAsync(_source, session, coveredIdle, history.Messages).ConfigureAwait(false);
             return coveredIdle;
         }
-        finally { _poll.Release(); }
+        finally { _ack.Release(); }
     }
 }

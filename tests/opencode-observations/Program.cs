@@ -32,6 +32,7 @@ static partial class Checks
             ("gate retirement keeps duplicate/unknown and waiter protection", GateRetirement),
             ("opaque notification cursors are escaped and not request IDs", OpaqueNotificationCursor),
             ("gap baseline recovery and bounded preparation-only retry", GapAndPreparationRetry),
+            ("bounded prioritized sweep and independent exact ACK", SweepAndIndependentAck),
             ("completion preparation retry and observation retirement", CompletionRetryAndRetirement),
             ("state transitions and source invalidation", State),
             ("pending, remote view and explicit receipt stay separate", PendingView),
