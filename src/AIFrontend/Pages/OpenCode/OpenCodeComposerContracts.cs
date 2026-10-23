@@ -38,7 +38,10 @@ internal readonly record struct OpenCodeComposerEditorAck(OpenCodeComposerToken 
 
 internal sealed record OpenCodeComposerDraftBasis(
     OpenCodeComposerBinding Binding, OpenCodeComposerToken Token,
-    string Text, string? ServerCommand, bool HasFiles, SessionControlDraft Draft, string? Delivery = null);
+    string Text, string? ServerCommand, bool HasFiles, SessionControlDraft Draft, string? Delivery = null)
+{
+    internal IReadOnlyList<OpenCodePromptContext> Contexts { get; init; } = Array.Empty<OpenCodePromptContext>();
+}
 internal sealed record OpenCodeComposerSendContext(
     SessionControlOrigin Origin, OpenCodeComposerDraftBasis Basis,
     SessionControlContinuationConsent? Consent,

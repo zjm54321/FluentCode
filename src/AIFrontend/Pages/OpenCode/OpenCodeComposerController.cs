@@ -21,6 +21,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private Guid _draft = Guid.NewGuid();
     private long _edit;
     private string _text = string.Empty;
+    private readonly List<OpenCodePromptContext> _contexts = new();
     private string? _command;
     private readonly List<StoredFile> _files = new();
     private CatalogRequest? _catalogOwner;
@@ -192,7 +193,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         lock (_sync)
         {
             if (!Current(token) || text == _text) return;
-            _text = text;
+            UpdateContextText(text);
             Edited();
         }
         Publish();
@@ -210,7 +211,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             if (!Current(basisToken)
                 && !(allowUnboundCarry && _binding?.Slot is null && Current(Token) && _origin is null && _command is null && _files.Count == 0
                     && basisToken.Draft == _draft && basisToken.Edit == _edit)) return null;
-            _text = text;
+            UpdateContextText(text);
             Edited(); // Even an edit->original-text cycle invalidates unchanged-submission clearing.
             acknowledgment = new(Token, _text);
         }
@@ -223,6 +224,42 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         _clientAction = null;
         _note = null;
         if (!preserveOrigin && !HasDraft) _origin = null;
+    }
+
+    internal bool TryAddContext(OpenCodeComposerToken token, string id, bool isSkill, int start)
+    {
+        lock (_sync)
+        {
+            var context = new OpenCodePromptContext(id, isSkill, start);
+            if (!Current(token) || Busy || HasClientAction || !context.Matches(_text)) return false;
+            _contexts.RemoveAll(c => c.Start == start);
+            _contexts.Add(context);
+            _origin ??= _binding; // Mentions belong to this workspace/session just like attachments.
+            Edited(preserveOrigin: true);
+        }
+        Publish();
+        return true;
+    }
+
+    private void UpdateContextText(string text)
+    {
+        // Track the single replacement represented by a native edit. Edits inside a mention remove its
+        // attachment; edits before it move its span. Never turn unrelated typed @text into a typed part.
+        var prefix = 0;
+        while (prefix < _text.Length && prefix < text.Length && _text[prefix] == text[prefix]) prefix++;
+        var suffix = 0;
+        while (suffix < _text.Length - prefix && suffix < text.Length - prefix
+            && _text[_text.Length - 1 - suffix] == text[text.Length - 1 - suffix]) suffix++;
+        var oldEnd = _text.Length - suffix;
+        var delta = text.Length - _text.Length;
+        for (var i = _contexts.Count - 1; i >= 0; i--)
+        {
+            var c = _contexts[i];
+            if (c.Start >= oldEnd) _contexts[i] = c = c with { Start = c.Start + delta };
+            else if (c.End > prefix) { _contexts.RemoveAt(i); continue; }
+            if (!c.Matches(text)) _contexts.RemoveAt(i);
+        }
+        _text = text;
     }
 
     public OpenCodeComposerCatalogLifetime BeginCatalogLifetime()
@@ -382,7 +419,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                     _clientIntent = new(Guid.NewGuid(), client.Kind);
                 }
                 else return;
-                _text = trigger.RemainingArguments;
+                UpdateContextText(trigger.RemainingArguments);
                 Edited(preserveOrigin: true);
                 CloseCatalog();
                 selected = true;
@@ -418,7 +455,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                     || !completion.StartsWith(trigger.Filter, StringComparison.OrdinalIgnoreCase)
                     || completion.Any(c => char.IsWhiteSpace(c) || c == '/')
                     || !_commands.Any(r => r.Name.StartsWith(completion, StringComparison.OrdinalIgnoreCase))) return;
-                _text = _text[..(_text.IndexOf('/') + 1)] + completion;
+                UpdateContextText(_text[..(_text.IndexOf('/') + 1)] + completion);
                 Edited();
                 completed = true;
             }
@@ -540,7 +577,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                 if (ticket.Kind != OpenCodeComposerClientActionKind.EditDraft
                     && !(ticket.Kind == OpenCodeComposerClientActionKind.Undo && _text.Length == 0
                         && _command is null && _files.Count == 0)) return;
-                _text = text;
+                UpdateContextText(text);
                 if (ticket.Kind == OpenCodeComposerClientActionKind.Undo) _origin ??= ticket.Binding;
                 Edited(preserveOrigin: true); // Invalidates this ticket, even for same-text Apply.
                 acknowledgment = new(Token, _text);
@@ -666,6 +703,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private void Clear()
     {
         _text = string.Empty;
+        _contexts.Clear();
         _command = null;
         _files.Clear();
         _origin = null;
@@ -745,7 +783,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                         if (command is null)
                         {
                             var sentModel = preparation.State?.Model;
-                            var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token, context.Basis.Delivery).ConfigureAwait(false);
+                            var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token, context.Basis.Delivery, context.Basis.Contexts).ConfigureAwait(false);
                             outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
                             // Admission remains real even when settlement/UI ownership subsequently goes stale.
                             try { promptAccepted?.Invoke(sentModel); }

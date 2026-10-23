@@ -79,7 +79,7 @@ internal static partial class Program
         Check(typeof(OpenCodeComposerSlotData).GetProperties(BindingFlags.Instance | BindingFlags.Public).Length == 0
             && typeof(OpenCodeComposerSnapshot).GetProperties().All(p => p.PropertyType != typeof(byte[]))
             && typeof(OpenCodeComposerAttachmentRow).GetProperty("Bytes")!.PropertyType == typeof(int), "opaque payloads never enter public snapshot metadata");
-        Check(dataA.Contents.GetType().GetProperties().Select(p => p.Name).Order().SequenceEqual(new[] { "Command", "Draft", "Files", "Text" }),
+        Check(dataA.Contents.GetType().GetProperties().Select(p => p.Name).Order().SequenceEqual(new[] { "Command", "Contexts", "Draft", "Files", "Text" }),
             "slot data contains only pure draft contents, no binding/source/token/operation/capability");
     }
     private static async Task SlotValidation()
@@ -185,7 +185,9 @@ internal static partial class Program
         var finalize = await finalizeReady.Task;
         data = Capture(f); Activate(f, b, f.Core.CreateEmptySlotData()); Activate(f, a, data); f.Text("new A text");
         newPick = f.Core.BeginPick(f.Core.Snapshot.Token)!;
-        Check(finalize() == OpenCodeComposerDraftFinalization.OriginLost, "old accepted finalizer never regains ownership on ABA");
+        // Scope cancellation can close the handoff before this invocation; either result denies clearing.
+        Check(finalize() is OpenCodeComposerDraftFinalization.OriginLost or OpenCodeComposerDraftFinalization.AlreadyFinalized,
+            "old accepted finalizer never regains ownership on ABA");
         release.SetResult(true); await sending;
         Check(f.Core.Snapshot.Text == "new A text" && f.Core.Snapshot.IsBusy && f.Handler.Posts == 1,
             "late accepted send neither clears restored edits nor settles a new owner nor resends");

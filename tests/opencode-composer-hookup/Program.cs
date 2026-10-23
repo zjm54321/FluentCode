@@ -1094,6 +1094,7 @@ namespace AIFrontend.Pages.OpenCode
         // WinUI event delivery or rendering. Immediate scheduling is deliberate, with a hold seam below.
         internal event EventHandler? StateChanged;
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
+        internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
         internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
         internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, DiscardRequested, PickRequested;
         internal event EventHandler<OpenCodeComposerCatalogOpenRequestedEventArgs>? CatalogOpenRequested;

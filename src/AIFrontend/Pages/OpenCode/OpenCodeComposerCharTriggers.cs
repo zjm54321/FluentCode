@@ -8,7 +8,7 @@ using AIFrontend.Services.OpenCode;
 namespace AIFrontend.Pages.OpenCode;
 
 // WinUI-free B7 policy: the composer "+" menu structure, literal-character trigger legality (/ @ !) and the "@" context
-// candidates sourced from the REAL server file index (GET api/fs/find, or GET api/fs/list for the bare "@").
+// candidates sourced from the REAL agent and skill catalogs (GET api/agent + GET api/skill).
 // Deliberately free of WinUI types so the offline composer harness executes it directly.
 
 /// <summary>Rows of the composer "+" menu, in display order.</summary>
@@ -21,8 +21,8 @@ internal sealed record OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKin
 internal static class OpenCodeComposerPlusMenu
 {
     internal const string TerminalTooltip = "在会话工作目录执行 Shell 命令；Esc 返回消息草稿。";
-    internal const string ContextTooltip = "从服务器文件索引选择并插入 @路径文本（不上传文件）。也可以在行首或空格后输入 @。";
-    internal const string ContextUnavailableTooltip = "当前没有可用的工作区目录或服务器连接，无法读取文件索引。";
+    internal const string ContextTooltip = "选择 agent 或 skill 上下文。也可以在行首或空格后输入 @。";
+    internal const string ContextUnavailableTooltip = "当前没有可用的工作区目录或服务器连接，无法读取 agent 和 skill。";
     internal const string CommandTooltip = "服务器命令与 AIFrontend 本机操作。也可以在输入框开头输入 /。";
 
     /// <summary>添加附件 · ── · 命令（/） · 上下文（@） · 终端（!）. The view builds its MenuFlyout from exactly this list.</summary>
@@ -114,13 +114,11 @@ internal static class OpenCodeComposerCharTriggers
         return new(true, start, caret - start, query);
     }
 
-    /// <summary>Text that replaces the "@query" token: files end with a space (done), folders keep "/" to keep browsing.</summary>
+    /// <summary>Official TUI display text; the selected identity is also retained as a typed prompt attachment.</summary>
     internal static string MentionInsertion(OpenCodeComposerMentionCandidate candidate)
     {
         ArgumentNullException.ThrowIfNull(candidate);
-        var path = candidate.IsDirectory ? candidate.Path.TrimEnd('/') + "/" : candidate.Path;
-        var quoted = path.Any(char.IsWhiteSpace) ? "\"" + path + "\"" : path;
-        return "@" + quoted + (candidate.IsDirectory ? string.Empty : " ");
+        return "@" + candidate.Id + " ";
     }
 
     /// <summary>
@@ -168,19 +166,19 @@ internal sealed class OpenCodeComposerMentionQueries
             rows = await search(query, token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { return null; }
-        catch (Exception ex)
+        catch (Exception)
         {
             rows = Array.Empty<OpenCodeComposerMentionCandidate>();
-            error = "文件索引读取失败：" + OpenCodeComposerInputPolicy.Bound(ex.Message, 80);
+            error = "上下文读取失败；agent 或 skill 不可用。";
         }
         return generation == _generation ? new(generation, rows, error) : null;
     }
 }
 
-/// <summary>One "@" candidate: a path relative to the session/workspace location, exactly as the server reported it.</summary>
-internal sealed record OpenCodeComposerMentionCandidate(string Path, bool IsDirectory);
+/// <summary>One server-registered agent or skill. Identity, not display name, is inserted and sent.</summary>
+internal sealed record OpenCodeComposerMentionCandidate(string Id, bool IsSkill, string? Description = null);
 
-/// <summary>Real-index search for the current workspace (null provider result: no client/directory, so "@" is unavailable).</summary>
+/// <summary>Registered contexts in the current workspace; null provider means unavailable.</summary>
 internal delegate Task<IReadOnlyList<OpenCodeComposerMentionCandidate>> OpenCodeComposerMentionSearch(string query, CancellationToken cancellationToken);
 
 internal static class OpenCodeComposerMentions
@@ -188,8 +186,7 @@ internal static class OpenCodeComposerMentions
     internal const int MaxCandidates = 30;
 
     /// <summary>
-    /// Bare "@": the workspace root listing (GET api/fs/list). "@query": the server's ranked recursive search
-    /// (GET api/fs/find?query=…&amp;limit=…). Never a local or fabricated list; protocol errors propagate to the caller.
+    /// Both bare "@" and filtered queries use agent + skill catalogs, never the filesystem.
     /// </summary>
     internal static async Task<IReadOnlyList<OpenCodeComposerMentionCandidate>> SearchAsync(OpenCodeClient client, string directory,
         string query, CancellationToken cancellationToken)
@@ -197,34 +194,14 @@ internal static class OpenCodeComposerMentions
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         query ??= string.Empty;
-        if (query.Length == 0)
-        {
-            var listing = await client.GetFileSystemAsync(directory, null, cancellationToken).ConfigureAwait(false);
-            return FromEntries(listing.Data!, rankedByServer: false);
-        }
-        var found = await client.FindFileSystemAsync(directory, query, MaxCandidates, cancellationToken).ConfigureAwait(false);
-        return FromEntries(found.Data!, rankedByServer: true);
-    }
-
-    /// <summary>Server entries → candidates: drops empty paths, normalises separators, de-duplicates, caps the count.
-    /// A ranked (find) result keeps the server order; a plain listing shows folders first, then names.</summary>
-    internal static IReadOnlyList<OpenCodeComposerMentionCandidate> FromEntries(IEnumerable<OpenCodeFileSystemEntry> entries, bool rankedByServer)
-    {
-        ArgumentNullException.ThrowIfNull(entries);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var list = new List<OpenCodeComposerMentionCandidate>();
-        foreach (var entry in entries)
-        {
-            if (entry?.Path is not { } raw || entry.Type is not ("file" or "directory")) continue;
-            var path = raw.Replace('\\', '/');
-            if (path == ".." || path.StartsWith("../", StringComparison.Ordinal)) continue; // Outside the location: never offered.
-            while (path.StartsWith("./", StringComparison.Ordinal)) path = path[2..];
-            path = path.Trim('/');
-            if (path.Length == 0 || !seen.Add(path)) continue;
-            list.Add(new(path, entry.Type == "directory"));
-        }
-        if (!rankedByServer)
-            list = list.OrderByDescending(c => c.IsDirectory).ThenBy(c => c.Path, StringComparer.OrdinalIgnoreCase).ToList();
-        return list.Take(MaxCandidates).ToArray();
+        var agentsTask = client.ListAgentsAsync(directory, cancellationToken);
+        var skillsTask = client.ListSkillsAsync(directory, cancellationToken);
+        await Task.WhenAll(agentsTask, skillsTask).ConfigureAwait(false);
+        var agents = agentsTask.Result.Data!.Where(a => !a.Hidden && a.Mode is OpenCodeAgentModes.Subagent or OpenCodeAgentModes.All)
+            .Select(a => new OpenCodeComposerMentionCandidate(a.Id!, false, a.Description));
+        var skills = skillsTask.Result.Data!.Select(s => new OpenCodeComposerMentionCandidate(s.Id!, true, s.Description));
+        return agents.Concat(skills).Where(c => c.Id.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || c.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+            .DistinctBy(c => (c.Id, c.IsSkill)).Take(MaxCandidates).ToArray();
     }
 }

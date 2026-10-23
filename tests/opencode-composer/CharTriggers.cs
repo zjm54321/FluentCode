@@ -59,8 +59,8 @@ internal static partial class Program
             Check(OpenCodeComposerCharTriggers.Classify(text, text.Length) == OpenCodeComposerCharTriggerKind.None, "no slash trigger in word/url/path " + text);
         var insert = OpenCodeComposerCharTriggers.ContextInsertion("wordmore", 4);
         Check(insert == (" @ ", 2), "explicit context inserts legal token without destroying neighbouring text");
-        Check(OpenCodeComposerCharTriggers.MentionInsertion(new("src/a.cs", false)) == "@src/a.cs "
-            && OpenCodeComposerCharTriggers.MentionInsertion(new("my folder/a.cs", false)) == "@\"my folder/a.cs\" ", "path text insertion and whitespace quoting");
+        Check(OpenCodeComposerCharTriggers.MentionInsertion(new("explorer", false)) == "@explorer "
+            && OpenCodeComposerCharTriggers.MentionInsertion(new("review", true)) == "@review ", "official agent and skill insertion uses registered ID");
 
         using var f = new Fixture();
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NoContent));
@@ -77,18 +77,20 @@ internal static partial class Program
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NotFound));
         try { await f.Client.ExecuteSessionShellAsync("ses_test", "pwd"); Check(false, "shell rejects 404"); }
         catch (AIFrontend.Services.OpenCode.OpenCodeApiException e) { Check(e.StatusCode == 404, "shell reports real HTTP error"); }
-        string? uri = null;
+        var uris = new System.Collections.Generic.List<string>();
         f.Handler.Send = (r, _) =>
         {
-            uri = Uri.UnescapeDataString(r.RequestUri!.AbsoluteUri);
-            return Task.FromResult(Json("{\"location\":{\"directory\":\"/repo\"},\"data\":[{\"path\":\"src/a.cs\",\"type\":\"file\"},{\"path\":\"src\",\"type\":\"directory\"}]}"));
+            uris.Add(Uri.UnescapeDataString(r.RequestUri!.AbsoluteUri));
+            return Task.FromResult(Json(r.RequestUri.AbsolutePath.EndsWith("/agent")
+                ? """{"location":{"directory":"/repo"},"data":[{"id":"explorer","name":"Explore","request":{},"mode":"subagent","hidden":false,"permissions":[]},{"id":"hidden","name":"Hidden","request":{},"mode":"subagent","hidden":true,"permissions":[]},{"id":"primary","name":"Primary","request":{},"mode":"primary","hidden":false,"permissions":[]},{"id":"all","name":"All","request":{},"mode":"all","hidden":false,"permissions":[]}]}"""
+                : """{"location":{"directory":"/repo"},"data":[{"id":"review","name":"Review","path":"/repo/SKILL.md","content":"private skill content","description":"Review changes"}]}"""));
         };
-        var found = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "a&b", CancellationToken.None);
-        Check(uri!.Contains("/api/fs/find?") && uri.Contains("location[directory]=/repo") && uri.Contains("query=a&b")
-            && uri.Contains("limit=30"), "official fs.find endpoint, deepObject location, query and string limit");
-        Check(found.Count == 2 && found[0].Path == "src/a.cs" && found[1].IsDirectory, "real indexed rows preserve server rank");
-        await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "", CancellationToken.None);
-        Check(uri!.Contains("/api/fs/list?"), "bare @ uses real root listing");
+        var found = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "", CancellationToken.None);
+        Check(uris.Count == 2 && uris.Any(u => u.Contains("/api/agent?")) && uris.Any(u => u.Contains("/api/skill?"))
+            && uris.All(u => u.Contains("location[directory]=/repo") && !u.Contains("/fs/")), "official agent and skill endpoints with exact deepObject directory; no filesystem");
+        Check(found.Count == 3 && found[0].Id == "explorer" && found[1].Id == "all" && found[2].IsSkill, "visible subagent/all agents plus skills, never hidden or primary");
+        var filtered = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "REVIEW", CancellationToken.None);
+        Check(filtered.Count == 1 && filtered[0].Id == "review" && filtered[0].IsSkill, "case-insensitive context filtering");
 
         var queries = new OpenCodeComposerMentionQueries();
         var oldStarted = new TaskCompletionSource<CancellationToken>();
@@ -109,7 +111,7 @@ internal static partial class Program
         Check(empty is { Rows.Count: 0, Error: null }, "honest empty backend result");
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.InternalServerError));
         var error = await queries.QueryAsync((q, ct) => OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", q, ct), "error");
-        Check(error is { Rows.Count: 0, Error: not null } && error.Error.StartsWith("文件索引读取失败："), "honest backend error, no fabricated rows");
+        Check(error is { Rows.Count: 0, Error: not null } && error.Error.Contains("不可用"), "honest backend error, no fabricated rows or exception payload disclosure");
         f.Handler.Send = (_, _) => Task.FromResult(Json("{\"data\":[]}"));
         var malformed = await queries.QueryAsync((q, ct) => OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", q, ct), "malformed");
         Check(malformed is { Rows.Count: 0, Error: not null }, "malformed endpoint shape becomes error");
@@ -129,15 +131,34 @@ internal static partial class Program
             && view.Contains("opening != fresh.Token || fresh.IsBusy") && view.Contains("DiscardRequested?.Invoke(this, new(fresh.Token))"), "active enhanced drafts retain guarded discard via the existing recovery entry");
         Check(page.Contains("_composerView.MentionSearchProvider = ComposerMentionSearch;") && page.Contains("OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct)"), "real provider wired to active binding directory");
         Check(view.Contains("_attachItem.Click += (_, _) => RequestPick();") && page.Contains("_composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);"), "existing attachment picker handoff intact");
-        Check(view.Contains("没有匹配的文件或文件夹") && view.Contains("result.Error") && view.Contains("_mentionQueries.IsCurrent(result)"), "view exposes empty/error and rejects queued stale results");
+        Check(view.Contains("没有匹配的 agent 或 skill") && view.Contains("result.Error") && view.Contains("_mentionQueries.IsCurrent(result)"), "view exposes empty/error and rejects queued stale results");
         Check(view.Contains("trigger != _mentionTrigger") && view.Contains("_mentionArmed = false;"), "acceptance requires exact query and application writes disarm triggers");
         f.Handler.Send = (_, _) => Task.FromResult(Json(Receipt));
-        var referenceText = "Inspect " + OpenCodeComposerCharTriggers.MentionInsertion(new("src/a.cs", false));
+        var referenceText = "Inspect @explorer @review ";
         f.Text(referenceText);
-        Check(OpenCodeComposerInputPolicy.Route(false, 0, f.Core.Snapshot.Text) == OpenCodeComposerSubmitRoute.LegacyText, "path text stays on existing ordinary prompt route");
-        var submitted = await f.Client.SendPromptAsync("ses_test", f.Core.Snapshot.Text, CancellationToken.None);
+        Check(f.Core.TryAddContext(f.Core.Snapshot.Token, "explorer", false, 8)
+            && f.Core.TryAddContext(f.Core.Snapshot.Token, "review", true, 18), "chosen contexts retained under exact draft token");
+        var basis = f.Core.CaptureDraft(f.Core.Snapshot.Token)!;
+        Check(basis.Contexts.Count == 2 && f.Core.Snapshot.IsBoundDraft, "mention draft binds to source and captures both typed identities");
+        var submitted = await f.Client.SendPromptGuardedAsync("ses_test", basis.Text, null, send => { send(); return true; }, CancellationToken.None, contexts: basis.Contexts);
+        using var body = System.Text.Json.JsonDocument.Parse(f.Handler.LastBody!);
         Check(submitted.Id == "msg_real"
-            && f.Handler.LastBody!.Contains("@src/a.cs") && !f.Handler.LastBody.Contains("\"files\""), "fallback reference sends path text, never fabricates a file upload");
-        Console.WriteLine($"PASS: B7 {checks - before} menu/trigger/index/cancellation/empty/error/wiring assertions; synthetic HTTP, no native UI execution.");
+            && body.RootElement.GetProperty("agents")[0].GetProperty("name").GetString() == "explorer"
+            && body.RootElement.GetProperty("skills")[0].GetProperty("id").GetString() == "review"
+            && body.RootElement.GetProperty("agents")[0].GetProperty("mention").GetProperty("start").GetInt32() == 8
+            && !body.RootElement.TryGetProperty("files", out _), "prompt sends official agent name + skill id mention attachments, no file upload or eager skill activation");
+        f.Text("Prefix " + referenceText);
+        Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts[0].Start == 15, "edit before context moves mention span");
+        f.Text("Prefix Inspect @changed @review ");
+        Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts is { Count: 1 } remaining && remaining[0].IsSkill, "editing a mention removes its typed part, preserves other contexts");
+        var key = Key(f, Guid.NewGuid(), "/repo");
+        var retained = Capture(f);
+        Activate(f, key, f.Core.CreateEmptySlotData());
+        Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts.Count == 0, "other slot never inherits context parts");
+        Activate(f, key, retained);
+        Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts is { Count: 1 } restored && restored[0].Id == "review", "slot restoration preserves context identity and span");
+        f.Core.DiscardDraft(f.Core.Snapshot.Token);
+        Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts.Count == 0, "discard clears contexts");
+        Console.WriteLine($"PASS: B7 {checks - before} menu/trigger/context/cancellation/empty/error/wiring assertions; synthetic HTTP, no native UI execution.");
     }
 }

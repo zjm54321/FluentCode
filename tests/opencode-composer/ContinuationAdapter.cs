@@ -55,9 +55,10 @@ internal static partial class Program
                 "identical authoritative captures preserve exact strings/token and canonical fingerprint");
             var expected = SessionControlJson.Hash(new
             {
-                version = 1, scope = one.Token.Scope, draftId = one.Token.Draft, edit = one.Token.Edit,
+                version = 2, scope = one.Token.Scope, draftId = one.Token.Draft, edit = one.Token.Edit,
                 text = one.Text, command = one.ServerCommand,
-                files = f.Core.Snapshot.Attachments.Select(a => new { id = a.Id, name = a.Name, mime = a.Mime, bytes = a.Bytes }).ToArray()
+                files = f.Core.Snapshot.Attachments.Select(a => new { id = a.Id, name = a.Name, mime = a.Mime, bytes = a.Bytes }).ToArray(),
+                contexts = one.Contexts.Select(c => new { c.Id, c.IsSkill, c.Start }).ToArray()
             });
             Check(one.Draft.Fingerprint == expected, "fingerprint version/schema uses ordered persistent IDs and byte COUNTS, existing canonical helper");
             var context = f.Context();

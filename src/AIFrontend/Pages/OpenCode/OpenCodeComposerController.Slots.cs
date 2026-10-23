@@ -1,15 +1,16 @@
 using System;
 using System.Threading;
+using AIFrontend.Services.OpenCode;
 
 namespace AIFrontend.Pages.OpenCode;
 
 internal sealed partial class OpenCodeComposerController
 {
     // Copies the ordered reference list, not payloads. StoredFile and its bytes remain private and immutable.
-    private sealed record SlotContents(Guid Draft, string Text, string? Command, StoredFile[] Files);
+    private sealed record SlotContents(Guid Draft, string Text, string? Command, StoredFile[] Files, OpenCodePromptContext[] Contexts);
 
     internal OpenCodeComposerSlotData CreateEmptySlotData()
-        => OpenCodeComposerSlotData.Wrap(new SlotContents(Guid.NewGuid(), string.Empty, null, Array.Empty<StoredFile>()));
+        => OpenCodeComposerSlotData.Wrap(new SlotContents(Guid.NewGuid(), string.Empty, null, Array.Empty<StoredFile>(), Array.Empty<OpenCodePromptContext>()));
 
     internal bool TryCaptureSlotData(OpenCodeComposerToken expected, out OpenCodeComposerSlotData? data)
     {
@@ -18,7 +19,7 @@ internal sealed partial class OpenCodeComposerController
             data = null;
             // Read-only data recovery is allowed even after source revocation. This is NOT CaptureDraft authority.
             if (expected != Token) return false;
-            data = OpenCodeComposerSlotData.Wrap(new SlotContents(_draft, _text, _command, _files.ToArray()));
+            data = OpenCodeComposerSlotData.Wrap(new SlotContents(_draft, _text, _command, _files.ToArray(), _contexts.ToArray()));
             return true;
         }
     }
@@ -55,6 +56,8 @@ internal sealed partial class OpenCodeComposerController
                 if (contents is not null) _draft = contents.Draft;
                 _files.Clear();
                 if (contents is not null) _files.AddRange(contents.Files);
+                _contexts.Clear();
+                if (contents is not null) _contexts.AddRange(contents.Contexts);
                 _origin = binding is not null && HasDraft ? binding : null;
                 next = Token;
                 return true;

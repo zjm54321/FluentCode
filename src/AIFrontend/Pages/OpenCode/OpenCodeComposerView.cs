@@ -1077,7 +1077,7 @@ internal sealed class OpenCodeComposerView : StackPanel
 
     // ------------------------------------------------------------------
     // "@" context candidates (B7). A literal "@" at a line start or after whitespace (OpenCodeComposerCharTriggers) opens
-    // a list whose rows come ONLY from the server file index the page provides (GET api/fs/find / api/fs/list).
+    // a list whose rows come ONLY from the registered agent/skill catalogs the page provides.
     // Choosing a row edits the editor like typing/paste (native TextBox → TextChanging ledger); it never submits.
     // ------------------------------------------------------------------
 
@@ -1086,6 +1086,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// (then "上下文（@）" is disabled with an honest tooltip and a typed "@" stays plain text).
     /// </summary>
     internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
+    internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
 
     private Grid _mentionSlot = null!;
     private Border _mentionPanel = null!;
@@ -1272,7 +1273,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _mentionRows = Array.Empty<OpenCodeComposerMentionCandidate>();
         _mentionHighlight = -1;
         _mentionList.Items.Clear();
-        SetMentionStatus(loading: true, "正在读取文件索引…");
+        SetMentionStatus(loading: true, "正在读取 agent 和 skill…");
         var result = await _mentionQueries.QueryAsync(search, query);
         if (result is null) return;
         void Apply()
@@ -1297,30 +1298,29 @@ internal sealed class OpenCodeComposerView : StackPanel
         foreach (var row in rows) _mentionList.Items.Add(MentionItem(row));
         _mentionList.Visibility = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         SetMentionStatus(false, failure ?? (rows.Count > 0
-            ? (query.Length == 0 ? "工作区根目录" : $"{rows.Count} 个匹配")
-            : (query.Length == 0 ? "工作区根目录为空" : "没有匹配的文件或文件夹")));
+            ? (query.Length == 0 ? "Agent 和 skill" : $"{rows.Count} 个匹配")
+            : "没有匹配的 agent 或 skill"));
         _mentionHighlight = rows.Count > 0 ? 0 : -1;
         ApplyMentionHighlight();
     }
 
     private ListViewItem MentionItem(OpenCodeComposerMentionCandidate candidate)
     {
-        var slash = candidate.Path.LastIndexOf('/');
-        var name = slash >= 0 ? candidate.Path[(slash + 1)..] : candidate.Path;
-        var parent = slash > 0 ? candidate.Path[..slash] : string.Empty;
+        var name = candidate.Id;
+        var parent = candidate.IsSkill ? "Skill" : "Agent";
         var icon = new FontIcon
         {
-            Glyph = candidate.IsDirectory ? "\uE8B7" : "\uE8A5",
+            Glyph = candidate.IsSkill ? "\uE734" : "\uE77B",
             FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center,
-            Opacity = candidate.IsDirectory ? 0.9 : 0.75,
+            Opacity = 0.9,
         };
         var title = new TextBlock
         {
-            Text = OpenCodeComposerInputPolicy.Bound(name, 64) + (candidate.IsDirectory ? "/" : string.Empty),
+            Text = "@" + OpenCodeComposerInputPolicy.Bound(name, 64),
             FontFamily = MonoFont,
             FontWeight = FontWeights.SemiBold,
-            MaxWidth = 260, // An Auto column measures unbounded; cap it so long names trim and the folder stays visible.
+            MaxWidth = 260, // Bound the Auto column so long IDs trim and the context kind stays visible.
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -1340,8 +1340,8 @@ internal sealed class OpenCodeComposerView : StackPanel
             Place(row, where, 2);
         }
         var item = new ListViewItem { Content = row, Tag = candidate, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        AutomationProperties.SetName(item, (candidate.IsDirectory ? "文件夹 " : "文件 ") + candidate.Path);
-        ToolTipService.SetToolTip(item, candidate.Path);
+        AutomationProperties.SetName(item, parent + " " + candidate.Id);
+        ToolTipService.SetToolTip(item, candidate.Description ?? candidate.Id);
         return item;
     }
 
@@ -1398,7 +1398,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     }
 
     /// <summary>
-    /// Replace the "@query" token under the caret with the chosen server path. A user-gesture edit through the native
+    /// Replace the "@query" token under the caret with the chosen registered ID. A user-gesture edit through the native
     /// TextBox (exactly like typing/paste): TextChanging records it in the existing ledger and TextChanged flushes it with
     /// its own token. Never a guarded application write, never a submission.
     /// </summary>
@@ -1419,6 +1419,8 @@ internal sealed class OpenCodeComposerView : StackPanel
         editor.Select(trigger.Start, trigger.Length);
         editor.SelectedText = insertion;
         editor.Select(trigger.Start + insertion.Length, 0);
+        if (FlushForIntent() && _source() is { IsActive: true, IsBusy: false } chosen)
+            ContextChosen?.Invoke(chosen.Token, candidate.Id, candidate.IsSkill, trigger.Start);
         if (editor.FocusState == FocusState.Unfocused) editor.Focus(FocusState.Programmatic);
     }
 

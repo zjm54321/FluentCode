@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -24,7 +25,7 @@ public sealed partial class OpenCodeClient
 
     internal async Task<OpenCodeInboxUser> SendPromptGuardedAsync(string sessionId, string text,
         IReadOnlyList<PromptFileAttachment>? files, Func<Action, bool> starter, CancellationToken cancellationToken,
-        string? delivery = null)
+        string? delivery = null, IReadOnlyList<OpenCodePromptContext>? contexts = null)
     {
         ValidateSessionId(sessionId);
         ArgumentNullException.ThrowIfNull(text);
@@ -33,7 +34,21 @@ public sealed partial class OpenCodeClient
         byte[] Serialize()
         {
             var validated = OpenCodeAttachment.ValidateFiles(files);
-            var body = BuildPromptBody(text, validated is { Count: > 0 } ? validated : null, delivery);
+            object body = BuildPromptBody(text, validated is { Count: > 0 } ? validated : null, delivery);
+            if (contexts is { Count: > 0 })
+            {
+                if (contexts.Any(c => !c.Matches(text))) throw new ArgumentException("Context mention no longer matches text.", nameof(contexts));
+                var fields = new Dictionary<string, object> { ["text"] = text };
+                if (validated is { Count: > 0 }) fields["files"] = validated;
+                if (delivery is not null) fields["delivery"] = delivery;
+                var agents = contexts.Where(c => !c.IsSkill).Select(c => new { name = c.Id,
+                    mention = new { start = c.Start, end = c.End, text = "@" + c.Id } }).ToArray();
+                var skills = contexts.Where(c => c.IsSkill).DistinctBy(c => c.Id).Select(c => new { id = c.Id,
+                    mention = new { start = c.Start, end = c.End, text = "@" + c.Id } }).ToArray();
+                if (agents.Length > 0) fields["agents"] = agents;
+                if (skills.Length > 0) fields["skills"] = skills;
+                body = fields;
+            }
             return OpenCodeAttachment.SerializeRequest(body);
         }
         var bytes = files is { Count: > 0 }

@@ -29,7 +29,8 @@ internal sealed partial class OpenCodeComposerController
             lock (_sync)
             {
                 if (!Current(expected) || !Equals(_binding, binding)) return;
-                basis = new(binding, Token, _text, _command, _files.Count != 0, DescribeDraft(delivery), delivery);
+                basis = new(binding, Token, _text, _command, _files.Count != 0, DescribeDraft(delivery), delivery)
+                { Contexts = _contexts.ToArray() };
                 _draftBases.Add(basis, new());
             }
         });
@@ -42,8 +43,9 @@ internal sealed partial class OpenCodeComposerController
     {
         var hash = SessionControlJson.Hash(new
         {
-            version = 1, scope = _scope, draftId = _draft, edit = _edit, text = _text, command = _command,
-            files = _files.Select(f => new { id = f.Id, name = f.Name, mime = f.Mime, bytes = f.Bytes.Length }).ToArray()
+            version = 2, scope = _scope, draftId = _draft, edit = _edit, text = _text, command = _command,
+            files = _files.Select(f => new { id = f.Id, name = f.Name, mime = f.Mime, bytes = f.Bytes.Length }).ToArray(),
+            contexts = _contexts.Select(c => new { c.Id, c.IsSkill, c.Start }).ToArray()
         });
         return new(delivery is null ? hash : SessionControlJson.Hash(new { draft = hash, delivery }),
             _text.Length == 0 && _command is null && _files.Count == 0);

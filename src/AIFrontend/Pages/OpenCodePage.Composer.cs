@@ -51,6 +51,8 @@ public sealed partial class OpenCodePage
         _composerView.StateChanged += (_, _) => { if (_pageActive) { UpdateComposerButtons(); TryRestoreExpandedComposerSelection(); } };
         _composerView.TextEdited += (_, e) => e.Acknowledgment =
             _composerController.TryApplyEditorInput(e.Token, e.Text, e.AllowUnboundCarry);
+        _composerView.ContextChosen += (token, id, isSkill, start) =>
+            _composerController.TryAddContext(token, id, isSkill, start);
         _composerView.CatalogOpenRequested += (_, e) =>
         {
             if (_pageActive && !_isSending && !_composerPickerPending && !_nativeDialogPending && _nativeActionOwner is null)
@@ -403,7 +405,7 @@ public sealed partial class OpenCodePage
             try
             {
                 var sentModel = prepared.State?.Model;
-                var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.Text, null, Start, ct, basis.Delivery);
+                var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.Text, null, Start, ct, basis.Delivery, basis.Contexts);
                 outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
                 try { promptAccepted?.Invoke(sentModel); }
                 catch (Exception) { /* Local usage tracking cannot rewrite admission. */ }
