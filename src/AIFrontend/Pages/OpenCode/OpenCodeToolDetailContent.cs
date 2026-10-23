@@ -273,6 +273,7 @@ internal static class OpenCodeToolDetailContent
             case OpenCodeToolKind.Grep:
             case OpenCodeToolKind.Glob:
             case OpenCodeToolKind.List:
+                if (OpenCodeToolDetailBuiltins.CountHeader(model) is { } countHeader) top.Children.Add(countHeader);
                 AddPlainLines(model.OutputText, rows);
                 if (rows.Count == 0)
                 {
