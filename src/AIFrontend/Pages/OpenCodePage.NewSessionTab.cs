@@ -60,7 +60,6 @@ public sealed partial class OpenCodePage
         {
             Tag = id,
             Header = "新会话",
-            IconSource = new FontIconSource { Glyph = "\uE710" },
             IsClosable = true,
         };
         AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab.New." + id.ToString("N"));
