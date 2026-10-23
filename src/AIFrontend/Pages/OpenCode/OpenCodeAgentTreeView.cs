@@ -22,9 +22,6 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     private readonly FrameworkElement _card;
     private readonly Button _parentReturn;
     private readonly TextBlock _hint;
-    private readonly StackPanel _details;
-    private readonly TextBlock _detailTitle;
-    private readonly TextBlock _output;
     private readonly Dictionary<string, bool> _expanded = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TreeViewNode> _groups = new(StringComparer.Ordinal);
     private IReadOnlyList<OpenCodeTreeAgent> _agents = Array.Empty<OpenCodeTreeAgent>();
@@ -33,8 +30,6 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     private static bool _showAll;
     internal event Action<string>? SessionRequested;
     internal event Action<string>? ShellRequested;
-    internal event Action? OutputRefreshRequested;
-    internal event Action? DetailClosed;
     internal event Action? ParentReturnRequested;
 
     internal OpenCodeAgentTreeView()
@@ -46,7 +41,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
               <Border.Shadow>
                 <ThemeShadow />
               </Border.Shadow>
-              <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+              <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="4,0,0,0">
                   <TextBlock Text="子智能体" Style="{ThemeResource BodyStrongTextBlockStyle}"
                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -159,22 +154,6 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 <TreeView x:Name="TerminalTree" SelectionMode="None" CanDragItems="False"
                           CanReorderItems="False" AllowDrop="False" Visibility="Collapsed" AutomationProperties.Name="终端会话树" />
                 </StackPanel>
-                <StackPanel x:Name="Details" Grid.Row="3" Visibility="Collapsed" Spacing="8" Margin="4,0,0,0">
-                  <TextBlock x:Name="DetailTitle" TextWrapping="Wrap" IsTextSelectionEnabled="True"
-                             Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                  <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                          CornerRadius="4" Padding="8,6">
-                    <ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Auto">
-                      <TextBlock x:Name="Output" FontFamily="Consolas" FontSize="12"
-                                 LineHeight="18" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                    </ScrollViewer>
-                  </Border>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="ReadOutput" Content="读取更多输出" Padding="8,4" FontSize="12" />
-                    <Button x:Name="CloseDetail" Content="收起" Padding="8,4" FontSize="12" />
-                  </StackPanel>
-                </StackPanel>
               </Grid>
             </Border>
             <Button x:Name="ParentReturn" Content="返回主智能体" Visibility="Collapsed"
@@ -200,13 +179,6 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _all.Checked += (_, _) => { _showAll = true; RenderGroups(); };
         _all.Unchecked += (_, _) => { _showAll = false; RenderGroups(); };
         _hint = (TextBlock)root.FindName("Hint");
-        _details = (StackPanel)root.FindName("Details");
-        _detailTitle = (TextBlock)root.FindName("DetailTitle");
-        _output = (TextBlock)root.FindName("Output");
-        // App monospace token (user font setting) when available; Consolas stays the parse-time fallback.
-        if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey) is { } code) { _output.Style = code; _output.ClearValue(TextBlock.FontFamilyProperty); }
-        ((Button)root.FindName("ReadOutput")).Click += (_, _) => OutputRefreshRequested?.Invoke();
-        ((Button)root.FindName("CloseDetail")).Click += (_, _) => { _details.Visibility = Visibility.Collapsed; DetailClosed?.Invoke(); };
     }
 
     private void OnTreeItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs e)
@@ -230,8 +202,6 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _shells = Array.Empty<OpenCodeTreeShell>();
         _expanded.Clear();
         _groups.Clear();
-        _details.Visibility = Visibility.Collapsed;
-        _output.Text = string.Empty;
         _readHint = "正在读取…";
         _hint.Text = _readHint;
         _hint.Visibility = Visibility.Visible;
@@ -400,10 +370,4 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         return row;
     }
 
-    internal void ShowOutput(OpenCodeTreeShell shell, string output)
-    {
-        _details.Visibility = Visibility.Visible;
-        _detailTitle.Text = shell.Command + "\n" + (shell.Cwd ?? string.Empty) + "\n退出码：" + (shell.Exit ?? "不可用");
-        _output.Text = output;
-    }
 }

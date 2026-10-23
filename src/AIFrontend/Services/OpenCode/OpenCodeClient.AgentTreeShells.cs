@@ -18,6 +18,13 @@ public sealed record OpenCodeTreeShellInfo
     [JsonPropertyName("cwd")] public string? Cwd { get; init; }
     [JsonPropertyName("exit")] public double? Exit { get; init; }
     [JsonPropertyName("metadata")] public JsonElement? Metadata { get; init; }
+    [JsonPropertyName("time")] public OpenCodeTreeShellTime? Time { get; init; }
+}
+
+public sealed record OpenCodeTreeShellTime
+{
+    [JsonPropertyName("started")] public double? Started { get; init; }
+    [JsonPropertyName("completed")] public double? Completed { get; init; }
 }
 
 public sealed record OpenCodeTreeShellsResponse

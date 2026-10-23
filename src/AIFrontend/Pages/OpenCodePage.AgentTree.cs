@@ -31,13 +31,6 @@ public sealed partial class OpenCodePage
     private bool _treeReload;
     private string? _treeDirectory;
     private string? _treeHint;
-    private string? _treeSelectedShell;
-    private string _treeOutput = string.Empty;
-    private long _treeOutputCursor;
-    private bool _treeOutputBusy;
-    private string? _treeOutputError;
-    private long _treeDetailVersion;
-    private DispatcherTimer? _treeOutputTimer;
     private SessionReturnTarget? _treeParentTarget;
     private bool _treeParentReturnBusy;
 
@@ -49,18 +42,7 @@ public sealed partial class OpenCodePage
         LeftAgentTreeSlot.Children.Add(_agentTree);
         _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
         _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
-        _agentTree.ShellRequested += id =>
-        {
-            _treeDetailVersion++;
-            _treeSelectedShell = id;
-            _treeOutput = _treeShells.GetValueOrDefault(id)?.Output ?? string.Empty;
-            _treeOutputCursor = 0;
-            _treeOutputError = null;
-            ShowAgentTreeOutput();
-            _ = ReadAgentTreeOutputAsync();
-        };
-        _agentTree.OutputRefreshRequested += () => _ = ReadAgentTreeOutputAsync();
-        _agentTree.DetailClosed += () => { _treeDetailVersion++; _treeSelectedShell = null; _treeOutputTimer?.Stop(); };
+        _agentTree.ShellRequested += OpenTerminalView;
         Loaded += (_, _) => QueueAgentTreeRefresh();
         Unloaded += (_, _) => ResetAgentTree();
     }
@@ -73,6 +55,7 @@ public sealed partial class OpenCodePage
 
     private void ResetAgentTree()
     {
+        CloseTerminalView(restoreFocus: false);
         _treeCts?.Cancel();
         _treeCts?.Dispose();
         _treeCts = null;
@@ -88,12 +71,6 @@ public sealed partial class OpenCodePage
         _treeShellKinds.Clear();
         _treeDirectory = null;
         _treeHint = null;
-        _treeSelectedShell = null;
-        _treeDetailVersion++;
-        _treeOutputError = null;
-        _treeOutputTimer?.Stop();
-        _treeOutput = string.Empty;
-        _treeOutputCursor = 0;
         _treeLoading = false;
         _treeReload = false;
         _agentTree.Reset();
@@ -261,7 +238,6 @@ public sealed partial class OpenCodePage
                 statuses[id] = OpenCodeTreeStatus.Running;
         _agentTree.Render(OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses),
             _treeShells.Values.ToArray(), _treeHint);
-        ShowAgentTreeOutput();
     }
 
     private async Task ReturnFromAgentTreeAsync()
@@ -415,7 +391,6 @@ public sealed partial class OpenCodePage
             _treeVersion++;
             _treeShells[shellId] = previous with { Status = OpenCodeAgentTreeProjection.ShellStatus(OpenCodeAgentTreeProjection.String(item.Data, "status"), exit), Exit = exit?.ToString(System.Globalization.CultureInfo.InvariantCulture) };
             RenderAgentTree();
-            if (_treeSelectedShell == shellId) _ = ReadAgentTreeOutputAsync();
         }
         // session.shell.* is owned by the message reducer (B8); accepted messages feed the projection above.
     }
@@ -440,54 +415,4 @@ public sealed partial class OpenCodePage
         finally { _subagentNavigationBusy = false; }
     }
 
-    private void ShowAgentTreeOutput()
-    {
-        if (_treeSelectedShell is not { } id || !_treeShells.TryGetValue(id, out var shell)) return;
-        _agentTree.ShowOutput(shell, (_treeOutput.Length > 0 ? _treeOutput : shell.Output ?? "尚无输出；可读取更多输出") + _treeOutputError);
-        if (shell.Status == OpenCodeTreeStatus.Running && _pageActive && _treeOutputError is null)
-        {
-            _treeOutputTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _treeOutputTimer.Tick -= AgentTreeOutputTick;
-            _treeOutputTimer.Tick += AgentTreeOutputTick;
-            _treeOutputTimer.Start();
-        }
-        else _treeOutputTimer?.Stop();
-    }
-
-    private void AgentTreeOutputTick(object? sender, object e) => _ = ReadAgentTreeOutputAsync();
-
-    private async Task ReadAgentTreeOutputAsync()
-    {
-        if (_treeOutputBusy || _treeBinding is not { } binding || !IsTreeCurrent(binding)
-            || _treeSelectedShell is not { } id || _treeDirectory is not { } directory || !_treeShells.ContainsKey(id)) return;
-        _treeOutputBusy = true;
-        var ct = _treeCts!.Token;
-        var detailVersion = _treeDetailVersion;
-        try
-        {
-            var output = await TreeReadAsync(binding, () => binding.Client.ReadTreeShellOutputAsync(id, directory, _treeOutputCursor, ct), ct);
-            if (!IsTreeCurrent(binding) || ct.IsCancellationRequested || _treeSelectedShell != id || detailVersion != _treeDetailVersion) return;
-            _treeOutput = (_treeOutputCursor == 0 ? string.Empty : _treeOutput) + output.Output;
-            _treeOutputCursor = output.Cursor ?? _treeOutputCursor;
-            _treeOutputError = null;
-            // Bound only the visible tail, preserving the authoritative byte cursor.
-            if (_treeOutput.Length > 1048576) _treeOutput = "（仅显示最近输出）\n" + _treeOutput[^1048576..];
-            ShowAgentTreeOutput();
-        }
-        catch (OperationCanceledException) { }
-        catch (OpenCodeException)
-        {
-            if (IsTreeCurrent(binding) && _treeSelectedShell == id && detailVersion == _treeDetailVersion)
-            {
-                _treeOutputTimer?.Stop();
-                _treeOutputError = "\n输出读取不可用（任务可能已被服务端移除）";
-                ShowAgentTreeOutput();
-            }
-        }
-        finally
-        {
-            _treeOutputBusy = false;
-            if (detailVersion != _treeDetailVersion && _treeSelectedShell is not null) _ = ReadAgentTreeOutputAsync();
-        }
-    }
 }

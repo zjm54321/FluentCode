@@ -367,6 +367,7 @@
                         <Grid>
                             <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
                             <!-- S2: replies own their card surfaces; the reading host exposes page acrylic. -->
+                            <Grid x:Name="ConversationSurface">
                             <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
                                 <Grid.RowDefinitions>
                                     <RowDefinition x:Name="SessionStatusRow" Height="Auto" />
@@ -809,6 +810,11 @@
                             </Grid>
 
                             <Grid x:Name="HomePageHost" Visibility="Collapsed" />
+                            </Grid>
+                            <!-- AT6: takes over only the center, preserving both dock regions. -->
+                            <Grid x:Name="TerminalViewHost" Visibility="Collapsed"
+                                  Loaded="TerminalViewHost_Loaded"
+                                  AutomationProperties.AutomationId="OpenCodeTerminalViewHost" />
                         </Grid>
                     </SplitView>
                 </Grid>
