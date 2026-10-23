@@ -136,6 +136,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     /// <summary>当前不允许发起切换的原因（对话框据此禁用“切换”）；可切换时为 null。</summary>
     private string? SwitchBlockedReason()
     {
+        if (CurrentSessionInfo is { ParentId: not null }) return "子智能体会话仅供查看。";
         if (_retainedUnknownOperationId is not null) return "该会话存在未解除的智能体未知状态；请先在状态行下方显式解除。";
         if (_busy) return "上一次切换或解除仍在进行中。";
         if (_localSubmissionPending) return "本会话存在本地待提交输入；发送结束后再切换。";
@@ -246,6 +247,8 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     // Read-through presentation for other current-session surfaces; this selector remains the only
     // owner of the observed session selection. No second session read/cache is needed by the sidebar.
     internal OpenCodeModelRef? CurrentModel { get; private set; }
+    // The exact, origin-fenced Session.Info read also identifies child sessions without a second request/cache.
+    internal OpenCodeSessionInfo? CurrentSessionInfo { get; private set; }
     internal string? CurrentAgentColor => _rows.Find(row => row.Id == CurrentAgentId)?.Color;
     internal string? CurrentAgentDescription => _rows.Find(row => row.Id == CurrentAgentId)?.Description;
     internal event EventHandler? DisplayChanged;
@@ -293,6 +296,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         var keptModel = keepDisplay ? _modelText.Text : string.Empty;
         var keptModelDisplay = keepDisplay ? CurrentModelDisplay : null;
         var keptModelRef = keepDisplay ? CurrentModel : null;
+        var keptSessionInfo = keepDisplay ? CurrentSessionInfo : null;
 
         InvalidateContext();
         if (keepDisplay)
@@ -305,6 +309,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             _modelText.Text = keptModel;
             CurrentModelDisplay = keptModelDisplay;
             CurrentModel = keptModelRef;
+            CurrentSessionInfo = keptSessionInfo;
         }
 
         var origin = new AgentSwitchOrigin(source, revision, sessionId, selectionGeneration);
@@ -383,6 +388,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
                 return;
             }
 
+            if (session.Id != origin.SessionId) return;
+            CurrentSessionInfo = session;
+            if (session.ParentId is not null) _pendingAgentId = null;
             var directory = session.Location?.Directory;
             if (string.IsNullOrWhiteSpace(directory))
             {
@@ -842,6 +850,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         _modelText.Text = string.Empty;
         CurrentModelDisplay = null;
         CurrentModel = null;
+        CurrentSessionInfo = null;
         _statusText.Text = string.Empty;
         _progress.IsActive = false;
         HideRecoveryConfirm();

@@ -178,6 +178,45 @@ internal static class Program
             "blank sidebar delegates to existing draft semantics and labels its unpersisted scope");
         Check(cardBinding.Contains("CurrentModelInfo(binding!, selected)?.Name") && !cardBinding.Contains("selected?.Id ?? \"模型不可用\""),
             "P2 sidebar uses catalog display Name, never model ID as display name");
+        RunChildSessionChecks();
+        var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
+        var readOnly = card.Substring(card.IndexOf("internal void RenderReadOnly"), card.IndexOf("private static Button Entry") - card.IndexOf("internal void RenderReadOnly"));
+        Check(card.Contains("IsHitTestVisible = false") && readOnly.Contains("_chrome.Child = _readOnlyRows")
+            && !readOnly.Contains("new Button") && !readOnly.Contains("ToolTipService") && !readOnly.Contains("Flyout"),
+            "SA2 child mode uses only plain display visuals with no selector hover/focus/flyout affordance");
+        Check(readOnly.Contains("value.Agent is null ? Visibility.Collapsed") && readOnly.Contains("value.ModelName is null ? Visibility.Collapsed")
+            && readOnly.Contains("value.Effort is null ? Visibility.Collapsed"), "SA2 unknown child values hide their own rows independently");
+        Check(cardBinding.Contains("CurrentSessionInfo is { ParentId: not null } child") && cardBinding.Contains("child.Id == _selectedSessionId")
+            && cardBinding.Contains("OpenCodeChildSessionControl.Project(child.Agent, child.Model, messages") && cardBinding.Contains("card.RenderReadOnly(projection)"),
+            "SA2 card consumes real current-child metadata/messages, not pending UI or parent choices");
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
+    }
+
+    private static void RunChildSessionChecks()
+    {
+        var first = new OpenCodeModelRef { Id = "claude-first", ProviderId = "provider-a", Variant = "high" };
+        var last = new OpenCodeModelRef { Id = "claude-last", ProviderId = "provider-b", Variant = "extra_high" };
+        OpenCodeModelInfo? Catalog(OpenCodeModelRef key) => key.Id == last.Id && key.ProviderId == last.ProviderId
+            ? new() { Id = key.Id, ProviderId = key.ProviderId, Name = "Claude Opus 5.5" } : null;
+        var empty = Array.Empty<(string? Agent, OpenCodeModelRef? Model)>();
+        var unknown = OpenCodeChildSessionControl.Project(null, null, empty, Catalog);
+        Check(unknown is { Agent: null, Model: null, ModelName: null, Effort: null }, "SA2 absent real child values stay absent");
+        var info = OpenCodeChildSessionControl.Project("explorer", last, empty, Catalog);
+        Check(info.Agent == "explorer" && info.Model == last && info.ModelName == "Claude Opus 5.5" && info.Effort == "极高",
+            "SA2 Session.Info fallback preserves child identity, catalog name and opaque variant");
+        var messages = new (string? Agent, OpenCodeModelRef? Model)[] { ("explorer", first), ("fixer", last), ("oracle", null) };
+        var actual = OpenCodeChildSessionControl.Project("orchestrator", first, messages, Catalog);
+        Check(actual.Agent == "oracle" && actual.Model == last && actual.ModelName == "Claude Opus 5.5" && actual.Effort == "极高",
+            "SA2 latest real assistant/switch fields override stale session defaults without borrowing model variant");
+        var noName = OpenCodeChildSessionControl.Project("fixer", first, empty, Catalog);
+        Check(noName.ModelName is null && noName.Effort == "高", "SA2 missing matching catalog name hides model row, never falls back to ID; known effort remains");
+        var changed = OpenCodeChildSessionControl.Project("fixer", first,
+            new (string? Agent, OpenCodeModelRef? Model)[] { (null, last with { Variant = null }) }, Catalog);
+        Check(changed.Model?.ProviderId == "provider-b" && changed.Model?.Variant is null && changed.Effort == "默认",
+            "SA2 explicit base child model does not inherit an older model's high effort");
+        var malformed = OpenCodeChildSessionControl.Project(" ", last with { ProviderId = null }, empty, Catalog);
+        Check(malformed is { Agent: null, Model: null, ModelName: null, Effort: null }, "SA2 incomplete model identity cannot produce guessed display/effort");
+        Check(OpenCodeChildSessionControl.Project("fixer", last with { Variant = " " }, empty, Catalog).Effort is null,
+            "SA2 unknown malformed effort is hidden, not fabricated as default");
     }
 }
