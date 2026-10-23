@@ -28,13 +28,13 @@ public sealed partial class OpenCodePage
         {
             if (!SessionControlCardCanEdit()) return;
             if (_newSessionDraftActive) BlankModelButton_Click(sender, e);
-            else OpenSessionControlModelPicker(variantOnly: false);
+            else OpenSessionControlModelPicker(variantOnly: false, sender as FrameworkElement);
         };
         _sessionControlCard.VariantButton.Click += (sender, e) =>
         {
             if (!SessionControlCardCanEdit()) return;
             if (_newSessionDraftActive) BlankStrengthButton_Click(sender, e);
-            else OpenSessionControlModelPicker(variantOnly: true);
+            else OpenSessionControlModelPicker(variantOnly: true, sender as FrameworkElement);
         };
         QueueSessionControlCardRefresh();
     }
@@ -111,10 +111,10 @@ public sealed partial class OpenCodePage
             pendingAgent: ownsSelection && _agentSelector.HasPendingSelection);
     }
 
-    private void OpenSessionControlModelPicker(bool variantOnly)
+    private void OpenSessionControlModelPicker(bool variantOnly, FrameworkElement? anchor = null)
     {
         if (!SessionControlCardCanEdit() || _composerView?.PrepareSubmission() != true || _composerController is null) return;
         var ticket = _composerController.TryTakeModelPickerAction(GetComposerSnapshot().Token);
-        if (ticket is not null) _ = RunClientActionAsync(ticket, variantOnly);
+        if (ticket is not null) _ = RunClientActionAsync(ticket, variantOnly, anchor);
     }
 }

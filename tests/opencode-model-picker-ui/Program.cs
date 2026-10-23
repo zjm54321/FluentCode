@@ -170,6 +170,11 @@ internal static class Program
             && selector.Contains("_coordinator.SwitchAsync(origin, operationId, target, IsOriginCurrent"), "next-send seam preserves existing server coordinator/re-check");
         AIFrontend.Pages.OpenCodePage.RunVariantSelectionChecks(Check).GetAwaiter().GetResult();
         var cardBinding = Read("src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs");
+        Check(selector.Contains("anchor?.XamlRoot ?? XamlRoot"), "PK2 invoking picker owner survives an unrooted selector/closed overview");
+        var actions = Read("src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs");
+        Check(cardBinding.Contains("RunClientActionAsync(ticket, variantOnly, anchor)")
+            && actions.Contains("variantOnly, anchor)") && actions.Contains("sourceKey, anchor: anchor)"),
+            "PK2 model/effort keep the invoking anchor across catalog awaits and disabling the button");
         Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
             && cardBinding.Contains("_blankPreferences") && !cardBinding.Contains("GetSessionInfoAsync") && !cardBinding.Contains("ListModelsAsync"),
             "sidebar reads the same session/blank owners, never adds a second selection cache or data fetch");

@@ -68,13 +68,13 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     internal bool OpenSelection(FrameworkElement? anchor = null)
     {
         var origin = Volatile.Read(ref _currentOrigin);
-        if (_dialogOpen || origin is null || _client is null || XamlRoot is null)
+        if (_dialogOpen || origin is null || _client is null || (anchor?.XamlRoot ?? XamlRoot) is null)
         {
             if (!_dialogOpen) SetStatus("智能体列表尚未就绪；请稍后再输入 /agents。");
             return false;
         }
 
-        _ = ShowPickerAsync(origin, OpenCodePickerFlyout.Anchor(XamlRoot, anchor, "OpenCodeSidebarAgent"));
+        _ = ShowPickerAsync(origin, OpenCodePickerFlyout.Anchor(anchor?.XamlRoot ?? XamlRoot, anchor, "OpenCodeSidebarAgent"));
         return true;
     }
 
@@ -84,7 +84,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         string? target;
         try
         {
-            target = await OpenCodeAgentPickerDialog.ShowAsync(XamlRoot, _rows.ToArray(), CurrentAgentId,
+            target = await OpenCodeAgentPickerDialog.ShowAsync(anchor?.XamlRoot ?? XamlRoot, _rows.ToArray(), CurrentAgentId,
                 CurrentAgentDisplay, SwitchBlockedReason(), anchor).ConfigureAwait(true);
         }
         finally
