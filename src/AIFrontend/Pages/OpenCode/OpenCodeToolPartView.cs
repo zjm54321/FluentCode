@@ -50,6 +50,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private readonly TextBlock _deletionsText;
     private readonly TextBlock _rowTag;
     private readonly Border _rowTagBorder;
+    private readonly Border _inlineRegion;
+    private bool _inlineExpanded;
     private readonly Button _backgroundButton;
     private Action<string, OpenCodeContentPart>? _backgroundAction;
     private OpenCodeContentPart? _lastPart;
@@ -82,6 +84,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     /// <summary>subagent 工具的详情来源（子会话预览 + 「打开子会话」链接）；非 subagent 为 null。</summary>
     private SubagentPreviewSource? _subagentSource;
+    private RowActionPreviewSource? _rowActionSource;
 
     /// <summary>最近一次 Update 传入的父消息 id（仅随导航事件透传；不做校验/授权）。</summary>
     private string? _parentMessageId;
@@ -197,6 +200,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _selectionBar.VerticalAlignment = VerticalAlignment.Stretch;
 
         _root = new Grid { ColumnSpacing = 2 };
+        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -221,6 +226,11 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         Grid.SetColumn(statusCell, 3);
         statusCell.Margin = new Thickness(0, 0, 8, 0);
         _root.Children.Add(statusCell);
+        _inlineRegion = new Border { Visibility = Visibility.Collapsed, Padding = new Thickness(32, 12, 12, 12) };
+        Grid.SetRow(_inlineRegion, 1);
+        Grid.SetColumn(_inlineRegion, 1);
+        Grid.SetColumnSpan(_inlineRegion, 3);
+        _root.Children.Add(_inlineRegion);
         _root.ActualThemeChanged += (_, _) => ApplyRunningTint();
     }
 
@@ -251,7 +261,15 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _parentMessageId = parentMessageId;
         _lastPart = part;
         _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex);
+        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question)
+            _rowActionSource ??= new RowActionPreviewSource(this);
+        else if (_rowActionSource is { } oldActionSource)
+        {
+            OpenCodeToolDetailPopup.Shared.CloseIf(oldActionSource);
+            _rowActionSource = null;
+        }
         ApplyModel(_model);
+        RefreshInlineContent();
         RefreshBackgroundAction();
 
         // subagent 严格按已核准名称识别；尚未提供 child id 时，小窗如实提示而不显示属性卡冒充对话。
@@ -285,7 +303,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
         if (!_disposed)
         {
-            if (_subagentSource is { } preview)
+            if (_rowActionSource is { } actionPreview)
+                OpenCodeToolDetailPopup.Shared.Refresh(actionPreview);
+            else if (_subagentSource is { } preview)
             {
                 OpenCodeToolDetailPopup.Shared.Refresh(preview);
             }
@@ -554,6 +574,12 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         switch (e.Key)
         {
             case VirtualKey.Escape:
+                if (_inlineExpanded)
+                {
+                    _inlineExpanded = false;
+                    RefreshInlineContent();
+                    e.Handled = true;
+                }
                 if (OpenCodeToolDetailPopup.Shared.IsShowing(this)
                     || (_subagentSource is { } preview && OpenCodeToolDetailPopup.Shared.IsShowing(preview)))
                 {
@@ -599,7 +625,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     internal void HoverEnterDetail()
     {
-        if (_subagentSource is { } preview)
+        if (_rowActionSource is { } actionPreview)
+            OpenCodeToolDetailPopup.Shared.HoverEnter(actionPreview);
+        else if (_subagentSource is { } preview)
         {
             OpenCodeToolDetailPopup.Shared.HoverEnter(preview);
         }
@@ -611,7 +639,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     internal void HoverExitDetail()
     {
-        if (_subagentSource is { } preview)
+        if (_rowActionSource is { } actionPreview)
+            OpenCodeToolDetailPopup.Shared.HoverExit(actionPreview);
+        else if (_subagentSource is { } preview)
         {
             OpenCodeToolDetailPopup.Shared.HoverExit(preview);
         }
@@ -623,6 +653,13 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
     internal void TogglePinnedDetail()
     {
+        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question)
+        {
+            CloseDetailIfShowing();
+            _inlineExpanded = !_inlineExpanded;
+            RefreshInlineContent();
+            return;
+        }
         if (_subagentSource is { } preview)
         {
             OpenCodeToolDetailPopup.Shared.CloseIf(preview);
@@ -634,13 +671,39 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         }
     }
 
+    private void RefreshInlineContent()
+    {
+        _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
+        _inlineRegion.Child = _inlineExpanded
+            ? OpenCodeToolDetailBuiltins.Build(_model, new OpenCodeToolDetailOptions { Compact = false })
+                ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供")
+            : null;
+    }
+
     private void CloseDetailIfShowing()
     {
+        if (_rowActionSource is { } actionPreview) OpenCodeToolDetailPopup.Shared.CloseIf(actionPreview);
         OpenCodeToolDetailPopup.Shared.CloseIf(this);
         if (_subagentSource is { } preview)
         {
             OpenCodeToolDetailPopup.Shared.CloseIf(preview);
         }
+    }
+
+    // Reuse the popup's existing click-action source hook: it invokes OpenChildChat rather
+    // than pinning a large dialog. Here the action is the row's inline/terminal routing.
+    private sealed class RowActionPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource
+    {
+        private readonly OpenCodeToolPartView _owner;
+        internal RowActionPreviewSource(OpenCodeToolPartView owner) => _owner = owner;
+        public FrameworkElement DetailAnchor => _owner._detailAnchorOverride ?? _owner._row;
+        public OpenCodeDetailHeader DetailHeader => new(KindGlyph(_owner._model.Kind), _owner._model.Name,
+            _owner._model.Target, _owner._model.StatusText, DurationText: _owner._model.DurationText);
+        public OpenCodeToolDetailView BuildDetailContent() => OpenCodeToolDetailContent.Build(_owner._model,
+            new OpenCodeToolDetailOptions { Compact = true }, () => OpenCodeToolDetailPopup.Shared.Refresh(this));
+        public void OpenChildChat() => _owner.TogglePinnedDetail();
+        public void OnDetailStateChanged(bool shown, bool pinned)
+            => ((IOpenCodeToolDetailSource)_owner).OnDetailStateChanged(shown, pinned);
     }
 
     /// <summary>
