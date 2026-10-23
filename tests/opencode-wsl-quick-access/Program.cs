@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Models;
 using AIFrontend.Pages.OpenCode;
@@ -48,6 +49,37 @@ internal static class Program
         Check(explorerInfo.ArgumentList.Count == 1 && explorerInfo.ArgumentList[0] == special.Target!.UncPath,
             "Explorer receives a single UNC argument");
         Console.WriteLine("PASS UNC + Unicode/spaces/special chars + real-data tilde resolution");
+
+        Check(WslQuickAccessHome.NeedsHome("~") && WslQuickAccessHome.NeedsHome("~/a")
+            && !WslQuickAccessHome.NeedsHome("/home/absolute") && !WslQuickAccessHome.NeedsHome("~someone/a"), "only own tilde requests HOME");
+        var homeRunner = new FakeHomeRunner { Output = "/srv/真实 用户\n" };
+        var authoritative = await WslQuickAccessHome.ResolveAsync("发行版 Test", @"C:\Windows\System32\wsl.exe", homeRunner, CancellationToken.None);
+        var homeCommand = homeRunner.Commands.Single().StartInfo();
+        Check(!homeCommand.UseShellExecute && homeCommand.Arguments == "" && homeCommand.FileName == @"C:\Windows\System32\wsl.exe"
+            && homeCommand.ArgumentList.SequenceEqual(new[] { "--distribution", "发行版 Test", "--exec", "printenv", "HOME" }), "HOME uses selected distro, no Linux/Windows shell or interpolated command");
+        Check(Resolve("~/a", authoritative).Target?.UncPath == @"\\wsl.localhost\发行版 Test\srv\真实 用户\a", "actual distro HOME flows into tilde UNC resolution");
+        Check(Resolve("~", authoritative).Target?.LinuxDirectory == "/srv/真实 用户", "bare tilde flows from authoritative source");
+        homeRunner.Output = "/root\r\n";
+        Check(await WslQuickAccessHome.ResolveAsync("Other Distro", "wsl.exe", homeRunner, CancellationToken.None) == "/root"
+            && homeRunner.Commands.Last().Arguments[1] == "Other Distro", "distro and root-user home are dynamic");
+        foreach (var output in new string?[] { null, "", "relative\n", "/home/a\n/home/b\n", "/bad\0name\n" })
+        {
+            homeRunner.Output = output;
+            Check(await WslQuickAccessHome.ResolveAsync("发行版 Test", "wsl.exe", homeRunner, CancellationToken.None) is null,
+                "missing/failed/malformed HOME never invents a user directory");
+        }
+        var previousReads = homeRunner.Commands.Count;
+        Check(await WslQuickAccessHome.ResolveAsync("../invalid", "wsl.exe", homeRunner, CancellationToken.None) is null
+            && homeRunner.Commands.Count == previousReads, "invalid distro never runs a command");
+        using (var cancelled = new CancellationTokenSource())
+        {
+            cancelled.Cancel();
+            var observedCancellation = false;
+            try { await WslQuickAccessHome.ResolveAsync("发行版 Test", "wsl.exe", homeRunner, cancelled.Token); }
+            catch (OperationCanceledException) { observedCancellation = true; }
+            Check(observedCancellation, "home reads honor connection/page cancellation");
+        }
+        Console.WriteLine("PASS selected-distro HOME command via injected runner, tilde wiring, failures/cancellation");
 
         var host = new FakeHost();
         host.Registry["Code.exe"] = @"C:\Editors\Code.exe";
@@ -118,7 +150,7 @@ internal static class Program
         await OpenCodeWslQuickAccess.LaunchAsync(Resolve("~/unresolved"), null, recorder);
         Check(recorder.Explorers.Count == 2, "unresolved replacement cannot launch stale target");
         Console.WriteLine("PASS directory refresh + fake launch boundary");
-        Console.WriteLine($"PASS 5 groups / {_assertions} assertions; no external applications launched");
+        Console.WriteLine($"PASS 6 groups / {_assertions} assertions; no external applications launched");
     }
 
     private sealed class FakeHost : IWslHostEditorEnvironment
@@ -136,5 +168,16 @@ internal static class Program
         public List<WslHostLaunch> Editors { get; } = new();
         public Task OpenExplorerAsync(WslQuickAccessTarget target) { Explorers.Add(target); return Task.CompletedTask; }
         public Task OpenEditorAsync(WslHostLaunch launch) { Editors.Add(launch); return Task.CompletedTask; }
+    }
+    private sealed class FakeHomeRunner : IWslHomeCommandRunner
+    {
+        public string? Output { get; set; }
+        public List<WslHostLaunch> Commands { get; } = new();
+        public Task<string?> ReadAsync(WslHostLaunch command, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Commands.Add(command);
+            return Task.FromResult(Output);
+        }
     }
 }

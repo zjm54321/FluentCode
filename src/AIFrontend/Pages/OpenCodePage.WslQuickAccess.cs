@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.Configuration;
@@ -17,6 +18,11 @@ public sealed partial class OpenCodePage
     private readonly WslQuickAccessEditorPreference _wslEditorPreference = new(
         System.IO.Path.Combine(AppDataPaths.GetRootDirectory(null), "opencode-wsl-quick-access-editor.txt"));
     private string? _selectedWslEditor;
+    private string? _wslHomeDistribution;
+    private object? _wslHomeSource;
+    private string? _wslAuthoritativeHome;
+    private Task<string?>? _wslHomeRead;
+    private CancellationTokenSource? _wslHomeCts;
 
     private void InitializeWslQuickAccess()
     {
@@ -34,6 +40,7 @@ public sealed partial class OpenCodePage
         Unloaded += (_, _) =>
         {
             _homeSettings!.Changed -= WslQuickAccessSettingsChanged;
+            ResetWslQuickAccessHome();
             WslQuickAccessSlot.Visibility = Visibility.Collapsed;
         };
     }
@@ -52,20 +59,62 @@ public sealed partial class OpenCodePage
         var settings = _homeSettings?.Current?.OpenCode;
         var connected = _pageActive && _connection == ConnectionState.Connected && _client is not null
             && _source is { IsRevoked: false } && !_homeActive;
-        // Same accepted session binding as the composer/message reader. Never substitute a host cwd,
-        // a project from another session, or an inferred username. api/info supplies no home directory.
-        var directory = _selectedSessionId is { } session && IsSameMessageBinding(session, _messageBinding?.Directory)
+        var home = ReferenceEquals(_wslHomeSource, _source) && _wslHomeDistribution == settings?.WslDistribution
+            ? _wslAuthoritativeHome : null;
+        return OpenCodeWslQuickAccess.Resolve(settings?.Kind, connected, settings?.WslDistribution,
+            CurrentWslQuickAccessDirectory(), home);
+    }
+
+    // Same accepted session binding as the composer/message reader; no other session/host cwd.
+    private string? CurrentWslQuickAccessDirectory()
+        => _selectedSessionId is { } session && IsSameMessageBinding(session, _messageBinding?.Directory)
             ? _messageBinding?.Directory
             : _newSessionDraftActive ? _activeDraftSlot?.Key.Directory : null;
-        return OpenCodeWslQuickAccess.Resolve(settings?.Kind, connected, settings?.WslDistribution, directory);
-    }
 
     private void RefreshWslQuickAccess()
     {
         if (_wslQuickAccessView is null) return;
         var state = CurrentWslQuickAccess();
+        var distribution = _homeSettings?.Current?.OpenCode.WslDistribution;
+        if (!state.Visible || _wslHomeDistribution != distribution || !ReferenceEquals(_wslHomeSource, _source))
+            ResetWslQuickAccessHome();
+        if (state.Visible && AIFrontend.Models.OpenCodeSettings.IsValidWslDistributionName(distribution)
+            && WslQuickAccessHome.NeedsHome(CurrentWslQuickAccessDirectory()) && _wslHomeRead is null)
+        {
+            _wslHomeDistribution = distribution;
+            _wslHomeSource = _source;
+            _wslHomeCts = new();
+            _wslHomeRead = WslQuickAccessHome.ResolveAsync(distribution!,
+                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe"),
+                new WslHomeCommandRunner(), _wslHomeCts.Token);
+            _ = CompleteWslQuickAccessHomeAsync(_wslHomeRead);
+        }
         WslQuickAccessSlot.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
         _wslQuickAccessView.Render(state, _wslEditors, _selectedWslEditor);
+    }
+
+    private void ResetWslQuickAccessHome()
+    {
+        _wslHomeCts?.Cancel();
+        _wslHomeCts?.Dispose();
+        _wslHomeCts = null;
+        _wslHomeRead = null;
+        _wslHomeDistribution = null;
+        _wslHomeSource = null;
+        _wslAuthoritativeHome = null;
+    }
+
+    private async Task CompleteWslQuickAccessHomeAsync(Task<string?> read)
+    {
+        string? home = null;
+        try { home = await read; }
+        catch (OperationCanceledException) { }
+        catch (System.ComponentModel.Win32Exception) { }
+        catch (System.IO.IOException) { }
+        catch (InvalidOperationException) { }
+        if (!ReferenceEquals(read, _wslHomeRead)) return;
+        _wslAuthoritativeHome = home;
+        RefreshWslQuickAccess();
     }
 
     private async Task LaunchWslQuickAccessAsync(string? editorName)

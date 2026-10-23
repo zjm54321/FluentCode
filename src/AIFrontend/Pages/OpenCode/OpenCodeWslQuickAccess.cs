@@ -53,7 +53,7 @@ internal static class OpenCodeWslQuickAccess
         if (directory is "~" || directory?.StartsWith("~/", StringComparison.Ordinal) == true)
         {
             if (authoritativeHome?.StartsWith('/') != true)
-                return new(true, null, "无法展开 ~：服务端未提供此发行版的用户主目录");
+                return new(true, null, "无法展开 ~：尚未读取到此 WSL 发行版的用户主目录");
             directory = authoritativeHome.TrimEnd('/') + directory[1..];
         }
         if (string.IsNullOrEmpty(directory) || !directory.StartsWith('/'))
