@@ -184,7 +184,12 @@ internal sealed class OpenCodeWorkingShimmer : IOpenCodeWorkingClockSubscriber
         header.Children.Add(_host);
         header.SizeChanged += (_, _) => Layout();
         _host.Loaded += (_, _) => { _loaded = true; Update(); };
-        _host.Unloaded += (_, _) => { _loaded = false; Update(); };
+        _host.Unloaded += (_, _) =>
+        {
+            if (_host.IsLoaded) return; // A newer parent already loaded this same tab header.
+            _loaded = false;
+            Update();
+        };
     }
 
     internal bool IsWorking => _working;
