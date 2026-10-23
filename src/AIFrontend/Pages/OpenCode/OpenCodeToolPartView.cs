@@ -216,7 +216,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         OpenCodeToolTheme.Apply(_selectionBar, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
         _selectionBar.VerticalAlignment = VerticalAlignment.Stretch;
 
-        _root = new Grid { ColumnSpacing = 2 };
+        _root = new Grid { ColumnSpacing = 2, CornerRadius = new CornerRadius(4) }; // running tint uses the native control corner radius
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
