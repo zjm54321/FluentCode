@@ -1,5 +1,6 @@
 <Page
     x:Class="AIFrontend.Pages.OpenCodePage"
+    Background="Transparent"
     AutomationProperties.AutomationId="OpenCodePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -12,9 +13,9 @@
           Row 0  TabView（会话切换器；标签无内容，只有一套时间线/输入区，见 OpenCodePage.Tabs.cs）
           Row 1  双侧 SplitView：页面宽度与滞回由 OpenCodePage.Sidebars.cs 管理；宽屏 Inline 常驻，窄屏 Overlay 抽屉。
                  工作区 = 右侧概况面板 → 状态行 / 进度 / InfoBar / 时间线 / 交互区 / 排队条 / 输入区
-        全部为 WinUI 原生控件与内置样式、主题资源；不设置 RequestedTheme（跟随系统），窗口背景为 Mica（MainWindow）。
-        H15：MainWindow 的 NavigationView 内容层（ContentGrid）已经提供半透明 LayerFillColorDefaultBrush；
-        SessionPane 不再设置 Background（避免双重叠加或被不透明画刷遮挡 Mica）。
+        全部为 WinUI 原生控件与内置样式、主题资源；不设置 RequestedTheme（跟随系统）。
+        BG1：MainWindow 提供桌面亚克力，NavigationView 内容层与页面根透明；文字卡片保留标准主题背景。
+        SessionPane 不设置 Background（避免叠加或遮挡窗口材质）。
         同时在页面级 Resources.ThemeDictionaries 中将 TabViewItemHeaderBackgroundSelected 映射到
         LayerFillColorDefaultBrush（高对比度为 SystemColorWindowColorBrush），因为元素级 Resources 优先于
         Application.Resources.MergedDictionaries 中的 XamlControlsResources，不会被其默认的
@@ -56,15 +57,15 @@
             <Style x:Key="FullScreenComposerCardStyle" TargetType="Border">
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
             </Style>
-            <!-- Layout D dock columns: in wide mode they continue the opaque reading surface (theme-aware,
-                 incl. high contrast); narrow drawers clear it locally so only the floating card shows. -->
+            <!-- BG1: dock columns are base layers, not cards. Keep the entire outer ring transparent;
+                 the floating dock cards retain their existing readable surfaces. -->
             <Style x:Key="OpenCodeDockSurfaceStyle" TargetType="Grid">
-                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
+                <Setter Property="Background" Value="Transparent" />
             </Style>
         </ResourceDictionary>
     </Page.Resources>
 
-    <Grid x:Name="PageRoot" RowDefinitions="Auto,*" Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}">
+    <Grid x:Name="PageRoot" RowDefinitions="Auto,*" Background="Transparent">
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="ComposerModeStates">
                 <VisualState x:Name="NormalComposerMode" />
@@ -215,7 +216,7 @@
         </TabView>
 
         <!-- ============================================================
-             Row 1：内容区。不设 Background，直接透出宿主 NavigationView 内容层的半透明 LayerFillColorDefaultBrush 与窗口 Mica（H15）。
+             Row 1：内容区。不设 Background，直接透出窗口桌面亚克力（BG1）。
              ============================================================ -->
         <SplitView
             x:Name="SessionPane"

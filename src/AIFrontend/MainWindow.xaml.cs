@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AIFrontend.Models;
 using AIFrontend.Pages.Web;
 using Microsoft.UI;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
@@ -16,6 +17,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Graphics;
+using WinRT;
 
 namespace AIFrontend;
 
@@ -28,6 +30,8 @@ public sealed partial class MainWindow : Window
     private bool _pendingTitleBarRegionsUpdate;
     private bool _syncingNavSelection;
     private object? _subscribedPage;
+    private DesktopAcrylicController? _desktopAcrylicController;
+    private SystemBackdropConfiguration? _backdropConfiguration;
 
     // 已解除“设置/加载”订阅、但 Local 运行事件订阅仍暂留（等待其 Local 执行真正终结）的旧 NormalPage 实例。
     private readonly HashSet<Pages.NormalPage> _detachedNormalPages = new();
@@ -90,8 +94,9 @@ public sealed partial class MainWindow : Window
         // 登记根元素，运行期改字体时由 AppFonts 刷新 ThemeResource（弹出层经 App.xaml 隐式样式覆盖）。
         Services.Appearance.AppFonts.RegisterRoot(RootElement);
 
-        // 启用 WinUI 3 原生 Mica 背景材质
-        TrySetMicaBackdrop();
+        // BG1: use the real desktop acrylic, including while another window has focus.
+        TrySetDesktopAcrylicBackdrop();
+        Closed += MainWindow_Closed;
 
         // 自定义标题栏：内容延伸进标题栏区域；保留系统原生 caption 按钮与默认拖拽区
         SetupCustomTitleBar();
@@ -121,22 +126,38 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 窗口材质（H15）：Windows 11 用 Mica Alt（<see cref="MicaKind.BaseAlt"/>，官方推荐给带标签页 / 多层内容的应用，
-    /// 比 Base 更能透出桌面色调）；不支持 Mica 的系统（Windows 10）回退到 DesktopAcrylic；两者都不支持时保持系统默认。
-    /// SystemBackdrop 自动跟随根元素 ActualTheme（浅 / 深 / 跟随系统），无需手工配置。
-    /// 根 Grid / 顶栏 / NavigationView 左栏均透明，内容层与面板用 Layer / Card / AcrylicInApp 主题画刷（见 App.xaml），
-    /// 因此材质在两种主题下都能透出。
+    /// BG1: desktop acrylic behind the transparent shell/page roots; reading cards retain their theme brushes.
+    /// Keep the material active when unfocused; the controller still respects system accessibility/transparency settings.
+    /// Unsupported systems fall back to Mica, then the default window background.
     /// </summary>
-    private void TrySetMicaBackdrop()
+    private void TrySetDesktopAcrylicBackdrop()
     {
-        if (MicaController.IsSupported())
+        if (DesktopAcrylicController.IsSupported())
         {
-            this.SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
+            _backdropConfiguration = new SystemBackdropConfiguration { IsInputActive = true };
+            UpdateBackdropTheme();
+            RootElement.ActualThemeChanged += RootElement_ActualThemeChanged;
+            _desktopAcrylicController = new DesktopAcrylicController { Kind = DesktopAcrylicKind.Default };
+            _desktopAcrylicController.SetSystemBackdropConfiguration(_backdropConfiguration);
+            _desktopAcrylicController.AddSystemBackdropTarget(this.As<ICompositionSupportsSystemBackdrop>());
         }
-        else if (DesktopAcrylicController.IsSupported())
+        else if (MicaController.IsSupported())
         {
-            this.SystemBackdrop = new DesktopAcrylicBackdrop();
+            SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
         }
+    }
+
+    private void RootElement_ActualThemeChanged(FrameworkElement sender, object args) => UpdateBackdropTheme();
+
+    private void UpdateBackdropTheme()
+    {
+        if (_backdropConfiguration is null) return;
+        _backdropConfiguration.Theme = RootElement.ActualTheme switch
+        {
+            ElementTheme.Light => SystemBackdropTheme.Light,
+            ElementTheme.Dark => SystemBackdropTheme.Dark,
+            _ => SystemBackdropTheme.Default,
+        };
     }
 
     private void SetupCustomTitleBar()
@@ -146,7 +167,7 @@ public sealed partial class MainWindow : Window
             _appWindowTitleBar = AppWindow.TitleBar;
             _appWindowTitleBar.ExtendsContentIntoTitleBar = true;
 
-            // 让系统标题栏按钮背景透明以衬出 Mica
+            // 让系统标题栏按钮背景透明以衬出窗口材质
             _appWindowTitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindowTitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
 
@@ -158,7 +179,6 @@ public sealed partial class MainWindow : Window
             // XamlRoot 变化（DPI-only 缩放等）都会触发重算 caption 保留列宽与交互控件 Passthrough 区域
             AppTitleBar.Loaded += AppTitleBar_Loaded;
             AppTitleBar.SizeChanged += AppTitleBar_SizeChanged;
-            this.Closed += MainWindow_Closed;
         }
     }
 
@@ -184,6 +204,11 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
+        RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged;
+        _desktopAcrylicController?.Dispose();
+        _desktopAcrylicController = null;
+        _backdropConfiguration = null;
+
         // 窗口关闭：先保守置窗口不可见并解除可见性订阅（在途 view ACK fence 立即失败；页面 Unloaded 另做 Invalidate）。
         ShutdownOpenCodeWindowVisibilityTracking();
 
