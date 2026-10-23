@@ -213,6 +213,7 @@ internal static partial class Program
                 ("held SSE readiness does not block REST paint; bounded first-ready/reconnect repair", FirstPaintAndRepair),
                 ("inflight deltas beat snapshot; stale readiness ignored; workflow reconciliation deferred", SnapshotAndReadinessFences),
                 ("authoritative SSE/active REST publish composer activity without stale overwrite", ActivityPublication),
+                ("SSE execution window excludes retained older history across rollback boundaries", StreamExecutionWindowExcludesOlderHistory),
                 ("Home metadata-only source/directory/date/outcome projection", HomeMetadataProjection),
                 ("Home click does not depend on hidden native selection changing", HomeUnchangedSelectionClick),
                 ("Home actual root action consumer, confirmation/current/source guards and metadata-only refresh", HomeRootActions),

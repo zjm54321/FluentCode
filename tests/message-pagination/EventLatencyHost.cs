@@ -60,4 +60,5 @@ public sealed partial class OpenCodePage
     internal int TestTurnPublications => _conversationView.ActivityPublications;
     internal void TestUnlistSelected() => _sessionItems.Remove(_selectedSessionId!);
     internal void TestRequireBoundary() => _messageHistoryNeedsState = true;
+    internal void TestSetStreamBoundary(string? boundary) => _messageRevertBoundary = boundary;
 }

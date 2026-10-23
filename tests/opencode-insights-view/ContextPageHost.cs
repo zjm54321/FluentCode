@@ -49,7 +49,14 @@ public sealed partial class OpenCodePage
         _messageChainState = cursor is null ? MessagePaginationChainState.Exhausted : MessagePaginationChainState.Active;
     }
     private void UpdateLoadOlderMessagesUi() { }
-    private List<OpenCodeMessage> ProjectMessageHistory(List<OpenCodeMessage> messages) => messages;
+    internal int ProjectionCalls;
+    internal IReadOnlyList<OpenCodeMessage>? ProjectedWindow, ExecutionWindow, AcknowledgementWindow;
+    private List<OpenCodeMessage> ProjectMessageHistory(List<OpenCodeMessage> messages)
+    {
+        ProjectionCalls++;
+        ProjectedWindow = messages;
+        return messages;
+    }
     private bool IsScrolledToBottom() => true;
     private void ScrollToBottom(bool animated) { }
     private void RefreshSessionStateUi() { }
@@ -62,8 +69,8 @@ public sealed partial class OpenCodePage
     private void ResetRuntimeFeedback() { }
     private Task RefreshSessionsAsync() => Task.CompletedTask;
     private Task RefreshMessagesAsync() => Task.CompletedTask;
-    private void ObserveExecutionState(string session, IReadOnlyList<OpenCodeMessage> messages) { }
-    private void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> messages, bool visible) { }
+    private void ObserveExecutionState(string session, IReadOnlyList<OpenCodeMessage> messages) => ExecutionWindow = messages;
+    private void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> messages, bool visible) => AcknowledgementWindow = messages;
     private bool _hostWindowVisible => true;
 
     internal int MergeCalls;

@@ -60,8 +60,13 @@ internal static class ContextPageTests
         Check(page.View.ContextRing.Summary.Contains("10K", StringComparison.Ordinal), "real header summary carries REST reference");
         page.BeginStream();
         var merges = page.MergeCalls;
+        var projections = page.ProjectionCalls;
         page.AcceptEvent(Updated("ses_a", Usage("msg_b", 20, 50000)));
         Check(page.MergeCalls == merges + 1, "SSE reuses its single accepted merged projection; ring does not merge again");
+        Check(page.ProjectionCalls == projections + 1, "latest-only SSE batch projects history exactly once");
+        Check(ReferenceEquals(page.ProjectedWindow, page.ExecutionWindow)
+            && ReferenceEquals(page.ExecutionWindow, page.AcknowledgementWindow),
+            "execution and ACK reuse the accepted projected list without a second window copy");
         Check(page.View.ContextRing.Ring.Value == 25 && page.ContextSurfacesClosed, "closed header renders SSE usage before any click");
         Check(page.Insights.Snapshot.Context.Value?.LatestAssistantUsage?.MessageId == "msg_b", "newest reference, not cumulative sum");
         var renders = 0;

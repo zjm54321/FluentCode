@@ -119,6 +119,33 @@ internal static partial class Program
         await boundaryRead;
         Check(LiveText(p) == "after reset", "replacement reducer events beat snapshot despite old reducer's larger version");
     }
+    private static Task StreamExecutionWindowExcludesOlderHistory()
+    {
+        foreach (var boundary in new string?[] { null, "msg_cut", "missing_boundary", "msg_live" })
+        {
+            var backend = new LatencyBackend(); using var client = backend.Client();
+            var page = new OpenCodePage(); page.TestActivate(Session, client);
+            var idle = new OpenCodeMessage { Id = "msg_old_idle", Type = "idle", Outcome = "succeeded", Time = new() { Created = 1 } };
+            var cut = new OpenCodeMessage { Id = "msg_cut", Type = "user", Text = "old boundary" };
+            page.TestApplyRefresh(new() { idle, cut, Live("first") }, null, false);
+            page.TestApplyRefresh(new() { Live("latest") }, null, false); // Roll idle/cut into older history.
+            page.TestSetStreamBoundary(boundary);
+            var stream = page.TestBeginEvents();
+            page.TestAcceptedWorking("accepted_prompt");
+            page.TestReceive(stream, Wire("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"delta":" delta"}"""));
+            Check(page.TestWorking, "older idle cannot settle execution when latest window has no idle: " + boundary);
+            var visible = page.TestLastApplied();
+            Check(boundary switch
+            {
+                null => visible.Count == 3 && visible[2].Content!.Single().Text == "latest delta",
+                "msg_cut" => visible.Count == 1 && visible[0].Id == "msg_old_idle",
+                "msg_live" => visible.Count == 2 && visible[0].Id == "msg_old_idle",
+                _ => visible.Count == 0,
+            }, "retained history keeps its independent rollback projection: " + boundary);
+        }
+        return Task.CompletedTask;
+    }
+
     private static async Task ActivityPublication()
     {
         var backend = new LatencyBackend(); using var client = backend.Client();

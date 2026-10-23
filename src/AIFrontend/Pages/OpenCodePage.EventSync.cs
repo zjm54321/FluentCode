@@ -250,12 +250,16 @@ public sealed partial class OpenCodePage
             var follow = IsScrolledToBottom();
             _latestMessages.Clear();
             _latestMessages.AddRange(_eventReducer.Messages);
-            var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
+            var history = MergeMessageHistory();
+            // Merge appends the latest window unchanged; equal counts mean no older rows were added.
+            var historyIsLatestWindow = history.Count == _latestMessages.Count;
+            var acceptedHistory = ProjectMessageHistory(history);
             EnsureConversationImages();
             _conversationView.ApplyMessages(acceptedHistory);
             RefreshConversationSessionActivity();
             OnContextMessagesAccepted(acceptedHistory);
-            var window = ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
+            var window = historyIsLatestWindow ? acceptedHistory
+                : ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
             ObserveExecutionState(selected, window);
             NotifyViewAcknowledgementRendered(window, _hostWindowVisible);
             UpdateEmptyState();
