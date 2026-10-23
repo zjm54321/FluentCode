@@ -68,6 +68,8 @@ $sources = $openCode + @(
     (Join-Path $PSScriptRoot 'PageHost.cs'),
     (Join-Path $PSScriptRoot 'ContextPageHost.cs'),
     (Join-Path $PSScriptRoot 'ContextPageTests.cs'),
+    (Join-Path $PSScriptRoot 'AutomaticInsightsTests.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSidebarLayout.cs'),
     (Join-Path $PSScriptRoot 'PageOriginTests.cs'),
     (Join-Path $PSScriptRoot 'TodoControllerTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
@@ -109,6 +111,16 @@ foreach ($pair in @(@($publicationPaths[0], 'DrainEventQueue'), @($publicationPa
 $publicationGenerated = Join-Path $Output 'ContextPublicationMembers.cs'
 ("using System; using System.Linq; using System.Collections.Generic; using System.Diagnostics; using AIFrontend.Services.OpenCode;`nnamespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($publicationMembers -join "`n") + "`n}") | Set-Content -Encoding UTF8 $publicationGenerated
 $sources += $publicationGenerated
+
+# Compile the actual visibility hook expression from layout, with production sidebar surface state.
+$sidebarPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.Sidebars.cs'
+$sidebar = [IO.File]::ReadAllText($sidebarPath)
+$visibilityHook = [regex]::Matches($sidebar, '(?m)^\s*OnSessionInsightsVisibilityChanged\([^;]+;')
+if ($visibilityHook.Count -ne 1) { throw 'Expected one insights visibility hook in ApplySidebarLayout.' }
+$sidebarGenerated = Join-Path $Output 'InsightsVisibilityHook.cs'
+('using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages; public sealed partial class OpenCodePage { internal void ApplyInsightsSurface(OpenCodeSidebarSurface surface, bool hasSessionSurface = true, bool workspaceVisible = true) {' + $visibilityHook[0].Value + '} }') | Set-Content -Encoding UTF8 $sidebarGenerated
+$sources += $sidebarGenerated
+$publicationPaths += $sidebarPath
 
 $references = @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | Sort-Object FullName)
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'

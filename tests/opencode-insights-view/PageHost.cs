@@ -18,6 +18,7 @@ namespace AIFrontend.Pages
 {
     public sealed partial class OpenCodePage
     {
+        private Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue => Microsoft.UI.Dispatching.DispatcherQueue.Shared;
         private OpenCodePageSource? _source;
         private long _sourceRevision;
         private int _sourceGeneration;

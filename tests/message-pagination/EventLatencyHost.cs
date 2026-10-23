@@ -13,6 +13,7 @@ public sealed partial class OpenCodePage
 {
     // Agent-tree UI is outside this source-extracted pagination fixture. Preserve optional hooks.
     partial void OnAgentTreeEvent(OpenCodeEvent item);
+    partial void OnSessionInsightsEvent(OpenCodeEvent item);
     partial void OnAgentTreeReset();
     partial void OnAgentTreeConnected();
     partial void OnAgentTreeActivityChanged();

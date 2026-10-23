@@ -99,6 +99,13 @@ internal static class Program
             catch (Exception ex) { _failed++; Console.WriteLine($"FAIL {name}: {ex}"); }
         }
 
+        foreach (var (name, body) in AutomaticInsightsTests.Cases())
+        {
+            Microsoft.UI.Dispatching.DispatcherQueue.Shared.Reset();
+            try { body(); _passed++; Console.WriteLine("PASS " + name); }
+            catch (Exception ex) { _failed++; Console.WriteLine($"FAIL {name}: {ex}"); }
+        }
+
         Console.WriteLine($"RESULT passed={_passed} failed={_failed} total={_passed + _failed}");
         return _failed;
     }

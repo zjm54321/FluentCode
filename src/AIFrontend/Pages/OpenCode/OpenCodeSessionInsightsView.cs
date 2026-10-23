@@ -94,7 +94,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         };
         AutomationProperties.SetAutomationId(_refreshButton, "OpenCodeInsightsRefreshButton");
         AutomationProperties.SetName(_refreshButton, "重新读取会话概况");
-        ToolTipService.SetToolTip(_refreshButton, "重新读取用量、费用、上下文、任务、Agents 与服务状态（不含 Billion）");
+        ToolTipService.SetToolTip(_refreshButton, "重新读取用量、费用、上下文、to do、Agents 与服务状态（不含 Billion）");
         _refreshButton.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
 
         // 工具行：采样说明（左）+ 读取中 / 刷新（右）。面板标题与关闭按钮由页面面板头提供。
@@ -262,11 +262,11 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     {
         if (snapshot.UnavailableReason is { } reason) return "会话概况：" + reason;
         if (snapshot.Loading) return "会话概况：读取中";
-        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文、任务与 Agents（打开面板读取）";
+        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文、to do 与 Agents";
         var cost = snapshot.Cost.Value is { Summary.HasKnownCost: true } view
             ? (snapshot.Cost.State == OpenCodeInsightState.Partial ? "已知部分 " : "") + Money(view.Summary.TotalCost)
             : "费用无法确认";
-        return "会话概况：" + cost + "（采样于 " + Time(sampled) + "，不会自动更新）";
+        return "会话概况：" + cost + "（更新于 " + Time(sampled) + "）";
     }
 
     /// <summary>
@@ -338,8 +338,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             _refreshButton.IsEnabled = snapshot.UnavailableReason is null && !snapshot.Loading;
             _scopeText.Text = snapshot.UnavailableReason
                 ?? (snapshot.SampledAt is { } sampled
-                    ? "按需读取的快照，采样于 " + Time(sampled) + "；会话继续运行后不会自动更新。"
-                    : snapshot.Loading ? "正在读取…" : "尚未读取；点右侧按钮读取一次。");
+                    ? "更新于 " + Time(sampled) + "；随会话事件自动更新。"
+                    : snapshot.Loading ? "正在读取…" : "等待加载会话概况…");
 
             ReleaseBillionControls();
             foreach (var page in _pages)

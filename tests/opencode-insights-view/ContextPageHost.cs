@@ -14,6 +14,7 @@ public sealed partial class OpenCodePage
 {
     // Optional left-sidebar hooks are declared outside the extracted publication bodies.
     partial void OnAgentTreeEvent(OpenCodeEvent item);
+    partial void OnSessionInsightsEvent(OpenCodeEvent item);
     partial void OnAgentTreeReset();
     private CancellationTokenSource? _eventCts;
     #pragma warning disable CS0414 // StopEventSync clears this; subscription startup is outside this publication fixture.
@@ -74,6 +75,8 @@ public sealed partial class OpenCodePage
     private bool _hostWindowVisible => true;
 
     internal int MergeCalls;
+    internal bool InsightsRefreshPending => _insightsRefreshCts is not null || _insightsLoadTask is { IsCompleted: false };
+    internal Task? InsightsLoad => _insightsLoadTask;
     internal bool ContextSurfacesClosed => !InsightsPane.IsPaneOpen && !_insightsView.ContextRing.Flyout.IsOpen;
     internal void ContextMetadata(OpenCodeModelRef model)
     {

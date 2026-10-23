@@ -108,6 +108,7 @@ public sealed partial class OpenCodePage
                 ? Visibility.Visible : Visibility.Collapsed;
             RightContextRingHost.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
             RefreshRightPanelMetadata();
+            OnSessionInsightsVisibilityChanged(hasSessionSurface && workspaceVisible && surface.RightOpen);
             QueueComposerLayout();
         }
         finally { _sidebarApplying = false; }

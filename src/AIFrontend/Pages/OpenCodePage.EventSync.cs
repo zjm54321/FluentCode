@@ -204,6 +204,7 @@ public sealed partial class OpenCodePage
             var id = item.SessionId;
             if (id == _selectedSessionId && item.Type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted"
                 && _eventReducer?.IsCurrentAssistantEvent(item) == false) continue;
+            OnSessionInsightsEvent(item);
             refreshSessionList |= item.Type is "session.created" or "session.deleted" or "session.renamed";
             if (id is not null)
             {
@@ -287,6 +288,7 @@ public sealed partial class OpenCodePage
     }
 
     partial void OnAgentTreeEvent(OpenCodeEvent item);
+    partial void OnSessionInsightsEvent(OpenCodeEvent item);
     partial void OnAgentTreeConnected();
     partial void OnAgentTreeReset();
     partial void OnAgentTreeActivityChanged();
