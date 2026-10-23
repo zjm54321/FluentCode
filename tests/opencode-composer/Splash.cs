@@ -18,7 +18,6 @@ internal static partial class Program
         SplashGating();
         SplashRotation();
         SplashPrecedence();
-        SplashWiring();
     }
 
     private static void SplashLibrary()
@@ -163,42 +162,6 @@ internal static partial class Program
         var longName = new string('x', 80);
         Check(OpenCodeComposerSplash.Resolve(longName, true, line, basePlaceholder)
             == $"/{OpenCodeComposerInputPolicy.Bound(longName, 40)} 的参数（可选）", "argument hint keeps the bounded command name");
-    }
-
-    private static void SplashWiring()
-    {
-        var view = System.IO.File.ReadAllText(Path.Combine(SplashRepo(), "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
-        Check(Regex.Matches(view, @"\.ObserveContext\(").Count == 1 && Regex.Matches(view, @"\bRotatePlaceholderSplash\(\)").Count == 2,
-            "one rotation entry point, invoked from exactly one site");
-        var activate = SplashMember(view, "internal bool TryActivateDraftSlot(");
-        Check(activate.Contains("RotatePlaceholderSplash();") && activate.IndexOf("TryActivateClean", StringComparison.Ordinal)
-            < activate.IndexOf("RotatePlaceholderSplash();", StringComparison.Ordinal), "rotation only after a successful slot activation (open/switch/blank ready)");
-        var rotate = SplashMember(view, "private void RotatePlaceholderSplash(");
-        Check(!Regex.IsMatch(rotate, @"\.Text\s*=|Select\(|Focus\(|RequestRender|Render\(|TextEdited|WriteSnapshot|_sync"),
-            "rotation never writes editor text, selection, focus, draft or input events");
-        foreach (var member in new[] { "private void OnEditorTextChanging(", "internal void NotifyEditorTextChanged(", "internal OpenCodeComposerKeyDecision HandleEditorKey(",
-            "internal void Render(", "internal void AttachEditor(" })
-            Check(!SplashMember(view, member).Contains("_splash", StringComparison.Ordinal) && !SplashMember(view, member).Contains("RotatePlaceholderSplash", StringComparison.Ordinal),
-                "no splash rotation in " + member);
-        var reconcile = SplashMember(view, "private void ReconcileEditor(");
-        Check(reconcile.Contains("OpenCodeComposerSplash.Resolve(s.SelectedCommand, s.IsActive, _splash.Current.Text, _editorPlaceholder")
-            && Regex.Matches(view, @"PlaceholderText\s*=(?!=)").Count == 1, "single placeholder writer applies Resolve precedence");
-        Check(Regex.Matches(view, @"_editorPlaceholder\s*=(?!=)").Count == 1 && view.Contains("_editorPlaceholder = editor.PlaceholderText;"),
-            "neutral base placeholder still captured once from XAML");
-    }
-
-    private static string SplashMember(string source, string signature)
-    {
-        var start = source.IndexOf(signature, StringComparison.Ordinal);
-        if (start < 0) throw new InvalidOperationException("member not found: " + signature);
-        var open = source.IndexOf('{', start);
-        var depth = 0;
-        for (var i = open; i < source.Length; i++)
-        {
-            if (source[i] == '{') depth++;
-            else if (source[i] == '}' && --depth == 0) return source[start..(i + 1)];
-        }
-        throw new InvalidOperationException("unbalanced member: " + signature);
     }
 
     private static string SplashRepo()

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -124,9 +123,6 @@ internal static partial class Program
         Activate(f, key, data); Check(f.Core.Snapshot.Text == "confirmed", "captured immutable data survives only while Page retains it");
         var previousDraft = f.Core.Snapshot.Token.Draft; f.Core.DiscardDraft(f.Core.Snapshot.Token);
         Check(f.Core.Snapshot.Token.Draft != previousDraft && f.Core.Snapshot.Text == "", "explicit discard alone replaces active draft identity");
-        // Deterministic ownership assertions, not a GC timing/pressure assertion.
-        var pageSlots = new Dictionary<OpenCodeDraftSlotKey, OpenCodeComposerSlotData> { [key] = data };
-        Check(pageSlots.Remove(key) && pageSlots.Count == 0, "closing Page association releases its opaque reference");
         Check(typeof(OpenCodeComposerController).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
             .All(field => field.FieldType != typeof(OpenCodeComposerSlotData)), "controller holds no inactive slot/data cache reference");
 

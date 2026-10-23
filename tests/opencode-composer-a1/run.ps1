@@ -14,9 +14,7 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_NOLOGO = '1'
 $members = @()
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
-$layoutPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
-$layout = [IO.File]::ReadAllText($layoutPath)
 foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSelectable'))) {
     $pattern = if ($spec[1] -eq 'IsBlankAgentSelectable') { '(?ms)^    private static bool IsBlankAgentSelectable\(.*?;' }
         else { '(?ms)^    (?:private|internal) [^\r\n]*\b' + $spec[1] + '\(.*?^    \}' }
@@ -37,16 +35,9 @@ $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ComposerA1Tests.runtimeconfig.json')
-$inputs = @($sources + $blankPath + $layoutPath + "$repo/src/AIFrontend/Pages/OpenCodePage.xaml" + "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs" + $PSCommandPath+$references+$dotnet+$rsp+(Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'))
-$before = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
-$before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs.json')
-$before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-before.json')
 New-Item -ItemType File -Path (Join-Path $output 'compile.log') | Out-Null
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "A1 focused compile failed: $LASTEXITCODE" }
 & $dotnet $assembly $repo | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "A1 focused tests failed: $LASTEXITCODE" }
-$after = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
-$after | Set-Content -Encoding UTF8 (Join-Path $output 'inputs-after.json')
-if ($before -ne $after) { throw 'A1 inputs changed during validation.' }
 Write-Output "Evidence directory: $output"

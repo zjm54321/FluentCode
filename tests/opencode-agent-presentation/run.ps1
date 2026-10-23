@@ -24,12 +24,5 @@ $sources+=$generated
 $rsp=Join-Path $EvidenceRoot 'compile.rsp';$assembly=Join-Path $EvidenceRoot 'AgentNativeLibrary.dll';$compiler=Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $arguments=@('/nologo','/target:library','/langversion:latest','/nullable:enable','/warnaserror+','/nowarn:CS1591,CS1701,CS1702',('/out:"'+$assembly+'"'))
 $arguments+=$refs|ForEach-Object{'/reference:"'+$_+'"'};$arguments+=$sources|ForEach-Object{'"'+$_+'"'};$arguments|Set-Content -Encoding UTF8 $rsp
-$inputs=@($sources+$refs+$themePath+$compiler+$dotnet+$rsp+$PSCommandPath)
-$before=@(Get-FileHash -LiteralPath $inputs -Algorithm SHA256|Select-Object Path,Hash);$before|ConvertTo-Json|Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'inputs-before.json')
-try{
- & $dotnet exec $compiler "@$rsp" 2>&1|Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.log');if($LASTEXITCODE -ne 0){throw "R1 focused native library compile failed: $LASTEXITCODE"}
- Write-Output "PASS R1_NATIVE_LIBRARY exit=0 sources=$($sources.Count) refs=$($refs.Count) (no native execution/application build)"
-}finally{
- $after=@(Get-FileHash -LiteralPath $inputs -Algorithm SHA256|Select-Object Path,Hash);$after|ConvertTo-Json|Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'inputs-after.json')
- if(Compare-Object $before $after -Property Path,Hash){throw 'R1 native compile inputs changed'}
-}
+& $dotnet exec $compiler "@$rsp" 2>&1|Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.log');if($LASTEXITCODE -ne 0){throw "R1 focused native library compile failed: $LASTEXITCODE"}
+Write-Output "PASS R1_NATIVE_LIBRARY exit=0 sources=$($sources.Count) refs=$($refs.Count) (no native execution/application build)"

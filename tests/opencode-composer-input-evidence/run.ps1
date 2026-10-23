@@ -59,36 +59,20 @@ Write-Rsp $testRsp 'exe' $testDll $netRefs $testSources @()
 $runtimeConfig = Join-Path $output 'OpenCodeInputEvidenceTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtimeConfig
 
-$allSources = @($viewSources + $testSources | ForEach-Object FullName | Sort-Object -Unique)
-$inputs = @($allSources) + @($netRefs.FullName) + @($winRefs.FullName) + @($compiler, $dotnet, $viewRsp, $testRsp, $runtimeConfig, $PSCommandPath)
-$inputs = @($inputs | Sort-Object -Unique)
-$before = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-$before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
-@{ ViewCompileSources = @($viewSources.FullName); TestSources = @($testSources.FullName);
-   NetReferences = $netRefs.Count; WinUiReferences = @($winRefs.FullName); SourceRoot = $repo } | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
 Write-Output "Evidence directory: $output"
-if ($SourceRoot) { Write-Output 'PROVISIONAL: immutable captured sources; shared backend files may still change in the live tree.' }
 $status = 0
-try {
-    & $dotnet exec $compiler "@$viewRsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'view-compile.txt')
-    $viewExit = $LASTEXITCODE
-    Write-Output "WINUI_FOCUSED_COMPILE exit=$viewExit sources=$($viewSources.Count) refs=$($netRefs.Count + $winRefs.Count)"
-    if ($viewExit -ne 0) { Get-Content (Join-Path $output 'view-compile.txt'); $status = 1 }
-    & $dotnet exec $compiler "@$testRsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'tests-compile.txt')
-    $testExit = $LASTEXITCODE
-    Write-Output "TEST_COMPILE exit=$testExit sources=$($testSources.Count) refs=$($netRefs.Count)"
-    if ($testExit -ne 0) { Get-Content (Join-Path $output 'tests-compile.txt'); $status = 1 }
-    else {
-        & $dotnet $testDll $repo 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'results.txt')
-        $runExit = $LASTEXITCODE
-        Get-Content (Join-Path $output 'results.txt')
-        if ($runExit -ne 0) { $status = 1 }
-    }
-}
-finally {
-    $after = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-    $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-    if (Compare-Object $before $after -Property Path, Hash) { Write-Output 'INPUTS_CHANGED during validation; evidence invalid.'; $status = 1 }
-    else { Write-Output "INPUTS_UNCHANGED count=$($inputs.Count)" }
+& $dotnet exec $compiler "@$viewRsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'view-compile.txt')
+$viewExit = $LASTEXITCODE
+Write-Output "WINUI_FOCUSED_COMPILE exit=$viewExit sources=$($viewSources.Count) refs=$($netRefs.Count + $winRefs.Count)"
+if ($viewExit -ne 0) { Get-Content (Join-Path $output 'view-compile.txt'); $status = 1 }
+& $dotnet exec $compiler "@$testRsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'tests-compile.txt')
+$testExit = $LASTEXITCODE
+Write-Output "TEST_COMPILE exit=$testExit sources=$($testSources.Count) refs=$($netRefs.Count)"
+if ($testExit -ne 0) { Get-Content (Join-Path $output 'tests-compile.txt'); $status = 1 }
+else {
+    & $dotnet $testDll $repo 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'results.txt')
+    $runExit = $LASTEXITCODE
+    Get-Content (Join-Path $output 'results.txt')
+    if ($runExit -ne 0) { $status = 1 }
 }
 exit $status

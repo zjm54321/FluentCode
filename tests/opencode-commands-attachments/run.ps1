@@ -1,4 +1,5 @@
 # Offline, real production sources, Windows .NET 10 csc; no restore, UI, configuration or live service.
+param([string]$EvidenceRoot = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -6,7 +7,7 @@ $dotnetRoot = Split-Path $dotnet
 $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
-$output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-commands-attachments-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-commands-attachments-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeCommandsAttachmentsTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
@@ -27,6 +28,4 @@ if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 Write-Output 'Headless compilation passed (warnings treated as errors).'
 & $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
-$sources + (Get-Item (Join-Path $PSScriptRoot 'Program.cs')) | Get-FileHash -Algorithm SHA256 |
-    Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
 Write-Output "Evidence directory: $output"

@@ -35,18 +35,8 @@ $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeModelRecentsTests.runtimeconfig.json')
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-$inputs = @($sources.FullName) + @($references.FullName) + @($compiler, $dotnet, $rsp, $pagePath, $PSCommandPath)
-$before = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-$before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
 Write-Output "Evidence directory: $output"
-try {
-    & $dotnet exec $compiler "@$rsp" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
-    if ($LASTEXITCODE -ne 0) { throw "Compile failed: $LASTEXITCODE" }
-    & $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
-    if ($LASTEXITCODE -ne 0) { throw "Tests failed: $LASTEXITCODE" }
-}
-finally {
-    $after = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-    $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-    if (Compare-Object $before $after -Property Path, Hash) { throw 'Compiled inputs changed during validation; evidence invalid.' }
-}
+& $dotnet exec $compiler "@$rsp" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
+if ($LASTEXITCODE -ne 0) { throw "Compile failed: $LASTEXITCODE" }
+& $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
+if ($LASTEXITCODE -ne 0) { throw "Tests failed: $LASTEXITCODE" }

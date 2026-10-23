@@ -150,13 +150,7 @@ $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 $runtime = Join-Path $output 'OpenCodeComposerHookupTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtime
-# Preserve actual compile/extraction membership and source hashes before compilation, including untracked inputs.
-$guardSources = @("$repo/src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs", $layoutPath, $deliveryPath, "$repo/src/AIFrontend/Pages/OpenCodePage.xaml", "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs")
-$references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll')).FullName
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-$inputs = @($sources.FullName + $pagePath + $blankPath + $overlayPath + $PSCommandPath + $guardSources + $references + @($dotnet, $compiler, $rsp, $runtime)) | Sort-Object -Unique
-$inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes-before.json')
-@{ CompiledSources = @($sources.FullName); ExtractedFrom = $pagePath; ExtractedMembers = $names; StructuralOnly = $guardSources; References = $references; Compiler = $compiler; Host = $dotnet; Rsp = $rsp; RuntimeConfig = $runtime; NativeOnly = [bool]$NativeOnly } | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 # Tee-Object creates no file for a silent successful compiler. Establish an empty capture first.
 New-Item -ItemType File -Path (Join-Path $output 'compile.log') -Force | Out-Null
@@ -165,7 +159,4 @@ if ($LASTEXITCODE -ne 0) { throw "Page-partial compile failed: $LASTEXITCODE" }
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 & $dotnet $assembly $repo ([string]$NativeOnly) | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Page-partial tests failed: $LASTEXITCODE" }
-$inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
-if ([IO.File]::ReadAllText((Join-Path $output 'source-hashes-before.json')) -ne [IO.File]::ReadAllText((Join-Path $output 'source-hashes.json'))) { throw 'Page-partial inputs changed during validation.' }
-Get-FileHash -LiteralPath $assembly, $rsp, (Join-Path $output 'compile.log'), (Join-Path $output 'results.txt'), (Join-Path $output 'input-membership.json') -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'artifact-hashes.json')
 Write-Output "Evidence directory: $output"

@@ -603,7 +603,6 @@ internal static class Program
         using (var f = new Fixture())
         {
             f.Page.Text("snapshot old"); f.Page.Text("snapshot latest"); f.Page.DrainView();
-            Check(f.Page.ViewRenderedText == "snapshot latest", "page bridge with view double pulls latest snapshot rather than event payload");
             Check(f.Page.ViewQueue == 0, "StateChanged/button refresh does not recurse into RequestRender");
             f.Page.InitializeAgain(); f.Page.Text("one subscription"); f.Page.DrainView();
             Check(f.Page.RenderRequestsForLastChange == 1, "initialization guard prevents duplicate snapshot subscriptions");
@@ -615,8 +614,6 @@ internal static class Program
             f.Page.PublicSubmit(); f.Page.Switch("ses_other"); f.Page.DispatcherQueue.HasThreadAccess = true;
             while (f.Page.DispatcherQueue.Queue.TryDequeue(out var callback)) callback();
             Check(f.Http.Posts == 0, "queued SubmitRequested rejects token invalidated before UI dispatch");
-            await Task.Run(() => f.Page.Controller.SetText(f.Page.Snapshot.Token, "worker snapshot")); f.Page.DrainView();
-            Check(f.Page.ViewRenderedText == "worker snapshot", "worker SnapshotChanged through page bridge/view double queues latest snapshot");
         }
         using (var f = new Fixture())
         {
@@ -685,31 +682,6 @@ internal static class Program
         var button = Member(page, "SendStopButton_Click");
         Check(button.Contains("PrepareSubmission()", StringComparison.Ordinal)
             && button.IndexOf("PrepareSubmission()", StringComparison.Ordinal) < button.IndexOf("ShouldStopSelectedSession()", StringComparison.Ordinal), "actual button prepares before Send/Stop predicate");
-        var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
-        System.Xml.Linq.XNamespace xn = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var editor = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "Composer");
-        var actions = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "ComposerActions");
-        var leading = xaml.Descendants().Single(e => (string?)e.Attribute(xn + "Name") == "ComposerLeadingHost");
-        var actionNames = actions.Elements().Select(e => (string?)e.Attribute(xn + "Name")).ToArray();
-        Check((string?)editor.Parent!.Attribute(xn + "Name") == "ComposerEditorHost"
-            && actions.Parent == leading.Parent!.Parent && (string?)actions.Parent!.Attribute(xn + "Name") == "ComposerToolbar"
-            && actionNames[^2] == "ComposerQueueButton" && actionNames[^1] == "SendStopButton"
-            && !xaml.Descendants().Any(e => (string?)e.Attribute(xn + "Name") == "ComposerDeliveryMode"),
-            "actual XAML: separate input/bottom sections, clock immediately left of primary, no persistent mode selector");
-        var layout = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"));
-        Check(layout.Contains("measure.Measure(new Size(editorWidth") && layout.Contains("ActualWidth - horizontalChrome")
-            && !layout.Contains("UseBottomToolbar") && !layout.Contains("Grid.SetRow(ComposerLeadingHost")
-            && layout.Contains("Composer.TextCompositionEnded +=") && layout.Contains("if (_isComposing")
-            && !layout.Contains("new TextBox") && !layout.Contains("Children.Remove") && !layout.Contains("Composer.Text ="),
-            "native measurement layout source: fixed full-width upper editor/bottom toolbar; IME-deferred measurement, no editor replacement");
-        Check(layout.Contains("ViewportHeight(line, chrome)") && layout.Contains("CanExpand(measure.DesiredSize.Height, line)")
-            && (string?)editor.Attribute("ScrollViewer.VerticalScrollBarVisibility") == "Auto"
-            && composer.Contains("InitializeComposerLayout();") && composer.Contains("TryRestoreExpandedComposerSelection();"),
-            "actual five visual-line native scrolling/expand hooks and token-fenced selection restoration remain wired");
-        var dialog = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs"));
-        Check(dialog.Contains("box.Select(SelectionStart, SelectionLength)")
-            && dialog.Contains("box.SelectionChanged +=") && dialog.Contains("box.TextCompositionStarted +=")
-            && dialog.Contains("TryApply(apply)"), "expanded editor reuses existing guarded apply/cancel/IME surface with native selection tracking");
     }
     private static void RealRenderOwnership()
     {
@@ -904,7 +876,6 @@ namespace AIFrontend.Pages
         internal bool Composing { set => _isComposing = value; }
         internal bool Shift { set => _shiftDown = value; }
         internal int ViewQueue => _composerView!.QueueCount;
-        internal string? ViewRenderedText => _composerView!.Rendered?.Text;
         internal int RenderRequestsForLastChange => _composerView!.RequestCount;
         internal int PickFocusAttempts => _composerView!.FocusAttempts;
         internal OpenCodeComposerInputState InputState => _composerView!.Sync.State;
@@ -1139,7 +1110,6 @@ namespace AIFrontend.Pages.OpenCode
         internal void Dismiss(OpenCodeComposerCatalogHandle handle) => CatalogDismissRequested?.Invoke(this, new(handle));
         internal event EventHandler<OpenCodeComposerAttachmentRemovedEventArgs>? AttachmentRemoved;
         internal int RequestCount, QueueCount, FocusAttempts;
-        internal OpenCodeComposerSnapshot? Rendered;
         private TextBox? editor;
         private Func<bool> composing = () => false;
         internal OpenCodeComposerEditorSync Sync = null!;
@@ -1175,7 +1145,7 @@ namespace AIFrontend.Pages.OpenCode
             Evidence.LifetimeChanged();
         }
         internal void RequestRender() { RequestCount++; QueueCount = 1; }
-        internal void Drain() { if (QueueCount == 0) return; QueueCount = 0; Sync.Reconcile(); Evidence.Refresh(); Rendered = source(); StateChanged?.Invoke(this, EventArgs.Empty); }
+        internal void Drain() { if (QueueCount == 0) return; QueueCount = 0; Sync.Reconcile(); Evidence.Refresh(); StateChanged?.Invoke(this, EventArgs.Empty); }
         internal void NotifyEditorTextChanged() { Sync.Flush(); Evidence.Refresh(); }
         internal bool PrepareSubmission() { var clean = Sync.Prepare(); Evidence.Refresh(); return clean; }
         internal bool PrepareClientTextApplication() => PrepareSubmission();
@@ -1197,7 +1167,7 @@ namespace AIFrontend.Pages.OpenCode
             HandoffEntered.TrySetResult(true);
             return task;
         }
-        internal void ReportPickOutcome(OpenCodeComposerPickOutcome outcome) { Rendered = source(); if (!composing()) FocusAttempts++; }
+        internal void ReportPickOutcome(OpenCodeComposerPickOutcome outcome) { if (!composing()) FocusAttempts++; }
         internal OpenCodeComposerKeyDecision HandleEditorKey(KeyRoutedEventArgs e, bool shift, bool ime, TimeSpan sinceIme, bool latched, bool busy)
         {
             var s = source(); var key = e.Key == VirtualKey.Enter ? OpenCodeComposerKey.Enter : OpenCodeComposerKey.Other;

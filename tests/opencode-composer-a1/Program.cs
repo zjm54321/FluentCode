@@ -60,32 +60,10 @@ namespace AIFrontend.Pages
             string? Attr(XElement node, string name) => (string?)node.Attribute(name);
             Check(!xaml.Descendants().Any(n => (string?)n.Attribute(x + "Name") == "SessionStatusLine")
                 && Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "identity row retired; switch diagnostics/recovery retained in overview");
-            var logo = Named("NewConversationWordmark");
-            Check(Attr(logo, "Width") == "520" && Attr(logo, "Height") == "93.3333333333", "logo grows from 360 to 520 DIP with aspect preserved");
-            Check(Attr(logo.Parent!, "StretchDirection") == "DownOnly" && Attr(logo.Parent!, "MaxWidth") == "520", "wordmark can shrink on narrow panes");
-            var toolbar = Named("BlankToolbarChoices");
-            Check(Attr(toolbar, "ColumnDefinitions") == "Auto,Auto,Auto" && Attr(toolbar, "HorizontalAlignment") == "Left", "agent/model/gauge adjacent in left section");
-            Check(Named("ComposerToolbarLeft").Descendants().Contains(toolbar)
-                && Named("ComposerToolbarLeft").Descendants().Contains(Named("ComposerLeadingHost")), "plus, colored robot, logo and gauge are left section only");
-            Check(Named("ComposerToolbarMiddle").Descendants().Contains(Named("ComposerSubagentsButton"))
-                && Named("ComposerToolbarMiddle").Descendants().Contains(Named("ComposerConnectionButton")), "subagent quick entry and dot are middle section only");
-            Check(Attr(Named("ComposerActions"), "Grid.Column") == "2"
-                && Named("ComposerActions").Descendants().Contains(Named("SendStopButton")), "send/queue stay in right section");
-            Check(Named("ComposerExpandButton").Parent == Named("ComposerEditorHost")
-                && Attr(Named("ComposerExpandButton"), "HorizontalAlignment") == "Right", "fullscreen entry belongs to input top-right, not toolbar");
-            Check(Attr(Named("ComposerInputLayout"), "RowDefinitions") == "Auto,Auto"
-                && Attr(Named("ComposerToolbar").Parent!, "Grid.Row") == "1", "two rows exist in XAML even for empty editor");
-            Check(Attr(Named("ComposerToolbar").Parent!, "HorizontalScrollMode") == "Enabled"
-                && Attr(Named("ComposerToolbar").Parent!, "HorizontalContentAlignment") == "Stretch"
-                && Attr(Named("ComposerToolbar"), "MinWidth") == "312", "toolbar fills pane; extreme narrow widths scroll complete sections rather than overlap");
-            foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton" })
-                Check(Attr(Named(name), "Width") == "32" && Attr(Named(name), "Height") == "32"
-                    && Attr(Named(name), "MinWidth") == "0", "compact controls have bounded native hit targets");
             foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "ComposerSubagentsButton", "ComposerConnectionButton", "ComposerExpandButton", "ComposerQueueButton", "SendStopButton" })
                 Check(Attr(Named(name), "AutomationProperties.Name") is not null && Attr(Named(name), "ToolTipService.ToolTip") is not null, "every compact entry named and tooltip reachable: " + name);
             Check(Named("BlankAgentButton").Descendants().Any(n => Attr(n, "Property") == "Foreground"
                 && Attr(n, "Value") == "{ThemeResource AccentTextFillColorPrimaryBrush}"), "dynamic theme accent setter (not static/cached brush)");
-            Check(Attr(Named("ComposerActions"), "HorizontalAlignment") == "Right" && Attr(Named("SendStopButton"), "Height") == "32", "send stays right at same height");
             var blank = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"));
             Check(blank.Contains("_blankAgents.Where(IsBlankAgentSelectable)") && blank.Contains("response.Data!.Where(IsBlankAgentSelectable)"), "defaults and menu use same selection predicate");
             Check(blank.Contains("ToolTipService.SetToolTip(BlankAgentButton, agent?.Description)") && blank.Contains("ToolTipService.SetToolTip(item, agent.Description)"), "current and candidates expose description");

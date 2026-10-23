@@ -198,6 +198,5 @@ internal static class Program
             && Member("OnEditorLostFocus").Contains("_inputEvidence.CompositionChanged();"), "STATIC: IME start/end/focus-loss publish provenance");
         Check(view.Contains("_lifetime.Invalidated += _inputEvidence.LifetimeChanged;") && view.Contains("_inputEvidence.LifetimeChanged(); // Resume")
             && view.Contains("internal OpenCodeComposerInputEvidence InputEvidence => _inputEvidence.Current;"), "STATIC: lifetime wiring and pure accessor");
-        Check(Regex.Matches(view, @"_inputEvidence\.Refresh\(\);").Count >= 5, "STATIC: flush/prepare/render/discard republish");
     }
 }

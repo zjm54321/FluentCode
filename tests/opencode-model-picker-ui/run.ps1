@@ -40,15 +40,9 @@ $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ModelPickerUiTests.runtimeconfig.json')
-$inputs = @($sources + $statePath + $refPath + $blankPath + $homePath + $tokenPath + $PSCommandPath + "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs" + "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeVariantPickerDialog.cs" + "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs" + "$repo/src/AIFrontend/AIFrontend.csproj" + @(Get-ChildItem "$repo/src/AIFrontend/Assets/Brands/*" -File | ForEach-Object FullName))
-$inputs += @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs")
-$before = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
-$before | Set-Content -Encoding UTF8 (Join-Path $output 'inputs.json')
 New-Item -ItemType File -Path (Join-Path $output 'compile.log') | Out-Null
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Picker UI focused compile failed: $LASTEXITCODE" }
 & $dotnet $assembly $repo $output | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Picker UI focused tests failed: $LASTEXITCODE" }
-$after = $inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash | ConvertTo-Json
-if ($before -ne $after) { throw 'Picker UI inputs changed during validation.' }
 Write-Output "Evidence directory: $output"

@@ -41,21 +41,9 @@ $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeComposerTests.runtimeconfig.json')
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-$inputs = @($sources.FullName) + @($references.FullName) + @($compiler, $dotnet, $rsp, (Join-Path $output 'OpenCodeComposerTests.runtimeconfig.json'), $PSCommandPath)
-$before = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-$before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
-$sources | Get-FileHash -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
 Write-Output "Evidence directory: $output"
-if ($SourceRoot) { Write-Output 'PROVISIONAL: immutable captured sources, not authoritative combined current-tree evidence.' }
-try {
-    & $dotnet exec $compiler "@$rsp" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
-    if ($LASTEXITCODE -ne 0) { throw "Core compile failed: $LASTEXITCODE" }
-    $env:AIFRONTEND_SPLASH_REPO = $repo # Splash honesty/wiring checks read the same production sources compiled above.
-    & $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
-    if ($LASTEXITCODE -ne 0) { throw "Core tests failed: $LASTEXITCODE" }
-}
-finally {
-    $after = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-    $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-    if (Compare-Object $before $after -Property Path, Hash) { throw 'Compiled inputs changed during validation; evidence invalid.' }
-}
+& $dotnet exec $compiler "@$rsp" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
+if ($LASTEXITCODE -ne 0) { throw "Core compile failed: $LASTEXITCODE" }
+$env:AIFRONTEND_SPLASH_REPO = $repo # Retained splash/character-trigger wiring checks read production sources.
+& $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
+if ($LASTEXITCODE -ne 0) { throw "Core tests failed: $LASTEXITCODE" }

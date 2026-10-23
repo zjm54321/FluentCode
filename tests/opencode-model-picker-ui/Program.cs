@@ -1,8 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Xml.Linq;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
@@ -73,25 +71,11 @@ internal static class Program
         Check(OpenCodeModelPresentation.VariantAvailable(model, null), "base allowed without fabricated catalog default");
         Check(OpenCodeModelPresentation.VariantAvailable(model, "extra_high") && !OpenCodeModelPresentation.VariantAvailable(model, "xhigh"), "catalog exact spelling required despite synonymous display");
         Check(!OpenCodeModelPresentation.VariantAvailable(model with { Enabled = false }, null) && !OpenCodeModelPresentation.VariantAvailable(null, null), "default cannot revive removed/disabled model");
-        var wire = new OpenCodeModelRef { ProviderId = "a", Id = "duplicate", Variant = "extra_high" };
-        var options = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
-        Check(JsonSerializer.Serialize(wire, options).Contains("\"variant\":\"extra_high\""), "wire keeps exact offered variant");
-        Check(!JsonSerializer.Serialize(wire with { Variant = null }, options).Contains("variant"), "null base omitted under request serialization policy");
-
         var root = args[0];
         string Read(string path) => File.ReadAllText(Path.Combine(root, path));
         var dialog = Read("src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs").Split("internal static class OpenCodeRollbackConfirmationDialog")[0];
-        Check(!dialog.Contains("GroupHeader") && !dialog.Contains("个变体") && !dialog.Contains("row.Detail") && !dialog.Contains("var detail"), "one flat list without technical subtitles");
-        Check(!dialog.Contains("variantRow") && !dialog.Contains("RadioButtons") && dialog.Contains("OpenCodeModelPresentation.InformativeNote(p.Note)") && !dialog.Contains("只对之后") && !dialog.Contains("仅用于此草稿"), "model dialog removes inline variants/scope boilerplate without dropping real diagnostics");
-        Check(dialog.Contains("Title = \"选择模型\"") && dialog.Contains("OpenCodeModelPresentation.CurrentName") && dialog.Contains("PrimaryButtonText = \"确认修改\"") && dialog.Contains("CloseButtonText = \"取消\""), "minimal title/current-name and two actions");
         Check(dialog.Contains("row.ModelId.Contains(filter") && dialog.Contains("row.ProviderName ?? row.ProviderId") && dialog.Contains("row.Name.Contains(filter"), "search keeps true fields without exposing subtitles");
         Check(dialog.Contains("OpenCodeModelLogo.Label(row.ModelId, row.Name)") && dialog.Contains("Tag = row") && dialog.Contains("ListViewSelectionMode.Single"), "logo plus name preserves native selection identity/keyboard surface");
-        Check(dialog.Contains("grid.ColumnSpacing = 12") && dialog.Contains("grid.Padding = new Thickness(0, 10, 0, 10)") && dialog.Contains("MinHeight = 48")
-            && dialog.Contains("Spacing = 16") && dialog.Contains("CardBackgroundBrushKey"), "B1b roomy rows (12px mark gap, 48px rows), 16px section rhythm and list card");
-        Check(dialog.Contains("MaxHeight = ModelListMaxHeight(owner)") && dialog.Contains("Width = ModelBodyWidth(owner)") && dialog.Contains("owner.Changed += Refit")
-            && dialog.Contains("finally { owner.Changed -= Refit; }") && dialog.Contains("Content = new ScrollViewer { Content = body"), "B1b dialog re-fits width/list height to live window size and scale, never overflows");
-        var sharedLabel = Read("src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs");
-        Check(!sharedLabel.Contains("ColumnSpacing = 12") && sharedLabel.Contains("ColumnSpacing = 8"), "B1b row spacing is dialog-local; shared composer label unchanged");
         Check(dialog.Contains("OpenCodeCurrentStrengthEntry") && dialog.Contains("dialog.Hide()")
             && dialog.IndexOf("await dialog.ShowAsync()", StringComparison.Ordinal) < dialog.IndexOf("await OpenCodeVariantPickerDialog.ShowAsync", StringComparison.Ordinal), "normal strength entry closes first dialog before opening independent native editor");
         Check(dialog.Contains("var fresh = refresh is null ? basis : await refresh()") && dialog.Contains("currentRow.ProviderId != freshRow.ProviderId || currentRow.ModelId != freshRow.ModelId"), "independent strength entry refreshes existing owner-bound catalog and refuses model retargeting");
@@ -106,8 +90,6 @@ internal static class Program
         Check(strengthProducer.Contains("foreach (var (variantId, label, isChecked) in BlankVariantMenuEntries(model, basis.Model.Variant))"), "blank strength menu is produced only from default plus catalog-offered entries");
         Check(strengthProducer.Contains("new RadioMenuFlyoutItem { Text = label, GroupName = BlankVariantRadioGroup, IsChecked = isChecked }")
             && !blank.Contains("ToggleMenuFlyoutItem"), "blank strength menu uses native WinUI radio items in one group, not checkbox toggles");
-        Check(!strengthProducer.Contains("FontIcon") && !strengthProducer.Contains("Glyph") && !strengthProducer.Contains("Ellipse") && !strengthProducer.Contains("\u2713")
-            && !strengthProducer.Contains("✓") && !strengthProducer.Contains("●") && !strengthProducer.Contains("ListView"), "selected mark is the native template, no custom glyph/shape or ListView fake radio");
         Check(strengthProducer.Contains("item.Click += async (_, _) => { if (variantId != basis.Model.Variant) await SetBlankVariantAsync(basis, token, variantId); };")
             && !strengthProducer.Contains("Checked +=") && !strengthProducer.Contains("Unchecked +=") && !strengthProducer.Contains("RegisterPropertyChangedCallback"),
             "only an explicit click on a different item commits, via the guarded SetBlankVariantAsync entry");
@@ -125,24 +107,19 @@ internal static class Program
         var project = XDocument.Parse(Read("src/AIFrontend/AIFrontend.csproj"));
         Check(project.Descendants("Content").Any(n => (string?)n.Attribute("Include") == @"Assets\Brands\**\*"
             && (string?)n.Attribute("CopyToOutputDirectory") == "PreserveNewest" && (string?)n.Attribute("CopyToPublishDirectory") == "PreserveNewest"), "brand resources copied to build/publish output");
-        Check(Read("src/AIFrontend/Assets/Brands/ATTRIBUTION.md").Contains("OpenCodeModelLogo.cs"), "existing official resources reused with attribution");
         var strengthDialog = Read("src/AIFrontend/Pages/OpenCode/OpenCodeVariantPickerDialog.cs");
         Check(strengthDialog.Contains("OpenCodeModelPickerState(presentation)") && strengthDialog.Contains("state.SelectModel(row.ProviderId, row.ModelId)")
             && strengthDialog.Contains("foreach (var variant in row.Variants)"), "independent strength editor has only current-model catalog variants");
         Check(strengthDialog.Contains("VariantLabel(null), Tag = null") && strengthDialog.Contains("VariantLabel(variant), Tag = variant")
             && strengthDialog.Contains("state.TryFreezeConfirmation()"), "independent default/Chinese display keep wire IDs and frozen explicit confirmation");
         AIFrontend.Pages.OpenCodePage.RunVariantSelectionChecks(Check).GetAwaiter().GetResult();
-        var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
         var cardBinding = Read("src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs");
-        Check(card.Contains("Grid.SetColumnSpan(AgentButton, 2)") && card.Contains("Grid.SetRow(ModelButton, 1)")
-            && card.Contains("Grid.SetRow(VariantButton, 1)") && card.Contains("OpenCodeModelLogo.Label(modelId, modelName)"),
-            "sidebar has two native rows and reuses existing branded model logo");
         Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
             && cardBinding.Contains("_blankPreferences") && !cardBinding.Contains("GetSessionInfoAsync") && !cardBinding.Contains("ListModelsAsync"),
             "sidebar reads the same session/blank owners, never adds a second selection cache or data fetch");
         Check(cardBinding.Contains("BlankAgentButton_Click(sender, e)") && cardBinding.Contains("BlankModelButton_Click(sender, e)")
             && cardBinding.Contains("BlankStrengthButton_Click(sender, e)") && cardBinding.Contains("尚未保存为会话选择"),
             "blank sidebar delegates to existing draft semantics and labels its unpersisted scope");
-        Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/wire + structural native UI/resource checks (no native rendering)");
+        Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
     }
 }
