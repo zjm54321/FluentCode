@@ -26,10 +26,10 @@ static partial class Checks
                 if (entered is not null) { entered.TrySetResult(); await release!.Task; }
                 return Json(new { data = messages });
             }
-            if (path == "/api/session")
+            if (path == "/api/session/ses_test")
             {
                 await Task.Delay(30); // Separates publication time from the oldest depended-on evidence.
-                return Json(new { data = new[] { new { id = "ses_test", outcome = serverOutcome, time = new { idle = serverIdle } } } });
+                return Json(new { data = new { id = "ses_test", outcome = serverOutcome, time = new { idle = serverIdle } } });
             }
             if (path.EndsWith("/active")) return Json(new { data = new Dictionary<string, object>() });
             return Json(new { data = Array.Empty<object>() });
@@ -81,7 +81,7 @@ static partial class Checks
                 sent = body.RootElement.GetProperty("idle").GetDouble();
                 return new(HttpStatusCode.NoContent);
             }
-            return Json(new { data = new[] { new { id = "ses_test", outcome = "failed", time = new { idle = 200 } } } });
+            return Json(new { data = new { id = "ses_test", outcome = "failed", time = new { idle = 200 } } });
         }));
         using var client = Client(http);
         using var monitor = new OpenCodeNotificationMonitor((CompletionNotificationService?)null, new("ep-app", client));

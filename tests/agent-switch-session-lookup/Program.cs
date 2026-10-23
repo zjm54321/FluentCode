@@ -29,7 +29,8 @@ internal static class Program
         await MissingSessionIsBlockedWithoutMutation();
         await MismatchedSessionIsBlockedWithoutMutation();
         await CancellationDuringReadNeverBecomesSuccess();
-        Console.WriteLine($"PASS: 4 agent-switch session-lookup scenarios, {assertions} assertions; fake HTTP only; no live server.");
+        await OpaqueMessageCursorRemainsUsable();
+        Console.WriteLine($"PASS: 5 agent-switch session-lookup scenarios, {assertions} assertions; fake HTTP only; no live server.");
     }
 
     private static void Check(bool condition, string message)
@@ -182,5 +183,31 @@ internal static class Program
         Check(!result.MutationStarted, "cancellation during the exact read never starts a mutation");
         Check(recorder.Count("POST /api/session/" + SessionId + "/agent") == 0, "no agent switch POST after cancellation");
         return Task.CompletedTask;
+    }
+
+    private static async Task OpaqueMessageCursorRemainsUsable()
+    {
+        string cursor = new string('x', 180) + "+/=&? 游标";
+        int pages = 0;
+        var recorder = new Recorder();
+        using var http = new HttpClient(new Handler(request => {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/message"))
+            {
+                pages++;
+                if (pages == 2)
+                    Check(request.RequestUri.Query.Contains("cursor=" + Uri.EscapeDataString(cursor), StringComparison.Ordinal),
+                        "agent-switch opaque cursor is URI escaped once, not constrained as an ID");
+                return Json(new { data = pages == 1 ? new[] { new { id = "msg_old", sessionID = SessionId,
+                    type = "idle", outcome = "succeeded", time = new { created = 1 } } } : Array.Empty<object>(),
+                    cursor = new { next = pages == 1 ? cursor : null } });
+            }
+            return Route(recorder, request, null);
+        }));
+        using var client = new OpenCodeClient(http, new OpenCodeClientOptions { BaseUrl = "https://offline.invalid", Secret = "tok" }, true);
+        var source = new OpenCodePageSource("ep_cursor", 7L, () => client);
+        var result = await new AgentSwitchCoordinator(new OpenCodeInteractionGate()).SwitchAsync(
+            new(source, 7L, SessionId, 1L), Guid.NewGuid(), TargetAgent, _ => true);
+        Check(result.Status == AgentSwitchStatus.Applied && pages == 2, "opaque cursor permits full history and exactly one switch");
+        Check(recorder.Count("POST /api/session/" + SessionId + "/agent") == 1, "cursor continuation does not repeat mutations");
     }
 }

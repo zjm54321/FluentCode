@@ -23,6 +23,8 @@ public sealed partial class CompletionNotificationService
         {
             _interactions.InvalidateOpenCodeSource(endpointIdentity);
             _notificationSources.Remove(endpointIdentity);
+            foreach (var key in _observedIdle.Keys.Where(p => p.Endpoint == endpointIdentity).ToArray())
+                _observedIdle.Remove(key);
             foreach (var id in _completionTargets.Where(p => p.Value.Source == NotificationSource.OpenCode
                 && p.Value.Target?.EndpointIdentity == endpointIdentity).Select(p => p.Key).ToArray())
                 _completionTargets.Remove(id);
@@ -43,9 +45,20 @@ public sealed partial class CompletionNotificationService
                 try { handler(this, new(target)); } catch { /* No subscriber escapes a native callback. */ }
         }
     }
-    private readonly Dictionary<(string Endpoint, string Session), HashSet<string>> _observedIdle = new();
+    private sealed class IdleObservation
+    {
+        internal readonly HashSet<string> Seen = new(StringComparer.Ordinal);
+        internal readonly Dictionary<string, int> Attempts = new(StringComparer.Ordinal);
+    }
+    private readonly Dictionary<(string Endpoint, string Session), IdleObservation> _observedIdle = new();
     private const int MaxObservedStreams = 128;
     private const int MaxObservedIdleIds = 8192;
+
+    internal void RetireOpenCodeObservation(TrustedOpenCodeNotificationSource source, string sessionId)
+    {
+        lock (_gate)
+            if (IsCurrentNotificationSource(source)) _observedIdle.Remove((source.Identity, sessionId));
+    }
 
     /// <summary>Background-thread result/navigation/failure event; marshal externally. Never contains submitted answers or nonces.</summary>
     public event EventHandler<NotificationInteractionEventArgs>? InteractionProcessed;
@@ -210,22 +223,44 @@ public sealed partial class CompletionNotificationService
             if (_status == NotificationServiceStatus.Disposed)
                 return [NotificationDispatchResult.Unavailable(NotificationSource.OpenCode, string.Empty, "notification service stopped")];
             var key = (endpointIdentity, sessionId);
-            if (!_observedIdle.TryGetValue(key, out var seen))
+            if (!_observedIdle.TryGetValue(key, out var observation))
             {
                 if (_observedIdle.Count >= MaxObservedStreams)
-                    return [NotificationDispatchResult.Unavailable(NotificationSource.OpenCode, string.Empty, "observation capacity reached")];
-                _observedIdle.Add(key, seen = new(StringComparer.Ordinal));
+                    foreach (var stale in _observedIdle.Keys.Take(_observedIdle.Count - MaxObservedStreams + 1).ToArray())
+                        _observedIdle.Remove(stale);
+                _observedIdle.Add(key, observation = new());
                 isHistoricalSnapshot = true;
+            }
+            var seen = observation.Seen;
+            if (context is not null)
+            {
+                var retained = context.Select(m => m.Id).ToHashSet(StringComparer.Ordinal);
+                seen.RemoveWhere(id => !retained.Contains(id));
+                foreach (var id in observation.Attempts.Keys.Where(id => !retained.Contains(id)).ToArray())
+                    observation.Attempts.Remove(id);
+            }
+            // A bounded dedupe window is a baseline, not a lifetime refusal. If the caller supplies
+            // delta-only observations, retire the oldest stream before admitting another window.
+            if (_observedIdle.Values.Sum(value => value.Seen.Count) + messages.Count > MaxObservedIdleIds)
+            {
+                seen.Clear();
+                observation.Attempts.Clear();
+                isHistoricalSnapshot = true;
+                foreach (var stale in _observedIdle.Keys.Where(value => value != key).ToArray())
+                    _observedIdle.Remove(stale);
             }
             for (int index = 0; index < messages.Count; index++)
             {
                 var message = messages[index];
                 if (message is null || message.Type != "idle" || !NotificationArgumentCodec.IsValidRequestId(message.Id)) continue;
                 if (seen.Contains(message.Id!)) continue;
-                if (_observedIdle.Values.Sum(ids => ids.Count) >= MaxObservedIdleIds)
-                    return [NotificationDispatchResult.Unavailable(NotificationSource.OpenCode, string.Empty, "observation capacity reached")];
-                seen.Add(message.Id!);
-                if (isHistoricalSnapshot || message.Outcome != "succeeded") continue;
+                if (isHistoricalSnapshot || message.Outcome != "succeeded")
+                {
+                    if (seen.Count < MaxObservedIdleIds) seen.Add(message.Id!);
+                    continue;
+                }
+                if (observation.Attempts.GetValueOrDefault(message.Id!) >= 3) { seen.Add(message.Id!); continue; }
+                observation.Attempts[message.Id!] = observation.Attempts.GetValueOrDefault(message.Id!) + 1;
                 // Tuple digest is only the internal dedupe key; the toast gets a fresh random token.
                 string requestId = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
                     new[] { endpointIdentity, sessionId, message.Id! })));
@@ -237,9 +272,15 @@ public sealed partial class CompletionNotificationService
                     for (int i = 0; i < context.Count; i++)
                         if (context[i].Id == message.Id) { summaryIndex = i; break; }
                 }
-                results.Add(NotifyCompletedCore(NotificationSource.OpenCode, requestId,
+                var result = NotifyCompletedCore(NotificationSource.OpenCode, requestId,
                     new(NotificationSource.OpenCode, endpointIdentity, sessionId, message.Id!, NotificationNavigationKind.Completion),
-                    NotificationText.Completion(sessionTitle, summaryMessages, summaryIndex)));
+                    NotificationText.Completion(sessionTitle, summaryMessages, summaryIndex));
+                results.Add(result);
+                if (result.Status is NotificationDispatchStatus.Submitted or NotificationDispatchStatus.Duplicate)
+                {
+                    seen.Add(message.Id!);
+                    observation.Attempts.Remove(message.Id!);
+                }
             }
         }
         return results;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -45,31 +46,28 @@ public sealed partial class OpenCodeNotificationMonitor
 
     private static bool Fresh(DateTimeOffset? at) => at is { } value && DateTimeOffset.UtcNow - value <= ObservationLifetime;
 
-    private async Task<OpenCodeSessionInfo?> ReadSessionAsync(string session, CancellationToken token)
-    {
-        string? cursor = null;
-        var cursors = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
-        for (int i = 0; i < _pageBudget; i++)
-        {
-            var page = await _source.Client.ListSessionsAsync(new() { Limit = _pageSize, Cursor = cursor,
-                Order = cursor is null ? OpenCodeSessionOrders.Desc : null }, token).ConfigureAwait(false);
-            if (page.Data is null || page.Data.Count > _pageSize) return null;
-            var found = page.Data.Where(s => s?.Id == session).ToArray();
-            if (found.Length != 0) return found.Length == 1 ? found[0] : null;
-            cursor = page.Cursor?.Next;
-            if (page.Data.Count == 0 || !NotificationArgumentCodec.IsValidRequestId(cursor) || !cursors.Add(cursor!)) break;
-        }
-        return null;
-    }
+    private Task<OpenCodeSessionInfo> ReadSessionAsync(string session, CancellationToken token)
+        => _source.Client.GetSessionInfoAsync(session, token);
 
     private async Task ExecutionAsync(string session, StreamState state, CancellationToken token)
+    {
+        var at = DateTimeOffset.UtcNow;
+        IReadOnlyDictionary<string, OpenCodeActiveSessionState>? active = null;
+        try { active = (await _source.Client.GetActiveSessionsAsync(token).ConfigureAwait(false)).Data; }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception error) when (IsObservationFailure(error)) { }
+        await ExecutionAsync(session, state, active, at, token).ConfigureAwait(false);
+    }
+
+    private async Task ExecutionAsync(string session, StreamState state,
+        IReadOnlyDictionary<string, OpenCodeActiveSessionState>? activeSessions, DateTimeOffset activeAt, CancellationToken token)
     {
         if (!Active(session, state)) return;
         OpenCodeSessionInfo? info = null;
         var infoAt = DateTimeOffset.UtcNow;
         try { info = await ReadSessionAsync(session, token).ConfigureAwait(false); }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "session-watermark-read-failed"); }
+        catch (Exception error) when (IsObservationFailure(error)) { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "session-watermark-read-failed"); }
 
         bool inboxFresh = false, hasInbox = false;
         var inboxAt = DateTimeOffset.UtcNow;
@@ -80,21 +78,14 @@ public sealed partial class OpenCodeNotificationMonitor
             hasInbox = inbox.Count != 0;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "inbox-read-failed"); }
+        catch (Exception error) when (IsObservationFailure(error)) { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "inbox-read-failed"); }
 
         bool activeFresh = false, running = false;
-        var activeAt = DateTimeOffset.UtcNow;
-        try
+        if (activeSessions is not null)
         {
-            var active = await _source.Client.GetActiveSessionsAsync(token).ConfigureAwait(false);
-            if (active.Data is { } data)
-            {
-                activeFresh = !data.TryGetValue(session, out var drain) || drain?.Type == "running";
-                running = drain?.Type == "running";
-            }
+            activeFresh = !activeSessions.TryGetValue(session, out var drain) || drain?.Type == "running";
+            running = drain?.Type == "running";
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "active-read-failed"); }
         if (!Active(session, state)) return;
 
         bool protectedSession;
@@ -234,7 +225,11 @@ public sealed partial class OpenCodeNotificationMonitor
             if (!Active(session, state) || !Fresh(at) || info?.Time?.Idle is not { } idle
                 || !double.IsFinite(idle) || coveredIdle > idle) return null;
             Task? post = null;
-            if (!fence(() => post = _source.Client.MarkSessionViewedAsync(session, coveredIdle, token))) return null;
+            lock (_sync)
+            {
+                if (!Active(session, state)) return null;
+                if (!fence(() => post = _source.Client.MarkSessionViewedAsync(session, coveredIdle, token))) return null;
+            }
             await post!.ConfigureAwait(false);
             if (!Active(session, state) || !fence(() => { })) return null;
             if (_sink.IsReady && state.History is { } history && Fresh(state.HistoryAt))

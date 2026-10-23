@@ -24,7 +24,7 @@ public sealed partial class OpenCodeNotificationMonitor
             state.Permissions.Clear(); state.Forms.Clear();
             if (pending) state.Permissions.Add("per_test");
         }
-        return ExecutionAsync("ses_test", state, CancellationToken.None);
+        return BridgeExecution(state);
     }
 
     internal static DateTimeOffset? BridgeEarliest(DateTimeOffset now, params DateTimeOffset?[] times)
@@ -34,6 +34,13 @@ public sealed partial class OpenCodeNotificationMonitor
     {
         StreamState state;
         lock (_sync) state = _tracked["ses_test"];
-        return ExecutionAsync("ses_test", state, CancellationToken.None);
+        return BridgeExecution(state);
+    }
+
+    private async Task BridgeExecution(StreamState state)
+    {
+        var at = DateTimeOffset.UtcNow;
+        var active = await _source.Client.GetActiveSessionsAsync();
+        await ExecutionAsync("ses_test", state, active.Data, at, CancellationToken.None);
     }
 }

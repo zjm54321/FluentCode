@@ -22,6 +22,8 @@ public sealed class OpenCodeInteractionGate
     {
         internal readonly SemaphoreSlim Mutex = new(1, 1);
         internal readonly Dictionary<(string, NotificationNavigationKind), NotificationInteractionStatus> Results = new();
+        internal int Waiters;
+        internal int Holders;
         internal (string RequestId, NotificationNavigationKind Kind)? SessionUnknown;
         internal AgentSwitchProtection? AgentSwitchUnknown;
         internal ComposerSubmissionProtection? ComposerUnknown;
@@ -40,9 +42,23 @@ public sealed class OpenCodeInteractionGate
                 if (_sessions.Count >= 256) throw new InvalidOperationException("Interaction session capacity reached; fail closed.");
                 _sessions.Add((endpointIdentity, sessionId), state = new());
             }
+            state.Waiters++;
         }
-        await state.Mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return new(state, endpointIdentity, sessionId);
+        try
+        {
+            await state.Mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+            lock (_sync) { state.Waiters--; state.Holders++; }
+            return new(state, endpointIdentity, sessionId, this);
+        }
+        catch
+        {
+            lock (_sync)
+            {
+                state.Waiters--;
+                RetireIfInactive((endpointIdentity, sessionId), state);
+            }
+            throw;
+        }
     }
 
     /// <summary>
@@ -125,8 +141,9 @@ public sealed class OpenCodeInteractionGate
         private bool _pairedContinuation;
         private readonly string _endpointIdentity;
         private readonly string _sessionId;
-        internal Lease(SessionState state, string endpointIdentity, string sessionId)
-        { _state = state; _endpointIdentity = endpointIdentity; _sessionId = sessionId; }
+        private readonly OpenCodeInteractionGate _owner;
+        internal Lease(SessionState state, string endpointIdentity, string sessionId, OpenCodeInteractionGate owner)
+        { _state = state; _endpointIdentity = endpointIdentity; _sessionId = sessionId; _owner = owner; }
         private SessionState State => _state ?? throw new ObjectDisposedException(nameof(Lease));
 
         /// <summary>Already-held-lease adapters must verify the exact endpoint/session, never reacquire.</summary>
@@ -142,6 +159,19 @@ public sealed class OpenCodeInteractionGate
         }
 
         public bool CanSubmit(string requestId, NotificationNavigationKind kind) => GetProtectionStatus(requestId, kind) is null;
+
+        /// <summary>Only a fresh complete owner-scoped pending list may retire settled request results.
+        /// Missing unknown outcomes are retained until explicit user reconciliation.</summary>
+        public void RetireSettledRequests(NotificationNavigationKind kind, IReadOnlySet<string> pending)
+        {
+            var state = State;
+            var retired = new List<(string, NotificationNavigationKind)>();
+            foreach (var pair in state.Results)
+                if (pair.Key.Item2 == kind && !pending.Contains(pair.Key.Item1)
+                    && pair.Value != NotificationInteractionStatus.OutcomeUnknown)
+                    retired.Add(pair.Key);
+            foreach (var key in retired) state.Results.Remove(key);
+        }
 
         public (string RequestId, NotificationNavigationKind Kind)? GetSessionProtection() => State.SessionUnknown;
 
@@ -358,7 +388,23 @@ public sealed class OpenCodeInteractionGate
         public void Dispose()
         {
             var state = Interlocked.Exchange(ref _state, null);
-            state?.Mutex.Release(); // Started but uncompleted mutation remains unknown, including session scope.
+            if (state is null) return;
+            state.Mutex.Release(); // Started but uncompleted mutation remains unknown, including session scope.
+            lock (_owner._sync)
+            {
+                state.Holders--;
+                _owner.RetireIfInactive((_endpointIdentity, _sessionId), state);
+            }
         }
+    }
+
+    private void RetireIfInactive((string, string) key, SessionState state)
+    {
+        if (state.Waiters != 0 || state.Holders != 0 || state.SessionUnknown is not null
+            || state.AgentSwitchUnknown is not null || state.ComposerUnknown is not null || state.ControlUnknown is not null
+            || state.Results.Count != 0)
+            return;
+        if (_sessions.TryGetValue(key, out var current) && ReferenceEquals(current, state))
+            _sessions.Remove(key);
     }
 }

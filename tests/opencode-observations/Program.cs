@@ -29,6 +29,10 @@ static partial class Checks
     internal static async Task Run()
     {
         foreach (var (name, run) in new (string, Func<Task>)[] {
+            ("gate retirement keeps duplicate/unknown and waiter protection", GateRetirement),
+            ("opaque notification cursors are escaped and not request IDs", OpaqueNotificationCursor),
+            ("gap baseline recovery and bounded preparation-only retry", GapAndPreparationRetry),
+            ("completion preparation retry and observation retirement", CompletionRetryAndRetirement),
             ("state transitions and source invalidation", State),
             ("pending, remote view and explicit receipt stay separate", PendingView),
             ("toast body/button routing and F2 regression", ToastRouting),
@@ -57,7 +61,7 @@ static partial class Checks
             }
             if (path.EndsWith("/active")) return Task.FromResult(Json(new { data = running
                 ? new Dictionary<string, object> { ["ses_test"] = new { type = "running" } } : new() }));
-            if (path == "/api/session") return Task.FromResult(Json(new { data = new[] { new { id = "ses_test", outcome = "failed", time = new { idle = 100 } } } }));
+            if (path == "/api/session/ses_test") return Task.FromResult(Json(new { data = new { id = "ses_test", outcome = "failed", time = new { idle = 100 } } }));
             return Task.FromResult(Json(new { data = Array.Empty<object>() }));
         }));
         using var client = Client(http);
@@ -163,7 +167,7 @@ static partial class Checks
             }
             if (path.EndsWith("/permission/per_test")) return Json(new { data = Permission() });
             if (path.EndsWith("/active")) return Json(new { data = new Dictionary<string, object>() });
-            if (path == "/api/session") return Json(new { data = new[] { new { id = "ses_test", time = new { idle = 200, viewed } } } });
+            if (path == "/api/session/ses_test") return Json(new { data = new { id = "ses_test", time = new { idle = 200, viewed } } });
             return Json(new { data = Array.Empty<object>() });
         }));
         using var client = Client(http); var source = new TrustedOpenCodeNotificationSource("ep-view", client);

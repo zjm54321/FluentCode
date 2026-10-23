@@ -83,11 +83,11 @@ static class Checks
                     if (FailView) throw new HttpRequestException("synthetic uncertain receipt");
                     return new(HttpStatusCode.NoContent);
                 }
-                if (path == "/api/session")
+                if (path == "/api/session/" + Session)
                 {
                     if (FailInfo) throw new HttpRequestException("synthetic info failure");
-                    return Json(new { data = new[] { new { id = MismatchInfo ? "ses_other" : Session,
-                        outcome = ServerOutcome, time = new { idle = ServerIdle, viewed = ServerViewed } } } });
+                    return Json(new { data = new { id = MismatchInfo ? "ses_other" : Session,
+                        outcome = ServerOutcome, time = new { idle = ServerIdle, viewed = ServerViewed } } });
                 }
                 if (path.EndsWith("/inbox", StringComparison.Ordinal)) return Json(new { data = Array.Empty<object>() });
                 if (path.EndsWith("/active", StringComparison.Ordinal))
@@ -214,7 +214,7 @@ static class Checks
                 "question fact keeps original forms request clock, not publisher clock");
             var reads = f.Paths.Skip(paths).ToArray();
             Check(reads.Count(path => path.EndsWith("/form", StringComparison.Ordinal)) == 1
-                && reads.All(path => path == "/api/session" || path == "/api/session/active"
+                && reads.All(path => path == "/api/session/" + Session || path == "/api/session/active"
                     || path == "/api/session/" + Session + "/message" || path == "/api/session/" + Session + "/inbox"
                     || path == "/api/session/" + Session + "/permission" || path == "/api/session/" + Session + "/form"),
                 "one existing pending forms list request, no details, new poll or wire");

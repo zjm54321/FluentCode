@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
@@ -34,11 +35,15 @@ internal static class OpenCodeMessageHistory
             }
             if (!valid) break;
             cursor = page.Cursor?.Next;
-            if (cursor is not null && !NotificationArgumentCodec.IsValidRequestId(cursor)) break;
+            if (cursor is not null && !IsValidCursor(cursor)) break;
             if (page.Data.Count == 0 || cursor is null) { complete = true; break; }
             if (!cursors.Add(cursor!)) break;
         }
         messages.Reverse();
         return new(messages, complete);
     }
+
+    private const int MaxCursorLength = 4096;
+    private static bool IsValidCursor(string cursor)
+        => cursor.Length > 0 && cursor.Length <= MaxCursorLength && !cursor.Any(char.IsControl);
 }

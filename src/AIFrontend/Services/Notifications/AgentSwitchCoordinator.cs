@@ -101,7 +101,7 @@ public sealed class AgentSwitchCoordinator
                 if (page.Data is null || page.Data.Count > PageSize) return Result(AgentSwitchStatus.Blocked);
                 messages.AddRange(page.Data);
                 cursor = page.Cursor?.Next;
-                if (cursor is not null && !NotificationArgumentCodec.IsValidRequestId(cursor)) break;
+                if (cursor is not null && (cursor.Length is 0 or > 4096 || cursor.Any(char.IsControl))) break;
                 if (page.Data.Count == 0 || cursor is null) { complete = true; break; }
                 if (!cursors.Add(cursor!)) break;
             }

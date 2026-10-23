@@ -32,6 +32,7 @@ internal interface IOpenCodeNotificationSink
         => Task.CompletedTask;
     Task ReconcileViewAsync(TrustedOpenCodeNotificationSource source, string session, double viewed, IReadOnlyList<OpenCodeMessage> messages)
         => Task.CompletedTask;
+    void Retire(string session) { }
 }
 
 /// <summary>App-owned, explicitly tracked sessions only. Does not own client/service, register Windows,
@@ -60,6 +61,7 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             => service!.ReconcilePendingAsync(source, session, kind, ids);
         public Task ReconcileViewAsync(TrustedOpenCodeNotificationSource source, string session, double viewed, IReadOnlyList<OpenCodeMessage> messages)
             => service!.ReconcileViewedCompletionsAsync(source, session, viewed, messages);
+        public void Retire(string session) => service?.RetireOpenCodeObservation(source, session);
     }
 
     private sealed partial class StreamState
@@ -68,6 +70,10 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         internal string? Anchor;
         internal HashSet<string> Permissions = new(StringComparer.Ordinal);
         internal HashSet<string> Forms = new(StringComparer.Ordinal);
+        internal HashSet<string> PreparedPermissions = new(StringComparer.Ordinal);
+        internal HashSet<string> PreparedForms = new(StringComparer.Ordinal);
+        internal Dictionary<string, int> PermissionAttempts = new(StringComparer.Ordinal);
+        internal Dictionary<string, int> FormAttempts = new(StringComparer.Ordinal);
     }
 
     private readonly object _sync = new();
@@ -114,7 +120,15 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         }
     }
 
-    public bool UntrackSession(string sessionId) { lock (_sync) return _tracked.Remove(sessionId); }
+    public bool UntrackSession(string sessionId)
+    {
+        lock (_sync)
+        {
+            if (!_tracked.Remove(sessionId)) return false;
+            _sink.Retire(sessionId);
+            return true;
+        }
+    }
 
     /// <summary>Observation runs independently of notification availability. No automatic initialization.</summary>
     public bool Start()
@@ -166,7 +180,7 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
                 await PendingAsync(pair.Key, pair.Value, true, token).ConfigureAwait(false);
                 try { await ExecutionAsync(pair.Key, pair.Value, token).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-                catch { PublishUnknown(pair.Key, pair.Value); }
+                catch (Exception error) when (IsObservationFailure(error)) { PublishUnknown(pair.Key, pair.Value); }
             }
         }
         finally { _poll.Release(); }
@@ -204,7 +218,10 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             if (state.Anchor is not null && anchor < 0 || state.Anchor is null && !history.Complete)
             {
                 Emit(session, state, OpenCodeNotificationObservationKind.Gap, "anchor-missing");
-                return false; // No notification replay or anchor advance. Pending reads remain independent.
+                _sink.Observe(_source.Identity, session, messages, true);
+                state.Anchor = newest;
+                Emit(session, state, OpenCodeNotificationObservationKind.Baseline, "gap-recovery-suppressed");
+                return false; // Unknown gap is suppressed; later anchored completions can notify.
             }
             token.ThrowIfCancellationRequested();
             if (!Active(session, state)) return false;
@@ -214,16 +231,17 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             {
                 try { title = (await _source.Client.GetSessionInfoAsync(session, token).ConfigureAwait(false)).Title; }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-                catch { /* Metadata failure must not suppress a completion. */ }
+                catch (Exception error) when (IsObservationFailure(error)) { /* Metadata failure must not suppress a completion. */ }
             }
             if (!Active(session, state)) return false;
             var results = _sink.ObserveContext(_source.Identity, session, collected, messages, title);
-            state.Anchor = newest;
+            if (!results.Any(r => r.Status is NotificationDispatchStatus.Failed or NotificationDispatchStatus.Unavailable))
+                state.Anchor = newest;
             Emit(session, state, OpenCodeNotificationObservationKind.Messages, "anchored", dispatches: results);
             return true;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "messages-read-failed-anchor-retained"); return false; }
+        catch (Exception error) when (IsObservationFailure(error)) { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "messages-read-failed-anchor-retained"); return false; }
     }
 
     private async Task PendingAsync(string session, StreamState state, bool form, CancellationToken token)
@@ -263,7 +281,13 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             await reconcile.ConfigureAwait(false);
             if (!Active(session, state)) return;
             token.ThrowIfCancellationRequested();
-            var old = form ? state.Forms : state.Permissions;
+            if (Fresh(started))
+            {
+                using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(_source.Identity, session, token).ConfigureAwait(false);
+                lock (_sync)
+                    if (Active(session, state) && Fresh(started))
+                        lease.RetireSettledRequests(form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission, ids);
+            }
             if (form)
             {
                 state.Forms = ids;
@@ -271,24 +295,32 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
                 state.FormsAt = started;
             }
             else { state.Permissions = ids; state.PermissionsAt = started; }
+            var prepared = form ? state.PreparedForms : state.PreparedPermissions;
+            prepared.RemoveWhere(id => !ids.Contains(id));
+            var attempts = form ? state.FormAttempts : state.PermissionAttempts;
+            foreach (var id in attempts.Keys.Where(id => !ids.Contains(id)).ToArray()) attempts.Remove(id);
             Emit(session, state, OpenCodeNotificationObservationKind.PendingSnapshot, form ? "forms" : "permissions");
-            foreach (var id in _sink.IsReady && Fresh(started) ? ids.Except(old) : Enumerable.Empty<string>())
+            foreach (var id in _sink.IsReady && Fresh(started) ? ids.Except(prepared) : Enumerable.Empty<string>())
             {
                 token.ThrowIfCancellationRequested();
                 if (!Active(session, state)) return;
+                if (attempts.GetValueOrDefault(id) >= 3) continue;
+                attempts[id] = attempts.GetValueOrDefault(id) + 1;
                 NotificationInteractionResult result;
                 try { result = await _sink.NotifyAsync(_source, session, id, form, token).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-                catch
+                catch (Exception error) when (IsObservationFailure(error))
                 {
                     result = new(NotificationInteractionStatus.Failed, "无法准备通知，请在应用处理。",
                         _source.Identity, session, id, Kind: form ? NotificationNavigationKind.Form : NotificationNavigationKind.Permission);
                 }
                 Emit(session, state, OpenCodeNotificationObservationKind.Interaction, "preparation-result", interaction: result);
+                if (result.Status is NotificationInteractionStatus.Submitted or NotificationInteractionStatus.NeedsApp)
+                    prepared.Add(id);
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, form ? "forms-read-failed-snapshot-retained" : "permissions-read-failed-snapshot-retained"); }
+        catch (Exception error) when (IsObservationFailure(error)) { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, form ? "forms-read-failed-snapshot-retained" : "permissions-read-failed-snapshot-retained"); }
     }
 
     private void Emit(string session, StreamState state, OpenCodeNotificationObservationKind kind, string code,
@@ -298,12 +330,23 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         var args = new OpenCodeNotificationObservationEventArgs(new(kind, _source.Identity, session, code,
             state.Permissions.ToArray(), state.Forms.ToArray(), interaction, dispatches));
         foreach (EventHandler<OpenCodeNotificationObservationEventArgs> handler in handlers.GetInvocationList())
-            try { handler(this, args); } catch { /* Never leak subscriber errors or answers. */ }
+            try { handler(this, args); } catch (Exception) { /* Subscriber containment; no answers in diagnostics. */ }
     }
+
+    private static bool IsObservationFailure(Exception error) => error is OpenCodeException
+        or System.Net.Http.HttpRequestException or OperationCanceledException or InvalidOperationException
+        or ArgumentException or System.IO.IOException or System.Text.Json.JsonException;
 
     public void Dispose()
     {
-        lock (_sync) { if (_disposed) return; _disposed = true; _runCancellation?.Cancel(); _tracked.Clear(); }
+        lock (_sync)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _runCancellation?.Cancel();
+            foreach (var session in _tracked.Keys) _sink.Retire(session);
+            _tracked.Clear();
+        }
         // Owner awaits StopAsync/DisposeAsync before disposing source.Client. No sync-over-async UI deadlock.
     }
 
