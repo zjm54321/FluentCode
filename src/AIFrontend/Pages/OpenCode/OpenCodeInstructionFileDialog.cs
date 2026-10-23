@@ -30,7 +30,12 @@ internal sealed class OpenCodeInstructionFileDialog : IDisposable
             Content = text, CloseButtonText = "关闭", DefaultButton = ContentDialogButton.Close,
         };
         var scope = OpenCodeImageContext.Find(owner);
-        void Unloaded(object sender, RoutedEventArgs args) { read.Cancel(); dialog.Hide(); }
+        void Unloaded(object sender, RoutedEventArgs args)
+        {
+            if (owner.IsLoaded) return; // Ignore the previous message container's late unload.
+            read.Cancel();
+            dialog.Hide();
+        }
         owner.Unloaded += Unloaded;
         async void Load()
         {
