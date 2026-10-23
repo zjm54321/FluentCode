@@ -45,7 +45,14 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </Grid>
                 <TextBlock x:Name="Hint" Margin="4,0,0,0" TextWrapping="Wrap"
                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TreeView x:Name="Tree" SelectionMode="None" MaxHeight="280" AutomationProperties.Name="智能体与子智能体会话树" />
+                <!-- Node mode: without a template WinUI shows TreeViewNode.Content.ToString() (type names). -->
+                <TreeView x:Name="Tree" SelectionMode="None" MaxHeight="280" AutomationProperties.Name="智能体与子智能体会话树">
+                  <TreeView.ItemTemplate>
+                    <DataTemplate>
+                      <ContentPresenter Content="{Binding Content}" />
+                    </DataTemplate>
+                  </TreeView.ItemTemplate>
+                </TreeView>
                 <StackPanel x:Name="Details" Visibility="Collapsed" Spacing="8" Margin="4,0,0,0">
                   <TextBlock x:Name="DetailTitle" TextWrapping="Wrap" IsTextSelectionEnabled="True"
                              Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
