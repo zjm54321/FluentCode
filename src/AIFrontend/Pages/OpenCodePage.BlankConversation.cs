@@ -198,16 +198,11 @@ public sealed partial class OpenCodePage
         var agent = current && HasBlankAgentPresentation(value!) ? _activeDraftSlot!.Agents.FirstOrDefault(agent => agent.Id == value!.Agent) : null;
         var model = metadata ? _blankModels.FirstOrDefault(model => model.Id == value!.Model?.Id && model.ProviderId == value.Model?.ProviderId) : null;
         var agentName = agent?.Name is { Length: > 0 } name ? name : _blankPickerPending ? "加载中…" : "未就绪";
-        if (BlankAgentButton.Content is TextBlock label) label.Text = agentName;
-        else BlankAgentButton.Content = OpenCodeAgentPresentation.Name(agentName, BlankAgentButton.MaxWidth - 40);
         AutomationProperties.SetName(BlankAgentButton, "智能体：" + agentName);
         AutomationProperties.SetHelpText(BlankAgentButton, agent?.Description ?? string.Empty);
-        ApplyBlankAgentColor(agent?.Color);
         ToolTipService.SetToolTip(BlankAgentButton, agent?.Description);
-        BlankModelButton.Content = OpenCodeModelLogo.Label(model?.Id, model?.Name ?? (_blankPickerPending ? "加载中…" : "模型未就绪"));
         ToolTipService.SetToolTip(BlankModelButton, model?.Name);
         var shownVariant = BlankStrengthText(model, value?.Model);
-        BlankStrengthButton.Content = model is null ? "强度未就绪" : shownVariant;
         AutomationProperties.SetName(BlankStrengthButton, shownVariant.Length == 0 ? "选择推理强度" : "推理强度：" + shownVariant);
         BlankPreferencesHint.Text = !current ? "目录尚未就绪或草稿来自其他来源。请明确选择当前来源的目录；草稿不会被清空。"
             : _source is { } source && _blankCreationResults.ContainsKey((source.Identity, value!.BlankSlotId))
@@ -393,7 +388,8 @@ public sealed partial class OpenCodePage
         return ids.Select(id => (id, OpenCodeModelPresentation.VariantLabel(id), id == current)).ToArray();
     }
 
-    private async Task ChooseBlankModelAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token, FrameworkElement? anchor = null)
+    private async Task ChooseBlankModelAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token, FrameworkElement? anchor = null,
+        OpenCodeModelChoiceKey? selectedChoice = null)
     {
         if (_blankPickerPending || _newSessionCreatePending || _source is not { } source || _client is not { } client
             || _homeCancellation is null || !OwnsBlankPreferences(basis, token)) return;
@@ -414,8 +410,10 @@ public sealed partial class OpenCodePage
             var current = basis.Model is { } selected ? (OpenCodeModelCurrent)new OpenCodeModelCurrent.Explicit(
                 new(selected.ProviderId!, selected.Id!, selected.Variant), rows.Any(row => row.Available && row.ProviderId == selected.ProviderId && row.ModelId == selected.Id))
                 : new OpenCodeModelCurrent.Unknown();
-            var result = await OpenCodeModelPickerDialog.ShowAsync(XamlRoot,
-                new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false, anchor: anchor);
+            var result = selectedChoice is { } requested
+                ? new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Confirmed, requested, null)
+                : await OpenCodeModelPickerDialog.ShowAsync(XamlRoot,
+                    new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false, anchor: anchor);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending
                 || result.Outcome != OpenCodeModelPickerOutcome.Confirmed || result.Choice is not { } choice) return;
             // Re-read metadata after confirmation. Never choose a withdrawn/disabled model or fabricated variant.
@@ -436,6 +434,7 @@ public sealed partial class OpenCodePage
 
     private async Task SetBlankVariantAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token, string? variantId)
     {
+        if (basis.Model?.Variant == variantId) return;
         if (_blankPickerPending || _newSessionCreatePending || basis.Model is null || _source is not { } source
             || _client is not { } client || _homeCancellation is null || !OwnsBlankPreferences(basis, token)) return;
         _blankPickerPending = true;
@@ -457,6 +456,31 @@ public sealed partial class OpenCodePage
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "强度信息未能读取；当前选择未变。"; }
+        finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
+    }
+
+    private async Task SetBlankAgentAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token, string selected)
+    {
+        if (selected == basis.Agent || _blankPickerPending || _newSessionCreatePending || _source is not { } source
+            || _client is not { } client || _homeCancellation is null || !OwnsBlankPreferences(basis, token)) return;
+        _blankPickerPending = true;
+        var operation = ++_blankPickerEpoch;
+        RefreshBlankPreferenceLabels();
+        try
+        {
+            var response = await client.ListAgentsAsync(basis.Directory, _homeCancellation.Token);
+            if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token)
+                || _newSessionCreatePending || response.Location?.Directory != basis.Directory
+                || !response.Data!.Any(a => IsBlankAgentSelectable(a) && a.Id == selected)) return;
+            AcceptBlankAgentPresentation(basis, response.Data!);
+            _blankPreferences = basis with { Agent = selected, Model = _blankModelChosen ? basis.Model : null, Version = basis.Version + 1 };
+            _blankPreferenceError = null;
+            _blankMetadataDirectory = null;
+            _blankPickerPending = false;
+            await LoadBlankMetadataAsync(_blankPreferences, token);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "智能体列表未能读取；现有选择与草稿未变。"; }
         finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
     }
 }

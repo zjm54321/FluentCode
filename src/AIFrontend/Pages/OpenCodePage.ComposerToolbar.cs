@@ -11,7 +11,6 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
     private readonly Ellipse _composerConnectedDot = new() { Width = 6, Height = 6 };
-    private FrameworkElement? _composerModelLogo;
 
     // Use the actual editor width, not the sidebar threshold: a new-session page
     // has no sidebars and can fit labels well before two resident panes would fit.
@@ -28,6 +27,7 @@ public sealed partial class OpenCodePage
         ComposerConnectionButton.Content = _composerConnectedDot;
         _composerConnectedDot.Style = OpenCodeInsightsTheme.Dot(OpenCodeInsightsTheme.Success);
         _insights!.Changed += (_, _) => QueueSessionControlCardRefresh();
+        BindNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton);
         RefreshComposerToolbar();
     }
 
@@ -64,35 +64,12 @@ public sealed partial class OpenCodePage
             model = selected is not null && TryCaptureInsightsBinding(out var binding)
                 ? _insights?.CurrentModelInfo(binding!, selected) : null;
         }
-        BlankAgentButton.Content = ComposerChoiceLabel(OpenCodeAgentIcons.Glyph(agent),
-            OpenCodeAgentIcons.DisplayName(agent ?? "不可用"), labels.Agent);
-        OpenCodeAgentPresentation.Apply(BlankAgentButton, color);
+        RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled);
         DescribeComposerIcon(BlankAgentButton, "选择智能体：" + (agent ?? "不可用"));
         ToolTipService.SetToolTip(BlankAgentButton, description ?? "智能体说明不可用");
-        var key = labels.Model + "\n" + model?.Id + "\n" + model?.Name + "\n" + selected?.Id;
-        if (BlankModelButton.Tag as string != key || _composerModelLogo is null)
-        {
-            BlankModelButton.Tag = key;
-            _composerModelLogo = labels.Model
-                ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? "模型不可用")
-                : OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
-        }
-        BlankModelButton.Content = _composerModelLogo;
         DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? "不可用"));
-        var ticks = OpenCodeComposerEffort.Ticks(model, selected?.Variant);
-        BlankStrengthButton.Content = ComposerChoiceLabel("\uEC4A", OpenCodeModelPresentation.VariantLabel(selected?.Variant), labels.Effort);
-        BlankStrengthButton.Visibility = ticks.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BlankStrengthButton.Visibility = Visibility.Visible;
         DescribeComposerIcon(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));
-        BlankAgentButton.IsEnabled = enabled;
-        BlankModelButton.IsEnabled = enabled;
-        BlankStrengthButton.IsEnabled = enabled && ticks.Count > 0;
-        var buttons = new[] { BlankAgentButton, BlankModelButton, BlankStrengthButton };
-        var expandedLabels = new[] { labels.Agent, labels.Model, labels.Effort };
-        for (var i = 0; i < buttons.Length; i++)
-        {
-            buttons[i].Width = expandedLabels[i] ? double.NaN : 32;
-            buttons[i].Padding = expandedLabels[i] ? new Thickness(8, 0, 8, 0) : new Thickness(0);
-        }
         RefreshFullScreenComposerChoices(agent, color, model, selected, enabled);
     }
 

@@ -34,6 +34,7 @@ $variantPath = Join-Path $output 'VariantSelection.cs'
 "using System; using System.Collections.Generic; using System.Linq; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages { public sealed partial class OpenCodePage {`n" + $method.Value + "`n" + $entries.Value + "`n} } namespace AIFrontend.Pages.OpenCode {`n" + $preferences.Value + "`n" + $token.Value + "`n}" | Set-Content -Encoding UTF8 $variantPath
 $sources = @($generated, $wirePath, $variantPath, (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'VariantSelection.cs'), "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeRecentModels.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Models.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeChildSessionControl.cs"
+$sources += @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs", (Join-Path $PSScriptRoot 'NativeComboBox.TestHost.cs'))
 $assembly = Join-Path $output 'ModelPickerUiTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }

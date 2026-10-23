@@ -21,6 +21,7 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
     private string? CurrentAgentDisplay=>CurrentAgentId is null?null:DisplayName(CurrentAgentId);
     private bool HasPendingSelection=>_pendingAgentId is not null;
     private OpenCodeModelRef? CurrentModel;
+    private IReadOnlyList<OpenCodeModelInfo> ModelChoices = Array.Empty<OpenCodeModelInfo>();
     private OpenCodeSessionInfo? CurrentSessionInfo;
     private const string UnknownAgentText="未知智能体";
     private void UpdateControls(){}private void SetStatus(string s){}private Task ReloadAsync(AgentSwitchOrigin o,bool surfaceProtection)=>Task.CompletedTask;

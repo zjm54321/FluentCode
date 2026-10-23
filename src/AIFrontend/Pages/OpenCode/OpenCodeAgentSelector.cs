@@ -121,6 +121,15 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         UpdateControls();
     }
 
+    internal IReadOnlyList<OpenCodeAgentPickerRow> AgentChoices => _rows;
+    internal IReadOnlyList<OpenCodeModelInfo> ModelChoices { get; private set; } = Array.Empty<OpenCodeModelInfo>();
+
+    internal void SelectUserAgent(string target)
+    {
+        if (target == CurrentAgentId || Volatile.Read(ref _currentOrigin) is not { } origin) return;
+        SelectPendingAgent(origin, target);
+    }
+
     // Called by the page BEFORE BeginLocalAgentSubmission. PromptBody carries only text (attached prompts add
     // files/contexts), not an agent: use the existing server switch and its lease/re-check, never invent a wire field.
     // False means the page must keep the draft and abort this send. No retry is performed here.
@@ -408,6 +417,10 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             var data = agents.Data ?? new List<OpenCodeAgentInfo>();
             ApplyAgents(data, session.Agent);
             ApplyModel(session.Model);
+            UpdateControls();
+            var models = await client.ListModelsAsync(directory, token).ConfigureAwait(true);
+            if (!IsOriginCurrent(origin)) return;
+            if (models.Location?.Directory == directory) ModelChoices = models.Data ?? new List<OpenCodeModelInfo>();
 
             if (surfaceProtection)
             {
@@ -850,6 +863,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         _modelText.Text = string.Empty;
         CurrentModelDisplay = null;
         CurrentModel = null;
+        ModelChoices = Array.Empty<OpenCodeModelInfo>();
         CurrentSessionInfo = null;
         _statusText.Text = string.Empty;
         _progress.IsActive = false;

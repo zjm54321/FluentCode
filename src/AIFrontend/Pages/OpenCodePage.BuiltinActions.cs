@@ -73,7 +73,7 @@ public sealed partial class OpenCodePage
         => _ = RunClientActionAsync(ticket);
 
     private async Task RunClientActionAsync(OpenCodeComposerClientActionTicket ticket, bool variantOnly = false,
-        Microsoft.UI.Xaml.FrameworkElement? anchor = null)
+        Microsoft.UI.Xaml.FrameworkElement? anchor = null, OpenCodeModelChoiceKey? selectedChoice = null)
     {
         if (_composerController is null || _composerView is null) return;
         if (_nativeActionOwner is not null || _nativeDialogPending || !_composerController.OwnsClientAction(ticket))
@@ -113,7 +113,7 @@ public sealed partial class OpenCodePage
                     _agentSelector.OpenSelection();
                     break;
                 case OpenCodeComposerClientActionKind.ChooseModel:
-                    await ChooseNativeModelAsync(owner, cancellation.Token, variantOnly, anchor);
+                    await ChooseNativeModelAsync(owner, cancellation.Token, variantOnly, anchor, selectedChoice);
                     break;
                 case OpenCodeComposerClientActionKind.Undo:
                 case OpenCodeComposerClientActionKind.Redo:
@@ -189,11 +189,19 @@ public sealed partial class OpenCodePage
         && fresh.Inherited?.Model?.Fingerprint == basis.Inherited?.Model?.Fingerprint;
 
     private async Task ChooseNativeModelAsync(NativeActionOwner owner, CancellationToken ct, bool variantOnly = false,
-        Microsoft.UI.Xaml.FrameworkElement? anchor = null)
+        Microsoft.UI.Xaml.FrameworkElement? anchor = null, OpenCodeModelChoiceKey? selectedChoice = null)
     {
         var sourceKey = owner.Ticket.Binding.Source.Identity;
         var presentation = await ReadNativeModelsAsync(owner, ct);
         if (presentation is null) return;
+        if (selectedChoice is { } requested)
+        {
+            var state = new OpenCodeModelPickerState(presentation);
+            if (!state.SelectModel(requested.ProviderId, requested.ModelId) || !state.SelectVariant(requested.Variant)) return;
+            var confirmation = state.TryFreezeConfirmation();
+            if (confirmation is not null) await CommitNativeModelAsync(owner, confirmation, ct);
+            return;
+        }
         await OpenCodeRecentModels.Shared.LoadAsync();
         if (ct.IsCancellationRequested || !CanPublishNativeOperation(owner) || !CanStartNativeAction(owner, owner.Origin)) return;
         _nativeDialogPending = true;
@@ -202,6 +210,11 @@ public sealed partial class OpenCodePage
             ? await OpenCodeVariantPickerDialog.ShowAsync(XamlRoot, presentation, anchor)
             : await OpenCodeModelPickerDialog.ShowAsync(XamlRoot, presentation, () => ReadNativeModelsAsync(owner, ct), sourceKey, anchor: anchor); }
         finally { _nativeDialogPending = false; }
+        await CommitNativeModelAsync(owner, choice, ct);
+    }
+
+    private async Task CommitNativeModelAsync(NativeActionOwner owner, OpenCodeModelPickerResult choice, CancellationToken ct)
+    {
         if (!CanStartNativeAction(owner, owner.Origin) || choice.Outcome != OpenCodeModelPickerOutcome.Confirmed
             || choice.Choice is not { } key || choice.Presentation?.Basis is not ModelPickerBasis basis
             || !ReferenceEquals(basis.Owner, owner)) return;

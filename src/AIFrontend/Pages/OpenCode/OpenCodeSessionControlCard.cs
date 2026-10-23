@@ -10,12 +10,9 @@ namespace AIFrontend.Pages.OpenCode;
 // Presentation only. All selections and operation authority stay with the existing page/selector.
 internal sealed class OpenCodeSessionControlCard : Grid
 {
-    internal Button AgentButton { get; } = Entry("OpenCodeSidebarAgent", "选择智能体");
-    internal Button ModelButton { get; } = Entry("OpenCodeSidebarModel", "选择模型");
-    internal Button VariantButton { get; } = Entry("OpenCodeSidebarVariant", "选择推理强度");
-    private readonly TextBlock _agentName = OpenCodeAgentPresentation.Name(string.Empty);
-    private readonly FontIcon _agentIcon = new() { FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _pendingHint = OpenCodeInteractionUi.StyledText("· 下一条消息生效", OpenCodeInteractionUi.CaptionSubtleStyleKey);
+    internal OpenCodeNativeComboBox AgentButton { get; } = Entry("OpenCodeSidebarAgent", "选择智能体");
+    internal OpenCodeNativeComboBox ModelButton { get; } = Entry("OpenCodeSidebarModel", "选择模型");
+    internal OpenCodeNativeComboBox VariantButton { get; } = Entry("OpenCodeSidebarVariant", "选择推理强度");
     private readonly Grid _editableRows = new() { RowSpacing = 4, ColumnSpacing = 4 };
     private readonly Grid _readOnlyRows = new() { RowSpacing = 4, ColumnSpacing = 8, Padding = new Thickness(8, 4, 8, 4), IsHitTestVisible = false };
     private readonly TextBlock _readOnlyAgentName = new() { TextTrimming = TextTrimming.CharacterEllipsis };
@@ -37,18 +34,6 @@ internal sealed class OpenCodeSessionControlCard : Grid
         rows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rows.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         rows.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        // A theme-resource setter survives Apply's ClearValue when the next agent has no custom RGB.
-        AgentButton.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Button\"><Setter Property=\"Foreground\" Value=\"{ThemeResource AccentTextFillColorPrimaryBrush}\"/></Style>");
-        var agentLabel = new Grid { ColumnSpacing = 8 };
-        agentLabel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        agentLabel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        agentLabel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(_agentName, 1);
-        Grid.SetColumn(_pendingHint, 2);
-        agentLabel.Children.Add(_agentIcon);
-        agentLabel.Children.Add(_agentName);
-        agentLabel.Children.Add(_pendingHint);
-        AgentButton.Content = agentLabel;
         Grid.SetColumnSpan(AgentButton, 2);
         Grid.SetRow(ModelButton, 1);
         Grid.SetRow(VariantButton, 1);
@@ -80,21 +65,9 @@ internal sealed class OpenCodeSessionControlCard : Grid
     internal void Render(string agent, string? color, string? modelId, string modelName, string variant,
         string scope, bool agentEnabled, bool modelEnabled, bool variantEnabled, string? agentDescription, bool pendingAgent = false)
     {
-        _chrome.Child = _editableRows;
+        if (_chrome.Child != _editableRows) _chrome.Child = _editableRows;
         _chrome.Visibility = Visibility.Visible;
-        _agentName.Text = OpenCodeAgentIcons.DisplayName(agent);
-        _agentIcon.Glyph = OpenCodeAgentIcons.Glyph(agent);
-        _pendingHint.Visibility = pendingAgent ? Visibility.Visible : Visibility.Collapsed;
-        OpenCodeAgentPresentation.Apply(AgentButton, color);
-        // Reuse the logo visual while typing; this is a visual identity, never a selection cache.
-        var visualKey = modelId + "\n" + modelName;
-        if (ModelButton.Tag as string != visualKey)
-        {
-            ModelButton.Tag = visualKey;
-            ModelButton.Content = OpenCodeModelLogo.Label(modelId, modelName);
-        }
-        VariantButton.Content = WithIcon(new TextBlock { Text = variant, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }, "\uEC4A");
-        Describe(AgentButton, "智能体：" + agent, scope, agentDescription ?? "智能体说明不可用");
+        Describe(AgentButton, "智能体：" + agent, scope, (agentDescription ?? "智能体说明不可用") + (pendingAgent ? " · 下一条消息生效" : string.Empty));
         Describe(ModelButton, "模型：" + modelName, scope);
         Describe(VariantButton, "推理强度：" + variant, scope);
         AgentButton.IsEnabled = agentEnabled;
@@ -126,9 +99,9 @@ internal sealed class OpenCodeSessionControlCard : Grid
             ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    private static Button Entry(string id, string name)
+    private static OpenCodeNativeComboBox Entry(string id, string name)
     {
-        var button = new DropDownButton { HorizontalAlignment = HorizontalAlignment.Stretch,
+        var button = new OpenCodeNativeComboBox { HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 6, 4), MinWidth = 0, MinHeight = 32 };
         AutomationProperties.SetAutomationId(button, id);
         AutomationProperties.SetName(button, name);
@@ -146,7 +119,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
         return grid;
     }
 
-    private static void Describe(Button button, string name, string scope, string? tooltip = null)
+    private static void Describe(Control button, string name, string scope, string? tooltip = null)
     {
         AutomationProperties.SetName(button, name);
         AutomationProperties.SetHelpText(button, scope);

@@ -108,7 +108,8 @@ internal static class Program
         Check(flyout.Contains("new Flyout") && flyout.Contains("FlyoutPlacementMode.TopEdgeAlignedLeft") && flyout.Contains("flyout.ShowAt(anchor)")
             && flyout.Contains("OpenCodeBlankModel") && flyout.Contains("anchor.Unloaded += Unloaded"), "anchored native flyout supports sidebar/composer callers and dismisses on owner unload");
         var blank = Read("src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs");
-        Check(blank.Contains("OpenCodeModelLogo.Label(model?.Id, model?.Name") && blank.Contains("ToolTipService.SetToolTip(BlankModelButton, model?.Name)"), "composer brand label and clean friendly tooltip");
+        var combo = Read("src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs");
+        Check(combo.Contains("OpenCodeModelLogo.Label(model.Id, model.Name!)") && blank.Contains("ToolTipService.SetToolTip(BlankModelButton, model?.Name)"), "composer brand label and clean friendly tooltip");
         Check(blank.Contains("sourceKey: source.Identity"), "blank picker uses captured stable source identity");
         Check(blank.Contains("allowStrengthSelection: false"), "blank picker uses its existing dedicated strength control instead of duplicate dialog entry");
         Check(blank.Contains("await OpenCodeRecentModels.Shared.LoadAsync();\n            if (operation != _blankPickerEpoch || !OwnsHome(source, client, basis.RuntimeSourceId)\n                || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending) return;"), "blank picker revalidates captured source/token/epoch immediately after MRU load await");
@@ -173,19 +174,20 @@ internal static class Program
         Check(selector.Contains("anchor?.XamlRoot ?? XamlRoot"), "PK2 invoking picker owner survives an unrooted selector/closed overview");
         var actions = Read("src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs");
         Check(cardBinding.Contains("RunClientActionAsync(ticket, variantOnly, anchor)")
-            && actions.Contains("variantOnly, anchor)") && actions.Contains("sourceKey, anchor: anchor)"),
+            && actions.Contains("variantOnly, anchor, selectedChoice)") && actions.Contains("sourceKey, anchor: anchor)"),
             "PK2 model/effort keep the invoking anchor across catalog awaits and disabling the button");
         Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
             && cardBinding.Contains("_blankPreferences") && !cardBinding.Contains("GetSessionInfoAsync") && !cardBinding.Contains("ListModelsAsync"),
             "sidebar reads the same session/blank owners, never adds a second selection cache or data fetch");
-        Check(cardBinding.Contains("BlankAgentButton_Click(sender, e)") && cardBinding.Contains("BlankModelButton_Click(sender, e)")
-            && cardBinding.Contains("BlankStrengthButton_Click(sender, e)") && cardBinding.Contains("尚未保存为会话选择"),
-            "blank sidebar delegates to existing draft semantics and labels its unpersisted scope");
+        Check(cardBinding.Contains("await SetBlankAgentAsync(basis, controller.Snapshot.Token, id)")
+            && cardBinding.Contains("await ChooseBlankModelAsync(basis, controller.Snapshot.Token, selectedChoice: choice)")
+            && cardBinding.Contains("await SetBlankVariantAsync(basis, controller.Snapshot.Token, choice.Variant)") && cardBinding.Contains("尚未保存为会话选择"),
+            "native sidebar delegates to guarded draft semantics and labels its unpersisted scope");
         Check(cardBinding.Contains("CurrentModelInfo(binding!, selected)?.Name") && !cardBinding.Contains("selected?.Id ?? \"模型不可用\""),
             "P2 sidebar uses catalog display Name, never model ID as display name");
         RunChildSessionChecks();
         var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
-        var readOnly = card.Substring(card.IndexOf("internal void RenderReadOnly"), card.IndexOf("private static Button Entry") - card.IndexOf("internal void RenderReadOnly"));
+        var readOnly = card.Substring(card.IndexOf("internal void RenderReadOnly"), card.IndexOf("private static OpenCodeNativeComboBox Entry") - card.IndexOf("internal void RenderReadOnly"));
         Check(card.Contains("IsHitTestVisible = false") && readOnly.Contains("_chrome.Child = _readOnlyRows")
             && !readOnly.Contains("new Button") && !readOnly.Contains("ToolTipService") && !readOnly.Contains("Flyout"),
             "SA2 child mode uses only plain display visuals with no selector hover/focus/flyout affordance");
@@ -194,7 +196,37 @@ internal static class Program
         Check(cardBinding.Contains("CurrentSessionInfo is { ParentId: not null, Id: { } childId } child") && cardBinding.Contains("childId == _selectedSessionId")
             && cardBinding.Contains("OpenCodeChildSessionControl.Project(child.Agent, child.Model, messages") && cardBinding.Contains("card.RenderReadOnly(projection)"),
             "SA2 card consumes real current-child metadata/messages, not pending UI or parent choices");
+        Check(combo.Contains(": ComboBox") && combo.Contains("IsTextSearchEnabled = true")
+            && !combo.Contains("new Flyout") && !combo.Contains("new ListView") && !combo.Contains("new MenuFlyout"), "PK2 uses the real native ComboBox popup and type-to-find");
+        Check(combo.Contains("Glyph(row.Id)") && combo.Contains("DisplayName(row.Name)") && combo.Contains("SolidColorBrush(color)")
+            && combo.Contains("AccentTextFillColorPrimaryBrush"), "PK2 agent choices have their colored glyph plus friendly name and dynamic accent fallback");
+        Check(combo.Contains("OrderBy(m => m.ProviderId") && combo.Contains("new string?[] { null }")
+            && combo.Contains("new OpenCodeEffortChoice(id)"), "PK2 flat models are provider-sorted; effort starts with true null and preserves opaque IDs");
+        RunComboBoxChecks();
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
+    }
+
+    private static void RunComboBoxChecks()
+    {
+        var combo = new OpenCodeNativeComboBox();
+        var choices = new[] { new OpenCodeNativeComboBox.Choice(new OpenCodeEffortChoice(null), "默认", () => new Microsoft.UI.Xaml.Controls.TextBlock(), "null"),
+            new OpenCodeNativeComboBox.Choice(new OpenCodeEffortChoice("opaque/V2"), "opaque/V2", () => new Microsoft.UI.Xaml.Controls.TextBlock(), "opaque") };
+        var commits = 0;
+        object? selected = null;
+        combo.ChoiceChanged += value => { commits++; selected = value; };
+        combo.Render(choices, new OpenCodeEffortChoice(null), true);
+        Check(commits == 0 && ReferenceEquals(combo.SelectedItem, choices[0]), "native seeding is not a user commit");
+        combo.SelectedItem = choices[1];
+        Check(commits == 1 && selected is OpenCodeEffortChoice { Id: "opaque/V2" }, "native selection commits the exact raw ID once");
+        combo.SelectedItem = choices[1];
+        Check(commits == 1, "native current-item selection is a no-op");
+        combo.Render(choices, new OpenCodeEffortChoice(null), true);
+        Check(commits == 1, "authoritative refresh never echoes a commit");
+        combo.Render(choices, new OpenCodeEffortChoice(null), false);
+        combo.SelectedItem = choices[1];
+        Check(commits == 1 && !combo.IsEnabled, "disabled child selector cannot commit");
+        combo.Render(Array.Empty<OpenCodeNativeComboBox.Choice>(), null, false);
+        Check(combo.SelectedItem is null && combo.PlaceholderText == "未知" && !combo.IsEnabled, "unknown value remains a disabled native placeholder");
     }
 
     private static void RunChildSessionChecks()

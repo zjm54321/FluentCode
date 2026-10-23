@@ -57,6 +57,8 @@ public sealed partial class OpenCodePage
         check(!BlankVariantMenuEntries(catalog, "xhigh").Any(e => e.IsChecked), "synonym/unoffered current variant is not mapped onto an offered radio item");
         check(!BlankVariantMenuEntries(catalog, "extra_high").Any(e => e.Id == "default") && BlankVariantRadioGroup.Length > 0, "default is null, never a fabricated \"default\" wire ID; single group name");
         var p = Fixture();
+        await p.SetBlankVariantAsync(p._blankPreferences!, p._token, "high");
+        check(p._client!.Reads == 0 && p._blankPreferences!.Version == 0, "same current effort does not read or commit");
         var initial = p._blankPreferences;
         foreach (var entry in BlankVariantMenuEntries(catalog, initial!.Model!.Variant)) { _ = entry; }
         check(p._blankPreferences == initial && p._client!.Reads == 0 && p._labels == 0, "building/seeding radio items does not read or commit");

@@ -18,24 +18,7 @@ public sealed partial class OpenCodePage
         _composerView!.StateChanged += (_, _) => QueueSessionControlCardRefresh();
         // Conversation changes include child agent/model switch rows even when token/context totals did not change.
         _conversationView.IdleViewportInvalidated += (_, _) => QueueSessionControlCardRefresh();
-        _sessionControlCard.AgentButton.Click += (sender, e) =>
-        {
-            if (!SessionControlCardCanEdit()) return;
-            if (_newSessionDraftActive) BlankAgentButton_Click(sender, e);
-            else _agentSelector.OpenSelection(sender as FrameworkElement);
-        };
-        _sessionControlCard.ModelButton.Click += (sender, e) =>
-        {
-            if (!SessionControlCardCanEdit()) return;
-            if (_newSessionDraftActive) BlankModelButton_Click(sender, e);
-            else OpenSessionControlModelPicker(variantOnly: false, sender as FrameworkElement);
-        };
-        _sessionControlCard.VariantButton.Click += (sender, e) =>
-        {
-            if (!SessionControlCardCanEdit()) return;
-            if (_newSessionDraftActive) BlankStrengthButton_Click(sender, e);
-            else OpenSessionControlModelPicker(variantOnly: true, sender as FrameworkElement);
-        };
+        BindNativePickerChoices(_sessionControlCard.AgentButton, _sessionControlCard.ModelButton, _sessionControlCard.VariantButton);
         QueueSessionControlCardRefresh();
     }
 
@@ -67,6 +50,7 @@ public sealed partial class OpenCodePage
             && _sidebarLayout.IsWide;
         LeftBottomCardSlot.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         var enabled = visible && SessionControlCardCanEdit();
+        RenderNativePickerChoices(card.AgentButton, card.ModelButton, card.VariantButton, enabled);
         if (_newSessionDraftActive)
         {
             // Read the existing per-slot blank preferences, not Session.Info. The same handlers save
@@ -116,5 +100,64 @@ public sealed partial class OpenCodePage
         if (!SessionControlCardCanEdit() || _composerView?.PrepareSubmission() != true || _composerController is null) return;
         var ticket = _composerController.TryTakeModelPickerAction(GetComposerSnapshot().Token);
         if (ticket is not null) _ = RunClientActionAsync(ticket, variantOnly, anchor);
+    }
+
+    private void BindNativePickerChoices(OpenCodeNativeComboBox agent, OpenCodeNativeComboBox model, OpenCodeNativeComboBox effort)
+    {
+        agent.ChoiceChanged += async key =>
+        {
+            if (!SessionControlCardCanEdit() || key is not string id) return;
+            if (_newSessionDraftActive && _blankPreferences is { } basis && _composerController is { } controller)
+                await SetBlankAgentAsync(basis, controller.Snapshot.Token, id);
+            else _agentSelector.SelectUserAgent(id);
+            QueueSessionControlCardRefresh();
+        };
+        model.ChoiceChanged += key =>
+        {
+            if (key is OpenCodeModelChoiceKey choice) _ = SetNativePickerModelAsync(choice, false);
+        };
+        effort.ChoiceChanged += key =>
+        {
+            var selected = _newSessionDraftActive ? _blankPreferences?.Model : _agentSelector.CurrentModel;
+            if (key is OpenCodeEffortChoice variant && selected?.Id is { } id && selected.ProviderId is { } provider)
+                _ = SetNativePickerModelAsync(new(provider, id, variant.Id), true);
+        };
+    }
+
+    private async System.Threading.Tasks.Task SetNativePickerModelAsync(OpenCodeModelChoiceKey choice, bool effortOnly)
+    {
+        if (!SessionControlCardCanEdit() || _composerController is not { } controller || _composerView?.PrepareSubmission() != true) return;
+        var current = _newSessionDraftActive ? _blankPreferences?.Model : _agentSelector.CurrentModel;
+        // Same model is a no-op, not a request to reset its effort to default.
+        if (current?.Id == choice.ModelId && current.ProviderId == choice.ProviderId
+            && (!effortOnly || current.Variant == choice.Variant)) return;
+        if (_newSessionDraftActive && _blankPreferences is { } basis)
+        {
+            if (effortOnly) await SetBlankVariantAsync(basis, controller.Snapshot.Token, choice.Variant);
+            else await ChooseBlankModelAsync(basis, controller.Snapshot.Token, selectedChoice: choice);
+        }
+        else if (controller.TryTakeModelPickerAction(GetComposerSnapshot().Token) is { } ticket)
+            await RunClientActionAsync(ticket, effortOnly, selectedChoice: choice);
+        QueueSessionControlCardRefresh();
+    }
+
+    private void RenderNativePickerChoices(OpenCodeNativeComboBox agent, OpenCodeNativeComboBox model,
+        OpenCodeNativeComboBox effort, bool enabled)
+    {
+        var blank = _newSessionDraftActive;
+        var owns = blank ? _blankPreferences is { } value && value.BlankSlotId == _activeBlankSlotId
+            && value.Matches(_homeRuntimeSource, _composerController!.Snapshot.Token.Draft)
+            : ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision && _agentSelectorSessionId == _selectedSessionId;
+        var rows = blank ? owns && HasBlankAgentPresentation(_blankPreferences!) ? _activeDraftSlot!.Agents.Where(IsBlankAgentSelectable)
+            .Select(a => new OpenCodeAgentPickerRow(a.Id!, a.Name!, a.Description, true, null, a.Color)) : Enumerable.Empty<OpenCodeAgentPickerRow>()
+            : owns ? _agentSelector.AgentChoices : Enumerable.Empty<OpenCodeAgentPickerRow>();
+        var models = blank ? owns && HasBlankMetadata(_blankPreferences!) ? _blankModels : System.Array.Empty<OpenCodeModelInfo>()
+            : owns ? _agentSelector.ModelChoices : System.Array.Empty<OpenCodeModelInfo>();
+        var selected = owns ? blank ? _blankPreferences?.Model : _agentSelector.CurrentModel : null;
+        var currentModel = models.FirstOrDefault(m => m.Id == selected?.Id && m.ProviderId == selected?.ProviderId);
+        var editable = enabled && owns && (!blank || !_blankPickerPending && !_newSessionCreatePending);
+        agent.Render(OpenCodeNativeComboBox.Agents(rows), owns ? blank ? _blankPreferences?.Agent : _agentSelector.CurrentAgentId : null, editable);
+        model.Render(OpenCodeNativeComboBox.Models(models), selected is null ? null : new OpenCodeModelChoiceKey(selected.ProviderId!, selected.Id!, null), editable);
+        effort.Render(OpenCodeNativeComboBox.Efforts(currentModel), selected is null ? null : new OpenCodeEffortChoice(selected.Variant), editable && currentModel is not null);
     }
 }

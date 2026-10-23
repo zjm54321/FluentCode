@@ -107,8 +107,10 @@ public sealed partial class OpenCodePage
     internal int FileOpens;
     internal bool Recovery=>_draftRecoveryPending;
     private readonly DropDownButton BlankAgentButton=new(){MaxWidth=260},BlankStrengthButton=new(),BlankProjectButton=new();private readonly Button BlankModelButton=new();private readonly TextBlock BlankPreferencesHint=new();private readonly TextBlock BlankProjectName=new(),BlankProjectPath=new();
-    internal string AgentName=>BlankAgentButton.Content is TextBlock text?text.Text:BlankAgentButton.Content as string??"";
-    internal Windows.UI.Color? AgentColor=>(BlankAgentButton.Foreground as Microsoft.UI.Xaml.Media.SolidColorBrush)?.Color;
+    internal string AgentName=>(BlankAgentButton.Attached.GetValueOrDefault("Name") as string ?? "").Replace("智能体：", "");
+    // Native ComboBox rendering is covered by the picker runner. This fixture observes the owned row feeding it.
+    internal Windows.UI.Color? AgentColor=>_blankPreferences is { } value && HasBlankAgentPresentation(value)
+        ? OpenCodeAgentPresentation.Color(_activeDraftSlot!.Agents.FirstOrDefault(a=>a.Id==value.Agent)?.Color) : null;
     internal object? AgentDescription=>BlankAgentButton.Attached.GetValueOrDefault("Tooltip");
     internal bool AgentEnabled=>BlankAgentButton.IsEnabled;
     internal bool ModelMetadataReady=>_blankPreferences is{} preferences&&HasBlankMetadata(preferences);

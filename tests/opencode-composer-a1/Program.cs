@@ -124,9 +124,8 @@ namespace AIFrontend.Pages
                 && Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "identity row retired; switch diagnostics/recovery retained in overview");
             foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "ComposerSubagentsButton", "ComposerConnectionButton", "ComposerExpandButton", "ComposerQueueButton", "SendStopButton" })
                 Check(Attr(Named(name), "AutomationProperties.Name") is not null && Attr(Named(name), "ToolTipService.ToolTip") is not null, "every compact entry named and tooltip reachable: " + name);
-            Check(Attr(Named("BlankAgentButton"), "Style") == "{StaticResource ComposerAgentDropdownStyle}"
-                && xaml.Descendants().Single(n => Attr(n, "{http://schemas.microsoft.com/winfx/2006/xaml}Key") == "ComposerAgentDropdownStyle")
-                    .Descendants().Any(n => Attr(n, "Property") == "Foreground" && Attr(n, "Value") == "{ThemeResource AccentTextFillColorPrimaryBrush}"), "dynamic theme accent resource (not cached brush)");
+            var combo = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs"));
+            Check(combo.Contains("AccentTextFillColorPrimaryBrush") && combo.Contains("SolidColorBrush(color)"), "agent glyph uses actual RGB with dynamic theme accent fallback");
             var blank = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"));
             Check(blank.Contains("_blankAgents.Where(IsBlankAgentSelectable)") && blank.Contains("response.Data!.Where(IsBlankAgentSelectable)"), "defaults and menu use same selection predicate");
             Check(blank.Contains("ToolTipService.SetToolTip(BlankAgentButton, agent?.Description)")
@@ -141,25 +140,24 @@ namespace AIFrontend.Pages
                 && Named("ComposerToolbarLeft").Parent == Named("ComposerInputLayout")
                 && Named("ComposerExpandButton").Parent == Named("Composer").Parent, "editor, actions and plus share a stable layout; fullscreen stays inside input");
             var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
-            Check(binding.Contains("OpenCodeModelLogo.Label(") && binding.Contains("OpenCodeAgentPresentation.Apply(BlankAgentButton, color)")
-                && binding.Contains("ComposerChoiceLabel(\"\\uEC4A\", OpenCodeModelPresentation.VariantLabel(selected?.Variant)"), "choices retain colored agent, model logo/name and native effort glyph");
+            Check(binding.Contains("RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled)")
+                && combo.Contains("OpenCodeModelLogo.Label(") && combo.Contains("OpenCodeModelPresentation.VariantLabel(id)"), "choices use common native model logo/name and display-only effort labels");
             Check(binding.Contains("description = info?.Description") && binding.Contains("owns ? _agentSelector.CurrentAgentDescription : null")
                 && binding.Contains("ToolTipService.SetToolTip(BlankAgentButton, description ??"), "visible composer agent tooltip uses owned draft/session description in both responsive modes");
             var card = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs"));
-            Check(card.Contains("_agentName = OpenCodeAgentPresentation.Name(string.Empty)") && card.Contains("AccentTextFillColorPrimaryBrush")
-                && card.Contains("AgentButton.Style = (Style)XamlReader.Load"), "sidebar full name wraps and uncolored agent returns to dynamic system accent style");
-            Check(card.Contains("Describe(AgentButton, \"智能体：\" + agent, scope, agentDescription ??")
+            Check(card.Contains("internal OpenCodeNativeComboBox AgentButton") && combo.Contains("DisplayName(row.Name)"), "sidebar retains a real native agent ComboBox with full friendly name");
+            Check(card.Contains("Describe(AgentButton, \"智能体：\" + agent, scope, (agentDescription ??")
                 && card.Contains("ToolTipService.SetToolTip(button, tooltip ??"), "visible sidebar agent tooltip shows description rather than scope");
             var cardBinding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs"));
             Check(cardBinding.Contains("BlankStrengthButton.IsEnabled, agent?.Description")
                 && cardBinding.Contains("ownsSelection ? _agentSelector.CurrentAgentDescription : null"), "sidebar descriptions read from the same fenced draft/current selection as the name and color");
-            Check(binding.Contains("OpenCodeComposerEffort.Ticks(model, selected?.Variant)") && binding.Contains("_insights?.CurrentModelInfo")
-                && !binding.Contains("ListModelsAsync"), "gauge reuses existing fenced Model.Info metadata without duplicate reads");
+            Check(binding.Contains("_insights?.CurrentModelInfo") && !binding.Contains("ListModelsAsync"), "toolbar reuses fenced metadata without duplicate reads");
             Check(binding.Contains("SessionPaneToggleButton_Click(sender, e)") && binding.Contains("OpenSessionControlModelPicker(variantOnly: true)")
                 && binding.Contains("BlankStrengthButton_Click(sender, e)"), "drawer and existing independent strength routes preserved");
             Check(!binding.Contains("SendStopButton.IsEnabled") && !binding.Contains("ComposerQueueButton.IsEnabled"), "toolbar presentation never changes send/queue availability policy");
-            foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "BlankProjectButton" })
-                Check(Named(name).Name.LocalName == "DropDownButton", "native dropdown control: " + name);
+            foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton" })
+                Check(Named(name).Name.LocalName == "OpenCodeNativeComboBox" && Attr(Named(name), "Click") is null, "native ComboBox control, not click-opened flyout: " + name);
+            Check(Named("BlankProjectButton").Name.LocalName == "DropDownButton", "directory retains native dropdown");
             Check(Named("BlankProjectButton").Ancestors().Contains(Named("NewSessionHeader"))
                 && Named("BlankPreferencesHost").Descendants().Any(n => Attr(n, "Text") == "中开始新会话"), "directory sentence is under the wordmark, above composer");
             Check(layout.Contains("var maximum = OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome)")

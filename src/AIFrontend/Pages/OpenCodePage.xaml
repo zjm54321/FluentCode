@@ -6,6 +6,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:openCode="using:AIFrontend.Pages.OpenCode"
     mc:Ignorable="d">
 
     <!--
@@ -688,21 +689,17 @@
                                                                     <ColumnDefinition Width="Auto" />
                                                                     <ColumnDefinition x:Name="ComposerStatusColumn" Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <DropDownButton x:Name="BlankAgentButton" Click="ComposerAgentButton_Click"
-                                                                         Style="{StaticResource ComposerAgentDropdownStyle}"
-                                                                         Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
-                                                                         Background="{ThemeResource SubtleFillColorTransparentBrush}" BorderBrush="{ThemeResource SubtleFillColorTransparentBrush}"
+                                                                <openCode:OpenCodeNativeComboBox x:Name="BlankAgentButton"
+                                                                         Height="32" MinWidth="96" MaxWidth="220" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankAgent">
-                                                                </DropDownButton>
-                                                                <DropDownButton x:Name="BlankModelButton" Grid.Column="2" Click="ComposerModelButton_Click"
-                                                                         Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
-                                                                         Background="{ThemeResource SubtleFillColorTransparentBrush}" BorderBrush="{ThemeResource SubtleFillColorTransparentBrush}"
+                                                                </openCode:OpenCodeNativeComboBox>
+                                                                <openCode:OpenCodeNativeComboBox x:Name="BlankModelButton" Grid.Column="2"
+                                                                         Height="32" MinWidth="96" MaxWidth="260" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankModel" />
-                                                                <DropDownButton x:Name="BlankStrengthButton" Grid.Column="3" Click="ComposerEffortButton_Click"
-                                                                         Width="32" Height="32" MinWidth="0" Padding="0" VerticalAlignment="Center"
-                                                                         Background="{ThemeResource SubtleFillColorTransparentBrush}" BorderBrush="{ThemeResource SubtleFillColorTransparentBrush}"
+                                                                <openCode:OpenCodeNativeComboBox x:Name="BlankStrengthButton" Grid.Column="3"
+                                                                         Height="32" MinWidth="64" MaxWidth="104" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择推理强度" ToolTipService.ToolTip="选择推理强度"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankStrength" />
                                                         <StackPanel x:Name="ComposerToolbarMiddle" Grid.Column="4" Orientation="Horizontal" Spacing="2"

@@ -1038,6 +1038,7 @@ namespace AIFrontend
 }
 namespace Microsoft.UI.Xaml
 {
+    public class FrameworkElement { }
     public enum Visibility { Visible, Collapsed }
     public enum FocusState { Unfocused, Programmatic }
     public class Window { }
