@@ -71,11 +71,6 @@ public sealed partial class OpenCodePage
         _homeView.LoadMore += async (_, e) => { if (HomeEventCurrent(e.Revision, e.Project)) await LoadMoreHomeSessionsAsync(); };
         // No refresh button: session create/delete/rename events and live status snapshots already re-project Home.
         _homeView.SetWordmark(_homeWordmark);
-        _homeView.ProjectSelected += (_, _) => RefreshHomeChrome();
-        _homeQuickAccess.Margin = new Thickness(0);
-        _homeQuickAccess.ExplorerRequested += async (_, _) => await LaunchHomeWslAsync(null);
-        _homeQuickAccess.EditorRequested += async (_, e) => await LaunchHomeWslAsync(e.Name);
-        _homeQuickAccess.EditorMenuRequested += (_, _) => { _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost); RefreshHomeChrome(); };
         Loaded += (_, _) => _homeChromeTimer?.Start();
         Unloaded += (_, _) => _homeChromeTimer?.Stop();
         _homeChromeTimer = DispatcherQueue.CreateTimer();
@@ -86,7 +81,6 @@ public sealed partial class OpenCodePage
 
     private readonly Image _homeWordmark = new() { Height = 30, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
         HorizontalAlignment = HorizontalAlignment.Left };
-    private readonly OpenCodeWslQuickAccessView _homeQuickAccess = new();
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeChromeTimer;
     private (string? Version, bool Connected, string? Identity)? _homeChromeShown;
 
@@ -98,8 +92,8 @@ public sealed partial class OpenCodePage
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_homeWordmark, "OpenCode");
     }
 
-    /// <summary>Right-side Home cards from real state only: accepted server version, live connection, configured
-    /// connection identity, and WSL quick access for the selected (or default) project directory.</summary>
+    /// <summary>Right-side Home identity card from real state only: accepted server version, live connection,
+    /// and configured connection identity. Directory quick access belongs only to the session right panel.</summary>
     private void RefreshHomeChrome()
     {
         var info = CurrentServerInfo();
@@ -110,9 +104,6 @@ public sealed partial class OpenCodePage
             _homeChromeShown = chrome;
             _homeView.SetConnection(chrome.Item1, chrome.connected, chrome.Item3);
         }
-        var state = CurrentHomeWslQuickAccess();
-        if (state.Visible) _homeQuickAccess.Render(state, _wslEditors, _selectedWslEditor);
-        _homeView.SetQuickAccess(_homeQuickAccess, state.Visible);
     }
 
     private string? HomeConnectionIdentity()
@@ -128,37 +119,6 @@ public sealed partial class OpenCodePage
                 ? "远程 · " + (uri.IsDefaultPort ? uri.Host : uri.Host + ":" + uri.Port) : "远程";
         }
         catch (ObjectDisposedException) { return "远程"; }
-    }
-
-    private string? HomeQuickAccessDirectory() => _homeView.SelectedProject?.Directory ?? _homeDefaultDirectory;
-
-    private WslQuickAccessState CurrentHomeWslQuickAccess()
-    {
-        var settings = _homeSettings.Current?.OpenCode;
-        var connected = _pageActive && _homeActive && _connection == ConnectionState.Connected && _client is not null
-            && _source is { IsRevoked: false };
-        return OpenCodeWslQuickAccess.Resolve(settings?.Kind, connected, settings?.WslDistribution, HomeQuickAccessDirectory());
-    }
-
-    private async Task LaunchHomeWslAsync(string? editorName)
-    {
-        // Re-read live state at invocation; the menu may outlive a project, directory or connection change.
-        var state = CurrentHomeWslQuickAccess();
-        if (!state.Visible || state.Target is null) { RefreshHomeChrome(); return; }
-        try
-        {
-            WslHostEditor? editor = null;
-            if (editorName is not null)
-            {
-                editor = WslHostEditorDetection.Detect(_wslEditorHost).First(e => e.Name == editorName);
-                if (editor.Executable is null) { _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost); RefreshHomeChrome(); return; }
-                _wslEditorPreference.Save(editor.Name);
-                _selectedWslEditor = editor.Name;
-            }
-            await OpenCodeWslQuickAccess.LaunchAsync(state, editor, _wslQuickAccessLauncher);
-            RefreshHomeChrome();
-        }
-        catch (Exception) { _homeQuickAccess.ShowFailure(); }
     }
 
     /// <summary>Shared next-page load (same cursor, single-flight and generation/epoch fences as every other

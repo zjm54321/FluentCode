@@ -31,8 +31,8 @@ public sealed class OpenCodeHomeSearchEventArgs(long revision, OpenCodeHomeProje
 /// <summary>
 /// The pinned Home tab: a fixed page (never a drawer) on the same three-column grid as the session page.
 /// Left floating card = projects (添加项目 + 全部项目); centre = search + 新建, 需要你处理, then 今天/昨天/本周/更早;
-/// right floating cards = OpenCode wordmark/version/connection identity and the page-supplied WSL quick access.
-/// When the side cards do not fit, they collapse: projects become chips and the connection becomes one caption line.
+/// right floating card = OpenCode wordmark/version/connection identity (never directory quick access).
+/// When the side cards do not fit, projects become chips; the tab bar already owns the connection indicator.
 /// No client, settings store or navigation ownership. All methods are UI-thread-only; the page adapter must
 /// revalidate echoed revision/source before acting.
 /// </summary>
@@ -71,15 +71,11 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly ProgressRing _loading = new() { Width = 16, Height = 16, Visibility = Visibility.Collapsed };
     private readonly Border _leftCard = Card();
     private readonly Border _connectionCard = Card();
-    private readonly Border _quickCard = Card();
     private readonly Grid _right = new() { Width = SideCardWidth, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Stretch };
     private readonly Grid _center = new() { RowSpacing = 12, HorizontalAlignment = HorizontalAlignment.Center };
     private readonly Border _wordmarkHost = new() { Height = 30, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly Border _connectedDot = Dot(OpenCodeToolTheme.Success, 8);
     private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
-    private readonly StackPanel _compactConnection = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Visibility = Visibility.Collapsed };
-    private readonly Border _compactDot = Dot(OpenCodeToolTheme.Success, 8);
-    private readonly TextBlock _compactText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     private readonly ScrollViewer _chipScroller = new() { Visibility = Visibility.Collapsed };
     private readonly StackPanel _chips = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
     private readonly Dictionary<object, TextBlock> _headerCounts = new();
@@ -88,7 +84,6 @@ public sealed class OpenCodeHomeView : UserControl
     private TextBlock? _allProjectsCount;
     private bool _refreshing;
     private bool _narrow;
-    private bool _quickVisible;
     private ScrollViewer? _listScroller;
     private (double Offset, double Viewport, double Extent) _scroll;
     /// <summary>Revision of the snapshot that produced the last automatic request, or -1. Blocks repeat requests
@@ -156,13 +151,8 @@ public sealed class OpenCodeHomeView : UserControl
 
         // ---- Centre column ----
         _center.Margin = new Thickness(0, SideMargin, 0, 0);
-        for (var i = 0; i < 5; i++) _center.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        _center.RowDefinitions[3].Height = new GridLength(1, GridUnitType.Star);
-        OpenCodeToolTheme.Apply(_compactText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, "CaptionTextBlockStyle"));
-        _compactConnection.Children.Add(_compactDot);
-        _compactConnection.Children.Add(_compactText);
-        AutomationProperties.SetAutomationId(_compactConnection, "OpenCodeHomeConnectionCompact");
-        _center.Children.Add(_compactConnection);
+        for (var i = 0; i < 4; i++) _center.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _center.RowDefinitions[2].Height = new GridLength(1, GridUnitType.Star);
 
         var searchRow = new Grid { ColumnSpacing = 10 };
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -180,7 +170,7 @@ public sealed class OpenCodeHomeView : UserControl
         create.Click += (_, _) => NewSession?.Invoke(this, Context());
         Grid.SetColumn(create, 1);
         searchRow.Children.Add(create);
-        Grid.SetRow(searchRow, 1);
+        Grid.SetRow(searchRow, 0);
         _center.Children.Add(searchRow);
 
         _chipScroller.Content = _chips;
@@ -189,7 +179,7 @@ public sealed class OpenCodeHomeView : UserControl
         ScrollViewer.SetVerticalScrollMode(_chipScroller, ScrollMode.Disabled);
         ScrollViewer.SetVerticalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Disabled);
         SetIdentity(_chipScroller, "OpenCodeHomeProjectChips", "按项目筛选");
-        Grid.SetRow(_chipScroller, 2);
+        Grid.SetRow(_chipScroller, 1);
         _center.Children.Add(_chipScroller);
 
         SetIdentity(_sessions, "OpenCodeHomeSessions", "会话：需要你处理，然后按日期分组");
@@ -204,7 +194,7 @@ public sealed class OpenCodeHomeView : UserControl
             if (row is not null)
                 SessionRequested?.Invoke(this, new(_snapshot.Revision, row.Session));
         };
-        Grid.SetRow(_sessions, 3);
+        Grid.SetRow(_sessions, 2);
         _center.Children.Add(_sessions);
         OpenCodeToolTheme.Apply(_message, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary));
         var footer = new StackPanel { Spacing = 8, Padding = new Thickness(12, 0, 12, 16) };
@@ -214,15 +204,12 @@ public sealed class OpenCodeHomeView : UserControl
         footer.Children.Add(status);
         // Infinite scroll: no "load more" button. The list's own ScrollViewer drives the next-page request.
         _sessions.Loaded += (_, _) => AttachListScroller();
-        Grid.SetRow(footer, 4);
+        Grid.SetRow(footer, 3);
         _center.Children.Add(footer);
         Grid.SetColumn(_center, 1);
         layout.Children.Add(_center);
 
-        // ---- Right floating cards: OpenCode identity (top), WSL quick access (bottom) ----
-        _right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        _right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        _right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        // ---- Right floating card: OpenCode identity only (H1/H2) ----
         _right.Margin = new Thickness(0, SideMargin, SideMargin, SideMargin);
         var identity = new StackPanel { Spacing = 10 };
         identity.Children.Add(_wordmarkHost);
@@ -236,12 +223,6 @@ public sealed class OpenCodeHomeView : UserControl
         _connectionCard.VerticalAlignment = VerticalAlignment.Top;
         AutomationProperties.SetAutomationId(_connectionCard, "OpenCodeHomeConnectionCard");
         _right.Children.Add(_connectionCard);
-        _quickCard.Padding = new Thickness(6);
-        _quickCard.VerticalAlignment = VerticalAlignment.Bottom;
-        _quickCard.Visibility = Visibility.Collapsed;
-        AutomationProperties.SetAutomationId(_quickCard, "OpenCodeHomeQuickAccessCard");
-        Grid.SetRow(_quickCard, 2);
-        _right.Children.Add(_quickCard);
         Grid.SetColumn(_right, 2);
         layout.Children.Add(_right);
 
@@ -267,22 +248,11 @@ public sealed class OpenCodeHomeView : UserControl
         if (!connected) parts.Add("未连接");
         var text = string.Join(" · ", parts);
         _connectionText.Text = text;
-        _compactText.Text = parts.Count == 0 ? "OpenCode" : "OpenCode " + text;
         var dot = connected ? Visibility.Visible : Visibility.Collapsed;
         _connectedDot.Visibility = dot;
-        _compactDot.Visibility = dot;
         var name = "OpenCode " + (connected ? "已连接" : "未连接") + (text.Length > 0 ? "，" + text : string.Empty);
         AutomationProperties.SetName(_connectionCard, name);
-        AutomationProperties.SetName(_compactConnection, name);
         ToolTipService.SetToolTip(_connectionCard, name);
-    }
-
-    /// <summary>The page supplies its WSL quick-access control; it is shown only for a WSL connection.</summary>
-    public void SetQuickAccess(UIElement? content, bool visible)
-    {
-        if (!ReferenceEquals(_quickCard.Child, content)) _quickCard.Child = content;
-        _quickVisible = visible && content is not null;
-        ApplyLayout();
     }
 
     public void SetSnapshot(OpenCodeHomeSnapshot snapshot)
@@ -486,8 +456,6 @@ public sealed class OpenCodeHomeView : UserControl
         var side = _narrow ? Visibility.Collapsed : Visibility.Visible;
         _leftCard.Visibility = side;
         _right.Visibility = side;
-        _quickCard.Visibility = _quickVisible ? Visibility.Visible : Visibility.Collapsed;
-        _compactConnection.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
         _chipScroller.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
         _center.Width = width <= 0 ? CenterMaxWidth
             : Math.Max(0, Math.Min(CenterMaxWidth, _narrow ? width - 2 * SideMargin : width - 2 * SideColumnWidth - CenterPadding));

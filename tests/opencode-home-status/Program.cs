@@ -85,12 +85,15 @@ internal static class Program
         Check(menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="归档此会话").IsEnabled==false&&menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="删除此会话").Style?.Xml.Contains("SystemFillColorCriticalBrush")==true,"menu items follow the page action gate; delete is critical-coloured");
         view.SetConnection("1.4.2",true,"WSL · NixOS");
         Check(Walk(view).OfType<TextBlock>().Any(t=>t.Text=="v1.4.2 · WSL · NixOS"),"connection line shows real version + identity");
+        Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n) is "OpenCodeHomeQuickAccessCard" or "OpenCodeHomeConnectionCompact"),"H1/H2: no home quick access or duplicate compact connection row exists");
         view.SetConnection(null,false,null);
         Check(Walk(view).OfType<TextBlock>().Any(t=>t.Text=="未连接")&&!Walk(view).OfType<TextBlock>().Any(t=>t.Text.Contains("v1.4.2")),"unknown version/identity is omitted, never invented");
         view.ActualWidth=1600;view.RaiseSizeChanged();
         Check(!view.IsNarrow&&Find<Border>(view,"OpenCodeHomeProjectsCard").Visibility==Visibility.Visible&&Find<ScrollViewer>(view,"OpenCodeHomeProjectChips").Visibility==Visibility.Collapsed,"wide: side cards, no chips");
         view.ActualWidth=1180;view.RaiseSizeChanged();
         Check(view.IsNarrow&&Find<Border>(view,"OpenCodeHomeProjectsCard").Visibility==Visibility.Collapsed&&Find<ScrollViewer>(view,"OpenCodeHomeProjectChips").Visibility==Visibility.Visible,"narrow: cards fold into project chips");
+        Check((int)Walk(view).OfType<Grid>().Single(g=>g.Children.Contains(Find<TextBox>(view,"OpenCodeHomeSearch"))).Attached["Row"]! == 0,"H2 search starts at row zero without a phantom connection gap");
+        Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n)=="OpenCodeHomeConnectionCompact"),"H2 narrow: the removed connection row does not return on resize");
         // Infinite scroll (user m02186): no load-more/refresh button; near-bottom, cursor, in-flight and failure/retry guards.
         Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n)is"OpenCodeHomeLoadMore"or"OpenCodeHomeRefresh"),"no manual load-more or refresh button remains");
         Check(OpenCodeHomeInfiniteScroll.ShouldLoad(1200,600,2300,true,false,false),"within one viewport of the end loads the next page");
