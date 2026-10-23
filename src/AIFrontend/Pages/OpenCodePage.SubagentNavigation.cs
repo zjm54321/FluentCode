@@ -67,12 +67,15 @@ public sealed partial class OpenCodePage
 
         try
         {
-            await ShowSubagentChatAsync(view, e.ParentMessageId, e.ChildSessionId);
+            if (!view.ContainsRenderedMessage(e.ParentMessageId)
+                || !OpenCodeSubagentPresentation.IsOpaqueSessionId(e.ChildSessionId)) return;
+            OpenCodeToolDetailPopup.Shared.Close();
+            await OpenAgentTreeChildAsync(e.ChildSessionId);
         }
         catch (OperationCanceledException) { }
         catch (Exception)
         {
-            if (_pageActive) ShowMessage(InfoBarSeverity.Error, "无法打开子会话", "子会话窗口加载失败，请重试。");
+            if (_pageActive) ShowMessage(InfoBarSeverity.Error, "无法打开子会话", "子会话加载失败，请重试。");
         }
     }
 

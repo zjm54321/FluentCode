@@ -395,7 +395,9 @@ public sealed partial class OpenCodePage
     private async Task OpenAgentTreeChildAsync(string id)
     {
         var binding = _treeBinding;
-        if (binding is null || !IsTreeCurrent(binding) || !_treeChildren.ContainsKey(id) || _subagentNavigationBusy) return;
+        // Both tree items and timeline calls use this route. A just-created call need not have
+        // reached the tree cache yet; the real session's ParentId below is the ownership check.
+        if (binding is null || !IsTreeCurrent(binding) || _subagentNavigationBusy) return;
         _subagentNavigationBusy = true;
         var ct = _treeCts!.Token;
         try

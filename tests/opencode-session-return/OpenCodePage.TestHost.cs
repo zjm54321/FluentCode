@@ -199,6 +199,9 @@ namespace AIFrontend.Pages
         private const string FixtureMessageDirectory = "/synthetic/return-fixture";
         internal Task Switch(string id) => SwitchToSessionAsync(id, directory: FixtureMessageDirectory);
         internal Task<int> Navigate(string id) => NavigateToSessionAsync(id);
+        // The inert host has no agent tree; retain the navigation-contract harness for the
+        // legacy helper while production row events call the real tree route.
+        private Task OpenAgentTreeChildAsync(string childId) => Task.CompletedTask;
         internal Task Card(string messageId, string childId) => NavigateToSubagentSessionAsync(_conversationView, messageId, childId);
         internal Task Preview(string messageId, string childId) => ShowSubagentChatAsync(_conversationView, messageId, childId);
         internal Task Notify(NotificationNavigationTarget target, NotificationInteractionResult? result = null)

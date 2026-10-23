@@ -625,7 +625,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     {
         if (_subagentSource is { } preview)
         {
-            OpenCodeToolDetailPopup.Shared.TogglePinned(preview);
+            OpenCodeToolDetailPopup.Shared.CloseIf(preview);
+            preview.OpenChildChat();
         }
         else
         {
