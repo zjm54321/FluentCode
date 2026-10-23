@@ -16,8 +16,6 @@ internal enum OpenCodeComposerSplashCapability
     None = 0,
     /// <summary>Typing “/” at the start of the editor opens the command catalog (with filtering).</summary>
     SlashCommands = 1 << 0,
-    /// <summary>Ctrl+/ explicitly opens the command catalog.</summary>
-    CommandShortcut = 1 << 1,
     /// <summary>Tab completes the trigger against a visible catalog.</summary>
     TabCompletion = 1 << 2,
     /// <summary>The “+” button attaches files (images, text, Markdown, PDF, JSON; ≤10).</summary>
@@ -51,7 +49,6 @@ internal sealed class OpenCodeComposerSplash
 {
     private const OpenCodeComposerSplashCapability C0 = OpenCodeComposerSplashCapability.None;
     private const OpenCodeComposerSplashCapability Slash = OpenCodeComposerSplashCapability.SlashCommands;
-    private const OpenCodeComposerSplashCapability CtrlSlash = OpenCodeComposerSplashCapability.CommandShortcut;
     private const OpenCodeComposerSplashCapability Tab = OpenCodeComposerSplashCapability.TabCompletion;
     private const OpenCodeComposerSplashCapability Attach = OpenCodeComposerSplashCapability.Attachments;
     private const OpenCodeComposerSplashCapability Lines = OpenCodeComposerSplashCapability.Multiline;
@@ -62,7 +59,7 @@ internal sealed class OpenCodeComposerSplash
     private const OpenCodeComposerSplashCapability Mention = OpenCodeComposerSplashCapability.FileMention;
 
     /// <summary>Capabilities this build actually ships (verified in code). Context flags are added per observation.</summary>
-    internal const OpenCodeComposerSplashCapability Shipped = Slash | CtrlSlash | Tab | Attach | Lines | Nav | Editor | Mention | OpenCodeComposerSplashCapability.ShellMode;
+    internal const OpenCodeComposerSplashCapability Shipped = Slash | Tab | Attach | Lines | Nav | Editor | Mention | OpenCodeComposerSplashCapability.ShellMode;
 
     /// <summary>How many recent lines a rotation avoids (bounded by the eligible pool size − 1).</summary>
     internal const int RecentWindow = 8;
@@ -127,7 +124,6 @@ internal sealed class OpenCodeComposerSplash
         // ---- Real feature hints (gated) ----
         L("hint.slash", "行首输入 / 浏览命令。", "Type / at the start to browse commands.", Slash),
         L("hint.slash-filter", "/ 后接着输入，可筛选命令。", "Keep typing after / to filter commands.", Slash),
-        L("hint.ctrl-slash", "按 Ctrl+/ 随时打开命令目录。", "Press Ctrl+/ to open the command list.", CtrlSlash),
         L("hint.tab", "命令目录打开时，按 Tab 补全。", "With the command list open, Tab completes.", Slash | Tab),
         L("hint.attach", "点左侧 + 可添加图片、PDF 等附件。", "Use + on the left to attach images, PDFs and more.", Attach),
         L("hint.mention", "用 @ 选择项目文件路径。", "Use @ to insert a project file path.", Mention),

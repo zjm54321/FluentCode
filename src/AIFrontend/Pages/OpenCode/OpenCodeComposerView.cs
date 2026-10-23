@@ -69,8 +69,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     // Context inserts a legal "@"; terminal is a separate editor/transport owned by the page.
     private readonly MenuFlyoutItem _contextItem;
     private readonly MenuFlyoutItem _terminalItem;
-    private readonly MenuFlyoutSeparator _discardSeparator;
-    private readonly MenuFlyoutItem _discardItem;
     private readonly Flyout _discardFlyout;
     private readonly TextBlock _summaryText;
 
@@ -214,7 +212,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetAutomationId(this, "OpenCodeComposerCompanion");
         AutomationProperties.SetName(this, "命令与附件");
 
-        // ---- Leading "+" button (B7): 添加附件 · ── · 命令（/） · 上下文（@） · 终端（!） [· ── · 丢弃草稿…] ----
+        // ---- Leading "+" button (B7): 添加附件 · ── · 命令（/） · 上下文（@） · 终端（!） ----
         // Built from OpenCodeComposerPlusMenu.Entries so the order/labels are verified offline against the same data.
         var addMenu = new MenuFlyout { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
         MenuFlyoutItem? attach = null, command = null, context = null, terminal = null;
@@ -235,7 +233,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _attachItem = attach!;
         _attachItem.Click += (_, _) => RequestPick();
         _commandItem = command!;
-        _commandItem.KeyboardAcceleratorTextOverride = "Ctrl+/";
+        _commandItem.KeyboardAcceleratorTextOverride = "/";
         ToolTipService.SetToolTip(_commandItem, OpenCodeComposerPlusMenu.CommandTooltip);
         _commandItem.Click += (_, _) => RequestCatalog();
         _contextItem = context!;
@@ -247,12 +245,6 @@ internal sealed class OpenCodeComposerView : StackPanel
         ToolTipService.SetToolTip(_terminalItem, OpenCodeComposerPlusMenu.TerminalTooltip);
         AutomationProperties.SetHelpText(_terminalItem, OpenCodeComposerPlusMenu.TerminalTooltip);
         _discardFlyout = BuildDiscardFlyout();
-        _discardSeparator = new MenuFlyoutSeparator { Visibility = Visibility.Collapsed };
-        _discardItem = new MenuFlyoutItem { Text = "丢弃草稿…", Icon = new FontIcon { Glyph = "\uE74D" }, Visibility = Visibility.Collapsed };
-        AutomationProperties.SetAutomationId(_discardItem, "OpenCodeComposerDiscardButton");
-        _discardItem.Click += (_, _) => _discardFlyout.ShowAt(_addButton);
-        addMenu.Items.Add(_discardSeparator);
-        addMenu.Items.Add(_discardItem);
         _addButton = new Button
         {
             Content = new FontIcon { Glyph = "\uE710", FontSize = 16 },
@@ -364,7 +356,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _statusText.VerticalAlignment = VerticalAlignment.Center;
         _statusDiscardButton = new Button { Content = "丢弃草稿", Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetAutomationId(_statusDiscardButton, "OpenCodeComposerInactiveDiscard");
-        _statusDiscardButton.Flyout = BuildDiscardFlyout();
+        _statusDiscardButton.Flyout = _discardFlyout;
         var statusGrid = new Grid { ColumnSpacing = 8 };
         statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -758,10 +750,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         ToolTipService.SetToolTip(_attachItem, full
             ? "已达到 10 个附件上限；先移除部分附件再添加。"
             : "图片、文本、Markdown、PDF 或 JSON（最多 10 个；单个不超过 10 MB，合计不超过 20 MB）");
-        var discard = (enhanced || snapshot.IsBoundDraft) && !inactiveBound ? Visibility.Visible : Visibility.Collapsed;
-        _discardItem.Visibility = _discardSeparator.Visibility = discard;
-        _discardItem.IsEnabled = !snapshot.IsBusy;
-        _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || _terminalItem.IsEnabled || (discard == Visibility.Visible && _discardItem.IsEnabled);
+        _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || _terminalItem.IsEnabled;
         long total = 0;
         foreach (var a in snapshot.Attachments) total += a.Bytes;
         _summaryText.Text = OpenCodeComposerInputPolicy.AttachmentSummary(snapshot.Attachments.Count, total,
@@ -1784,6 +1773,10 @@ internal sealed class OpenCodeComposerView : StackPanel
             tone = s.Note.Contains("未知", StringComparison.Ordinal) ? "caution" : "neutral";
             glyph = tone == "caution" ? "\uE7BA" : "\uE946";
         }
+
+        // Discard lives with draft status/recovery, not among the four composer insertion modes.
+        offerDiscard |= (enhanced || s.IsBoundDraft) && !inactiveBound && !s.IsBusy;
+        if (offerDiscard) text ??= "草稿尚未发送。";
 
         if (_sideQuestionPending > 0)
         {

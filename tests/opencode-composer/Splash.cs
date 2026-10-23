@@ -80,8 +80,9 @@ internal static partial class Program
         Check(Regex.IsMatch(menu, @"RequiresSession[\s\S]*?is not \(OpenCodeComposerClientActionKind\.NewSession or OpenCodeComposerClientActionKind\.ChooseSession\s*or OpenCodeComposerClientActionKind\.EditDraft\)"),
             "only /new, /sessions, /editor are session-free (matches SessionNavigation/LargeEditor gating)");
         var view = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
-        Check(view.Contains("KeyboardAcceleratorTextOverride = \"Ctrl+/\"") && view.Contains("VirtualKey.Tab => OpenCodeComposerKey.Tab")
-            && view.Contains("OpenCodeAttachment.MaxFiles"), "Ctrl+/, Tab completion and + attachments exist");
+        Check(view.Contains("_commandItem.KeyboardAcceleratorTextOverride = \"/\"") && !view.Contains("KeyboardAcceleratorTextOverride = \"Ctrl+/\"")
+            && view.Contains("VirtualKey.Tab => OpenCodeComposerKey.Tab") && view.Contains("OpenCodeAttachment.MaxFiles"), "/ shortcut, Tab completion and + attachments exist");
+        Check(!OpenCodeComposerSplash.Library.Any(l => (l.Text + l.English).Contains("Ctrl+/", StringComparison.Ordinal)), "splash does not advertise Ctrl+/ instead of /");
         var xaml = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
         Check(xaml.Contains("x:Name=\"BlankAgentButton\"") && xaml.Contains("x:Name=\"BlankModelButton\"") && xaml.Contains("x:Name=\"BlankStrengthButton\""),
             "blank toolbar agent/model/strength pickers exist");
