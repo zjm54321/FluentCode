@@ -188,11 +188,12 @@ internal static class Program
         RunChildSessionChecks();
         var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
         var readOnly = card.Substring(card.IndexOf("internal void RenderReadOnly"), card.IndexOf("private static OpenCodeNativeComboBox Entry") - card.IndexOf("internal void RenderReadOnly"));
-        Check(card.Contains("IsHitTestVisible = false") && readOnly.Contains("_chrome.Child = _readOnlyRows")
-            && !readOnly.Contains("new Button") && !readOnly.Contains("ToolTipService") && !readOnly.Contains("Flyout"),
-            "SA2 child mode uses only plain display visuals with no selector hover/focus/flyout affordance");
-        Check(readOnly.Contains("value.Agent is null ? Visibility.Collapsed") && readOnly.Contains("value.ModelName is null ? Visibility.Collapsed")
-            && readOnly.Contains("value.Effort is null ? Visibility.Collapsed"), "SA2 unknown child values hide their own rows independently");
+        Check(readOnly.Contains("_chrome.Child = _editableRows") && readOnly.Contains("AgentButton.Render(")
+            && readOnly.Contains("ModelButton.Render(") && readOnly.Contains("VariantButton.Render(")
+            && !readOnly.Contains("Visibility.Collapsed") && !card.Contains("_readOnlyRows"), "SA2b child preserves the same three native ComboBoxes and two-row layout");
+        Check(readOnly.Contains("value.Agent, false)") && readOnly.Contains("ModelId") == false
+            && readOnly.Contains("null), false)") && readOnly.Contains("effort, false)") && readOnly.Contains("Array.Empty<OpenCodeNativeComboBox.Choice>()"),
+            "SA2b all child selectors disabled; unknown fields seed no choice rather than a guessed value");
         Check(cardBinding.Contains("CurrentSessionInfo is { ParentId: not null, Id: { } childId } child") && cardBinding.Contains("childId == _selectedSessionId")
             && cardBinding.Contains("OpenCodeChildSessionControl.Project(child.Agent, child.Model, messages") && cardBinding.Contains("card.RenderReadOnly(projection)"),
             "SA2 card consumes real current-child metadata/messages, not pending UI or parent choices");
@@ -255,5 +256,20 @@ internal static class Program
         Check(malformed is { Agent: null, Model: null, ModelName: null, Effort: null }, "SA2 incomplete model identity cannot produce guessed display/effort");
         Check(OpenCodeChildSessionControl.Project("fixer", last with { Variant = " " }, empty, Catalog).Effort is null,
             "SA2 unknown malformed effort is hidden, not fabricated as default");
+        var card = new OpenCodeSessionControlCard();
+        var changes = 0;
+        card.AgentButton.ChoiceChanged += _ => changes++;
+        card.ModelButton.ChoiceChanged += _ => changes++;
+        card.VariantButton.ChoiceChanged += _ => changes++;
+        card.RenderReadOnly(actual);
+        Check(card.AgentButton.SelectedItem is OpenCodeNativeComboBox.Choice { Key: "oracle" }
+            && card.ModelButton.SelectedItem is OpenCodeNativeComboBox.Choice { Key: OpenCodeModelChoiceKey { ModelId: "claude-last", ProviderId: "provider-b" } }
+            && card.VariantButton.SelectedItem is OpenCodeNativeComboBox.Choice { Key: OpenCodeEffortChoice { Id: "extra_high" } },
+            "SA2b actual child RenderReadOnly seeds real child identity/model/opaque effort, not parent selection");
+        Check(!card.AgentButton.IsEnabled && !card.ModelButton.IsEnabled && !card.VariantButton.IsEnabled && changes == 0,
+            "SA2b actual child render disables all three existing controls without any commit");
+        card.RenderReadOnly(unknown);
+        Check(new[] { card.AgentButton, card.ModelButton, card.VariantButton }.All(c => c.SelectedItem is null && !c.IsEnabled && c.PlaceholderText == "未知"),
+            "SA2b unknown child retains three disabled ComboBoxes with unknown placeholders");
     }
 }

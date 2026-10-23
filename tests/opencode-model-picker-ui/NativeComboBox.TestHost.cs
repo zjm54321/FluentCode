@@ -9,6 +9,7 @@ namespace Microsoft.UI.Xaml
     public enum HorizontalAlignment { Stretch }
     public enum VerticalAlignment { Center }
     public enum TextTrimming { CharacterEllipsis }
+    public enum Visibility { Visible, Collapsed }
 }
 namespace Microsoft.UI.Xaml.Markup { public static class XamlReader { public static object Load(string xaml) => xaml.StartsWith("<Style", StringComparison.Ordinal) ? new Microsoft.UI.Xaml.Style() : new Microsoft.UI.Xaml.DataTemplate(); } }
 namespace Microsoft.UI.Xaml.Media { public class SolidColorBrush { public SolidColorBrush(object color) { _ = color; } } }
@@ -31,6 +32,7 @@ namespace Microsoft.UI.Xaml.Controls
     public class StackPanel : Microsoft.UI.Xaml.FrameworkElement { public Orientation Orientation { get; set; } public double Spacing { get; set; } public List<Microsoft.UI.Xaml.FrameworkElement> Children { get; } = new(); }
     public class FontIcon : Microsoft.UI.Xaml.FrameworkElement { public string Glyph { get; set; } = ""; public double FontSize { get; set; } public object? Foreground { get; set; } }
     public class TextBlock : Microsoft.UI.Xaml.FrameworkElement { public string Text { get; set; } = ""; public Microsoft.UI.Xaml.TextTrimming TextTrimming { get; set; } }
+    public class Border { public object? Child { get; set; } public Microsoft.UI.Xaml.Visibility Visibility { get; set; } }
 }
 namespace AIFrontend.Pages.OpenCode
 {
@@ -38,4 +40,13 @@ namespace AIFrontend.Pages.OpenCode
     internal static class OpenCodeAgentIcons { internal static string Glyph(string id) => id; internal static string DisplayName(string name) => name; }
     internal static class OpenCodeAgentPresentation { internal static object? Color(string? color) => color; }
     internal static class OpenCodeModelLogo { internal static Microsoft.UI.Xaml.FrameworkElement Label(string? id, string name) { _ = id; return new Microsoft.UI.Xaml.Controls.TextBlock { Text = name }; } }
+    internal sealed partial class OpenCodeSessionControlCard
+    {
+        internal OpenCodeNativeComboBox AgentButton { get; } = new();
+        internal OpenCodeNativeComboBox ModelButton { get; } = new();
+        internal OpenCodeNativeComboBox VariantButton { get; } = new();
+        private readonly Microsoft.UI.Xaml.Controls.Border _chrome = new();
+        private readonly object _editableRows = new();
+        private static void Describe(object control, string name, string scope) { _ = control; _ = name; _ = scope; }
+    }
 }

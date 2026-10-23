@@ -35,6 +35,12 @@ $variantPath = Join-Path $output 'VariantSelection.cs'
 $sources = @($generated, $wirePath, $variantPath, (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'VariantSelection.cs'), "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeRecentModels.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Models.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeChildSessionControl.cs"
 $sources += @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs", (Join-Path $PSScriptRoot 'NativeComboBox.TestHost.cs'))
+$card = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs")
+$childRender = [regex]::Match($card, '(?ms)^    internal void RenderReadOnly\(.*?^    \}')
+if (!$childRender.Success) { throw 'Missing child ComboBox rendering method.' }
+$childPath = Join-Path $output 'ChildCardRender.cs'
+"using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; namespace AIFrontend.Pages.OpenCode; internal sealed partial class OpenCodeSessionControlCard {`n" + $childRender.Value + "`n}" | Set-Content -Encoding UTF8 $childPath
+$sources += $childPath
 $assembly = Join-Path $output 'ModelPickerUiTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
