@@ -32,7 +32,7 @@ public sealed class AgentSwitchCoordinator
     /// <summary>Explicit user confirmation for this exact unknown operation, not a causal inference from
     /// the currently configured agent. Both choices close this operation only; later requests need new IDs.
     /// A new valid source/selection may reconcile the same endpoint/session's retained protection.</summary>
-    public Task<AgentSwitchResult> ReconcileAsync(AgentSwitchOrigin origin, Guid operationId, bool allowNewOperation,
+    public Task<AgentSwitchResult> ReconcileAsync(AgentSwitchOrigin origin, Guid operationId,
         Func<AgentSwitchOrigin, bool> isOriginCurrent, CancellationToken cancellationToken = default)
         => RunAsync(origin, operationId, null, true, isOriginCurrent, cancellationToken);
 

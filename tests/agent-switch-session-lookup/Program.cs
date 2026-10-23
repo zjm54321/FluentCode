@@ -30,7 +30,8 @@ internal static class Program
         await MismatchedSessionIsBlockedWithoutMutation();
         await CancellationDuringReadNeverBecomesSuccess();
         await OpaqueMessageCursorRemainsUsable();
-        Console.WriteLine($"PASS: 5 agent-switch session-lookup scenarios, {assertions} assertions; fake HTTP only; no live server.");
+        await ExplicitReconciliationDoesNotReplayMutation();
+        Console.WriteLine($"PASS: 6 agent-switch session-lookup scenarios, {assertions} assertions; fake HTTP only; no live server.");
     }
 
     private static void Check(bool condition, string message)
@@ -183,6 +184,23 @@ internal static class Program
         Check(!result.MutationStarted, "cancellation during the exact read never starts a mutation");
         Check(recorder.Count("POST /api/session/" + SessionId + "/agent") == 0, "no agent switch POST after cancellation");
         return Task.CompletedTask;
+    }
+
+    private static async Task ExplicitReconciliationDoesNotReplayMutation()
+    {
+        var recorder = new Recorder();
+        using var http = new HttpClient(new Handler(request => Route(recorder, request, null)));
+        using var client = new OpenCodeClient(http, new OpenCodeClientOptions { BaseUrl = "https://offline.invalid", Secret = "tok" }, true);
+        var source = new OpenCodePageSource("ep_reconcile", 7L, () => client);
+        var gate = new OpenCodeInteractionGate();
+        var operation = Guid.NewGuid();
+        using (var lease = await gate.EnterAsync(source.Identity, SessionId))
+        { lease.BeginAgentSwitch(operation, TargetAgent); lease.CompleteAgentSwitch(NotificationInteractionStatus.OutcomeUnknown); }
+        var result = await new AgentSwitchCoordinator(gate).ReconcileAsync(new(source, 7L, SessionId, 1L), operation, _ => true);
+        Check(result.Status == AgentSwitchStatus.Reconciled && !result.MutationStarted, "explicit reconciliation only settles the captured unknown operation");
+        Check(recorder.Count("POST /api/session/" + SessionId + "/agent") == 0, "reconciliation never retries the mutation");
+        using var reconciled = await gate.EnterAsync(source.Identity, SessionId);
+        Check(reconciled.CanSwitchAgent() && reconciled.GetAgentSwitchProtection() is null, "later explicit switches may start after reconciliation");
     }
 
     private static async Task OpaqueMessageCursorRemainsUsable()

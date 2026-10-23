@@ -30,10 +30,10 @@ namespace AIFrontend.Pages.OpenCode;
 /// <strong>绝不释放 App 共享 client</strong>。
 /// </para>
 /// <para>
-/// 结果处理：<c>Applied</c> 后重读真实状态；<c>Blocked</c>/<c>OriginLost</c>/<c>DefinitivelyRejected</c>
+/// 结果处理：<c>Applied</c> 后重读真实状态；<c>Blocked</c>/<c>OriginLost</c>
 /// 给简洁提示且不改动当前显示；<c>OutcomeUnknown</c> 保留该 operationId 并在状态行下方显示警告条与显式恢复入口，
-/// <strong>只能</strong>由用户明确动作经 <see cref="AgentSwitchCoordinator.ReconcileAsync"/> 解除（两种
-/// <c>allowNewOperation</c> 选择），绝不自动重试、绝不推断成功。若未知槽属于其他入口的操作，
+/// <strong>只能</strong>由用户明确动作经 <see cref="AgentSwitchCoordinator.ReconcileAsync"/> 解除当前操作，
+/// 绝不自动重试、绝不推断成功。若未知槽属于其他入口的操作，
 /// 控件在共享租约内读取精确 operationId 供用户确认。上下文失效的迟到结果零写入。
 /// </para>
 /// <para>
@@ -203,9 +203,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         _recoveryEntryPanel.Children.Add(_recoveryEntryButton);
 
         AutomationProperties.SetAutomationId(_reconcileNoRetryButton, "OpenCodeAgentSelectorReconcileDisallow");
-        _reconcileNoRetryButton.Click += (_, _) => _ = RunReconcileAsync(allowNewOperation: false);
+        _reconcileNoRetryButton.Click += (_, _) => _ = RunReconcileAsync();
         AutomationProperties.SetAutomationId(_reconcileAllowButton, "OpenCodeAgentSelectorReconcileAllow");
-        _reconcileAllowButton.Click += (_, _) => _ = RunReconcileAsync(allowNewOperation: true);
+        _reconcileAllowButton.Click += (_, _) => _ = RunReconcileAsync();
         AutomationProperties.SetAutomationId(_recoveryCancelButton, "OpenCodeAgentSelectorReconcileCancel");
         _recoveryCancelButton.Click += (_, _) => HideRecoveryConfirm();
         var recoveryButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -671,7 +671,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     // 显式解除未知状态（绝不自动重试）
     // ------------------------------------------------------------------
 
-    private async Task RunReconcileAsync(bool allowNewOperation)
+    private async Task RunReconcileAsync()
     {
         if (_busy)
         {
@@ -697,7 +697,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         try
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(origin.Source.RevocationToken, _contextCts?.Token ?? CancellationToken.None);
-            result = await _coordinator.ReconcileAsync(origin, operationId.Value, allowNewOperation, IsOriginCurrent, linked.Token).ConfigureAwait(true);
+            result = await _coordinator.ReconcileAsync(origin, operationId.Value, IsOriginCurrent, linked.Token).ConfigureAwait(true);
         }
         catch (Exception)
         {
