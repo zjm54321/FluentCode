@@ -442,7 +442,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsLayeredUsage");
         var line = CurrentContextLine(snapshot);
         var separator = line.LastIndexOf(" · ", StringComparison.Ordinal);
-        var (ratio, _, _) = OpenCodeContextRing.Measure(snapshot);
         var heading = new Grid { ColumnSpacing = 8 };
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -456,7 +455,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         if (snapshot.Turns is not null) ToolTipService.SetToolTip(heading, TurnsText(snapshot.Turns));
         panel.Children.Add(heading);
 
-        // 主 agent 用量：used / limit，下方原生确定进度条；未知百分比不画成 0%。
+        // 主 agent 用量：used / limit；百分比只在标题右侧显示，不重复绘制进度条（RC2b）。
         var currentRow = new StackPanel { Spacing = 8, Visibility = line.Length == 0 ? Visibility.Collapsed : Visibility.Visible };
         var current = OpenCodeInteractionUi.StyledText(separator < 0 ? line : line[..separator], OpenCodeInteractionUi.BodyStrongStyleKey, selectable: true);
         current.TextWrapping = TextWrapping.NoWrap;
@@ -465,16 +464,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         AutomationProperties.SetName(current, "当前会话上下文：" + line);
         ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
         currentRow.Children.Add(current);
-        var progress = new ProgressBar
-        {
-            Minimum = 0, Maximum = 100, IsIndeterminate = false,
-            Value = ratio is { } knownRatio ? knownRatio * 100 : 0,
-            Visibility = ratio is null ? Visibility.Collapsed : Visibility.Visible,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-        AutomationProperties.SetAutomationId(progress, "OpenCodeInsightsContextProgress");
-        AutomationProperties.SetName(progress, "上下文参考占比");
-        currentRow.Children.Add(progress);
         panel.Children.Add(currentRow);
 
         var summary = snapshot.Cost.Value?.Summary;
