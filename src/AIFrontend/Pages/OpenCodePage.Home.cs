@@ -98,16 +98,9 @@ public sealed partial class OpenCodePage
 
     private bool HomeSessionActionTargetCurrent(long revision, OpenCodeHomeProjectKey project, string? sessionId)
     {
-        var current = HomeEventCurrent(revision, project);
-        var nonempty = sessionId is { Length: > 0 };
-        var indexed = _sessionItems.TryGetValue(current && nonempty ? sessionId! : string.Empty, out var item);
-        OpenCodeSessionInfo? info = null;
-        var weak = indexed && HomeSessionMetadata.TryGetValue(item!, out info);
-        var idEqual = info?.Id == sessionId;
-        var root = info is { ParentId: null };
-        var directoryEqual = info?.Location?.Directory == project.Directory;
-        OpenCodeCompletionCrashTrace.Mark("home.click.gate", $"page={_pageActive};home={_homeActive};sourceReady={SourceReady};revision={revision == _homeRevision};runtime={project.SourceId == _homeRuntimeSource};knownDirectory={_homeProjects.ContainsKey(project.Directory)};nonempty={nonempty};indexed={indexed};weakMetadata={weak};idEqual={idEqual};root={root};directoryEqual={directoryEqual}");
-        return current && nonempty && indexed && weak && idEqual && root && directoryEqual;
+        return HomeEventCurrent(revision, project) && sessionId is { Length: > 0 }
+            && _sessionItems.TryGetValue(sessionId, out var item) && HomeSessionMetadata.TryGetValue(item, out var info)
+            && info.Id == sessionId && info.ParentId is null && info.Location?.Directory == project.Directory;
     }
 
     private void CopyHomeSessionId(long revision, OpenCodeHomeProjectKey project, string? sessionId, OpenCodeHomeSessionAction action)
@@ -126,7 +119,6 @@ public sealed partial class OpenCodePage
 
     private async Task OpenHomeSessionAsync(long revision, OpenCodeHomeProjectKey project, string? sessionId)
     {
-        OpenCodeCompletionCrashTrace.Mark("home.click.consumer");
         if (_pageActive && _homeActive && revision == _homeRevision && project.SourceId == _homeRuntimeSource && !SourceReady)
         {
             _homeMessage = "连接尚未就绪，暂时无法打开会话。请等待连接恢复后重试。";
@@ -145,7 +137,6 @@ public sealed partial class OpenCodePage
         void MirrorAcceptedSelection()
         {
             if (!Current() || !string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)) return;
-            OpenCodeCompletionCrashTrace.Mark("home.click.bound", $"current={Current()};selectedEqual={string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)}");
             activated = true;
             // Mirror only AFTER the existing switch has installed the real binding. No fake current session.
             MirrorSessionSelection(sessionId, userInitiated: true);
@@ -155,14 +146,11 @@ public sealed partial class OpenCodePage
         {
             // Same actual method used by SessionList_SelectionChanged; assigning an unchanged hidden
             // SelectedItem does not raise that event. Never use a native selection event as a command bus.
-            OpenCodeCompletionCrashTrace.Mark("home.click.switch.start");
             await SwitchToSessionAsync(sessionId, onBound: MirrorAcceptedSelection, directory: project.Directory);
-            OpenCodeCompletionCrashTrace.Mark("home.click.switch.return", $"activated={activated};current={Current()};selectedEqual={string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)};cts={_sessionCts is not null};home={_homeActive}");
             if (!activated && _sessionCts is not null) MirrorAcceptedSelection(); // Existing accepted session can return before onBound.
         }
         catch (Exception)
         {
-            OpenCodeCompletionCrashTrace.Mark("home.click.exception", $"current={Current()};activated={activated}");
             if (!Current()) return;
             if (_homeActive) { _homeMessage = "会话暂时无法打开；已保留当前草稿，请刷新列表后重试。"; QueueHomeProjection(); }
             else ShowMessage(InfoBarSeverity.Warning, "会话未能加载", "当前草稿已保留，请检查连接后重试。");
@@ -280,7 +268,6 @@ public sealed partial class OpenCodePage
             }
         _homeView.SetSnapshot(new(++_homeRevision, _homeProjects.Values.ToArray(), rows,
             _homeCatalogLoading || _isLoadingMoreSessions, _homeSessionsMessage ?? _homeMessage, _sessionNextCursor is not null));
-        OpenCodeCompletionCrashTrace.Mark("home.projection", $"sourceReady={SourceReady};home={_homeActive};hasRows={rows.Count > 0}");
     }
 
     private async Task AddHomeDirectoryAsync()

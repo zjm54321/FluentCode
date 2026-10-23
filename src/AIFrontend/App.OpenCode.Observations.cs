@@ -96,9 +96,7 @@ public partial class App
             var now = DateTimeOffset.UtcNow;
             RefreshOpenCodeSessionProtection(source, observation.SessionId,
                 CreateSessionUiObservation(source, observation, now), now);
-            Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("taskbar.observation.before", state.ToString());
             RecordDiagnostic("taskbar-session-observed", taskbar: ApplyTaskbarAggregate());
-            Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("taskbar.observation.after", state.ToString());
             PublishSessionUiChanges();
         });
     }

@@ -239,9 +239,7 @@ public sealed partial class OpenCodePage
         RefreshCurrentRetry();
         if (statusesChanged)
         {
-            OpenCodeCompletionCrashTrace.Mark("sse.status.before");
             RefreshSessionStateUi();
-            OpenCodeCompletionCrashTrace.Mark("sse.status.after");
             RefreshComposerSessionActivity();
             RefreshConversationSessionActivity();
         }
@@ -252,17 +250,13 @@ public sealed partial class OpenCodePage
             var follow = IsScrolledToBottom();
             _latestMessages.Clear();
             _latestMessages.AddRange(_eventReducer.Messages);
-            OpenCodeCompletionCrashTrace.Mark("sse.conversation.before");
             var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
             EnsureConversationImages();
             _conversationView.ApplyMessages(acceptedHistory);
             RefreshConversationSessionActivity();
-            OpenCodeCompletionCrashTrace.Mark("sse.conversation.after");
             OnContextMessagesAccepted(acceptedHistory);
             var window = ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
-            OpenCodeCompletionCrashTrace.Mark("sse.execution.before");
             ObserveExecutionState(selected, window);
-            OpenCodeCompletionCrashTrace.Mark("sse.execution.after");
             NotifyViewAcknowledgementRendered(window, _hostWindowVisible);
             UpdateEmptyState();
             if (follow) ScrollToBottom(animated: false);

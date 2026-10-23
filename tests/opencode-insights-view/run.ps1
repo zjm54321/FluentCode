@@ -59,7 +59,6 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionInsights.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeClient.Events.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeEventReducer.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeCompletionCrashTrace.cs'),
     (Resolve-Path $ViewSource).ProviderPath,
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeInsightsAgentsSection.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeContextRing.cs'),

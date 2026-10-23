@@ -142,7 +142,6 @@ public sealed class OpenCodeHomeView : UserControl
                 ?? _sessions.ContainerFromItem(args.ClickedItem) as ListViewItem;
             var contentTag = (args.ClickedItem as FrameworkElement)?.Tag;
             var row = OpenCodeHomeClick.Resolve(args.ClickedItem, container?.Tag, contentTag);
-            OpenCodeCompletionCrashTrace.Mark("home.click.producer", $"legacyContainer={args.ClickedItem is ListViewItem};clickedGrid={args.ClickedItem is Grid};nativeContainer={container is not null};contentRow={contentTag is OpenCodeHomeSessionRow};resolvedRow={row is not null}");
             if (row is not null)
                 SessionRequested?.Invoke(this, new(_snapshot.Revision, row.Session));
         };

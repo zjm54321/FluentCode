@@ -306,15 +306,12 @@ internal sealed class OpenCodeToolGroupView
         _errorText.Text = summary.ErrorCount.ToString(CultureInfo.InvariantCulture);
         _errorTally.Visibility = summary.ErrorCount > 0 ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetName(_errorTally, summary.ErrorCount.ToString(CultureInfo.InvariantCulture) + " 个出错");
-        AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.progress.before", summary.IsActive.ToString());
         RefreshProgress();
         _icon.Visibility = Visibility.Visible;
         _icon.Glyph = _leafGlyph ?? (summary.ReasoningOnly ? "\uEA80" : "\uE9F5");
         RefreshHeaderText();
         ApplySettledTone();
-        AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.expansion.before", expanded.ToString());
         SetExpanded(expanded);
-        AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("tool-group.expansion.after", expanded.ToString());
         RefreshWorking();
         UpdateTimer();
     }

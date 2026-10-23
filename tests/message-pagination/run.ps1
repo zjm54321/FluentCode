@@ -32,7 +32,6 @@ $openCode = @(
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs',
     'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs'
-    'OpenCodeCompletionCrashTrace.cs'
 ) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
 $sources = $openCode + @(
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs'),

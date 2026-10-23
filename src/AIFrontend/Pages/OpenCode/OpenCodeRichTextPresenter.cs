@@ -111,8 +111,6 @@ public sealed class OpenCodeRichTextPresenter
         {
             ConstrainBlocks();
             var scope = OpenCodeImageContext.Find(_root);
-            AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("markdown-image.root.loaded",
-                $"presenter={System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_root)};rootLoaded={_root.IsLoaded};renderCanceled={_renderLifetime.IsCanceled};scopeBound={scope is not null};scopeCurrent={scope is { IsCurrent: true }}");
             if (_renderLifetime.IsCanceled) Render(_lastSource, _lastStyle);
             // Child Loaded can precede the presenter's own Loaded. Start those images
             // only now, with the original generation/token and all scope fences intact.
@@ -180,13 +178,11 @@ public sealed class OpenCodeRichTextPresenter
             IsPlainFallback = true;
         }
 
-        AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("rich-text.replace.before");
         _root.Children.Clear();
         foreach (var block in blocks)
         {
             _root.Children.Add(block);
         }
-        AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("rich-text.replace.after");
         ConstrainBlocks();
     }
 
@@ -236,8 +232,6 @@ public sealed class OpenCodeRichTextPresenter
             && scope is { IsCurrent: true } && ReferenceEquals(scope, OpenCodeImageContext.Find(_root));
         if (!Current())
         {
-            AIFrontend.Services.OpenCode.OpenCodeCompletionCrashTrace.Mark("markdown-image.context.rejected",
-                $"presenter={System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_root)};generation={generation};rootLoaded={_root.IsLoaded};renderCurrent={_renderLifetime.IsCurrent(generation, renderToken)};scopeBound={scope is not null};scopeCurrent={scope is { IsCurrent: true }};sameScope={ReferenceEquals(scope, OpenCodeImageContext.Find(_root))}");
             status.Text = alt + " · 图片上下文不可用";
             status.Visibility = Visibility.Visible;
             return;

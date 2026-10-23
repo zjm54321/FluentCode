@@ -104,5 +104,3 @@ namespace Microsoft.UI.Xaml.Controls
     {public static void SetHorizontalScrollMode(DependencyObject e,ScrollMode m){}public static void SetHorizontalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}}
     public static class ToolTipService {public static void SetToolTip(DependencyObject e,object? value)=>e.Attached["Tooltip"]=value;}
 }
-namespace AIFrontend.Pages.OpenCode
-{internal static class OpenCodeCompletionCrashTrace {internal static void Mark(string stage,string detail){}}}

@@ -173,9 +173,6 @@ internal static class Program
             && child.Contains("_imageScope = initialize(_timeline, Token)") && child.Contains("_imageScope?.Dispose()") && child.Contains("OpenCodeImageContext.Unbind(_timeline)"),
             "child integration receives actual root and close-canceled token, disposes/unbinds scope on close");
         Check(factory.Contains("GetSessionInfoAsync(identity.SessionId, token)") && factory.Contains("info.Location?.Directory") && !factory.Contains("_selectedSessionId"), "page factory fetches actual identity session directory, no implicit parent lookup");
-        Check(presenter.Contains("\"markdown-image.context.rejected\"") && presenter.Contains("\"markdown-image.root.loaded\"")
-            && presenter.Contains("rootLoaded=") && presenter.Contains("renderCurrent=") && presenter.Contains("scopeBound=")
-            && presenter.Contains("scopeCurrent=") && presenter.Contains("sameScope="), "existing opt-in native trace distinguishes rejected guard and root Loaded state; not native lifecycle proof");
         Check(!presenter.Contains("new WebView") && !presenter.Contains("new Uri(reference") && !presenter.Contains("File.ReadAllBytes"), "native bitmap only, no external URI or Windows reinterpretation");
     }
 
