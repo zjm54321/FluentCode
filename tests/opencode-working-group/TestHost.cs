@@ -18,6 +18,7 @@ namespace Microsoft.UI.Xaml
     public record struct Thickness(double Left, double Top, double Right, double Bottom) { public Thickness(double all):this(all,all,all,all) {} }
     public record struct CornerRadius(double Value);
     public class Style { public string? Key; }
+    public class ResourceDictionary : Dictionary<string,object> { public Dictionary<string,object> ThemeDictionaries = new(); }
     public class RoutedEventArgs { public object? OriginalSource; }
     public class DependencyObject { }
     public class UIElement : DependencyObject
@@ -40,7 +41,7 @@ namespace Microsoft.UI.Xaml
         public HorizontalAlignment HorizontalAlignment, HorizontalContentAlignment;
         public VerticalAlignment VerticalAlignment, VerticalContentAlignment;
         public Style? Style;
-        public Dictionary<string,object> Resources = new();
+        public ResourceDictionary Resources = new();
         public event Action<object,RoutedEventArgs>? GotFocus, LostFocus;
         public void Focus(FocusState state) { if(this is Control c)c.FocusState=state; GotFocus?.Invoke(this,new(){OriginalSource=this}); }
         public void Blur() { if(this is Control c)c.FocusState=FocusState.Unfocused; LostFocus?.Invoke(this,new(){OriginalSource=this}); }
@@ -92,8 +93,29 @@ namespace Microsoft.UI { public static class Colors { public const int Transpare
 namespace Microsoft.UI.Text { public static class FontWeights { public const int Normal=400; } }
 namespace Microsoft.UI.Xaml.Media
 {
-    public class SolidColorBrush(int color) { public int Color=color; }
+    public class SolidColorBrush(int color) { public int Color=color; public string? ThemeKey; }
     public static class VisualTreeHelper { public static DependencyObject? GetParent(DependencyObject e)=>(e as UIElement)?.Parent; }
+}
+namespace Microsoft.UI.Xaml.Markup
+{
+    public static class XamlReader
+    {
+        public static object Load(string xaml)
+        {
+            var element = System.Xml.Linq.XElement.Parse(xaml);
+            if(element.Name.LocalName=="ResourceDictionary")
+            {
+                var resources=new ResourceDictionary();
+                foreach(var child in element.Elements())
+                    resources[(string)child.Attribute(System.Xml.Linq.XName.Get("Key","http://schemas.microsoft.com/winfx/2006/xaml"))!]=Load(child.ToString());
+                return resources;
+            }
+            var color=element.Attribute("Color")?.Value;
+            if(element.Name.LocalName!="SolidColorBrush" || color is not ("{ThemeResource SubtleFillColorSecondary}" or "{ThemeResource SystemColorButtonFaceColor}"))
+                throw new InvalidOperationException("Unexpected resource XAML in working-group boundary");
+            return new Microsoft.UI.Xaml.Media.SolidColorBrush(-1) {ThemeKey=color[15..^1]};
+        }
+    }
 }
 namespace Microsoft.UI.Dispatching
 {
