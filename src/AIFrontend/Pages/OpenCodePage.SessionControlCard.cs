@@ -87,10 +87,10 @@ public sealed partial class OpenCodePage
 
         var ownsSelection = ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision
             && _agentSelectorSessionId == _selectedSessionId;
-        if (ownsSelection && _agentSelector.CurrentSessionInfo is { ParentId: not null } child && child.Id == _selectedSessionId)
+        if (ownsSelection && _agentSelector.CurrentSessionInfo is { ParentId: not null, Id: { } childId } child && childId == _selectedSessionId)
         {
             // Never use pending UI preferences or the parent's model. These are this child's real execution rows.
-            var messages = _messageWindowAccepted && IsSameMessageBinding(child.Id, _messageBinding?.Directory)
+            var messages = _messageWindowAccepted && IsSameMessageBinding(childId, _messageBinding?.Directory)
                 ? ProjectMessageHistory(MergeMessageHistory()).Where(m => m.Type is OpenCodeMessageTypes.Assistant
                     or OpenCodeMessageTypes.AgentSwitched or OpenCodeMessageTypes.ModelSwitched)
                     .Select(m => (m.Agent, m.Model))
