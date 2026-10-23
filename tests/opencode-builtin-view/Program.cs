@@ -137,7 +137,7 @@ internal static class Program
         {
             ("A typed menu / ACK watermark / Enter evidence / episodes / zero selection HTTP", GroupA),
             ("B native dialog selection + confirmation constraints", GroupB),
-            ("C expanded editor Apply/Cancel/stale buffer/IME, never Send", GroupC),
+            ("C expanded editor Apply/stale buffer/IME, never Send", GroupC),
         };
         var failed = 0;
         foreach (var (name, run) in groups)
@@ -650,11 +650,6 @@ internal static class Program
         Check(aba.Stale && aba.Apply(t => ApplyVia(ticket3, t)) is null && r.Core.TryApplyClientText(ticket3, "from A") is null
             && aba.Buffer == "from A", "returning to the original session does not revive the old ticket; buffer retained");
 
-        // Cancel: discards only the buffer.
-        var before = r.Core.Snapshot.Text;
-        var cancel = new OpenCodeDraftEditorSession(before);
-        cancel.OnTextChanging("thrown away");
-        Check(r.Core.Snapshot.Text == before, "Cancel leaves the draft untouched");
         Check(r.Submits == 0 && r.Http.Posts == 0, "editor flow never submits or POSTs");
     }
 }

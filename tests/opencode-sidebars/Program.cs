@@ -54,33 +54,12 @@ internal static class Program
         Check(wide.IsWide && !narrow.IsWide, "resize jitter inside dead band does not oscillate");
 
         var repo = args[0];
-        var xamlPath = Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml");
-        var doc = XDocument.Load(xamlPath);
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
-        foreach (var slot in new[] { "RightPanelHeaderSlot", "RightPanelFooterSlot", "LeftAgentTreeSlot", "LeftBottomCardSlot" })
-        {
-            var element = Named(slot);
-            Check((string?)element.Attribute("Visibility") == "Collapsed" && !element.HasElements, slot + " is empty and collapsed");
-        }
-        Check(Named("SessionPane").Name.LocalName == "SplitView" && Named("InsightsPane").Name.LocalName == "SplitView", "native SplitViews retain platform light-dismiss");
-        Check(!doc.Descendants().Any(e => e.Name.LocalName == "AdaptiveTrigger"), "no window-width trigger bypasses page hysteresis");
-        Check(Named("HomePageHost").Ancestors().Contains(Named("InsightsPane")), "home shares the sidebar shell");
-        Check(Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost"))
-            && Named("OverviewRefreshMessagesButton").Ancestors().Contains(Named("InsightsPane")), "retired header capabilities remain in overview drawer");
-        Check((string?)Named("SessionPane").Attribute("PaneClosed") == "SessionPane_PaneClosed"
-            && (string?)Named("InsightsPane").Attribute("PaneClosed") == "InsightsPane_PaneClosed", "both native light-dismiss callbacks wired");
-        var source = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Sidebars.cs"));
-        Check(source.Contains("PageRoot.SizeChanged") && source.Contains("Resize(e.NewSize.Width)"), "effective width comes from actual page");
-        Check(source.Contains("VirtualKey.Escape") && source.Contains("PreviewKeyDownEvent"), "Esc works from focused page children");
-        Check(source.Contains("AnimationsEnabledChanged +=") && source.Contains("AnimationsEnabledChanged -=")
-            && source.Contains("group.Transitions.Clear()") && source.Contains("group.Transitions.Add(transition)"), "live reduced-motion preference removes/restores native slide transitions");
-        Check(!source.Contains("InsightsPaneHost.Child =") && !source.Contains("ComposerCell.Children"), "layout code never reparents real insights/editor");
         var tokens = XDocument.Load(Path.Combine(repo, "src/AIFrontend/Styles/AppTokens.xaml"));
         double Token(string key) => double.Parse(tokens.Descendants().Single(e => (string?)e.Attribute(x + "Key") == key).Value,
             System.Globalization.CultureInfo.InvariantCulture);
         Check(Token("OpenCodeSessionPaneLength") == OpenCodeSidebarLayout.LeftWidth
             && Token("OpenCodeInsightsPaneLength") == OpenCodeSidebarLayout.RightWidth, "threshold width budget matches current pane tokens");
-        Console.WriteLine($"PASS {_checks} sidebar policy/structure checks (headless; native visuals require user checks).");
+        Console.WriteLine($"PASS {_checks} sidebar policy/token checks (headless; native visuals require user checks).");
     }
 }

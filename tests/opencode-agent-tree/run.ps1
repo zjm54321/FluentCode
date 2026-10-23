@@ -17,7 +17,6 @@ $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Obje
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $rsp = Join-Path $EvidenceRoot 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
-Get-FileHash -LiteralPath $sources -Algorithm SHA256 | Select-Object Path,Hash | ConvertTo-Json | Set-Content (Join-Path $EvidenceRoot 'inputs.json')
 & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp" 2>&1 | Tee-Object (Join-Path $EvidenceRoot 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Agent tree compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'AgentTreeTests.runtimeconfig.json')

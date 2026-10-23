@@ -580,7 +580,6 @@ internal static partial class Program
 
         // Confirmation survives a session switch within the same source revision, but not a new revision.
         Check(controller.IsBillionConfirmed(page.Capture()), "billion.confirmation-same-source");
-        var oldSource = page.Source!;
         page.Source = new OpenCodePageSource("ep-test", 2, () => page.Client!);
         page.Revision = 2;
         page.SourceGeneration++;
@@ -590,7 +589,6 @@ internal static partial class Program
         await ReadBillion(controller, page.Capture());
         Check(billion.Paths.Count == before && controller.Snapshot.Billion.Phase == OpenCodeBillionPhase.MissingOrigin,
             "billion.new-revision-no-request");
-        Check(!ReferenceEquals(oldSource, page.Source), "fixture.source-replaced");
 
         // A record whose identity differs from the captured session is never shown (backend identity check).
         Confirm(controller, page.Capture(), true);

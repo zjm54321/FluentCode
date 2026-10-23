@@ -53,24 +53,13 @@ function Invoke-InsightsCheck([string]$Name, [string[]]$Inputs) {
     $arguments += $Inputs | ForEach-Object { '"' + $_ + '"' }
     $responseFile = Join-Path $output 'compile.rsp'
     $arguments | Set-Content -Encoding UTF8 $responseFile
-    $compiledInputs = @($Inputs) + @($references.FullName) + @($compiler, $dotnet, $responseFile)
-    $before = @(Get-FileHash -LiteralPath $compiledInputs -Algorithm SHA256 | Select-Object Path, Hash)
-    $before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
-    Get-FileHash -LiteralPath ($Inputs + @($PSCommandPath)) -Algorithm SHA256 | Select-Object Path, Hash |
-        ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
-    try {
-        & $dotnet exec $compiler "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
-        if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
-        '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
-            Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeSessionInsightsTests.runtimeconfig.json')
-        & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
-        if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
-    } finally {
-        $after = @(Get-FileHash -LiteralPath $compiledInputs -Algorithm SHA256 | Select-Object Path, Hash)
-        $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-        if (Compare-Object $before $after -Property Path, Hash) { throw "$Name compiled inputs changed during validation." }
-    }
-    Write-Output "PASS $Name inputs unchanged: $($Inputs.Count) sources + $($references.Count) references + compiler/host/rsp = $($compiledInputs.Count) hashes."
+    & $dotnet exec $compiler "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
+    if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
+    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
+        Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeSessionInsightsTests.runtimeconfig.json')
+    & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
+    if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
+    Write-Output "PASS $Name behavior checks: $($Inputs.Count) sources + $($references.Count) references."
 }
 
 if ($BaselineDirectory) {

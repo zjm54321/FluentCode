@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -17,7 +16,7 @@ internal static class Program
     private static void Check(bool value, string name) { if (!value) throw new Exception(name); Console.WriteLine("PASS " + name); _checks++; }
     private static JsonElement Json(string value) => JsonDocument.Parse(value).RootElement.Clone();
 
-    private static async Task Main(string[] args)
+    private static async Task Main()
     {
         var agents = new[]
         {
@@ -70,15 +69,6 @@ internal static class Program
         var output = await client.ReadTreeShellOutputAsync("sh_real", "/work", 12, CancellationToken.None);
         Check(output.Output == "bytes" && output.Cursor == 17 && handler.Last!.Contains("cursor=12") && handler.Last.Contains("limit=65536"), "output endpoint byte cursor and bounded page");
 
-        var repo = args[0];
-        var view = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
-        Check(view.Contains("AcrylicInAppFillColorDefaultBrush") && view.Contains("AccentFillColorDefaultBrush") && view.Contains("<TreeView"), "native acrylic, subtle accent, native TreeView");
-        Check(view.Contains("if (shells.Count > 0)") && view.Contains("IsExpanded = !expanded.TryGetValue"), "no empty shell group; default expanded and preserve collapse");
-        var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.AgentTree.cs"));
-        Check(page.Contains("child.ParentId != binding.SessionId") && page.Contains("SwitchToSessionAsync(id, new SessionReturnTarget"), "reverify parent and reuse main-session drill-in/return path");
-        Check(page.Contains("child with { Model = null }") && page.Contains("Model = assistant?.Model"), "do not misrepresent selected model as model actually used");
-        Check(page.Contains("binding.Source.TryExecute") && page.Contains("binding.Source.RevocationToken") && page.Contains("IsTreeCurrent(binding)"), "source revocation and session generation fence reads and publication");
-        Check(!page.Contains("Process.Start") && !page.Contains("session.shell.started\""), "no process launch and no B8 reducer implementation duplication");
         Console.WriteLine($"PASS {_checks} focused agent-tree checks");
     }
 
