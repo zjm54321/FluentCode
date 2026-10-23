@@ -591,8 +591,7 @@ public sealed class OpenCodeSessionInsightsController
         return true;
     }
 
-    /// <summary>Missing render context fails closed; old Page callers remain source-compatible but cannot grant consent.</summary>
-    public bool SetBillionConfirmed(OpenCodeInsightsBinding binding, bool confirmed, OpenCodeBillionContext? renderedContext = null)
+    public bool SetBillionConfirmed(OpenCodeInsightsBinding binding, bool confirmed, OpenCodeBillionContext? renderedContext)
     {
         if (!MatchesBillionContext(binding, renderedContext) || _origin is null) return false;
         _billionId++;
@@ -863,7 +862,7 @@ public sealed class OpenCodeSessionInsightsController
     /// 缺少渲染时上下文时不读取；不得在事件到达后用新页面上下文替代旧渲染上下文。
     /// </summary>
     public async Task ReadBillionAsync(OpenCodeInsightsBinding binding, CancellationToken outer,
-        OpenCodeBillionContext? renderedContext = null)
+        OpenCodeBillionContext? renderedContext)
     {
         ArgumentNullException.ThrowIfNull(binding);
         if (!MatchesBillionContext(binding, renderedContext))

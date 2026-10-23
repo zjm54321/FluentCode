@@ -84,7 +84,7 @@ internal static class Program
                 "rejected" => Task.FromResult(Server.Json(400, Error("InvalidRequestError"))),
                 _ => throw new HttpRequestException("PRIVATE transport"),
             };
-            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current);
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
             Check(server.Mutations == 1 && result.Status == (outcome == "accepted" ? SessionControlStatus.Accepted
                 : outcome == "rejected" ? SessionControlStatus.DefinitivelyRejected : SessionControlStatus.OutcomeUnknown), "single root mutation exact outcome " + kind + outcome);
             using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
@@ -97,7 +97,7 @@ internal static class Program
             var request = new SessionControlRequest(SessionControlKind.DeleteRoot, Directory: "/work space", ExpectedTitle: "actual title");
             var preview = await Preview(server, coordinator, origin, request);
             server.Title = "foreign rename";
-            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current)).Status == SessionControlStatus.ConfirmationRequired
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current)).Status == SessionControlStatus.ConfirmationRequired
                 && server.Mutations == 0, "fresh server metadata must still match confirmed actual root title");
             server.Title = "actual title"; server.HasInbox = true;
             Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status == SessionControlStatus.Blocked, "root queued input preflight stays protected");
@@ -240,10 +240,10 @@ internal static class Program
             var preview = await Preview(server, coordinator, origin);
             Check(preview.Target?.Id == "msg_a" && preview.Target.Text == "newer", "server order, not lexical ID fallback");
             using (var free = await gate.EnterAsync(origin.Source.Identity, origin.SessionId)) Check(free.CanControlSession(), "no lease/protection held over dialog");
-            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current);
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
             Check(result.Status == SessionControlStatus.Accepted && result.AcceptanceKnown && !result.ProtectionRetained, "stage accepted exact settlement");
             Check(result.Restoration?.Text == "newer" && result.Restoration.ExpectedDraftFingerprint == Empty.Fingerprint, "restoration candidate bound to original empty draft");
-            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current)).Status == SessionControlStatus.ConfirmationRequired && server.Mutations == 1, "one-use preview no replay");
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current)).Status == SessionControlStatus.ConfirmationRequired && server.Mutations == 1, "one-use preview no replay");
         }
         using (var server = new Server { Stage = "{\"messageID\":\"msg_a\",\"snapshot\":\"old-snapshot\"}" })
         {
@@ -253,7 +253,7 @@ internal static class Program
             Check(preview.Target!.HasFiles && preview.Target.HasAgents && preview.Target.HasSkills && !preview.Request.Files, "minimal reference projection/default files off");
             Check(!server.Requests.Any(r => r.Host != "control.invalid"), "reference URI never fetched");
             server.Stage = "{\"messageID\":\"msg_z\"}";
-            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current)).Status == SessionControlStatus.ConfirmationRequired && server.Mutations == 0, "changed stage requires new confirmation, never retarget");
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current)).Status == SessionControlStatus.ConfirmationRequired && server.Mutations == 0, "changed stage requires new confirmation, never retarget");
         }
         foreach (var history in new[] {
             "{\"data\":[],\"cursor\":{\"next\":\"more\"}}",
@@ -278,7 +278,7 @@ internal static class Program
             var preview = await Preview(server, coordinator, origin, ModelRequest);
             Check(preview.ExplicitModelUnavailable && preview.Inherited is null && !server.Requests.Any(r => r.Path.EndsWith("/default")), "explicit unavailable never inherits");
             server.FailRefresh = true;
-            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current);
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
             Check(result.Status == SessionControlStatus.Accepted && result.AcceptanceKnown && result.Observed is null && !result.ProtectionRetained, "204 retained across failed display GET");
         }
         using (var server = new Server())
@@ -287,14 +287,14 @@ internal static class Program
             var bad = new SessionControlRequest(SessionControlKind.SwitchModel, new("provider-facing", "provider", "invented"));
             Check((await coordinator.PreviewAsync(origin, bad, Empty, Current)).Status == SessionControlStatus.Blocked && server.Mutations == 0, "alias/variant membership fails closed");
             var preview = await Preview(server, coordinator, origin);
-            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), new("later-typing", false), Current)).Status == SessionControlStatus.ConfirmationRequired && server.Mutations == 0, "later typing never uses fresh token");
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), new("later-typing", false), Current, Current)).Status == SessionControlStatus.ConfirmationRequired && server.Mutations == 0, "later typing never uses fresh token");
         }
         foreach (bool busy in new[] { false, true })
         {
             using var server = new Server(); var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate); var origin = server.Origin();
             var preview = await Preview(server, coordinator, origin);
             server.OnMutation = _ => Task.FromResult(Server.Json(busy ? 409 : 400, Error(busy ? "SessionBusyError" : "InvalidRequestError")));
-            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current);
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
             Check(result.Status == (busy ? SessionControlStatus.DefinitivelyRejected : SessionControlStatus.OutcomeUnknown) && result.ProtectionRetained == !busy, "only verified rejection clears exact slot");
             using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
             Check(lease.CanControlSession() == busy && lease.CanSubmit("frm_next", NotificationNavigationKind.Form), "unknown control is not blanket Form protection");
@@ -304,7 +304,7 @@ internal static class Program
             var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate); var origin = server.Origin();
             var preview = await Preview(server, coordinator, origin);
             server.OnMutation = _ => Task.FromResult(Server.Json(200, "{\"data\":{}}"));
-            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current)).ProtectionRetained, "malformed accepted stage keeps protection");
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current)).ProtectionRetained, "malformed accepted stage keeps protection");
             int before = server.Requests.Count;
             Check((await coordinator.PreviewAsync(origin, Undo, Empty, Current)).Status == SessionControlStatus.Blocked && server.Requests.Count == before, "no retry or read-reconcile unlock");
         }
@@ -312,10 +312,10 @@ internal static class Program
         {
             var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate); var origin = server.Origin();
             var preview = await Preview(server, coordinator, origin, ModelRequest);
-            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, _ => false)).Status == SessionControlStatus.OriginLost && server.Mutations == 0, "owner loss before start zero mutation");
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, _ => false, _ => false)).Status == SessionControlStatus.OriginLost && server.Mutations == 0, "owner loss before start zero mutation");
             preview = await Preview(server, coordinator, origin, ModelRequest);
             server.OnMutation = _ => { origin.Source.Revoke(); return Task.FromResult(Server.Json(204, "")); };
-            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current);
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
             Check(result.Status == SessionControlStatus.OutcomeUnknown && result.ProtectionRetained && server.Mutations == 1, "source lost post-start retains exact protection");
             using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
             Check(!lease.CanSubmitComposer() && !lease.CanSwitchAgent(), "same endpoint/session protection survives source disposal");
@@ -338,7 +338,7 @@ internal static class Program
         {
             var coordinator = new OpenCodeSessionControlCoordinator(new()); var origin = server.Origin();
             var redo = await Preview(server, coordinator, origin, new(SessionControlKind.ClearRevert));
-            var result = await coordinator.ConfirmAsync(redo, Guid.NewGuid(), Empty, Current);
+            var result = await coordinator.ConfirmAsync(redo, Guid.NewGuid(), Empty, Current, Current);
             Check(result.AcceptanceKnown && result.Restoration is null && server.Requests.Last(r => r.Method != "GET").Method == "DELETE",
                 "redo clears entire captured stage and never supplies draft replacement");
         }

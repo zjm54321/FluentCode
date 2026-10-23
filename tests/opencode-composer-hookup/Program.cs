@@ -1085,7 +1085,6 @@ namespace AIFrontend.Pages.OpenCode
         internal bool AllowUnboundCarry { get; init; }
         internal OpenCodeComposerEditorAck? Acknowledgment { get; set; }
     }
-    public sealed class OpenCodeComposerCommandSelectedEventArgs(OpenCodeComposerToken token, string name, string args) : EventArgs { public OpenCodeComposerToken Token => token; public string Name => name; public string RemainingArguments => args; }
     public sealed class OpenCodeComposerAttachmentRemovedEventArgs(OpenCodeComposerToken token, Guid id) : EventArgs { public OpenCodeComposerToken Token => token; public Guid Id => id; }
     internal sealed class OpenCodeComposerView(Func<OpenCodeComposerSnapshot> source,
         Func<OpenCodeComposerCatalogLifetime>? begin = null, Action<OpenCodeComposerCatalogLifetime>? end = null)

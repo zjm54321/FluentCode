@@ -25,12 +25,6 @@ public sealed class OpenCodeComposerTokenEventArgs(OpenCodeComposerToken token) 
 {
     public OpenCodeComposerToken Token { get; } = token;
 }
-public sealed class OpenCodeComposerCommandSelectedEventArgs(OpenCodeComposerToken token, string name, string remainingArguments) : EventArgs
-{
-    public OpenCodeComposerToken Token { get; } = token;
-    public string Name { get; } = name;
-    public string RemainingArguments { get; } = remainingArguments;
-}
 public sealed class OpenCodeComposerAttachmentRemovedEventArgs(OpenCodeComposerToken token, Guid id) : EventArgs
 {
     public OpenCodeComposerToken Token { get; } = token;
@@ -133,8 +127,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     private bool _composing;
     private readonly OpenCodeComposerCommandMenuSession _menuSession;
     private readonly OpenCodeComposerInputEvidenceSource _inputEvidence;
-    private readonly Func<OpenCodeComposerCatalogLifetime>? _beginCatalogLifetime;
-    private readonly Action<OpenCodeComposerCatalogLifetime>? _endCatalogLifetime;
+    private readonly Func<OpenCodeComposerCatalogLifetime> _beginCatalogLifetime;
+    private readonly Action<OpenCodeComposerCatalogLifetime> _endCatalogLifetime;
     private OpenCodeComposerCatalogLifetime? _catalogLifetime;
     private OpenCodeComposerCatalogHandle? _renderedHandle;
     private IReadOnlyList<OpenCodeComposerMenuRow> _renderedRows = Array.Empty<OpenCodeComposerMenuRow>();
@@ -146,12 +140,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     private string? _localNote;
     private OpenCodeComposerToken? _localNoteToken;
     private string _fingerprint = string.Empty;
-
-    // Retired authority-less catalog intents. They are inert (never raised, subscriptions ignored) so an unadapted page
-    // still compiles but cannot open, dismiss or select by token/name; the core rejects those paths as well.
-    internal event EventHandler<OpenCodeComposerTokenEventArgs>? CatalogRequested { add { } remove { } }
-    internal event EventHandler<OpenCodeComposerTokenEventArgs>? CatalogDismissed { add { } remove { } }
-    internal event EventHandler<OpenCodeComposerCommandSelectedEventArgs>? CommandSelected { add { } remove { } }
 
     /// <summary>Open/refresh with the view's captured lifetime → <c>controller.LoadCatalogAsync(e.Token, e.Lifetime, e.Refresh, ct)</c>.</summary>
     internal event EventHandler<OpenCodeComposerCatalogOpenRequestedEventArgs>? CatalogOpenRequested;
@@ -184,14 +172,11 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// <summary>Raised on the UI thread after a render whose visible/eligibility state changed (page refreshes Send/Stop).</summary>
     internal event EventHandler? StateChanged;
 
-    /// <summary>Compatibility constructor: no catalog lifetime, so no menu can open (fail closed until the page adapts).</summary>
-    internal OpenCodeComposerView(Func<OpenCodeComposerSnapshot> snapshotSource) : this(snapshotSource, null, null) { }
-
     /// <param name="snapshotSource">Read-only accessor for the controller's current snapshot (e.g. <c>() =&gt; controller.Snapshot</c>).</param>
     /// <param name="beginCatalogLifetime"><c>controller.BeginCatalogLifetime</c>: called once per attached, loaded editor lifetime.</param>
     /// <param name="endCatalogLifetime"><c>controller.EndCatalogLifetime</c>: called with that exact capability on unload/reattach.</param>
     internal OpenCodeComposerView(Func<OpenCodeComposerSnapshot> snapshotSource,
-        Func<OpenCodeComposerCatalogLifetime>? beginCatalogLifetime, Action<OpenCodeComposerCatalogLifetime>? endCatalogLifetime)
+        Func<OpenCodeComposerCatalogLifetime> beginCatalogLifetime, Action<OpenCodeComposerCatalogLifetime> endCatalogLifetime)
     {
         _source = snapshotSource ?? throw new ArgumentNullException(nameof(snapshotSource));
         _beginCatalogLifetime = beginCatalogLifetime;
@@ -554,7 +539,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     private void BeginCatalogLifetime()
     {
         EndCatalogLifetime();
-        if (_beginCatalogLifetime is null) return;
         _catalogLifetime = _beginCatalogLifetime();
         _menuSession.Lifetime = _catalogLifetime;
     }
@@ -564,7 +548,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         var lifetime = _catalogLifetime;
         _catalogLifetime = null;
         _menuSession.Lifetime = null;
-        if (lifetime is not null) _endCatalogLifetime?.Invoke(lifetime); // Exactly the capability this view began.
+        if (lifetime is not null) _endCatalogLifetime(lifetime); // Exactly the capability this view began.
     }
 
     private OpenCodeComposerEditorAck? ApplyEditorInput(OpenCodeComposerToken basis, string text, bool allowCarry)

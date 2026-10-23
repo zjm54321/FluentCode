@@ -9,19 +9,6 @@ using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages;
 
-// Legacy DTO reader retained for callers/tests, not a visibility proof or an ACK input.
-internal static class OpenCodeViewAcknowledgementReader
-{
-    internal static bool TryGetRenderedIdleWatermark(IReadOnlyList<OpenCodeMessage>? window, out double watermark)
-    {
-        watermark = 0;
-        var idle = OpenCodeExecutionStateReader.LatestIdle(window);
-        if (idle?.Time is not { } time || !double.IsFinite(time.Created)) return false;
-        watermark = time.Created;
-        return true;
-    }
-}
-
 /// <summary>Applied content only requests a viewport review. Only a current, layout/frame-verified
 /// idle label can initiate the existing exact-watermark ACK. Background fences never read XAML.</summary>
 public sealed partial class OpenCodePage

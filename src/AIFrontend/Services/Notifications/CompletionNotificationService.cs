@@ -144,27 +144,8 @@ public sealed partial class CompletionNotificationService : IDisposable
         }
     }
 
-    /// <summary>
-    /// 提交一次“任务已完成”通知。仅当上游<strong>明确成功</strong>时调用；
-    /// 不得依据 idle / 静默 / HTTP 接受等信号调用。
-    /// </summary>
-    /// <param name="source">仅 LocalApi；OpenCode 必须使用 ObserveOpenCodeMessages 校验明确回合投影。</param>
-    /// <param name="requestId">调用方生成的不透明请求标识；仅允许 1..128 个 [A-Za-z0-9._:-] 字符。</param>
-    /// <returns>
-    /// <see cref="NotificationDispatchStatus.Submitted"/> 仅表示 <c>Show</c> 未抛出，
-    /// <strong>不保证</strong>用户看到横幅（勿扰/设置可能抑制）；其余语义见
-    /// <see cref="NotificationDispatchResult"/>。
-    /// </returns>
-    public NotificationDispatchResult NotifyCompleted(NotificationSource source, string requestId)
-    {
-        if (source == NotificationSource.OpenCode)
-            return NotificationDispatchResult.Failed(source, requestId,
-                "OpenCode completion requires ObserveOpenCodeMessages and an explicit succeeded idle projection.");
-        return NotifyCompletedCore(source, requestId);
-    }
-
     private NotificationDispatchResult NotifyCompletedCore(NotificationSource source, string requestId,
-        NotificationNavigationTarget? target = null, NotificationCompletionText? text = null)
+        NotificationNavigationTarget target, NotificationCompletionText? text = null)
     {
         if (source is not (NotificationSource.OpenCode or NotificationSource.LocalApi))
         {
@@ -198,13 +179,8 @@ public sealed partial class CompletionNotificationService : IDisposable
                 // Never install a navigable target before successful submission. The same lock excludes
                 // invalidation/disposal during Show + commit and prevents duplicate submissions/rebinding.
                 CommitCompletionTargetLocked(token, source, requestId, target);
-                if (target is not null)
-                    RecordDisplayLocked(target, receipt, source == NotificationSource.OpenCode
-                        && _notificationSources.TryGetValue(target.EndpointIdentity, out var bound) ? bound.Generation : Guid.Empty);
-                else
-                    // Legacy Local success has no trusted session. Track display only; never invent ACK routing.
-                    RecordDisplayLocked(new(source, LocalCompletionEndpointIdentity, string.Empty, requestId,
-                        NotificationNavigationKind.Completion), receipt, Guid.Empty);
+                RecordDisplayLocked(target, receipt, source == NotificationSource.OpenCode
+                    && _notificationSources.TryGetValue(target.EndpointIdentity, out var bound) ? bound.Generation : Guid.Empty);
                 return NotificationDispatchResult.Submitted(source, requestId);
             }
             catch (Exception)

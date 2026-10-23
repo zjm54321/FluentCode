@@ -101,12 +101,6 @@ public sealed class OpenCodeSessionControlCoordinator
         catch (Exception e) when (ReadFailure(e)) { return new(SessionControlStatus.Blocked, null); }
     }
 
-    /// <summary>Compatibility overload using the same predicate for both roles. Production adapters must use
-    /// the two-predicate overload when draft validity can expire independently of operation ownership.</summary>
-    public Task<SessionControlResult> ConfirmAsync(SessionControlPreview preview, Guid operationId,
-        SessionControlDraft draft, Func<SessionControlOrigin, bool> isCurrent, CancellationToken ct = default)
-        => ConfirmAsync(preview, operationId, draft, isCurrent, isCurrent, ct);
-
     /// <summary>canStart includes exact draft/action authority; ownsOperation is the stable captured operation
     /// owner. Both gate initiation; only ownsOperation gates settlement/refresh. Restoration still requires
     /// the caller's original exact draft ticket, never a newer token or a post-start bypass flag.</summary>

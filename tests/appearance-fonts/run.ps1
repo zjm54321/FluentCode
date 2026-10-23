@@ -52,8 +52,7 @@ foreach ($pair in @(
     @('ContentControlThemeFontFamily', 'XamlAutoFontFamily'),
     @('AppBodyFontFamily', 'XamlAutoFontFamily'),
     @('AppSerifFontFamily', 'Cambria, Noto Serif SC, Source Han Serif SC, SimSun'),
-    @('AppMonospaceFontFamily', 'Cascadia Mono, Consolas'),
-    @('OpenCodeMonospaceFontFamily', 'Cascadia Mono, Consolas'))) {
+    @('AppMonospaceFontFamily', 'Cascadia Mono, Consolas'))) {
     if ($tokens -notmatch ('<FontFamily x:Key="' + $pair[0] + '">' + [regex]::Escape($pair[1]) + '</FontFamily>')) { throw "Font token default missing: $($pair[0])" }
 }
 if ($appCs -notmatch '(?s)AppFonts\.InitializeAsync\(.*new MainWindow\(\)') { throw 'Fonts must be initialized before MainWindow is created.' }

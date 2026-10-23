@@ -15,7 +15,7 @@ public sealed partial class CompletionNotificationService
     public const int MaxCompletionNavigationEntries = 256;
 
     private sealed record CompletionBinding(NotificationSource Source, string RequestId,
-        NotificationNavigationTarget? Target, DateTimeOffset ExpiresAt);
+        NotificationNavigationTarget Target, DateTimeOffset ExpiresAt);
     private readonly Dictionary<string, CompletionBinding> _completionTargets = new(StringComparer.Ordinal);
     private readonly TimeProvider _completionClock;
     private readonly Func<NotificationSource, string, NotificationCompletionText?, NotificationNativeReceipt> _submitCompletion;
@@ -102,9 +102,9 @@ public sealed partial class CompletionNotificationService
                 && (binding.Source != NotificationSource.OpenCode || !_interactionsSuspended))
             {
                 // Both source and complete target come from the committed entry, never from raw activation.
-                if (binding.Target is { } target) RaiseNavigationTarget(target);
+                RaiseNavigationTarget(binding.Target);
                 RaiseNavigation(new NotificationActivationInfo(true, binding.Source, binding.RequestId, string.Empty));
-                return binding.Target; // The legacy two-argument API may focus, but cannot invent a session.
+                return binding.Target;
             }
             // Duplicate lifecycle delivery may arrive after navigation ACK/invalidation. It is not
             // a failed interaction and must never publish NeedsApp or focus the window.
@@ -120,7 +120,7 @@ public sealed partial class CompletionNotificationService
     }
 
     private void CommitCompletionTargetLocked(string token, NotificationSource source, string requestId,
-        NotificationNavigationTarget? target)
+        NotificationNavigationTarget target)
     {
         PruneCompletionTargetsLocked();
         while (_completionTargets.Count >= MaxCompletionNavigationEntries)

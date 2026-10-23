@@ -23,8 +23,8 @@ namespace AIFrontend.Services.Appearance;
 /// <list type="bullet">
 /// <item><description>更新 <c>Application.Current.Resources</c> 中的字体键：
 /// <see cref="ContentControlThemeFontFamilyKey"/>（WinUI 内置控件模板与本应用重定义的内置文字样式都以 ThemeResource 引用它）、
-/// <see cref="BodyResourceKey"/> / <see cref="SerifResourceKey"/> / <see cref="MonospaceResourceKey"/>，
-/// 以及旧键 <see cref="LegacyOpenCodeMonospaceResourceKey"/>。应用级资源对弹出层（Flyout / MenuFlyout /
+/// <see cref="BodyResourceKey"/> / <see cref="SerifResourceKey"/> / <see cref="MonospaceResourceKey"/>。
+/// 应用级资源对弹出层（Flyout / MenuFlyout /
 /// ContentDialog / TeachingTip / ToolTip）同样生效——它们不在主视觉树内，但资源查找最终都落到 Application 资源。</description></item>
 /// <item><description>运行期变更时<strong>不</strong>做 RequestedTheme 往返（D1：同帧 opposite→original 主题翻转在
 /// ComboBox 选择 / 弹出层关闭期间触发 CoreMessagingXP.dll 0xc000027b 原生崩溃）。改为在稍后的
@@ -50,9 +50,6 @@ public static class AppFonts
 
     /// <summary>等宽字体资源键（<c>FontFamily</c>）。</summary>
     public const string MonospaceResourceKey = "AppMonospaceFontFamily";
-
-    /// <summary>重设计前已有的等宽字体键（OpenCodeCodeTextBlockStyle 等引用），保持同步。</summary>
-    public const string LegacyOpenCodeMonospaceResourceKey = "OpenCodeMonospaceFontFamily";
 
     private static readonly List<RootEntry> Roots = new();
     private static AppFontRefreshPlan? _plan;
@@ -267,7 +264,6 @@ public static class AppFonts
         resources[BodyResourceKey] = Body;
         resources[SerifResourceKey] = Serif;
         resources[MonospaceResourceKey] = Monospace;
-        resources[LegacyOpenCodeMonospaceResourceKey] = Monospace;
         resources[TextSizeResourceKey] = _textSize;
     }
 

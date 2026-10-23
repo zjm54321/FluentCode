@@ -42,17 +42,12 @@ internal static partial class Program
         {
             f.Handler.Send = (_, _) => Task.FromResult(Json("{\"data\":[{\"name\":\"editor\"},{\"name\":\"models\"},{\"name\":\"review\"}]}"));
             var token = f.Core.Snapshot.Token;
-            await f.Core.LoadCatalogAsync(token); // Old UI API cannot borrow the current lifetime.
-            f.Core.SelectCommand(token, "editor", "injected");
-            Check(f.Handler.Gets == 0 && f.Core.Snapshot.CatalogHandle is null && f.Core.Snapshot.Text == "", "legacy catalog/selection APIs fail closed");
             await Open(f);
             var s = f.Core.Snapshot;
             Check(s.Token == token && s.Commands.Count == 11 && s.Commands.Select(r => r.Identity).Distinct().Count() == 11,
                 "eight closed native kinds (incl. /btw) coexist with three typed server identities without draft-token mutation");
             Check(s.Commands.Count(r => r.Name == "editor") == 2 && s.Commands.Count(r => r.Name == "models") == 2,
                 "visible collisions have no silent identity winner");
-            f.Core.DismissCatalog(token);
-            Check(ReferenceEquals(f.Core.Snapshot.CatalogHandle, s.CatalogHandle), "token-only dismissal cannot borrow a handle");
             await Open(f);
             var reopened = f.Core.Snapshot;
             Check(f.Handler.Gets == 1 && reopened.Token == token && !ReferenceEquals(s.CatalogHandle, reopened.CatalogHandle),

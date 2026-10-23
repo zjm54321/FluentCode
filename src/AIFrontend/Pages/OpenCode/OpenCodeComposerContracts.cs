@@ -165,10 +165,6 @@ public interface IOpenCodeComposerController
     bool TrySelectCommand(OpenCodeComposerToken token, OpenCodeComposerCatalogHandle handle,
         OpenCodeComposerCommandIdentity identity);
     void DismissClientIntent(OpenCodeComposerToken token, Guid intentId);
-    // Compatibility entry points lack captured catalog authority and deliberately fail closed.
-    Task LoadCatalogAsync(OpenCodeComposerToken token, CancellationToken ct = default);
-    void DismissCatalog(OpenCodeComposerToken token);
-    void SelectCommand(OpenCodeComposerToken token, string name, string remainingArguments);
     void RemoveCommand(OpenCodeComposerToken token);
     OpenCodeComposerPickTicket? BeginPick(OpenCodeComposerToken token);
     Task AddFilesAsync(OpenCodeComposerPickTicket ticket, IReadOnlyList<OpenCodeComposerFileSource> fileSources, CancellationToken ct = default);

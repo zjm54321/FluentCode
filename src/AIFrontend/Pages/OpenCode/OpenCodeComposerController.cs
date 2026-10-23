@@ -263,11 +263,6 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         && ReferenceEquals(_catalogLifetime, request.Lifetime) && Equals(_binding, request.Binding)
         && _scope == request.Scope && _draft == request.Draft && Current(Token);
 
-    // No lifetime/handle may be borrowed from the controller by a legacy, potentially stale UI event.
-    public Task LoadCatalogAsync(OpenCodeComposerToken token, CancellationToken ct = default) => Task.CompletedTask;
-    public void DismissCatalog(OpenCodeComposerToken token) { }
-    public void SelectCommand(OpenCodeComposerToken token, string name, string remainingArguments) { }
-
     public async Task LoadCatalogAsync(OpenCodeComposerToken token, OpenCodeComposerCatalogLifetime lifetime,
         bool refresh = false, CancellationToken ct = default)
     {

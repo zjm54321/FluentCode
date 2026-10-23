@@ -26,7 +26,6 @@ internal static class Program
         try
         {
             foreach (var (name, run) in new (string, Func<Task>)[] {
-                ("legacy reader is not viewport authority", Reader),
                 ("Apply/layout/frame/old visible idle and coalesced geometry", Viewport),
                 ("Home/blank/hidden/unknown history and non-UI block ACK", Visibility),
                 ("owner/frame/reflow fences and listener lifecycle", Fences),
@@ -42,16 +41,6 @@ internal static class Program
             return 0;
         }
         catch (Exception ex) { Console.WriteLine("FAIL: " + ex); return 1; }
-    }
-    private static Task Reader()
-    {
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(null, out _), "null DTO window");
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(), out _), "empty DTO window");
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(new OpenCodeMessage { Type = "user" }), out _), "no idle DTO");
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(new OpenCodeMessage { Type = "idle" }), out _), "no time DTO");
-        Check(!OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(Idle("msg_nan", double.NaN)), out _), "nonfinite DTO");
-        Check(OpenCodeViewAcknowledgementReader.TryGetRenderedIdleWatermark(Window(Idle("msg_old", 50), Idle("msg_new", 100)), out var w) && w == 100, "legacy reader still returns last DTO idle");
-        return Task.CompletedTask;
     }
     private static Task Viewport()
     {

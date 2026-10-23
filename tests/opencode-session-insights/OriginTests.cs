@@ -79,10 +79,7 @@ internal static partial class Program
         await ReadBillion(controller, page.Capture());
         Check(controller.Snapshot.Billion.Phase == OpenCodeBillionPhase.NeedsConfirmation && fake.Urls.Count == 0,
             "origin.valid-is-not-consent");
-        Check(!controller.SetBillionConfirmed(page.Capture(), true), "origin.unscoped-legacy-consent-blocked");
         controller.SetBillionConfirmed(page.Capture(), true, controller.Snapshot.BillionContext);
-        await controller.ReadBillionAsync(page.Capture(), CancellationToken.None);
-        Check(fake.Urls.Count == 0, "origin.unscoped-legacy-read-blocked");
         await ReadBillion(controller, page.Capture());
         Check(origins.SequenceEqual(new[] { "http://127.0.0.1:18788" }) && fake.Urls.SequenceEqual(new[]
         { "http://127.0.0.1:18788/__bili/health", "http://127.0.0.1:18788/__bili/sessions/ses_exact/detail" }),

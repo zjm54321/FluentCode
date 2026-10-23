@@ -30,8 +30,6 @@
     <FontFamily x:Key="AppBodyFontFamily">XamlAutoFontFamily</FontFamily>
     <FontFamily x:Key="AppSerifFontFamily">Cambria, Noto Serif SC, Source Han Serif SC, SimSun</FontFamily>
     <FontFamily x:Key="AppMonospaceFontFamily">Cascadia Mono, Consolas</FontFamily>
-    <!-- 代码 / 路径 / 命令：旧键，与 AppMonospaceFontFamily 同步（新代码请用 AppMonospaceFontFamily）。 -->
-    <FontFamily x:Key="OpenCodeMonospaceFontFamily">Cascadia Mono, Consolas</FontFamily>
 
     <!-- 状态圆点：填充色经 ThemeResource 设置，主题切换（浅色/深色/高对比度）时由框架自动重取。 -->
     <Style x:Key="OpenCodeAttentionDotStyle" TargetType="Ellipse">

@@ -40,10 +40,6 @@ public sealed partial class MainWindow
     private bool _openCodeWindowActivated;
     private bool _openCodeWindowVisible;
 
-    // Legacy lookup retained for shell partial compatibility; never populated with fabricated executions.
-    // OpenCode now uses App-owned endpoint/session observations exclusively.
-    private readonly Dictionary<string, string> _openCodeExecBySession = new(StringComparer.Ordinal);
-
     // 监视 pending 快照（按会话记录上次集合；仅对新增项提示/映射，消失项不做状态推断）。
     private readonly Dictionary<string, (HashSet<string> Permissions, HashSet<string> Forms)> _lastPendingBySession = new(StringComparer.Ordinal);
 
@@ -75,7 +71,6 @@ public sealed partial class MainWindow
         if (changed && _lastSyncedEndpointIdentity is not null)
         {
             MarkOpenCodeEndpointTasksStale();
-            _openCodeExecBySession.Clear();
             _lastPendingBySession.Clear();
         }
 

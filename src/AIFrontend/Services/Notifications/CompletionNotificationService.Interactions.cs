@@ -26,7 +26,7 @@ public sealed partial class CompletionNotificationService
             foreach (var key in _observedIdle.Keys.Where(p => p.Endpoint == endpointIdentity).ToArray())
                 _observedIdle.Remove(key);
             foreach (var id in _completionTargets.Where(p => p.Value.Source == NotificationSource.OpenCode
-                && p.Value.Target?.EndpointIdentity == endpointIdentity).Select(p => p.Key).ToArray())
+                && p.Value.Target.EndpointIdentity == endpointIdentity).Select(p => p.Key).ToArray())
                 _completionTargets.Remove(id);
             entries = _displayLedger.Snapshot(e => e.Key.Scope.Source == NotificationSource.OpenCode
                 && e.Key.Scope.EndpointIdentity == endpointIdentity, false).Entries;
