@@ -15,6 +15,7 @@ public sealed class OpenCodeEventReducer
     private readonly Dictionary<string, long> _changed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<(string Field, string Text)>> _pending = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeEvent> _pendingShellEnds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _placeholders = new(StringComparer.Ordinal);
     private long _version;
     private bool _executionTerminal;
     public OpenCodeMessageRetry? CurrentRetry { get; private set; }
@@ -49,11 +50,30 @@ public sealed class OpenCodeEventReducer
             StampOrdinals(baseline);
             if (_changed.GetValueOrDefault(id) > fetchVersion && _messages.TryGetValue(id, out var live))
             {
+                var placeholder = _placeholders.Contains(id);
                 foreach (var field in live)
-                    if (field.Key != "content" && field.Value is not null) baseline[field.Key] = field.Value.DeepClone();
+                {
+                    if (field.Key == "content" || field.Value is null) continue;
+                    // A live-only placeholder knows only what events supplied; its default type/creation time are not facts.
+                    if (placeholder && field.Key == "type") continue;
+                    if (field.Key == "time" && field.Value is JsonObject liveTime && baseline["time"] is JsonObject baseTime)
+                    {
+                        foreach (var stamp in liveTime)
+                            if (stamp.Value is not null && !(placeholder && stamp.Key == "created" && stamp.Value.ToJsonString() == "0"))
+                                baseTime[stamp.Key] = stamp.Value.DeepClone();
+                        continue;
+                    }
+                    baseline[field.Key] = field.Value.DeepClone();
+                }
                 if (live["content"] is JsonArray liveParts)
-                    foreach (var part in liveParts.OfType<JsonObject>()) PutPart(baseline, part.DeepClone().AsObject());
+                    foreach (var part in liveParts.OfType<JsonObject>())
+                    {
+                        // A part first seen mid-stream holds only the deltas observed here; the snapshot owns its prefix.
+                        if (part["_partial"] is not null && FindPart(baseline, part) is not null) continue;
+                        PutPart(baseline, part.DeepClone().AsObject());
+                    }
             }
+            _placeholders.Remove(id);
             _messages[id] = baseline;
             foreach (var part in Parts(baseline).OfType<JsonObject>())
                 if (String(part, "id") is { } partId) DrainPending(baseline, id, partId);
@@ -162,11 +182,13 @@ public sealed class OpenCodeEventReducer
             if (target is null)
             {
                 target = new JsonObject { ["type"] = kind, ["text"] = "", ["_ordinal"] = ordinal, ["time"] = new JsonObject { ["created"] = item.ReceivedAt.ToUnixTimeMilliseconds() } };
+                if (type.EndsWith(".delta", StringComparison.Ordinal)) target["_partial"] = true;
                 parts.Add(target);
             }
             if (type.EndsWith(".delta", StringComparison.Ordinal)) target["text"] = (String(target, "text") ?? "") + String(data, "delta");
             if (type.EndsWith(".ended", StringComparison.Ordinal))
             {
+                target.Remove("_partial");
                 target["text"] = data["text"]?.DeepClone() ?? JsonValue.Create("");
                 if (target["time"] is not JsonObject time) target["time"] = time = new JsonObject();
                 time["completed"] = item.ReceivedAt.ToUnixTimeMilliseconds();
@@ -182,14 +204,16 @@ public sealed class OpenCodeEventReducer
                 tool = new JsonObject { ["type"] = "tool", ["id"] = toolId, ["name"] = data["name"]?.DeepClone(),
                     ["time"] = new JsonObject { ["created"] = item.ReceivedAt.ToUnixTimeMilliseconds() },
                     ["state"] = new JsonObject { ["status"] = "streaming", ["input"] = "" } };
+                if (type == "session.tool.input.delta") tool["_partial"] = true;
                 parts.Add(tool);
             }
             var state = tool["state"]!.AsObject();
             switch (type)
             {
                 case "session.tool.input.delta": state["input"] = (String(state, "input") ?? "") + String(data, "delta"); break;
-                case "session.tool.input.ended": state["input"] = data["text"]?.DeepClone(); break;
+                case "session.tool.input.ended": tool.Remove("_partial"); state["input"] = data["text"]?.DeepClone(); break;
                 case "session.tool.called":
+                    tool.Remove("_partial");
                     state["status"] = "running"; state["input"] = data["input"]?.DeepClone();
                     tool["time"]!.AsObject()["ran"] = item.ReceivedAt.ToUnixTimeMilliseconds(); break;
                 case "session.tool.progress": state["metadata"] = data["metadata"]?.DeepClone(); break;
@@ -252,6 +276,7 @@ public sealed class OpenCodeEventReducer
     {
         if (_messages.TryGetValue(id, out var message)) return message;
         _order.Add(id);
+        _placeholders.Add(id);
         return _messages[id] = new JsonObject { ["id"] = id, ["type"] = "assistant", ["content"] = new JsonArray(), ["time"] = new JsonObject { ["created"] = 0 } };
     }
     private bool IsCurrentMessage(string id)
@@ -278,18 +303,19 @@ public sealed class OpenCodeEventReducer
     }
     private static string? String(JsonObject obj, string key) => obj[key] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
     private static JsonArray Parts(JsonObject message) => (message["content"] ??= new JsonArray()).AsArray();
+    private static JsonObject? FindPart(JsonObject message, JsonObject part)
+    {
+        var parts = Parts(message);
+        if (String(part, "id") is { } id) return parts.OfType<JsonObject>().FirstOrDefault(p => String(p, "id") == id);
+        // Native V2 text/reasoning parts have no IDs: ordinal is per kind in the content array.
+        var kind = String(part, "type");
+        var ordinal = part["_ordinal"]?.GetValue<int>() ?? 0;
+        return parts.OfType<JsonObject>().Where(p => String(p, "type") == kind).ElementAtOrDefault(ordinal);
+    }
     private static void PutPart(JsonObject message, JsonObject part)
     {
         var parts = Parts(message);
-        var id = String(part, "id");
-        var existing = id is not null ? parts.OfType<JsonObject>().FirstOrDefault(p => String(p, "id") == id) : null;
-        // Native V2 text/reasoning parts have no IDs: ordinal is per kind in the content array.
-        if (id is null)
-        {
-            var kind = String(part, "type");
-            var ordinal = part["_ordinal"]?.GetValue<int>() ?? 0;
-            existing = parts.OfType<JsonObject>().Where(p => String(p, "type") == kind).ElementAtOrDefault(ordinal);
-        }
+        var existing = FindPart(message, part);
         if (existing is null) parts.Add(part);
         else parts[parts.IndexOf(existing)] = part;
     }

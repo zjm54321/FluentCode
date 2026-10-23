@@ -54,6 +54,21 @@ internal static class Program
         rest.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_r","ordinal":0,"text":"final"}"""));
         Check(Text(rest) == "final" && rest.Messages.Single().Content!.Single().Time?.Completed is not null, "REST text part without time completes on native ended");
 
+        var joined = new OpenCodeEventReducer("ses_test");
+        var joinedFetch = joined.Version;
+        joined.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_j","ordinal":0,"delta":" world"}"""));
+        joined.MergeSnapshot(new[] { Message("msg_j", "hello") }, joinedFetch);
+        Check(Text(joined) == "hello" && joined.Messages.Single().Time?.Created == 10, "mid-stream delta placeholder never replaces snapshot text or creation time");
+        joined.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_j","ordinal":0,"text":"hello world"}"""));
+        Check(Text(joined) == "hello world", "native ended restores authoritative text after mid-stream join");
+
+        var observed = new OpenCodeEventReducer("ses_test");
+        var observedFetch = observed.Version;
+        observed.Apply(Event("session.text.started", """{"sessionID":"ses_test","assistantMessageID":"msg_o","ordinal":0}"""));
+        observed.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_o","ordinal":0,"delta":"fresh"}"""));
+        observed.MergeSnapshot(new[] { Message("msg_o", "") }, observedFetch);
+        Check(Text(observed) == "fresh" && observed.Messages.Single().Time?.Created == 10, "part observed from start still wins over stale snapshot");
+
         RetryAndBackgroundProjection();
         SessionShellProjection();
         NoticeDismissal();
