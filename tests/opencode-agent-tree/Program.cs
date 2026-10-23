@@ -84,6 +84,15 @@ internal static class Program
         Check(groups[0].Children.Single().Model == "used-model" && groups[0].Children.Single().Status == OpenCodeTreeStatus.Succeeded, "real model and outcome");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count == 0, "default hides completed, unknown and idle agents");
         Check(OpenCodeAgentTreeProjection.VisibleAgents(groups, true).Count == 3, "all includes configured idle and hidden agents with real instances");
+        var workingCount = OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count;
+        Check(OpenCodeAgentTreeProjection.EmptyHint(workingCount, false) == "暂无运行中的子智能体或终端；点击“全部”查看历史会话。",
+            "completed-only session explains the empty working filter and how to reveal history");
+        Check(OpenCodeAgentTreeProjection.EmptyHint(OpenCodeAgentTreeProjection.VisibleAgents(groups, true).Count, true) is null
+            && OpenCodeAgentTreeProjection.EmptyHint(0, true) == "暂无子智能体或终端",
+            "all filter clears working-only hint when rows exist and reports genuine emptiness");
+        Check(view.Contains("_readHint ?? OpenCodeAgentTreeProjection.EmptyHint(_groups.Count, _showAll)")
+            && view.Contains("_readHint = hint;") && view.Contains("_hint.Visibility = string.IsNullOrEmpty(hint)"),
+            "filter changes recompute empty-state visibility while retaining read/loading errors");
         live["ses_child"] = OpenCodeTreeStatus.Running;
         groups = OpenCodeAgentTreeProjection.Agents(agents, sessions, "ses_parent", live);
         Check(groups[0].Children.Single().Status == OpenCodeTreeStatus.Running, "new runtime status beats persisted outcome");

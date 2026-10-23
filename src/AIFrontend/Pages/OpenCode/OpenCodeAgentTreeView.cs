@@ -27,6 +27,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     private readonly Dictionary<string, TreeViewNode> _groups = new(StringComparer.Ordinal);
     private IReadOnlyList<OpenCodeTreeAgent> _agents = Array.Empty<OpenCodeTreeAgent>();
     private IReadOnlyList<OpenCodeTreeShell> _shells = Array.Empty<OpenCodeTreeShell>();
+    private string? _readHint;
     private static bool _showAll;
     internal event Action<string>? SessionRequested;
     internal event Action<string>? ShellRequested;
@@ -216,7 +217,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _groups.Clear();
         _details.Visibility = Visibility.Collapsed;
         _output.Text = string.Empty;
-        _hint.Text = "正在读取…";
+        _readHint = "正在读取…";
+        _hint.Text = _readHint;
         _hint.Visibility = Visibility.Visible;
     }
 
@@ -226,8 +228,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _parentReturn.Visibility = Visibility.Collapsed;
         _agents = agents;
         _shells = shells;
-        _hint.Text = hint ?? string.Empty;
-        _hint.Visibility = string.IsNullOrEmpty(hint) ? Visibility.Collapsed : Visibility.Visible;
+        _readHint = hint;
         RenderGroups();
     }
 
@@ -268,6 +269,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 OpenCodeAgentTreeProjection.CountLabel(_shells.Count(s => s.Status == OpenCodeTreeStatus.Running), _shells.Count, _showAll),
                 rows, false, "终端");
         }
+        var hint = _readHint ?? OpenCodeAgentTreeProjection.EmptyHint(_groups.Count, _showAll);
+        _hint.Text = hint ?? string.Empty;
+        _hint.Visibility = string.IsNullOrEmpty(hint) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private TreeViewNode Group(string key, string name, string glyph, string count,

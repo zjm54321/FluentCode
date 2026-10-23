@@ -43,6 +43,10 @@ internal static class OpenCodeAgentTreeProjection
     internal static string CountLabel(int working, int total, bool showAll)
         => showAll ? $"{working} / {total}" : working.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+    internal static string? EmptyHint(int visibleGroups, bool showAll)
+        => visibleGroups > 0 ? null : showAll ? "暂无子智能体或终端"
+            : "暂无运行中的子智能体或终端；点击“全部”查看历史会话。";
+
     internal static OpenCodeTreeStatus Outcome(string? outcome) => outcome switch
     {
         "succeeded" => OpenCodeTreeStatus.Succeeded,
