@@ -17,6 +17,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
 {
     private readonly ItemsRepeater _tree;
     private readonly ToggleButton _all;
+    private readonly FrameworkElement _card;
+    private readonly Button _parentReturn;
     private readonly TextBlock _hint;
     private readonly StackPanel _details;
     private readonly TextBlock _detailTitle;
@@ -30,12 +32,14 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     internal event Action<string>? ShellRequested;
     internal event Action? OutputRefreshRequested;
     internal event Action? DetailClosed;
+    internal event Action? ParentReturnRequested;
 
     internal OpenCodeAgentTreeView()
     {
         Content = (FrameworkElement)XamlReader.Load("""
-            <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+            <Border x:Name="Card"
                     Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                     CornerRadius="8" Padding="8,8,8,8" Translation="0,0,16">
@@ -77,9 +81,16 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </StackPanel>
               </Grid>
             </Border>
+            <Button x:Name="ParentReturn" Content="返回主智能体" Visibility="Collapsed"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12,10"
+                    AutomationProperties.Name="返回主智能体" />
+            </Grid>
             """);
         var root = (FrameworkElement)Content;
         VerticalAlignment = VerticalAlignment.Top;
+        _card = (FrameworkElement)root.FindName("Card");
+        _parentReturn = (Button)root.FindName("ParentReturn");
+        _parentReturn.Click += (_, _) => ParentReturnRequested?.Invoke();
         _tree = (ItemsRepeater)root.FindName("Tree");
         _all = (ToggleButton)root.FindName("All");
         _all.IsChecked = _showAll;
@@ -97,6 +108,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
 
     internal void Reset()
     {
+        _card.Visibility = Visibility.Visible;
+        _parentReturn.Visibility = Visibility.Collapsed;
         _tree.ItemsSource = null;
         _agents = Array.Empty<OpenCodeTreeAgent>();
         _shells = Array.Empty<OpenCodeTreeShell>();
@@ -110,11 +123,20 @@ internal sealed class OpenCodeAgentTreeView : UserControl
 
     internal void Render(IReadOnlyList<OpenCodeTreeAgent> agents, IReadOnlyList<OpenCodeTreeShell> shells, string? hint)
     {
+        _card.Visibility = Visibility.Visible;
+        _parentReturn.Visibility = Visibility.Collapsed;
         _agents = agents;
         _shells = shells;
         _hint.Text = hint ?? string.Empty;
         _hint.Visibility = string.IsNullOrEmpty(hint) ? Visibility.Collapsed : Visibility.Visible;
         RenderGroups();
+    }
+
+    internal void ShowParentReturn(bool enabled)
+    {
+        _card.Visibility = Visibility.Collapsed;
+        _parentReturn.Visibility = Visibility.Visible;
+        _parentReturn.IsEnabled = enabled;
     }
 
     private void RenderGroups()

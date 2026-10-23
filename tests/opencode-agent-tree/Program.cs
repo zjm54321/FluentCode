@@ -39,6 +39,17 @@ internal static class Program
         Check(group.Contains("Grid.SetColumn(chevron, 3)") && group.Contains("Opacity = 0") && group.Contains("header.PointerEntered")
             && group.Contains("header.PointerExited") && group.Contains("header.GotFocus"), "L6: right chevron shown on hover or keyboard focus only");
         Check(view.Contains("SessionRequested?.Invoke(id)") && view.Contains("ShellRequested?.Invoke(shell.Id)"), "real session and shell navigation retained");
+        Check(view.Contains("Content=\"返回主智能体\"") && view.Contains("_card.Visibility = Visibility.Collapsed;")
+            && view.Contains("_parentReturn.Visibility = Visibility.Visible;"), "SA1: return button replaces the whole child-session tree card");
+        var page = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.AgentTree.cs"));
+        Check(page.Contains("_treeParentTarget = CreateVerifiedParentTarget(session, binding.SessionId)")
+            && page.IndexOf("if (_treeParentTarget is not null)", StringComparison.Ordinal) < page.IndexOf("binding.Client.ListAgentsAsync", StringComparison.Ordinal),
+            "SA1: verified GET/session parent decides child mode before loading any child agent tree");
+        var returnHandler = page[page.IndexOf("private async Task ReturnFromAgentTreeAsync", StringComparison.Ordinal)..page.IndexOf("partial void OnAgentTreeActivityChanged", StringComparison.Ordinal)];
+        Check(returnHandler.Contains("InstallSessionReturnContext(parent)") && returnHandler.Contains("ReturnToSessionAsync()")
+            && returnHandler.Contains("IsTreeCurrent(binding)") && returnHandler.Contains("_treeParentReturnBusy")
+            && !returnHandler.Contains("SwitchToSessionAsync") && !returnHandler.Contains("GetSessionInfoAsync"),
+            "SA1: return delegates to existing guarded SessionReturn navigation without reimplementing it");
         var agents = new[]
         {
             new OpenCodeAgentInfo { Id = "custom-main", Name = "主配置", Mode = "primary" },

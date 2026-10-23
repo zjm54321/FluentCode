@@ -38,6 +38,8 @@ public sealed partial class OpenCodePage
     private string? _treeOutputError;
     private long _treeDetailVersion;
     private DispatcherTimer? _treeOutputTimer;
+    private SessionReturnTarget? _treeParentTarget;
+    private bool _treeParentReturnBusy;
 
     private sealed record TreeBinding(OpenCodePageSource Source, long Revision, int SourceGeneration,
         OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId);
@@ -46,6 +48,7 @@ public sealed partial class OpenCodePage
     {
         LeftAgentTreeSlot.Children.Add(_agentTree);
         _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
+        _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
         _agentTree.ShellRequested += id =>
         {
             _treeDetailVersion++;
@@ -74,6 +77,7 @@ public sealed partial class OpenCodePage
         _treeCts?.Dispose();
         _treeCts = null;
         _treeBinding = null;
+        _treeParentTarget = null;
         _treeVersion++;
         _treeMessageSignature = null;
         _treeAgents.Clear();
@@ -152,6 +156,12 @@ public sealed partial class OpenCodePage
         {
             var session = await TreeReadAsync(binding, () => binding.Client.GetSessionInfoAsync(binding.SessionId, ct), ct);
             if (!Current()) return;
+            _treeParentTarget = CreateVerifiedParentTarget(session, binding.SessionId);
+            if (_treeParentTarget is not null)
+            {
+                _agentTree.ShowParentReturn(!_treeParentReturnBusy);
+                return; // A child session replaces the entire tree card; do not load its own agent tree.
+            }
             var directory = session.Location?.Directory;
             if (string.IsNullOrWhiteSpace(directory)) { _treeHint = "会话目录不可用"; RenderAgentTree(); return; }
             _treeDirectory = directory;
@@ -240,6 +250,11 @@ public sealed partial class OpenCodePage
     private void RenderAgentTree()
     {
         if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) return;
+        if (_treeParentTarget is not null)
+        {
+            _agentTree.ShowParentReturn(!_treeParentReturnBusy);
+            return;
+        }
         var statuses = new Dictionary<string, OpenCodeTreeStatus>(_treeStatuses, StringComparer.Ordinal);
         foreach (var id in _treeChildren.Keys)
             if (!statuses.ContainsKey(id) && _liveSessionStatuses.TryGetValue(id, out var live) && live.Working)
@@ -247,6 +262,28 @@ public sealed partial class OpenCodePage
         _agentTree.Render(OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses),
             _treeShells.Values.ToArray(), _treeHint);
         ShowAgentTreeOutput();
+    }
+
+    private async Task ReturnFromAgentTreeAsync()
+    {
+        if (_treeParentReturnBusy || _treeBinding is not { } binding || !IsTreeCurrent(binding)
+            || _treeParentTarget is not { } parent) return;
+        _treeParentReturnBusy = true;
+        _agentTree.ShowParentReturn(false);
+        try
+        {
+            // The current GET/session's verified direct parent, never a sidebar or visited-origin guess.
+            InstallSessionReturnContext(parent);
+            var task = ReturnToSessionAsync();
+            UpdateSessionReturnUi();
+            await task;
+        }
+        finally
+        {
+            _treeParentReturnBusy = false;
+            UpdateSessionReturnUi();
+            if (IsTreeCurrent(binding)) _agentTree.ShowParentReturn(true);
+        }
     }
 
     partial void OnAgentTreeActivityChanged()
