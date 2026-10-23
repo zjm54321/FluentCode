@@ -232,6 +232,7 @@ public sealed partial class OpenCodePage : Page
     /// 宿主应据此调用 App 的 <c>TrackOpenCodeSession</c>；本页不直接引用 App。
     /// </summary>
     public event EventHandler<OpenCodeSessionTrackedEventArgs>? SessionTracked;
+    public event EventHandler<OpenCodeSessionRetiredEventArgs>? SessionRetired;
 
     /// <summary>
     /// 回合级执行状态变化。<see cref="OpenCodeExecutionState.Working"/> 由“输入已接纳并排程”产生；
@@ -4004,6 +4005,12 @@ public sealed partial class OpenCodePage : Page
         {
             // 订阅者异常不影响本页（宿主负责其自身异常处理）。
         }
+    }
+
+    private void RaiseSessionRetired(OpenCodePageSource source, string sessionId)
+    {
+        try { SessionRetired?.Invoke(this, new(source, sessionId)); }
+        catch { /* Host callback failures must not interrupt tab removal. */ }
     }
 
     /// <summary>输入已接纳并排程：回合进入 Working（绝非完成）。</summary>

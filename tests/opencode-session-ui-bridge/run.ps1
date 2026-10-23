@@ -29,6 +29,9 @@ try {
     $current = Slice $app '    public OpenCodePageSource? CurrentOpenCodePageSource' '    public IReadOnlyList<AppIntegrationDiagnostic>'
     $generated = "using System;`nusing System.Threading.Tasks;`nusing AIFrontend.Services.Notifications;`nusing AIFrontend.Services.OpenCode;`nnamespace AIFrontend;`npublic partial class App {`n$current`n$track`n$release`n$dispatch`ninternal void BridgePublishBinding(int generation, OpenCodeNotificationMonitor monitor) {`n$binding`n}`n}"
     [IO.File]::WriteAllText((Join-Path $output 'App.Extracted.cs'), $generated)
+    $shell = [IO.File]::ReadAllText("$repo/src/AIFrontend/MainWindow.OpenCode.cs")
+    $retirement = Slice $shell '    private void OpenCodePage_SessionRetired(' '    private void RetryTrackCurrentOpenCodeSession()'
+    [IO.File]::WriteAllText((Join-Path $output 'MainWindow.Extracted.cs'), "using System; using AIFrontend.Pages.OpenCode; namespace AIFrontend; internal partial class MainWindow {`n$retirement`n}")
 
     # Exact boundary probe: the whole production UI-facts block is extracted verbatim except
     # its single UtcNow binding becomes an explicit test clock. The real Execution.cs is ALSO
@@ -73,6 +76,7 @@ internal static (OpenCodeSessionUiFact? Working, OpenCodeSessionUiFact? Pending,
         "$($windows.FullName)/lib/net8.0/Microsoft.Windows.SDK.NET.dll", "$($windows.FullName)/lib/net8.0/WinRT.Runtime.dll")
     foreach ($ref in $refs) { $args += '/reference:"' + $ref + '"'; Copy-Item $ref $output }
     $sources = @()
+    $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs"
     foreach ($area in @('Notifications', 'OpenCode')) {
         $sources += Get-ChildItem "$repo/src/AIFrontend/Services/$area/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object FullName
     }

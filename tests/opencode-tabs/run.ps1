@@ -28,6 +28,7 @@ $blankChoicePath="$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs";
 $baseline=if($BaselineBlankFile){[IO.File]::ReadAllText($BaselineBlankFile)}else{''}
 $members+=@('EnsureBlankPreferences','HasBlankMetadata','OwnBlankMetadata','AcceptBlankAgentPresentation','HasBlankAgentPresentation','OwnsBlankMetadata','LoadBlankMetadataAsync','BlankSelectedAgent','ApplyBlankDefaults','ReadBlankAgentModel','IsBlankAgentSelectable','BlankStrengthText','CaptureBlankPreferences','OwnsBlankPreferences','SetBlankVariantAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click','BlankProjectButton_Click')|ForEach-Object{if($baseline -and $_ -in @('OwnBlankMetadata','LoadBlankMetadataAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click')){Extract $baseline $_}else{Extract $choices $_}}
 $members+=@('SessionList_SelectionChanged','SwitchToSessionAsync','CancelSessionOperations','IsCurrentBindingFields','IsCurrentBinding','SelectSessionItem','CreateOperationToken','OnPageUnloaded','ApplyCurrentSource','InvalidateForSourceChange','DisposeOwnClient')|ForEach-Object{Extract $page $_}
+$members+=@('RaiseSessionTracked','RaiseSessionRetired')|ForEach-Object{Extract $page $_}
 $builtinPath="$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs";$builtin=[IO.File]::ReadAllText($builtinPath)
 $members+=Extract $builtin 'CreateNativeSessionAsync'
 $ready=[regex]::Match($page,'(?m)^    private bool SourceReady =>[^;]*;');if(!$ready.Success){throw 'Missing SourceReady'};$members+=$ready.Value
@@ -45,6 +46,7 @@ $viewGenerated=Join-Path $EvidenceRoot 'ActualViewBridge.cs'
 "using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages.OpenCode;`n"+$removedArgs+"`ninternal sealed partial class OpenCodeComposerView {`n"+($viewMembers -join "`n")+"`n}"|Set-Content -Encoding UTF8 $viewGenerated
 $sources=@($generated,$viewGenerated,"$PSScriptRoot/Tab.TestHost.cs","$PSScriptRoot/PageFixture.cs","$PSScriptRoot/ViewFixture.cs","$PSScriptRoot/Program.cs","$PSScriptRoot/WorkingClockTests.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs","$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs")
 $sources+="$PSScriptRoot/PageSlots.cs"
+$sources+="$PSScriptRoot/RetirementTests.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSidebarLayout.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
 $sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeDirectoryPresentation.cs","$PSScriptRoot/DirectorySelectorTests.cs")

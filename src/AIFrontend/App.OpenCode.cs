@@ -60,6 +60,19 @@ public partial class App
         if (publishUi) PublishSessionUiChanges();
     }
 
+    /// <summary>UI thread. Closing a tab retires observation, never an unknown mutation's protection.</summary>
+    public void UntrackOpenCodeSession(OpenCodePageSource source, string sessionId)
+    {
+        RequireAppThread();
+        if (_closing) return;
+        lock (_integrationSync)
+        {
+            if (!ReferenceEquals(source, _openCodePageSource) || source.IsRevoked) return;
+            _trackedOpenCodeSessions.Remove(sessionId);
+            _openCodeMonitor?.UntrackSession(sessionId);
+        }
+    }
+
     private void StartOpenCodeOwnership()
     {
         _settingsService = Pages.NormalPage.SharedSettingsService;

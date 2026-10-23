@@ -14,7 +14,7 @@ using AIFrontend.Services.Taskbar;
 
 await Checks.Run();
 
-static class Checks
+static partial class Checks
 {
     private const string Session = "ses_test";
     private static int assertions;
@@ -177,7 +177,8 @@ static class Checks
             ("1 producer facts, strict boundaries, independent TTL and legacy outputs", Producer),
             ("question pending existing forms producer to App/store, failures and independent clock", Questions),
             ("2 viewed/completion atomicity and exact ACK receipts", Receipts),
-            ("3 owner/dispatcher fences, seed, synchronous gate and event publication", Ownership) })
+            ("3 owner/dispatcher fences, seed, synchronous gate and event publication", Ownership),
+            ("4 host retirement, exact source fence and background tracking", Retirement) })
         {
             int before = assertions;
             await test().WaitAsync(TimeSpan.FromSeconds(60));

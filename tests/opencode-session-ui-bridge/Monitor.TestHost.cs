@@ -8,6 +8,7 @@ namespace AIFrontend.Services.Notifications;
 
 public sealed partial class OpenCodeNotificationMonitor
 {
+    internal bool BridgeIsTracked(string session) { lock (_sync) return _tracked.ContainsKey(session); }
     // Controllable poll input only: no projection/fact/adapter algorithms are implemented here.
     internal Task BridgeExecute(List<OpenCodeMessage> messages, DateTimeOffset historyAt,
         DateTimeOffset? permissionsAt, DateTimeOffset? formsAt, bool pending = false, bool complete = true)

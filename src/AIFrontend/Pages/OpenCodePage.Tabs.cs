@@ -564,6 +564,7 @@ public sealed partial class OpenCodePage
 
     private void RemoveSessionTab(SessionTabEntry entry)
     {
+        var source = _source;
         var isCurrent = _sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry);
         if (isCurrent && _createdDraftTransfers.TryGetValue((_draftSourceEpoch, entry.SessionId), out var pending)) ReleaseDraftSlot(pending);
         if (entry.DraftSlotKey is { } key && _draftSlots.TryGetValue(key, out var slot))
@@ -585,6 +586,7 @@ public sealed partial class OpenCodePage
         {
             _suppressTabSelection = previous;
         }
+        if (isCurrent && source is not null) RaiseSessionRetired(source, entry.SessionId);
     }
 
     private void UpdateSessionTabsEmptyState()

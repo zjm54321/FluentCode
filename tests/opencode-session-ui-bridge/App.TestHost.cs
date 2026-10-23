@@ -54,6 +54,7 @@ namespace AIFrontend
         public event EventHandler<NotificationInteractionEventArgs>? OpenCodeInteractionProcessed;
         public event EventHandler? OpenCodeSourceChanged;
         internal bool LockHeld => Monitor.IsEntered(_integrationSync);
+        internal bool IsTracked(string session) => _trackedOpenCodeSessions.Contains(session);
         internal TaskbarSnapshot Taskbar => _taskbarState.Snapshot;
         internal int CallbackErrors => _integrationDiagnostics.Count(x => x.Code == "app-callback-failed");
 

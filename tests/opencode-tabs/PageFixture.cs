@@ -203,6 +203,7 @@ public sealed partial class OpenCodePage
     private sealed class RecoveryStub{internal void HideConfirm(){}internal void HideEntry(){}internal void SetBusy(bool busy,string? message){}}
     internal OpenCodePage(string xaml,bool connected=true)
     {
+        SessionTracked += (_, _) => Tracking++;
         var doc=XDocument.Load(xaml);XNamespace ns="http://schemas.microsoft.com/winfx/2006/xaml/presentation";XNamespace x="http://schemas.microsoft.com/winfx/2006/xaml";
         var xml=doc.Descendants(ns+"TabViewItem").Single(e=>(string?)e.Attribute(x+"Name")=="HomeTab");
         // XAML/native creation boundary: construct declared item shape BEFORE first measure/load.
@@ -281,7 +282,8 @@ public sealed partial class OpenCodePage
     private void ClearAgentSelector(){}
     private void UpdateWaitingText(){}private void UpdateEmptyState(){}private void UpdateComposerButtons(){}private void UpdateInteractionsSection(){}
     private void ResetMessagePaginationState(){}private void RetainMessageWindow(){}private void RestoreMessageWindow(){}
-    private void RaiseSessionTracked(string id,OpenCodeSessionTrackReason reason)=>Tracking++;
+    public event EventHandler<OpenCodeSessionTrackedEventArgs>? SessionTracked;
+    public event EventHandler<OpenCodeSessionRetiredEventArgs>? SessionRetired;
     private Task RefreshMessagesAsync(bool initial){MessageLoads++;return Task.CompletedTask;}
     private void SetBlankComposerPlacement(bool blank){}private void WireNewSessionList(){}private void RefreshNewSessionList(){}
     private void OnBlankLabelsRefreshed(){if(!_blankPickerPending){_agentIdle?.TrySetResult();_agentIdle=null;if(_activeBlankSlotId is{} id&&_defaultsReady.TryGetValue(id,out var ready))ready.TrySetResult();}}

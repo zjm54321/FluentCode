@@ -99,6 +99,17 @@ public sealed partial class MainWindow
         TryTrackOpenCodeSession(e.SessionId);
     }
 
+    private void OpenCodePage_SessionRetired(object? sender, OpenCodeSessionRetiredEventArgs e)
+    {
+        if (!AppCallsAllowed || !ReferenceEquals(e.Source, _app!.CurrentOpenCodePageSource) || e.Source.IsRevoked) return;
+        if (_openCodeTrackedSessionId == e.SessionId)
+        {
+            _openCodeTrackedSessionId = null;
+            _openCodeTrackedSessionEndpoint = null;
+        }
+        _app.UntrackOpenCodeSession(e.Source, e.SessionId);
+    }
+
     private void RetryTrackCurrentOpenCodeSession()
     {
         string? session = _openCodeTrackedSessionId;

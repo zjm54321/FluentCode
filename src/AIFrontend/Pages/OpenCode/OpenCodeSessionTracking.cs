@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AIFrontend.Services.OpenCode;
+using AIFrontend.Services.Notifications;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -40,6 +41,13 @@ public sealed class OpenCodeSessionTrackedEventArgs : EventArgs
 
     /// <summary>跟踪原因。</summary>
     public OpenCodeSessionTrackReason Reason { get; }
+}
+
+/// <summary>A closed tab retires observation only for the source that owned it.</summary>
+public sealed class OpenCodeSessionRetiredEventArgs(OpenCodePageSource source, string sessionId) : EventArgs
+{
+    public OpenCodePageSource Source { get; } = source;
+    public string SessionId { get; } = sessionId;
 }
 
 /// <summary>

@@ -75,6 +75,7 @@ internal static class Program
         Check((string?)tabs.Attribute("Height") is null&&(string?)tabs.Attribute("CanDragTabs")=="False"&&(string?)tabs.Attribute("CanReorderTabs")=="True"&&(string?)tabs.Attribute("AllowDropTabs")=="True","native strip height untouched; same-collection reorder enabled without drag-out");
         Console.WriteLine($"PASS A6 actual Tab collection/selection/close + actual Switch/binding: {checks} assertions; native controls/IO boundaries inert, no native layout/keyboard/drag claim");
         WorkingClockTests.Run();
+        RetirementTests.Run(xaml);
         var work=Page();work.AddSession("w1");work.AddSession("w2");var shared=AIFrontend.Pages.OpenCode.OpenCodeWorkingClock.Shared;var baseCount=shared.SubscriberCount;
         work.Shimmer("w1").SetWorking(true);work.Shimmer("w2").SetWorking(true);Check(shared.SubscriberCount==baseCount+2&&shared.IsRunning,"B13 actual tab entries join the shared working clock");
         var w1Renders=work.Shimmer("w1").Renders;work.Close(work.Session("w2"));Check(shared.SubscriberCount==baseCount+1&&shared.IsRunning&&work.Shimmer("w1").Renders==w1Renders,"B13 actual tab close leaves the clock without touching other working tabs");

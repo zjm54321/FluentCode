@@ -741,6 +741,7 @@ public sealed partial class MainWindow : Window
             case Pages.OpenCodePage openCodePage:
                 openCodePage.SettingsRequested += Page_SettingsRequested;
                 openCodePage.SessionTracked += OpenCodePage_SessionTracked;
+                openCodePage.SessionRetired += OpenCodePage_SessionRetired;
                 openCodePage.ExecutionStateChanged += OpenCodePage_ExecutionStateChanged;
                 openCodePage.NavigationHandled += OpenCodePage_NavigationHandled;
                 openCodePage.Loaded += OpenCodePage_ShellLoaded;
@@ -786,6 +787,7 @@ public sealed partial class MainWindow : Window
             case Pages.OpenCodePage openCodePage:
                 openCodePage.SettingsRequested -= Page_SettingsRequested;
                 openCodePage.SessionTracked -= OpenCodePage_SessionTracked;
+                openCodePage.SessionRetired -= OpenCodePage_SessionRetired;
                 openCodePage.ExecutionStateChanged -= OpenCodePage_ExecutionStateChanged;
                 openCodePage.NavigationHandled -= OpenCodePage_NavigationHandled;
                 openCodePage.Loaded -= OpenCodePage_ShellLoaded;
