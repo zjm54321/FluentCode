@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,7 @@ public sealed partial class OpenCodePage
     private CancellationTokenSource? _treeCts;
     private TreeBinding? _treeBinding;
     private long _treeVersion;
+    private string? _treeMessageSignature;
     private bool _treeRefreshQueued;
     private bool _treeLoading;
     private bool _treeReload;
@@ -74,6 +76,7 @@ public sealed partial class OpenCodePage
         _treeCts = null;
         _treeBinding = null;
         _treeVersion++;
+        _treeMessageSignature = null;
         _treeAgents.Clear();
         _treeChildren.Clear();
         _treeStatuses.Clear();
@@ -255,6 +258,9 @@ public sealed partial class OpenCodePage
     partial void OnAgentTreeMessages(IReadOnlyList<OpenCodeMessage> messages)
     {
         if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) { QueueAgentTreeRefresh(); return; }
+        var signature = AgentTreeMessageSignature(messages);
+        if (_treeMessageSignature == signature) return;
+        _treeMessageSignature = signature;
         var changed = false;
         foreach (var message in messages)
         {
@@ -282,6 +288,35 @@ public sealed partial class OpenCodePage
             }
         }
         if (changed) RenderAgentTree();
+    }
+
+    private static string AgentTreeMessageSignature(IReadOnlyList<OpenCodeMessage> messages)
+    {
+        var signature = new StringBuilder();
+        foreach (var message in messages)
+        {
+            if (message.Type is "shell")
+            {
+                signature.Append("m:").Append(message.Id).Append(':').Append(message.ShellId).Append(':')
+                    .Append(message.Command).Append(':').Append(message.Status).Append(':').Append(message.Exit?.GetRawText())
+                    .Append(':').Append(message.Metadata?.GetRawText()).Append(':').Append(message.Output?.Output).Append(';');
+            }
+            else if (message.Type == "synthetic"
+                && OpenCodeAgentTreeProjection.String(message.Metadata, "source") == "shell")
+            {
+                signature.Append("n:").Append(message.Id).Append(':').Append(message.Description).Append(':')
+                    .Append(message.Metadata?.GetRawText()).Append(';');
+            }
+
+            foreach (var part in message.Content ?? new())
+            {
+                if (part.Type != "tool" || OpenCodeToolStates.Read(part.State) is not { } state
+                    || OpenCodeAgentTreeProjection.String(state.Metadata, "shellID") is not { } shellId) continue;
+                signature.Append("p:").Append(message.Id).Append(':').Append(part.Id).Append(':').Append(shellId).Append(':')
+                    .Append(part.Name).Append(':').Append(part.State?.GetRawText()).Append(';');
+            }
+        }
+        return signature.ToString();
     }
 
     private bool MergeAgentTreeShell(OpenCodeTreeShell shell)

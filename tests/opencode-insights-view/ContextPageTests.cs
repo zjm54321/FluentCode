@@ -42,10 +42,11 @@ internal static class ContextPageTests
         page.SelectSession("ses_a");
         return (page, source, http);
     }
-    private static OpenCodeMessage Usage(string id, int created, int input) => new()
+    private static OpenCodeMessage Usage(string id, int created, int input, string? text = null) => new()
     {
         Id = id, Type = "assistant", Model = new() { Id = "a", ProviderId = "p" }, Time = new() { Created = created },
-        Tokens = new() { Input = input, Output = 0, Reasoning = 0, Cache = new() { Read = 0, Write = 0 } }, Content = new(),
+        Tokens = new() { Input = input, Output = 0, Reasoning = 0, Cache = new() { Read = 0, Write = 0 } },
+        Content = text is null ? new() : new() { new() { Type = "text", Text = text } },
     };
     private static OpenCodeEvent Updated(string session, OpenCodeMessage message)
         => OpenCodeEvent.Parse(JsonSerializer.Serialize(new { type = "message.updated", data = new { sessionID = session, info = message } }));
@@ -71,8 +72,13 @@ internal static class ContextPageTests
         Check(page.Insights.Snapshot.Context.Value?.LatestAssistantUsage?.MessageId == "msg_b", "newest reference, not cumulative sum");
         var renders = 0;
         page.Insights.Changed += (_, _) => renders++;
-        for (var i = 0; i < 20; i++) page.AcceptEvent(Updated("ses_a", Usage("msg_b", 20, 50000)));
+        var contextProjections = page.Insights.ContextProjectionCount;
+        var todoProjections = page.Insights.TodoProjectionCount;
+        for (var i = 0; i < 20; i++) page.AcceptEvent(Updated("ses_a", Usage("msg_b", 20, 50000, "delta-" + i)));
         Check(renders == 0, "unchanged usage publications do not redraw full insights/header");
+        Check(page.Insights.ContextProjectionCount == contextProjections
+            && page.Insights.TodoProjectionCount == todoProjections,
+            "unchanged text/usage publications skip context and to do derivation");
         Check(http.Paths.Count == 1 && page.Insights.OpenCodeReadsStarted == 1 && clicks == 0
             && page.Insights.BillionReadsStarted == 0 && page.Insights.BillionDiscoveryAttemptsStarted == 0,
             "only bounded catalog metadata GET; no click/full reads/Billion/discovery per update");
