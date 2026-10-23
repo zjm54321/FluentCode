@@ -72,9 +72,9 @@ public sealed partial class OpenCodeClient
         ValidateInteractionId(sessionId, "ses", nameof(sessionId));
         if (!IsValidCommandName(name)) throw new ArgumentException("命令名必须为不含斜杠、空白或控制字符的名称（最多 256 字符）。", nameof(name));
         var body = new OpenCodeCommandBody(name, text ?? string.Empty, OpenCodeAttachment.ValidateFiles(files));
-        OpenCodeAttachment.ValidateRequestSize(body);
+        var bytes = OpenCodeAttachment.SerializeRequest(body);
         cancellationToken.ThrowIfCancellationRequested();
-        using var content = CreateJsonContent(body);
+        using var content = CreateJsonContent(bytes);
         // Existing no-content transport provides the same bounded timeout and sanitized error classes.
         Task? pending = null;
         if (!starter(() => pending = SendForNoContentAsync(HttpMethod.Post,
