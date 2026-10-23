@@ -17,6 +17,15 @@ public sealed partial class OpenCodePage
 {
     private string? _backgroundAttempt;
     private MessageHistoryRead? _backgroundBinding;
+    private CancellationTokenSource? _toolDetailBindingCts;
+
+    private void ResetToolDetailBinding()
+    {
+        _conversationView.ConfigureToolDetail = null;
+        _toolDetailBindingCts?.Cancel();
+        _toolDetailBindingCts?.Dispose();
+        _toolDetailBindingCts = null;
+    }
     private OpenCodeMessageRetry? _publishedRetry;
     private string? _publishedRetryMessageId;
 
@@ -24,6 +33,7 @@ public sealed partial class OpenCodePage
     {
         _backgroundAttempt = null;
         _backgroundBinding = null;
+        ResetToolDetailBinding();
         _publishedRetry = null;
         _publishedRetryMessageId = null;
         _eventReducer?.ClearCurrentRetry();
@@ -52,6 +62,7 @@ public sealed partial class OpenCodePage
             if (_backgroundBinding is not null)
             {
                 _backgroundBinding = null;
+                ResetToolDetailBinding();
                 _conversationView.SetBackgroundAction(null);
             }
             RefreshCurrentRetry();
@@ -63,6 +74,16 @@ public sealed partial class OpenCodePage
         {
             var read = CaptureMessageHistoryRead(client, sessionId);
             _backgroundBinding = read;
+            ResetToolDetailBinding();
+            if (read.Source is { } detailSource)
+            {
+                _toolDetailBindingCts = CreateOperationToken(detailSource);
+                var bindingToken = _toolDetailBindingCts.Token;
+                _conversationView.ConfigureToolDetail = (options, parent, rowCanRead) =>
+                    OpenCodeToolDetailBuiltins.BindLiveChildOutput(options, client,
+                        child => !bindingToken.IsCancellationRequested && IsCurrentMessageHistoryRead(read)
+                            && _conversationView.ContainsRenderedMessage(parent) && rowCanRead(child), bindingToken);
+            }
             _conversationView.SetBackgroundAction((messageId, part) => _ = BackgroundForegroundToolsAsync(read, messageId, part));
         }
         RefreshCurrentRetry();

@@ -90,6 +90,10 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     private string? _parentMessageId;
 
     private bool _disposed;
+    internal Action<OpenCodeToolDetailOptions, string?, Func<string, bool>>? ConfigureDetail { get; set; }
+    private void ConfigureDetailOptions(OpenCodeToolDetailOptions options)
+        => ConfigureDetail?.Invoke(options, _parentMessageId,
+            child => !_disposed && child == _childSessionId && OpenCodeSubagentPresentation.IsOpaqueSessionId(child));
     private FrameworkElement? _detailAnchorOverride;
     internal void SetDetailAnchor(FrameworkElement? anchor) => _detailAnchorOverride = anchor;
 
@@ -333,6 +337,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         }
 
         _disposed = true;
+        ConfigureDetail = null;
         _backgroundAction = null;
         _lastPart = null;
         CloseDetailIfShowing();
@@ -770,6 +775,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
 
         public OpenCodeToolDetailView BuildDetailContent()
         {
+            _owner.ConfigureDetailOptions(_options);
             var inner = OpenCodeToolDetailContent.Build(
                 _owner._detailModel,
                 _options,

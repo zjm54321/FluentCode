@@ -910,6 +910,8 @@ public sealed class OpenCodeConversationView : StackPanel
         ApplyStepChains();
     }
 
+    internal Action<OpenCodeToolDetailOptions, string?, Func<string, bool>>? ConfigureToolDetail { get; set; }
+
     /// <summary>Selected-session authoritative turn activity, not an individual message/tool completion.
     /// Call after applying a snapshot; null restores message-based inference. ClearMessages resets the binding.</summary>
     public void SetCurrentTurnActivity(bool? active)
@@ -2671,6 +2673,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 // 同时保留一个不可见的提问锚点：交互视图仍把匹配的待处理 Form 条目放入其中（不在时间线中显示独立卡片），
                 // 回答在输入区的提问遮罩中进行；提交 / 取消 / 重查路径不变。
                 var view = new OpenCodeToolPartView();
+                view.ConfigureDetail = (options, parent, canRead) => ConfigureToolDetail?.Invoke(options, parent, canRead);
                 view.SetBackgroundAction(_backgroundAction);
                 view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id));
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> questionHandler =
@@ -2724,6 +2727,7 @@ public sealed class OpenCodeConversationView : StackPanel
             case OpenCodePartTypes.Tool:
             {
                 var view = new OpenCodeToolPartView();
+                view.ConfigureDetail = (options, parent, canRead) => ConfigureToolDetail?.Invoke(options, parent, canRead);
                 view.SetBackgroundAction(_backgroundAction);
                 view.Update(part, parentMessageId, completion, parentMessageId is { } parent && part.Id is { } id && _manualBackground.Contains(parent, id), fileIndex);
                 // subagent 工具行固定详情时的「打开子会话」只向上转发；本视图在移除/替换时退订并 Dispose（无 stale callbacks）。
