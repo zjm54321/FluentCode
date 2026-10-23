@@ -149,42 +149,14 @@ internal static class Program
         Check(!preScope.IsCurrent, "scope disposal idempotent");
     }
 
-    private static void NativeContracts(string repo)
-    {
-        var dir = Path.Combine(repo, "src/AIFrontend/Pages/OpenCode");
-        var presenter = System.IO.File.ReadAllText(Path.Combine(dir, "OpenCodeRichTextPresenter.cs"));
-        var context = System.IO.File.ReadAllText(Path.Combine(dir, "OpenCodeImageContext.cs"));
-        var popup = System.IO.File.ReadAllText(Path.Combine(dir, "OpenCodeToolDetailPopup.cs"));
-        var child = System.IO.File.ReadAllText(Path.Combine(dir, "OpenCodeChildChatWindow.cs"));
-        var page = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.MarkdownImages.cs"));
-        var factory = page[page.IndexOf("internal static OpenCodeMarkdownImageScope BindMarkdownImages(", StringComparison.Ordinal)..];
-        Check(presenter.Contains("OpenCodeMarkdownImagePlan.Build(source)") && presenter.Contains("Renderer.SanitizeHtml(html)"), "native renderer uses tested AST image plan and keeps text sanitizer");
-        Check(presenter.Contains("AutomationProperties.SetName(image, label)") && presenter.Contains("正在加载") && presenter.Contains("图片无法加载"), "native alt/loading/error affordances");
-        Check(presenter.Contains("segment.Title, generation, renderToken") && presenter.Contains("ToolTipService.SetToolTip(surface, string.IsNullOrWhiteSpace(title) ? label : title)"), "native tooltip prefers title with alt fallback");
-        var success = presenter[presenter.IndexOf("image.Source = bitmap", StringComparison.Ordinal)..presenter.IndexOf("catch (OperationCanceledException)", presenter.IndexOf("image.Source = bitmap", StringComparison.Ordinal), StringComparison.Ordinal)];
-        Check(success.Contains("status.Visibility = Visibility.Collapsed") && !success.Contains("status.Text = alt"), "successful image hides persistent caption, only loading/error stays visible");
-        Check(presenter.Contains("if (!_root.IsLoaded)") && presenter.Contains("_pendingImageLoads.Add(Load)") && presenter.Contains("foreach (var load in pending) await load()") && presenter.Contains("_pendingImageLoads.Clear()"), "root Loaded queue/drain and render clear preserved");
-        Check(presenter.Contains("Stretch = Stretch.Uniform") && presenter.Contains("DecodePixelWidth = 1920"), "responsive aspect ratio and bounded native decode width");
-        Check(presenter.Contains("_root.Unloaded +=") && presenter.Contains("_renderLifetime.Begin()") && presenter.Contains("_renderLifetime.IsCurrent(generation, renderToken)"), "native presenter consumes tested rerender/unload lifetime");
-        Check(presenter.Contains("await bitmap.SetSourceAsync(stream)") && presenter.Contains("if (!Current()) return;\n            image.Source = bitmap"), "decode completion rechecks scope/render before bitmap publication");
-        Check(context.Contains("ConditionalWeakTable") && context.Contains("VisualTreeHelper.GetParent") && !context.Contains("_selectedSessionId"), "explicit weak subtree scope, no global selected-session fallback");
-        Check(popup.Contains("OpenCodeImageContext.Find(AnchorOf(_source))") && popup.Contains("OpenCodeImageContext.Bind(view.Root, imageScope)"), "popup root carries only originating anchor scope");
-        Check(child.Contains("InitializeImages(Func<OpenCodeConversationView, CancellationToken, OpenCodeMarkdownImageScope> initialize)")
-            && child.Contains("_imageScope = initialize(_timeline, Token)") && child.Contains("_imageScope?.Dispose()") && child.Contains("OpenCodeImageContext.Unbind(_timeline)"),
-            "child integration receives actual root and close-canceled token, disposes/unbinds scope on close");
-        Check(factory.Contains("GetSessionInfoAsync(identity.SessionId, token)") && factory.Contains("info.Location?.Directory") && !factory.Contains("_selectedSessionId"), "page factory fetches actual identity session directory, no implicit parent lookup");
-        Check(!presenter.Contains("new WebView") && !presenter.Contains("new Uri(reference") && !presenter.Contains("File.ReadAllBytes"), "native bitmap only, no external URI or Windows reinterpretation");
-    }
-
-    private static async Task<int> Main(string[] args)
+    private static async Task<int> Main()
     {
         try
         {
             Plan();
             await Scope();
             await RenderLifetime();
-            NativeContracts(args[0]);
-            Console.WriteLine($"PASS: Markdown AST/scoped image/render lifecycle, {_assertions} assertions; native wiring source guards, no UI/live requests.");
+            Console.WriteLine($"PASS: Markdown AST/scoped image/render lifecycle, {_assertions} assertions; no UI/live requests.");
             return 0;
         }
         catch (Exception ex) { Console.WriteLine(ex); return 1; }

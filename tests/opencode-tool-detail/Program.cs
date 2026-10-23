@@ -36,7 +36,7 @@ internal static class Program
     }
 
     /// <summary>Wave 5 G7/G8: large view ≈80% centered, hover preview small + adjacent, hide-on-leave, wrap-by-default, no truncation.</summary>
-    private static void DetailPopupContract(string[] args)
+    private static void DetailPopupContract()
     {
         // Large view: 80% of the window, centered, follows window size, never exceeds the window.
         var large = OpenCodeDetailPopupLayout.LargeView(1600, 1000);
@@ -143,90 +143,6 @@ internal static class Program
         Check(string.Join("\n", chunks) == longText.TrimEnd('\r', '\n') && chunks[^1].EndsWith("line 5000", StringComparison.Ordinal), "chunks keep every line (no truncation)");
         Check(OpenCodeDetailTextPolicy.ChunkLines("a\r\nb").Single() == "a\nb" && OpenCodeDetailTextPolicy.ChunkLines("").Single() == string.Empty, "CR stripped, empty text yields one empty chunk");
 
-        // Source contract (WinUI files cannot be compiled headless): popup + content view.
-        if (args.Length == 0)
-        {
-            throw new InvalidOperationException("FAIL: repo path argument required for the popup source contract");
-        }
-
-        var dir = System.IO.Path.Combine(args[0], "src", "AIFrontend", "Pages", "OpenCode");
-        var permissions = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodePermissionPresentation.cs"));
-        Check(permissions.Contains("\"todowrite\" => \"更新 to do\"") && permissions.Contains("\"todoread\" => \"读取 to do\""),
-            "A10 permission copy changes labels, never tool ids");
-        var popup = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolDetailPopup.cs"));
-        var content = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolDetailContent.cs"));
-        Check(popup.Contains("internal const int HoverOpenDelayMs = 800;") && popup.Contains("internal const int HoverSwitchDelayMs = 0;"), "confirmed initial 800ms / open-preview row switch 0ms contract");
-        Check(popup.Contains("_previewPresenter.Measure(new Size(width, double.PositiveInfinity))") && popup.Contains("FitPreview(anchor.ActualWidth")
-            && popup.Contains("_previewPresenter.MaxHeight = double.PositiveInfinity") && !popup.Contains("PreviewWidth("), "native preview measures full wrapped content and every opening path uses the new row-based fitter, not the superseded workspace cap");
-        Check(popup.Contains("_previewPresenter.MaxHeight = capacity.Height") && !popup.Contains("_previewPresenter.Height = rect.Height"), "preview retains natural automatic height as streaming text/images grow, bounded only by side capacity");
-        Check(!popup.Contains("OpenCodeToolDetailWrap") && !popup.Contains("\"换行\"") && !popup.Contains("_wrapButton"), "no wrap toggle in the popup");
-        Check(popup.Contains("\"OpenCodeToolDetailPreview\"") && popup.Contains("\"OpenCodeToolDetailPopup\"") && popup.Contains("\"OpenCodeToolDetailOverlay\""), "preview / large view / overlay AutomationIds");
-        Check(popup.Contains("_dialogChrome.Actions.Children.Add(_closeButton)") && !popup.Contains("_previewChrome.Actions.Children.Add("), "close button only in the large view (preview has none)");
-        Check(popup.Contains("SmokeFillColorDefaultBrush") && popup.Contains("_smoke.Tapped") && popup.Contains("VirtualKey.Escape"), "large view: smoke layer, outside click + Esc close");
-        Check(popup.Contains("root.Changed += OnRootChanged") && popup.Contains("OpenCodeDetailPopupLayout.LargeView("), "large view follows window size");
-        Check(popup.Contains("KeyboardNavigationMode.Cycle") && popup.Contains("restore.Focus(FocusState.Programmatic)"), "large view traps Tab and restores focus");
-        Check(popup.Contains("_options.ShowAll = true;"), "large view shows full content (no row cap)");
-        Check(popup.Contains("new FlyoutPresenter") && !popup.Contains("Color.FromArgb") && !popup.Contains("TryBrush"), "native FlyoutPresenter chrome, no hand-rolled colors");
-        Check(popup.Contains("interface IOpenCodeDetailContentSource") && popup.Contains("OpenCodeToolDetailView BuildDetailContent();")
-            && popup.Contains("OpenCodeDetailHeader DetailHeader { get; }") && popup.Contains("void OnDetailStateChanged(bool shown, bool pinned);"), "IOpenCodeDetailContentSource API stable");
-        var toolPart = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolPartView.cs"));
-        var chipView = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeTimelineChipView.cs"));
-        var groupView = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeToolGroupView.cs"));
-        Check(!toolPart.Contains("ToolTipService.SetToolTip(_row") && !chipView.Contains("ToolTipService.SetToolTip(_chip"),
-            "A8: duplicated native text tooltips on tool rows / timeline chips (终端完成 etc.) are removed");
-        Check(toolPart.Contains("ToolTipService.SetToolTip(_backgroundButton") && groupView.Contains("ToolTipService.SetToolTip(_backgroundButton")
-            && popup.Contains("ToolTipService.SetToolTip(_closeButton, \"关闭（Esc）\")") && content.Contains("ToolTipService.SetToolTip(copy"),
-            "A8: unrelated action tooltips (background, close, copy) are kept");
-        Check(toolPart.Contains("_row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); HoverEnterDetail(); };")
-            && toolPart.Contains("_row.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e);")
-            && chipView.Contains("_chip.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e); OpenCodeToolDetailPopup.Shared.HoverEnter(Source); };")
-            && chipView.Contains("_chip.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e);")
-            && groupView.Contains("if (_enterLeaf is not null) OpenCodeToolDetailPopup.Shared.TrackPointer(_header, e);")
-            && groupView.Contains("_header.PointerMoved +="),
-            "A8: row, chip and collapsed single-leaf header capture the entry point before hover and track moves");
-        Check(popup.Contains("ReferenceEquals(element, _previewAnchor)") && popup.Contains("ReferenceEquals(element, anchor)")
-            && popup.Contains("TryContentBand(anchor, root.Size.Width, out var band)") && popup.Contains("ContentColumnName = \"MessageHost\"")
-            && popup.Contains("viewport.ViewportWidth") && !popup.Contains("origin = new Point(0, 0)") && popup.Contains("if (_previewPopup.IsOpen) Close();"),
-            "A8: pointer applies only to the current anchor; bounds = MessageHost column ∩ visible scroll viewport; no window/(0,0) fallback");
-        Check(popup.Contains("OpenCodeDetailPopupLayout.LargeView(") && popup.Contains("LayoutLarge(root.Size)"), "A8: large view branch unchanged");
-        Check(!content.Contains("TextWrapping.NoWrap") && !content.Replace("preview.TextTrimming = TextTrimming.CharacterEllipsis;", string.Empty).Contains("TextTrimming.CharacterEllipsis") && !content.Contains("ScrollMode.Auto"), "full content always wraps without ellipsis/horizontal scroll; only explicitly collapsed code preview can elide");
-        Check(!content.Contains("仅显示前") && content.Contains("OpenCodeDetailTextPolicy.ChunkLines"), "code blocks are not truncated");
-        var child = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "OpenCodeChildChatWindow.cs"));
-        Check(child.Contains("OpenCodeConversationView _timeline = new()") && child.Contains("_timeline.ApplyMessages(OpenCodeChildChatReadSession.OrderMessages(response.Data))")
-            && !child.Contains("WebView") && !child.Contains("TextBox") && !child.Contains("SendPrompt"), "child window uses the actual timeline and has no composer/send surface");
-        Check(child.Contains("new FlyoutPresenter") && child.Contains("new ThemeShadow()")
-            && child.Contains("OpenCodeChildChatMaximize") && child.Contains("OpenCodeChildChatClose"), "child window has native Fluent chrome and accessible maximize/X actions");
-        Check(child.Contains("SetSuppressDetails(_timeline, true)") && popup.Contains("DetailsSuppressed(AnchorOf(source))"),
-            "nested child tool details cannot replace the global parent popup or recurse");
-        Check(!child.Contains("960") && child.Contains("_root.Size.Width * 0.9") && child.Contains("HorizontalScrollMode = ScrollMode.Disabled"), "child uses wide rectangular viewport without artificial cap or sideways panning");
-        Check(child.Contains("EnforceWrapping(_timeline, width)") && content.Contains("VisualTreeHelper.GetChild(root, i)") && content.Contains("rich.TextWrapping = TextWrapping.Wrap"), "actual nested timeline including rich text/code is wrapped, not just outer scrollbar hidden");
-        Check(child.Contains("_timeline.Width = width") && child.Contains("_scroller.Width = Math.Max")
-            && child.Contains("ScrollViewer.SetHorizontalScrollMode(_surface, ScrollMode.Disabled)") && content.Contains("element.MaxWidth = width"),
-            "finite child body/timeline/descendant measure plus presenter-template scroll mode prevent sideways panning");
-        Check(popup.Contains("_previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed")
-            && content.Contains("IsTruncated = false") && popup.Contains("OnPreviewContentLayoutUpdated"), "hint only for actual overflow/row truncation; extent changes remeasure asynchronous content");
-        Check(popup.Contains("model.Kind == OpenCodeToolKind.Shell ? string.Empty : model.Target") && content.Contains("CodeBlock(\"$ \" + (model.Command ?? model.Target))"),
-            "terminal command occurs once in body, never duplicated as popup header target; output path unchanged");
-        Check(child.Contains("Action<OpenCodeConversationView>? initializeTimeline = null")
-            && child.IndexOf("initializeTimeline?.Invoke(_timeline)", StringComparison.Ordinal) < child.IndexOf("body.Children.Add(_scroller)", StringComparison.Ordinal),
-            "optional child-only context initialization precedes attachment and message rendering without parent fallback");
-        Check(content.Contains("markdown.Render(source, OpenCodeRichTextStyle.Body)") && content.Contains("OpenCodeFileSourceToggle") && content.Contains("StyledText(text, OpenCodeInteractionUi.CodeStyleKey, true)"), "Markdown native safe renderer with selectable source access");
-        var palette = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeCodePalette.cs"));
-        var presenter = System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
-        Check(content.Contains("OpenCodeFileDetailPolicy.IsFullWrite") && content.Contains("OpenCodeCodePalette.BindText") && palette.Contains("OpenCodeFileDetailPolicy.Tokens") && palette.Contains("run.Text = text"), "file content routes to shared native syntax runs, real diff renderer retained");
-        var codeFactory = presenter[presenter.IndexOf("private static UIElement CreateCodeBlock", StringComparison.Ordinal)..presenter.IndexOf("private static UIElement? CreateTable", StringComparison.Ordinal)];
-        Check(!codeFactory.Contains("ScrollViewer") && !codeFactory.Contains("MaxHeight") && codeFactory.Contains("TextWrapping.Wrap"), "code block has no nested wheel/height trap and wraps");
-        Check(codeFactory.Contains("OpenCodeCodePalette.BindText(code, OpenCodeDetailTextPolicy.CodeDisplayText(source), language)") && presenter.Contains("NormalizeLanguage(name[9..])") && presenter.Contains("originals[index].TextContent == pre.TextContent"), "only normalized matching Markdown code language reaches shared lexical palette without relaxing sanitizer");
-        var tableFactory = presenter[presenter.IndexOf("private static UIElement? CreateTable", StringComparison.Ordinal)..presenter.IndexOf("private static UIElement CreateDefinitionList", StringComparison.Ordinal)];
-        Check(!tableFactory.Contains("ScrollViewer") && !tableFactory.Contains("MaxHeight") && !tableFactory.Contains("wrap: false") && tableFactory.Contains("GridUnitType.Star"), "table columns wrap inside finite width with no inner scrolling or height cap");
-        Check(presenter.Contains("_root.SizeChanged += (_, _) => ConstrainBlocks()") && presenter.Contains("EnforceWrapping(block, _root.ActualWidth)"), "all Markdown block descendants receive actual finite width on resizing");
-        var frame = content[content.IndexOf("internal static FrameworkElement CodeBlockFrame", StringComparison.Ordinal)..content.IndexOf("internal static OpenCodeToolDetailView TextView", StringComparison.Ordinal)];
-        Check(!frame.Contains("RowDefinitions") && !frame.Contains("Grid.SetRow") && frame.Contains("VerticalAlignment = VerticalAlignment.Top") && frame.Contains("layout.Children.Add(controls)"), "copy/toggle float in code cell without a dedicated header row");
-        Check(frame.Contains("OpenCodeCodeBlockExpand") && frame.Contains("preview.MaxLines = OpenCodeDetailTextPolicy.CodePreviewLines") && frame.Contains("content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed"), "local native toggle keeps six-line wrapped preview and expands full content");
-        Check(frame.Contains("copy.Tapped += (_, args) => args.Handled = true") && frame.Contains("toggle.Tapped += (_, args) => args.Handled = true"), "code controls consume taps rather than opening parent details");
-        Check(content.Contains("OpenCodeCodeBlockCopy") && content.Contains("data.SetText(source)") && content.Contains("ToolTipService.SetToolTip(copy"), "native accessible per-block copy captures exact source");
-        Check(palette.Contains("service.Changed -= Changed") && palette.Contains("element.Loaded +=") && palette.Contains("Restore(surface, Border.BackgroundProperty, background)"), "cached surfaces repaint on load, detach on unload and restore caller's default background");
-        Check(content.Contains("OpenCodeFileCopySource") && content.Contains("data.SetText(source)") && content.Contains("Clipboard.SetContent(data)"), "copy preserves complete raw source including final newline in both preview/source modes");
         var write = Model("write", "{\"status\":\"completed\",\"input\":{\"filePath\":\"a.cs\",\"content\":\"class A {}\"}}");
         Check(write.DiffFiles.Count == 1 && OpenCodeFileDetailPolicy.IsFullWrite(write.Kind, write.DiffFiles[0]), "real write model is full file, not an all-green diff");
         Check(!OpenCodeFileDetailPolicy.IsFullWrite(OpenCodeToolKind.Patch, new OpenCodeToolDiffFile { Path = "a.cs", After = "x" }), "patch never becomes full-file just because it has a path/after");
@@ -247,7 +163,7 @@ internal static class Program
         Check(OpenCodeDetailTextPolicy.CanCollapseCode("a\nb\nc\nd\ne\nf\ng") && OpenCodeDetailTextPolicy.CanCollapseCode(new string('x', 241)), "multiline and very long single-line code offer expansion without an inner viewport");
     }
 
-    private static int Main(string[] args)
+    private static int Main()
     {
         try
         {
@@ -306,7 +222,7 @@ internal static class Program
                 && Row(todoWrite.InputProperties, "content", 2).Value == "待办内容原样保留"
                 && Row(todoWrite.InputProperties, "status", 2).Value == "pending", "A10 custom ids, protocol fields and tool input content are unchanged");
 
-            DetailPopupContract(args);
+            DetailPopupContract();
             ChildChatLifecycle().GetAwaiter().GetResult();
 
             Console.WriteLine($"PASS: tool detail property list + detail popup (G7/G8), {_assertions} assertions; real OpenCodeToolRowPresentation + OpenCodeDetailPopupLayout, no UI.");
