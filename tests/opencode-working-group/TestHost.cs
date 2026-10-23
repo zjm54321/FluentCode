@@ -50,7 +50,7 @@ namespace Microsoft.UI.Xaml
         public void Load() { IsLoaded=true; Loaded?.Invoke(this,new()); }
         public void Unload() { IsLoaded=false; RaiseUnloaded(); }
         public void RaiseUnloaded() => Unloaded?.Invoke(this,new());
-        public void Enter()=>PointerEntered?.Invoke(this,new()); public void Exit()=>PointerExited?.Invoke(this,new());
+        public void Enter()=>PointerEntered?.Invoke(this,new()); public void Exit()=>PointerExited?.Invoke(this,new()); public void Cancel()=>PointerCanceled?.Invoke(this,new());
         public void Pointer() { PointerEntered?.Invoke(this,new()); PointerMoved?.Invoke(this,new()); PointerExited?.Invoke(this,new()); PointerCanceled?.Invoke(this,new()); }
     }
 }

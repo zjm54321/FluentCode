@@ -65,14 +65,9 @@ internal static class Program
         Check(DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"current group load restarts the retained timer");
         var expander=Walk(group.Element).OfType<Expander>().Single();
         var outline=(Border)expander.Parent!;
-        Check(outline.BorderThickness==new Thickness(1)&&outline.CornerRadius==new CornerRadius(8)&&outline.Style?.Key=="SubtleFillColorTransparentBrush|ControlStrokeColorDefaultBrush","PG3 one thin theme-stroked 8px outline uses a visible subtle stroke in both themes without a fill");
-        foreach(var key in new[]{"ExpanderHeaderBackground","ExpanderContentBackground","ExpanderContentBorderBrush","ExpanderHeaderBorderBrush","ExpanderHeaderBorderPointerOverBrush","ExpanderHeaderBorderPressedBrush","ExpanderChevronBackground","ExpanderChevronPointerOverBackground","ExpanderChevronPressedBackground","ExpanderChevronBorderBrush","ExpanderChevronBorderPointerOverBrush","ExpanderChevronBorderPressedBrush","ExpanderChevronForeground","ExpanderChevronPointerOverForeground","ExpanderChevronPressedForeground"})
+        Check(outline.BorderThickness==new Thickness(0)&&outline.CornerRadius==new CornerRadius(8)&&outline.Style?.Key=="SubtleFillColorTransparentBrush|","PG4 group has no outline or fill at rest; supersedes PG3 resting ring");
+        foreach(var key in new[]{"ExpanderHeaderBackground","ExpanderHeaderBackgroundPointerOver","ExpanderHeaderBackgroundPressed","ExpanderContentBackground","ExpanderContentBorderBrush","ExpanderHeaderBorderBrush","ExpanderHeaderBorderPointerOverBrush","ExpanderHeaderBorderPressedBrush","ExpanderChevronBackground","ExpanderChevronPointerOverBackground","ExpanderChevronPressedBackground","ExpanderChevronBorderBrush","ExpanderChevronBorderPointerOverBrush","ExpanderChevronBorderPressedBrush","ExpanderChevronForeground","ExpanderChevronPointerOverForeground","ExpanderChevronPressedForeground"})
             Check(expander.Resources[key] is Microsoft.UI.Xaml.Media.SolidColorBrush {Color:Microsoft.UI.Colors.Transparent},"PG1 transparent native chrome: "+key);
-        foreach(var key in new[]{"ExpanderHeaderBackgroundPointerOver","ExpanderHeaderBackgroundPressed"})
-        {
-            Check(expander.Resources[key] is Microsoft.UI.Xaml.Media.SolidColorBrush {ThemeKey:"SubtleFillColorSecondary"},"PG3 native pointer fill follows the slight theme resource: "+key);
-            Check(((ResourceDictionary)expander.Resources.ThemeDictionaries["HighContrast"])[key] is Microsoft.UI.Xaml.Media.SolidColorBrush {ThemeKey:"SystemColorButtonFaceColor"},"PG3 high contrast uses the system brush color instead of WinUI diagnostic color: "+key);
-        }
         Check(expander.Background is {Color:Microsoft.UI.Colors.Transparent}&&expander.BorderThickness==new Thickness(0),"PG1 expanded content explicitly stays transparent and borderless");
         Check((double)expander.Resources["ExpanderChevronButtonSize"]==0&&(double)expander.Resources["ExpanderChevronGlyphSize"]==0&&(Thickness)expander.Resources["ExpanderChevronMargin"]==new Thickness(0),"PG1 removes native boxed chevron and its trailing slot");
         Check((Thickness)expander.Resources["ExpanderHeaderPadding"]==new Thickness(12,0,8,0)&&expander.MinHeight==32,"PG1 restores compact header and smaller old left inset");
@@ -80,6 +75,18 @@ internal static class Program
         Check(chevron.Opacity==0&&chevron.Margin==new Thickness(4,0,0,0)&&Grid.GetColumn(chevron)==1&&chevron.Parent is Grid {HorizontalAlignment:HorizontalAlignment.Left},"PG1 old plain 10px chevron sits directly after left-aligned title, hidden without hover");
         group.Element.Enter();Check(chevron.Opacity==1,"PG1 group hover reveals old chevron");group.Element.Exit();Check(chevron.Opacity==0,"PG1 pointer exit hides chevron without changing layout");
         expander.Focus(FocusState.Keyboard);Check(chevron.Opacity==1,"PG1 keyboard focus reveals old chevron");expander.Blur();Check(chevron.Opacity==0,"PG1 leaving keyboard focus hides old chevron");
+        void CheckGroupHighlight(bool highlighted,string state) => Check(outline.BorderThickness==new Thickness(0)
+            && outline.Style?.Key==(highlighted?"SubtleFillColorSecondaryBrush|":"SubtleFillColorTransparentBrush|"),"PG4 "+state+": subtle theme fill only during hover/keyboard focus; no outline");
+        CheckGroupHighlight(false,"rest");
+        group.Element.Enter();CheckGroupHighlight(true,"pointer entered");
+        group.Element.Exit();CheckGroupHighlight(false,"pointer exited");
+        group.Element.Enter();group.Element.Cancel();CheckGroupHighlight(false,"pointer cancelled");
+        expander.Focus(FocusState.Keyboard);CheckGroupHighlight(true,"keyboard focused");
+        group.Element.Enter();group.Element.Exit();CheckGroupHighlight(true,"pointer exits while keyboard focus remains");
+        expander.Blur();CheckGroupHighlight(false,"keyboard focus left");
+        expander.Focus(FocusState.Pointer);CheckGroupHighlight(false,"pointer focus alone after exit");expander.Blur();
+        group.Element.Enter();expander.Focus(FocusState.Keyboard);expander.Blur();CheckGroupHighlight(true,"focus leaves while pointer remains");
+        group.Element.Exit();CheckGroupHighlight(false,"all interaction left");
         var stableAnchor=group.DetailAnchor;
         expander.IsExpanded=false;
         Check(group.IsExpanded&&expander.IsExpanded&&toggles==0,"W1 native Expander cannot fold a running turn");

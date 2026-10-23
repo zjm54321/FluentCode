@@ -4,7 +4,6 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -156,10 +155,8 @@ internal sealed class OpenCodeToolGroupVisual
             BorderThickness = new Thickness(0),
         };
         ApplyGroupChrome();
-        _outline = new Border { Child = _expander, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8) };
-        // CardStroke is translucent black even in Dark and disappears over dark Mica.
-        // ControlStroke uses a subtle light stroke in Dark (and a dark one in Light).
-        OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush", "ControlStrokeColorDefaultBrush"));
+        _outline = new Border { Child = _expander, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8) };
+        OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
         AutomationProperties.SetAutomationId(_expander, "OpenCodeToolGroup." + groupId);
         _expander.Expanding += (_, _) => ExpansionChanged(true);
         _expander.Collapsed += (_, _) => ExpansionChanged(false);
@@ -180,25 +177,15 @@ internal sealed class OpenCodeToolGroupVisual
         var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         foreach (var key in new[]
         {
-            "ExpanderHeaderBackground",
+            "ExpanderHeaderBackground", "ExpanderHeaderBackgroundPointerOver", "ExpanderHeaderBackgroundPressed",
             "ExpanderContentBackground", "ExpanderContentBorderBrush", "ExpanderHeaderBorderBrush",
             "ExpanderHeaderBorderPointerOverBrush", "ExpanderHeaderBorderPressedBrush", "ExpanderHeaderDisabledBorderBrush",
             "ExpanderChevronBackground", "ExpanderChevronPointerOverBackground", "ExpanderChevronPressedBackground",
             "ExpanderChevronBorderBrush", "ExpanderChevronBorderPointerOverBrush", "ExpanderChevronBorderPressedBrush",
             "ExpanderChevronForeground", "ExpanderChevronPointerOverForeground", "ExpanderChevronPressedForeground",
         }) _expander.Resources[key] = transparent;
-        // PG3: only the native header's pointer states get a slight fill; never the content/outline.
-        // Retain a ThemeResource expression on the brush so Light/Dark/High Contrast changes follow WinUI.
-        var hover = XamlReader.Load("<SolidColorBrush xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Color=\"{ThemeResource SubtleFillColorSecondary}\"/>");
-        _expander.Resources["ExpanderHeaderBackgroundPointerOver"] = hover;
-        _expander.Resources["ExpanderHeaderBackgroundPressed"] = hover;
-        // WinUI's raw SubtleFillColorSecondary color is a diagnostic red in High Contrast;
-        // its brush instead maps to ButtonFace, so mirror that mapping for the scoped keys.
-        _expander.Resources.ThemeDictionaries["HighContrast"] = XamlReader.Load(
-            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
-            "<SolidColorBrush x:Key=\"ExpanderHeaderBackgroundPointerOver\" Color=\"{ThemeResource SystemColorButtonFaceColor}\"/>" +
-            "<SolidColorBrush x:Key=\"ExpanderHeaderBackgroundPressed\" Color=\"{ThemeResource SystemColorButtonFaceColor}\"/>" +
-            "</ResourceDictionary>");
+        // PG4: the surrounding group owns the subtle hover/focus fill, without a resting ring.
+        // Keep the native header transparent to avoid stacking two hover fills.
         foreach (var key in new[]
         {
             "ExpanderHeaderBorderThickness", "ExpanderContentDownBorderThickness", "ExpanderContentUpBorderThickness",
@@ -212,7 +199,13 @@ internal sealed class OpenCodeToolGroupVisual
     }
 
     private void UpdateChevronAffordance()
-        => _chevron.Opacity = _pointerOver || _focusVisible ? 1 : 0;
+    {
+        var highlighted = _pointerOver || _focusVisible;
+        _chevron.Opacity = highlighted ? 1 : 0;
+        // Brush ThemeResource handles Light/Dark/High Contrast; no outline in any state.
+        OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border(
+            highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
+    }
 
     internal FrameworkElement Element => _root;
     // The timeline asks for this before BindSingleLeaf. Keep the anchor stable while the same
