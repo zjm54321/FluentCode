@@ -5,7 +5,7 @@ using AIFrontend.Services.OpenCode;
 
 namespace AIFrontend.Pages.OpenCode;
 
-internal enum OpenCodeModelBrand { Neutral, Gemini, Claude, OpenAI }
+internal enum OpenCodeModelBrand { Neutral, Gemini, Claude, OpenAI, Grok, DeepSeek, GLM, Kimi, Qwen }
 
 // Display transformations only: IDs remain opaque, including variant casing and spelling.
 internal static class OpenCodeModelPresentation
@@ -32,6 +32,11 @@ internal static class OpenCodeModelPresentation
         if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])gemini(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.Gemini;
         if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])claude(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.Claude;
         if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])(?:gpt(?:$|[\s/.:_-]|\d)|chatgpt(?:$|[\s/.:_-])|o[134](?:$|[\s/.:_-]))", options)) return OpenCodeModelBrand.OpenAI;
+        if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])grok(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.Grok;
+        if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])deepseek(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.DeepSeek;
+        if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])(?:chat)?glm(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.GLM;
+        if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])(?:kimi|moonshot(?:ai)?)(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.Kimi;
+        if (Regex.IsMatch(text, @"(?:^|[\s/.:_-])(?:qwen|qwq|qvq)(?:$|[\s/.:_-]|\d)", options)) return OpenCodeModelBrand.Qwen;
         return OpenCodeModelBrand.Neutral;
     }
 
@@ -40,6 +45,11 @@ internal static class OpenCodeModelPresentation
         OpenCodeModelBrand.Gemini => "gemini.png",
         OpenCodeModelBrand.Claude => "claude.svg",
         OpenCodeModelBrand.OpenAI => dark ? "chatgpt.dark.svg" : "chatgpt.svg",
+        OpenCodeModelBrand.Grok => dark ? "grok.dark.svg" : "grok.svg",
+        OpenCodeModelBrand.DeepSeek => dark ? "deepseek.dark.svg" : "deepseek.svg",
+        OpenCodeModelBrand.GLM => dark ? "glm.dark.svg" : "glm.svg",
+        OpenCodeModelBrand.Kimi => dark ? "kimi.dark.png" : "kimi.png",
+        OpenCodeModelBrand.Qwen => "qwen.png",
         _ => null,
     };
 

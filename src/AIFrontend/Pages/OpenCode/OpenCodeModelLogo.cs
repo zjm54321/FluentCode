@@ -14,11 +14,13 @@ internal static class OpenCodeModelLogo
     {
         var brand = OpenCodeModelPresentation.Brand(modelId, name);
         var host = new Grid { Width = 20, Height = 20, VerticalAlignment = VerticalAlignment.Center };
-        var fallback = new TextBlock { Text = "AI", FontSize = 10, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        // Native symbol inherits the theme foreground, including asset-load failures.
+        var fallback = new FontIcon { Glyph = "\uE99A", FontSize = 18,
+            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         host.Children.Add(fallback);
         if (brand == OpenCodeModelBrand.Neutral) return host;
-        // OpenAI: the official monochrome mark with no background tile (white on dark themes).
+        // Official marks without background tiles; monochrome assets follow the actual theme.
         var image = new Image { Width = 20, Height = 20, Stretch = Stretch.Uniform };
         host.Children.Insert(0, image);
         long revision = 0;

@@ -1,6 +1,6 @@
 # 品牌图标资源：官方出处、许可证与商标归属
 
-本文件记录 `src/AIFrontend/Assets/Brands/` 下三个 provider 的官方品牌静态资源来源、
+本文件记录 `src/AIFrontend/Assets/Brands/` 下八个模型家族的官方品牌静态资源来源、
 抓取时间与 SHA-256，并声明商标归属。
 
 > 抓取时间：2026-10-06（本轮）。抓取方式：对下列官方 HTTPS 地址做静态 GET，仅保存响应字节，
@@ -61,9 +61,48 @@
 - 代码接入点：`src/AIFrontend/Pages/Web/ProviderBrandIcons.cs`（16 DIP；SVG/PNG 自适应；
   ChatGPT 按 `ActualTheme` 选浅/深变体）。
 
-## 5. OpenCode 模型选择器复用（2026-10-20）
+## 5. OpenCode 模型图标（2026-10-23 更新）
 
-- `src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs` 复用上述原有官方资源，不下载新图片、不改写品牌几何。
-- Claude 使用官方橙色 SVG，Gemini 使用官方多色透明 PNG；OpenAI 家族使用官方白色 ChatGPT 几何（`chatgpt.dark.svg`），置于 `#10A37F` 绿色圆角产品底片上。底片仅为客户端呈现，不宣称它是新的官方 logo 文件。
-- 图像按 20 DIP 排版（绿色底片内的白色图像 16 DIP）；SVG 保持矢量，PNG 使用现有 512px 原图。图像通过本地流载入，不依赖 SVG CSS。未知模型显示中性 `AI`，不借用 provider 名称推断品牌。
+- `src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs` 按模型 ID / 显示名识别八个家族，包括网关后的家族名；不把某 provider 下所有未知模型都当成其品牌。
+- 所有图像按 20 DIP 排版，无背景底片。SVG 保持官方几何，仅提取独立图标及显式颜色以兼容 WinUI `SvgImageSource`；PNG 保持官方原始像素。
+- 单色标志按 `ActualTheme` 使用浅/深版本；未知模型及加载失败共用原生 Fluent Robot 字形（`SymbolThemeFontFamily`，U+E99A），前景随主题继承。
 - 资源由 `AIFrontend.csproj` 同时复制到 build 和 publish 输出；所有商标归属仍如上。
+
+以下新增资源均于 **2026-10-23** 用 `curl -L --fail` 从官方站点静态下载；内嵌 SVG / PNG 仅从响应中提取，不执行网页脚本。不采用第三方聚合站或重绘图标。
+
+## 6. Grok / xAI
+
+- 官方来源：`https://grok.com/images/favicon.svg`（由 `https://grok.com` 的 icon link 指向）。
+- `grok.official.svg` 保留完整官方响应，SHA-256：`c3db0dfaf760b702b8490c6cbefe07fd8bfe00db43cae6a0acccf768f44d6179`。
+- `grok.svg` / `grok.dark.svg`：提取官方两条主图标 path，`d` 逐字不变；去掉背景圆角底片、滤镜、HTML foreignObject 和依赖 mask 的内描边叠层；viewBox 收至 `56 56 400 400`。仅将填色设为黑 / 白。
+- 商标归属：Grok / xAI 标识属于 xAI。
+
+## 7. DeepSeek
+
+- 官方来源：`https://www.deepseek.com/` 页首品牌链接内第一枚 inline SVG。
+- `deepseek.official.svg` 保留该完整 SVG（含字标），SHA-256：`1a1d76b9af2773338c981b63fa930b1e04acda91cb03bc971e6e85cae3b1099b`。
+- `deepseek.svg` / `deepseek.dark.svg`：只提取鲸鱼图标所在 `<g>` 及其 clipPath，不取旁边字标，所有路径 `d` 逐字不变。viewBox 收至官方 clip rect 的 `0.163086 1.75 26.634 19.6`。
+- 官方样式变量 `--ds-color-brand-medium-reverse` 浅色为 `#4176e6`，深色为 `#fff`；渲染文件把 `currentColor` 替换为这些显式填色，无 CSS 依赖。
+- 商标归属：DeepSeek 标识属于杭州深度求索人工智能基础技术研究有限公司。
+
+## 8. GLM / 智谱 Z.ai
+
+- 官方来源：`https://z-cdn.chatglm.cn/z-ai/static/logo.svg`（由 `https://z.ai` 的 icon link 指向）。
+- `glm.official.svg` 保留完整官方响应，SHA-256：`07a45e8e35b0b631ed2c68cd1cb041f9721b1ceeb0bd0e34f1459b0304a741c7`。
+- `glm.svg` / `glm.dark.svg`：提取官方 `st23` 的两条 path 和一条 polygon，`d` / `points` 逐字不变；去掉背景底片和未使用 CSS。viewBox 收至 `5.7 7.09 18.6 15.82`，显式黑 / 白填色。
+- 商标归属：GLM / Z.ai / 智谱标识属于智谱。
+
+## 9. Kimi / Moonshot
+
+- 官方入口：`https://www.kimi.com/`，其官方样式表 `https://statics.moonshot.cn/kimi-web-seo/assets/BXFB7fl8.css`。
+- 资源为该 CSS 中 `.sidebar-header[data-v-65e8e23f]` 的 `--sidebar-logo` 与 `:root.dark .sidebar-header[data-v-65e8e23f]` 的同名变量，均为官方内嵌 `data:image/png;base64,...`；只做 Base64 解码，PNG 字节未修改。
+- `kimi.png`：112×112 RGBA，浅色主题黑色 K / 蓝点；SHA-256：`4ba96a6bd822227312f89ef65c383a5c77b699c18f36108926b55c5777369ae8`。
+- `kimi.dark.png`：112×112 RGBA，深色主题白色 K / 蓝点；SHA-256：`ed7d02590057505b3e10b548ec542bdd23aa65c33698a62d7b8d462ae000e77a`。
+- 两张均透明背景，无底片；原生官方浅/深色文件直接使用，不自行调色或重绘。
+- 商标归属：Kimi / Moonshot 标识属于月之暗面。
+
+## 10. Qwen / 通义千问
+
+- 官方来源：`https://img.alicdn.com/imgextra/i4/O1CN01OXv3EM1FN8t9W4P79_!!6000000000474-2-tps-80-80.png`（由 `https://qwen.ai` 的 icon link 指向）。
+- `qwen.png`：80×80 RGBA，透明背景，浅/深主题同一官方原始 PNG；SHA-256：`cd9390bc4209c319121d111f3a1f535b3c7dd909b8f860d41acc9744138d58df`。
+- 商标归属：Qwen / 通义千问标识属于阿里巴巴。

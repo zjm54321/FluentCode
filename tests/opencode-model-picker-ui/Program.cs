@@ -17,11 +17,28 @@ internal static class Program
             ("proxy/anthropic.claude-sonnet-4", OpenCodeModelBrand.Claude), ("Claude Opus 4.5", OpenCodeModelBrand.Claude),
             ("azure/gpt-5.2", OpenCodeModelBrand.OpenAI), ("openrouter/o3-mini", OpenCodeModelBrand.OpenAI),
             ("o4-mini", OpenCodeModelBrand.OpenAI), ("chatgpt-latest", OpenCodeModelBrand.OpenAI),
+            ("x-ai/grok-4", OpenCodeModelBrand.Grok), ("Grok 4 Fast", OpenCodeModelBrand.Grok),
+            ("deepseek/deepseek-chat", OpenCodeModelBrand.DeepSeek), ("DeepSeek R1", OpenCodeModelBrand.DeepSeek),
+            ("z-ai/glm-4.6", OpenCodeModelBrand.GLM), ("GLM-4.5-Air", OpenCodeModelBrand.GLM),
+            ("THUDM/chatglm3-6b", OpenCodeModelBrand.GLM), ("glm4", OpenCodeModelBrand.GLM),
+            ("moonshotai/kimi-k2", OpenCodeModelBrand.Kimi), ("moonshot-v1-128k", OpenCodeModelBrand.Kimi),
+            ("Kimi K2 Thinking", OpenCodeModelBrand.Kimi), ("qwen/qwen3-coder", OpenCodeModelBrand.Qwen),
+            ("QwQ-32B", OpenCodeModelBrand.Qwen), ("qvq-72b-preview", OpenCodeModelBrand.Qwen),
             ("anthropic/custom-model", OpenCodeModelBrand.Neutral), ("google/custom-model", OpenCodeModelBrand.Neutral),
             ("openai/custom-model", OpenCodeModelBrand.Neutral), ("notgpt-custom", OpenCodeModelBrand.Neutral),
-            ("claudette", OpenCodeModelBrand.Neutral), ("geminization", OpenCodeModelBrand.Neutral) })
+            ("claudette", OpenCodeModelBrand.Neutral), ("geminization", OpenCodeModelBrand.Neutral),
+            ("glmx", OpenCodeModelBrand.Neutral), ("kimichi", OpenCodeModelBrand.Neutral),
+            ("grokking", OpenCodeModelBrand.Neutral), ("deepseeker", OpenCodeModelBrand.Neutral),
+            ("qwench", OpenCodeModelBrand.Neutral), ("chatglmx", OpenCodeModelBrand.Neutral),
+            ("moonshotting", OpenCodeModelBrand.Neutral), ("z-ai/custom-model", OpenCodeModelBrand.Neutral) })
             Check(OpenCodeModelPresentation.Brand(sample.Item1, null) == sample.Item2, "explicit proxy family/unknown fallback: " + sample.Item1);
         Check(OpenCodeModelPresentation.Brand("opaque-id", "Claude Sonnet") == OpenCodeModelBrand.Claude, "friendly family name works behind opaque catalog ID");
+        foreach (var sample in new[] { ("Grok 4", OpenCodeModelBrand.Grok), ("DeepSeek Chat", OpenCodeModelBrand.DeepSeek),
+            ("GLM 4.6", OpenCodeModelBrand.GLM), ("Kimi K2", OpenCodeModelBrand.Kimi), ("Qwen3 Coder", OpenCodeModelBrand.Qwen) })
+            Check(OpenCodeModelPresentation.Brand("opaque-id", sample.Item1) == sample.Item2, "friendly family name: " + sample.Item1);
+        Check(OpenCodeModelPresentation.Brand(null, null) == OpenCodeModelBrand.Neutral, "missing model has default icon");
+        Check(OpenCodeModelPresentation.Asset(OpenCodeModelBrand.Neutral, false) is null
+            && OpenCodeModelPresentation.Asset(OpenCodeModelBrand.Neutral, true) is null, "unknown models never borrow a brand asset");
         foreach (var pair in new (string? Id, string Label)[] { (null, "默认"), ("low", "低"), ("medium", "中"), ("high", "高"),
             ("xhigh", "极高"), ("extra high", "极高"), ("extra_high", "极高"), ("extra-high", "极高"), ("max", "最高"), ("HIGH", "高"), ("Opaque/V2", "Opaque/V2") })
             Check(OpenCodeModelPresentation.VariantLabel(pair.Id) == pair.Label, "variant display-only mapping");
@@ -100,13 +117,29 @@ internal static class Program
         Check(blank.Contains("await SetBlankVariantAsync(basis, token, variantId)") && blank.Contains("var fresh = await client.ListModelsAsync(basis.Directory") && blank.Contains("VariantAvailable(model, variantId)"), "variant gesture rechecks fresh catalog");
         Check(blank.Contains("Model = basis.Model with { Variant = variantId }") && blank.Contains("choice.Variant is { } variant && !(offered.Variants?.Any"), "opaque ID commit and model-dialog fresh variant validation retained");
         var logo = Read("src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs");
-        Check(logo.Contains("Text = \"AI\"") && logo.Contains("host.ActualThemeChanged += Update") && logo.Contains("ticket != revision") && logo.Contains("AppContext.BaseDirectory"), "neutral fallback, theme updates and stale async-load fence");
-        foreach (var brand in new[] { OpenCodeModelBrand.Claude, OpenCodeModelBrand.Gemini, OpenCodeModelBrand.OpenAI })
+        Check(logo.Contains("new FontIcon") && logo.Contains("Glyph = \"\\uE99A\"") && logo.Contains("SymbolThemeFontFamily")
+            && !logo.Contains("Text = \"AI\"") && !logo.Contains("Foreground =")
+            && logo.Contains("host.ActualThemeChanged += Update") && logo.Contains("ticket != revision") && logo.Contains("AppContext.BaseDirectory"), "theme-inheriting Fluent robot fallback, theme updates and stale async-load fence");
+        Check(logo.Contains("if (brand == OpenCodeModelBrand.Neutral) return host;")
+            && logo.Contains("fallback.Visibility = Visibility.Visible"), "unknown and failed assets share the same default icon");
+        foreach (var brand in Enum.GetValues<OpenCodeModelBrand>().Where(b => b != OpenCodeModelBrand.Neutral))
             foreach (var dark in new[] { false, true })
             {
                 var path = Path.Combine(root, "src/AIFrontend/Assets/Brands", OpenCodeModelPresentation.Asset(brand, dark)!);
                 Check(File.Exists(path), "brand asset exists: " + path);
-                if (path.EndsWith(".svg")) Check(XDocument.Load(path).Root?.Name.LocalName == "svg", "valid SVG document");
+                if (path.EndsWith(".svg"))
+                {
+                    var svg = XDocument.Load(path);
+                    Check(svg.Root?.Name.LocalName == "svg", "valid SVG document");
+                    Check(!svg.Descendants().Any(e => e.Name.LocalName is "style" or "foreignObject"), "rendered SVG needs no unsupported CSS/HTML: " + path);
+                }
+                else
+                {
+                    var png = File.ReadAllBytes(path);
+                    int Size(int offset) => (png[offset] << 24) | (png[offset + 1] << 16) | (png[offset + 2] << 8) | png[offset + 3];
+                    Check(png.Take(8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })
+                        && Size(16) >= 64 && Size(20) >= 64, "official PNG at least 64px: " + path);
+                }
             }
         var project = XDocument.Parse(Read("src/AIFrontend/AIFrontend.csproj"));
         Check(project.Descendants("Content").Any(n => (string?)n.Attribute("Include") == @"Assets\Brands\**\*"
