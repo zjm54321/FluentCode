@@ -37,9 +37,10 @@ $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeChildSessionControl.cs"
 $sources += @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs", (Join-Path $PSScriptRoot 'NativeComboBox.TestHost.cs'))
 $card = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs")
 $childRender = [regex]::Match($card, '(?ms)^    internal void RenderReadOnly\(.*?^    \}')
+$modelRender = [regex]::Match($card, '(?ms)^    internal static void RenderModelButton\(.*?^    \}')
 if (!$childRender.Success) { throw 'Missing child ComboBox rendering method.' }
 $childPath = Join-Path $output 'ChildCardRender.cs'
-"using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; namespace AIFrontend.Pages.OpenCode; internal sealed partial class OpenCodeSessionControlCard {`n" + $childRender.Value + "`n}" | Set-Content -Encoding UTF8 $childPath
+"using System; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; namespace AIFrontend.Pages.OpenCode; internal sealed partial class OpenCodeSessionControlCard {`n" + $childRender.Value + "`n" + $modelRender.Value + "`n}" | Set-Content -Encoding UTF8 $childPath
 $sources += $childPath
 $assembly = Join-Path $output 'ModelPickerUiTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))

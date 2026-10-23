@@ -30,6 +30,7 @@ namespace Microsoft.UI.Xaml.Controls
         public object? SelectedItem { get => _selected; set { if (Equals(_selected, value)) return; _selected = value; SelectionChanged?.Invoke(this, EventArgs.Empty); } }
     }
     public class ComboBoxItem : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } }
+    public class Button : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } public bool IsEnabled { get; set; } }
     public enum Orientation { Horizontal }
     public class StackPanel : Microsoft.UI.Xaml.FrameworkElement { public Orientation Orientation { get; set; } public double Spacing { get; set; } public List<Microsoft.UI.Xaml.FrameworkElement> Children { get; } = new(); }
     public class FontIcon : Microsoft.UI.Xaml.FrameworkElement { public string Glyph { get; set; } = ""; public double FontSize { get; set; } public object? Foreground { get; set; } }
@@ -41,11 +42,11 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed record OpenCodeAgentPickerRow(string Id, string Name, string? Description, bool Selectable, string? Reason, string? Color = null);
     internal static class OpenCodeAgentIcons { internal static string Glyph(string id) => id; internal static string DisplayName(string name) => name; }
     internal static class OpenCodeAgentPresentation { internal static object? Color(string? color) => color; }
-    internal static class OpenCodeModelLogo { internal static Microsoft.UI.Xaml.FrameworkElement Label(string? id, string name) { _ = id; return new Microsoft.UI.Xaml.Controls.TextBlock { Text = name }; } }
+    internal static class OpenCodeModelLogo { internal static Microsoft.UI.Xaml.FrameworkElement Label(string? id, string name) { _ = id; return new Microsoft.UI.Xaml.Controls.TextBlock { Text = name }; } internal static Microsoft.UI.Xaml.FrameworkElement Create(string? id, string? name) => Label(id, name ?? ""); }
     internal sealed partial class OpenCodeSessionControlCard
     {
         internal OpenCodeNativeComboBox AgentButton { get; } = new();
-        internal OpenCodeNativeComboBox ModelButton { get; } = new();
+        internal Microsoft.UI.Xaml.Controls.Button ModelButton { get; } = new();
         internal OpenCodeNativeComboBox VariantButton { get; } = new();
         private readonly Microsoft.UI.Xaml.Controls.Border _chrome = new();
         private readonly object _editableRows = new();

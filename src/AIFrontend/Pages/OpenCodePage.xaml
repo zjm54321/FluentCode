@@ -689,7 +689,7 @@
                                                                         AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankAgent">
                                                                 </openCode:OpenCodeNativeComboBox>
-                                                                <openCode:OpenCodeNativeComboBox x:Name="BlankModelButton" Grid.Column="2"
+                                                                <DropDownButton x:Name="BlankModelButton" Grid.Column="2"
                                                                          Height="32" MinWidth="96" MaxWidth="260" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankModel" />

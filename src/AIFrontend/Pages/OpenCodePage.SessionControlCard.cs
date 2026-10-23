@@ -2,6 +2,7 @@ using System.Linq;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages;
 
@@ -102,7 +103,7 @@ public sealed partial class OpenCodePage
         if (ticket is not null) _ = RunClientActionAsync(ticket, variantOnly, anchor);
     }
 
-    private void BindNativePickerChoices(OpenCodeNativeComboBox agent, OpenCodeNativeComboBox model, OpenCodeNativeComboBox effort)
+    private void BindNativePickerChoices(OpenCodeNativeComboBox agent, Button model, OpenCodeNativeComboBox effort)
     {
         agent.ChoiceChanged += async key =>
         {
@@ -112,10 +113,7 @@ public sealed partial class OpenCodePage
             else _agentSelector.SelectUserAgent(id);
             QueueSessionControlCardRefresh();
         };
-        model.ChoiceChanged += key =>
-        {
-            if (key is OpenCodeModelChoiceKey choice) _ = SetNativePickerModelAsync(choice, false);
-        };
+        model.Click += ComposerModelButton_Click;
         effort.ChoiceChanged += key =>
         {
             var selected = _newSessionDraftActive ? _blankPreferences?.Model : _agentSelector.CurrentModel;
@@ -141,7 +139,7 @@ public sealed partial class OpenCodePage
         QueueSessionControlCardRefresh();
     }
 
-    private void RenderNativePickerChoices(OpenCodeNativeComboBox agent, OpenCodeNativeComboBox model,
+    private void RenderNativePickerChoices(OpenCodeNativeComboBox agent, Button model,
         OpenCodeNativeComboBox effort, bool enabled)
     {
         var blank = _newSessionDraftActive;
@@ -157,7 +155,7 @@ public sealed partial class OpenCodePage
         var currentModel = models.FirstOrDefault(m => m.Id == selected?.Id && m.ProviderId == selected?.ProviderId);
         var editable = enabled && owns && (!blank || !_blankPickerPending && !_newSessionCreatePending);
         agent.Render(OpenCodeNativeComboBox.Agents(rows), owns ? blank ? _blankPreferences?.Agent : _agentSelector.CurrentAgentId : null, editable);
-        model.Render(OpenCodeNativeComboBox.Models(models), selected is null ? null : new OpenCodeModelChoiceKey(selected.ProviderId!, selected.Id!, null), editable);
+        OpenCodeSessionControlCard.RenderModelButton(model, currentModel, editable);
         effort.Render(OpenCodeNativeComboBox.Efforts(currentModel), selected is null ? null : new OpenCodeEffortChoice(selected.Variant), editable && currentModel is not null);
     }
 }

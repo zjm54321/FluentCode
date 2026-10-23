@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
+using AIFrontend.Services.OpenCode;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -12,7 +13,7 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeSessionControlCard : Grid
 {
     internal OpenCodeNativeComboBox AgentButton { get; } = Entry("OpenCodeSidebarAgent", "选择智能体");
-    internal OpenCodeNativeComboBox ModelButton { get; } = Entry("OpenCodeSidebarModel", "选择模型");
+    internal Button ModelButton { get; } = ModelEntry();
     internal OpenCodeNativeComboBox VariantButton { get; } = Entry("OpenCodeSidebarVariant", "选择推理强度");
     private readonly Grid _editableRows = new() { RowSpacing = 4, ColumnSpacing = 4 };
     // Layout D bottom-left floating card: in-app acrylic, card stroke, 8 radius, raised with a system ThemeShadow.
@@ -66,8 +67,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
             : noChoices, value.Agent, false);
         var model = value.ModelName is { } name && value.Model is { } reference
             ? new AIFrontend.Services.OpenCode.OpenCodeModelInfo { Id = reference.Id, ProviderId = reference.ProviderId, Name = name } : null;
-        ModelButton.Render(model is null ? noChoices : new[] { OpenCodeNativeComboBox.Model(model) },
-            model is null ? null : new OpenCodeModelChoiceKey(model.ProviderId!, model.Id!, null), false);
+        RenderModelButton(ModelButton, model, false);
         var effort = new OpenCodeEffortChoice(value.Model?.Variant);
         VariantButton.Render(value.Effort is { } label ? new[] { OpenCodeNativeComboBox.Effort(value.Model?.Variant, label) } : noChoices, effort, false);
         Describe(AgentButton, "智能体：" + (value.Agent ?? "未知"), "子智能体会话仅供查看。");
@@ -82,6 +82,27 @@ internal sealed class OpenCodeSessionControlCard : Grid
         AutomationProperties.SetAutomationId(button, id);
         AutomationProperties.SetName(button, name);
         return button;
+    }
+
+    private static Button ModelEntry()
+    {
+        var button = new DropDownButton { HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 6, 4), MinWidth = 0, MinHeight = 32 };
+        AutomationProperties.SetAutomationId(button, "OpenCodeSidebarModel");
+        AutomationProperties.SetName(button, "选择模型");
+        return button;
+    }
+
+    internal static void RenderModelButton(Button button, OpenCodeModelInfo? model, bool enabled, bool expanded = true)
+    {
+        var identity = model?.ProviderId + "\t" + model?.Id + "\t" + model?.Name + "\t" + expanded;
+        if (button.Tag as string != identity)
+        {
+            button.Tag = identity;
+            button.Content = model is null ? new TextBlock { Text = "未知" }
+                : expanded ? OpenCodeModelLogo.Label(model.Id, model.Name!) : OpenCodeModelLogo.Create(model.Id, model.Name);
+        }
+        button.IsEnabled = enabled;
     }
 
     private static void Describe(Control button, string name, string scope, string? tooltip = null)

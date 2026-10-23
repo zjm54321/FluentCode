@@ -98,7 +98,7 @@ public sealed partial class OpenCodePage
     {
         if (!SessionControlCardCanEdit()) return;
         if (_newSessionDraftActive) BlankModelButton_Click(sender, e);
-        else OpenSessionControlModelPicker(variantOnly: false);
+        else OpenSessionControlModelPicker(variantOnly: false, anchor: sender as FrameworkElement);
     }
 
     private void ComposerEffortButton_Click(object sender, RoutedEventArgs e)

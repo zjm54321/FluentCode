@@ -178,6 +178,12 @@ internal static class Program
         Check(cardBinding.Contains("RunClientActionAsync(ticket, variantOnly, anchor)")
             && actions.Contains("variantOnly, anchor, selectedChoice)") && actions.Contains("sourceKey, anchor: anchor)"),
             "PK2 model/effort keep the invoking anchor across catalog awaits and disabling the button");
+        var toolbar = Read("src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs");
+        Check(cardBinding.Contains("model.Click += ComposerModelButton_Click")
+            && toolbar.Contains("OpenSessionControlModelPicker(variantOnly: false, anchor: sender as FrameworkElement)")
+            && blank.Contains("ChooseBlankModelAsync(basis, token, anchor: sender as FrameworkElement)"), "PK3c restored model buttons pass the invoking anchor through both guarded routes");
+        Check(dialog.Contains("search.KeyDown +=") && dialog.Contains("target.Focus(FocusState.Keyboard)")
+            && !dialog.Contains("ItemContainerStyle ="), "PK3c search arrows enter the native model ListView without custom selected-item styling");
         Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
             && cardBinding.Contains("_blankPreferences") && !cardBinding.Contains("GetSessionInfoAsync") && !cardBinding.Contains("ListModelsAsync"),
             "sidebar reads the same session/blank owners, never adds a second selection cache or data fetch");
@@ -191,10 +197,10 @@ internal static class Program
         var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
         var readOnly = card.Substring(card.IndexOf("internal void RenderReadOnly"), card.IndexOf("private static OpenCodeNativeComboBox Entry") - card.IndexOf("internal void RenderReadOnly"));
         Check(readOnly.Contains("_chrome.Child = _editableRows") && readOnly.Contains("AgentButton.Render(")
-            && readOnly.Contains("ModelButton.Render(") && readOnly.Contains("VariantButton.Render(")
-            && !readOnly.Contains("Visibility.Collapsed") && !card.Contains("_readOnlyRows"), "SA2b child preserves the same three native ComboBoxes and two-row layout");
+            && readOnly.Contains("RenderModelButton(ModelButton, model, false)") && readOnly.Contains("VariantButton.Render(")
+            && !readOnly.Contains("Visibility.Collapsed") && !card.Contains("_readOnlyRows"), "SA2b child preserves the same native selector controls and two-row layout");
         Check(readOnly.Contains("value.Agent, false)") && readOnly.Contains("ModelId") == false
-            && readOnly.Contains("null), false)") && readOnly.Contains("effort, false)") && readOnly.Contains("Array.Empty<OpenCodeNativeComboBox.Choice>()"),
+            && readOnly.Contains("RenderModelButton(ModelButton, model, false)") && readOnly.Contains("effort, false)") && readOnly.Contains("Array.Empty<OpenCodeNativeComboBox.Choice>()"),
             "SA2b all child selectors disabled; unknown fields seed no choice rather than a guessed value");
         Check(cardBinding.Contains("CurrentSessionInfo is { ParentId: not null, Id: { } childId } child") && cardBinding.Contains("childId == _selectedSessionId")
             && cardBinding.Contains("OpenCodeChildSessionControl.Project(child.Agent, child.Model, messages") && cardBinding.Contains("card.RenderReadOnly(projection)"),
@@ -264,17 +270,17 @@ internal static class Program
         var card = new OpenCodeSessionControlCard();
         var changes = 0;
         card.AgentButton.ChoiceChanged += _ => changes++;
-        card.ModelButton.ChoiceChanged += _ => changes++;
         card.VariantButton.ChoiceChanged += _ => changes++;
         card.RenderReadOnly(actual);
         Check(card.AgentButton.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem { Tag: OpenCodeNativeComboBox.Choice { Key: "oracle" } }
-            && card.ModelButton.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem { Tag: OpenCodeNativeComboBox.Choice { Key: OpenCodeModelChoiceKey { ModelId: "claude-last", ProviderId: "provider-b" } } }
+            && card.ModelButton.Tag is string modelIdentity && modelIdentity.Contains("provider-b\tclaude-last\tClaude Opus 5.5")
             && card.VariantButton.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem { Tag: OpenCodeNativeComboBox.Choice { Key: OpenCodeEffortChoice { Id: "extra_high" } } },
             "SA2b actual child RenderReadOnly seeds real child identity/model/opaque effort, not parent selection");
         Check(!card.AgentButton.IsEnabled && !card.ModelButton.IsEnabled && !card.VariantButton.IsEnabled && changes == 0,
             "SA2b actual child render disables all three existing controls without any commit");
         card.RenderReadOnly(unknown);
-        Check(new[] { card.AgentButton, card.ModelButton, card.VariantButton }.All(c => c.SelectedItem is null && !c.IsEnabled && c.PlaceholderText == "未知"),
-            "SA2b unknown child retains three disabled ComboBoxes with unknown placeholders");
+        Check(new[] { card.AgentButton, card.VariantButton }.All(c => c.SelectedItem is null && !c.IsEnabled && c.PlaceholderText == "未知")
+            && !card.ModelButton.IsEnabled && card.ModelButton.Content is Microsoft.UI.Xaml.Controls.TextBlock { Text: "未知" },
+            "SA2b unknown child retains three disabled native selectors with unknown placeholders");
     }
 }

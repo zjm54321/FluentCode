@@ -155,8 +155,9 @@ namespace AIFrontend.Pages
             Check(binding.Contains("SessionPaneToggleButton_Click(sender, e)") && binding.Contains("OpenSessionControlModelPicker(variantOnly: true)")
                 && binding.Contains("BlankStrengthButton_Click(sender, e)"), "drawer and existing independent strength routes preserved");
             Check(!binding.Contains("SendStopButton.IsEnabled") && !binding.Contains("ComposerQueueButton.IsEnabled"), "toolbar presentation never changes send/queue availability policy");
-            foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton" })
+            foreach (var name in new[] { "BlankAgentButton", "BlankStrengthButton" })
                 Check(Named(name).Name.LocalName == "OpenCodeNativeComboBox" && Attr(Named(name), "Click") is null, "native ComboBox control, not click-opened flyout: " + name);
+            Check(Named("BlankModelButton").Name.LocalName == "DropDownButton", "PK3c model restores anchored searchable native flyout");
             Check(Named("BlankProjectButton").Name.LocalName == "DropDownButton", "directory retains native dropdown");
             Check(Named("BlankProjectButton").Ancestors().Contains(Named("NewSessionHeader"))
                 && Named("BlankPreferencesHost").Descendants().Any(n => Attr(n, "Text") == "中开始新会话"), "directory sentence is under the wordmark, above composer");

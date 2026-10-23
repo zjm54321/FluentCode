@@ -70,6 +70,17 @@ internal static class OpenCodeModelPickerDialog
                 list.Items.Add(new ListViewItem { Content = "没有匹配的模型。", IsEnabled = false, IsTabStop = false });
         }
         search.TextChanged += (_, _) => { if (!state.IsClosed) Render(); };
+        search.KeyDown += (_, e) =>
+        {
+            if (e.Key != VirtualKey.Down && e.Key != VirtualKey.Up) return;
+            var rows = list.Items.OfType<ListViewItem>().Where(item => item.IsEnabled && item.Tag is OpenCodeModelPickerRow);
+            var target = list.SelectedItem as ListViewItem ?? (e.Key == VirtualKey.Down ? rows.FirstOrDefault() : rows.LastOrDefault());
+            if (target is null) return;
+            list.SelectedItem = target;
+            list.ScrollIntoView(target);
+            target.Focus(FocusState.Keyboard);
+            e.Handled = true; // Native ListView arrows/Enter handle the rest; no custom selection renderer.
+        };
         Render();
         try
         {
