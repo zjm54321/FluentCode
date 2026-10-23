@@ -93,6 +93,8 @@ public sealed class OpenCodeRichTextPresenter
     };
     private readonly OpenCodeImageRenderLifetime _renderLifetime = new();
     private readonly OpenCodeRichTextRenderGate _renderGate = new();
+    // Keep the originating surface policy across image-scope rebinds and Unloaded/Loaded rerenders.
+    private readonly bool _expandCodeBlocks = OpenCodeToolDetailContent.IsFullDetailBuild;
     private readonly List<Func<Task>> _pendingImageLoads = new();
     private string? _lastSource;
     private OpenCodeRichTextStyle _lastStyle;
@@ -128,6 +130,7 @@ public sealed class OpenCodeRichTextPresenter
     /// <param name="style">正文或思考样式。</param>
     public void Render(string? source, OpenCodeRichTextStyle style)
     {
+        using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(_expandCodeBlocks);
         var imageScope = OpenCodeImageContext.Find(_root);
         if (!_renderGate.ShouldRender(source, style, imageScope, _renderLifetime.IsCanceled)) return;
 

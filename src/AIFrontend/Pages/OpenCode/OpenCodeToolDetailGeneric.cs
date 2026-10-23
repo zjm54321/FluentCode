@@ -35,6 +35,7 @@ internal static partial class OpenCodeToolDetailBuiltins
 
     private static FrameworkElement ContentSwitch(string first, string second, Func<FrameworkElement> primary, Func<FrameworkElement> raw)
     {
+        var fullDetail = OpenCodeToolDetailContent.IsFullDetailBuild;
         var panel = new StackPanel { Spacing = 12 };
         var selector = new SelectorBar();
         var primaryItem = new SelectorBarItem { Text = first };
@@ -43,7 +44,11 @@ internal static partial class OpenCodeToolDetailBuiltins
         selector.Items.Add(rawItem);
         selector.SelectedItem = primaryItem;
         var content = new ContentControl { Content = primary(), HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        selector.SelectionChanged += (_, _) => content.Content = selector.SelectedItem == rawItem ? raw() : primary();
+        selector.SelectionChanged += (_, _) =>
+        {
+            using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(fullDetail);
+            content.Content = selector.SelectedItem == rawItem ? raw() : primary();
+        };
         SwallowTap(selector);
         panel.Children.Add(selector);
         panel.Children.Add(content);

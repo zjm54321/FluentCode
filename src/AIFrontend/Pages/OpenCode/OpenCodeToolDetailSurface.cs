@@ -14,6 +14,7 @@ namespace AIFrontend.Pages.OpenCode;
 internal static partial class OpenCodeToolDetailContent
 {
     [ThreadStatic] private static int _fullDetailBuild;
+    internal static bool IsFullDetailBuild => _fullDetailBuild > 0;
 
     private sealed class BuildScope : IDisposable
     {
