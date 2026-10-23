@@ -19,7 +19,7 @@ $page = Read-Xaml (Join-Path $src 'Pages/OpenCodePage.xaml')
 $main = Read-Xaml (Join-Path $src 'MainWindow.xaml')
 $window = [IO.File]::ReadAllText((Join-Path $src 'MainWindow.xaml.cs'))
 $root = $page.Doc.SelectSingleNode('//p:Grid[@x:Name="PageRoot"]', $page.Ns)
-Check ($root.Background -eq 'Transparent') 'BG1: page base exposes desktop acrylic'
+Check ($root.Background -eq 'Transparent') 'BG1: page base exposes the window material'
 Check ($page.Doc.DocumentElement.Background -eq 'Transparent') 'BG1: Page itself cannot supply an opaque base'
 $dock = $page.Doc.SelectSingleNode('//p:Style[@x:Key="OpenCodeDockSurfaceStyle"]/p:Setter[@Property="Background"]', $page.Ns)
 Check ($dock.Value -eq 'Transparent') 'BG1: full-height dock columns expose acrylic; cards own their surfaces'
@@ -28,14 +28,12 @@ foreach ($name in 'SessionLayoutRoot', 'TimelineGrid', 'HomePageHost', 'NewSessi
     Check ($null -ne $node -and (!$node.HasAttribute('Background') -or $node.Background -eq 'Transparent')) "BG1: $name has no opaque base"
 }
 $brush = $main.Doc.SelectSingleNode('//p:NavigationView/p:NavigationView.Resources/p:SolidColorBrush[@x:Key="NavigationViewContentBackground"]', $main.Ns)
-Check ($brush.Color -eq 'Transparent') 'BG1: native NavigationView content does not cover the backdrop'
-$border = $main.Doc.SelectSingleNode('//p:NavigationView/p:NavigationView.Resources/p:SolidColorBrush[@x:Key="NavigationViewContentGridBorderBrush"]', $main.Ns)
-Check ($border.Color -eq 'Transparent') 'BG1: NavigationView content-grid border is transparent'
-Check ($window -match '(?s)if \(DesktopAcrylicController.IsSupported\(\)\).*?else if \(MicaController.IsSupported\(\)\)') 'BG1: desktop acrylic preferred, Mica fallback'
-Check ($window.Contains('Kind = DesktopAcrylicKind.Default') -and $window.Contains('IsInputActive = true')) 'BG1: default desktop acrylic stays active when unfocused'
+Check ($null -eq $brush) 'BG1 (choice B): native NavigationView content layer is kept, so shell and content differ'
+Check ($window -match '(?s)if \(MicaController.IsSupported\(\)\).*?else if \(DesktopAcrylicController.IsSupported\(\)\)') 'BG1: Mica preferred, desktop acrylic fallback'
+Check ($window.Contains('Kind = MicaKind.BaseAlt') -and $window.Contains('IsInputActive = true')) 'BG1: Mica BaseAlt stays active when unfocused'
 Check ($window.Contains('SetSystemBackdropConfiguration(_backdropConfiguration)') -and $window.Contains('AddSystemBackdropTarget(this.As<ICompositionSupportsSystemBackdrop>())')) 'BG1: official controller target/configuration wiring'
 Check ($window.Contains('RootElement.ActualThemeChanged += RootElement_ActualThemeChanged') -and $window.Contains('_backdropConfiguration.Theme = RootElement.ActualTheme switch')) 'BG1: controller follows root actual theme'
-Check ($window.Contains('RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged') -and $window.Contains('_desktopAcrylicController?.Dispose()')) 'BG1: controller and theme subscription cleaned up on close'
+Check ($window.Contains('RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged') -and $window.Contains('_micaController?.Dispose()')) 'BG1: controller and theme subscription cleaned up on close'
 Check (([regex]::Matches($window, 'Closed \+= MainWindow_Closed;')).Count -eq 1) 'BG1: close cleanup registered once independently of title-bar support'
 $timeline = $page.Doc.SelectSingleNode('//p:Grid[@x:Name="TimelineGrid"]', $page.Ns)
 $scroll = $page.Doc.SelectSingleNode('//p:ScrollViewer[@x:Name="MessageScroll"]', $page.Ns)

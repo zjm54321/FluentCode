@@ -30,7 +30,7 @@ public sealed partial class MainWindow : Window
     private bool _pendingTitleBarRegionsUpdate;
     private bool _syncingNavSelection;
     private object? _subscribedPage;
-    private DesktopAcrylicController? _desktopAcrylicController;
+    private MicaController? _micaController;
     private SystemBackdropConfiguration? _backdropConfiguration;
 
     // 已解除“设置/加载”订阅、但 Local 运行事件订阅仍暂留（等待其 Local 执行真正终结）的旧 NormalPage 实例。
@@ -95,7 +95,7 @@ public sealed partial class MainWindow : Window
         Services.Appearance.AppFonts.RegisterRoot(RootElement);
 
         // BG1: use the real desktop acrylic, including while another window has focus.
-        TrySetDesktopAcrylicBackdrop();
+        TrySetMicaBackdrop();
         Closed += MainWindow_Closed;
 
         // 自定义标题栏：内容延伸进标题栏区域；保留系统原生 caption 按钮与默认拖拽区
@@ -126,24 +126,25 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// BG1: desktop acrylic behind the transparent shell/page roots; reading cards retain their theme brushes.
-    /// Keep the material active when unfocused; the controller still respects system accessibility/transparency settings.
-    /// Unsupported systems fall back to Mica, then the default window background.
+    /// BG1 (user choice B): Mica BaseAlt window material outside; the native NavigationView content layer
+    /// (LayerFillColorDefaultBrush) sits over it inside, so the shell and the content area differ as in stock WinUI.
+    /// The material stays active when the window is unfocused. Unsupported systems fall back to desktop acrylic,
+    /// then the default window background.
     /// </summary>
-    private void TrySetDesktopAcrylicBackdrop()
+    private void TrySetMicaBackdrop()
     {
-        if (DesktopAcrylicController.IsSupported())
+        if (MicaController.IsSupported())
         {
             _backdropConfiguration = new SystemBackdropConfiguration { IsInputActive = true };
             UpdateBackdropTheme();
             RootElement.ActualThemeChanged += RootElement_ActualThemeChanged;
-            _desktopAcrylicController = new DesktopAcrylicController { Kind = DesktopAcrylicKind.Default };
-            _desktopAcrylicController.SetSystemBackdropConfiguration(_backdropConfiguration);
-            _desktopAcrylicController.AddSystemBackdropTarget(this.As<ICompositionSupportsSystemBackdrop>());
+            _micaController = new MicaController { Kind = MicaKind.BaseAlt };
+            _micaController.SetSystemBackdropConfiguration(_backdropConfiguration);
+            _micaController.AddSystemBackdropTarget(this.As<ICompositionSupportsSystemBackdrop>());
         }
-        else if (MicaController.IsSupported())
+        else if (DesktopAcrylicController.IsSupported())
         {
-            SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
+            SystemBackdrop = new DesktopAcrylicBackdrop();
         }
     }
 
@@ -205,8 +206,8 @@ public sealed partial class MainWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged;
-        _desktopAcrylicController?.Dispose();
-        _desktopAcrylicController = null;
+        _micaController?.Dispose();
+        _micaController = null;
         _backdropConfiguration = null;
 
         // 窗口关闭：先保守置窗口不可见并解除可见性订阅（在途 view ACK fence 立即失败；页面 Unloaded 另做 Invalidate）。
