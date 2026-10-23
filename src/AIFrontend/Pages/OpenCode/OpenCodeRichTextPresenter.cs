@@ -92,6 +92,7 @@ public sealed class OpenCodeRichTextPresenter
         HorizontalAlignment = HorizontalAlignment.Stretch,
     };
     private readonly OpenCodeImageRenderLifetime _renderLifetime = new();
+    private readonly OpenCodeRichTextRenderGate _renderGate = new();
     private readonly List<Func<Task>> _pendingImageLoads = new();
     private string? _lastSource;
     private OpenCodeRichTextStyle _lastStyle;
@@ -110,7 +111,6 @@ public sealed class OpenCodeRichTextPresenter
         _root.Loaded += async (_, _) =>
         {
             ConstrainBlocks();
-            var scope = OpenCodeImageContext.Find(_root);
             if (_renderLifetime.IsCanceled) Render(_lastSource, _lastStyle);
             // Child Loaded can precede the presenter's own Loaded. Start those images
             // only now, with the original generation/token and all scope fences intact.
@@ -127,6 +127,9 @@ public sealed class OpenCodeRichTextPresenter
     /// <param name="style">正文或思考样式。</param>
     public void Render(string? source, OpenCodeRichTextStyle style)
     {
+        var imageScope = OpenCodeImageContext.Find(_root);
+        if (!_renderGate.ShouldRender(source, style, imageScope, _renderLifetime.IsCanceled)) return;
+
         _lastSource = source;
         _lastStyle = style;
         var (generation, renderToken) = _renderLifetime.Begin();

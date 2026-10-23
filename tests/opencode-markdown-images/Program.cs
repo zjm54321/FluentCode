@@ -48,6 +48,27 @@ internal static class Program
         Check(OpenCodeMarkdownImagePlan.Build("plain text").Single().Text == "plain text", "ordinary no-image renderer input unchanged");
     }
 
+    private static void RenderGate()
+    {
+        var gate = new OpenCodeRichTextRenderGate();
+        var context = new object();
+        var renders = 0;
+
+        bool Render(string? source, int style, object imageContext, bool generationCanceled = false)
+        {
+            if (!gate.ShouldRender(source, style, imageContext, generationCanceled)) return false;
+            renders++;
+            return true;
+        }
+
+        Check(Render("same", 0, context) && renders == 1, "first source/style pair renders");
+        Check(!Render("same", 0, context) && renders == 1, "unchanged source/style skips render");
+        Check(Render("same", 1, context) && renders == 2, "style change renders");
+        Check(Render("same", 1, new object()) && renders == 3, "image context change renders");
+        Check(Render("same", 1, context, generationCanceled: true) && renders == 4, "canceled generation renders after unload");
+        Check(!Render("same", 1, context) && renders == 4, "fresh generation then skips duplicate");
+    }
+
     private static async Task Scope()
     {
         var identity = Identity();
@@ -154,6 +175,7 @@ internal static class Program
         try
         {
             Plan();
+            RenderGate();
             await Scope();
             await RenderLifetime();
             Console.WriteLine($"PASS: Markdown AST/scoped image/render lifecycle, {_assertions} assertions; no UI/live requests.");

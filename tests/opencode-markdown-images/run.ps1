@@ -20,7 +20,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Wher
     'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"'
 }
-@('OpenCodeMarkdownImagePlan.cs', 'OpenCodeMarkdownImageScope.cs') | ForEach-Object {
+@('OpenCodeMarkdownImagePlan.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeRichTextRenderGate.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
