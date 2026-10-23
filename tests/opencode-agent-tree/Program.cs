@@ -20,7 +20,7 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         var view = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
-        Check(view.Contains("<ItemsRepeater x:Name=\"Tree\"") && view.Contains("_tree.ItemsSource = groups"), "native repeater presents expandable groups without a left chevron");
+        Check(view.Contains("<TreeView x:Name=\"Tree\"") && view.Contains("_tree.RootNodes.Add(group)") && !view.Contains("ItemsRepeater"), "NV2: native TreeView owns the hierarchy");
         Check(view.Contains("Text=\"子智能体\"") && view.Contains("AcrylicInAppFillColorDefaultBrush") && view.Contains("<ThemeShadow />")
             && view.Contains("Translation=\"0,0,16\"") && !view.Contains("MaxHeight=\"280\""), "D: floating 子智能体 card; tree fills the card height");
         Check(view.Contains("Style = OpenCodeInsightsTheme.TreeLabel(dimmed)") && view.Contains("agent.Children.Count == 0"), "idle configured groups use theme styling");
@@ -33,12 +33,16 @@ internal static class Program
         Check(view.Contains("Grid.SetColumn(model, 2)") && view.Contains("Grid.SetColumn(indicator, 0)")
             && view.Contains("model.HorizontalAlignment = HorizontalAlignment.Right") && !view.Contains("text.Children.Add(model)"),
             "instance status leads; small gray model occupies the trailing column");
-        var group = view[view.IndexOf("private FrameworkElement Group", StringComparison.Ordinal)..view.IndexOf("private Button InstanceButton", StringComparison.Ordinal)];
+        var group = view[view.IndexOf("private TreeViewNode Group", StringComparison.Ordinal)..view.IndexOf("private static TextBlock Caption", StringComparison.Ordinal)];
         Check(group.Contains("TextWrapping.Wrap") && group.Contains("TextTrimming.None") && group.Contains("MaxLines = 0")
             && !group.Contains("CharacterEllipsis"), "complete agent group names wrap without ellipsis or line cap");
-        Check(group.Contains("Grid.SetColumn(chevron, 3)") && group.Contains("Opacity = 0") && group.Contains("header.PointerEntered")
-            && group.Contains("header.PointerExited") && group.Contains("header.GotFocus"), "L6: right chevron shown on hover or keyboard focus only");
-        Check(view.Contains("SessionRequested?.Invoke(id)") && view.Contains("ShellRequested?.Invoke(shell.Id)"), "real session and shell navigation retained");
+        Check(view.Contains("x:Name=\"ChevronHover\" Grid.Column=\"2\" Opacity=\"0\"")
+            && view.Contains("Target=\"ChevronHover.Opacity\" Value=\"1\"") && view.Contains("x:Name=\"PointerOver\""), "L6: native chevron is trailing and shown only on hover");
+        Check(view.Contains("x:Name=\"ExpandCollapseChevron\"") && view.Contains("TreeViewItemTemplateSettings.CollapsedGlyphVisibility")
+            && view.Contains("TreeViewItemTemplateSettings.ExpandedGlyphVisibility") && !view.Contains("UpdateExpansion")
+            && !view.Contains("header.Click") && !view.Contains("InstanceButton"), "NV2: native TreeViewItem expansion, glyph states and selection replace handwritten tree interaction");
+        Check(view.Contains("AutomationProperties.SetName(item, name)") && view.Contains("NameTreeContent(row,"), "native node peers announce actual group and instance names");
+        Check(view.Contains("SessionRequested?.Invoke(instance.Id)") && view.Contains("ShellRequested?.Invoke(shell.Id)"), "real session and shell navigation retained");
         Check(view.Contains("Content=\"返回主智能体\"") && view.Contains("_card.Visibility = Visibility.Collapsed;")
             && view.Contains("_parentReturn.Visibility = Visibility.Visible;"), "SA1: return button replaces the whole child-session tree card");
         var page = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.AgentTree.cs"));

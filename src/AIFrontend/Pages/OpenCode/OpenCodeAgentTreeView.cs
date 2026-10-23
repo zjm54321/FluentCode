@@ -15,7 +15,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// </summary>
 internal sealed class OpenCodeAgentTreeView : UserControl
 {
-    private readonly ItemsRepeater _tree;
+    private readonly TreeView _tree;
     private readonly ToggleButton _all;
     private readonly FrameworkElement _card;
     private readonly Button _parentReturn;
@@ -24,9 +24,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     private readonly TextBlock _detailTitle;
     private readonly TextBlock _output;
     private readonly Dictionary<string, bool> _expanded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TreeViewNode> _groups = new(StringComparer.Ordinal);
     private IReadOnlyList<OpenCodeTreeAgent> _agents = Array.Empty<OpenCodeTreeAgent>();
     private IReadOnlyList<OpenCodeTreeShell> _shells = Array.Empty<OpenCodeTreeShell>();
-    private string? _selectedInstance;
     private static bool _showAll;
     internal event Action<string>? SessionRequested;
     internal event Action<string>? ShellRequested;
@@ -60,9 +60,102 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </Grid>
                 <TextBlock x:Name="Hint" Grid.Row="1" Margin="4,0,0,0" TextWrapping="Wrap"
                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                  <ItemsRepeater x:Name="Tree" AutomationProperties.Name="子智能体会话树" />
-                </ScrollViewer>
+                <TreeView x:Name="Tree" Grid.Row="2" SelectionMode="Single" CanDragItems="False"
+                          CanReorderItems="False" AllowDrop="False" AutomationProperties.Name="子智能体会话树">
+                  <TreeView.ItemTemplate>
+                    <DataTemplate><ContentPresenter Content="{Binding Content}" HorizontalAlignment="Stretch" /></DataTemplate>
+                  </TreeView.ItemTemplate>
+                  <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                      <Setter Property="MinHeight" Value="30" />
+                      <Setter Property="GlyphSize" Value="10" />
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <!-- Native TreeViewItem named parts and template settings retain native keyboard,
+                               ExpandCollapse automation, selection and chevron input. Only layout is changed. -->
+                          <ControlTemplate TargetType="TreeViewItem">
+                            <Grid x:Name="ContentPresenterGrid" Background="{TemplateBinding Background}"
+                                  BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                  CornerRadius="{ThemeResource ControlCornerRadius}" Margin="2,0" Padding="4,3">
+                              <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                  <VisualState x:Name="Normal" />
+                                  <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                      <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundPointerOver}" />
+                                      <Setter Target="ChevronHover.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                  </VisualState>
+                                  <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                      <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundPressed}" />
+                                      <Setter Target="ChevronHover.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                  </VisualState>
+                                  <VisualState x:Name="Selected">
+                                    <VisualState.Setters>
+                                      <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelected}" />
+                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                  </VisualState>
+                                  <VisualState x:Name="PointerOverSelected">
+                                    <VisualState.Setters>
+                                      <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedPointerOver}" />
+                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
+                                      <Setter Target="ChevronHover.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                  </VisualState>
+                                  <VisualState x:Name="PressedSelected">
+                                    <VisualState.Setters>
+                                      <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedPressed}" />
+                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
+                                      <Setter Target="ChevronHover.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                  </VisualState>
+                                  <VisualState x:Name="Disabled">
+                                    <VisualState.Setters><Setter Target="ContentPresenterGrid.Opacity" Value="0.5" /></VisualState.Setters>
+                                  </VisualState>
+                                  <VisualState x:Name="SelectedDisabled">
+                                    <VisualState.Setters>
+                                      <Setter Target="ContentPresenterGrid.Opacity" Value="0.5" />
+                                      <Setter Target="SelectionIndicator.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                  </VisualState>
+                                </VisualStateGroup>
+                              </VisualStateManager.VisualStateGroups>
+                              <Rectangle x:Name="SelectionIndicator" Width="3" Height="16" HorizontalAlignment="Left"
+                                         VerticalAlignment="Center" RadiusX="2" RadiusY="2" Opacity="0"
+                                         Fill="{ThemeResource TreeViewItemSelectionIndicatorForeground}" />
+                              <Grid x:Name="MultiSelectGrid" ColumnDefinitions="Auto,*,Auto"
+                                    Padding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.Indentation}">
+                                <CheckBox x:Name="MultiSelectCheckBox" Visibility="Collapsed" IsTabStop="False" AutomationProperties.AccessibilityView="Raw" />
+                                <ContentPresenter x:Name="ContentPresenter" Grid.Column="1" Margin="6,0,0,0"
+                                                  Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                  Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                                <Grid x:Name="ChevronHover" Grid.Column="2" Opacity="0">
+                                  <Grid x:Name="ExpandCollapseChevron" Width="20" Background="Transparent" Opacity="{TemplateBinding GlyphOpacity}">
+                                    <TextBlock x:Name="CollapsedGlyph" Text="{TemplateBinding CollapsedGlyph}"
+                                               Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.CollapsedGlyphVisibility}"
+                                               FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="{TemplateBinding GlyphSize}"
+                                               Foreground="{TemplateBinding GlyphBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+                                    <TextBlock x:Name="ExpandedGlyph" Text="{TemplateBinding ExpandedGlyph}"
+                                               Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.ExpandedGlyphVisibility}"
+                                               FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="{TemplateBinding GlyphSize}"
+                                               Foreground="{TemplateBinding GlyphBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+                                  </Grid>
+                                </Grid>
+                              </Grid>
+                            </Grid>
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                    </Style>
+                  </TreeView.ItemContainerStyle>
+                </TreeView>
                 <StackPanel x:Name="Details" Grid.Row="3" Visibility="Collapsed" Spacing="8" Margin="4,0,0,0">
                   <TextBlock x:Name="DetailTitle" TextWrapping="Wrap" IsTextSelectionEnabled="True"
                              Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -91,7 +184,13 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _card = (FrameworkElement)root.FindName("Card");
         _parentReturn = (Button)root.FindName("ParentReturn");
         _parentReturn.Click += (_, _) => ParentReturnRequested?.Invoke();
-        _tree = (ItemsRepeater)root.FindName("Tree");
+        _tree = (TreeView)root.FindName("Tree");
+        _tree.ItemInvoked += (_, e) =>
+        {
+            var content = e.InvokedItem is TreeViewNode node ? node.Content : e.InvokedItem;
+            if (content is FrameworkElement { Tag: OpenCodeTreeInstance instance }) SessionRequested?.Invoke(instance.Id);
+            if (content is FrameworkElement { Tag: OpenCodeTreeShell shell }) ShellRequested?.Invoke(shell.Id);
+        };
         _all = (ToggleButton)root.FindName("All");
         _all.IsChecked = _showAll;
         _all.Checked += (_, _) => { _showAll = true; RenderGroups(); };
@@ -110,11 +209,11 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     {
         _card.Visibility = Visibility.Visible;
         _parentReturn.Visibility = Visibility.Collapsed;
-        _tree.ItemsSource = null;
+        _tree.RootNodes.Clear();
         _agents = Array.Empty<OpenCodeTreeAgent>();
         _shells = Array.Empty<OpenCodeTreeShell>();
         _expanded.Clear();
-        _selectedInstance = null;
+        _groups.Clear();
         _details.Visibility = Visibility.Collapsed;
         _output.Text = string.Empty;
         _hint.Text = "正在读取…";
@@ -141,53 +240,43 @@ internal sealed class OpenCodeAgentTreeView : UserControl
 
     private void RenderGroups()
     {
-        var groups = new List<FrameworkElement>();
+        foreach (var (key, node) in _groups) _expanded[key] = node.IsExpanded;
+        _groups.Clear();
+        _tree.RootNodes.Clear();
         foreach (var agent in OpenCodeAgentTreeProjection.VisibleAgents(_agents, _showAll))
         {
             var kind = (agent.Mode == "subagent" ? "子智能体" : "智能体")
                 + (agent.Hidden ? " · 隐藏" : string.Empty);
             var name = OpenCodeAgentIcons.DisplayName(agent.Name);
             var children = OpenCodeAgentTreeProjection.VisibleInstances(agent.Children, _showAll);
-            var rows = children.Select(instance => InstanceButton(Row(instance.Title, instance.Model, instance.Status, instance), instance.Id)).ToArray();
+            var rows = children.Select(instance => Row(instance.Title, instance.Model, instance.Status, instance)).ToArray();
             var working = agent.Children.Count(c => c.Status == OpenCodeTreeStatus.Running);
-            groups.Add(Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Name),
+            Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Name),
                 OpenCodeAgentTreeProjection.CountLabel(working, agent.Children.Count, _showAll), rows,
-                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty)));
+                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty));
         }
         var shells = OpenCodeAgentTreeProjection.VisibleShells(_shells, _showAll);
         if (shells.Count > 0)
         {
-            if (groups.Count > 0) groups.Add((Border)XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Height=\"1\" Margin=\"4,8\" Background=\"{ThemeResource DividerStrokeColorDefaultBrush}\" />"));
             var rows = new List<FrameworkElement>();
             foreach (var shell in shells)
             {
                 var kind = shell.Kind switch { OpenCodeTreeShellKind.Background => "后台", OpenCodeTreeShellKind.Foreground => "前台", _ => string.Empty };
-                var row = Row(shell.Command, kind, shell.Status, shell);
-                var button = RowButton(row);
-                button.Click += (_, _) => ShellRequested?.Invoke(shell.Id);
-                rows.Add(button);
+                rows.Add(Row(shell.Command, kind, shell.Status, shell));
             }
-            groups.Add(Group("shell", "终端", "\uE756",
+            Group("shell", "终端", "\uE756",
                 OpenCodeAgentTreeProjection.CountLabel(_shells.Count(s => s.Status == OpenCodeTreeStatus.Running), _shells.Count, _showAll),
-                rows, false, "终端"));
+                rows, false, "终端");
         }
-        _tree.ItemsSource = groups;
     }
 
-    private FrameworkElement Group(string key, string name, string glyph, string count,
+    private TreeViewNode Group(string key, string name, string glyph, string count,
         IReadOnlyList<FrameworkElement> rows, bool dimmed, string tooltip)
     {
-        var group = new StackPanel();
-        var header = (Button)XamlReader.Load("""
-            <Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" MinHeight="32"
-                          Padding="8,4" BorderThickness="0" Background="Transparent" />
-            """);
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         content.Children.Add(new FontIcon { Glyph = glyph, FontSize = 14 });
         var label = new TextBlock { Text = name, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None, MaxLines = 0,
@@ -198,55 +287,32 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         var counter = Caption(count);
         Grid.SetColumn(counter, 2);
         content.Children.Add(counter);
-        var chevron = new FontIcon { FontSize = 10, Opacity = 0 };
-        Grid.SetColumn(chevron, 3);
-        content.Children.Add(chevron);
-        header.Content = content;
-        var children = new StackPanel();
-        foreach (var row in rows) children.Children.Add(row);
-        var open = !_expanded.TryGetValue(key, out var stored) || stored;
-        header.IsEnabled = rows.Count > 0;
-        void UpdateExpansion()
+        ToolTipService.SetToolTip(content, tooltip);
+        FrameworkElement header = content;
+        if (key == "shell" && _groups.Count > 0)
         {
-            children.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-            chevron.Glyph = open ? "\uE70D" : "\uE76C";
-            AutomationProperties.SetName(header, name + "，" + count + (open ? "，展开" : "，折叠"));
+            var divider = (Border)XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" BorderBrush=\"{ThemeResource DividerStrokeColorDefaultBrush}\" BorderThickness=\"0,1,0,0\" Padding=\"0,8,0,0\" Margin=\"0,8,0,0\" />");
+            divider.Child = content;
+            header = divider;
         }
-        UpdateExpansion();
-        header.Click += (_, _) => { open = !open; _expanded[key] = open; UpdateExpansion(); };
-        header.PointerEntered += (_, _) => chevron.Opacity = 1;
-        header.PointerExited += (_, _) => chevron.Opacity = 0;
-        header.GotFocus += (_, _) => chevron.Opacity = 1;
-        header.LostFocus += (_, _) => chevron.Opacity = 0;
-        ToolTipService.SetToolTip(header, tooltip);
-        group.Children.Add(header);
-        group.Children.Add(children);
+        NameTreeContent(header, name + "，" + count);
+        var group = new TreeViewNode { Content = header, IsExpanded = !_expanded.TryGetValue(key, out var open) || open };
+        foreach (var row in rows) group.Children.Add(new TreeViewNode { Content = row });
+        _groups.Add(key, group);
+        _tree.RootNodes.Add(group);
         return group;
     }
 
-    private Button InstanceButton(Grid row, string id)
+    private static void NameTreeContent(FrameworkElement content, string name)
     {
-        var button = RowButton(row);
-        if (_selectedInstance == id)
+        AutomationProperties.SetName(content, name);
+        // Node mode's native peer otherwise announces TreeViewNode.ToString(), not its UI content.
+        content.Loaded += (_, _) =>
         {
-            var selected = (Border)XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" BorderBrush=\"{ThemeResource AccentFillColorDefaultBrush}\" BorderThickness=\"3,0,0,0\" CornerRadius=\"2\" />");
-            button.Content = selected;
-            selected.Child = row;
-        }
-        button.Click += (_, _) => { _selectedInstance = id; RenderGroups(); SessionRequested?.Invoke(id); };
-        return button;
-    }
-
-    private static Button RowButton(Grid row)
-    {
-        var button = (Button)XamlReader.Load("""
-            <Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="28,4,8,4"
-                    MinHeight="30" BorderThickness="0" Background="Transparent" />
-            """);
-        button.Content = row;
-        AutomationProperties.SetName(button, AutomationProperties.GetName(row));
-        return button;
+            DependencyObject? parent = content;
+            while ((parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent)) is not null)
+                if (parent is TreeViewItem item) { AutomationProperties.SetName(item, name); break; }
+        };
     }
 
     private static TextBlock Caption(string text)
@@ -293,7 +359,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         indicator.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(indicator, 0);
         row.Children.Add(indicator);
-        AutomationProperties.SetName(row, title + "，" + subtitle + "，" + statusText);
+        NameTreeContent(row, title + "，" + subtitle + "，" + statusText);
         ToolTipService.SetToolTip(row, title + "\n" + subtitle + " · " + statusText);
         return row;
     }
