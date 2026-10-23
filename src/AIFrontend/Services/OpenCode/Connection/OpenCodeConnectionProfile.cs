@@ -77,9 +77,15 @@ public static class OpenCodeConnectionProfile
         ArgumentNullException.ThrowIfNull(current);
         if (!Enum.IsDefined(kind))
             throw new OpenCodeConfigurationException("连接类型非法。");
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            throw new OpenCodeConfigurationException("后端地址必须是绝对 http/https URL。");
-        OpenCodeClient.NormalizeBaseUri(baseUrl); // Reject embedded credentials, query and fragment before persistence.
+        try
+        {
+            OpenCodeClient.NormalizeBaseUri(baseUrl); // Reject embedded credentials, query and fragment before persistence.
+        }
+        catch (OpenCodeConfigurationException ex) when (
+            ex.Message is "BaseUrl 不是合法的绝对 URL。" or "BaseUrl 仅支持 http/https。")
+        {
+            throw new OpenCodeConfigurationException("后端地址必须是绝对 http/https URL。", ex);
+        }
         if (kind == OpenCodeConnectionKind.Wsl && !OpenCodeSettings.IsValidWslDistributionName(wslDistribution))
             throw new OpenCodeConfigurationException("WSL 连接必须记录合法的发行版名称。");
         if (mode == OpenCodeAuthenticationMode.Basic && !IsValidBasicUsername(username))
