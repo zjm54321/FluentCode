@@ -69,14 +69,15 @@ public sealed partial class OpenCodePage
         _sidebarApplying = true;
         try
         {
-            var wide = _sidebarLayout.IsWide;
             var hasSessionSurface = SessionLayoutRoot.Visibility == Visibility.Visible
                 && NewSessionHeader.Visibility != Visibility.Visible;
-            if (!hasSessionSurface) _sidebarLayout = _sidebarLayout.Dismiss(OpenCodeSidebarDrawer.Right);
+            if (!hasSessionSurface) _sidebarLayout = _sidebarLayout.Escape();
+            var surface = _sidebarLayout.ForSession(hasSessionSurface);
+            var wide = surface.Resident;
             // With no configured workspace the right host is hidden by existing page
             // policy; leave connection details accessible in the header in that case.
             var workspaceVisible = WorkspaceGrid.Visibility == Visibility.Visible;
-            var rightResident = !_sidebarLayout.ShowHeaderConnection && workspaceVisible;
+            var rightResident = wide && workspaceVisible;
             var mode = wide ? SplitViewDisplayMode.Inline : SplitViewDisplayMode.Overlay;
             var animate = _sidebarLayout.AnimateDrawers(_sidebarSettings?.AnimationsEnabled ?? false);
             ConfigureSidebarMotion(SessionPane, animate);
@@ -88,13 +89,13 @@ public sealed partial class OpenCodePage
                 : System.Math.Max(0, System.Math.Min(OpenCodeSidebarLayout.LeftWidth, PageRoot.ActualWidth - 48));
             InsightsPane.OpenPaneLength = wide ? OpenCodeSidebarLayout.RightWidth
                 : System.Math.Max(0, System.Math.Min(OpenCodeSidebarLayout.RightWidth, PageRoot.ActualWidth - 48));
-            SessionPane.IsPaneOpen = _sidebarLayout.LeftOpen;
-            InsightsPane.IsPaneOpen = _sidebarLayout.RightOpen;
-            SessionPaneToggleButton.Visibility = wide ? Visibility.Collapsed : Visibility.Visible;
-            SessionPaneToggleButton.IsChecked = !wide && _sidebarLayout.LeftOpen;
-            SessionInsightsButton.Visibility = _sidebarLayout.ShowHeaderOverview || !workspaceVisible
+            SessionPane.IsPaneOpen = surface.LeftOpen;
+            InsightsPane.IsPaneOpen = surface.RightOpen;
+            SessionPaneToggleButton.Visibility = surface.ShowDrawerButtons ? Visibility.Visible : Visibility.Collapsed;
+            SessionPaneToggleButton.IsChecked = surface.ShowDrawerButtons && surface.LeftOpen;
+            SessionInsightsButton.Visibility = hasSessionSurface && (surface.ShowDrawerButtons || !workspaceVisible)
                 ? Visibility.Visible : Visibility.Collapsed;
-            SessionInsightsButton.IsChecked = !wide && _sidebarLayout.RightOpen;
+            SessionInsightsButton.IsChecked = surface.ShowDrawerButtons && surface.RightOpen;
             InsightsPaneCloseButton.Visibility = wide ? Visibility.Collapsed : Visibility.Visible;
             RightSessionContent.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
             RightSessionDiagnostics.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;

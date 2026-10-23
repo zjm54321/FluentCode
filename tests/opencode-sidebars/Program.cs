@@ -21,6 +21,10 @@ internal static class Program
         Check(!narrow.Resize(1351).IsWide, "enter threshold exclusive below 1352");
         var wide = narrow.Resize(1352);
         Check(wide.IsWide && wide.LeftOpen && wide.RightOpen, "both resident at 1352 epx");
+        Check(wide.ForSession(true) == new OpenCodeSidebarSurface(true, true, true, false), "session owns wide resident panels");
+        Check(wide.ForSession(false) == default, "home and new-session have no residents or drawer entries at wide width");
+        Check(narrow.Toggle(OpenCodeSidebarDrawer.Left).ForSession(false) == default, "leaving session hides an open narrow drawer and its entry");
+        Check(narrow.ForSession(true).ShowDrawerButtons, "narrow session retains drawer entries");
         Check(wide.Resize(1304).IsWide, "leave boundary inclusive at 1304");
         Check(wide.Resize(1330).IsWide && !narrow.Resize(1330).IsWide, "hysteresis depends on previous mode");
         Check(!wide.Resize(1303.99).IsWide, "leave wide below 1304");

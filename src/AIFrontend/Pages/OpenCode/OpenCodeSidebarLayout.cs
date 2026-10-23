@@ -4,6 +4,8 @@ namespace AIFrontend.Pages.OpenCode;
 internal enum OpenCodeSidebarMode { Narrow, Wide }
 internal enum OpenCodeSidebarDrawer { None, Left, Right }
 
+internal readonly record struct OpenCodeSidebarSurface(bool Resident, bool LeftOpen, bool RightOpen, bool ShowDrawerButtons);
+
 /// <summary>Page-local effective pixels, not window pixels (the shell also consumes width).</summary>
 internal readonly record struct OpenCodeSidebarLayout(
     OpenCodeSidebarMode Mode = OpenCodeSidebarMode.Narrow,
@@ -24,6 +26,11 @@ internal readonly record struct OpenCodeSidebarLayout(
     internal bool ShowHeaderConnection => !IsWide;
     internal bool ShowHeaderOverview => !IsWide;
     internal bool AnimateDrawers(bool systemAnimationsEnabled) => !IsWide && systemAnimationsEnabled;
+
+    // Home and new-session pages use all available content width, even on a wide window.
+    internal OpenCodeSidebarSurface ForSession(bool hasSessionSurface)
+        => new(hasSessionSurface && IsWide, hasSessionSurface && LeftOpen,
+            hasSessionSurface && RightOpen, hasSessionSurface && !IsWide);
 
     internal OpenCodeSidebarLayout Resize(double pageWidth)
     {
