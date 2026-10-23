@@ -52,6 +52,7 @@ internal static class Program
         Check(OutputModel("decompress", "[Block b7 content — 80 item(s), full]\nContent (80800 chars) written to: /tmp/result.txt").Summary == "完整 · 80 项", "wire decompress count and full flag");
         Check(OpenCodeToolDetailBuiltinData.DecompressPath(OutputModel("decompress", "Content (80800 chars) written to: /tmp/result.txt")) == "/tmp/result.txt", "wire decompress literal saved file");
         Check(OutputModel("search_context", "Found 8 block(s) for query:\n\nb1 (T1) title [m1–m2 · 2 msgs]\n excerpt").Summary == "1 / 8 个块", "wire search actual shown and total");
+        Check(OutputModel("search_context", "Found 8 block(s) for query:\nfuture body format").Summary == "8 个块", "wire unknown displayed count is not zero");
         Check(OutputModel("prune", "Pruned 608 message(s) into 1 pruned section(s) (b1). Context is now ~183,764 tokens").Summary == "608 条 → b1", "wire real prune format");
         Check(OutputModel("task_revive", "sessionID: ses_child\nstate: running\nstatus: started\nstatus_uncertain: true").Summary == "已启动（未确认）", "wire acknowledgement distinct from uncertain runtime state");
         Check(OutputModel("task_message", "Message queued for ses_child (ses_child) without launching or resuming it.").Summary == "已接收", "wire exact queued acknowledgement");

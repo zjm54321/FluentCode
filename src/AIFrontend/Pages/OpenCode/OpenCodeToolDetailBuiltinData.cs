@@ -58,7 +58,7 @@ internal sealed record OpenCodeExecuteCall(string Tool, string? Status, string? 
 
 internal sealed record OpenCodeExecuteDetail(string? Code, IReadOnlyList<OpenCodeExecuteCall> Calls, string? Output);
 
-internal sealed record OpenCodeCompanionDetail(IReadOnlyDictionary<string, string> Values, string? State, string? SessionId);
+internal sealed record OpenCodeCompanionDetail(IReadOnlyDictionary<string, string> Values, string? State, string? SessionId, string? Label, bool Uncertain);
 
 /// <summary>
 /// TL1: pure (WinUI-free) readers for the built-in tool detail views. Every value comes from the real
@@ -85,7 +85,50 @@ internal static class OpenCodeToolDetailBuiltinData
         values.TryGetValue("state", out var state);
         var session = values.TryGetValue("sessionID", out var returned) ? returned
             : StringValue(Input(model), "sessionID") ?? StringValue(Input(model), "task_id");
-        return new(values, state, session);
+        var uncertain = state?.Contains("(unconfirmed)", StringComparison.Ordinal) == true
+            || values.TryGetValue("status_uncertain", out var uncertainty) && uncertainty == "true";
+        var known = state?.Replace("(unconfirmed)", "", StringComparison.Ordinal).Trim();
+        if (values.TryGetValue("status", out var status) && status is "accepted" or "started") known = status;
+        var queued = Regex.Match(output, @"^Message queued for (ses_[A-Za-z0-9_]+) \(\1\) without launching or resuming it\.$");
+        if (queued.Success) { known = "accepted"; session ??= queued.Groups[1].Value; }
+        var label = known switch { "running" => "运行中", "completed" => "已完成", "cancelled" => "已取消", "stopped" => "已停止", "waiting_for_user" => "等待你的确认", "accepted" => "已接收", "started" => "已启动", _ => known };
+        return new(values, state, session, label is null ? null : label + (uncertain ? "（未确认）" : ""), uncertain);
+    }
+
+    /// <summary>Only fixed plugin formats/typed parser results become row facts. Unrecognized prose yields no summary.</summary>
+    internal static string? RowSummary(OpenCodeToolRowModel model)
+    {
+        var output = model.OutputText ?? "";
+        if (Resolve(model) == OpenCodeBuiltinToolView.Companion) return Companion(model).Label;
+        if (model.ToolName == "acp_status")
+        {
+            var usage = OpenCodeContextStatusParser.Parse(output).Where(section => section.Raw is null)
+                .SelectMany(section => section.Metrics).FirstOrDefault(metric => metric.Label == "用量" && metric.Percent is not null);
+            return usage is null ? null : usage.Percent!.Value.ToString(CultureInfo.InvariantCulture) + "% · " + usage.Value.Replace(" tokens / ", " / ", StringComparison.Ordinal);
+        }
+        if (model.ToolName == "compress")
+        {
+            var saved = Regex.Match(output, @"~([\d,.]+[kKmM]?) tokens saved");
+            return saved.Success ? "节省约 " + OpenCodeContextStatusParser.Tokens(saved.Groups[1].Value) : null;
+        }
+        if (model.ToolName == "decompress")
+        {
+            var restored = Regex.Match(output, @"\[Block (b\d+) content — (\d+) item\(s\), (full|[^\]]+)\]");
+            return restored.Success ? (restored.Groups[3].Value == "full" ? "完整 · " : "") + restored.Groups[2].Value + " 项" : null;
+        }
+        if (model.ToolName == "search_context")
+        {
+            var total = Regex.Match(output, @"^Found (\d+) block\(s\)");
+            var shown = Regex.Matches(output, @"(?m)^b\d+ \(T\d+\) .+\[[^\r\n]+\]").Count;
+            return total.Success ? (shown > 0 || total.Groups[1].Value == "0" ? shown.ToString(CultureInfo.InvariantCulture) + " / " : "")
+                + total.Groups[1].Value + " 个块" : null;
+        }
+        if (model.ToolName == "prune")
+        {
+            var pruned = Regex.Match(output, @"^Pruned (\d+) message\(s\) into \d+ pruned section\(s\) \((b\d+(?:, b\d+)*)\)\.");
+            return pruned.Success ? pruned.Groups[1].Value + " 条 → " + pruned.Groups[2].Value : null;
+        }
+        return model.ToolName == "absorb" && output.Contains("not enabled", StringComparison.OrdinalIgnoreCase) ? "未启用" : null;
     }
 
     /// <summary>Hover-preview caps (the large view shows everything).</summary>

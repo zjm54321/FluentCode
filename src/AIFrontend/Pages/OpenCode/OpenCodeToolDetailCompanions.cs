@@ -26,16 +26,15 @@ internal static partial class OpenCodeToolDetailBuiltins
             if (property.Success && !values.ContainsKey(property.Groups[1].Value)) values.Add(property.Groups[1].Value, property.Groups[2].Value);
             else if (!string.IsNullOrWhiteSpace(line)) remainder.Add(line);
         }
-        values.TryGetValue("state", out var state);
-        var uncertain = state?.Contains("(unconfirmed)", StringComparison.Ordinal) == true;
+        var detail = OpenCodeToolDetailBuiltinData.Companion(model);
+        var state = detail.State;
+        var uncertain = detail.Uncertain;
         if (error.Success || uncertain)
             panel.Children.Add(new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Warning, Title = uncertain ? "状态未确认" : "子智能体操作提示", Message = error.Success ? error.Groups[1].Value.Trim() : state });
-        if (state is not null)
+        if (detail.Label is { } label)
         {
-            var known = state.Replace("(unconfirmed)", "", StringComparison.Ordinal).Trim();
-            var label = known switch { "running" => "运行中", "completed" => "已完成", "cancelled" => "已取消", "stopped" => "已停止", "waiting_for_user" => "等待你的确认", "accepted" => "已接收", "started" => "已启动", _ => known };
-            var capsule = new Border { Padding = new Thickness(8, 4, 8, 4), CornerRadius = new CornerRadius(8), HorizontalAlignment = HorizontalAlignment.Left, Child = OpenCodeToolDetailContent.Caption(label + (uncertain ? "（未确认）" : "")) };
-            OpenCodeToolTheme.Apply(capsule, OpenCodeToolTheme.Border(uncertain ? OpenCodeToolTheme.CautionBackground : known == "completed" ? OpenCodeToolTheme.SuccessBackground : OpenCodeToolTheme.SubtleSecondary));
+            var capsule = new Border { Padding = new Thickness(8, 4, 8, 4), CornerRadius = new CornerRadius(8), HorizontalAlignment = HorizontalAlignment.Left, Child = OpenCodeToolDetailContent.Caption(label) };
+            OpenCodeToolTheme.Apply(capsule, OpenCodeToolTheme.Border(uncertain ? OpenCodeToolTheme.CautionBackground : state == "completed" ? OpenCodeToolTheme.SuccessBackground : OpenCodeToolTheme.SubtleSecondary));
             panel.Children.Add(capsule);
         }
         foreach (var key in new[] { "reason", "message", "prompt" })
@@ -47,7 +46,7 @@ internal static partial class OpenCodeToolDetailBuiltins
             panel.Children.Add(Section("插件回复", OpenCodeToolDetailContent.PropertyList(OpenCodeToolRowPresentation.BuildProperties(document.RootElement))));
         }
         if (remainder.Count > 0) panel.Children.Add(RawExcerpt(string.Join('\n', remainder), options.Compact ? 6 : int.MaxValue));
-        var session = values.TryGetValue("sessionID", out var returnedSession) ? returnedSession : OpenCodeToolDetailBuiltinData.StringValue(input, "sessionID") ?? OpenCodeToolDetailBuiltinData.StringValue(input, "task_id");
+        var session = detail.SessionId;
         if (session is not null && OpenCodeSubagentPresentation.IsOpaqueSessionId(session) && options.OpenChildSession is { } open)
         {
             var link = new HyperlinkButton { Content = "打开子智能体会话" };

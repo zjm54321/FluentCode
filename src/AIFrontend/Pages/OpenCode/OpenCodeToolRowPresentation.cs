@@ -648,6 +648,7 @@ internal static class OpenCodeToolRowPresentation
         }
 
         // 异步（后台）调用：完成通知到达后原始行反映最终状态；尚未完成时如实标注“后台运行中”。
+        summary = OpenCodeToolDetailBuiltinData.RowSummary(builtinModel) ?? summary;
         string? asyncError = null;
         // Exact accepted-history association is presentation-only. Actual job metadata/outcomes win.
         var manualFallback = manualBackground && asyncCompletion is null && kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent
