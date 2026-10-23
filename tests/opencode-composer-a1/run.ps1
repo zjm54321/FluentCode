@@ -15,6 +15,10 @@ $env:DOTNET_NOLOGO = '1'
 $members = @()
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
+$toolbar = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs")
+$expanded = [regex]::Match($toolbar, '(?ms)^    internal static bool ExpandBlankComposerChoices\(.*?;')
+if (!$expanded.Success) { throw 'Missing composer choice width policy' }
+$members += $expanded.Value
 foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSelectable'))) {
     $pattern = if ($spec[1] -eq 'IsBlankAgentSelectable') { '(?ms)^    private static bool IsBlankAgentSelectable\(.*?;' }
         else { '(?ms)^    (?:private|internal) [^\r\n]*\b' + $spec[1] + '\(.*?^    \}' }

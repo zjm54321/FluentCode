@@ -13,6 +13,18 @@ public sealed partial class OpenCodePage
     private readonly OpenCodeComposerEffortGauge _composerEffortGauge = new();
     private readonly Ellipse _composerConnectedDot = new() { Width = 6, Height = 6 };
     private FrameworkElement? _composerModelLogo;
+    private bool _composerExpandedChoices;
+
+    // Use the actual editor width, not the sidebar threshold: a new-session page
+    // has no sidebars and can fit labels well before two resident panes would fit.
+    internal static bool ExpandBlankComposerChoices(bool newSession, double composerWidth)
+        => newSession && composerWidth >= 600;
+
+    private void UpdateComposerToolbarLayout()
+    {
+        if (_composerExpandedChoices != ExpandBlankComposerChoices(_newSessionDraftActive, ComposerInputLayout.ActualWidth))
+            RefreshComposerToolbar();
+    }
 
     private void InitializeComposerToolbar()
     {
@@ -24,6 +36,8 @@ public sealed partial class OpenCodePage
 
     private void RefreshComposerToolbar()
     {
+        var expanded = ExpandBlankComposerChoices(_newSessionDraftActive, ComposerInputLayout.ActualWidth);
+        _composerExpandedChoices = expanded;
         var enabled = SessionControlCardCanEdit();
         OpenCodeModelInfo? model;
         OpenCodeModelRef? selected;
@@ -51,26 +65,35 @@ public sealed partial class OpenCodePage
             model = selected is not null && TryCaptureInsightsBinding(out var binding)
                 ? _insights?.CurrentModelInfo(binding!, selected) : null;
         }
-        BlankAgentButton.Content = new FontIcon { Glyph = "\uE99A", FontSize = 18 };
+        BlankAgentButton.Content = expanded ? OpenCodeAgentPresentation.Name(agent ?? "不可用")
+            : new FontIcon { Glyph = "\uE99A", FontSize = 18 };
         OpenCodeAgentPresentation.Apply(BlankAgentButton, color);
+        if (BlankAgentButton.Content is TextBlock agentLabel) OpenCodeAgentPresentation.Apply(agentLabel, color);
         DescribeComposerIcon(BlankAgentButton, "选择智能体：" + (agent ?? "不可用"));
-        var key = model?.Id + "\n" + model?.Name + "\n" + selected?.Id;
+        var key = expanded + "\n" + model?.Id + "\n" + model?.Name + "\n" + selected?.Id;
         if (BlankModelButton.Tag as string != key || _composerModelLogo is null)
         {
             BlankModelButton.Tag = key;
-            _composerModelLogo = OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
+            _composerModelLogo = expanded
+                ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? selected?.Id ?? "不可用")
+                : OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
         }
         BlankModelButton.Content = _composerModelLogo;
         DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? selected?.Id ?? "不可用"));
         var ticks = OpenCodeComposerEffort.Ticks(model, selected?.Variant);
         _composerEffortGauge.Render(ticks);
-        BlankStrengthButton.Content = _composerEffortGauge;
+        BlankStrengthButton.Content = expanded ? OpenCodeModelPresentation.VariantLabel(selected?.Variant) : _composerEffortGauge;
         BlankStrengthButton.Visibility = ticks.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         DescribeComposerIcon(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));
         BlankAgentButton.IsEnabled = enabled;
         BlankModelButton.IsEnabled = enabled;
         BlankStrengthButton.IsEnabled = enabled && ticks.Count > 0;
         _composerEffortGauge.Dimmed = !BlankStrengthButton.IsEnabled; // Visual only: mirror the button's disabled state.
+        foreach (var button in new[] { BlankAgentButton, BlankModelButton, BlankStrengthButton })
+        {
+            button.Width = expanded ? double.NaN : 32;
+            button.Padding = expanded ? new Thickness(8, 0, 8, 0) : new Thickness(0);
+        }
     }
 
     private static void DescribeComposerIcon(Button button, string name)

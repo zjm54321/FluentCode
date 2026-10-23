@@ -42,6 +42,7 @@ public sealed partial class OpenCodePage
     private void UpdateComposerLayout()
     {
         UpdateConversationColumns();
+        UpdateComposerToolbarLayout();
         var measure = _composerMeasure;
         measure.FontFamily = Composer.FontFamily;
         measure.FontSize = Composer.FontSize;

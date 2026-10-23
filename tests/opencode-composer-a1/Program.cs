@@ -25,6 +25,8 @@ namespace AIFrontend.Pages
             }
             Check(!IsBlankAgentSelectable(new() { Mode = "subagent" }), "subagent-only absent");
             var page = new OpenCodePage();
+            Check(!ExpandBlankComposerChoices(true, 599.99) && ExpandBlankComposerChoices(true, 600), "new-session labels collapse only below 600 editor epx");
+            Check(!ExpandBlankComposerChoices(false, 960), "session never duplicates labeled sidebar choices");
             foreach (var literal in new[] { "#123456", "#aBcDeF", "#000000", "#FFFFFF" })
             {
                 page.ApplyBlankAgentColor(literal);
@@ -72,6 +74,8 @@ namespace AIFrontend.Pages
             Check(!layout.Contains("UseBottomToolbar") && !layout.Contains("Grid.SetRow(ComposerLeadingHost")
                 && layout.Contains("Composer.TextCompositionEnded +="), "fixed row placement is independent of empty/wrapped text; IME-safe measurement retained");
             var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
+            Check(binding.Contains("OpenCodeModelLogo.Label(") && binding.Contains("OpenCodeAgentPresentation.Apply(agentLabel, color)")
+                && binding.Contains("expanded ? OpenCodeModelPresentation.VariantLabel(selected?.Variant)"), "expanded choices retain colored agent name, model logo/name and translated effort");
             Check(binding.Contains("OpenCodeComposerEffort.Ticks(model, selected?.Variant)") && binding.Contains("_insights?.CurrentModelInfo")
                 && !binding.Contains("ListModelsAsync"), "gauge reuses existing fenced Model.Info metadata without duplicate reads");
             Check(binding.Contains("SessionPaneToggleButton_Click(sender, e)") && binding.Contains("OpenSessionControlModelPicker(variantOnly: true)")
