@@ -44,7 +44,9 @@ internal static class OpenCodeModelLogo
         }
         host.Loaded += Update;
         host.ActualThemeChanged += Update;
-        host.Unloaded += (_, _) => revision++;
+        // This host's brand never changes. Let its pending asset load finish even while detached:
+        // reparenting can deliver Unloaded after Loaded, with no subsequent load to retry it.
+        // Only a newer load/theme request supersedes the source, via revision above.
         return host;
     }
 

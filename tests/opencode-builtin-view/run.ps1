@@ -2,6 +2,7 @@
 # WinUI/Windows SDK reference assemblies (library, no run, no XAML compiler, no restore, no project build).
 # (2) Production-linked WinUI-free behaviour tests (real controller/ledger/menu session/dialog models; synthetic HTTP,
 # string editor and page stand-in).
+# (3) Production-linked model-logo lifecycle regression with deterministic XAML/storage stand-ins.
 # No GUI, service, model, network, restore, install or certificate-store action.
 param([string]$EvidenceRoot, [string]$SourceRoot)
 $ErrorActionPreference = 'Stop'
@@ -44,6 +45,7 @@ $winui = foreach ($name in @('OpenCodeComposerView.cs', 'OpenCodeComposerNativeD
 $appearance = @(Get-ChildItem "$repo/src/AIFrontend/Services/Appearance/*.cs") + @(Get-ChildItem "$repo/src/AIFrontend/Services/Configuration/*.cs" | Where-Object Name -NE 'DpapiSecretStore.cs') + @(Get-ChildItem "$repo/src/AIFrontend/Models/*.cs")
 $viewSources = @($services) + @($notifications) + @($headless) + @($winui) + @($appearance)
 $testSources = @($services) + @($notifications) + @($headless) + @(Get-Item (Join-Path "$repo/tests/opencode-builtin-view" 'Program.cs'))
+$logoSources = @($services) + @($notifications) + @($headless) + @(Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs", "$repo/tests/opencode-builtin-view/LogoLifecycle.cs")
 
 function Write-Rsp($path, $kind, $out, $refs, $srcs, $extra) {
     $a = @('/nologo', "/target:$kind", '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $out + '"')) + $extra
@@ -76,4 +78,16 @@ $status = 0
         Get-Content (Join-Path $output 'results.txt')
         if ($runExit -ne 0) { $status = 1 }
     }
+$logoDll = Join-Path $output 'ModelLogoLifecycleTests.dll'
+$logoRsp = Join-Path $output 'logo-compile.rsp'
+Write-Rsp $logoRsp 'exe' $logoDll $netRefs $logoSources @()
+Copy-Item $runtimeConfig (Join-Path $output 'ModelLogoLifecycleTests.runtimeconfig.json')
+& $dotnet exec $compiler "@$logoRsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'logo-compile.txt')
+if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $output 'logo-compile.txt'); $status = 1 }
+else {
+    & $dotnet $logoDll 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'logo-results.txt')
+    $logoExit = $LASTEXITCODE
+    Get-Content (Join-Path $output 'logo-results.txt')
+    if ($logoExit -ne 0) { $status = 1 }
+}
 exit $status
