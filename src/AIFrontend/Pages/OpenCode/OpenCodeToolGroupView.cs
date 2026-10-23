@@ -4,6 +4,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -73,9 +74,11 @@ internal sealed class OpenCodeToolGroupVisual
     private readonly Action<string, bool> _toggled;
     private readonly StackPanel _root = new();
     private readonly Expander _expander;
+    private readonly Border _outline;
     private readonly Border _itemsBorder;
     private readonly StackPanel _items = new();
     private readonly FontIcon _icon;
+    private readonly FontIcon _chevron;
     private readonly TextBlock _headerText;
     private readonly StackPanel _successTally, _errorTally;
     private readonly TextBlock _successText, _errorText;
@@ -87,6 +90,7 @@ internal sealed class OpenCodeToolGroupVisual
     private DispatcherQueueTimer? _timer;
     private bool _single, _inline, _headerVisible = true, _expanded, _updating, _loaded, _disposed;
     private bool? _groupContainer;
+    private bool _pointerOver, _focusVisible;
 
     internal OpenCodeToolGroupVisual(string groupId, Action<string, bool> onUserToggled)
     {
@@ -94,24 +98,36 @@ internal sealed class OpenCodeToolGroupVisual
         _toggled = onUserToggled;
         _icon = new FontIcon { Glyph = "\uE9F5", FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
         _headerText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
-        _headerText.FontSize = 13;
+        _headerText.FontSize = 12;
+        _headerText.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         _headerText.VerticalAlignment = VerticalAlignment.Center;
         _headerText.TextTrimming = TextTrimming.CharacterEllipsis;
         _working = new OpenCodeWorkingIndicator(groupId);
         _working.VisibilityChanged += UpdateTimer;
-        var iconCell = new Grid { Width = 24, VerticalAlignment = VerticalAlignment.Center };
+        _chevron = new FontIcon
+        {
+            Glyph = "\uE76C", FontSize = 10, Margin = new Thickness(4, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center, Opacity = 0, IsHitTestVisible = false,
+        };
+        OpenCodeToolTheme.Apply(_chevron, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
+        AutomationProperties.SetAccessibilityView(_chevron, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        var iconCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
         iconCell.Children.Add(_icon);
         iconCell.Children.Add(_working.Gear);
-        var title = new Grid();
+        var title = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
+        title.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        title.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         title.Children.Add(_headerText);
         title.Children.Add(_working.Label);
+        Grid.SetColumn(_chevron, 1);
+        title.Children.Add(_chevron);
         (_successTally, _successText) = CreateTally("\uE73E", OpenCodeToolTheme.Success, "OpenCodeToolGroup.Success." + groupId);
         (_errorTally, _errorText) = CreateTally("\uE711", OpenCodeToolTheme.Critical, "OpenCodeToolGroup.Errors." + groupId);
         var tally = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         tally.Children.Add(_successTally);
         tally.Children.Add(_errorTally);
-        var header = new Grid { ColumnSpacing = 8, MinHeight = 30, HorizontalAlignment = HorizontalAlignment.Stretch };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+        var header = new Grid { ColumnSpacing = 8, MinHeight = 32, HorizontalAlignment = HorizontalAlignment.Stretch };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(iconCell);
@@ -133,14 +149,54 @@ internal sealed class OpenCodeToolGroupVisual
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(0),
+            MinHeight = 32,
+            MinWidth = 0,
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderThickness = new Thickness(0),
         };
+        ApplyGroupChrome();
+        _outline = new Border { Child = _expander, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8) };
+        OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush", "CardStrokeColorDefaultBrush"));
         AutomationProperties.SetAutomationId(_expander, "OpenCodeToolGroup." + groupId);
         _expander.Expanding += (_, _) => ExpansionChanged(true);
         _expander.Collapsed += (_, _) => ExpansionChanged(false);
+        _root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };
+        _root.PointerExited += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
+        _root.PointerCanceled += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
+        _expander.GotFocus += (_, e) => { _focusVisible = e.OriginalSource is Control { FocusState: FocusState.Keyboard }; UpdateChevronAffordance(); };
+        _expander.LostFocus += (_, _) => { _focusVisible = false; UpdateChevronAffordance(); };
         _root.Loaded += (_, _) => { _loaded = true; RefreshWorking(); };
         _root.Unloaded += (_, _) => { _loaded = false; StopTimer(); };
         ConfigureContainer();
     }
+
+    private void ApplyGroupChrome()
+    {
+        // PG1: keep the native Expander's input, focus, automation and transitions, not its card chrome.
+        var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        foreach (var key in new[]
+        {
+            "ExpanderHeaderBackground", "ExpanderHeaderBackgroundPointerOver", "ExpanderHeaderBackgroundPressed",
+            "ExpanderContentBackground", "ExpanderContentBorderBrush", "ExpanderHeaderBorderBrush",
+            "ExpanderHeaderBorderPointerOverBrush", "ExpanderHeaderBorderPressedBrush", "ExpanderHeaderDisabledBorderBrush",
+            "ExpanderChevronBackground", "ExpanderChevronPointerOverBackground", "ExpanderChevronPressedBackground",
+            "ExpanderChevronBorderBrush", "ExpanderChevronBorderPointerOverBrush", "ExpanderChevronBorderPressedBrush",
+            "ExpanderChevronForeground", "ExpanderChevronPointerOverForeground", "ExpanderChevronPressedForeground",
+        }) _expander.Resources[key] = transparent;
+        foreach (var key in new[]
+        {
+            "ExpanderHeaderBorderThickness", "ExpanderContentDownBorderThickness", "ExpanderContentUpBorderThickness",
+            "ExpanderChevronBorderThickness", "ExpanderChevronMargin", "ExpanderContentPadding",
+        }) _expander.Resources[key] = new Thickness(0);
+        // The stock template fixes its chevron to the far right. Remove that slot with lightweight
+        // resources and use the old plain glyph beside the caption; the native header still toggles.
+        _expander.Resources["ExpanderChevronButtonSize"] = 0d;
+        _expander.Resources["ExpanderChevronGlyphSize"] = 0d;
+        _expander.Resources["ExpanderHeaderPadding"] = new Thickness(12, 0, 8, 0);
+    }
+
+    private void UpdateChevronAffordance()
+        => _chevron.Opacity = _pointerOver || _focusVisible ? 1 : 0;
 
     internal FrameworkElement Element => _root;
     // The timeline asks for this before BindSingleLeaf. Keep the anchor stable while the same
@@ -168,6 +224,7 @@ internal sealed class OpenCodeToolGroupVisual
         _summary = summary;
         _headerVisible = headerVisible;
         _expanded = summary.IsActive || expanded;
+        _chevron.Glyph = _expanded ? "\uE70D" : "\uE76C";
         _headerText.Text = summary.HeaderText;
         var textKey = OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(summary.IsActive, summary.ErrorCount, null);
         OpenCodeToolTheme.Apply(_headerText, textKey is null
@@ -191,7 +248,7 @@ internal sealed class OpenCodeToolGroupVisual
         {
             _expander.Content = null;
             _root.Children.Clear();
-            if (grouped) { _expander.Content = _itemsBorder; _root.Children.Add(_expander); }
+            if (grouped) { _expander.Content = _itemsBorder; _root.Children.Add(_outline); }
             else _root.Children.Add(_itemsBorder);
             _groupContainer = grouped;
         }
@@ -213,6 +270,7 @@ internal sealed class OpenCodeToolGroupVisual
             return;
         }
         _expanded = expanded;
+        _chevron.Glyph = expanded ? "\uE70D" : "\uE76C";
         ConfigureContainer();
         UpdateAutomation();
         _toggled(_groupId, expanded);
@@ -266,7 +324,8 @@ internal sealed class OpenCodeToolGroupVisual
     private static (StackPanel Panel, TextBlock Text) CreateTally(string glyph, string brushKey, string automationId)
     {
         var text = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
-        text.FontSize = 13;
+        text.FontSize = 12;
+        text.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         OpenCodeToolTheme.Apply(text, OpenCodeToolTheme.Text(brushKey, OpenCodeInteractionUi.CaptionStyleKey));
         var icon = new FontIcon { Glyph = glyph, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(brushKey));

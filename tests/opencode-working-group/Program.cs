@@ -58,6 +58,17 @@ internal static class Program
         LoadTree(group.Element);
         Check(clock.SubscriberCount==baseline+1&&DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"group reuses one loaded header timer and shared clock");
         var expander=Walk(group.Element).OfType<Expander>().Single();
+        var outline=(Border)expander.Parent!;
+        Check(outline.BorderThickness==new Thickness(1)&&outline.CornerRadius==new CornerRadius(8)&&outline.Style?.Key=="SubtleFillColorTransparentBrush|CardStrokeColorDefaultBrush","PG1 one thin theme-stroked 8px outline encloses the native group without a fill");
+        foreach(var key in new[]{"ExpanderHeaderBackground","ExpanderHeaderBackgroundPointerOver","ExpanderHeaderBackgroundPressed","ExpanderContentBackground","ExpanderContentBorderBrush","ExpanderHeaderBorderBrush","ExpanderHeaderBorderPointerOverBrush","ExpanderHeaderBorderPressedBrush","ExpanderChevronBackground","ExpanderChevronPointerOverBackground","ExpanderChevronPressedBackground","ExpanderChevronBorderBrush","ExpanderChevronBorderPointerOverBrush","ExpanderChevronBorderPressedBrush","ExpanderChevronForeground","ExpanderChevronPointerOverForeground","ExpanderChevronPressedForeground"})
+            Check(expander.Resources[key] is Microsoft.UI.Xaml.Media.SolidColorBrush {Color:Microsoft.UI.Colors.Transparent},"PG1 transparent native chrome: "+key);
+        Check(expander.Background is {Color:Microsoft.UI.Colors.Transparent}&&expander.BorderThickness==new Thickness(0),"PG1 expanded content explicitly stays transparent and borderless");
+        Check((double)expander.Resources["ExpanderChevronButtonSize"]==0&&(double)expander.Resources["ExpanderChevronGlyphSize"]==0&&(Thickness)expander.Resources["ExpanderChevronMargin"]==new Thickness(0),"PG1 removes native boxed chevron and its trailing slot");
+        Check((Thickness)expander.Resources["ExpanderHeaderPadding"]==new Thickness(12,0,8,0)&&expander.MinHeight==32,"PG1 restores compact header and smaller old left inset");
+        var chevron=Walk((FrameworkElement)expander.Header!).OfType<FontIcon>().Single(icon=>icon.FontSize==10);
+        Check(chevron.Opacity==0&&chevron.Margin==new Thickness(4,0,0,0)&&Grid.GetColumn(chevron)==1&&chevron.Parent is Grid {HorizontalAlignment:HorizontalAlignment.Left},"PG1 old plain 10px chevron sits directly after left-aligned title, hidden without hover");
+        group.Element.Enter();Check(chevron.Opacity==1,"PG1 group hover reveals old chevron");group.Element.Exit();Check(chevron.Opacity==0,"PG1 pointer exit hides chevron without changing layout");
+        expander.Focus(FocusState.Keyboard);Check(chevron.Opacity==1,"PG1 keyboard focus reveals old chevron");expander.Blur();Check(chevron.Opacity==0,"PG1 leaving keyboard focus hides old chevron");
         var stableAnchor=group.DetailAnchor;
         expander.IsExpanded=false;
         Check(group.IsExpanded&&expander.IsExpanded&&toggles==0,"W1 native Expander cannot fold a running turn");
@@ -71,10 +82,17 @@ internal static class Program
         group.Element.Visibility=Visibility.Collapsed;
         Check(clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"hidden group stops clock and cadence timer");
         group.Element.Visibility=Visibility.Visible;
-        group.Update(summary with {IsActive=false},false,true);
+        group.Update(summary with {IsActive=false,HeaderText="已处理 6 分 7 秒",SuccessCount=29,ErrorCount=3},false,true);
         Check(!group.IsExpanded&&!expander.IsExpanded&&clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"turn end folds group and stops animation and timer");
+        var caption=Walk((FrameworkElement)expander.Header!).OfType<TextBlock>().Single(text=>text.Text=="已处理 6 分 7 秒");
+        Check(caption.FontSize==12&&caption.FontWeight==Microsoft.UI.Text.FontWeights.Normal&&chevron.Glyph=="\uE76C","PG1 completed caption is small regular-weight text with the old collapsed chevron");
+        var tallies=Walk((FrameworkElement)expander.Header!).OfType<StackPanel>().Where(panel=>panel.Automation.ContainsKey("Id")).ToArray();
+        Check(tallies.Length==2&&tallies.All(panel=>panel.Parent is StackPanel tally&&Grid.GetColumn(tally)==2&&tally.Parent==expander.Header)&&tallies.SelectMany(panel=>panel.Children.OfType<TextBlock>()).All(text=>text.FontSize==12&&text.FontWeight==Microsoft.UI.Text.FontWeights.Normal),"PG1 success/error counts remain small at the far-right header column");
+        Check(tallies[0].Children.OfType<TextBlock>().Single().Text=="29"&&tallies[1].Children.OfType<TextBlock>().Single().Text=="3","PG1 retains real success and error totals");
+        group.Update(summary with {IsActive=false,HeaderText="已处理 6 分 7 秒"},false,true);
+        Check(caption.Style?.Key==OpenCodeProcessedSummaryStyle.LabelBrushKey,"B16 successful settled caption retains secondary theme text");
         expander.IsExpanded=true;
-        Check(group.IsExpanded&&toggles==1&&group.ItemsHost.Children.Count==2,"native settled-group expansion reveals retained rows");
+        Check(group.IsExpanded&&toggles==1&&group.ItemsHost.Children.Count==2&&chevron.Glyph=="\uE70D","native settled-group expansion reveals retained rows and old down chevron");
         expander.IsExpanded=false;
         Check(!group.IsExpanded&&toggles==2,"native settled-group collapse notifies timeline");
         group.BindSingleLeaf(()=>opened++,null,null,"读取");
