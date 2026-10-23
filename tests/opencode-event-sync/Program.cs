@@ -77,6 +77,7 @@ internal static class Program
         observed.MergeSnapshot(new[] { Message("msg_o", "") }, observedFetch);
         Check(Text(observed) == "fresh" && observed.Messages.Single().Time?.Created == 10, "part observed from start still wins over stale snapshot");
 
+        MessageDtoCache();
         RetryAndBackgroundProjection();
         SessionShellProjection();
         NoticeDismissal();
@@ -86,6 +87,44 @@ internal static class Program
         await HomeDataContracts();
         await DefaultSelectionContracts();
         Console.WriteLine($"PASS event-sync: {checks} assertions (insert/replace, delta, out-of-order, fetch race, native reasoning, stream EOF/reconnect/cancel/auth).");
+    }
+
+    private static void MessageDtoCache()
+    {
+        var reducer = new OpenCodeEventReducer("ses_test");
+        var initial = reducer.MergeSnapshot(new[] { Message("msg_a", "first"), Message("msg_b", "second") }, 0);
+        Check(reducer.MessageDeserializationCount == 2, "initial snapshot materializes each message once");
+        var unchanged = reducer.Messages;
+        Check(!ReferenceEquals(initial, unchanged) && ReferenceEquals(initial[0], unchanged[0])
+            && ReferenceEquals(initial[1], unchanged[1]) && reducer.MessageDeserializationCount == 2,
+            "repeated read returns an independent list without deserializing unchanged DTOs");
+        unchanged.Reverse();
+        unchanged.RemoveAt(0);
+        Check(reducer.Messages.Select(m => m.Id).SequenceEqual(new[] { "msg_a", "msg_b" }),
+            "caller list edits cannot reorder or remove reducer entries");
+
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_b","ordinal":0,"delta":" appended"}"""));
+        Check(reducer.MessageDeserializationCount == 2, "delta invalidation is lazy");
+        var changed = reducer.Messages;
+        Check(reducer.MessageDeserializationCount == 3 && ReferenceEquals(initial[0], changed[0])
+            && !ReferenceEquals(initial[1], changed[1]) && changed[1].Content!.Single().Text == "second appended",
+            "read after one delta deserializes only the dirty message");
+        Check(initial[1].Content!.Single().Text == "second", "delta never mutates an already published DTO");
+        _ = reducer.Messages;
+        Check(reducer.MessageDeserializationCount == 3, "second read after delta reuses the newly cached DTO");
+
+        var beforeRetained = reducer.Version;
+        reducer.Apply(Event("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_b","ordinal":0,"delta":" live"}"""));
+        var live = reducer.Messages[1];
+        var merged = reducer.MergeSnapshot(new[] { Message("msg_a", "refreshed") }, beforeRetained);
+        Check(reducer.MessageDeserializationCount == 5 && merged[0].Content!.Single().Text == "refreshed"
+            && !ReferenceEquals(initial[0], merged[0]) && ReferenceEquals(live, merged[1]),
+            "snapshot replacement invalidates its DTO but retains untouched live-only entries");
+        reducer.MergeSnapshot(new[] { Message("msg_a", "refreshed again") }, reducer.Version);
+        reducer.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_b","ordinal":0,"text":"revived"}"""));
+        var revived = reducer.Messages;
+        Check(reducer.MessageDeserializationCount == 7 && revived[1].Content!.Single().Text == "revived"
+            && !ReferenceEquals(live, revived[1]), "removed ID cannot revive a stale cached DTO");
     }
 
     private static void SessionShellProjection()

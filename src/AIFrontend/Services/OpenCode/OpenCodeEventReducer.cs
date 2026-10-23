@@ -11,6 +11,7 @@ public sealed class OpenCodeEventReducer
 {
     private readonly string _sessionId;
     private readonly Dictionary<string, JsonObject> _messages = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeMessage> _messageDtos = new(StringComparer.Ordinal);
     private readonly List<string> _order = new();
     private readonly Dictionary<string, long> _changed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<(string Field, string Text)>> _pending = new(StringComparer.Ordinal);
@@ -23,7 +24,27 @@ public sealed class OpenCodeEventReducer
     public OpenCodeEventReducer(string sessionId) => _sessionId = sessionId;
     public long Version => _version;
 
-    public List<OpenCodeMessage> Messages => _order.Select(id => _messages[id].Deserialize<OpenCodeMessage>(OpenCodeJson.Options)!).ToList();
+    internal long MessageDeserializationCount { get; private set; }
+
+    /// <summary>New list owned by the caller; cached DTOs and their content collections are read-only snapshots.</summary>
+    public List<OpenCodeMessage> Messages
+    {
+        get
+        {
+            var messages = new List<OpenCodeMessage>(_order.Count);
+            foreach (var id in _order)
+            {
+                if (!_messageDtos.TryGetValue(id, out var message))
+                {
+                    message = _messages[id].Deserialize<OpenCodeMessage>(OpenCodeJson.Options)!;
+                    _messageDtos[id] = message;
+                    MessageDeserializationCount++;
+                }
+                messages.Add(message);
+            }
+            return messages;
+        }
+    }
 
     public bool IsCurrentAssistantEvent(OpenCodeEvent item)
         => !item.Data.TryGetProperty("assistantMessageID", out var id) || id.ValueKind != JsonValueKind.String
@@ -75,6 +96,7 @@ public sealed class OpenCodeEventReducer
             }
             _placeholders.Remove(id);
             _messages[id] = baseline;
+            _messageDtos.Remove(id);
             foreach (var part in Parts(baseline).OfType<JsonObject>())
                 if (String(part, "id") is { } partId) DrainPending(baseline, id, partId);
             ordered.Add(id);
@@ -86,6 +108,7 @@ public sealed class OpenCodeEventReducer
         foreach (var id in _messages.Keys.Where(id => !kept.Contains(id)).ToList())
         {
             _messages.Remove(id);
+            _messageDtos.Remove(id);
             _changed.Remove(id);
             _placeholders.Remove(id);
         }
@@ -97,7 +120,7 @@ public sealed class OpenCodeEventReducer
     public bool Apply(OpenCodeEvent item)
     {
         if (item.SessionId is { } session && session != _sessionId) return false;
-        var data = JsonNode.Parse(item.Data.GetRawText())!.AsObject();
+        var data = JsonObject.Create(item.Data)!;
         var type = item.Type;
         if (type is "session.shell.started" or "session.shell.ended") return ApplyShell(item, data);
         // Current retry is event-owned, never replayed from historical REST Retry records.
@@ -263,12 +286,12 @@ public sealed class OpenCodeEventReducer
             message["status"] = shell["status"]?.DeepClone();
             message["time"] = new JsonObject { ["created"] = item.Created ?? item.ReceivedAt.ToUnixTimeMilliseconds() };
             var metadata = item.Metadata is { ValueKind: JsonValueKind.Object } value
-                ? JsonNode.Parse(value.GetRawText())!.AsObject() : new JsonObject();
+                ? JsonObject.Create(value)! : new JsonObject();
             if (shell["metadata"] is JsonObject shellMetadata && shellMetadata["background"]?.GetValue<bool>() == true)
                 metadata["background"] = true;
             message["metadata"] = metadata;
             Touch(id);
-            if (_pendingShellEnds.Remove(shellId, out var ended)) ApplyShell(ended, JsonNode.Parse(ended.Data.GetRawText())!.AsObject());
+            if (_pendingShellEnds.Remove(shellId, out var ended)) ApplyShell(ended, JsonObject.Create(ended.Data)!);
             return true;
         }
         if (message is null) { _pendingShellEnds[shellId] = item; return false; }
@@ -297,7 +320,11 @@ public sealed class OpenCodeEventReducer
         CurrentRetry = null;
         CurrentRetryMessageId = null;
     }
-    private void Touch(string id) => _changed[id] = ++_version;
+    private void Touch(string id)
+    {
+        _changed[id] = ++_version;
+        _messageDtos.Remove(id);
+    }
     private static void StampOrdinals(JsonObject message)
     {
         var counts = new Dictionary<string, int>();
