@@ -1,6 +1,7 @@
 # Headless only: installed .NET 10 SDK/reference packs, no restore, csproj changes, UI or native calls.
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+. (Join-Path $PSScriptRoot 'Assets.Tests.ps1')
 $dotnet = (Get-Command dotnet.exe).Source
 $dotnetRoot = Split-Path $dotnet
 $sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1

@@ -1,5 +1,10 @@
 # Taskbar overlay 状态图标：设计决策、官方来源、许可证与交付说明
 
+> Historical bare-glyph delivery, superseded by the approved TB1 circular badges
+> on 2026-10-23. Current sources, colors and regeneration instructions are in
+> `src/AIFrontend/Assets/Taskbar/source/README.md`; hashes and pixel findings below
+> describe the previous artwork, not the current ICO files.
+
 本文档记录 `NeedsAttention` / `Completed` / `Failed` 三个 taskbar overlay 图标的
 设计判断、官方几何来源（固定 commit + sha256）、配色与对比度依据、尺寸/DPI 映射、
 `status -> 文件` 映射、许可、复现命令、静态校验结果与**未做项**。
