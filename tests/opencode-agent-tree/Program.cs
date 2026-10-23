@@ -37,7 +37,10 @@ internal static class Program
         {
             new OpenCodeAgentInfo { Id = "custom-main", Name = "主配置", Mode = "primary" },
             new OpenCodeAgentInfo { Id = "custom-worker", Name = "任意配置", Mode = "subagent" },
-            new OpenCodeAgentInfo { Id = "custom-hidden", Name = "隐藏配置", Mode = "all", Hidden = true }
+            new OpenCodeAgentInfo { Id = "custom-hidden", Name = "隐藏配置", Mode = "all", Hidden = true },
+            new OpenCodeAgentInfo { Id = "compaction", Name = "Compaction", Hidden = true },
+            new OpenCodeAgentInfo { Id = "title", Name = "Title", Hidden = true },
+            new OpenCodeAgentInfo { Id = "summary", Name = "Summary", Hidden = true }
         };
         var sessions = new[]
         {
@@ -50,7 +53,10 @@ internal static class Program
         var groups = OpenCodeAgentTreeProjection.Agents(agents, sessions, "ses_parent", live);
         Check(groups.Count == 3 && groups[0].Name == "主配置", "catalog-driven arbitrary primary and subagents");
         Check(groups[0].Children.Count == 0 && groups[1].Children.Single().Id == "ses_child", "group by child's actual agent, not dispatching parent");
-        Check(groups[2].Hidden && groups[2].Children.Single().Model == "模型不可用", "hidden configured agents retained; absent model honest");
+        Check(groups[2].Hidden && groups[2].Children.Single().Model == "模型不可用", "hidden agent with real work retained; absent model honest");
+        Check(groups.All(g => g.Id is not ("compaction" or "title" or "summary")), "idle hidden built-in agents excluded");
+        Check(OpenCodeAgentTreeProjection.Agents(agents, Array.Empty<OpenCodeSessionInfo>(), "ses_parent", live).Count == 2,
+            "hidden groups disappear only when they have no real child instances");
         Check(groups.SelectMany(g => g.Children).All(c => c.Id != "ses_foreign" && c.Id != "ses_unconfigured"), "exact parent and configured identity only");
         Check(groups[1].Children.Single().Model == "used-model" && groups[1].Children.Single().Status == OpenCodeTreeStatus.Succeeded, "real model and outcome");
         live["ses_child"] = OpenCodeTreeStatus.Running;
