@@ -33,10 +33,11 @@ public sealed class OpenCodeNativeComboBox : ComboBox
         MinHeight = 32;
         HorizontalAlignment = HorizontalAlignment.Stretch;
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        ItemTemplate = (DataTemplate)XamlReader.Load("<DataTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><ContentPresenter Content=\"{Binding Visual}\"/></DataTemplate>");
+        // Supply native containers directly: runtime Binding to an internal CLR record's
+        // Visual getter is not a reliable WinRT property surface in the packaged app.
         SelectionChanged += (_, _) =>
         {
-            if (_rendering || !IsEnabled || SelectedItem is not Choice choice || Equals(_current, choice.Key)) return;
+            if (_rendering || !IsEnabled || SelectedItem is not ComboBoxItem { Tag: Choice choice } || Equals(_current, choice.Key)) return;
             _current = choice.Key;
             ChoiceChanged?.Invoke(choice.Key);
         };
@@ -52,10 +53,15 @@ public sealed class OpenCodeNativeComboBox : ComboBox
             {
                 _itemsIdentity = identity;
                 Items.Clear();
-                foreach (var choice in choices) Items.Add(choice);
+                foreach (var choice in choices)
+                {
+                    var item = new ComboBoxItem { Content = choice.CreateVisual(), Tag = choice };
+                    AutomationProperties.SetName(item, choice.Name);
+                    Items.Add(item);
+                }
             }
             _current = current;
-            SelectedItem = Items.OfType<Choice>().FirstOrDefault(c => Equals(c.Key, current));
+            SelectedItem = Items.OfType<ComboBoxItem>().FirstOrDefault(c => c.Tag is Choice choice && Equals(choice.Key, current));
             IsEnabled = enabled;
         }
         finally { _rendering = false; }
@@ -81,8 +87,16 @@ public sealed class OpenCodeNativeComboBox : ComboBox
     internal static IReadOnlyList<Choice> Agents(IEnumerable<OpenCodeAgentPickerRow> rows) => rows.Where(r => r.Selectable).Select(Agent).ToArray();
     internal static IReadOnlyList<Choice> Models(IEnumerable<OpenCodeModelInfo> models) => models.Where(m => m.Enabled != false)
         .OrderBy(m => m.ProviderId, StringComparer.CurrentCultureIgnoreCase).ThenBy(m => m.Name, StringComparer.CurrentCultureIgnoreCase).Select(Model).ToArray();
+    internal static Choice Effort(string? id, string? label = null) => new(new OpenCodeEffortChoice(id), label ?? OpenCodeModelPresentation.VariantLabel(id), () =>
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        panel.Children.Add(new FontIcon { Glyph = "\uEC4A", FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+        panel.Children.Add(new TextBlock { Text = label ?? OpenCodeModelPresentation.VariantLabel(id),
+            TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        return panel;
+    }, "effort:" + (id ?? "<null>") + "\t" + label);
+
     internal static IReadOnlyList<Choice> Efforts(OpenCodeModelInfo? model) => model is null ? Array.Empty<Choice>()
         : new string?[] { null }.Concat((model.Variants ?? new()).Select(v => v.Id).Where(id => id is not null)).Distinct()
-            .Select(id => new Choice(new OpenCodeEffortChoice(id), OpenCodeModelPresentation.VariantLabel(id),
-                () => new TextBlock { Text = OpenCodeModelPresentation.VariantLabel(id) }, "effort:" + (id ?? "<null>"))).ToArray();
+            .Select(id => Effort(id)).ToArray();
 }

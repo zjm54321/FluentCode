@@ -203,6 +203,9 @@ internal static class Program
             && combo.Contains("AccentTextFillColorPrimaryBrush"), "PK2 agent choices have their colored glyph plus friendly name and dynamic accent fallback");
         Check(combo.Contains("OrderBy(m => m.ProviderId") && combo.Contains("new string?[] { null }")
             && combo.Contains("new OpenCodeEffortChoice(id)"), "PK2 flat models are provider-sorted; effort starts with true null and preserves opaque IDs");
+        Check(!combo.Contains("{Binding Visual}") && combo.Contains("Content = choice.CreateVisual()"), "PK3a native item content has real visuals, not runtime binding to an internal record");
+        var effortVisual = (Microsoft.UI.Xaml.Controls.StackPanel)OpenCodeNativeComboBox.Effort("high").CreateVisual();
+        Check(effortVisual.Children[0] is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uEC4A" }, "PK3a effort choices carry the Fluent gauge icon");
         RunComboBoxChecks();
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
     }
@@ -216,15 +219,15 @@ internal static class Program
         object? selected = null;
         combo.ChoiceChanged += value => { commits++; selected = value; };
         combo.Render(choices, new OpenCodeEffortChoice(null), true);
-        Check(commits == 0 && ReferenceEquals(combo.SelectedItem, choices[0]), "native seeding is not a user commit");
-        combo.SelectedItem = choices[1];
+        Check(commits == 0 && ReferenceEquals(((Microsoft.UI.Xaml.Controls.ComboBoxItem)combo.SelectedItem!).Tag, choices[0]), "native seeding is not a user commit");
+        combo.SelectedItem = combo.Items[1];
         Check(commits == 1 && selected is OpenCodeEffortChoice { Id: "opaque/V2" }, "native selection commits the exact raw ID once");
-        combo.SelectedItem = choices[1];
+        combo.SelectedItem = combo.Items[1];
         Check(commits == 1, "native current-item selection is a no-op");
         combo.Render(choices, new OpenCodeEffortChoice(null), true);
         Check(commits == 1, "authoritative refresh never echoes a commit");
         combo.Render(choices, new OpenCodeEffortChoice(null), false);
-        combo.SelectedItem = choices[1];
+        combo.SelectedItem = combo.Items[1];
         Check(commits == 1 && !combo.IsEnabled, "disabled child selector cannot commit");
         combo.Render(Array.Empty<OpenCodeNativeComboBox.Choice>(), null, false);
         Check(combo.SelectedItem is null && combo.PlaceholderText == "未知" && !combo.IsEnabled, "unknown value remains a disabled native placeholder");
@@ -262,9 +265,9 @@ internal static class Program
         card.ModelButton.ChoiceChanged += _ => changes++;
         card.VariantButton.ChoiceChanged += _ => changes++;
         card.RenderReadOnly(actual);
-        Check(card.AgentButton.SelectedItem is OpenCodeNativeComboBox.Choice { Key: "oracle" }
-            && card.ModelButton.SelectedItem is OpenCodeNativeComboBox.Choice { Key: OpenCodeModelChoiceKey { ModelId: "claude-last", ProviderId: "provider-b" } }
-            && card.VariantButton.SelectedItem is OpenCodeNativeComboBox.Choice { Key: OpenCodeEffortChoice { Id: "extra_high" } },
+        Check(card.AgentButton.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem { Tag: OpenCodeNativeComboBox.Choice { Key: "oracle" } }
+            && card.ModelButton.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem { Tag: OpenCodeNativeComboBox.Choice { Key: OpenCodeModelChoiceKey { ModelId: "claude-last", ProviderId: "provider-b" } } }
+            && card.VariantButton.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem { Tag: OpenCodeNativeComboBox.Choice { Key: OpenCodeEffortChoice { Id: "extra_high" } } },
             "SA2b actual child RenderReadOnly seeds real child identity/model/opaque effort, not parent selection");
         Check(!card.AgentButton.IsEnabled && !card.ModelButton.IsEnabled && !card.VariantButton.IsEnabled && changes == 0,
             "SA2b actual child render disables all three existing controls without any commit");

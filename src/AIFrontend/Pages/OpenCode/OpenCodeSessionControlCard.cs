@@ -69,8 +69,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
         ModelButton.Render(model is null ? noChoices : new[] { OpenCodeNativeComboBox.Model(model) },
             model is null ? null : new OpenCodeModelChoiceKey(model.ProviderId!, model.Id!, null), false);
         var effort = new OpenCodeEffortChoice(value.Model?.Variant);
-        VariantButton.Render(value.Effort is { } label ? new[] { new OpenCodeNativeComboBox.Choice(effort, label,
-            () => new TextBlock { Text = label }, "child-effort:" + value.Model?.Variant) } : noChoices, effort, false);
+        VariantButton.Render(value.Effort is { } label ? new[] { OpenCodeNativeComboBox.Effort(value.Model?.Variant, label) } : noChoices, effort, false);
         Describe(AgentButton, "智能体：" + (value.Agent ?? "未知"), "子智能体会话仅供查看。");
         Describe(ModelButton, "模型：" + (value.ModelName ?? "未知"), "子智能体会话仅供查看。");
         Describe(VariantButton, "推理强度：" + (value.Effort ?? "未知"), "子智能体会话仅供查看。");

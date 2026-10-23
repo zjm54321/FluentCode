@@ -28,6 +28,7 @@ namespace Microsoft.UI.Xaml.Controls
         public event EventHandler? SelectionChanged;
         public object? SelectedItem { get => _selected; set { if (Equals(_selected, value)) return; _selected = value; SelectionChanged?.Invoke(this, EventArgs.Empty); } }
     }
+    public class ComboBoxItem : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } }
     public enum Orientation { Horizontal }
     public class StackPanel : Microsoft.UI.Xaml.FrameworkElement { public Orientation Orientation { get; set; } public double Spacing { get; set; } public List<Microsoft.UI.Xaml.FrameworkElement> Children { get; } = new(); }
     public class FontIcon : Microsoft.UI.Xaml.FrameworkElement { public string Glyph { get; set; } = ""; public double FontSize { get; set; } public object? Foreground { get; set; } }
