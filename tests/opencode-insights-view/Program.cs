@@ -274,10 +274,19 @@ internal static class Program
             && scroll.VerticalScrollBarVisibility == ScrollBarVisibility.Auto
             && scroll.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled,
             "RP9 fixed heading above a native list-only vertical viewport");
-        var boxes = list.Children.Cast<CheckBox>().ToArray();
+        var rows = list.Children.Cast<Grid>().ToArray();
+        var visuals = rows.Select(row => (Viewbox)row.Children[0]).ToArray();
+        var boxes = visuals.Select(box => (CheckBox)box.Child!).ToArray();
         Check(boxes.Select(box => box.IsChecked).SequenceEqual(new bool?[] { false, true, null, false }), "native pending/completed/in-progress/cancelled checkbox states");
         Check(boxes.All(box => box.IsThreeState && !box.IsHitTestVisible && !box.IsTabStop), "todos are view-only native checkboxes");
-        var texts = boxes.Select(box => (TextBlock)box.Content!).ToArray();
+        var texts = rows.Select(row => (TextBlock)row.Children[1]).ToArray();
+        Check(visuals.All(box => box.Width == 16 && box.Height == 16 && box.Margin.Top == 2
+                && box.VerticalAlignment == VerticalAlignment.Top)
+            && boxes.All(box => box.Width == 20 && box.Height == 20 && box.Content is null && box.MinHeight == 0),
+            "TD2 Viewbox shrinks only native checkbox plus glyph to 16px, aligned with first 20px line");
+        Check(texts.All(text => text.FontSize == 14 && text.LineHeight == 20)
+            && rows.All(row => row.ColumnSpacing == 8 && row.MinHeight == 26),
+            "TD2 separate unscaled 14px text keeps readable wrapping and row spacing");
         Check(texts[1].TextDecorations == Windows.UI.Text.TextDecorations.None
             && texts[3].TextDecorations == Windows.UI.Text.TextDecorations.Strikethrough, "TD1 completed is not struck, cancelled alone is struck");
         Check(texts.Select(text => text.Text).SequenceEqual(new[] { "pending", "completed", "working", "cancelled" }), "server order preserved");

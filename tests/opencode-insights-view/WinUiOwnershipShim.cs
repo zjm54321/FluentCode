@@ -312,6 +312,7 @@ namespace Microsoft.UI.Xaml.Controls
     public class ContentControl : Control { public object? Content { get; set; } }
 
     public class UserControl : Control { public UIElement? Content { get; set; } }
+    public sealed class Viewbox : FrameworkElement { public UIElement? Child { get; set; } }
 
     public class Button : ContentControl
     {
@@ -490,6 +491,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class TextBlock : FrameworkElement
     {
+        public double LineHeight { get; set; }
         public Windows.UI.Text.TextDecorations TextDecorations { get; set; }
         public string Text { get; set; } = string.Empty;
         public Style? Style { get; set; }

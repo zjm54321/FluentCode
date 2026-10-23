@@ -647,19 +647,34 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var text = OpenCodeInteractionUi.StyledText(item.Content,
             item.Status == "in_progress" ? OpenCodeInteractionUi.BodyStrongStyleKey
                 : finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey);
-        text.FontSize = 13;
+        text.FontSize = 14;
+        text.LineHeight = 20;
         text.TextWrapping = TextWrapping.Wrap;
+        text.VerticalAlignment = VerticalAlignment.Top;
         text.TextDecorations = item.Status == "cancelled" ? TextDecorations.Strikethrough : TextDecorations.None;
         var check = new CheckBox
         {
-            Content = text, IsThreeState = true,
+            IsThreeState = true,
             IsChecked = TodoChecked(item.Status),
-            IsHitTestVisible = false, IsTabStop = false, MinWidth = 0, MinHeight = 26,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            IsHitTestVisible = false, IsTabStop = false, MinWidth = 0, MinHeight = 0,
+            Width = 20, Height = 20, Padding = new Thickness(0),
         };
         AutomationProperties.SetAutomationId(check, automationPrefix + index);
         AutomationProperties.SetName(check, DescribeTodoStatus(item.Status) + "：" + item.Content);
-        return check;
+        // WinUI 1.8's template uses StaticResource CheckBoxSize/GlyphSize, not per-control lightweight
+        // ThemeResource sizing. Scale the native visual (box AND animated/fallback glyph) together, never the text.
+        var box = new Viewbox
+        {
+            Width = 16, Height = 16, Child = check,
+            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0),
+        };
+        var row = new Grid { ColumnSpacing = 8, MinHeight = 26 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(text, 1);
+        row.Children.Add(box);
+        row.Children.Add(text);
+        return row;
     }
 
     internal static bool? TodoChecked(string status) => status switch
