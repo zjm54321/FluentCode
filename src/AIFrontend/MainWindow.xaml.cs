@@ -80,6 +80,10 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         this.InitializeComponent();
+        NavView.Loaded += (_, _) =>
+        {
+            if (NavView.DisplayMode == NavigationViewDisplayMode.Expanded && !_paneOpenedByUser) NavView.IsPaneOpen = false;
+        };
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon", "app.ico"));
 
         // 用户字体（F11）：NavView 以 ThemeResource 继承正文字体给所有页面内无样式文字；
@@ -299,15 +303,35 @@ public sealed partial class MainWindow : Window
     // 响应式布局（以 NavigationView 实际 DisplayMode 驱动）
     // ------------------------------------------------------------------
 
+    // 宽窗（Expanded）下左栏只在用户点汉堡时展开：Auto 进入 Expanded 时原生会自动展开，
+    // 这里在模式切换结束后按用户上次的选择收回；模式切换期间的自动开合不算用户选择。
+    private bool _paneOpenedByUser;
+    private bool _displayModeChanging;
+
     private void NavView_DisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
     {
         // 完全依赖 NavigationView 自身的 Auto 阈值判定，不自造不同阈值
         UpdateResponsiveLayout();
+        _displayModeChanging = true;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (NavView.DisplayMode == NavigationViewDisplayMode.Expanded && NavView.IsPaneOpen != _paneOpenedByUser)
+                NavView.IsPaneOpen = _paneOpenedByUser;
+            _displayModeChanging = false;
+        });
     }
 
-    private void NavView_PaneOpened(NavigationView sender, object args) => UpdateResponsiveLayout();
+    private void NavView_PaneOpened(NavigationView sender, object args)
+    {
+        if (!_displayModeChanging && sender.DisplayMode == NavigationViewDisplayMode.Expanded) _paneOpenedByUser = true;
+        UpdateResponsiveLayout();
+    }
 
-    private void NavView_PaneClosed(NavigationView sender, object args) => UpdateResponsiveLayout();
+    private void NavView_PaneClosed(NavigationView sender, object args)
+    {
+        if (!_displayModeChanging && sender.DisplayMode == NavigationViewDisplayMode.Expanded) _paneOpenedByUser = false;
+        UpdateResponsiveLayout();
+    }
 
     /// <summary>
     /// 以 NavigationView 实际 <see cref="NavigationView.DisplayMode"/> 驱动顶栏与汉堡归属
