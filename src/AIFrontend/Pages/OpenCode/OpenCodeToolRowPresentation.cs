@@ -107,6 +107,31 @@ internal static class OpenCodeProcessedSummaryStyle
         => chrome.IsFailure ? chrome.KindIconKey : IsSettledRow(status) ? IconBrushKey : chrome.KindIconKey;
 }
 
+/// <summary>V3/A4: active operations, including background ones, are larger separated rows.</summary>
+internal static class OpenCodeProcessedRowMetrics
+{
+    internal static double Height(OpenCodeToolRowStatus status) => IsRunning(status) ? 36 : 30;
+    internal static double FontSize(OpenCodeToolRowStatus status) => IsRunning(status) ? 14 : 13;
+    internal static double VerticalGap(OpenCodeToolRowStatus status) => IsRunning(status) ? 2 : 0;
+    internal static bool IsRunning(OpenCodeToolRowStatus status) => status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
+}
+
+/// <summary>W3: prefer below when the measured content fits; otherwise above or the roomier scrolling side.</summary>
+internal static class OpenCodeProcessedPreviewPlacement
+{
+    internal static (double Y, double Height) Vertical(double anchorY, double anchorHeight, double contentHeight,
+        double rootHeight, double margin, double gap)
+    {
+        var top = Math.Clamp(anchorY, margin, Math.Max(margin, rootHeight - margin));
+        var bottom = Math.Clamp(anchorY + anchorHeight, margin, Math.Max(margin, rootHeight - margin));
+        var above = Math.Max(0, top - margin - gap);
+        var below = Math.Max(0, rootHeight - margin - bottom - gap);
+        var useBelow = contentHeight <= below || contentHeight > above && below >= above;
+        var height = Math.Min(contentHeight, useBelow ? below : above);
+        return (useBelow ? bottom + gap : top - gap - height, height);
+    }
+}
+
 /// <summary>单个文件的改动（优先来自服务端 metadata.files[]，否则由输入本地计算）。</summary>
 internal sealed record OpenCodeToolDiffFile
 {
@@ -299,7 +324,7 @@ internal static class OpenCodeToolRowPresentation
         "webfetch" => "获取网页",
         "websearch" => "搜索网页",
         "question" => "提问",
-        "subagent" or "task" => OpenCodeStepRunPresentation.SubagentLabel,
+        "subagent" or "task" => "子代理",
         "todowrite" => "更新 to do",
         "todoread" => "查看 to do",
         "acp_status" => "ACP状态",
@@ -441,13 +466,17 @@ internal static class OpenCodeToolRowPresentation
                         }
                     }
 
-                    if (known)
+                    if (known && kind != OpenCodeToolKind.Write)
                     {
                         additions = add;
                         deletions = del;
                         summary = "+" + add.ToString(CultureInfo.InvariantCulture) + " −" + del.ToString(CultureInfo.InvariantCulture);
                     }
                 }
+
+                if (kind == OpenCodeToolKind.Write
+                    && (FirstString(input, "content") ?? (diffs.Count == 1 ? diffs[0].After : null)) is { } written)
+                    summary = OpenCodeLineDiff.Count(string.Empty, written).Additions.ToString(CultureInfo.InvariantCulture) + " 行";
 
                 target = path ?? (diffs.Count == 1 ? diffs[0].Path : diffs.Count > 1 ? diffs.Count.ToString(CultureInfo.InvariantCulture) + " 个文件" : string.Empty);
                 break;

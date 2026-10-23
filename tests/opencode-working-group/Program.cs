@@ -48,40 +48,46 @@ internal static class Program
         ancestor.Visibility=Visibility.Visible;Check(clock.SubscriberCount==baseline+1,"visible working ancestor resumes");
         indicator.Label.Unload();Check(clock.SubscriberCount==baseline,"unload unsubscribes");indicator.Label.Load();indicator.SetActive(false);
         Check(clock.SubscriberCount==baseline,"Done unsubscribes");indicator.Dispose();
+        Check(OpenCodeWorkingIndicator.GearGlyph=="\uE9F5","W1 uses the approved processing gear glyph");
         var toggles=0;var opened=0;
         var group=new OpenCodeToolGroupView("group",(_,_)=>toggles++);
         var summary=new OpenCodeStepRunSummary("处理中…","",0,0,true,null,false,"处理中");
         group.SetWorkingContext(true,false,"claude-sonnet");group.Update(summary,true,true);
-        group.BindSingleLeaf(()=>opened++,null,null,"读取");
         group.ItemsHost.Children.Add(new TextBlock {Text="step one"});
         group.ItemsHost.Children.Add(new TextBlock {Text="step two"});
         LoadTree(group.Element);
         Check(clock.SubscriberCount==baseline+1&&DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"group reuses one loaded header timer and shared clock");
-        group.SetCurrentStep("读取 · file-a.cs · 运行中");
-        ((Button)group.DetailAnchor).Press();
-        Check(!group.IsExpanded&&toggles==1&&opened==0,"active single-leaf header collapses rather than opening detail");
-        Check(((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Collapsed&&group.ItemsHost.Children.Count==2,"collapse hides rows without removing them");
+        var expander=Walk(group.Element).OfType<Expander>().Single();
+        var stableAnchor=group.DetailAnchor;
+        expander.IsExpanded=false;
+        Check(group.IsExpanded&&expander.IsExpanded&&toggles==0,"W1 native Expander cannot fold a running turn");
+        Check(((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Visible&&group.ItemsHost.Children.Count==2,"all running turn rows remain visible");
         group.SetCurrentStep("执行 · dotnet test · 运行中");group.Update(summary with {SuccessCount=1},false,true);
         var workingLabel=Walk(group.Element).Single(e=>e.Automation.TryGetValue("Id",out var id)&&id=="OpenCodeWorkingIndicator.group");
         var labelTexts=((Panel)workingLabel).Children.OfType<TextBlock>().ToArray();
-        Check(labelTexts[0].Text=="执行 · dotnet test · 运行中"&&labelTexts[1].Visibility==Visibility.Collapsed,"collapsed native label updates real step and omits decorative phrase/elapsed");
+        Check(OpenCodeWorkingPhrases.Standard(OpenCodeWorkingActivity.Reasoning).Any(phrase=>OpenCodeWorkingPhrases.Stem(phrase)==labelTexts[0].Text)&&group.IsExpanded,"W1 real reasoning phrase remains the live header even if the timeline requests collapse");
         Check(labelTexts[0].TextTrimming==TextTrimming.CharacterEllipsis&&labelTexts[1].TextTrimming==TextTrimming.None&&workingLabel is Grid {HorizontalAlignment:HorizontalAlignment.Left},"long step/phrase trims with ellipsis in a left-aligned star cell; elapsed never trims");
-        var header=(Button)group.DetailAnchor;var chevron=Walk(group.Element).OfType<FontIcon>().Single(i=>i.Glyph is "\uE76C" or "\uE70D");
-        header.Focus(FocusState.Pointer);Check(chevron.Opacity==0,"pointer-click focus alone keeps chevron reserved but hidden");
-        header.Focus(FocusState.Keyboard);Check(chevron.Opacity==1,"keyboard focus reveals the expand chevron");
-        header.Blur();Check(chevron.Opacity==0,"losing focus hides the chevron again (layout space kept)");
-        Check(group.DetailAnchor.Automation["Name"].Contains("dotnet test",StringComparison.Ordinal)&&clock.SubscriberCount==baseline+1,"collapsed accessibility reports latest real step while gear keeps working");
-        ((Button)group.DetailAnchor).Press();
-        Check(group.IsExpanded&&toggles==2&&((FrameworkElement)group.ItemsHost.Parent!).Visibility==Visibility.Visible&&group.ItemsHost.Children.Count==2,"native re-expand reveals intact rows");
         group.Element.Visibility=Visibility.Collapsed;
         Check(clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"hidden group stops clock and cadence timer");
         group.Element.Visibility=Visibility.Visible;
         group.Update(summary with {IsActive=false},false,true);
-        Check(clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"Done group stops animation and timer");group.Dispose();
+        Check(!group.IsExpanded&&!expander.IsExpanded&&clock.SubscriberCount==baseline&&!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"turn end folds group and stops animation and timer");
+        expander.IsExpanded=true;
+        Check(group.IsExpanded&&toggles==1&&group.ItemsHost.Children.Count==2,"native settled-group expansion reveals retained rows");
+        expander.IsExpanded=false;
+        Check(!group.IsExpanded&&toggles==2,"native settled-group collapse notifies timeline");
+        group.BindSingleLeaf(()=>opened++,null,null,"读取");
+        Check(group.ShowsItems&&group.DetailAnchor==group.ItemsHost&&ReferenceEquals(group.DetailAnchor,stableAnchor)&&!Walk(group.Element).OfType<Expander>().Any(),"one completed operation is direct with a stable attached preview anchor across BindSingleLeaf");
+        group.Update(summary,true,true);
+        Check(group.ShowsItems&&clock.SubscriberCount==baseline,"one running operation also stays direct without a duplicate working header");
+        group.BindSingleLeaf(null,null,null);
+        group.Update(summary,false,false);
+        Check(!Walk(group.Element).OfType<Expander>().Any()&&group.ShowsItems,"active chain follower shows all rows without a repeated header");
+        group.Dispose();
         Console.WriteLine($"PASS working group: {checks} assertions; real production logic, controlled native XAML/composition boundary (not pixel/native animation proof)");
     }
     private static void LoadTree(FrameworkElement e)
-    { e.Load();if(e is Panel p)foreach(var child in p.Children.OfType<FrameworkElement>())LoadTree(child);if(e is Button {Content:FrameworkElement content})LoadTree(content);if(e is Border {Child:FrameworkElement child2})LoadTree(child2); }
+    { e.Load();if(e is Panel p)foreach(var child in p.Children.OfType<FrameworkElement>())LoadTree(child);if(e is Button {Content:FrameworkElement content})LoadTree(content);if(e is Border {Child:FrameworkElement child2})LoadTree(child2);if(e is Expander exp){if(exp.Header is FrameworkElement h)LoadTree(h);if(exp.Content is FrameworkElement c)LoadTree(c);} }
     private static System.Collections.Generic.IEnumerable<FrameworkElement> Walk(FrameworkElement e)
-    { yield return e;if(e is Panel p)foreach(var child in p.Children.OfType<FrameworkElement>())foreach(var item in Walk(child))yield return item;if(e is Button {Content:FrameworkElement content})foreach(var item in Walk(content))yield return item;if(e is Border {Child:FrameworkElement child2})foreach(var item in Walk(child2))yield return item; }
+    { yield return e;if(e is Panel p)foreach(var child in p.Children.OfType<FrameworkElement>())foreach(var item in Walk(child))yield return item;if(e is Button {Content:FrameworkElement content})foreach(var item in Walk(content))yield return item;if(e is Border {Child:FrameworkElement child2})foreach(var item in Walk(child2))yield return item;if(e is Expander exp){if(exp.Header is FrameworkElement h)foreach(var item in Walk(h))yield return item;if(exp.Content is FrameworkElement c)foreach(var item in Walk(c))yield return item;} }
 }

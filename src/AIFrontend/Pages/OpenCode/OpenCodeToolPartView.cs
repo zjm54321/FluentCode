@@ -4,6 +4,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 using Windows.System;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -142,7 +144,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         summaryPanel.Children.Add(_summaryText);
 
         var content = new Grid { ColumnSpacing = 8 };
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -161,7 +163,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Height = 32,
+            Height = 30,
+            MinHeight = 0,
             Padding = new Thickness(8, 0, 8, 0),
             BorderThickness = new Thickness(0),
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
@@ -169,7 +172,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         _row.Click += (_, _) => TogglePinnedDetail();
         // A8: capture the entry point immediately (not on first move) so the preview centres on the pointer.
         _row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); HoverEnterDetail(); };
-        _row.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e);
         _row.PointerExited += (_, _) => HoverExitDetail();
         _row.KeyDown += OnRowKeyDown;
         _row.Unloaded += (_, _) => CloseDetailIfShowing();
@@ -206,13 +208,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         };
         AutomationProperties.SetAutomationId(_backgroundButton, "OpenCodeToolBackground");
         AutomationProperties.SetName(_backgroundButton, "将本会话前台工具转入后台");
-        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子智能体转入后台");
+        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子代理转入后台（Ctrl+B）");
         _backgroundButton.Click += (_, _) => RequestBackground();
         Grid.SetColumn(_backgroundButton, 2);
         _root.Children.Add(_backgroundButton);
         Grid.SetColumn(statusCell, 3);
         statusCell.Margin = new Thickness(0, 0, 8, 0);
         _root.Children.Add(statusCell);
+        _root.ActualThemeChanged += (_, _) => ApplyRunningTint();
     }
 
     /// <summary>当前行模型（供分组摘要与详情弹出层使用）。</summary>
@@ -482,12 +485,41 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         }
 
         ApplyRowChrome(_rowChrome, chrome);
+        ApplyRunningTint();
+        _row.Height = OpenCodeProcessedRowMetrics.Height(model.Status);
+        // A4: each running operation owns its own tint with an untinted gap to its neighbours.
+        var gap = OpenCodeProcessedRowMetrics.VerticalGap(model.Status);
+        _root.Margin = new Thickness(0, gap, 0, gap);
+        foreach (var text in new[] { _nameText, _targetText, _summaryText, _additionsText, _deletionsText })
+            text.FontSize = OpenCodeProcessedRowMetrics.FontSize(model.Status);
+        if (model.Kind is not (OpenCodeToolKind.Subagent or OpenCodeToolKind.Question or OpenCodeToolKind.Other))
+            _targetText.FontFamily = new FontFamily("Cascadia Mono, Consolas");
+        else _targetText.ClearValue(TextBlock.FontFamilyProperty);
 
         var id = string.IsNullOrEmpty(model.PartId) ? string.Empty : model.PartId;
         AutomationProperties.SetAutomationId(_row, "OpenCodeToolRow." + id);
         AutomationProperties.SetName(_row, model.AccessibleName);
         AutomationProperties.SetHelpText(_row, "按 Enter 查看完整内容，Esc 关闭");
     }
+
+    private void ApplyRunningTint()
+    {
+        // Tint the complete row, including its native action and the right-aligned status cell.
+        // High contrast uses the system highlight rather than a low-alpha accent.
+        if (new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast)
+        {
+            OpenCodeToolTheme.Apply(_root, OpenCodeToolTheme.Grid(_model.IsActive
+                ? "SystemColorHighlightColorBrush" : "SubtleFillColorTransparentBrush"));
+            return;
+        }
+        _root.Style = null;
+        _root.Background = _model.IsActive
+            ? new SolidColorBrush(ActualRowTint()) : null;
+    }
+
+    private Color ActualRowTint() => _root.ActualTheme == ElementTheme.Dark
+        ? Color.FromArgb(26, 96, 205, 255)
+        : Color.FromArgb(19, 0, 95, 184);
 
     /// <summary>B14: apply the whole-row chrome (theme-resource background + border) to a row/chip border.</summary>
     internal static void ApplyRowChrome(Border rowChrome, OpenCodeToolRowChrome chrome)

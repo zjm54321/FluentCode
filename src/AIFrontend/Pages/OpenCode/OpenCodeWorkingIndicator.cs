@@ -24,7 +24,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// </remarks>
 internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
 {
-    internal const string GearGlyph = "\uE713";
+    internal const string GearGlyph = "\uE9F5";
 
     private readonly Grid _gear;
     private readonly FontIcon _gearIcon;

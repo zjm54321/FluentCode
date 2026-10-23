@@ -90,7 +90,7 @@ internal static class Wave6Timeline
         child.LinkInvoked!();
         Check(requests == 2, "wave6.success-failure-use-same-child-conversation-request");
         var invocation = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"type\":\"tool\",\"name\":\"subagent\",\"state\":{\"status\":\"completed\",\"input\":{}}}", OpenCodeJson.Options)!;
-        Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子智能体", "wave6.invocation-label-matches-completion-label");
+        Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子代理", "v4.invocation-uses-approved-subagent-label");
         view.ClearMessages();
 
         ConversationViewTestProbe.Reset();
@@ -118,7 +118,7 @@ internal static class Wave6Timeline
             && OpenCodeToolRowPresentation.DisplayName("company_read") == "company_read", "wave7.only-exact-built-in-display-names-are-localized");
         var unconfirmed = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"id\":\"bg_unknown\",\"type\":\"tool\",\"name\":\"subagent\",\"state\":{\"status\":\"completed\",\"input\":{\"background\":true}}}", OpenCodeJson.Options)!;
         var unknownModel = OpenCodeToolRowPresentation.Build(unconfirmed);
-        Check(unknownModel.Name == "子智能体（后台）" && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
+        Check(unknownModel.Name == "子代理（后台）" && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
             "wave7.background-return-without-job-state-is-unknown-not-success-and-protocol-is-unchanged");
 
         ConversationViewTestProbe.Reset();

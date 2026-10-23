@@ -100,6 +100,20 @@ internal static class Program
         Check(below.Y == 240, "wide row: preview below with 8px gap");
         var above = OpenCodeDetailPopupLayout.PreviewPlacement(800, 900, 32, previewWidth, 300, band, 1000);
         Check(above.Y + above.Height == 892, "row near bottom: preview above with 8px gap");
+        Check(OpenCodeProcessedPreviewPlacement.Vertical(650, 30, 96, 1000, 8, 8) == (688, 96),
+            "W3 short preview stays below even when more room is available above");
+        Check(OpenCodeProcessedPreviewPlacement.Vertical(900, 30, 200, 1000, 8, 8) == (692, 200),
+            "W3 preview switches above only when it cannot fit below");
+        Check(OpenCodeProcessedPreviewPlacement.Vertical(200, 30, 5000, 1000, 8, 8) == (238, 754),
+            "W3 overflowing preview scrolls on the roomier side");
+        foreach (var status in Enum.GetValues<OpenCodeToolRowStatus>())
+        {
+            var active = status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
+            Check(OpenCodeProcessedRowMetrics.Height(status) == (active ? 36 : 30)
+                && OpenCodeProcessedRowMetrics.FontSize(status) == (active ? 14 : 13)
+                && OpenCodeProcessedRowMetrics.VerticalGap(status) == (active ? 2 : 0),
+                "V3/A4 each active row has larger metrics and separate margins: " + status);
+        }
         var clamped = OpenCodeDetailPopupLayout.PreviewPlacement(1400, 980, 16, previewWidth, 300, band, 1000);
         Check(clamped.X + clamped.Width <= 1128 && clamped.Y + clamped.Height <= 992, "preview clamped inside content band and window height");
         var shortPreview = OpenCodeDetailPopupLayout.PreviewPlacement(800, 200, 32, 220, 96, band, 1000);
@@ -145,6 +159,12 @@ internal static class Program
 
         var write = Model("write", "{\"status\":\"completed\",\"input\":{\"filePath\":\"a.cs\",\"content\":\"class A {}\"}}");
         Check(write.DiffFiles.Count == 1 && OpenCodeFileDetailPolicy.IsFullWrite(write.Kind, write.DiffFiles[0]), "real write model is full file, not an all-green diff");
+        Check(write.Summary == "1 行" && write.Additions is null && write.Deletions is null, "W1 write shows a plain line count, not edit +/- marks");
+        var overwrite = Model("write", "{\"status\":\"completed\",\"input\":{\"filePath\":\"a.cs\",\"content\":\"one\\ntwo\\n\"},\"metadata\":{\"files\":[{\"file\":\"a.cs\",\"additions\":1,\"deletions\":4}]}}");
+        Check(overwrite.Summary == "2 行" && overwrite.Additions is null && overwrite.Deletions is null,
+            "W1 write counts complete written content, not an overwrite's changed-line totals");
+        var edit = Model("edit", "{\"status\":\"completed\",\"input\":{\"path\":\"a.cs\",\"oldString\":\"old\",\"newString\":\"new\\nline\"}}");
+        Check(edit.Additions == 2 && edit.Deletions == 1 && edit.Summary == "+2 −1", "W1 edit retains addition/deletion counts");
         Check(!OpenCodeFileDetailPolicy.IsFullWrite(OpenCodeToolKind.Patch, new OpenCodeToolDiffFile { Path = "a.cs", After = "x" }), "patch never becomes full-file just because it has a path/after");
         Check(!OpenCodeFileDetailPolicy.IsFullWrite(OpenCodeToolKind.Write, new OpenCodeToolDiffFile { Path = "a.cs", After = "x", Patch = "@@ -1 +1 @@\n-a\n+b" }), "explicit server patch retains semantic change marks even on write");
         Check(OpenCodeFileDetailPolicy.IsMarkdown("README.MD") && !OpenCodeFileDetailPolicy.IsMarkdown("a.cs"), "Markdown preview eligibility follows extension");
