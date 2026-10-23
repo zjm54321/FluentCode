@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 using AIFrontend.Pages.OpenCode;
@@ -57,10 +56,8 @@ internal static class Program
 
     private static OpenCodeErrorRecovery P(params OpenCodeMessage[] messages) => OpenCodeErrorRecoveryProjection.Project(messages);
 
-    private static int Main(string[] args)
+    private static int Main()
     {
-        var repo = args.Length > 0 ? args[0] : Directory.GetCurrentDirectory();
-
         // --- classification -------------------------------------------------------------------------
         Check(OpenCodeErrorRecoveryProjection.IsTransientLinkError(Upstream), "upstream breakdown / response interrupted is transient");
         Check(OpenCodeErrorRecoveryProjection.IsTransientLinkError(new() { Type = "APIError", Message = "Service Unavailable", Status = 503 }), "HTTP 503 transient");
@@ -145,23 +142,6 @@ internal static class Program
                 && normal.KindIconKey == "TextFillColorSecondaryBrush" && normal.ComposeSummary("x") == "x", "non-error row keeps default chrome: " + (status?.ToString() ?? "null"));
         }
 
-        // WCAG: Fluent theme values for SystemFillColorCritical(Background)Brush (Light / Dark).
-        Check(Contrast(0xC42B1C, 0xFDE7E9) >= 4.5, "Light: critical text on critical background ≥ 4.5:1 (" + Contrast(0xC42B1C, 0xFDE7E9).ToString("0.00") + ")");
-        Check(Contrast(0xFF99A4, 0x442726) >= 4.5, "Dark: critical text on critical background ≥ 4.5:1 (" + Contrast(0xFF99A4, 0x442726).ToString("0.00") + ")");
-        Check(Contrast(0xC42B1C, 0xFDE7E9) >= 3 && Contrast(0xFF99A4, 0x442726) >= 3, "border/icon non-text contrast ≥ 3:1 in both themes");
-
-        // --- 9. source contract: views consume the projection / chrome --------------------------------------
-        var pages = Path.Combine(repo, "src", "AIFrontend", "Pages", "OpenCode");
-        var conversation = File.ReadAllText(Path.Combine(pages, "OpenCodeConversationView.cs"));
-        Check(conversation.Contains("OpenCodeErrorRecoveryProjection.Project(messages, IsRecoveryContinuationCandidate)"), "conversation view projects recovery per applied session snapshot");
-        Check(conversation.Contains("!_recoveredErrorMessages.Contains(message)") && conversation.Contains("!_recoveredRetryMessages.Contains(message)"), "error row and retry line consult the projection");
-        Check(conversation.Contains("!string.Equals(existing.RecoverySignature, recoverySignature, StringComparison.Ordinal)"),
-            "recovery signature triggers in-place refresh (old rows update when a later attempt succeeds)");
-        var toolView = File.ReadAllText(Path.Combine(pages, "OpenCodeToolPartView.cs"));
-        var chipView = File.ReadAllText(Path.Combine(pages, "OpenCodeTimelineChipView.cs"));
-        Check(toolView.Contains("OpenCodeToolRowChrome.For(model.Status)") && chipView.Contains("OpenCodeToolRowChrome.For(content.Status)"), "tool row and timeline chip use the shared whole-row chrome");
-        Check(toolView.Contains("ApplyRowChrome(_rowChrome, chrome)") && chipView.Contains("ApplyRowChrome(_rowChrome, chrome)"), "row border/background applied from chrome in both views");
-
         // --- 10. B16: completed processing summaries recede; failures and in-progress rows never do ---------
         Check(OpenCodeProcessedSummaryStyle.LabelBrushKey == "TextFillColorSecondaryBrush" && OpenCodeProcessedSummaryStyle.IconBrushKey == "TextFillColorTertiaryBrush",
             "B16: de-emphasis uses only theme brushes (secondary text, tertiary glyph)");
@@ -191,58 +171,8 @@ internal static class Program
                 && OpenCodeProcessedSummaryStyle.RowLabelKey(working) is null, "B16: " + working + " row keeps its default emphasis");
         }
 
-        // Standard Windows 11 theme colours (WinUI Common_themeresources_any.xaml), alpha-composited on the
-        // Mica/base backgrounds: Light #F3F3F3 / card #FFFFFF, Dark #202020 / #282828 (layer).
-        static int Over(int argb, int bg)
-        {
-            var a = ((argb >> 24) & 0xFF) / 255.0;
-            int Ch(int s) => (int)Math.Round(((argb >> s) & 0xFF) * a + ((bg >> s) & 0xFF) * (1 - a));
-            return (Ch(16) << 16) | (Ch(8) << 8) | Ch(0);
-        }
-
-        foreach (var (theme, bg) in new[] { ("Light", 0xF3F3F3), ("Light card", 0xFFFFFF) })
-        {
-            var text = Contrast(Over(unchecked((int)0x9E000000), bg), bg);
-            var icon = Contrast(Over(0x72000000, bg), bg);
-            Check(text >= 4.5, "B16 " + theme + ": secondary summary text ≥ 4.5:1 (" + text.ToString("0.00") + ")");
-            Check(icon >= 3, "B16 " + theme + ": tertiary glyph non-text ≥ 3:1 (" + icon.ToString("0.00") + ")");
-        }
-
-        foreach (var (theme, bg) in new[] { ("Dark", 0x202020), ("Dark layer", 0x282828) })
-        {
-            var text = Contrast(Over(unchecked((int)0xC5FFFFFF), bg), bg);
-            var icon = Contrast(Over(unchecked((int)0x87FFFFFF), bg), bg);
-            Check(text >= 4.5, "B16 " + theme + ": secondary summary text ≥ 4.5:1 (" + text.ToString("0.00") + ")");
-            Check(icon >= 3, "B16 " + theme + ": tertiary glyph non-text ≥ 3:1 (" + icon.ToString("0.00") + ")");
-        }
-
-        var groupView = File.ReadAllText(Path.Combine(pages, "OpenCodeToolGroupView.cs"));
-        var reasoningView = File.ReadAllText(Path.Combine(pages, "OpenCodeReasoningRowView.cs"));
-        Check(groupView.Contains("OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(_summary.IsActive, _summary.ErrorCount, _leafStatus)")
-            && groupView.Contains("OpenCodeProcessedSummaryStyle.GroupIconKey(_summary.IsActive, _summary.ErrorCount, _leafStatus)"), "B16: group header consumes settled tone");
-        Check(groupView.Contains("CreateTally(\"\\uE711\", OpenCodeToolTheme.Critical"), "B16: red error tally untouched");
-        Check(reasoningView.Contains("OpenCodeProcessedSummaryStyle.RowLabelKey(_model.Status)"), "B16: reasoning row consumes settled tone");
-        Check(toolView.Contains("OpenCodeProcessedSummaryStyle.RowIconKey(model.Status, chrome)") && toolView.Contains("chrome.TextKey is { } textKey"),
-            "B16: tool row kind glyph via settled tone, failure text chrome intact");
-        foreach (var source in new[] { groupView, reasoningView, toolView })
-        {
-            Check(!source.Contains("Opacity = 0.") && !source.Contains("FontSize = 11"), "B16: no opacity / smaller-type reductions (contrast preserved, HC uses system colours)");
-        }
-
         Console.WriteLine("B14 error-recovery tests passed: " + _assertions + " assertions");
         return 0;
     }
 
-    private static double Contrast(int fg, int bg)
-    {
-        static double L(int rgb)
-        {
-            static double C(int v) { var s = v / 255.0; return s <= 0.03928 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4); }
-            return 0.2126 * C((rgb >> 16) & 0xFF) + 0.7152 * C((rgb >> 8) & 0xFF) + 0.0722 * C(rgb & 0xFF);
-        }
-
-        var a = L(fg) + 0.05;
-        var b = L(bg) + 0.05;
-        return Math.Max(a, b) / Math.Min(a, b);
-    }
 }

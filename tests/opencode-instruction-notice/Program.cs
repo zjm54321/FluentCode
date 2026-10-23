@@ -20,7 +20,8 @@ internal static class Program
     {
         if (args.Length > 0 && args[0] == "True") { RedesignRegression.Run(queueOnly: true); return; }
         Run().GetAwaiter().GetResult();
-        Wave6Timeline.Run(args[1]);
+        Wave6Timeline.Run();
+        VisibleIdle.Run();
     }
 
     private static async Task Run()

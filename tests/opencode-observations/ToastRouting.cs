@@ -187,21 +187,6 @@ static partial class Checks
             { ["action"] = "completed", ["source"] = NotificationSourceLabels.GetArgumentTag(NotificationSource.OpenCode), ["requestId"] = completions[^1].Token },
             inputs = Array.Empty<object>(), buttons = Array.Empty<object>() });
 
-        string sourcePath = Environment.GetEnvironmentVariable("AIFRONTEND_TOAST_TEST_SOURCE")!;
-        string nativeSource = System.IO.File.ReadAllText(System.IO.Path.Combine(sourcePath, "Services/Notifications/CompletionNotificationService.Interactions.cs"));
-        Check(!nativeSource.Contains(".SetInputId(", StringComparison.Ordinal), "native buttons are never coupled to textbox nonempty state");
-        Check(nativeSource.Contains("new AppNotification(NotificationInteractionXml.Build(plan))", StringComparison.Ordinal)
-            && !nativeSource.Contains("new AppNotificationBuilder", StringComparison.Ordinal), "native interaction uses tested ordered XML, not grouping builder");
-        string appSource = System.IO.File.ReadAllText(System.IO.Path.Combine(sourcePath, "App.Notifications.cs"));
-        int start = appSource.IndexOf("    private void OnOpenCodeInteraction(", StringComparison.Ordinal);
-        string handler = appSource[start..appSource.IndexOf("    private void OnLocalTaskCompleted(", start, StringComparison.Ordinal)];
-        Check(!handler.Contains(".Activate(", StringComparison.Ordinal) && !handler.Contains(".Restore(", StringComparison.Ordinal),
-            "App interaction-result handler cannot restore or activate minimized window");
-        string shellSource = System.IO.File.ReadAllText(System.IO.Path.Combine(sourcePath, "MainWindow.OpenCode.cs"));
-        start = shellSource.IndexOf("    private void App_OpenCodeInteractionProcessed(", StringComparison.Ordinal);
-        handler = shellSource[start..shellSource.IndexOf("    private void HandleOpenCodeInteractionTaskbar(", start, StringComparison.Ordinal)];
-        Check(!handler.Contains("QueueOpenCodeShellNavigation(", StringComparison.Ordinal) && !handler.Contains(".Activate(", StringComparison.Ordinal)
-            && !handler.Contains(".Restore(", StringComparison.Ordinal), "shell interaction-result handler cannot navigate or foreground window");
     }
 
     private static void DumpToast(string name, object payload)

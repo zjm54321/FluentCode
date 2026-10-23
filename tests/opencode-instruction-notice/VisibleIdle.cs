@@ -7,7 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
-internal static class Program
+internal static class VisibleIdle
 {
     private static int checks;
     private static void Check(bool ok, string name) { if (!ok) throw new Exception(name); checks++; }
@@ -47,7 +47,7 @@ internal static class Program
         internal void Layout() => View.RaiseLayoutUpdatedForTest();
         internal OpenCodeIdleViewportSnapshot Capture() => View.CaptureIdleViewport(Scroll);
     }
-    private static void Main()
+    internal static void Run()
     {
         var f = new Fixture(Idle("msg_old", 10), Idle("msg_new", 20)); f.Place(0, 100); f.Place(1, 600);
         Check(f.Capture().Candidate is { MessageId: "msg_old", Watermark: 10 }, "newer rendered but out-of-viewport idle cannot enlarge visible covered watermark");

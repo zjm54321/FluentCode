@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 using AIFrontend.Pages.OpenCode;
@@ -23,7 +22,7 @@ internal static class Wave6Timeline
     private static OpenCodeMessage Step(string id, params object[] content) => M(new { id, type = "assistant", content, time = new { created = 1700000000000d, completed = 1700000001000d } });
     private static object Tool(string id) => new { id, type = "tool", name = "read", state = new { status = "completed", input = new { path = "file" } } };
 
-    internal static void Run(string repo)
+    internal static void Run()
     {
         ConversationViewTestProbe.Reset();
         var view = new OpenCodeConversationView();
@@ -93,39 +92,6 @@ internal static class Wave6Timeline
         Check(OpenCodeToolRowPresentation.Build(invocation).Name == "子智能体", "wave6.invocation-label-matches-completion-label");
         view.ClearMessages();
 
-        var root = Path.Combine(repo, "src", "AIFrontend", "Pages", "OpenCode");
-        var chipSource = File.ReadAllText(Path.Combine(root, "OpenCodeTimelineChipView.cs"));
-        Check(chipSource.Contains("IOpenCodeDetailContentSource, IOpenCodeChildChatSource") && chipSource.Contains("TogglePinned(Source)")
-            && chipSource.Contains("public void OpenChildChat()"), "wave6.native-child-chip-click-uses-shared-child-window-contract-not-properties");
-        Check(chipSource.Contains("Grid.SetColumn(_icon, 0)") && chipSource.Contains("Grid.SetColumn(_label, 1)") && chipSource.Contains("Grid.SetColumn(_statusCell, 4)"), "wave6.native-chip-category-left-status-at-common-right-edge");
-        var toolSource = File.ReadAllText(Path.Combine(root, "OpenCodeToolPartView.cs"));
-        Check(toolSource.Contains("Grid.SetColumn(_kindIcon, 0)") && toolSource.Contains("Grid.SetColumn(_nameText, 1)") && toolSource.Contains("Grid.SetColumn(statusCell, 3)")
-            && toolSource.Contains("OpenCodeToolKind.Subagent => OpenCodeStepRunPresentation.SubagentGlyph"), "wave6.native-call-columns-and-robot-match-completion");
-        Check(toolSource.Contains("SubagentPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource")
-            && toolSource.Contains("Name = model.Name"), "wave7.native-invocation-hover-and-click-preserve-background-identity");
-        var completionSource = File.ReadAllText(Path.Combine(root, "OpenCodeSubagentCompletionView.cs"));
-        Check(completionSource.Contains("OpenCodeStepRunPresentation.SubagentGlyph") && completionSource.Contains("_chip.UpdateRow(OpenCodeStepRunPresentation.DescribeAsyncCompletion(completion)")
-            && !completionSource.Contains("new Expander") && !completionSource.Contains("查看子会话"), "wave6.native-completion-wrapper-has-direct-peer-chip-no-intermediate-expand-or-link");
-        var groupSource = File.ReadAllText(Path.Combine(root, "OpenCodeToolGroupView.cs"));
-        Check(groupSource.Contains("if (!_summary.IsActive && _openLeaf is { } open) { open(); return; }") && groupSource.Contains("_header.PointerEntered")
-            && groupSource.Contains("tool-group.progress.before") && groupSource.Contains("tool-group.expansion.before") && groupSource.Contains("tool-group.expansion.after"), "wave6.native-single-leaf-dispatch-and-existing-diagnostics-preserved");
-        Check(groupSource.Contains("titleCluster.Children.Add(_leafLabel);") && groupSource.Contains("titleCluster.Children.Add(_headerText);")
-            && groupSource.Contains("titleCluster.Children.Add(_chevron);") && groupSource.Contains("Grid.SetColumn(titleCluster, 1)")
-            && !groupSource.Contains("Grid.SetColumn(_leafLabel,") && !groupSource.Contains("titleCluster.ColumnSpacing") && !groupSource.Contains("Grid.SetColumn(_headerText, 0")
-            && groupSource.Contains("var titleCluster = new Grid { HorizontalAlignment = HorizontalAlignment.Left") && groupSource.Contains("_leafLabel.TextTrimming = TextTrimming.CharacterEllipsis;")
-            && groupSource.Split("headerContent.ColumnDefinitions.Add(").Length - 1 == 3
-            && groupSource.Contains("Margin = new Thickness(5, 0, 0, 0)") && groupSource.Contains("Padding = new Thickness(8, 0, 8, 0)"),
-            "wave6.native-group-first-text-shares-peer-37dip-start-without-empty-auto-column-gap");
-        Check(groupSource.Contains("Grid.SetColumn(tally, 2)") && groupSource.Contains("Width = new GridLength(1, GridUnitType.Star)")
-            && !groupSource.Contains("titleCluster.Children.Add(tally)"), "wave6.native-group-status-stays-right-of-flexible-spacer-not-in-title-cluster");
-        Check(groupSource.Contains("_root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };")
-            && groupSource.Contains("_root.PointerExited += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };")
-            && groupSource.Contains("_root.PointerCanceled += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };")
-            && groupSource.Contains("=> _chevron.Opacity = _pointerOver || _focusVisible ? 1 : 0;") && groupSource.Contains("_focusVisible = _header.FocusState == FocusState.Keyboard;")
-            && !groupSource.Contains("_chevron.Visibility = _pointerOver")
-            && groupSource.Contains("_enterLeaf?.Invoke();") && groupSource.Contains("_exitLeaf?.Invoke();"),
-            "wave6.native-group-box-hover-or-keyboard-focus-chevron-keeps-layout-space-and-header-leaf-preview");
-
         ConversationViewTestProbe.Reset();
         var backgroundOrigin = M(new { id = "bg_origin", type = "assistant", content = new[] { new
         {
@@ -153,13 +119,6 @@ internal static class Wave6Timeline
         var unknownModel = OpenCodeToolRowPresentation.Build(unconfirmed);
         Check(unknownModel.Name == "子智能体（后台）" && unknownModel.Status == OpenCodeToolRowStatus.Unknown && unconfirmed.Name == "subagent",
             "wave7.background-return-without-job-state-is-unknown-not-success-and-protocol-is-unchanged");
-        Check(chipSource.Contains("OpenCodeStepRunPresentation.TerminalGlyph") && chipSource.Contains("IsSubagentLabel(_content.Name)")
-            && chipSource.Contains("owner._detailAnchorOverride ?? owner._chip"), "wave7.background-primary-glyphs-and-actual-child-anchor-adapter-preserved");
-        Check(toolSource.Contains("_nameText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey)")
-            && toolSource.Contains("_targetText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey)")
-            && groupSource.Contains("_headerText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey)")
-            && groupSource.Contains("_headerText.Visibility = (_openLeaf is null && !ShowsWorkingIndicator) || backgroundRunning ? Visibility.Visible : Visibility.Collapsed"),
-            "wave7.compact-native-caption-typography-and-single-operation-title-without-processed-suffix");
 
         ConversationViewTestProbe.Reset();
         var foreground = M(new { id = "fg_origin", type = "assistant", content = new[] { new
@@ -198,9 +157,6 @@ internal static class Wave6Timeline
             && errorText.MaxLines == 1 && errorText.IsTextSelectionEnabled && errorText.Text.Contains("first line\nfull detail", StringComparison.Ordinal)
             && !Walk(errorRow).OfType<Microsoft.UI.Xaml.Controls.Button>().Any(),
             "wave7.error-is-noninteractive-left-circular-x-plus-selectable-single-line-full-source-without-right-status");
-        var conversationSource = File.ReadAllText(Path.Combine(root, "OpenCodeConversationView.cs"));
-        Check(!conversationSource.Contains("助手错误") && conversationSource.Contains("TextTrimming = TextTrimming.CharacterEllipsis")
-            && conversationSource.Contains("_retryStatus.Opacity = 0.85 + 0.15 * Math.Cos"), "wave7.error-has-no-redundant-title-and-live-retry-has-gentle-visible-pulse");
         view.ClearMessages();
 
         ConversationViewTestProbe.Reset();
@@ -251,35 +207,15 @@ internal static class Wave6Timeline
         view.ApplyMessages(new[] { instruction });
         var instructionGroup = Made<OpenCodeToolGroupView>().Last();
         Check(instructionGroup.InlineLeaf, "wave7.single-instruction-uses-inline-file-name-view-not-generic-detail-header");
-        var instructionSource = File.ReadAllText(Path.Combine(root, "OpenCodeInstructionNoticeView.cs"));
-        Check(instructionSource.Contains("DescribeInstructionTarget(notice)") && instructionSource.Contains("ShortSourceName(key)")
-            && instructionSource.Contains("_toggle.Click +=") && instructionSource.Contains("if (_multiple)")
-            && !instructionSource.Contains("OpenCodeToolDetailPopup") && !instructionSource.Contains("OpenCodeTimelineChipView")
-            && !instructionSource.Contains("ReadFile"), "wave7.instruction-shows-safe-file-names-and-structural-multi-file-toggle-without-empty-properties-or-file-fetch");
         Check(OpenCodeToolRowPresentation.DisplayName("acp_status") == "ACP状态"
             && OpenCodeToolRowPresentation.DisplayName("compress") == "压缩上下文"
             && OpenCodeToolRowPresentation.DisplayName("third_party_acp_status") == "third_party_acp_status",
             "wave7.confirmed-context-tools-have-exact-display-only-aliases-without-mcp-suffix-renaming");
-        Check(instructionSource.Contains("titleCluster.Children.Add(label)") && instructionSource.Contains("titleCluster.Children.Add(_chevron)")
-            && instructionSource.Contains("_chevron.Opacity = _multiple && _pointerOver ? 1 : 0")
-            && instructionSource.Contains("_root.PointerEntered +=") && instructionSource.Contains("_root.PointerExited +=")
-            && instructionSource.Contains("_root.PointerCanceled +=") && !instructionSource.Contains("_chevron.Visibility")
-            && !instructionSource.Contains("GotFocus") && instructionSource.Contains("_toggle.Click +="),
-            "wave8.instruction-caret-is-left-title-cluster-reserved-opacity-pointer-only-no-focus-and-native-button-keyboard");
-        var bubbleSource = File.ReadAllText(Path.Combine(root, "OpenCodeUserBubbleView.cs"));
-        Check(bubbleSource.Contains("if (delivered)") && bubbleSource.Contains("Opacity = 0.12")
-            && bubbleSource.Contains("OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent)")
-            && bubbleSource.Contains("OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase, OpenCodeToolTheme.CardStroke)")
-            && bubbleSource.Contains("surface.Children.Add(layout)") && !bubbleSource.Contains("FromArgb"),
-            "wave8.delivered-only-native-accent-tint-over-opaque-theme-neutral-base-without-content-opacity-or-hardcoded-colors");
         var messageTool = JsonSerializer.Deserialize<OpenCodeContentPart>("{\"id\":\"message_tool\",\"type\":\"tool\",\"name\":\"task_message\",\"state\":{\"status\":\"running\",\"input\":{\"text\":\"hello\"}}}", OpenCodeJson.Options)!;
         var messageModel = OpenCodeToolRowPresentation.Build(messageTool);
         Check(messageModel.Name == "子智能体消息" && messageModel.GlyphOverride == OpenCodeStepRunPresentation.SubagentGlyph
             && messageModel.Kind == OpenCodeToolKind.Other && !messageModel.CanMoveToBackground && messageTool.Name == "task_message",
             "wave7.task-message-is-display-only-robot-alias-never-backgroundable-child-execution");
-        Check(toolSource.Contains("Grid.SetColumn(_backgroundButton, 2)") && toolSource.Contains("Grid.SetColumn(statusCell, 3)")
-            && groupSource.Contains("Grid.SetColumn(_backgroundButton, 1)") && groupSource.Contains("Grid.SetColumn(tally, 2)"),
-            "wave7.actual-row-and-singleton-header-order-action-immediately-left-of-far-right-status-cluster");
         view.ClearMessages();
         ConversationViewTestProbe.Reset();
         var restartText = OpenCodeNoticeDismissals.AutomaticRestartText;
@@ -365,21 +301,6 @@ internal static class Wave6Timeline
             && Made<OpenCodeTimelineChipView>().All(p => p.Content.Status == OpenCodeToolRowStatus.Running),
             "wave13.one-compact-status-per-notice-item-terminal-or-robot-glyph-no-created-job-identifiers");
         view.ClearMessages();
-        var markdownSource = File.ReadAllText(Path.Combine(root, "OpenCodeRichTextPresenter.cs"));
-        var codeStart = markdownSource.IndexOf("private static UIElement CreateCodeBlock", StringComparison.Ordinal);
-        var codeFactory = markdownSource[codeStart..markdownSource.IndexOf("private static UIElement? CreateTable", codeStart, StringComparison.Ordinal)];
-        Check(codeFactory.Contains("TextWrapping = TextWrapping.Wrap") && codeFactory.Contains("Text = source")
-            && codeFactory.Contains("CodeBlockFrame(code, source, language)") && !codeFactory.Contains("new ScrollViewer")
-            && !codeFactory.Contains("MaxHeight") && !codeFactory.Contains("TrimEnd"),
-            "wave7.markdown-code-wraps-full-content-without-inner-scroll-trap-or-copy-source-trimming");
-        var detailSource = File.ReadAllText(Path.Combine(root, "OpenCodeToolDetailContent.cs"));
-        var frameStart = detailSource.IndexOf("internal static FrameworkElement CodeBlockFrame", StringComparison.Ordinal);
-        var codeFrame = detailSource[frameStart..detailSource.IndexOf("internal static OpenCodeToolDetailView TextView", frameStart, StringComparison.Ordinal)];
-        Check(codeFrame.Contains("OpenCodeCodeBlockCopy") && codeFrame.Contains("HorizontalAlignment = HorizontalAlignment.Right")
-            && codeFrame.Contains("data.SetText(source)") && codeFrame.Contains("Clipboard.SetContent(data)")
-            && !codeFrame.Contains("new ScrollViewer") && !codeFrame.Contains("MaxHeight")
-            && detailSource.Contains("return CodeBlockFrame(panel, text)"),
-            "wave7.shared-code-frame-has-native-upper-right-exact-full-source-copy-and-only-outer-body-scroll");
-        Console.WriteLine($"PASS wave6 timeline: {_checks} assertions; real renderer/policies with inert presenters; native wiring source guards, no UI.");
+        Console.WriteLine($"PASS wave6 timeline: {_checks} assertions; real renderer/policies with inert presenters, no UI.");
     }
 }

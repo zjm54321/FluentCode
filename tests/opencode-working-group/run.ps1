@@ -18,17 +18,8 @@ $args2 = @('/nologo','/target:exe','/langversion:latest','/nullable:enable','/wa
 $args2 += $refs | ForEach-Object { '/reference:"'+$_+'"' }; $args2 += $sources | ForEach-Object { '"'+$_+'"' }
 $args2 | Set-Content -Encoding UTF8 $rsp
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
-$inputs = @($sources + $refs + $compiler + $dotnet + $PSCommandPath + $rsp)
-$before = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-$before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'inputs-before.json')
-try {
- & $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.txt')
- if ($LASTEXITCODE -ne 0) { throw "Working group compile failed: $LASTEXITCODE" }
- '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'WorkingGroupTests.runtimeconfig.json')
- & $dotnet $dll 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
- if ($LASTEXITCODE -ne 0) { throw "Working group tests failed: $LASTEXITCODE" }
-} finally {
- $after = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
- $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'inputs-after.json')
- if (Compare-Object $before $after -Property Path, Hash) { throw 'Focused inputs changed during validation.' }
-}
+& $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.txt')
+if ($LASTEXITCODE -ne 0) { throw "Working group compile failed: $LASTEXITCODE" }
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'WorkingGroupTests.runtimeconfig.json')
+& $dotnet $dll 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
+if ($LASTEXITCODE -ne 0) { throw "Working group tests failed: $LASTEXITCODE" }

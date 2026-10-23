@@ -31,7 +31,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
     'OpenCodeInteractionUi.cs', 'OpenCodeComposerActivityPolicy.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
-@('Program.cs', 'ConversationLifecycle.cs', 'ConversationView.TestHost.cs', 'RedesignRegression.cs', 'Wave5Timeline.cs', 'Wave6Timeline.cs') | ForEach-Object {
+@('Program.cs', 'ConversationLifecycle.cs', 'ConversationView.TestHost.cs', 'RedesignRegression.cs', 'Wave5Timeline.cs', 'Wave6Timeline.cs', 'VisibleIdle.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path $PSScriptRoot $_) + '"'
 }
 $responseFile = Join-Path $output 'compile.rsp'
@@ -40,6 +40,6 @@ $arguments | Set-Content -Encoding UTF8 $responseFile
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeInstructionNoticeTests.runtimeconfig.json')
 Write-Output 'Headless compilation passed (warnings treated as errors).'
-& $dotnet $assembly $QueueOnly.IsPresent $repo | Tee-Object -FilePath (Join-Path $output 'results.txt')
+& $dotnet $assembly $QueueOnly.IsPresent | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
 Write-Output "Evidence directory: $output"

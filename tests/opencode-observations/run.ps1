@@ -1,11 +1,12 @@
 # Real production core, injected HTTP/native facade only; installed references, no restore/new packages.
+param([string]$EvidenceRoot)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
 $root = Split-Path $dotnet
 $sdk = Get-ChildItem "$root/sdk" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
-$output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-observations-' + [guid]::NewGuid().ToString('N'))
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-observations-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory $output | Out-Null
 $assembly = Join-Path $output 'Observations.dll'
 # WinAppSDK ships net6 projections and the SDK net8 references; the host is net10 (standard unification).
@@ -29,10 +30,6 @@ $args | Set-Content -Encoding UTF8 $rsp
 & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp"
 if ($LASTEXITCODE -ne 0) { throw "Core compile failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'Observations.runtimeconfig.json')
-$oldToastSource = $env:AIFRONTEND_TOAST_TEST_SOURCE
-try {
-    $env:AIFRONTEND_TOAST_TEST_SOURCE = Join-Path $repo 'src/AIFrontend'
-    & $dotnet $assembly
-    if ($LASTEXITCODE -ne 0) { throw "Core tests failed: $LASTEXITCODE" }
-} finally { $env:AIFRONTEND_TOAST_TEST_SOURCE = $oldToastSource }
+& $dotnet $assembly
+if ($LASTEXITCODE -ne 0) { throw "Core tests failed: $LASTEXITCODE" }
 Write-Output "Evidence directory: $output"

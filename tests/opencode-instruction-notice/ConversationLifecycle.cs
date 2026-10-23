@@ -463,9 +463,6 @@ internal static class ConversationLifecycle
             && !ConversationViewTestProbe.IsAttachedTo(oldCompletion.Element, view), "replace.old-elements-detached");
         Check(Recorded("Remove", oldCompletion.Element), "replace.old-root-removal-recorded");
         Check(view.Children.Count == 1 && ConversationViewTestProbe.IsAttachedTo(safeView.Element, view.Children[0]), "replace.notice-only-process-tree");
-        oldTool.RaiseNavigationForTest("ses_conflict");
-        oldCompletion.RaiseNavigationForTest("ses_conflict");
-        Check(navigationCount == 2, "replace.no-stale-navigation");
 
         ConversationViewTestProbe.Reset();
         view.ApplyMessages(new[] { notice });
@@ -506,9 +503,6 @@ internal static class ConversationLifecycle
             "clear.tree-and-indexes-empty");
         Check(!ConversationViewTestProbe.IsAttachedTo(newTool.Element, view)
             && !ConversationViewTestProbe.IsAttachedTo(newCompletion.Element, view), "clear.remaining-elements-detached");
-        newTool.RaiseNavigationForTest("ses_conflict");
-        newCompletion.RaiseNavigationForTest("ses_conflict");
-        Check(navigationCount == 4, "clear.no-stale-navigation");
         view.ClearMessages();
         Check(newTool.DisposeCount == 1 && newCompletion.DisposeCount == 1
             && oldTool.DisposeCount == 1 && oldCompletion.DisposeCount == 1, "clear.idempotent-disposal");

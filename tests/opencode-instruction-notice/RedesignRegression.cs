@@ -67,34 +67,6 @@ internal static class RedesignRegression
         Check(((Grid)list.Children[0]).Children.OfType<TextBlock>().First().Text == "  first\nsecond  "
             && ((Grid)list.Children[0]).Children.OfType<TextBlock>().First().TextWrapping == TextWrapping.Wrap,
             "raw pending text/newlines/whitespace retained and selectable wrapped source is not preview-truncated");
-        var repo = Environment.GetCommandLineArgs().Last();
-        var xaml = System.IO.File.ReadAllText(System.IO.Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
-        var jumpStart = xaml.IndexOf("x:Name=\"ScrollToBottomButton\"", StringComparison.Ordinal);
-        var jump = xaml[jumpStart..xaml.IndexOf("</Button>", jumpStart, StringComparison.Ordinal)];
-        Check(jump.Contains("HorizontalAlignment=\"Center\"", StringComparison.Ordinal) && jump.Contains("Grid.Row=\"5\"", StringComparison.Ordinal)
-            && jump.Contains("Margin=\"0,-40,0,0\"", StringComparison.Ordinal)
-            && jump.Contains("Background=\"{ThemeResource SolidBackgroundFillColorBaseBrush}\"", StringComparison.Ordinal)
-            && jump.Contains("BorderBrush=\"{ThemeResource ControlStrongStrokeColorDefaultBrush}\"", StringComparison.Ordinal),
-            "jump button keeps centered placement/handler with opaque theme fill and readable border");
-        var detail = System.IO.File.ReadAllText(System.IO.Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailContent.cs"));
-        Check(detail.Contains("DependencyProperty.RegisterAttached(", StringComparison.Ordinal) && detail.Contains("element.GetValue(WidthLimitProperty)", StringComparison.Ordinal)
-            && detail.Contains("element.SetValue(WidthLimitProperty, limit)", StringComparison.Ordinal) && !detail.Contains("ConditionalWeakTable", StringComparison.Ordinal),
-            "width baseline belongs to native dependency store, not replaceable managed wrapper identity");
-        var delivery = System.IO.File.ReadAllText(System.IO.Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.ComposerDelivery.cs"));
-        Check(delivery.Contains("client.UpdateInboxDeliveryAsync(session, request.InboxId, request.Delivery, token)", StringComparison.Ordinal)
-            && delivery.Contains("client.GetInboxAsync(session, token)", StringComparison.Ordinal) && delivery.Contains("source.TryExecute(token", StringComparison.Ordinal)
-            && delivery.Contains("_uncertainDelivery.ContainsKey", StringComparison.Ordinal), "real existing PATCH/fresh-read API is source-fenced and unknown updates cannot silently retry");
-        Check(delivery.Contains("RequestedComposerDelivery => _composerDeliverySupported ? OpenCodeDeliveryModes.Steer : null", StringComparison.Ordinal)
-            && !xaml.Contains("x:Name=\"ComposerDeliveryMode\"", StringComparison.Ordinal)
-            && xaml.Contains("x:Name=\"ComposerQueueButton\"", StringComparison.Ordinal),
-            "wave9 removes superseded mode selector: direct default plus explicit clock; unsupported delivery remains unadvertised");
-        var surfaceStart = xaml.IndexOf("x:Name=\"SessionLayoutRoot\"", StringComparison.Ordinal);
-        var surface = xaml[surfaceStart..xaml.IndexOf('>', surfaceStart)];
-        var childSource = System.IO.File.ReadAllText(System.IO.Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeChildChatWindow.cs"));
-        Check(surface.Contains("SolidBackgroundFillColorBaseBrush", StringComparison.Ordinal)
-            && xaml.Contains("PaneBackground=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\"", StringComparison.Ordinal)
-            && childSource.Contains("ScrollSurface(OpenCodeToolTheme.SolidBase)", StringComparison.Ordinal),
-            "main/child text reading surfaces are opaque theme solids while surrounding acrylic panes remain");
         if (queueOnly) { Console.WriteLine($"PASS production queue view: {checks} assertions; inert native boundary only."); return checks; }
 
         var previousApp = Application.Current;

@@ -32,5 +32,5 @@ $arguments | Set-Content -Encoding UTF8 $responseFile
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeErrorRecoveryTests.runtimeconfig.json')
 Write-Output 'Headless compilation passed (warnings treated as errors).'
-& $dotnet $assembly $repo
+& $dotnet $assembly
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
