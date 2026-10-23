@@ -24,6 +24,9 @@ internal static class Program
         Check(view.Contains("Grid.SetColumn(model, 1)") && view.Contains("Grid.SetColumn(indicator, 2)")
             && view.Contains("model.HorizontalAlignment = HorizontalAlignment.Right") && !view.Contains("text.Children.Add(model)"),
             "small gray model occupies trailing column on same row, with separate aligned status");
+        var group = view[view.IndexOf("private TreeViewNode Group", StringComparison.Ordinal)..view.IndexOf("// TreeViewItem content", StringComparison.Ordinal)];
+        Check(group.Contains("TextWrapping.Wrap") && group.Contains("TextTrimming.None") && group.Contains("MaxLines = 0")
+            && !group.Contains("CharacterEllipsis"), "complete agent group names wrap without ellipsis or line cap");
         var agents = new[]
         {
             new OpenCodeAgentInfo { Id = "custom-main", Name = "主配置", Mode = "primary" },

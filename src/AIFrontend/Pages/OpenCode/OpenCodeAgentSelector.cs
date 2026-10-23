@@ -245,6 +245,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     // owner of the observed session selection. No second session read/cache is needed by the sidebar.
     internal OpenCodeModelRef? CurrentModel { get; private set; }
     internal string? CurrentAgentColor => _rows.Find(row => row.Id == _currentAgentId)?.Color;
+    internal string? CurrentAgentDescription => _rows.Find(row => row.Id == _currentAgentId)?.Description;
     internal event EventHandler? DisplayChanged;
 
     /// <summary>该会话是否有未解除的 agent 未知状态（有则切换按钮禁用，仅允许显式恢复）。</summary>

@@ -132,7 +132,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     private TreeViewNode Group(string key, string name, Dictionary<string, bool> expanded)
     {
         var label = new TextBlock { Text = name, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, MaxWidth = TextColumnWidth + 20 };
+            TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None, MaxLines = 0,
+            VerticalAlignment = VerticalAlignment.Center, MaxWidth = TextColumnWidth + 20 };
         var node = new TreeViewNode { Content = label, IsExpanded = !expanded.TryGetValue(key, out var open) || open };
         _groups.Add(key, node);
         _tree.RootNodes.Add(node);

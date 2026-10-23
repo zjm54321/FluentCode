@@ -74,7 +74,7 @@ public sealed partial class OpenCodePage
             card.Render("草稿 · " + (agent?.Name ?? "智能体未就绪"), agent?.Color, model?.Id, model?.Name ?? "模型未就绪",
                 model is null ? "强度未就绪" : BlankStrengthText(model, value?.Model),
                 "新会话草稿：仅用于首次发送，尚未保存为会话选择。", enabled && BlankAgentButton.IsEnabled,
-                enabled && BlankModelButton.IsEnabled, enabled && BlankStrengthButton.IsEnabled);
+                enabled && BlankModelButton.IsEnabled, enabled && BlankStrengthButton.IsEnabled, agent?.Description);
             return;
         }
 
@@ -85,7 +85,7 @@ public sealed partial class OpenCodePage
             ownsSelection ? _agentSelector.CurrentAgentColor : null, selected?.Id, selected?.Id ?? "模型不可用",
             selected?.Id is null ? "强度不可用" : OpenCodeModelPresentation.VariantLabel(selected.Variant),
             "仅修改当前会话；模型与强度选择仅影响之后的回合。", enabled && ownsSelection,
-            enabled, enabled && selected?.Id is not null);
+            enabled, enabled && selected?.Id is not null, ownsSelection ? _agentSelector.CurrentAgentDescription : null);
     }
 
     private void OpenSessionControlModelPicker(bool variantOnly)

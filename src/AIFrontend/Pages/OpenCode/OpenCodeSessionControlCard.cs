@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -10,7 +11,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
     internal Button AgentButton { get; } = Entry("OpenCodeSidebarAgent", "选择智能体");
     internal Button ModelButton { get; } = Entry("OpenCodeSidebarModel", "选择模型");
     internal Button VariantButton { get; } = Entry("OpenCodeSidebarVariant", "选择推理强度");
-    private readonly TextBlock _agentName = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _agentName = OpenCodeAgentPresentation.Name(string.Empty);
     private readonly Border _chrome = new() { Padding = new Thickness(8), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1) };
 
     internal OpenCodeSessionControlCard()
@@ -23,6 +24,8 @@ internal sealed class OpenCodeSessionControlCard : Grid
         rows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rows.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         rows.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // A theme-resource setter survives Apply's ClearValue when the next agent has no custom RGB.
+        AgentButton.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Button\"><Setter Property=\"Foreground\" Value=\"{ThemeResource AccentTextFillColorPrimaryBrush}\"/></Style>");
         AgentButton.Content = WithChevron(_agentName);
         Grid.SetColumnSpan(AgentButton, 2);
         Grid.SetRow(ModelButton, 1);
@@ -41,7 +44,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
     }
 
     internal void Render(string agent, string? color, string? modelId, string modelName, string variant,
-        string scope, bool agentEnabled, bool modelEnabled, bool variantEnabled)
+        string scope, bool agentEnabled, bool modelEnabled, bool variantEnabled, string? agentDescription)
     {
         _agentName.Text = agent;
         OpenCodeAgentPresentation.Apply(AgentButton, color);
@@ -53,7 +56,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
             ModelButton.Content = WithChevron(OpenCodeModelLogo.Label(modelId, modelName));
         }
         VariantButton.Content = WithChevron(new TextBlock { Text = variant, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
-        Describe(AgentButton, "智能体：" + agent, scope);
+        Describe(AgentButton, "智能体：" + agent, scope, agentDescription ?? "智能体说明不可用");
         Describe(ModelButton, "模型：" + modelName, scope);
         Describe(VariantButton, "推理强度：" + variant, scope);
         AgentButton.IsEnabled = agentEnabled;
@@ -89,10 +92,10 @@ internal sealed class OpenCodeSessionControlCard : Grid
         return grid;
     }
 
-    private static void Describe(Button button, string name, string scope)
+    private static void Describe(Button button, string name, string scope, string? tooltip = null)
     {
         AutomationProperties.SetName(button, name);
         AutomationProperties.SetHelpText(button, scope);
-        ToolTipService.SetToolTip(button, name + "\n" + scope);
+        ToolTipService.SetToolTip(button, tooltip ?? name + "\n" + scope);
     }
 }

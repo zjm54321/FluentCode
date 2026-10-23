@@ -41,7 +41,7 @@ public sealed partial class OpenCodePage
         var enabled = SessionControlCardCanEdit();
         OpenCodeModelInfo? model;
         OpenCodeModelRef? selected;
-        string? agent, color;
+        string? agent, color, description;
         if (_newSessionDraftActive)
         {
             var value = _blankPreferences;
@@ -51,6 +51,7 @@ public sealed partial class OpenCodePage
                 ? _activeDraftSlot!.Agents.FirstOrDefault(a => a.Id == value!.Agent) : null;
             agent = info?.Name;
             color = info?.Color;
+            description = info?.Description;
             selected = current && HasBlankMetadata(value!) ? value!.Model : null;
             model = _blankModels.FirstOrDefault(m => selected is not null && m.Id == selected.Id && m.ProviderId == selected.ProviderId);
             enabled &= current && !_newSessionCreatePending && !_blankPickerPending;
@@ -61,6 +62,7 @@ public sealed partial class OpenCodePage
                 && _agentSelectorSessionId == _selectedSessionId;
             agent = owns ? _agentSelector.CurrentAgentDisplay : null;
             color = owns ? _agentSelector.CurrentAgentColor : null;
+            description = owns ? _agentSelector.CurrentAgentDescription : null;
             selected = owns ? _agentSelector.CurrentModel : null;
             model = selected is not null && TryCaptureInsightsBinding(out var binding)
                 ? _insights?.CurrentModelInfo(binding!, selected) : null;
@@ -70,6 +72,7 @@ public sealed partial class OpenCodePage
         OpenCodeAgentPresentation.Apply(BlankAgentButton, color);
         if (BlankAgentButton.Content is TextBlock agentLabel) OpenCodeAgentPresentation.Apply(agentLabel, color);
         DescribeComposerIcon(BlankAgentButton, "选择智能体：" + (agent ?? "不可用"));
+        ToolTipService.SetToolTip(BlankAgentButton, description ?? "智能体说明不可用");
         var key = expanded + "\n" + model?.Id + "\n" + model?.Name + "\n" + selected?.Id;
         if (BlankModelButton.Tag as string != key || _composerModelLogo is null)
         {

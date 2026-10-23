@@ -83,6 +83,16 @@ namespace AIFrontend.Pages
             var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
             Check(binding.Contains("OpenCodeModelLogo.Label(") && binding.Contains("OpenCodeAgentPresentation.Apply(agentLabel, color)")
                 && binding.Contains("expanded ? OpenCodeModelPresentation.VariantLabel(selected?.Variant)"), "expanded choices retain colored agent name, model logo/name and translated effort");
+            Check(binding.Contains("description = info?.Description") && binding.Contains("owns ? _agentSelector.CurrentAgentDescription : null")
+                && binding.Contains("ToolTipService.SetToolTip(BlankAgentButton, description ??"), "visible composer agent tooltip uses owned draft/session description in both responsive modes");
+            var card = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs"));
+            Check(card.Contains("_agentName = OpenCodeAgentPresentation.Name(string.Empty)") && card.Contains("AccentTextFillColorPrimaryBrush")
+                && card.Contains("AgentButton.Style = (Style)XamlReader.Load"), "sidebar full name wraps and uncolored agent returns to dynamic system accent style");
+            Check(card.Contains("Describe(AgentButton, \"智能体：\" + agent, scope, agentDescription ??")
+                && card.Contains("ToolTipService.SetToolTip(button, tooltip ??"), "visible sidebar agent tooltip shows description rather than scope");
+            var cardBinding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs"));
+            Check(cardBinding.Contains("BlankStrengthButton.IsEnabled, agent?.Description")
+                && cardBinding.Contains("ownsSelection ? _agentSelector.CurrentAgentDescription : null"), "sidebar descriptions read from the same fenced draft/current selection as the name and color");
             Check(binding.Contains("OpenCodeComposerEffort.Ticks(model, selected?.Variant)") && binding.Contains("_insights?.CurrentModelInfo")
                 && !binding.Contains("ListModelsAsync"), "gauge reuses existing fenced Model.Info metadata without duplicate reads");
             Check(binding.Contains("SessionPaneToggleButton_Click(sender, e)") && binding.Contains("OpenSessionControlModelPicker(variantOnly: true)")
