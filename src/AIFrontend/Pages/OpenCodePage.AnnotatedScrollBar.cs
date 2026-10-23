@@ -56,7 +56,8 @@ public sealed partial class OpenCodePage
         _scrollAnnotations = annotations;
         ConversationScrollBar.Labels.Clear();
         foreach (var item in annotations)
-            ConversationScrollBar.Labels.Add(new AnnotatedScrollBarLabel(OpenCode.OpenCodeConversationView.AnnotationLabel(item.Text), item.Offset));
+            // The template draws only a dash; retain role + full text for its accessible name.
+            ConversationScrollBar.Labels.Add(new AnnotatedScrollBarLabel($"{(item.User ? "你" : "AI 回复")}：{item.Text}", item.Offset));
     }
 
     private void ConversationScrollBar_Scrolling(AnnotatedScrollBar sender, AnnotatedScrollBarScrollingEventArgs args)

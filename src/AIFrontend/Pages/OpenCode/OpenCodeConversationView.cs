@@ -104,20 +104,6 @@ public sealed class OpenCodeConversationView : StackPanel
         return labels;
     }
 
-    internal static string AnnotationLabel(string text)
-    {
-        text = text.TrimStart();
-        var elements = StringInfo.GetTextElementEnumerator(text);
-        var label = string.Empty;
-        while (elements.MoveNext() && new StringInfo(label).LengthInTextElements < 2)
-        {
-            var next = elements.GetTextElement();
-            if (string.IsNullOrWhiteSpace(next)) break;
-            label += next;
-        }
-        return label;
-    }
-
     private double WindowOffset()
         => _viewport is null ? 0 : Math.Max(0, -TransformToVisual(_viewport).TransformPoint(new Point(0, 0)).Y - Padding.Top);
 

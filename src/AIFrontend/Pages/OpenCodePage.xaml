@@ -439,7 +439,19 @@
                                                         DetailLabelRequested="ConversationScrollBar_DetailLabelRequested"
                                                         Scrolling="ConversationScrollBar_Scrolling"
                                                         AutomationProperties.AutomationId="OpenCodeAnnotatedScrollBar"
-                                                        AutomationProperties.Name="会话消息导航" />
+                                                        AutomationProperties.Name="会话消息导航">
+                                        <AnnotatedScrollBar.LabelTemplate>
+                                            <DataTemplate>
+                                                <!-- SB2: native layout measures the padded dash for label collision handling. -->
+                                                <Border HorizontalAlignment="Right" Padding="0,6,0,6"
+                                                        AutomationProperties.Name="{Binding}">
+                                                    <Rectangle Width="12" Height="2" RadiusX="1" RadiusY="1"
+                                                               HorizontalAlignment="Right"
+                                                               Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </AnnotatedScrollBar.LabelTemplate>
+                                    </AnnotatedScrollBar>
 
                                     <!-- F3 消息历史分页：滚动到顶部附近自动加载更早消息（单飞、预插保持阅读位置；
                                          游标语义见 OpenCodePage.MessagePagination.cs）。加载中时在顶部显示小型进度环（叠放，不推动布局）。 -->
