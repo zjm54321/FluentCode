@@ -38,6 +38,7 @@ namespace Microsoft.UI.Xaml
     {
         public object Tag{get;set;}=null!;public string Name{get;set;}="";public object? Style{get;set;}
         public double Width{get;set;}public double Height{get;set;}public double MaxWidth{get;set;}public double MaxHeight{get;set;}public double MinWidth{get;set;}public double MinHeight{get;set;}
+        public double ActualHeight=>Height>0?Height:32;public Microsoft.UI.Xaml.Media.GeneralTransform TransformToVisual(UIElement? target)=>new();
         public Thickness Padding{get;set;}public Thickness Margin{get;set;}public HorizontalAlignment HorizontalAlignment{get;set;}public VerticalAlignment VerticalAlignment{get;set;}
         public XamlRoot? XamlRoot{get;set;}=new();public event Action<object,RoutedEventArgs>? Loaded;public void RaiseLoaded()=>Loaded?.Invoke(this,new());
     }
@@ -48,6 +49,7 @@ namespace Microsoft.UI.Xaml.Media
 {
     using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;
     public sealed class FontFamily(string name){public string Name=>name;}
+    public sealed class GeneralTransform{public Windows.Foundation.Point TransformPoint(Windows.Foundation.Point point)=>new(0,300);}
     public sealed class SolidColorBrush(Windows.UI.Color color){public Windows.UI.Color Color=color;}
     public static class VisualTreeHelper
     {
@@ -58,7 +60,7 @@ namespace Microsoft.UI.Xaml.Media
 namespace Microsoft.UI.Xaml.Controls.Primitives{public enum FlyoutPlacementMode{Top,Bottom,Left,Right,Full,TopEdgeAlignedLeft,TopEdgeAlignedRight,BottomEdgeAlignedLeft,BottomEdgeAlignedRight,LeftEdgeAlignedTop,LeftEdgeAlignedBottom,RightEdgeAlignedTop,RightEdgeAlignedBottom,Auto}}
 namespace Microsoft.UI.Xaml.Shapes{public class Ellipse:Microsoft.UI.Xaml.FrameworkElement{}}
 namespace Windows.UI{public struct Color{public byte A,R,G,B;}}
-namespace Windows.Foundation{public readonly record struct Size(double Width,double Height);}
+namespace Windows.Foundation{public readonly record struct Size(double Width,double Height);public readonly record struct Point(double X,double Y);}
 namespace Microsoft.UI.Xaml.Markup{public static class XamlReader{public static object Load(string xaml)=>new Microsoft.UI.Xaml.Style();}}
 namespace Microsoft.UI.Xaml.Automation
 {public static class AutomationProperties{public static void SetAutomationId(Microsoft.UI.Xaml.DependencyObject e,string s)=>e.Attached["Id"]=s;public static void SetName(Microsoft.UI.Xaml.DependencyObject e,string s)=>e.Attached["Name"]=s;public static void SetHelpText(Microsoft.UI.Xaml.DependencyObject e,string s)=>e.Attached["Help"]=s;}}

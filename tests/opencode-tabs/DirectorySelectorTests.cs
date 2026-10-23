@@ -48,7 +48,9 @@ internal static class DirectorySelectorTests
         p.AddHomeProject(LongDirectory,"Long");
         var menu=p.ProjectMenu();
         Check(menu.Placement==Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,"flyout opens below directory sentence");
-        var panel=(StackPanel)menu.Content!;var list=panel.Children.OfType<ListView>().Single();
+        var panel=(Grid)menu.Content!;var list=panel.Children.OfType<ListView>().Single();
+        Check(panel.Height<=300&&panel.RowDefinitions[2].Height.Kind==GridUnitType.Star
+            &&panel.Children.OfType<HyperlinkButton>().Single().Content as string=="添加项目文件夹…","directory rows scroll within the bounded native grid; add action remains outside list");
         var rows=list.Items.OfType<ListViewItem>().ToList();
         Check(rows.Count>=2&&list.SelectionMode==ListViewSelectionMode.Single,"projects use native single-selection ListView");
         Check(list.SelectedItem is ListViewItem{Tag:string selected}&&selected==initial,"current directory selected natively");
@@ -58,7 +60,7 @@ internal static class DirectorySelectorTests
         Check(list.Items.Count==0,"directory search filters actual project rows");search.Text="";
         list.ClickItem(longRow);await p.WaitAgentIdle();
         Shows(p,LongDirectory,"after switching to long directory");
-        menu=p.ProjectMenu();list=((StackPanel)menu.Content!).Children.OfType<ListView>().Single();rows=list.Items.OfType<ListViewItem>().ToList();
+        menu=p.ProjectMenu();list=((Grid)menu.Content!).Children.OfType<ListView>().Single();rows=list.Items.OfType<ListViewItem>().ToList();
         Check(list.SelectedItem is ListViewItem{Tag:LongDirectory},"reopened flyout keeps switched selection selected");
         var before=p.Preferences;var agent=p.AgentName;
         list.ClickItem(list.SelectedItem!);

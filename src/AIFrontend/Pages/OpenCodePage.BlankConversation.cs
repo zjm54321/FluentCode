@@ -248,11 +248,18 @@ public sealed partial class OpenCodePage
         var current = _blankPreferences?.Directory;
         var source = _source;
         var flyout = new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
-        var panel = new StackPanel { Spacing = 10, Width = Math.Max(1, Math.Min(440, XamlRoot.Size.Width - 64)) };
+        var anchorY = BlankProjectButton.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point()).Y;
+        var available = Math.Max(anchorY, XamlRoot.Size.Height - anchorY - BlankProjectButton.ActualHeight);
+        var panel = new Grid { RowSpacing = 10, Width = Math.Max(1, Math.Min(440, XamlRoot.Size.Width - 64)),
+            Height = Math.Max(180, Math.Min(420, available - 40)) };
+        foreach (var height in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
+            panel.RowDefinitions.Add(new RowDefinition { Height = height });
         panel.Children.Add(new TextBlock { Text = "工作目录", Style = OpenCodeInteractionUi.TryStyle("BodyStrongTextBlockStyle") });
         var search = new AutoSuggestBox { PlaceholderText = "搜索项目或路径", QueryIcon = new SymbolIcon(Symbol.Find) };
+        Grid.SetRow(search, 1);
         panel.Children.Add(search);
-        var list = new ListView { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, MaxHeight = Math.Max(36, Math.Min(280, XamlRoot.Size.Height - 240)) };
+        var list = new ListView { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true };
+        Grid.SetRow(list, 2);
         AutomationProperties.SetName(list, "工作目录");
         void Populate()
         {
@@ -262,7 +269,9 @@ public sealed partial class OpenCodePage
                 || project.Key.Directory.Contains(search.Text, StringComparison.OrdinalIgnoreCase)))
             {
                 var row = new StackPanel { Spacing = 2 };
-                row.Children.Add(new TextBlock { Text = project.DisplayName, TextTrimming = TextTrimming.CharacterEllipsis });
+                row.Children.Add(new TextBlock { Text = project.DisplayName == project.Key.Directory
+                    ? OpenCodeDirectoryPresentation.Split(project.Key.Directory).Name : project.DisplayName,
+                    TextTrimming = TextTrimming.CharacterEllipsis });
                 row.Children.Add(new TextBlock { Text = project.Key.Directory, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas"),
                     Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle"), TextTrimming = TextTrimming.CharacterEllipsis });
                 var item = new ListViewItem { Content = row, Tag = project.Key.Directory };
@@ -284,10 +293,12 @@ public sealed partial class OpenCodePage
         Populate();
         panel.Children.Add(list);
         var add = new HyperlinkButton { Content = "添加项目文件夹…" };
+        Grid.SetRow(add, 3);
         add.Click += async (_, _) => { if (!Current()) return; flyout.Hide(); await AddHomeDirectoryAsync(); };
         panel.Children.Add(add);
-        panel.Children.Add(new TextBlock { Text = "选择当前连接的项目目录；首次发送时创建会话。", TextWrapping = TextWrapping.Wrap,
-            Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle") });
+        var caption = new TextBlock { Text = "选择当前连接的项目目录；首次发送时创建会话。", TextWrapping = TextWrapping.Wrap,
+            Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle") };
+        Grid.SetRow(caption, 4); panel.Children.Add(caption);
         flyout.Content = panel;
         flyout.ShowAt(BlankProjectButton);
     }
