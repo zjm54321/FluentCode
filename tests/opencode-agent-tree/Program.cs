@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 
@@ -17,6 +18,33 @@ internal static class Program
     private static void Check(bool value, string name) { if (!value) throw new Exception(name); Console.WriteLine("PASS " + name); _checks++; }
     private static JsonElement Json(string value) => JsonDocument.Parse(value).RootElement.Clone();
 
+    private static void CheckTreeViewport(string repo, string view)
+    {
+        var start = view.IndexOf("<Grid xmlns=", StringComparison.Ordinal);
+        var markup = view[start..view.IndexOf("\"\"\");", start, StringComparison.Ordinal)];
+        var root = XElement.Parse(markup);
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement Named(XElement element, string name) => element.DescendantsAndSelf().Single(e => (string?)e.Attribute(x + "Name") == name);
+        var viewport = Named(root, "TreeScroll");
+        Check(viewport.Name.LocalName == "ScrollViewer" && (string?)viewport.Attribute("Grid.Row") == "2"
+            && (string?)viewport.Parent!.Attribute("RowDefinitions") == "Auto,Auto,*",
+            "AT7: native tree viewport receives the card's finite star-row height below the fixed header");
+        Check((string?)viewport.Attribute("VerticalScrollBarVisibility") == "Auto"
+            && (string?)viewport.Attribute("VerticalScrollMode") == "Auto" && (string?)viewport.Attribute("IsTabStop") == "True"
+            && (string?)viewport.Attribute("HorizontalScrollMode") == "Disabled",
+            "AT7: native vertical wheel/touch/keyboard scrolling, no horizontal scrolling");
+        Check(new[] { "Tree", "TerminalTree", "TerminalDivider" }.All(name => Named(root, name).Ancestors().Contains(viewport))
+            && !Named(root, "All").Ancestors().Contains(viewport), "AT7: both trees and divider scroll together; filter stays outside");
+        Check(new[] { "Tree", "TerminalTree" }.All(name => (string?)Named(root, name).Attribute("ScrollViewer.VerticalScrollMode") == "Disabled"),
+            "AT7: one native scroll owner, not competing nested tree viewers");
+        var page = XDocument.Load(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
+        var dock = Named(page.Root!, "LeftDock");
+        Check((string?)dock.Attribute("RowDefinitions") == "*,Auto"
+            && (string?)Named(dock, "LeftAgentTreeSlot").Attribute("Grid.Row") == "0"
+            && (string?)Named(dock, "LeftBottomCardSlot").Attribute("Grid.Row") == "1",
+            "AT7: dock reserves bottom-left session card before bounding tree in the remaining height");
+    }
+
     private static async Task Main(string[] args)
     {
         AgentColorTests.Run();
@@ -24,6 +52,7 @@ internal static class Program
         Check(view.Contains("<TreeView x:Name=\"Tree\"") && view.Contains("_tree.RootNodes.Add(group)") && !view.Contains("ItemsRepeater"), "NV2: native TreeView owns the hierarchy");
         Check(view.Contains("Text=\"子智能体\"") && view.Contains("_card.Style = OpenCodeInsightsTheme.DockCard()") && view.Contains("<ThemeShadow />")
             && view.Contains("Translation=\"0,0,16\"") && !view.Contains("MaxHeight=\"280\""), "D: floating 子智能体 card; tree fills the card height");
+        CheckTreeViewport(args[0], view);
         Check(view.Contains("Style = OpenCodeInsightsTheme.TreeLabel(dimmed)") && view.Contains("agent.Children.Count == 0"), "idle configured groups use theme styling");
         Check(view.Contains("<ToggleButton x:Name=\"All\"") && view.Contains("Text=\"全部\"") && view.Contains("&#xE71C;")
             && !view.Contains("Action? RefreshRequested") && !view.Contains("x:Name=\"Refresh\""), "L1/L2: filter toggle replaces refresh");

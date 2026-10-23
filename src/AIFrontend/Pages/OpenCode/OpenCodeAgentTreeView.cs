@@ -55,8 +55,16 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </Grid>
                 <TextBlock x:Name="Hint" Grid.Row="1" Margin="4,0,0,0" TextWrapping="Wrap"
                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <StackPanel Grid.Row="2">
+                <!-- LeftDock's star row bounds this viewport; only the tree content scrolls.
+                     A bare StackPanel measured both TreeViews at infinite height, so neither
+                     native viewer ever had overflow. One native viewer also keeps terminals reachable. -->
+                <ScrollViewer x:Name="TreeScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                              VerticalScrollMode="Auto" HorizontalScrollBarVisibility="Disabled"
+                              HorizontalScrollMode="Disabled" ZoomMode="Disabled" IsTabStop="True"
+                              AutomationProperties.Name="子智能体与终端滚动区域">
+                <StackPanel>
                 <TreeView x:Name="Tree" SelectionMode="None" CanDragItems="False"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollMode="Disabled"
                           CanReorderItems="False" AllowDrop="False" AutomationProperties.Name="子智能体会话树">
                   <TreeView.ItemTemplate>
                     <DataTemplate><ContentPresenter Content="{Binding Content}" HorizontalAlignment="Stretch" /></DataTemplate>
@@ -152,8 +160,10 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 <Border x:Name="TerminalDivider" Height="1" Margin="4,8,4,8" Visibility="Collapsed"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                 <TreeView x:Name="TerminalTree" SelectionMode="None" CanDragItems="False"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollMode="Disabled"
                           CanReorderItems="False" AllowDrop="False" Visibility="Collapsed" AutomationProperties.Name="终端会话树" />
                 </StackPanel>
+                </ScrollViewer>
               </Grid>
             </Border>
             <Button x:Name="ParentReturn" Content="返回主智能体" Visibility="Collapsed"
