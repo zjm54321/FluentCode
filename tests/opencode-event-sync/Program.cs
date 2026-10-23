@@ -49,6 +49,11 @@ internal static class Program
         native.Apply(Event("session.reasoning.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_n","ordinal":0,"text":"thought"}"""));
         Check(Text(native) == "thought" && native.Messages.Single().Content!.Single().Time?.Completed is not null, "native reasoning end replaces final text and completes");
 
+        var rest = new OpenCodeEventReducer("ses_test");
+        rest.MergeSnapshot(new[] { Message("msg_r", "partial") }, rest.Version);
+        rest.Apply(Event("session.text.ended", """{"sessionID":"ses_test","assistantMessageID":"msg_r","ordinal":0,"text":"final"}"""));
+        Check(Text(rest) == "final" && rest.Messages.Single().Content!.Single().Time?.Completed is not null, "REST text part without time completes on native ended");
+
         RetryAndBackgroundProjection();
         SessionShellProjection();
         NoticeDismissal();

@@ -168,7 +168,8 @@ public sealed class OpenCodeEventReducer
             if (type.EndsWith(".ended", StringComparison.Ordinal))
             {
                 target["text"] = data["text"]?.DeepClone() ?? JsonValue.Create("");
-                target["time"]!.AsObject()["completed"] = item.ReceivedAt.ToUnixTimeMilliseconds();
+                if (target["time"] is not JsonObject time) target["time"] = time = new JsonObject();
+                time["completed"] = item.ReceivedAt.ToUnixTimeMilliseconds();
             }
             if (data["state"] is { } state) target["state"] = state.DeepClone();
         }
