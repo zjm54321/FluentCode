@@ -47,7 +47,8 @@ public sealed partial class OpenCodePage
             try
             {
                 await OpenCodeSideQuestionDialog.ShowAnswerAsync(XamlRoot, answer,
-                    answer.SessionId == _selectedSessionId ? null : answer.SessionId, lifetime.Token);
+                    _sessionItems.TryGetValue(answer.SessionId, out var origin) && !string.IsNullOrWhiteSpace(origin.Title)
+                        ? origin.Title : answer.SessionId, lifetime.Token);
             }
             catch (Exception)
             {

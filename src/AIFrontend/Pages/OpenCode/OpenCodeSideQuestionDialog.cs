@@ -35,7 +35,7 @@ internal static class OpenCodeSideQuestionDialog
         var dialog = new ContentDialog
         {
             XamlRoot = owner,
-            Title = Header(),
+            Title = "By the way",
             Content = body,
             PrimaryButtonText = "提问",
             CloseButtonText = "取消",
@@ -96,28 +96,14 @@ internal static class OpenCodeSideQuestionDialog
         };
 
         var body = new StackPanel { Spacing = 10, Width = AnswerWidth(owner) };
+        body.Children.Add(OpenCodeInteractionUi.StyledText("基于「" + (sessionLabel ?? answer.SessionId) + "」的上下文回答，不写入会话",
+            OpenCodeInteractionUi.CaptionSubtleStyleKey));
         var meta = new Grid { ColumnSpacing = 8 };
         meta.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         meta.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         meta.Children.Add(question);
-        if (sessionLabel is { Length: > 0 })
-        {
-            var origin = new TextBlock
-            {
-                Text = "来自「" + sessionLabel + "」",
-                Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey),
-                VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 220,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-            };
-            ToolTipService.SetToolTip(origin, "这个回答来自会话「" + sessionLabel + "」，不属于当前打开的会话。");
-            Grid.SetColumn(origin, 1);
-            meta.Children.Add(origin);
-        }
         body.Children.Add(meta);
         body.Children.Add(card);
-        body.Children.Add(OpenCodeInteractionUi.StyledText("仅供参考，不会写入会话历史；关闭后不保留。",
-            OpenCodeInteractionUi.CaptionSubtleStyleKey));
 
         void Refit(XamlRoot sender, XamlRootChangedEventArgs args)
         {
@@ -128,7 +114,7 @@ internal static class OpenCodeSideQuestionDialog
         var dialog = new ContentDialog
         {
             XamlRoot = owner,
-            Title = Header(),
+            Title = "By the way",
             Content = body,
             PrimaryButtonText = answer.Answer.Length == 0 ? string.Empty : "复制回答",
             CloseButtonText = "关闭",
@@ -156,25 +142,6 @@ internal static class OpenCodeSideQuestionDialog
         using var cancellation = ct.Register(() => dialog.DispatcherQueue.TryEnqueue(dialog.Hide));
         try { if (!ct.IsCancellationRequested) await dialog.ShowAsync(); }
         finally { owner.Changed -= Refit; }
-    }
-
-    /// <summary>"/btw" in the accent monospace used for commands, with a quiet "顺便问一句" label.</summary>
-    private static FrameworkElement Header()
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        var command = new TextBlock
-        {
-            Text = OpenCodeSideQuestionPolicy.Title,
-            FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Style = OpenCodeThemedXaml.BrushStyle("TextBlock", ("Foreground", "AccentTextFillColorPrimaryBrush")),
-        };
-        AppFonts.Apply(command, AppFontSlot.Monospace);
-        row.Children.Add(command);
-        var label = OpenCodeInteractionUi.StyledText("顺便问一句", OpenCodeInteractionUi.BodySubtleStyleKey);
-        label.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(label);
-        return row;
     }
 
     private static double AnswerWidth(XamlRoot? owner) => Math.Clamp((owner?.Size.Width ?? 760) - 112, 232, 680);
