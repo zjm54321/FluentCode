@@ -61,7 +61,7 @@ $eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
 $extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'PollTimer_Tick', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
-    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn') },
+    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn', 'ConversationScrollBarLeft') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
     @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()

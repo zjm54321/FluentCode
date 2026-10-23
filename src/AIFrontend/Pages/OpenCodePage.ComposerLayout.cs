@@ -105,25 +105,40 @@ public sealed partial class OpenCodePage
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    internal static (double Width, double RightGutter) ConversationColumn(double available, double viewport, double maximum, bool blank)
+    internal static (double Width, double RightGutter) ConversationColumn(double available, double maximum, bool blank)
     {
         available = Math.Max(0, available);
-        var gutter = !blank && viewport > 0 ? Math.Max(0, available - viewport) : 0;
-        return (Math.Min(Math.Max(0, available - gutter), maximum), gutter);
+        // SB1: keep the reading column/composer centered in the full-width scroll viewport.
+        // Reserve the bar (56) + gap (8) symmetrically, instead of shifting text left by a right gutter.
+        var reserved = blank ? 0 : 2 * (56 + 8);
+        return (Math.Min(Math.Max(0, available - reserved), maximum), 0);
     }
+
+    internal static double ConversationScrollBarLeft(double gridWidth, double hostWidth)
+    {
+        return Math.Clamp((gridWidth + hostWidth) / 2 + 8, 0, Math.Max(0, gridWidth - 56));
+    }
+
+    private void TimelineColumn_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateConversationColumns();
 
     private void UpdateConversationColumns()
     {
         var padding = SessionLayoutRoot.Padding;
         var available = SessionLayoutRoot.ActualWidth - padding.Left - padding.Right;
+        if (!_blankComposerPlacement && TimelineGrid.ActualWidth > 0) available = TimelineGrid.ActualWidth;
         if (available <= 0) return;
         // A single finite reading column, relative to the live pane content/viewport, not the window.
         // Normal mode explicitly uses the reading limit, never an inherited blank MaxWidth.
         var maximum = _blankComposerPlacement ? ComposerCell.MaxWidth : MessageHost.MaxWidth;
-        var column = ConversationColumn(available, MessageScroll.ViewportWidth, maximum, _blankComposerPlacement);
+        var column = ConversationColumn(available, maximum, _blankComposerPlacement);
         ComposerCell.Width = column.Width;
         ComposerCell.Margin = new Thickness(0, 8, column.RightGutter, 0);
-        if (!_blankComposerPlacement) MessageHost.Width = column.Width;
+        if (!_blankComposerPlacement)
+        {
+            MessageHost.Width = column.Width;
+            ConversationScrollBar.Width = Math.Min(56, available);
+            ConversationScrollBar.Margin = new Thickness(ConversationScrollBarLeft(available, column.Width), 0, 0, 0);
+        }
     }
 
     private void UpdateComposerSecondaryActions(bool working, bool canSend, OpenCodeComposerSnapshot snapshot)

@@ -158,10 +158,21 @@ internal static partial class Program
 
     private static Task BlankToSessionColumn()
     {
-        var blank = OpenCodePage.ConversationColumn(1200, 1184, 1040, true);
-        var session = OpenCodePage.ConversationColumn(1200, 1184, 920, false);
+        var blank = OpenCodePage.ConversationColumn(1200, 1040, true);
+        var session = OpenCodePage.ConversationColumn(1200, 920, false);
         Check(blank.Width == 1040 && blank.RightGutter == 0, "blank uses its own centered main-content width");
-        Check(session.Width == 920 && session.RightGutter == 16, "NEW to SESSION explicitly restores reading max width and actual viewport gutter");
+        Check(session.Width == 920 && session.RightGutter == 0, "NEW to SESSION restores reading max width without shifting the centered composer");
+        foreach (var width in new double[] { 128, 240, 480, 800, 1048, 1200, 1800, 2560 })
+        {
+            var column = OpenCodePage.ConversationColumn(width, 920, false);
+            var left = OpenCodePage.ConversationScrollBarLeft(width, column.Width);
+            Check(column.Width <= width - 2 * (56 + 8), $"SB1: {width}px grid reserves symmetric bar space");
+            Check(left == (width + column.Width) / 2 + 8, $"SB1: {width}px bar sits 8px after the centered reading column");
+            Check(left >= 0 && left + 56 <= width, $"SB1: {width}px bar stays inside the timeline");
+            Check(column.RightGutter == 0, $"SB1: {width}px composer and messages retain the same center");
+        }
+        var narrowBlank = OpenCodePage.ConversationColumn(480, 1040, true);
+        Check(narrowBlank.Width == 480 && narrowBlank.RightGutter == 0, "blank/new-session does not reserve an invisible timeline bar");
         return Task.CompletedTask;
     }
 

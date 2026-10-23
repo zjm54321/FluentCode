@@ -412,7 +412,10 @@
                                 </StackPanel>
 
                                 <!-- Row 3 时间线（居中，最大宽度见 OpenCodeTimelineMaxWidth）；新标签页布局时换为标题区 -->
-                                <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*" ColumnDefinitions="*,56" ColumnSpacing="8">
+                                <!-- SB1: scrolling covers the whole center area; the annotated bar overlays
+                                     the reserved space immediately beside the symmetric reading column. -->
+                                <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*"
+                                      SizeChanged="TimelineColumn_SizeChanged">
                                     <ScrollViewer
                                         x:Name="MessageScroll"
                                         VerticalAnchorRatio="NaN"
@@ -425,12 +428,13 @@
                                         AutomationProperties.AutomationId="OpenCodeMessageScroll">
                                         <Grid
                                             x:Name="MessageHost"
-                                            MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
-                                            HorizontalAlignment="Center"
-                                            Padding="6,0,6,0" />
+                                             MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
+                                             HorizontalAlignment="Center"
+                                             SizeChanged="TimelineColumn_SizeChanged"
+                                             Padding="6,0,6,0" />
                                     </ScrollViewer>
-                                    <AnnotatedScrollBar x:Name="ConversationScrollBar" Grid.Row="1" Grid.Column="1"
-                                                        Width="56" SmallChange="40"
+                                    <AnnotatedScrollBar x:Name="ConversationScrollBar" Grid.Row="1"
+                                                        HorizontalAlignment="Left" Width="56" SmallChange="40"
                                                         Loaded="ConversationScrollBar_Loaded" Unloaded="ConversationScrollBar_Unloaded"
                                                         DetailLabelRequested="ConversationScrollBar_DetailLabelRequested"
                                                         Scrolling="ConversationScrollBar_Scrolling"

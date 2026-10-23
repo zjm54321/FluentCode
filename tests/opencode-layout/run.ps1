@@ -37,6 +37,16 @@ Check ($window.Contains('SetSystemBackdropConfiguration(_backdropConfiguration)'
 Check ($window.Contains('RootElement.ActualThemeChanged += RootElement_ActualThemeChanged') -and $window.Contains('_backdropConfiguration.Theme = RootElement.ActualTheme switch')) 'BG1: controller follows root actual theme'
 Check ($window.Contains('RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged') -and $window.Contains('_desktopAcrylicController?.Dispose()')) 'BG1: controller and theme subscription cleaned up on close'
 Check (([regex]::Matches($window, 'Closed \+= MainWindow_Closed;')).Count -eq 1) 'BG1: close cleanup registered once independently of title-bar support'
+$timeline = $page.Doc.SelectSingleNode('//p:Grid[@x:Name="TimelineGrid"]', $page.Ns)
+$scroll = $page.Doc.SelectSingleNode('//p:ScrollViewer[@x:Name="MessageScroll"]', $page.Ns)
+$messageHost = $page.Doc.SelectSingleNode('//p:Grid[@x:Name="MessageHost"]', $page.Ns)
+$bar = $page.Doc.SelectSingleNode('//*[@x:Name="ConversationScrollBar"]', $page.Ns)
+Check (!$timeline.HasAttribute('ColumnDefinitions') -and !$scroll.HasAttribute('Grid.Column') -and !$bar.HasAttribute('Grid.Column')) 'SB1: single grid column keeps the wheel-active scroll viewport full width'
+Check ($timeline.SizeChanged -eq 'TimelineColumn_SizeChanged' -and $messageHost.SizeChanged -eq 'TimelineColumn_SizeChanged') 'SB1: placement recalculates for timeline and message-host size changes'
+Check ($bar.HorizontalAlignment -eq 'Left' -and $bar.Width -eq '56') 'SB1: native annotated bar is left positioned with its original 56px width'
+Check ($bar.Loaded -eq 'ConversationScrollBar_Loaded' -and $bar.Scrolling -eq 'ConversationScrollBar_Scrolling' -and $bar.DetailLabelRequested -eq 'ConversationScrollBar_DetailLabelRequested') 'SB1: native bridge events preserved'
+$layout = [IO.File]::ReadAllText((Join-Path $src 'Pages/OpenCodePage.ComposerLayout.cs'))
+Check ($layout.Contains('ConversationScrollBar.Margin = new Thickness(ConversationScrollBarLeft(available, column.Width), 0, 0, 0)')) 'SB1: bar uses the same finite reading-column width as the composer/messages'
 if ($EvidenceRoot) {
     New-Item -ItemType Directory -Path $EvidenceRoot -Force | Out-Null
     $results | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'results.txt')
