@@ -34,6 +34,7 @@ internal static partial class OpenCodeToolDetailBuiltins
             OpenCodeBuiltinToolView.WebSearch => WebSearch(model, options.Compact),
             OpenCodeBuiltinToolView.Execute => Execute(model, options.Compact),
             OpenCodeBuiltinToolView.Context => Context(model, options.Compact),
+            OpenCodeBuiltinToolView.Companion => Companion(model, options),
             _ => null,
         };
         if (body is not null) AutomationProperties.SetAutomationId(body, "OpenCodeToolDetailBuiltin." + OpenCodeToolDetailBuiltinData.Resolve(model));
@@ -88,14 +89,14 @@ internal static partial class OpenCodeToolDetailBuiltins
     private static FrameworkElement Subagent(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
     {
         var detail = OpenCodeToolDetailBuiltinData.Subagent(model);
-        var panel = new StackPanel { Spacing = 10 };
+        var panel = new StackPanel { Spacing = 12 };
         // Background jobs: the row's async-completion summary ("后台已完成") is newer than the launch record (metadata.status).
         var status = model.IsBackground && model.Summary.Length > 0
             ? model.Summary
             : OpenCodeSubagentPresentation.DescribeRecordedStatus(detail.RecordedStatus, model.IsBackground) ?? model.StatusText;
         var meta = string.Join(" · ", new[] { detail.Agent is { } agent ? OpenCodeAgentIcons.DisplayName(agent) : null, status }
             .Where(part => !string.IsNullOrWhiteSpace(part)));
-        panel.Children.Add(Header(OpenCodeAgentIcons.Glyph(detail.Agent), detail.Description ?? (detail.Agent is null ? "子代理任务" : OpenCodeAgentIcons.DisplayName(detail.Agent)), meta));
+        panel.Children.Add(Header(OpenCodeAgentIcons.Glyph(detail.Agent), detail.Description ?? (detail.Agent is null ? "子智能体任务" : OpenCodeAgentIcons.DisplayName(detail.Agent)), meta));
 
         if (detail.SessionId is { } session && options.OpenChildSession is { } open)
         {
@@ -125,13 +126,19 @@ internal static partial class OpenCodeToolDetailBuiltins
             panel.Children.Add(expander);
         }
 
-        if (detail.Output is { } output)
+        var liveOutput = options.Compact && detail.SessionId is { } liveSession && (detail.RecordedStatus == "running" || model.IsActive)
+            ? CreateLiveChildOutput(options, liveSession) : null;
+        if (liveOutput is not null)
+        {
+            panel.Children.Add(Section("最后的回复", liveOutput));
+        }
+        else if (detail.Output is { } output)
         {
             var text = OpenCodeInteractionUi.StyledText(output, OpenCodeInteractionUi.BodyStyleKey);
             text.TextWrapping = TextWrapping.Wrap;
             text.TextTrimming = TextTrimming.CharacterEllipsis;
             if (options.Compact) text.MaxLines = 6;
-            panel.Children.Add(Section("结果", text));
+            panel.Children.Add(Section("最后的回复", text));
         }
         else if (!model.IsActive && model.Status != OpenCodeToolRowStatus.Error && detail.SessionId is null)
         {

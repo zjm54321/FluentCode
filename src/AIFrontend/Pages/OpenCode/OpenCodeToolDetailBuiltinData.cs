@@ -20,6 +20,7 @@ internal enum OpenCodeBuiltinToolView
     WebSearch,
     Execute,
     Context,
+    Companion,
 }
 
 internal sealed record OpenCodeSubagentDetail(
@@ -72,6 +73,8 @@ internal static class OpenCodeToolDetailBuiltinData
     {
         ArgumentNullException.ThrowIfNull(model);
         if (model.State is not { ValueKind: JsonValueKind.Object }) return OpenCodeBuiltinToolView.None;
+        if (model.ToolName is "task_status" or "task_result" or "task_message" or "task_cancel" or "task_revive" or "wait_for_user")
+            return OpenCodeBuiltinToolView.Companion;
         if (model.ToolName is "acp_status" or "compress" or "decompress" or "search_context" or "prune" or "absorb" or "acp_run")
             return OpenCodeBuiltinToolView.Context;
         return model.Kind switch
@@ -135,6 +138,7 @@ internal static class OpenCodeToolDetailBuiltinData
     {
         if (string.IsNullOrWhiteSpace(output)) return null;
         var text = HtmlComment.Replace(output, string.Empty).Trim();
+        text = Regex.Replace(text, @"</?(?:summary|changes|verification|results)>", "", RegexOptions.CultureInvariant).Trim();
         if (text.StartsWith("The subagent is working in the background", StringComparison.Ordinal)) return null;
         return text.Length == 0 ? null : text;
     }
@@ -297,6 +301,21 @@ internal static class OpenCodeToolDetailBuiltinData
     internal static string? StringValue(JsonElement? element, string name)
         => element is { ValueKind: JsonValueKind.Object } e && e.TryGetProperty(name, out var value)
             && value.ValueKind is JsonValueKind.String or JsonValueKind.Number ? value.ToString() : null;
+
+    /// <summary>Messages are read latest-first from the existing message API. Only real assistant text is eligible.</summary>
+    internal static string? LatestChildText(IReadOnlyList<OpenCodeMessage>? messages)
+    {
+        if (messages is null) return null;
+        foreach (var message in messages)
+        {
+            if (message.Type != OpenCodeMessageTypes.Assistant || message.Content is null) continue;
+            var output = new StringBuilder();
+            foreach (var part in message.Content)
+                if (part.Type == OpenCodePartTypes.Text && !string.IsNullOrWhiteSpace(part.Text)) output.AppendLine(part.Text);
+            if (SubagentOutput(output.ToString()) is { } text) return text;
+        }
+        return null;
+    }
 
     /// <summary>First <paramref name="lines"/> lines of a text and how many more remain.</summary>
     internal static (string Excerpt, int Remaining) Excerpt(string text, int lines)
