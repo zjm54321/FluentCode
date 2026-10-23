@@ -57,7 +57,10 @@ public sealed partial class OpenCodePage
     {
         RefreshComposerToolbar();
         if (_sessionControlCard is not { } card) return;
-        var visible = _pageActive && !_homeActive && (_selectedSessionId is not null || _newSessionDraftActive);
+        // Layout D: the agent/model card docks bottom-left only in wide mode; narrow pages show the same
+        // choices in the composer's second row, so the narrow drawer holds only the 子智能体 tree.
+        var visible = _pageActive && !_homeActive && (_selectedSessionId is not null || _newSessionDraftActive)
+            && _sidebarLayout.IsWide;
         LeftBottomCardSlot.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         var enabled = visible && SessionControlCardCanEdit();
         if (_newSessionDraftActive)

@@ -21,6 +21,12 @@ internal static class Program
     {
         var view = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
         Check(view.Contains("<TreeView.ItemTemplate>") && view.Contains("Content=\"{Binding Content}\""), "native node content template retained");
+        // Layout D top-left card: floating acrylic card titled 子智能体; idle configured agents dimmed, running/finished bright.
+        Check(view.Contains("Text=\"子智能体\"") && view.Contains("AcrylicInAppFillColorDefaultBrush") && view.Contains("<ThemeShadow />")
+            && view.Contains("Translation=\"0,0,16\"") && !view.Contains("MaxHeight=\"280\""), "D: floating 子智能体 card; tree fills the card height");
+        Check(view.Contains("dimmed: agent.Children.Count == 0") && view.Contains("Style = OpenCodeInsightsTheme.TreeLabel(dimmed)")
+            && !view.Contains("\" · 主智能体\""), "D: idle agents dimmed via theme resource; group label is the agent name only");
+        Check(view.Contains("Group(\"shell\", \"Shell\""), "D: Shell group kept");
         Check(view.Contains("Grid.SetColumn(model, 1)") && view.Contains("Grid.SetColumn(indicator, 2)")
             && view.Contains("model.HorizontalAlignment = HorizontalAlignment.Right") && !view.Contains("text.Children.Add(model)"),
             "small gray model occupies trailing column on same row, with separate aligned status");

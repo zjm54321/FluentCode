@@ -42,6 +42,18 @@ internal static class OpenCodeInsightsTheme
 
     internal static Style? TodoSecondaryIcon() => Get("FontIcon", ("Foreground", "TextFillColorSecondaryBrush"));
 
+    /// <summary>布局 D 浮动卡片（Border）：应用内亚克力 + 卡片描边（ThemeResource，随浅色 / 深色 / 高对比度切换）。</summary>
+    internal static Style? DockCard()
+        => Get("Border", ("Background", "AcrylicInAppFillColorDefaultBrush"), ("BorderBrush", "CardStrokeColorDefaultBrush"));
+
+    /// <summary>卡片内只读信息框（目录行）：次级控件填充 + 卡片描边。</summary>
+    internal static Style? InsetBox()
+        => Get("Border", ("Background", "ControlFillColorSecondaryBrush"), ("BorderBrush", "CardStrokeColorDefaultBrush"));
+
+    /// <summary>空闲（未运行过）的已配置智能体：三级文字色；运行中 / 已结束为主文字色。</summary>
+    internal static Style? TreeLabel(bool dimmed)
+        => Get("TextBlock", ("Foreground", dimmed ? "TextFillColorTertiaryBrush" : "TextFillColorPrimaryBrush"));
+
     private static Style? Get(string targetType, params (string Property, string? Key)[] setters)
     {
         var cacheKey = targetType + "|" + string.Join("|", setters.Select(s => s.Property + "=" + s.Key));
@@ -99,6 +111,10 @@ internal sealed class OpenCodeContextRing
     private readonly Button _button;
     private readonly ProgressRing _ring;
     private readonly Flyout _flyout;
+    private TextBlock? _percent;
+    private StackPanel? _labelled;
+    private bool _showPercent;
+    private string _percentText = "—";
 
     internal OpenCodeContextRing()
     {
@@ -146,6 +162,44 @@ internal sealed class OpenCodeContextRing
 
     internal Flyout Flyout => _flyout;
 
+    /// <summary>
+    /// 布局 D 窄模式页头：圆环右侧附带百分比文字（“43%”，未知为“—”）。宽模式只保留 32×32 圆环（右侧卡片已有完整用量行）。
+    /// 文字只在首次需要时创建；圆环实例与 Flyout 不变。
+    /// </summary>
+    internal bool ShowPercent
+    {
+        get => _showPercent;
+        set
+        {
+            if (_showPercent == value) return;
+            _showPercent = value;
+            if (value)
+            {
+                _percent ??= new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+                if (_labelled is null)
+                {
+                    _labelled = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+                }
+                _percent.Text = _percentText;
+                _button.Content = null;
+                _labelled.Children.Clear();
+                _labelled.Children.Add(_ring);
+                _labelled.Children.Add(_percent);
+                _button.Content = _labelled;
+                _button.Width = double.NaN;
+                _button.Padding = new Thickness(6, 0, 10, 0);
+            }
+            else
+            {
+                _button.Content = null;
+                _labelled?.Children.Clear();
+                _button.Content = _ring;
+                _button.Width = ButtonSize;
+                _button.Padding = new Thickness(0);
+            }
+        }
+    }
+
     /// <summary>当前圆环对应的颜色档（测试与无障碍说明共用）。</summary>
     internal string ToneKey { get; private set; } = OpenCodeInsightsTheme.Accent;
 
@@ -185,6 +239,8 @@ internal sealed class OpenCodeContextRing
             OpenCodeInsightState.Partial => "参考值，可能已过时",
             _ => tokens is null ? "暂无上下文参考" : limit is null ? "模型上下文上限未知" : "参考值",
         };
+        _percentText = ratio is { } ? FormatPercent(percent) : "—";
+        if (_percent is not null) _percent.Text = _percentText;
         Summary = "上下文 " + (ratio is { } ? FormatPercent(percent) : "—")
             + (usage is not null ? " · " + usage : "") + " · " + qualifier;
         ToolTipService.SetToolTip(_button, Summary);

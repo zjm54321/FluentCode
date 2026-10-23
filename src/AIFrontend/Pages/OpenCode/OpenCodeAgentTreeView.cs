@@ -8,7 +8,10 @@ using Microsoft.UI.Xaml.Markup;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>Native acrylic tree. Collapsed groups survive streamed state updates.</summary>
+/// <summary>
+/// Layout D top-left floating card: native acrylic 子智能体 tree. Configured agents that have not run in this
+/// session are dimmed; agents with running / finished instances are bright. Collapsed groups survive streamed updates.
+/// </summary>
 internal sealed class OpenCodeAgentTreeView : UserControl
 {
     private readonly TreeView _tree;
@@ -30,30 +33,34 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                    CornerRadius="8" Padding="8,8,8,8" Margin="0,0,0,12">
-              <StackPanel Spacing="8">
+                    CornerRadius="8" Padding="8,8,8,8" Translation="0,0,16">
+              <Border.Shadow>
+                <ThemeShadow />
+              </Border.Shadow>
+              <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
                 <!-- Subtle accent: a slim accent rule instead of a filled pill keeps the header calm on acrylic. -->
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="4,0,0,0">
                   <Border Width="3" Height="14" CornerRadius="2" VerticalAlignment="Center"
                           Background="{ThemeResource AccentFillColorDefaultBrush}" />
-                  <TextBlock Grid.Column="1" Text="智能体 · 子智能体" Style="{ThemeResource CaptionTextBlockStyle}"
-                             FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="子智能体" Style="{ThemeResource BodyStrongTextBlockStyle}"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                   <Button x:Name="Refresh" Grid.Column="2" Width="28" Height="28" Padding="0"
                           AutomationProperties.Name="刷新智能体与终端" ToolTipService.ToolTip="刷新智能体与终端">
                     <FontIcon Glyph="&#xE72C;" FontSize="12" />
                   </Button>
                 </Grid>
-                <TextBlock x:Name="Hint" Margin="4,0,0,0" TextWrapping="Wrap"
+                <TextBlock x:Name="Hint" Grid.Row="1" Margin="4,0,0,0" TextWrapping="Wrap"
                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 <!-- Node mode: without a template WinUI shows TreeViewNode.Content.ToString() (type names). -->
-                <TreeView x:Name="Tree" SelectionMode="None" MaxHeight="280" AutomationProperties.Name="智能体与子智能体会话树">
+                <!-- The card is top-aligned in the dock; the tree takes the remaining height and scrolls inside it. -->
+                <TreeView x:Name="Tree" Grid.Row="2" SelectionMode="None" AutomationProperties.Name="子智能体会话树">
                   <TreeView.ItemTemplate>
                     <DataTemplate>
                       <ContentPresenter Content="{Binding Content}" />
                     </DataTemplate>
                   </TreeView.ItemTemplate>
                 </TreeView>
-                <StackPanel x:Name="Details" Visibility="Collapsed" Spacing="8" Margin="4,0,0,0">
+                <StackPanel x:Name="Details" Grid.Row="3" Visibility="Collapsed" Spacing="8" Margin="4,0,0,0">
                   <TextBlock x:Name="DetailTitle" TextWrapping="Wrap" IsTextSelectionEnabled="True"
                              Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                   <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
@@ -69,10 +76,11 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                     <Button x:Name="CloseDetail" Content="收起" Padding="8,4" FontSize="12" />
                   </StackPanel>
                 </StackPanel>
-              </StackPanel>
+              </Grid>
             </Border>
             """);
         var root = (FrameworkElement)Content;
+        VerticalAlignment = VerticalAlignment.Top;
         _tree = (TreeView)root.FindName("Tree");
         _hint = (TextBlock)root.FindName("Hint");
         _details = (StackPanel)root.FindName("Details");
@@ -111,16 +119,20 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _hint.Visibility = string.IsNullOrEmpty(hint) ? Visibility.Collapsed : Visibility.Visible;
         foreach (var agent in agents)
         {
-            var label = agent.Name + (agent.Mode == "primary" ? " · 主智能体" : agent.Mode == "subagent" ? " · 子智能体" : string.Empty)
+            var kind = (agent.Mode == "primary" ? "主智能体" : agent.Mode == "subagent" ? "子智能体" : "智能体")
                 + (agent.Hidden ? " · 隐藏" : string.Empty);
-            var group = Group("agent:" + agent.Id, label, expanded);
-            ToolTipService.SetToolTip((FrameworkElement)group.Content, agent.Description ?? agent.Name);
+            // Idle configured agents (no instance in this session) are dimmed; running / finished ones stay bright.
+            var group = Group("agent:" + agent.Id, agent.Name, expanded, dimmed: agent.Children.Count == 0);
+            var content = (FrameworkElement)group.Content;
+            ToolTipService.SetToolTip(content, agent.Name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty));
+            AutomationProperties.SetName(content, agent.Name + "，" + kind + (agent.Children.Count == 0 ? "，空闲" : "，" + agent.Children.Count + " 个实例"));
             foreach (var instance in agent.Children)
                 group.Children.Add(new TreeViewNode { Content = Row(instance.Title, instance.Model, instance.Status, instance) });
         }
         if (shells.Count > 0)
         {
-            var group = Group("shell", "Shell / 终端", expanded);
+            var group = Group("shell", "Shell", expanded, dimmed: false);
+            AutomationProperties.SetName((FrameworkElement)group.Content, "Shell 终端，" + shells.Count + " 个");
             foreach (var shell in shells)
             {
                 var kind = shell.Kind switch { OpenCodeTreeShellKind.Background => "后台", OpenCodeTreeShellKind.Foreground => "前台", _ => "前后台不可用" };
@@ -129,11 +141,12 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         }
     }
 
-    private TreeViewNode Group(string key, string name, Dictionary<string, bool> expanded)
+    private TreeViewNode Group(string key, string name, Dictionary<string, bool> expanded, bool dimmed)
     {
         var label = new TextBlock { Text = name, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None, MaxLines = 0,
-            VerticalAlignment = VerticalAlignment.Center, MaxWidth = TextColumnWidth + 20 };
+            VerticalAlignment = VerticalAlignment.Center, MaxWidth = TextColumnWidth + 20,
+            Style = OpenCodeInsightsTheme.TreeLabel(dimmed) };
         var node = new TreeViewNode { Content = label, IsExpanded = !expanded.TryGetValue(key, out var open) || open };
         _groups.Add(key, node);
         _tree.RootNodes.Add(node);
@@ -142,8 +155,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
 
     // TreeViewItem content is not stretched. Reserve the same row budget at one tree depth so
     // models occupy the space to the right of the title and every status stays on the same vertical line.
-    private const double TextColumnWidth = 176;
-    private const double TitleColumnWidth = 64;
+    // Budget for the 264epx dock card (8 padding each side, one tree depth of indent).
+    private const double TextColumnWidth = 148;
+    private const double TitleColumnWidth = 76;
     private const double IndicatorSize = 16;
 
     private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag)

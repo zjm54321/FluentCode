@@ -18,20 +18,24 @@ internal static class Program
     {
         var narrow = new OpenCodeSidebarLayout();
         Check(!narrow.IsWide && !narrow.LeftOpen && !narrow.RightOpen, "initial narrow drawers closed");
-        Check(!narrow.Resize(1351).IsWide, "enter threshold exclusive below 1352");
-        var wide = narrow.Resize(1352);
-        Check(wide.IsWide && wide.LeftOpen && wide.RightOpen, "both resident at 1352 epx");
+        // Layout D: 264 card + 24 outer + 8 inner gap per side, reading column 820 + 2×16 padding.
+        Check(OpenCodeSidebarLayout.LeftWidth == 296 && OpenCodeSidebarLayout.RightWidth == 296
+            && OpenCodeSidebarLayout.EnterWideWidth == 1444 && OpenCodeSidebarLayout.LeaveWideWidth == 1396, "D dock budget 296+852+296");
+        Check(!narrow.Resize(1443).IsWide, "enter threshold exclusive below 1444");
+        var wide = narrow.Resize(1444);
+        Check(wide.IsWide && wide.LeftOpen && wide.RightOpen, "both resident at 1444 epx");
         Check(wide.ForSession(true) == new OpenCodeSidebarSurface(true, true, true, false), "session owns wide resident panels");
         Check(wide.ForSession(false) == default, "home and new-session have no residents or drawer entries at wide width");
         Check(narrow.Toggle(OpenCodeSidebarDrawer.Left).ForSession(false) == default, "leaving session hides an open narrow drawer and its entry");
         Check(narrow.ForSession(true).ShowDrawerButtons, "narrow session retains drawer entries");
-        Check(wide.Resize(1304).IsWide, "leave boundary inclusive at 1304");
-        Check(wide.Resize(1330).IsWide && !narrow.Resize(1330).IsWide, "hysteresis depends on previous mode");
-        Check(!wide.Resize(1303.99).IsWide, "leave wide below 1304");
+        Check(wide.Resize(1396).IsWide, "leave boundary inclusive at 1396");
+        Check(wide.Resize(1420).IsWide && !narrow.Resize(1420).IsWide, "hysteresis depends on previous mode");
+        Check(!wide.Resize(1395.99).IsWide, "leave wide below 1396");
         foreach (var width in new[] { 0d, -1d, double.NaN, double.PositiveInfinity })
             Check(wide.Resize(width) == wide, "ignore unmeasured/invalid page width " + width);
-        Check(narrow.ShowHeaderContext && narrow.ShowHeaderConnection && narrow.ShowHeaderOverview, "all three header entries remain in narrow");
-        Check(!wide.ShowHeaderContext && !wide.ShowHeaderConnection && !wide.ShowHeaderOverview, "hide all three redundant header entries in wide");
+        Check(narrow.ShowHeaderContext && !narrow.ShowHeaderConnection && narrow.ShowHeaderOverview,
+            "narrow header keeps only context % and 概况 (connection lives in the composer row)");
+        Check(!wide.ShowHeaderContext && !wide.ShowHeaderConnection && !wide.ShowHeaderOverview, "wide header shows no sidebar entries");
         var left = narrow.Toggle(OpenCodeSidebarDrawer.Left);
         Check(left.LeftOpen && !left.RightOpen, "left drawer toggle opens");
         Check(left.Toggle(OpenCodeSidebarDrawer.Left) == narrow, "left drawer toggle closes");
@@ -46,14 +50,20 @@ internal static class Program
         Check(wide.Toggle(OpenCodeSidebarDrawer.Left) == wide && wide.Toggle(OpenCodeSidebarDrawer.Right) == wide,
             "resident panels cannot be toggled shut");
         Check(wide.Escape() == wide && wide.Dismiss(OpenCodeSidebarDrawer.Left) == wide, "Esc/light-dismiss cannot hide residents");
-        Check(left.Resize(1352) == wide && wide.Resize(1200) == narrow, "mode transitions clear transient drawer state");
+        Check(left.Resize(1444) == wide && wide.Resize(1200) == narrow, "mode transitions clear transient drawer state");
         Check(narrow.Toggle(OpenCodeSidebarDrawer.None) == narrow, "None is not a drawer");
         Check(left.AnimateDrawers(true) && !left.AnimateDrawers(false), "reduced motion disables drawer animation");
-        Check(!wide.AnimateDrawers(true) && !wide.AnimateDrawers(false), "resident layout changes never slide");
+        Check(!wide.AnimateDrawers(true) && !wide.AnimateDrawers(false), "resident cards never slide as drawers");
+        Check(OpenCodeSidebarLayout.AnimateModeSwitch(wide, narrow, true) && OpenCodeSidebarLayout.AnimateModeSwitch(narrow, wide, true),
+            "wide⇄narrow folds in / pops out when system animations are on");
+        Check(!OpenCodeSidebarLayout.AnimateModeSwitch(wide, narrow, false) && !OpenCodeSidebarLayout.AnimateModeSwitch(narrow, wide, false),
+            "system animations off: mode switch is instant");
+        Check(!OpenCodeSidebarLayout.AnimateModeSwitch(wide, wide, true) && !OpenCodeSidebarLayout.AnimateModeSwitch(narrow, left, true),
+            "no mode change, no fold/pop");
         for (var i = 0; i < 100; i++)
         {
-            wide = wide.Resize(i % 2 == 0 ? 1320 : 1340);
-            narrow = narrow.Resize(i % 2 == 0 ? 1320 : 1340);
+            wide = wide.Resize(i % 2 == 0 ? 1400 : 1440);
+            narrow = narrow.Resize(i % 2 == 0 ? 1400 : 1440);
         }
         Check(wide.IsWide && !narrow.IsWide, "resize jitter inside dead band does not oscillate");
 
@@ -72,6 +82,36 @@ internal static class Program
             "left sidebar contains only agent tree and control card");
         Check(!page.Descendants().Any(e => new[] { "SessionList", "NewSessionButton", "RefreshSessionsButton", "SessionsHint", "LoadMoreSessionsButton" }
             .Contains((string?)e.Attribute(x + "Name"))), "native sidebar list/buttons/hints are deleted, not hidden");
+        // Layout D cards: right session card order, bottom-right directory above version, calm WSL entry, no old heading/toolbar.
+        XElement Named(string name) => page.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
+        var names = page.Descendants().Select(e => (string?)e.Attribute(x + "Name")).Where(n => n is not null).ToList();
+        int At(string name) => names.IndexOf(name);
+        var card = Named("RightSessionCard");
+        Check(card.Descendants().Contains(Named("RightPanelHeaderSlot")) && card.Descendants().Contains(Named("InsightsPaneHost"))
+            && At("RightPanelHeaderSlot") < At("RightSessionDiagnostics") && At("RightSessionDiagnostics") < At("InsightsPaneHost"),
+            "right card: title/id first, then usage and to do");
+        var footer = Named("RightFooterCard");
+        Check(footer.Descendants().Contains(Named("RightPanelDirectorySlot")) && footer.Descendants().Contains(Named("RightPanelFooterSlot"))
+            && At("RightPanelDirectorySlot") < At("RightPanelFooterSlot"), "bottom-right card: directory above logo/version");
+        Check(footer.Descendants().Contains(Named("WslQuickAccessSlot")) && footer.Descendants().Contains(Named("WslQuickAccessNoteSlot")),
+            "WSL quick access stays, placed in the bottom-right card");
+        foreach (var dockCard in new[] { card, footer })
+            Check((string?)dockCard.Attribute("Background") == "{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                && (string?)dockCard.Attribute("BorderBrush") == "{ThemeResource CardStrokeColorDefaultBrush}"
+                && (string?)dockCard.Attribute("CornerRadius") == "8" && (string?)dockCard.Attribute("Translation") == "0,0,16"
+                && dockCard.Descendants(ui + "ThemeShadow").Any(), "floating acrylic card with theme shadow: " + dockCard.Attribute(x + "Name")!.Value);
+        Check(!page.Descendants().Any(e => (string?)e.Attribute("Text") == "会话概况")
+            && !names.Contains("OverviewRefreshMessagesButton") && !names.Contains("InsightsPaneCloseButton"),
+            "old 会话概况 heading, refresh toolbar and close button removed from the right");
+        foreach (var split in new[] { "SessionPane", "InsightsPane" })
+            Check((string?)Named(split).Attribute("PaneBackground") == "Transparent", split + " pane has no full-height chrome; cards float");
+        Check(Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "switch diagnostics stay reachable in the right card");
+        var sidebars = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Sidebars.cs"));
+        Check(sidebars.Contains("OpenCodeSidebarLayout.AnimateModeSwitch(previous, next, _sidebarSettings?.AnimationsEnabled ?? false)")
+            && sidebars.Contains("PlayDockMotion(fold: true") && sidebars.Contains("PlayDockMotion(fold: false"),
+            "page folds/pops cards only through the system-animation gate");
+        Check(sidebars.Contains("MessageScroll.TransformToVisual(SessionPane)") && sidebars.Contains("ComposerCell.TransformToVisual(SessionPane)"),
+            "card insets follow the first message row and the composer bottom");
         Console.WriteLine($"PASS {_checks} sidebar policy/token checks (headless; native visuals require user checks).");
     }
 }

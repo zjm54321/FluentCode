@@ -1,7 +1,9 @@
+using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -12,12 +14,13 @@ internal sealed class OpenCodeSessionControlCard : Grid
     internal Button ModelButton { get; } = Entry("OpenCodeSidebarModel", "选择模型");
     internal Button VariantButton { get; } = Entry("OpenCodeSidebarVariant", "选择推理强度");
     private readonly TextBlock _agentName = OpenCodeAgentPresentation.Name(string.Empty);
-    private readonly Border _chrome = new() { Padding = new Thickness(8), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1) };
+    // Layout D bottom-left floating card: in-app acrylic, card stroke, 8 radius, raised with a system ThemeShadow.
+    private readonly Border _chrome = new() { Padding = new Thickness(8), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
+        Shadow = new ThemeShadow(), Translation = new Vector3(0, 0, 16) };
 
     internal OpenCodeSessionControlCard()
     {
-        // Same outer edges as the agent-tree card above (pane padding owns the gutter); 12epx gap = sidebar card gap.
-        Margin = new Thickness(0, 12, 0, 0);
+        // Same outer edges as the 子智能体 card above; the dock grid owns the gutter and the 12epx card gap.
         AutomationProperties.SetAutomationId(this, "OpenCodeSessionControlCard");
         var rows = new Grid { RowSpacing = 4, ColumnSpacing = 4 };
         rows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -39,8 +42,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
         rows.Children.Add(VariantButton);
         _chrome.Child = rows;
         Children.Add(_chrome);
-        ActualThemeChanged += (_, _) => ApplyTheme();
-        ApplyTheme();
+        _chrome.Style = OpenCodeInsightsTheme.DockCard(); // ThemeResource setters: light / dark / high contrast
     }
 
     internal void Render(string agent, string? color, string? modelId, string modelName, string variant,
@@ -62,12 +64,6 @@ internal sealed class OpenCodeSessionControlCard : Grid
         AgentButton.IsEnabled = agentEnabled;
         ModelButton.IsEnabled = modelEnabled;
         VariantButton.IsEnabled = variantEnabled;
-    }
-
-    private void ApplyTheme()
-    {
-        _chrome.Background = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CardBackgroundBrushKey);
-        _chrome.BorderBrush = OpenCodeInteractionUi.TryBrush(OpenCodeInteractionUi.CardStrokeBrushKey);
     }
 
     private static Button Entry(string id, string name)

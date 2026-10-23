@@ -33,6 +33,11 @@
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="SystemColorWindowColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <!-- Layout D dock columns: in wide mode they continue the opaque reading surface (theme-aware,
+                 incl. high contrast); narrow drawers clear it locally so only the floating card shows. -->
+            <Style x:Key="OpenCodeDockSurfaceStyle" TargetType="Grid">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
+            </Style>
         </ResourceDictionary>
     </Page.Resources>
 
@@ -152,14 +157,12 @@
                         x:Name="ContextRingHost"
                         VerticalAlignment="Center"
                         AutomationProperties.AutomationId="OpenCodeContextRingHost" />
-                    <!-- 会话概况：开关右侧面板（§10）。wave5 G5：只有图标（Tooltip + 无障碍名称“概况”），与圆环按钮同为 32×32。
-                         读取时机不变：打开面板且当前会话无结果时读取一次，或点面板内刷新。 -->
+                    <!-- 布局 D 窄模式：“概况”按钮（图标 + 文字）把右侧会话卡片作为浮动面板打开（轻点外部关闭）。宽模式不显示。 -->
                     <ToggleButton
                         x:Name="SessionInsightsButton"
-                        Width="32"
                         Height="32"
                         MinWidth="0"
-                        Padding="0"
+                        Padding="10,0,10,0"
                         VerticalAlignment="Center"
                         Click="SessionInsightsButton_Click"
                         AutomationProperties.AutomationId="OpenCodeSessionInsightsButton"
@@ -170,7 +173,10 @@
                                 <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
                             </Style>
                         </ToggleButton.Style>
-                        <FontIcon Glyph="&#xE9D2;" FontSize="16" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE9D2;" FontSize="14" VerticalAlignment="Center" />
+                            <TextBlock Text="概况" VerticalAlignment="Center" />
+                        </StackPanel>
                     </ToggleButton>
                 </StackPanel>
             </TabView.TabStripFooter>
@@ -186,14 +192,15 @@
             PanePlacement="Left"
             IsPaneOpen="False"
             OpenPaneLength="{StaticResource OpenCodeSessionPaneLength}"
-            PaneBackground="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+            PaneBackground="Transparent"
             PaneClosed="SessionPane_PaneClosed"
             AutomationProperties.AutomationId="OpenCodeSessionPane"
             AutomationProperties.Name="会话面板">
 
-            <!-- Left sidebar: agent tree and composer control card only. -->
+            <!-- Layout D left dock: floating 子智能体 card on top, agent/model card aligned with the composer.
+                 The cards own their acrylic chrome; insets are set by OpenCodePage.Sidebars.cs (UpdateDockInsets). -->
             <SplitView.Pane>
-                <Grid RowDefinitions="*,Auto" Padding="12">
+                <Grid x:Name="LeftDock" Style="{StaticResource OpenCodeDockSurfaceStyle}" RowDefinitions="*,Auto" RowSpacing="12" Padding="24,12,8,16">
                     <!-- B4 and B5 own these empty slots; no placeholder data. -->
                     <Grid x:Name="LeftAgentTreeSlot" Grid.Row="0" Visibility="Collapsed" />
                     <Grid x:Name="LeftBottomCardSlot" Grid.Row="1" Visibility="Collapsed" />
@@ -262,72 +269,69 @@
                         PanePlacement="Right"
                         IsPaneOpen="False"
                         OpenPaneLength="{StaticResource OpenCodeInsightsPaneLength}"
-                        PaneBackground="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                        PaneBackground="Transparent"
                         PaneClosed="InsightsPane_PaneClosed"
                         AutomationProperties.AutomationId="OpenCodeSessionInsightsPane"
                         AutomationProperties.Name="会话概况面板">
                         <SplitView.Pane>
-                            <Border
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1,0,0,0">
-                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                                    <Grid x:Name="RightPanelHeaderSlot" Grid.Row="0" Visibility="Collapsed" />
-                                    <Grid x:Name="WslQuickAccessSlot" Grid.Row="1" Visibility="Collapsed" />
-                                    <!-- Sidebar spacing scale: 4/8/12/16; content column starts 16 from the pane edge. -->
-                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4" Padding="16,8,8,8">
-                                        <TextBlock
-                                            Text="会话概况"
-                                            Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                            VerticalAlignment="Center" />
-                                        <Button x:Name="OverviewRefreshMessagesButton" Grid.Column="1"
-                                                Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
-                                                Click="OverviewRefreshMessagesButton_Click"
-                                                AutomationProperties.AutomationId="OpenCodeRefreshMessagesButton"
-                                                AutomationProperties.Name="刷新消息" ToolTipService.ToolTip="立即刷新当前会话消息">
-                                            <FontIcon Glyph="&#xE72C;" FontSize="12" />
-                                        </Button>
-                                        <Button
-                                            x:Name="InsightsPaneCloseButton"
-                                            Grid.Column="2"
-                                            Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
-                                            Click="InsightsPaneCloseButton_Click"
-                                            AutomationProperties.AutomationId="OpenCodeInsightsPaneClose"
-                                            AutomationProperties.Name="关闭会话概况"
-                                            ToolTipService.ToolTip="关闭">
-                                            <FontIcon Glyph="&#xE711;" FontSize="12" />
-                                        </Button>
-                                    </Grid>
-                                    <!-- The original context/connection controls move here only in wide mode.
-                                         B2/B3 can replace these hosts without reparenting the insights view. -->
-                                    <StackPanel Grid.Row="3" Spacing="8" Margin="16,0,16,8">
-                                    <StackPanel x:Name="RightPanelExistingActions" Orientation="Horizontal" Spacing="8">
-                                        <Border x:Name="RightContextRingHost" VerticalAlignment="Center" />
-                                        <Border x:Name="RightConnectionStatusHost" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                    <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
-                                    <Button x:Name="SessionReturnButton" Visibility="Collapsed" IsEnabled="False"
-                                            HorizontalAlignment="Left" Click="SessionReturnButton_Click"
-                                            AutomationProperties.AutomationId="OpenCodeSessionReturnButton" />
-                                    <!-- Preserve switch diagnostics and explicit unknown-outcome recovery, not the retired identity row. -->
-                                    <StackPanel x:Name="AgentSelectorHost" AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
-                                    <TextBlock x:Name="WaitingText" Visibility="Collapsed" TextWrapping="Wrap"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               AutomationProperties.AutomationId="OpenCodeWaitingText" />
-                                    </StackPanel>
-                                    </StackPanel>
-                                    <!-- B3：常驻上下文 / 分层用量在上，A10 原生 to do 卡片在下；复用同一概况视图。 -->
+                            <!-- Layout D right dock: session card (title → id → 上下文 → usage → 汇总/花费 → to do) on top,
+                                 directory + OpenCode version card aligned with the composer. Insets: UpdateDockInsets. -->
+                            <Grid x:Name="RightDock" Style="{StaticResource OpenCodeDockSurfaceStyle}" RowDefinitions="*,Auto" RowSpacing="12" Padding="8,12,24,16">
+                                <Border x:Name="RightSessionCard" VerticalAlignment="Top"
+                                        Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                        CornerRadius="8" Translation="0,0,16"
+                                        AutomationProperties.AutomationId="OpenCodeRightSessionCard">
+                                    <Border.Shadow>
+                                        <ThemeShadow />
+                                    </Border.Shadow>
                                     <ScrollViewer
                                         x:Name="RightSessionContent"
-                                        Grid.Row="4"
-                                        Padding="16,4,16,16"
                                         VerticalScrollBarVisibility="Auto"
                                         HorizontalScrollBarVisibility="Disabled">
-                                        <Border x:Name="InsightsPaneHost" />
+                                        <StackPanel Padding="16,14,16,16" Spacing="12">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                                <Grid x:Name="RightPanelHeaderSlot" Visibility="Collapsed" />
+                                                <!-- The context ring (flyout: 当前上下文 / 用量计费 / ACP·Billion 状态) docks here in wide mode. -->
+                                                <StackPanel x:Name="RightPanelExistingActions" Grid.Column="1" Orientation="Horizontal"
+                                                            Spacing="4" VerticalAlignment="Top" Margin="0,-4,-8,0">
+                                                    <Border x:Name="RightContextRingHost" VerticalAlignment="Center" />
+                                                    <Border x:Name="RightConnectionStatusHost" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
+                                                <Button x:Name="SessionReturnButton" Visibility="Collapsed" IsEnabled="False"
+                                                        HorizontalAlignment="Left" Click="SessionReturnButton_Click"
+                                                        AutomationProperties.AutomationId="OpenCodeSessionReturnButton" />
+                                                <!-- Preserve switch diagnostics and explicit unknown-outcome recovery, not the retired identity row. -->
+                                                <StackPanel x:Name="AgentSelectorHost" AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
+                                                <TextBlock x:Name="WaitingText" Visibility="Collapsed" TextWrapping="Wrap"
+                                                           Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                           AutomationProperties.AutomationId="OpenCodeWaitingText" />
+                                            </StackPanel>
+                                            <Border x:Name="InsightsPaneHost" />
+                                        </StackPanel>
                                     </ScrollViewer>
-                                    <Grid x:Name="RightPanelFooterSlot" Grid.Row="5" Visibility="Collapsed"
-                                          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" />
-                                </Grid>
-                            </Border>
+                                </Border>
+                                <Border x:Name="RightFooterCard" Grid.Row="1" Visibility="Collapsed"
+                                        Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                        CornerRadius="8" Translation="0,0,16" Padding="12,12,12,8"
+                                        AutomationProperties.AutomationId="OpenCodeRightFooterCard">
+                                    <Border.Shadow>
+                                        <ThemeShadow />
+                                    </Border.Shadow>
+                                    <StackPanel Spacing="6">
+                                        <!-- Read-only current directory; WSL quick access stays as two calm icon buttons beside it. -->
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                            <Grid x:Name="RightPanelDirectorySlot" Visibility="Collapsed" />
+                                            <Grid x:Name="WslQuickAccessSlot" Grid.Column="1" Visibility="Collapsed" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" />
+                                        <Grid x:Name="RightPanelFooterSlot" Visibility="Collapsed" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
                         </SplitView.Pane>
 
                         <Grid>

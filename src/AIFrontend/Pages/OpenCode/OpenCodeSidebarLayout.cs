@@ -11,21 +11,32 @@ internal readonly record struct OpenCodeSidebarLayout(
     OpenCodeSidebarMode Mode = OpenCodeSidebarMode.Narrow,
     OpenCodeSidebarDrawer Drawer = OpenCodeSidebarDrawer.None)
 {
-    // Existing AppTokens: 320 left + 360 right. Reserve 640 for the reading/editor
-    // surface plus its existing 16px padding on either side. The 820px timeline cap
-    // still applies at larger widths. A 48px dead band prevents resize oscillation.
-    internal const double LeftWidth = 320;
-    internal const double RightWidth = 360;
-    internal const double EnterWideWidth = LeftWidth + RightWidth + 640 + 32; // 1352
-    internal const double LeaveWideWidth = EnterWideWidth - 48; // 1304
+    // Layout D (aligned dock): floating cards of DockCardWidth, inset DockOuterMargin from the
+    // page edge, plus DockInnerGap so the card shadow is not clipped by the pane. Wide mode
+    // starts only when the reading column keeps its full OpenCodeTimelineMaxWidth (820) plus the
+    // reading surface's 16px padding on either side. A 48px dead band prevents resize oscillation.
+    internal const double DockCardWidth = 264;
+    internal const double DockOuterMargin = 24;
+    internal const double DockInnerGap = 8;
+    internal const double LeftWidth = DockOuterMargin + DockCardWidth + DockInnerGap; // 296
+    internal const double RightWidth = LeftWidth; // 296
+    internal const double ReadingWidth = 820 + 32;
+    internal const double EnterWideWidth = LeftWidth + RightWidth + ReadingWidth; // 1444
+    internal const double LeaveWideWidth = EnterWideWidth - 48; // 1396
 
     internal bool IsWide => Mode == OpenCodeSidebarMode.Wide;
     internal bool LeftOpen => IsWide || Drawer == OpenCodeSidebarDrawer.Left;
     internal bool RightOpen => IsWide || Drawer == OpenCodeSidebarDrawer.Right;
+    // Wide: no header buttons at all (cards are resident). Narrow: context % and 概况 only;
+    // subagents and connection live in the composer's second row.
     internal bool ShowHeaderContext => !IsWide;
-    internal bool ShowHeaderConnection => !IsWide;
+    internal bool ShowHeaderConnection => false;
     internal bool ShowHeaderOverview => !IsWide;
     internal bool AnimateDrawers(bool systemAnimationsEnabled) => !IsWide && systemAnimationsEnabled;
+
+    /// <summary>Wide⇄narrow switches fold the cards in / pop them out, unless the system disables animations.</summary>
+    internal static bool AnimateModeSwitch(OpenCodeSidebarLayout from, OpenCodeSidebarLayout to, bool systemAnimationsEnabled)
+        => systemAnimationsEnabled && from.IsWide != to.IsWide;
 
     // Home and new-session pages use all available content width, even on a wide window.
     internal OpenCodeSidebarSurface ForSession(bool hasSessionSurface)
