@@ -782,6 +782,19 @@
 | **B17** | working 动画与状态词库（齿轮/点动） | `anthropic/claude-opus-5-5` | `feat(opencode): animate working indicator with gear, dots and status phrases` | `1619afdf3895db632d042024ce8011217b085908` | 已提交，待统一验收 | parent |
 | **B18** | working group 可展开与手动收回 | `anthropic/claude-opus-5-5` | `feat(opencode): let users collapse the working group and keep their choice` | `f2f3579d52c29dd2e89f1adc676a92dfd2e6e679` | 已提交，待统一验收 | parent |
 
+### 视觉打磨与最终阶段提交记录（2026-10-23，全部默认模型并行车道 + parent cherry-pick）
+
+用户要求的最终阶段顺序：全面代码审查 → 删除无用测试 → 删除防御性代码 → 性能优化。人工逐项核对清单：`/tmp/opencode/aif-acceptance-checklist-20261023.html`（Gate A 用户实测与最终验收合并进行）。
+
+| 类别 | 提交（main） | 内容 |
+| :--- | :--- | :--- |
+| 视觉打磨 | `550a149` `9f2699f` `5607339` | 两行式 Composer/仪表盘/终端模式；侧栏卡片/Agent 树/上下文用量；working group/工具行/连接页 |
+| 审查发现的缺陷修复 | `71a37a4` `8335564` `5e9633a` `29fd865` `7f7189c` `0b7979e` `842d2a7` `8896e69` `13c057d` `ebddb6b` | REST 无 time 文本完成崩溃；中途加入的增量不覆盖快照；设置订阅者异常不删已提交凭据；畸形事件在边界拒绝；快照丢弃的消息可被后续事件恢复；设置读改写原子化；通知状态回收/锚点缺失恢复/准备失败有界重试；关标签取消跟踪；45 s 无心跳判定断流；REST JSON 64 MiB 上限 |
+| 删除死代码/防御代码 | `071e877` `2180a10` `de5ac96` `7f96c2e` `ccd333a` `67c5cee` `f9b8f7c` `b23a496` `1a724d4` | 临时崩溃 trace；重复 URI 校验；未用私有成员；从不触发的凭据事件链；通知死解析；无用参数；v2.1.1 不发送的 V1 事件处理（证据 `/tmp/opencode/aif-v1-events-evidence-20261023.md`）；客户端冗余检查与重复请求体。页面层防御审查未发现可证明安全删除的守卫（均为异步换会话/旧响应/草稿/生命周期守卫） |
+| 精简测试 | `3023ffb` `fa02648` `9b55ae2` `8edf322` `99c933d` `2404ecb` | 删除源码字符串/自证常量检查，保留行为断言；runner 52 → 50（visible-idle 并入 instruction-notice，draft-slots 并入 tabs） |
+| 性能 | `784f7aa` `7bd15aa` `a445624` `68cbf00` `a038f92` `4ae9d29` `b69a41c` `ddced2d` | 仅解码变动消息；去重复历史拷贝；侧栏按输入变化重算；Markdown 文本不变不重绘；通知轮询共享读取；事件流健康时跳过 12 s 轮询；附件校验编码一次且在 UI 线程外准备；命令请求只序列化一次 |
+| 待用户决定 | — | B17 模型段子开关（`EnableModelSatire = false`）；超长会话消息列表虚拟化（未开始） |
+
 ---
 
 ## 9. 附录：阶段 A 关键技术架构与并发防冲撞细则 (Oracle 规范)
