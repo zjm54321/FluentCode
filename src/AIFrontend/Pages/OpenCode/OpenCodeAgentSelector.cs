@@ -12,43 +12,21 @@ using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// 当前智能体 / 模型的只读显示 + 智能体切换对话框宿主 + 安全切换与未知状态恢复（重设计 §7，L7）。
+/// Agent/model presentation, UI-only agent selection and guarded application on the next send.
 /// </summary>
 /// <remarks>
-/// <para>
-/// 状态行只读显示“智能体 · 模型”（Caption 次要文字）；切换入口只有 <c>/agents</c>：
-/// <see cref="OpenSelection"/> 打开 <see cref="OpenCodeAgentPickerDialog"/>（原生 ContentDialog），
-/// 选择本身<strong>绝不自动提交</strong>，只有用户在对话框中显式点击“切换”才发起一次切换。
-/// 所有切换一律经 <see cref="AgentSwitchCoordinator"/>（共享 <see cref="OpenCodeInteractionGate.Shared"/>），
-/// 每次显式操作生成唯一 <see cref="Guid"/> operationId；对话框关闭后以打开时捕获的 origin 复核，
-/// 上下文已变化则不切换。本控件绝不自动重试、绝不假称成功。
-/// </para>
-/// <para>
-/// 来源/会话生命周期：宿主经 <see cref="Configure"/> 设置 <c>source/revision/sessionId/selectionGeneration</c>；
-/// 任一变化即作废在途操作（取消 + 丢弃迟到结果，不更新 UI）、释放旧的自有客户端并重建。
-/// <see cref="Clear"/> 清空上下文。控件只创建并释放自己经 <c>source.CreateClient()</c> 取得的客户端，
-/// <strong>绝不释放 App 共享 client</strong>。
-/// </para>
-/// <para>
-/// 结果处理：<c>Applied</c> 后重读真实状态；<c>Blocked</c>/<c>OriginLost</c>
-/// 给简洁提示且不改动当前显示；<c>OutcomeUnknown</c> 保留该 operationId 并在状态行下方显示警告条与显式恢复入口，
-/// <strong>只能</strong>由用户明确动作经 <see cref="AgentSwitchCoordinator.ReconcileAsync"/> 解除当前操作，
-/// 绝不自动重试、绝不推断成功。若未知槽属于其他入口的操作，
-/// 控件在共享租约内读取精确 operationId 供用户确认。上下文失效的迟到结果零写入。
-/// </para>
-/// <para>
-/// 线程契约：全部公开方法仅在 UI 线程调用；<c>isOriginCurrent</c> 回调只读原子发布的不可变 origin 快照
-/// （<see cref="Volatile"/>），不读取 XAML/控件、不同步 Dispatcher、不取 App 锁。await 后一律以
-/// origin 快照复核，失效则零 UI 更新。
-/// </para>
-/// <para>文案保持产品语言；不含请求正文、凭据或原始 payload。</para>
+/// OpenSelection opens an anchored ListView flyout and stores only a pending UI choice. The next send calls
+/// ApplyPendingSelectionAsync before beginning local submission. Real mutations retain AgentSwitchCoordinator's
+/// shared lease, server re-check, origin fence and explicit unknown recovery. Same-session generation changes keep
+/// the pending choice; changing source/session clears it. UI methods run on the UI thread; origin callbacks read only
+/// the atomically published immutable snapshot. The selector disposes only the client it created, never App's client.
 /// </remarks>
 internal sealed class OpenCodeAgentSelector : StackPanel
 {
     private const string UnknownAgentText = "智能体：未知";
     private const string UnknownModelText = "模型：未知";
 
-    // 可切换目标的只读快照（对话框据此呈现；隐藏 agent 不列出，subagent 列出但不可选）。
+    // Switchable primary-agent snapshot; hidden/subagent-only agents never enter the flyout.
     private readonly List<OpenCodeAgentPickerRow> _rows = new();
     private readonly TextBlock _currentText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
     private readonly TextBlock _separator = OpenCodeInteractionUi.StyledText("·", OpenCodeInteractionUi.CaptionSubtleStyleKey);
@@ -85,9 +63,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     private bool _dialogOpen;
 
     /// <summary>
-    /// Page <c>/agents</c>：打开切换对话框；打开本身绝不切换。返回是否已开始显示（未就绪 / 已有对话框时为 false）。
+    /// Open the picker (UI selection only); false when unavailable or already open.
     /// </summary>
-    internal bool OpenSelection()
+    internal bool OpenSelection(FrameworkElement? anchor = null)
     {
         var origin = Volatile.Read(ref _currentOrigin);
         if (_dialogOpen || origin is null || _client is null || XamlRoot is null)
@@ -96,18 +74,18 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             return false;
         }
 
-        _ = ShowPickerAsync(origin);
+        _ = ShowPickerAsync(origin, OpenCodePickerFlyout.Anchor(XamlRoot, anchor, "OpenCodeSidebarAgent"));
         return true;
     }
 
-    private async Task ShowPickerAsync(AgentSwitchOrigin origin)
+    private async Task ShowPickerAsync(AgentSwitchOrigin origin, FrameworkElement? anchor)
     {
         _dialogOpen = true;
         string? target;
         try
         {
-            target = await OpenCodeAgentPickerDialog.ShowAsync(XamlRoot, _rows.ToArray(), _currentAgentId,
-                DisplayName(_currentAgentId), SwitchBlockedReason()).ConfigureAwait(true);
+            target = await OpenCodeAgentPickerDialog.ShowAsync(XamlRoot, _rows.ToArray(), CurrentAgentId,
+                CurrentAgentDisplay, SwitchBlockedReason(), anchor).ConfigureAwait(true);
         }
         finally
         {
@@ -130,7 +108,29 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             return;
         }
 
+        SelectPendingAgent(origin, target);
+    }
+
+    private void SelectPendingAgent(AgentSwitchOrigin origin, string target)
+    {
+        if (!IsOriginCurrent(origin) || SwitchBlockedReason() is not null || !_rows.Exists(r => r.Selectable && r.Id == target)) return;
+        _pendingAgentId = target == _currentAgentId ? null : target;
+        _currentText.Text = CurrentAgentDisplay ?? UnknownAgentText;
+        ApplyCurrentAgentPresentation();
+        SetStatus(HasPendingSelection ? "下一条消息生效" : string.Empty);
+        UpdateControls();
+    }
+
+    // Called by the page BEFORE BeginLocalAgentSubmission. PromptBody carries only text (attached prompts add
+    // files/contexts), not an agent: use the existing server switch and its lease/re-check, never invent a wire field.
+    // False means the page must keep the draft and abort this send. No retry is performed here.
+    internal async Task<bool> ApplyPendingSelectionAsync()
+    {
+        if (_pendingAgentId is not { } target) return true;
+        var origin = Volatile.Read(ref _currentOrigin);
+        if (origin is null || SwitchBlockedReason() is not null) return false;
         await RunSwitchAsync(origin, target).ConfigureAwait(true);
+        return IsOriginCurrent(origin) && _pendingAgentId is null && _currentAgentId == target;
     }
 
     /// <summary>当前不允许发起切换的原因（对话框据此禁用“切换”）；可切换时为 null。</summary>
@@ -233,10 +233,12 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     internal event EventHandler<OpenCodeAgentSwitchReportedEventArgs>? SwitchReported;
 
     /// <summary>当前 agent 的 id（未读取到时为 null）。</summary>
-    internal string? CurrentAgentId => _currentAgentId;
+    private string? _pendingAgentId;
+    internal bool HasPendingSelection => _pendingAgentId is not null;
+    internal string? CurrentAgentId => _pendingAgentId ?? _currentAgentId;
 
     /// <summary>当前智能体显示名（列表中有则用名称，否则如实用 id；未读到时为 null）。</summary>
-    internal string? CurrentAgentDisplay => string.IsNullOrEmpty(_currentAgentId) ? null : DisplayName(_currentAgentId);
+    internal string? CurrentAgentDisplay => string.IsNullOrEmpty(CurrentAgentId) ? null : DisplayName(CurrentAgentId);
 
     /// <summary>当前会话模型的只读显示（会话真实状态；未设置 / 未读到时为 null，绝不虚构）。</summary>
     internal string? CurrentModelDisplay { get; private set; }
@@ -244,8 +246,8 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     // Read-through presentation for other current-session surfaces; this selector remains the only
     // owner of the observed session selection. No second session read/cache is needed by the sidebar.
     internal OpenCodeModelRef? CurrentModel { get; private set; }
-    internal string? CurrentAgentColor => _rows.Find(row => row.Id == _currentAgentId)?.Color;
-    internal string? CurrentAgentDescription => _rows.Find(row => row.Id == _currentAgentId)?.Description;
+    internal string? CurrentAgentColor => _rows.Find(row => row.Id == CurrentAgentId)?.Color;
+    internal string? CurrentAgentDescription => _rows.Find(row => row.Id == CurrentAgentId)?.Description;
     internal event EventHandler? DisplayChanged;
 
     /// <summary>该会话是否有未解除的 agent 未知状态（有则切换按钮禁用，仅允许显式恢复）。</summary>
@@ -286,6 +288,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             && string.Equals(current.SessionId, sessionId, StringComparison.Ordinal);
         var keptRows = keepDisplay ? _rows.ToArray() : Array.Empty<OpenCodeAgentPickerRow>();
         var keptAgentId = keepDisplay ? _currentAgentId : null;
+        var keptPendingAgentId = keepDisplay ? _pendingAgentId : null;
         var keptAgent = keepDisplay ? _currentText.Text : string.Empty;
         var keptModel = keepDisplay ? _modelText.Text : string.Empty;
         var keptModelDisplay = keepDisplay ? CurrentModelDisplay : null;
@@ -296,6 +299,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         {
             _rows.AddRange(keptRows);
             _currentAgentId = keptAgentId;
+            _pendingAgentId = keptPendingAgentId;
             _currentText.Text = keptAgent;
             ApplyCurrentAgentPresentation();
             _modelText.Text = keptModel;
@@ -406,7 +410,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
                 }
             }
 
-            SetStatus(data.Count == 0 ? "该目录没有可切换的智能体。" : string.Empty);
+            SetStatus(HasPendingSelection ? "下一条消息生效" : data.Count == 0 ? "该目录没有可切换的智能体。" : string.Empty);
         }
         catch (OperationCanceledException)
         {
@@ -473,6 +477,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     {
         _rows.Clear();
         _currentAgentId = currentAgentId;
+        if (_pendingAgentId == currentAgentId) _pendingAgentId = null;
 
         foreach (var agent in data)
         {
@@ -487,14 +492,14 @@ internal sealed class OpenCodeAgentSelector : StackPanel
                 true, null, agent.Color));
         }
 
-        if (string.IsNullOrEmpty(currentAgentId))
+        if (string.IsNullOrEmpty(CurrentAgentId))
         {
             _currentText.Text = UnknownAgentText;
         }
         else
         {
             // 当前 agent 不在列表（如 hidden）：如实显示 id。
-            _currentText.Text = DisplayName(currentAgentId);
+            _currentText.Text = DisplayName(CurrentAgentId);
         }
 
         ApplyCurrentAgentPresentation();
@@ -502,7 +507,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
 
     private void ApplyCurrentAgentPresentation()
     {
-        var selected = _rows.Find(row => row.Id == _currentAgentId);
+        var selected = _rows.Find(row => row.Id == CurrentAgentId);
         OpenCodeAgentPresentation.Apply(_currentText, selected?.Color);
         ToolTipService.SetToolTip(_currentText, selected?.Description ?? "输入 /agents 切换智能体");
         AutomationProperties.SetHelpText(_currentText, selected?.Description ?? string.Empty);
@@ -821,6 +826,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         Volatile.Write(ref _currentOrigin, null);
         _retainedUnknownOperationId = null;
         _currentAgentId = null;
+        _pendingAgentId = null;
         _busy = false;
         ResetUi();
         UpdateControls();
@@ -957,11 +963,11 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         {
             if (string.Equals(row.Id, agentId, StringComparison.Ordinal))
             {
-                return row.Name;
+                return OpenCodeAgentIcons.DisplayName(row.Name);
             }
         }
 
-        return agentId;
+        return OpenCodeAgentIcons.DisplayName(agentId);
     }
 
     /// <summary>原子发布的 origin 是否仍为当前（回调可跨线程只读；不触 XAML/Dispatcher/App）。</summary>

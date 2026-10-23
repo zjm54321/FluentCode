@@ -98,9 +98,15 @@ internal static class Program
         Check(dialog.Contains("bool allowStrengthSelection = true") && !dialog.Contains("Visibility = allowStrengthSelection"), "legacy caller argument retained without enabling in-dialog strength selection");
         var rowView = dialog.Substring(dialog.IndexOf("private static ListViewItem RowItem", StringComparison.Ordinal));
         Check(!rowView.Contains("当前") && !rowView.Contains("marker") && !rowView.Contains("SemiBold"), "model rows contain only logo and name without current status marker or special emphasis");
-        Check(dialog.Contains("PrimaryButtonText = \"确认修改\"") && dialog.Contains("CloseButtonText = \"取消\"")
-            && dialog.Contains("重新读取失败；列表保持不变。") && dialog.Contains("InformativeNote(p.Note)"), "confirmation, cancellation and real failure notes retained");
-        Check(dialog.Contains("OpenCodeModelPresentation.Order(p.Rows, sourceKey)") && !dialog.Contains("await OpenCodeRecentModels.Shared.LoadAsync()"), "dialog only reads in-memory shared MRU and never loads preferences while rendering");
+        Check(!dialog.Contains("new ContentDialog") && !dialog.Contains("PrimaryButtonText") && !dialog.Contains("OpenCodeModelPickerRefresh")
+            && !dialog.Contains("\"当前模型\"") && dialog.Contains("new AutoSuggestBox") && dialog.Contains("\"选择模型\""),
+            "P1/P3 model flyout has title/search/list only, no current header, refresh or confirm footer");
+        Check(dialog.Contains("OpenCodeModelPresentation.Order(presentation.Rows, sourceKey)") && !dialog.Contains("await OpenCodeRecentModels.Shared.LoadAsync()"), "flyout only reads in-memory shared MRU and never loads preferences while rendering");
+        Check(dialog.Contains("list.ItemClick +=") && dialog.Contains("state.TryFreezeConfirmation()")
+            && dialog.Contains("state.SelectVariant(current.Key.Variant)"), "model click freezes exact basis; clicking current model never resets effort");
+        var flyout = Read("src/AIFrontend/Pages/OpenCode/OpenCodePickerFlyout.cs");
+        Check(flyout.Contains("new Flyout") && flyout.Contains("FlyoutPlacementMode.TopEdgeAlignedLeft") && flyout.Contains("flyout.ShowAt(anchor)")
+            && flyout.Contains("OpenCodeBlankModel") && flyout.Contains("anchor.Unloaded += Unloaded"), "anchored native flyout supports sidebar/composer callers and dismisses on owner unload");
         var blank = Read("src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs");
         Check(blank.Contains("OpenCodeModelLogo.Label(model?.Id, model?.Name") && blank.Contains("ToolTipService.SetToolTip(BlankModelButton, model?.Name)"), "composer brand label and clean friendly tooltip");
         Check(blank.Contains("sourceKey: source.Identity"), "blank picker uses captured stable source identity");
@@ -149,6 +155,19 @@ internal static class Program
             && strengthDialog.Contains("foreach (var variant in row.Variants)"), "independent strength editor has only current-model catalog variants");
         Check(strengthDialog.Contains("VariantLabel(null), Tag = null") && strengthDialog.Contains("VariantLabel(variant), Tag = variant")
             && strengthDialog.Contains("state.TryFreezeConfirmation()"), "independent default/Chinese display keep wire IDs and frozen explicit confirmation");
+        Check(strengthDialog.Contains("new ListView") && strengthDialog.Contains("list.ItemClick +=") && !strengthDialog.Contains("RadioButton")
+            && !strengthDialog.Contains("Title =") && !strengthDialog.Contains("new ContentDialog") && !strengthDialog.Contains("body.Children.Add"),
+            "P4/PK1 effort is only a compact native ListView, no title/note/radio dots/confirmation");
+        var agentPicker = Read("src/AIFrontend/Pages/OpenCode/OpenCodeAgentPickerDialog.cs");
+        Check(agentPicker.Contains("if (!row.Selectable) continue") && agentPicker.Contains("OpenCodeAgentIcons.Glyph(row.Id)")
+            && agentPicker.Contains("OpenCodeAgentIcons.DisplayName(row.Name)") && !agentPicker.Contains("Title =")
+            && !agentPicker.Contains("new ContentDialog") && !agentPicker.Contains("row.Description"), "P5/PK1/AS1 agent flyout has only switchable icon/name ListView rows");
+        var selector = Read("src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs");
+        var pickerRoute = selector.Substring(selector.IndexOf("private async Task ShowPickerAsync"),
+            selector.IndexOf("private void SelectPendingAgent") - selector.IndexOf("private async Task ShowPickerAsync"));
+        Check(pickerRoute.Contains("SelectPendingAgent(origin, target)") && !pickerRoute.Contains("RunSwitchAsync"), "AS3 picker choice is UI-only, never a server switch");
+        Check(selector.Contains("internal async Task<bool> ApplyPendingSelectionAsync()") && selector.Contains("await RunSwitchAsync(origin, target)")
+            && selector.Contains("_coordinator.SwitchAsync(origin, operationId, target, IsOriginCurrent"), "next-send seam preserves existing server coordinator/re-check");
         AIFrontend.Pages.OpenCodePage.RunVariantSelectionChecks(Check).GetAwaiter().GetResult();
         var cardBinding = Read("src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs");
         Check(cardBinding.Contains("_agentSelector.DisplayChanged +=") && cardBinding.Contains("_agentSelector.CurrentModel")
@@ -157,6 +176,8 @@ internal static class Program
         Check(cardBinding.Contains("BlankAgentButton_Click(sender, e)") && cardBinding.Contains("BlankModelButton_Click(sender, e)")
             && cardBinding.Contains("BlankStrengthButton_Click(sender, e)") && cardBinding.Contains("尚未保存为会话选择"),
             "blank sidebar delegates to existing draft semantics and labels its unpersisted scope");
+        Check(cardBinding.Contains("CurrentModelInfo(binding!, selected)?.Name") && !cardBinding.Contains("selected?.Id ?? \"模型不可用\""),
+            "P2 sidebar uses catalog display Name, never model ID as display name");
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
     }
 }

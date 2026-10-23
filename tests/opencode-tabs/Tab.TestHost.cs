@@ -37,7 +37,7 @@ namespace Microsoft.UI.Xaml
     public class FrameworkElement:UIElement
     {
         public object Tag{get;set;}=null!;public string Name{get;set;}="";public object? Style{get;set;}
-        public double Width{get;set;}public double Height{get;set;}public double MaxWidth{get;set;}public double MinWidth{get;set;}
+        public double Width{get;set;}public double Height{get;set;}public double MaxWidth{get;set;}public double MinWidth{get;set;}public double MinHeight{get;set;}
         public Thickness Padding{get;set;}public Thickness Margin{get;set;}public HorizontalAlignment HorizontalAlignment{get;set;}public VerticalAlignment VerticalAlignment{get;set;}
         public XamlRoot? XamlRoot{get;set;}=new();public event Action<object,RoutedEventArgs>? Loaded;public void RaiseLoaded()=>Loaded?.Invoke(this,new());
     }

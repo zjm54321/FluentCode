@@ -38,7 +38,7 @@ $notifications = foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePage
 $headless = foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeSessionControlCoordinator.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs',
         'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerSplash.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
 $headless += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs"
-$winui = foreach ($name in @('OpenCodeComposerView.cs', 'OpenCodeComposerNativeDialogs.cs', 'OpenCodeVariantPickerDialog.cs', 'OpenCodeModelLogo.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeInteractionUi.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
+$winui = foreach ($name in @('OpenCodeComposerView.cs', 'OpenCodeComposerNativeDialogs.cs', 'OpenCodeVariantPickerDialog.cs', 'OpenCodePickerFlyout.cs', 'OpenCodeModelLogo.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeInteractionUi.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
 # The view/dialogs read the user-chosen monospace font (AppFonts); compile its real settings closure (WinUI side only).
 $appearance = @(Get-ChildItem "$repo/src/AIFrontend/Services/Appearance/*.cs") + @(Get-ChildItem "$repo/src/AIFrontend/Services/Configuration/*.cs" | Where-Object Name -NE 'DpapiSecretStore.cs') + @(Get-ChildItem "$repo/src/AIFrontend/Models/*.cs")
 $viewSources = @($services) + @($notifications) + @($headless) + @($winui) + @($appearance)

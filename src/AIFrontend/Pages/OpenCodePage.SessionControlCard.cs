@@ -19,7 +19,7 @@ public sealed partial class OpenCodePage
         {
             if (!SessionControlCardCanEdit()) return;
             if (_newSessionDraftActive) BlankAgentButton_Click(sender, e);
-            else _agentSelector.OpenSelection();
+            else _agentSelector.OpenSelection(sender as FrameworkElement);
         };
         _sessionControlCard.ModelButton.Click += (sender, e) =>
         {
@@ -84,11 +84,14 @@ public sealed partial class OpenCodePage
         var ownsSelection = ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision
             && _agentSelectorSessionId == _selectedSessionId;
         var selected = ownsSelection ? _agentSelector.CurrentModel : null;
+        var modelName = selected is not null && TryCaptureInsightsBinding(out var binding)
+            ? _insights?.CurrentModelInfo(binding!, selected)?.Name : null;
         card.Render(ownsSelection ? _agentSelector.CurrentAgentDisplay ?? "智能体不可用" : "智能体不可用",
-            ownsSelection ? _agentSelector.CurrentAgentColor : null, selected?.Id, selected?.Id ?? "模型不可用",
+            ownsSelection ? _agentSelector.CurrentAgentColor : null, selected?.Id, modelName ?? "模型不可用",
             selected?.Id is null ? "强度不可用" : OpenCodeModelPresentation.VariantLabel(selected.Variant),
             "仅修改当前会话；模型与强度选择仅影响之后的回合。", enabled && ownsSelection,
-            enabled, enabled && selected?.Id is not null, ownsSelection ? _agentSelector.CurrentAgentDescription : null);
+            enabled, enabled && selected?.Id is not null, ownsSelection ? _agentSelector.CurrentAgentDescription : null,
+            pendingAgent: ownsSelection && _agentSelector.HasPendingSelection);
     }
 
     private void OpenSessionControlModelPicker(bool variantOnly)
