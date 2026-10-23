@@ -29,6 +29,7 @@ internal static class NativeTests
             .SetValue(OpenCodeRecentModels.Shared, true);
         await TypedAndModels(); var a = checks;
         await SidebarModelChoices();
+        await NativeComboBoxChoices();
         await RestorationAndOwnership(); var b = checks - a;
         await GuardsAndEpoch();
         Console.WriteLine($"PASS: 3 Page-native groups, {checks} assertions ({a}/{b}/{checks-a-b}); real production Page/core/backend; HTTP/WinUI/dialog doubles; separate continuation groups follow.");
@@ -251,6 +252,25 @@ internal static class NativeTests
             Check(opens == 0 && f.Http.Posts == 0, "load-await ownership loss cannot open or submit normal picker: " + loss);
         }
     }
+
+    private static async Task NativeComboBoxChoices()
+    {
+        foreach (var variant in new string?[] { "fast", null, "opaque/not-offered" })
+        {
+            using var f = new Fixture();
+            f.Model = "{\"id\":\"catalog-id\",\"providerID\":\"provider\",\"variant\":\"fast\"}";
+            f.Page.Text("keep native combo draft");
+            var opens = 0;
+            OpenCodeModelPickerDialog.Next = p => { opens++; throw new Exception("ComboBox must not open a model flyout"); };
+            OpenCodeVariantPickerDialog.Next = p => { opens++; throw new Exception("ComboBox must not open an effort flyout"); };
+            await f.Page.RunComboBoxModel(new("provider", "catalog-id", variant));
+            Check(opens == 0, "native ComboBox selection never opens a replacement flyout");
+            Check(f.Http.Posts == (variant is null ? 1 : 0), "native ComboBox uses guarded coordinator; same/unoffered choice is no-op");
+            if (variant is null)
+                Check(f.LastMutationBody == "{\"model\":{\"id\":\"catalog-id\",\"providerID\":\"provider\"}}", "native ComboBox default commits true null/omitted variant");
+            Check(f.Page.Snapshot.Text == "keep native combo draft" && f.Page.Working == 0, "native ComboBox preserves draft and never starts a send");
+        }
+    }
     private static async Task RestorationAndOwnership()
     {
         foreach (var lateEdit in new[] { false, true })
@@ -409,6 +429,7 @@ namespace AIFrontend.Pages
         }
         internal Task RunNative() { var s = Snapshot; var t = s.ClientIntent is { } i ? Controller.TryTakeClientAction(s.Token, i.Id) : null; return t is null ? Task.CompletedTask : RunClientActionAsync(t); }
         internal Task RunSidebarModel(bool variantOnly) { var t = Controller.TryTakeModelPickerAction(Snapshot.Token); return t is null ? Task.CompletedTask : RunClientActionAsync(t, variantOnly); }
+        internal Task RunComboBoxModel(OpenCodeModelChoiceKey choice) { var t = Controller.TryTakeModelPickerAction(Snapshot.Token); return t is null ? Task.CompletedTask : RunClientActionAsync(t, selectedChoice: choice); }
         internal void LoseNormalPickerOwnership(string loss)
         {
             if (loss == "source") _source = null;
