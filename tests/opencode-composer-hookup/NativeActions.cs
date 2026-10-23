@@ -95,16 +95,29 @@ internal static class NativeTests
         {
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseSession, "sessions");
             Check(f.Page.InvokeNative(OpenCodeComposerClientActionKind.NewSession), "synchronous Accepted from typed event");
-            Check(f.Page.NewTabRequests == 1 && f.Http.Posts == 0, "ticket dispatch ignores forged display Kind and opens the blank session tab (L2)");
+            Check(f.Page.HomeNavigations == 0 && f.Page.NewTabRequests == 0 && f.Http.Posts == 0,
+                "ticket dispatch ignores forged display Kind and defers home navigation, never a blank tab");
             f.Page.DrainDispatcher();
+            Check(f.Page.HomeNavigations == 1 && !f.Page.NavigationWhileNativeAction, "sessions returns home after native ownership settles");
             await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseAgent, "agents"); await f.Page.RunNative();
             Check(f.Page.AgentOpens == 1 && f.Http.Posts == 0, "agents opens the selector's picker dialog without switch/HTTP");
             await f.Page.StageNative(OpenCodeComposerClientActionKind.NewSession, "new"); await f.Page.RunNative();
-            Check(f.Page.NewTabRequests == 2 && f.Page.NewTabNavigations == 1 && f.Http.Posts == 0 && f.Page.Created is null,
+            Check(f.Page.NewTabRequests == 1 && f.Page.NewTabNavigations == 0 && f.Http.Posts == 0 && f.Page.Created is null,
                 "new requests a deferred blank tab without creating an unnamed backend session");
             f.Page.DrainDispatcher();
-            Check(f.Page.NewTabNavigations == 2 && !f.Page.NavigationWhileNativeAction && f.Http.Posts == 0,
+            Check(f.Page.NewTabNavigations == 1 && !f.Page.NavigationWhileNativeAction && f.Http.Posts == 0,
                 "new navigates only after native ownership settles, still without a backend POST");
+        }
+        foreach (var name in new[] { "session", "sessions" })
+        {
+            using var f = new Fixture();
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.ChooseSession, name);
+            await f.Page.RunNative();
+            Check(f.Page.HomeNavigations == 0 && f.Page.NewTabRequests == 0 && f.Http.Posts == 0,
+                name + " stages the native home action and defers navigation without HTTP");
+            f.Page.DrainDispatcher();
+            Check(f.Page.HomeNavigations == 1 && f.Page.NewTabNavigations == 0 && !f.Page.NavigationWhileNativeAction,
+                name + " activates only home, not the blank conversation page");
         }
         foreach (var scenario in new[] { "explicit", "inherited", "missing", "changed", "later-edit" })
         {
@@ -376,6 +389,7 @@ namespace AIFrontend.Pages
         internal string? Created;
         internal int NewTabRequests;
         internal int NewTabNavigations;
+        internal int HomeNavigations;
         internal bool NavigationWhileNativeAction;
         partial void RequestNewSessionTab()
         {
@@ -446,7 +460,7 @@ namespace AIFrontend.Pages
         private readonly HomeStub _homeView=new();
         private void RefreshBlankPreferenceLabels(){}
         private void ShowSourceWaiting(){} // Native connection/recovery visibility is outside this controller/page-transport harness.
-        private void ShowHomePage(){} // Caller already suspended via real CAS; actual Home native selection tested by opencode-tabs.
+        private void ShowHomePage(){HomeNavigations++;NavigationWhileNativeAction |= _nativeActionOwner is not null;} // Native Home selection tested by opencode-tabs.
         private void SetBlankComposerPlacement(bool blank){} // Native layout only.
         private void UpdateSessionTabsEmptyState(){} // Actual native actor/selection routing is source-linked in opencode-tabs.
         private Task LoadBlankMetadataAsync(OpenCodeBlankDraftPreferences basis,OpenCodeComposerToken token)=>Task.CompletedTask; // I/O boundary; real defaults loader tested by opencode-draft-slots.

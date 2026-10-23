@@ -103,9 +103,8 @@ public sealed partial class OpenCodePage
                     RequestNewSessionTab();
                     break;
                 case OpenCodeComposerClientActionKind.ChooseSession:
-                    // §7: /sessions opens (or activates) the single blank "新会话" tab, whose list opens a session
-                    // only through the normal guarded session navigation. Deferred: never re-enter binding here.
-                    RequestNewSessionTab();
+                    // /session and /sessions return to the pinned home/session list after native ownership settles.
+                    DispatcherQueue.TryEnqueue(ShowHomePage);
                     break;
                 case OpenCodeComposerClientActionKind.ChooseAgent:
                     // §7: opens the agent picker dialog; switching still requires its own explicit 切换 gesture and

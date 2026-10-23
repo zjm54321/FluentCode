@@ -459,7 +459,7 @@ internal sealed class OpenCodeComposerCommandMenuSession
     internal static string NativeDescription(OpenCodeComposerClientActionKind kind) => kind switch
     {
         OpenCodeComposerClientActionKind.NewSession => "新建会话",
-        OpenCodeComposerClientActionKind.ChooseSession => "切换到其他会话",
+        OpenCodeComposerClientActionKind.ChooseSession => "返回主页（/session、/sessions）",
         OpenCodeComposerClientActionKind.ChooseAgent => "选择智能体",
         OpenCodeComposerClientActionKind.ChooseModel => "选择此会话使用的模型（确认后才更改）",
         OpenCodeComposerClientActionKind.Undo => "撤回最近一条消息并放回输入框（确认后执行，尽力而为）",

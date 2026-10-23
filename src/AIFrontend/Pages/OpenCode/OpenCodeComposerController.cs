@@ -40,7 +40,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private static readonly IReadOnlyList<OpenCodeComposerCommandRow> NativeCommands = Array.AsReadOnly(new[]
     {
         Native(OpenCodeComposerClientActionKind.NewSession, "new"),
-        Native(OpenCodeComposerClientActionKind.ChooseSession, "sessions"),
+        Native(OpenCodeComposerClientActionKind.ChooseSession, "sessions"), // /session is also accepted by the native name filter.
         Native(OpenCodeComposerClientActionKind.ChooseAgent, "agents"),
         Native(OpenCodeComposerClientActionKind.ChooseModel, "models"),
         Native(OpenCodeComposerClientActionKind.Undo, "undo"),
