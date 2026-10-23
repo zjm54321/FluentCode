@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -26,20 +28,51 @@ public sealed class OpenCodeHomeSearchEventArgs(long revision, OpenCodeHomeProje
     public string Query { get; } = query;
 }
 
-/// <summary>A full-content native Home surface, not a drawer. No client, settings store or navigation ownership.
-/// All methods are UI-thread-only. The page adapter must revalidate echoed revision/source before acting.</summary>
+/// <summary>
+/// The pinned Home tab: a fixed page (never a drawer) on the same three-column grid as the session page.
+/// Left floating card = projects (添加项目 + 全部项目); centre = search + 新建, 需要你处理, then 今天/昨天/本周/更早;
+/// right floating cards = OpenCode wordmark/version/connection identity and the page-supplied WSL quick access.
+/// When the side cards do not fit, they collapse: projects become chips and the connection becomes one caption line.
+/// No client, settings store or navigation ownership. All methods are UI-thread-only; the page adapter must
+/// revalidate echoed revision/source before acting.
+/// </summary>
 public sealed class OpenCodeHomeView : UserControl
 {
+    internal const double SideCardWidth = 280;
+    internal const double SideMargin = 24;
+    internal const double CenterMaxWidth = 800;
+    /// <summary>Both side cards plus their outer and inner gutters next to an 800epx centre column.</summary>
+    internal const double WideThreshold = CenterMaxWidth + 2 * (SideCardWidth + 2 * SideMargin);
+    private const string AttentionKey = "attention";
+    private const string AllProjectsTag = "all-projects";
+
     private OpenCodeHomeSnapshot _snapshot = new(0, Array.Empty<OpenCodeHomeProject>(), Array.Empty<OpenCodeHomeSession>());
     private readonly ListView _projects = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ListView _sessions = new() { SelectionMode = ListViewSelectionMode.None, IsItemClickEnabled = true };
-    private readonly TextBox _search = new() { PlaceholderText = "搜索会话", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly TextBox _search = new() { PlaceholderText = "搜索会话、项目或 session ID", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly TextBlock _count = new();
     private readonly HyperlinkButton _more = new() { Content = "加载更多会话", Visibility = Visibility.Collapsed, Padding = new Thickness(0) };
     private readonly ProgressRing _loading = new() { Width = 16, Height = 16, Visibility = Visibility.Collapsed };
-    private readonly ColumnDefinition _projectColumn = new() { Width = new GridLength(224) };
+    private readonly Border _leftCard = Card();
+    private readonly Border _connectionCard = Card();
+    private readonly Border _quickCard = Card();
+    private readonly Grid _right = new() { Width = SideCardWidth, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Stretch };
+    private readonly Grid _center = new() { RowSpacing = 12, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly Border _wordmarkHost = new() { Height = 30, HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly Border _connectedDot = Dot(OpenCodeToolTheme.Success, 8);
+    private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _compactConnection = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Visibility = Visibility.Collapsed };
+    private readonly Border _compactDot = Dot(OpenCodeToolTheme.Success, 8);
+    private readonly TextBlock _compactText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly ScrollViewer _chipScroller = new() { Visibility = Visibility.Collapsed };
+    private readonly StackPanel _chips = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
+    private readonly Dictionary<object, TextBlock> _headerCounts = new();
+    private readonly Dictionary<OpenCodeHomeProjectKey, (ProgressRing Ring, TextBlock Count)> _projectBadges = new();
+    private ListViewItem? _allProjectsItem;
+    private TextBlock? _allProjectsCount;
     private bool _refreshing;
+    private bool _narrow;
+    private bool _quickVisible;
 
     public event EventHandler<OpenCodeHomeContextEventArgs>? AddProject;
     public event EventHandler<OpenCodeHomeContextEventArgs>? ProjectSelected;
@@ -47,12 +80,12 @@ public sealed class OpenCodeHomeView : UserControl
     public event EventHandler<OpenCodeHomeContextEventArgs>? NewSession;
     public event EventHandler<OpenCodeHomeSearchEventArgs>? Search;
     public event EventHandler<OpenCodeHomeContextEventArgs>? LoadMore;
-    public event EventHandler<OpenCodeHomeContextEventArgs>? Refresh;
     public event EventHandler<OpenCodeHomeSessionActionEventArgs>? SessionActionRequested;
     public Func<long, OpenCodeHomeSession, OpenCodeHomeSessionAction, bool>? CanRequestSessionAction { get; set; }
 
     public OpenCodeHomeProjectKey? SelectedProject { get; private set; }
     public string SearchText => _search.Text;
+    public bool IsNarrow => _narrow;
 
     public OpenCodeHomeView()
     {
@@ -62,77 +95,83 @@ public sealed class OpenCodeHomeView : UserControl
         AutomationProperties.SetName(this, "主页");
 
         var layout = new Grid();
-        layout.ColumnDefinitions.Add(_projectColumn);
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var left = new Grid { Padding = new Thickness(16, 24, 12, 16), RowSpacing = 12 };
-        left.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        left.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        left.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var projectHeader = new Grid();
+        // ---- Left floating card: 项目 ----
+        var projects = new Grid { RowSpacing = 4 };
+        projects.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        projects.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var projectHeader = new Grid { Padding = new Thickness(8, 0, 0, 0) };
         projectHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         projectHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        projectHeader.Children.Add(Label("项目", "SubtitleTextBlockStyle"));
-        var add = new Button { Content = new FontIcon { Glyph = "\uE8F4", FontSize = 16 }, MinWidth = 36, MinHeight = 36 };
-        SetIdentity(add, "OpenCodeHomeAddProject", "添加项目文件夹");
+        projectHeader.Children.Add(Label("项目", "BodyStrongTextBlockStyle"));
+        var add = new HyperlinkButton { Content = IconText("\uE710", "添加项目", 12) };
+        SetIdentity(add, "OpenCodeHomeAddProject", "添加项目");
         add.Click += (_, _) => AddProject?.Invoke(this, Context());
         Grid.SetColumn(add, 1);
         projectHeader.Children.Add(add);
-        left.Children.Add(projectHeader);
-        var all = new HyperlinkButton { Content = "全部会话", HorizontalAlignment = HorizontalAlignment.Left };
-        SetIdentity(all, "OpenCodeHomeAllProjects", "查看全部项目的会话");
-        all.Click += (_, _) => SelectProject(null, notify: true);
-        Grid.SetRow(all, 1);
-        left.Children.Add(all);
+        projects.Children.Add(projectHeader);
         SetIdentity(_projects, "OpenCodeHomeProjects", "项目");
         ScrollViewer.SetHorizontalScrollMode(_projects, ScrollMode.Disabled);
         ScrollViewer.SetHorizontalScrollBarVisibility(_projects, ScrollBarVisibility.Disabled);
-        Grid.SetRow(_projects, 2);
-        left.Children.Add(_projects);
+        Grid.SetRow(_projects, 1);
+        projects.Children.Add(_projects);
         _projects.SelectionChanged += (_, _) =>
         {
-            if (!_refreshing && _projects.SelectedItem is ListViewItem { Tag: OpenCodeHomeProject project })
-                SelectProject(project.Key, notify: true);
+            if (_refreshing) return;
+            if (_projects.SelectedItem is ListViewItem { Tag: OpenCodeHomeProject project }) SelectProject(project.Key, notify: true);
+            else if (_projects.SelectedItem is ListViewItem { Tag: AllProjectsTag }) SelectProject(null, notify: true);
         };
-        layout.Children.Add(left);
+        _leftCard.Child = projects;
+        _leftCard.Padding = new Thickness(8, 12, 8, 8);
+        _leftCard.Width = SideCardWidth;
+        _leftCard.HorizontalAlignment = HorizontalAlignment.Left;
+        _leftCard.VerticalAlignment = VerticalAlignment.Top;
+        _leftCard.Margin = new Thickness(SideMargin, SideMargin, 0, SideMargin);
+        AutomationProperties.SetAutomationId(_leftCard, "OpenCodeHomeProjectsCard");
+        layout.Children.Add(_leftCard);
 
-        var right = new Grid { Padding = new Thickness(24, 24, 24, 16), RowSpacing = 16 };
-        right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        SetIdentity(_search, "OpenCodeHomeSearch", "搜索已加载的会话标题");
-        ToolTipService.SetToolTip(_search, "筛选已加载的会话标题");
-        right.Children.Add(_search);
+        // ---- Centre column ----
+        _center.Margin = new Thickness(0, SideMargin, 0, 0);
+        for (var i = 0; i < 5; i++) _center.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _center.RowDefinitions[3].Height = new GridLength(1, GridUnitType.Star);
+        OpenCodeToolTheme.Apply(_compactText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, "CaptionTextBlockStyle"));
+        _compactConnection.Children.Add(_compactDot);
+        _compactConnection.Children.Add(_compactText);
+        AutomationProperties.SetAutomationId(_compactConnection, "OpenCodeHomeConnectionCompact");
+        _center.Children.Add(_compactConnection);
+
+        var searchRow = new Grid { ColumnSpacing = 10 };
+        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        SetIdentity(_search, "OpenCodeHomeSearch", "搜索会话、项目或 session ID");
+        _search.MinHeight = 36;
+        searchRow.Children.Add(_search);
         _search.TextChanged += (_, _) =>
         {
             RefreshSessions();
             Search?.Invoke(this, new(_snapshot.Revision, SelectedProject, _search.Text));
         };
-        var heading = new Grid { ColumnSpacing = 12 };
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center };
-        title.Children.Add(Label("会话", "TitleTextBlockStyle"));
-        _count.VerticalAlignment = VerticalAlignment.Center;
-        OpenCodeToolTheme.Apply(_count, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary));
-        title.Children.Add(_count);
-        title.Children.Add(_loading);
-        heading.Children.Add(title);
-        var create = new Button { Content = "新会话", MinHeight = 36 };
-        SetIdentity(create, "OpenCodeHomeNewSession", "新会话");
+        var create = new Button { Content = IconText("\uE710", "新建", 12), MinHeight = 36, Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
+        SetIdentity(create, "OpenCodeHomeNewSession", "新建会话");
         create.Click += (_, _) => NewSession?.Invoke(this, Context());
-        var refresh = new Button { Content = new FontIcon { Glyph = "\uE72C", FontSize = 16 }, MinWidth = 36, MinHeight = 36 };
-        SetIdentity(refresh, "OpenCodeHomeRefresh", "刷新项目与会话");
-        ToolTipService.SetToolTip(refresh, "刷新项目与会话");
-        refresh.Click += (_, _) => Refresh?.Invoke(this, Context());
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(refresh); actions.Children.Add(create);
-        Grid.SetColumn(actions, 1);
-        heading.Children.Add(actions);
-        Grid.SetRow(heading, 1);
-        right.Children.Add(heading);
-        SetIdentity(_sessions, "OpenCodeHomeSessions", "会话，按日期分组");
+        Grid.SetColumn(create, 1);
+        searchRow.Children.Add(create);
+        Grid.SetRow(searchRow, 1);
+        _center.Children.Add(searchRow);
+
+        _chipScroller.Content = _chips;
+        ScrollViewer.SetHorizontalScrollMode(_chipScroller, ScrollMode.Enabled);
+        ScrollViewer.SetHorizontalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Hidden);
+        ScrollViewer.SetVerticalScrollMode(_chipScroller, ScrollMode.Disabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Disabled);
+        SetIdentity(_chipScroller, "OpenCodeHomeProjectChips", "按项目筛选");
+        Grid.SetRow(_chipScroller, 2);
+        _center.Children.Add(_chipScroller);
+
+        SetIdentity(_sessions, "OpenCodeHomeSessions", "会话：需要你处理，然后按日期分组");
         ScrollViewer.SetHorizontalScrollMode(_sessions, ScrollMode.Disabled);
         ScrollViewer.SetHorizontalScrollBarVisibility(_sessions, ScrollBarVisibility.Disabled);
         _sessions.ItemClick += (_, args) =>
@@ -144,24 +183,86 @@ public sealed class OpenCodeHomeView : UserControl
             if (row is not null)
                 SessionRequested?.Invoke(this, new(_snapshot.Revision, row.Session));
         };
-        Grid.SetRow(_sessions, 2);
-        right.Children.Add(_sessions);
+        Grid.SetRow(_sessions, 3);
+        _center.Children.Add(_sessions);
         OpenCodeToolTheme.Apply(_message, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary));
-        var footer = new StackPanel { Spacing = 8 };
-        footer.Children.Add(_message);
+        var footer = new StackPanel { Spacing = 8, Padding = new Thickness(12, 0, 12, 16) };
+        var status = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        status.Children.Add(_loading);
+        status.Children.Add(_message);
+        footer.Children.Add(status);
         footer.Children.Add(_more);
         _more.Click += (_, _) => LoadMore?.Invoke(this, Context());
         SetIdentity(_more, "OpenCodeHomeLoadMore", "加载更多已存在的会话");
-        Grid.SetRow(footer, 3);
-        right.Children.Add(footer);
-        Grid.SetColumn(right, 1);
-        layout.Children.Add(right);
-        var surface = new Border { Child = layout };
-        OpenCodeToolTheme.Apply(surface, OpenCodeToolTheme.Border(OpenCodeToolTheme.SolidBase));
-        Content = surface;
-        SizeChanged += (_, _) => _projectColumn.Width = new GridLength(ActualWidth < 720 ? 168 : 224);
-        Loaded += (_, _) => RefreshSessions(); // Recompute local calendar groups after a cached view returns.
+        Grid.SetRow(footer, 4);
+        _center.Children.Add(footer);
+        Grid.SetColumn(_center, 1);
+        layout.Children.Add(_center);
+
+        // ---- Right floating cards: OpenCode identity (top), WSL quick access (bottom) ----
+        _right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        _right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _right.Margin = new Thickness(0, SideMargin, SideMargin, SideMargin);
+        var identity = new StackPanel { Spacing = 10 };
+        identity.Children.Add(_wordmarkHost);
+        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        line.Children.Add(_connectedDot);
+        OpenCodeToolTheme.Apply(_connectionText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, "CaptionTextBlockStyle"));
+        line.Children.Add(_connectionText);
+        identity.Children.Add(line);
+        _connectionCard.Child = identity;
+        _connectionCard.Padding = new Thickness(16, 18, 16, 14);
+        _connectionCard.VerticalAlignment = VerticalAlignment.Top;
+        AutomationProperties.SetAutomationId(_connectionCard, "OpenCodeHomeConnectionCard");
+        _right.Children.Add(_connectionCard);
+        _quickCard.Padding = new Thickness(6);
+        _quickCard.VerticalAlignment = VerticalAlignment.Bottom;
+        _quickCard.Visibility = Visibility.Collapsed;
+        AutomationProperties.SetAutomationId(_quickCard, "OpenCodeHomeQuickAccessCard");
+        Grid.SetRow(_quickCard, 2);
+        _right.Children.Add(_quickCard);
+        Grid.SetColumn(_right, 2);
+        layout.Children.Add(_right);
+
+        Content = layout;
+        SetConnection(null, false, null);
+        SizeChanged += (_, _) => ApplyLayout();
+        Loaded += (_, _) => { ApplyLayout(); RefreshSessions(); }; // Recompute local calendar groups after a cached view returns.
+        RebuildProjects();
         RefreshSessions();
+        ApplyLayout();
+    }
+
+    /// <summary>Page-owned theme-aware wordmark (an Image of the OpenCode SVG); the view only places it.</summary>
+    public void SetWordmark(UIElement wordmark) => _wordmarkHost.Child = wordmark;
+
+    /// <summary>Real connection facts only: server-reported version, live connected state, and the configured
+    /// connection identity (e.g. "WSL · NixOS" / remote host). Unknown parts are omitted, never invented.</summary>
+    public void SetConnection(string? version, bool connected, string? identity)
+    {
+        var parts = new List<string>();
+        if (version is { Length: > 0 }) parts.Add(version.StartsWith('v') ? version : "v" + version);
+        if (identity is { Length: > 0 }) parts.Add(identity);
+        if (!connected) parts.Add("未连接");
+        var text = string.Join(" · ", parts);
+        _connectionText.Text = text;
+        _compactText.Text = parts.Count == 0 ? "OpenCode" : "OpenCode " + text;
+        var dot = connected ? Visibility.Visible : Visibility.Collapsed;
+        _connectedDot.Visibility = dot;
+        _compactDot.Visibility = dot;
+        var name = "OpenCode " + (connected ? "已连接" : "未连接") + (text.Length > 0 ? "，" + text : string.Empty);
+        AutomationProperties.SetName(_connectionCard, name);
+        AutomationProperties.SetName(_compactConnection, name);
+        ToolTipService.SetToolTip(_connectionCard, name);
+    }
+
+    /// <summary>The page supplies its WSL quick-access control; it is shown only for a WSL connection.</summary>
+    public void SetQuickAccess(UIElement? content, bool visible)
+    {
+        if (!ReferenceEquals(_quickCard.Child, content)) _quickCard.Child = content;
+        _quickVisible = visible && content is not null;
+        ApplyLayout();
     }
 
     public void SetSnapshot(OpenCodeHomeSnapshot snapshot)
@@ -173,61 +274,176 @@ public sealed class OpenCodeHomeView : UserControl
         // Own the collections, not the caller's mutable list containers. DTOs/records remain unchanged.
         _snapshot = snapshot with { Projects = snapshot.Projects.ToArray(), Sessions = snapshot.Sessions.ToArray() };
         if (SelectedProject is not null && !_snapshot.Projects.Any(project => project.Key == SelectedProject)) SelectedProject = null;
-        _refreshing = true;
-        try
-        {
-            if (projectsChanged)
-            {
-                _projects.Items.Clear();
-                foreach (var project in _snapshot.Projects.GroupBy(project => project.Key).Select(group => group.Last()))
-                {
-                    var text = Label(string.IsNullOrWhiteSpace(project.DisplayName) ? project.Key.Directory : project.DisplayName, "BodyTextBlockStyle");
-                    text.TextTrimming = TextTrimming.CharacterEllipsis;
-                    var item = new ListViewItem { Tag = project, Content = text, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(10, 10, 10, 10) };
-                    AutomationProperties.SetName(item, text.Text + "，" + project.Key.Directory);
-                    ToolTipService.SetToolTip(item, project.Key.Directory);
-                    _projects.Items.Add(item);
-                    if (project.Key == SelectedProject) _projects.SelectedItem = item;
-                }
-            }
-        }
-        finally { _refreshing = false; }
+        if (projectsChanged) RebuildProjects();
+        RefreshProjectBadges();
         RefreshSessions();
     }
 
     public void SetSelectedProject(OpenCodeHomeProjectKey? project) => SelectProject(project, notify: false);
+
+    private IEnumerable<OpenCodeHomeProject> DistinctProjects()
+        => _snapshot.Projects.GroupBy(project => project.Key).Select(group => group.Last());
+
+    private void RebuildProjects()
+    {
+        _refreshing = true;
+        try
+        {
+            _projects.Items.Clear();
+            _projectBadges.Clear();
+            var (allItem, _, allCount) = ProjectItem(AllProjectsTag, "全部项目", null, "\uE8FD");
+            _allProjectsItem = allItem;
+            _allProjectsCount = allCount;
+            SetIdentity(allItem, "OpenCodeHomeAllProjects", "全部项目");
+            _projects.Items.Add(allItem);
+            foreach (var project in DistinctProjects())
+            {
+                var name = ProjectName(project);
+                var (item, ring, count) = ProjectItem(project, name, project.Key.Directory, "\uE8B7");
+                AutomationProperties.SetName(item, name + "，" + project.Key.Directory);
+                ToolTipService.SetToolTip(item, project.Key.Directory);
+                _projectBadges[project.Key] = (ring, count);
+                _projects.Items.Add(item);
+            }
+            _projects.SelectedItem = SelectedItemFor(SelectedProject);
+        }
+        finally { _refreshing = false; }
+        RebuildChips();
+    }
+
+    private static string ProjectName(OpenCodeHomeProject project)
+        => string.IsNullOrWhiteSpace(project.DisplayName) || project.DisplayName == project.Key.Directory
+            ? OpenCodeHomeProjection.ShortName(project.Key.Directory) : project.DisplayName;
+
+    private ListViewItem? SelectedItemFor(OpenCodeHomeProjectKey? key)
+        => key is null ? _allProjectsItem : _projects.Items.OfType<ListViewItem>()
+            .FirstOrDefault(item => item.Tag is OpenCodeHomeProject project && project.Key == key);
+
+    private static (ListViewItem Item, ProgressRing Ring, TextBlock Count) ProjectItem(object tag, string name, string? directory, string glyph)
+    {
+        var grid = new Grid { ColumnSpacing = 10 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var tile = new Border { Width = 28, Height = 28, CornerRadius = new CornerRadius(6), VerticalAlignment = VerticalAlignment.Center };
+        OpenCodeToolTheme.Apply(tile, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        var icon = new FontIcon { Glyph = glyph, FontSize = 14, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
+        tile.Child = icon;
+        grid.Children.Add(tile);
+        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var title = Label(name, "BodyTextBlockStyle");
+        title.TextTrimming = TextTrimming.CharacterEllipsis;
+        title.TextWrapping = TextWrapping.NoWrap;
+        text.Children.Add(title);
+        if (directory is not null)
+        {
+            var path = Label(directory, "CaptionTextBlockStyle");
+            path.TextTrimming = TextTrimming.CharacterEllipsis;
+            path.TextWrapping = TextWrapping.NoWrap;
+            OpenCodeToolTheme.Apply(path, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+            text.Children.Add(path);
+        }
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(text);
+        var badges = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        var ring = new ProgressRing { Width = 12, Height = 12, IsActive = false, Visibility = Visibility.Collapsed };
+        AutomationProperties.SetName(ring, "有会话正在运行");
+        var count = Label(string.Empty, "CaptionTextBlockStyle");
+        OpenCodeToolTheme.Apply(count, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+        ToolTipService.SetToolTip(count, "已加载的会话数");
+        badges.Children.Add(ring);
+        badges.Children.Add(count);
+        Grid.SetColumn(badges, 2);
+        grid.Children.Add(badges);
+        var item = new ListViewItem { Tag = tag, Content = grid, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 6, 8, 6) };
+        return (item, ring, count);
+    }
+
+    private void RefreshProjectBadges()
+    {
+        var rows = OpenCodeHomeProjection.Rows(_snapshot, null, null, DateTimeOffset.Now, TimeZoneInfo.Local);
+        if (_allProjectsCount is not null) _allProjectsCount.Text = rows.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        foreach (var (key, (ring, count)) in _projectBadges)
+        {
+            var own = rows.Where(row => row.Session.Project == key).ToArray();
+            count.Text = own.Length == 0 ? string.Empty : own.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var working = own.Any(row => row.Tone is OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction);
+            ring.IsActive = working;
+            ring.Visibility = working ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void RebuildChips()
+    {
+        _chips.Children.Clear();
+        _chips.Children.Add(Chip("全部", null));
+        foreach (var project in DistinctProjects())
+            _chips.Children.Add(Chip(ProjectName(project), project.Key));
+        var add = new Button { Content = IconText("\uE710", "添加项目", 11), CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
+        SetIdentity(add, "OpenCodeHomeAddProjectChip", "添加项目");
+        add.Click += (_, _) => AddProject?.Invoke(this, Context());
+        _chips.Children.Add(add);
+    }
+
+    private Button Chip(string text, OpenCodeHomeProjectKey? key)
+    {
+        var chip = new Button { Content = text, Tag = key!, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
+        if (key == SelectedProject) chip.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle");
+        AutomationProperties.SetName(chip, (key is null ? "全部项目" : text) + (key == SelectedProject ? "，已选择" : string.Empty));
+        if (key is not null) ToolTipService.SetToolTip(chip, key.Directory);
+        chip.Click += (_, _) => SelectProject(key, notify: true);
+        return chip;
+    }
 
     private void SelectProject(OpenCodeHomeProjectKey? key, bool notify)
     {
         if (key is not null && !_snapshot.Projects.Any(project => project.Key == key)) return;
         SelectedProject = key;
         _refreshing = true;
-        try
-        {
-            _projects.SelectedItem = _projects.Items.OfType<ListViewItem>()
-                .FirstOrDefault(item => item.Tag is OpenCodeHomeProject project && project.Key == key);
-        }
+        try { _projects.SelectedItem = SelectedItemFor(key); }
         finally { _refreshing = false; }
+        RebuildChips();
         RefreshSessions();
         if (notify) ProjectSelected?.Invoke(this, Context());
     }
 
     private OpenCodeHomeContextEventArgs Context() => new(_snapshot.Revision, SelectedProject);
 
+    private void ApplyLayout()
+    {
+        var width = ActualWidth;
+        _narrow = width > 0 && width < WideThreshold;
+        var side = _narrow ? Visibility.Collapsed : Visibility.Visible;
+        _leftCard.Visibility = side;
+        _right.Visibility = side;
+        _quickCard.Visibility = _quickVisible ? Visibility.Visible : Visibility.Collapsed;
+        _compactConnection.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
+        _chipScroller.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
+        _center.Width = width <= 0 ? CenterMaxWidth
+            : Math.Max(0, Math.Min(CenterMaxWidth, _narrow ? width - 2 * SideMargin : width - 2 * (SideCardWidth + 2 * SideMargin)));
+        var height = ActualHeight;
+        if (height > 0) _leftCard.MaxHeight = Math.Max(0, height - 2 * SideMargin);
+    }
+
     private void RefreshSessions()
     {
-        var rows = OpenCodeHomeProjection.Rows(_snapshot, SelectedProject, _search.Text, DateTimeOffset.Now, TimeZoneInfo.Local);
+        var zone = TimeZoneInfo.Local;
+        var rows = OpenCodeHomeProjection.Rows(_snapshot, SelectedProject, _search.Text, DateTimeOffset.Now, zone);
         // Reconcile native item containers instead of clearing them on every SSE/status snapshot.
         // Equal rows retain their content/focus; pagination appends without resetting the list scroll.
         var desired = new List<(object Key, OpenCodeHomeSessionRow? Row)>();
-        OpenCodeHomeDateGroup? previous = null;
+        var counts = new Dictionary<object, int>();
+        object? previous = null;
         foreach (var row in rows)
         {
-            if (row.DateGroup != previous)
+            object section = row.NeedsAttention ? AttentionKey : row.DateGroup;
+            if (!Equals(section, previous))
             {
-                desired.Add((row.DateGroup, null));
-                previous = row.DateGroup;
+                desired.Add((section, null));
+                previous = section;
             }
+            counts[section] = counts.GetValueOrDefault(section) + 1;
             desired.Add((SessionKey(row), row));
         }
         for (var index = 0; index < desired.Count; index++)
@@ -241,20 +457,24 @@ public sealed class OpenCodeHomeView : UserControl
             {
                 current = (ListViewItem)_sessions.Items[existing];
                 if (existing != index) { _sessions.Items.RemoveAt(existing); _sessions.Items.Insert(index, current); }
-                if (row is not null && !Equals(current.Tag, row)) SessionItem(row, current);
+                if (row is not null && !Equals(current.Tag, row)) SessionItem(row, zone, current);
             }
             else
             {
-                current = row is not null ? SessionItem(row) : new ListViewItem
-                {
-                    Tag = key, Content = Label(GroupLabel((OpenCodeHomeDateGroup)key), "BodyStrongTextBlockStyle"),
-                    IsHitTestVisible = false, IsTabStop = false, Padding = new Thickness(10, 16, 10, 6),
-                };
+                current = row is not null ? SessionItem(row, zone) : HeaderItem(key);
                 _sessions.Items.Insert(index, current);
             }
+            if (row is null && _headerCounts.TryGetValue(key, out var count))
+            {
+                count.Text = counts[key].ToString(System.Globalization.CultureInfo.InvariantCulture);
+                AutomationProperties.SetName(current, GroupLabel(key) + "，" + count.Text + " 个会话");
+            }
         }
-        while (_sessions.Items.Count > desired.Count) _sessions.Items.RemoveAt(_sessions.Items.Count - 1);
-        _count.Text = rows.Count.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        while (_sessions.Items.Count > desired.Count)
+        {
+            if (_sessions.Items[^1] is ListViewItem { Tag: { } tag } && tag is not OpenCodeHomeSessionRow) _headerCounts.Remove(tag);
+            _sessions.Items.RemoveAt(_sessions.Items.Count - 1);
+        }
         _loading.IsActive = _snapshot.IsLoading;
         _loading.Visibility = _snapshot.IsLoading ? Visibility.Visible : Visibility.Collapsed;
         _message.Text = _snapshot.StatusMessage ?? (rows.Count == 0
@@ -263,15 +483,32 @@ public sealed class OpenCodeHomeView : UserControl
         _message.Visibility = _message.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private ListViewItem HeaderItem(object key)
+    {
+        var attention = Equals(key, AttentionKey);
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var label = Label(GroupLabel(key), "BodyStrongTextBlockStyle");
+        if (attention) OpenCodeToolTheme.Apply(label, OpenCodeToolTheme.Text(OpenCodeToolTheme.Caution, "BodyStrongTextBlockStyle"));
+        header.Children.Add(label);
+        var count = Label(string.Empty, "CaptionTextBlockStyle");
+        OpenCodeToolTheme.Apply(count, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+        header.Children.Add(count);
+        _headerCounts[key] = count;
+        var item = new ListViewItem { Tag = key, Content = header, IsHitTestVisible = false, IsTabStop = false, Padding = new Thickness(12, 14, 12, 4) };
+        AutomationProperties.SetAutomationId(item, attention ? "OpenCodeHomeAttentionHeader" : "OpenCodeHomeDateHeader");
+        return item;
+    }
+
     private static object SessionKey(OpenCodeHomeSessionRow row) => (row.Session.Project, row.Session.Info.Id);
     private static object? ItemKey(ListViewItem item) => item.Tag is OpenCodeHomeSessionRow row ? SessionKey(row) : item.Tag;
 
-    private ListViewItem SessionItem(OpenCodeHomeSessionRow row, ListViewItem? item = null)
+    private ListViewItem SessionItem(OpenCodeHomeSessionRow row, TimeZoneInfo zone, ListViewItem? item = null)
     {
-        var grid = new Grid { Tag = row, ColumnSpacing = 12, Padding = new Thickness(2, 6, 2, 6) };
+        var grid = new Grid { Tag = row, ColumnSpacing = 12, Padding = new Thickness(0, 2, 0, 2) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 200 });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MaxWidth = 200 });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
         var working = row.Tone is OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction;
         FrameworkElement indicator;
         if (working)
@@ -310,29 +547,37 @@ public sealed class OpenCodeHomeView : UserControl
         indicator.HorizontalAlignment = HorizontalAlignment.Center;
         AutomationProperties.SetAutomationId(indicator, "OpenCodeHomeStatus");
         badges.Children.Add(indicator);
-        var unread = new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3),
-            VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center,
-            Visibility = row.IsUnread ? Visibility.Visible : Visibility.Collapsed };
-        OpenCodeToolTheme.Apply(unread, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
+        var unread = Dot(OpenCodeToolTheme.Accent, 6);
+        unread.HorizontalAlignment = HorizontalAlignment.Center;
+        unread.Visibility = row.IsUnread ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetAutomationId(unread, "OpenCodeHomeUnread");
         AutomationProperties.SetName(unread, "未读");
-        ToolTipService.SetToolTip(unread, "未读");
+        ToolTipService.SetToolTip(unread, "已结束，尚未查看");
         Grid.SetColumn(unread, 1);
         badges.Children.Add(unread);
         grid.Children.Add(badges);
-        var title = Label(row.Title, "BodyTextBlockStyle");
-        title.TextWrapping = TextWrapping.Wrap;
+        var titleStyle = row.NeedsAttention ? "BodyStrongTextBlockStyle" : "BodyTextBlockStyle";
+        var title = Label(row.Title, titleStyle);
+        title.TextTrimming = TextTrimming.CharacterEllipsis;
+        title.TextWrapping = TextWrapping.NoWrap;
         Grid.SetColumn(title, 1);
         grid.Children.Add(title);
         var project = Label(row.ProjectName, "CaptionTextBlockStyle");
         project.TextTrimming = TextTrimming.CharacterEllipsis;
-        project.VerticalAlignment = VerticalAlignment.Center;
-        OpenCodeToolTheme.Apply(project, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, "CaptionTextBlockStyle"));
+        project.TextWrapping = TextWrapping.NoWrap;
+        OpenCodeToolTheme.Apply(project, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
         Grid.SetColumn(project, 2);
         grid.Children.Add(project);
+        var time = Label(OpenCodeHomeProjection.TimeLabel(row, zone), "CaptionTextBlockStyle");
+        time.HorizontalAlignment = HorizontalAlignment.Right;
+        OpenCodeToolTheme.Apply(time, OpenCodeToolTheme.Text(working || row.Tone == OpenCodeHomeTone.QuestionBlocked
+            ? OpenCodeToolTheme.TextSecondary : OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+        AutomationProperties.SetAutomationId(time, "OpenCodeHomeTime");
+        Grid.SetColumn(time, 3);
+        grid.Children.Add(time);
         if (item is null)
         {
-            item = new ListViewItem { HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(10, 4, 10, 4) };
+            item = new ListViewItem { HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(12, 4, 12, 4) };
             item.ContextFlyout = CreateSessionMenu(item);
         }
         item.Tag = row;
@@ -347,13 +592,23 @@ public sealed class OpenCodeHomeView : UserControl
         var menu = new MenuFlyout();
         OpenCodeHomeSession? target = null;
         long revision = 0;
-        foreach (var (action, label) in new[]
+        // Fluent order (confirmed by the user): edit actions, separator, then archive and the destructive delete last.
+        foreach (var (choice, label, glyph) in new (OpenCodeHomeSessionAction?, string, string)[]
         {
-            (OpenCodeHomeSessionAction.Delete, "删除此会话"),
-            (OpenCodeHomeSessionAction.Rename, "修改名称"), (OpenCodeHomeSessionAction.CopyId, "复制Session ID"),
+            (OpenCodeHomeSessionAction.Rename, "修改名称", "\uE8AC"), (OpenCodeHomeSessionAction.CopyId, "复制 session ID", "\uE8C8"),
+            (null, string.Empty, string.Empty),
+            (OpenCodeHomeSessionAction.Archive, "归档此会话", "\uE7B8"), (OpenCodeHomeSessionAction.Delete, "删除此会话", "\uE74D"),
         })
         {
-            var entry = new MenuFlyoutItem { Text = label, Tag = action };
+            if (choice is not { } action) { menu.Items.Add(new MenuFlyoutSeparator()); continue; }
+            var icon = new FontIcon { Glyph = glyph };
+            var entry = new MenuFlyoutItem { Text = label, Tag = action, Icon = icon };
+            AutomationProperties.SetAutomationId(entry, "OpenCodeHomeMenu" + action);
+            if (action == OpenCodeHomeSessionAction.Delete)
+            {
+                entry.Style = ThemeStyle("MenuFlyoutItem", ("Foreground", OpenCodeToolTheme.Critical));
+                OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.Critical));
+            }
             entry.Click += (_, _) =>
             {
                 if (target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true)
@@ -369,17 +624,22 @@ public sealed class OpenCodeHomeView : UserControl
             revision = _snapshot.Revision;
             foreach (var entry in menu.Items.OfType<MenuFlyoutItem>())
             {
-                entry.IsEnabled = target is not null && CanRequestSessionAction?.Invoke(revision, target, (OpenCodeHomeSessionAction)entry.Tag) == true;
-                ToolTipService.SetToolTip(entry, entry.IsEnabled ? null : "此操作尚未就绪或会话列表已变化，请刷新后重试。");
+                var action = (OpenCodeHomeSessionAction)entry.Tag;
+                entry.IsEnabled = target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true;
+                ToolTipService.SetToolTip(entry, entry.IsEnabled ? null : action == OpenCodeHomeSessionAction.Archive
+                    ? "归档暂不可用：此版本尚未接入会话归档。"
+                    : "此会话正在进行其他操作，或列表已变化；请稍后重试。");
             }
         };
         return menu;
     }
 
-    private static string GroupLabel(OpenCodeHomeDateGroup group) => group switch
+    private static string GroupLabel(object key) => key switch
     {
+        AttentionKey => "需要你处理",
         OpenCodeHomeDateGroup.Today => "今天", OpenCodeHomeDateGroup.Yesterday => "昨天",
-        OpenCodeHomeDateGroup.Earlier => "更早", OpenCodeHomeDateGroup.Future => "其他日期", _ => "日期未知",
+        OpenCodeHomeDateGroup.ThisWeek => "本周", OpenCodeHomeDateGroup.Earlier => "更早",
+        OpenCodeHomeDateGroup.Future => "其他日期", _ => "日期未知",
     };
 
     private static string ToneLabel(OpenCodeHomeTone tone) => tone switch
@@ -390,6 +650,51 @@ public sealed class OpenCodeHomeView : UserControl
         OpenCodeHomeTone.Failed => "失败", OpenCodeHomeTone.Interrupted => "已中断",
         OpenCodeHomeTone.Unread => "未读", _ => "状态未知",
     };
+
+    /// <summary>Floating side card: in-app acrylic + card stroke from theme resources (incl. high contrast),
+    /// 8epx overlay radius and ThemeShadow elevation — the same treatment as the session page's side cards.</summary>
+    private static Border Card()
+    {
+        var card = new Border { CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1) };
+        OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border("AcrylicInAppFillColorDefaultBrush", OpenCodeToolTheme.CardStroke));
+        card.Shadow = new ThemeShadow();
+        card.Translation = new Vector3(0, 0, 16);
+        return card;
+    }
+
+    private static Border Dot(string brush, double size)
+    {
+        var dot = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), VerticalAlignment = VerticalAlignment.Center };
+        OpenCodeToolTheme.Apply(dot, OpenCodeToolTheme.Border(brush));
+        return dot;
+    }
+
+    private static StackPanel IconText(string glyph, string text, double iconSize)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        panel.Children.Add(new FontIcon { Glyph = glyph, FontSize = iconSize, VerticalAlignment = VerticalAlignment.Center });
+        panel.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
+        return panel;
+    }
+
+    private static readonly Dictionary<string, Style?> ThemeStyles = new(StringComparer.Ordinal);
+
+    // Foreground-only ThemeResource setter; the control keeps its default template and re-resolves on theme change.
+    private static Style? ThemeStyle(string targetType, (string Property, string Key) setter)
+    {
+        var cacheKey = targetType + "|" + setter.Property + "|" + setter.Key;
+        if (ThemeStyles.TryGetValue(cacheKey, out var cached)) return cached;
+        Style? style = null;
+        try
+        {
+            style = Microsoft.UI.Xaml.Markup.XamlReader.Load(
+                "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"" + targetType + "\">"
+                + "<Setter Property=\"" + setter.Property + "\" Value=\"{ThemeResource " + setter.Key + "}\" /></Style>") as Style;
+        }
+        catch (Exception) { }
+        ThemeStyles[cacheKey] = style;
+        return style;
+    }
 
     private static TextBlock Label(string text, string style) => new()
     {

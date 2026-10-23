@@ -68,6 +68,32 @@ internal static class Program
         Check(OpenCodeHomeProjection.Classify(Session(null)with{Info=new(){Id="ses_unknown"}})==OpenCodeHomeTone.Unknown,"untracked/no evidence is unknown, not failure");
         var selected=0;view.SessionRequested+=(_,e)=>{Check(e.Session.Info.Id=="ses_test"&&e.Revision==1,"real click echoes owned metadata and revision");selected++;};
         list.RaiseItemClick(Row().Content!);Check(selected==1,"independent badges preserve own-container content click semantics");
+        // H4 layout (user-chosen): attention section, Fluent context-menu order, side cards vs narrow chips, real connection line.
+        Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n)=="OpenCodeHomeRefresh"),"no refresh button: live events re-project Home");
+        Check(Find<Border>(view,"OpenCodeHomeProjectsCard").CornerRadius.Value==8&&Find<Border>(view,"OpenCodeHomeProjectsCard").Style?.Xml.Contains("AcrylicInAppFillColorDefaultBrush")==true,"floating acrylic project card");
+        view.SetSnapshot(Snapshot(new(false,false,true,"succeeded")));
+        var headers=list.Items.OfType<ListViewItem>().Where(i=>i.Tag is not OpenCodeHomeSessionRow).ToArray();
+        Check(headers.Length==1&&AutomationProperties.GetAutomationId(headers[0])=="OpenCodeHomeAttentionHeader"&&((OpenCodeHomeSessionRow)Row().Tag!).NeedsAttention,"finished-but-unread sits under 需要你处理");
+        view.SetSnapshot(Snapshot(new(true,false,true,"succeeded")));
+        Check(!((OpenCodeHomeSessionRow)Row().Tag!).NeedsAttention&&AutomationProperties.GetAutomationId(list.Items.OfType<ListViewItem>().First())=="OpenCodeHomeDateHeader","still-running session with an old unread is not 需要你处理");
+        view.SetSnapshot(Snapshot(new(true,true,false,null){QuestionPending=true}));
+        Check(((OpenCodeHomeSessionRow)Row().Tag!).NeedsAttention,"question-blocked sits under 需要你处理");
+        var menu=Row().ContextFlyout!;
+        var labels=menu.Items.Select(i=>i is MenuFlyoutItem m?m.Text:"-").ToArray();
+        Check(string.Join("|",labels)=="修改名称|复制 session ID|-|归档此会话|删除此会话","Fluent menu order with separator before archive/delete");
+        view.CanRequestSessionAction=(_,_,a)=>a!=OpenCodeHomeSessionAction.Archive;menu.RaiseOpening();
+        Check(menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="归档此会话").IsEnabled==false&&menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="删除此会话").Style?.Xml.Contains("SystemFillColorCriticalBrush")==true,"archive stays disabled without a client endpoint; delete is critical-coloured");
+        view.SetConnection("1.4.2",true,"WSL · NixOS");
+        Check(Walk(view).OfType<TextBlock>().Any(t=>t.Text=="v1.4.2 · WSL · NixOS"),"connection line shows real version + identity");
+        view.SetConnection(null,false,null);
+        Check(Walk(view).OfType<TextBlock>().Any(t=>t.Text=="未连接")&&!Walk(view).OfType<TextBlock>().Any(t=>t.Text.Contains("v1.4.2")),"unknown version/identity is omitted, never invented");
+        view.ActualWidth=1600;view.RaiseSizeChanged();
+        Check(!view.IsNarrow&&Find<Border>(view,"OpenCodeHomeProjectsCard").Visibility==Visibility.Visible&&Find<ScrollViewer>(view,"OpenCodeHomeProjectChips").Visibility==Visibility.Collapsed,"wide: side cards, no chips");
+        view.ActualWidth=1180;view.RaiseSizeChanged();
+        Check(view.IsNarrow&&Find<Border>(view,"OpenCodeHomeProjectsCard").Visibility==Visibility.Collapsed&&Find<ScrollViewer>(view,"OpenCodeHomeProjectChips").Visibility==Visibility.Visible,"narrow: cards fold into project chips");
+        var now=new DateTimeOffset(2026,10,23,12,0,0,TimeSpan.Zero);
+        Check(OpenCodeHomeProjection.DateGroup(now.AddDays(-3),now,TimeZoneInfo.Utc)==OpenCodeHomeDateGroup.ThisWeek&&OpenCodeHomeProjection.DateGroup(now.AddDays(-5),now,TimeZoneInfo.Utc)==OpenCodeHomeDateGroup.Earlier,"本周 is the Monday-based calendar week");
+        Check(OpenCodeHomeProjection.ShortName("/home/ming/nix-config/")=="nix-config"&&OpenCodeHomeProjection.ShortName("/")=="/"&&OpenCodeHomeProjection.SingleLine("a\r\n b\tc")=="a b c","compact project label and one-line titles keep real text");
         Console.WriteLine($"PASS real Home projection/view/theme factory: {checks} assertions; inert native controls/resources, no rendering/monitor authority claim");
     }
 }

@@ -68,17 +68,97 @@ public sealed partial class OpenCodePage
             try { await LoadMoreSessionsAsync(); }
             finally { QueueHomeProjection(); }
         };
-        _homeView.Refresh += async (_, e) =>
-        {
-            if (!HomeEventCurrent(e.Revision, e.Project)) return;
-            if (!_homeCatalogLoading) _ = LoadHomeCatalogAsync();
-            await RefreshSessionsAsync();
-            QueueHomeProjection();
-        };
+        // No refresh button: session create/delete/rename events and live status snapshots already re-project Home.
+        _homeView.SetWordmark(_homeWordmark);
+        _homeView.ProjectSelected += (_, _) => RefreshHomeChrome();
+        _homeQuickAccess.Margin = new Thickness(0);
+        _homeQuickAccess.ExplorerRequested += async (_, _) => await LaunchHomeWslAsync(null);
+        _homeQuickAccess.EditorRequested += async (_, e) => await LaunchHomeWslAsync(e.Name);
+        _homeQuickAccess.EditorMenuRequested += (_, _) => { _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost); RefreshHomeChrome(); };
+        Loaded += (_, _) => _homeChromeTimer?.Start();
+        Unloaded += (_, _) => _homeChromeTimer?.Stop();
+        _homeChromeTimer = DispatcherQueue.CreateTimer();
+        _homeChromeTimer.Interval = TimeSpan.FromSeconds(1);
+        // Local-state reconciliation only (connection state, already-read server version, settings); never a network poll.
+        _homeChromeTimer.Tick += (_, _) => { if (_homeActive) RefreshHomeChrome(); };
     }
 
-    private void UpdateWordmark() => NewConversationWordmark.Source = new SvgImageSource(new Uri(
-        ActualTheme == ElementTheme.Dark ? "ms-appx:///Assets/OpenCode/logo-dark.svg" : "ms-appx:///Assets/OpenCode/logo-light.svg"));
+    private readonly Image _homeWordmark = new() { Height = 30, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+        HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly OpenCodeWslQuickAccessView _homeQuickAccess = new();
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeChromeTimer;
+    private (string? Version, bool Connected, string? Identity)? _homeChromeShown;
+
+    private void UpdateWordmark()
+    {
+        var uri = new Uri(ActualTheme == ElementTheme.Dark ? "ms-appx:///Assets/OpenCode/logo-dark.svg" : "ms-appx:///Assets/OpenCode/logo-light.svg");
+        NewConversationWordmark.Source = new SvgImageSource(uri);
+        _homeWordmark.Source = new SvgImageSource(uri);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_homeWordmark, "OpenCode");
+    }
+
+    /// <summary>Right-side Home cards from real state only: accepted server version, live connection, configured
+    /// connection identity, and WSL quick access for the selected (or default) project directory.</summary>
+    private void RefreshHomeChrome()
+    {
+        var info = CurrentServerInfo();
+        var connected = _pageActive && SourceReady && _connection == ConnectionState.Connected;
+        var chrome = (info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected, HomeConnectionIdentity());
+        if (_homeChromeShown != chrome)
+        {
+            _homeChromeShown = chrome;
+            _homeView.SetConnection(chrome.Item1, chrome.connected, chrome.Item3);
+        }
+        var state = CurrentHomeWslQuickAccess();
+        if (state.Visible) _homeQuickAccess.Render(state, _wslEditors, _selectedWslEditor);
+        _homeView.SetQuickAccess(_homeQuickAccess, state.Visible);
+    }
+
+    private string? HomeConnectionIdentity()
+    {
+        if (!SourceReady || _homeSettings.Current?.OpenCode is not { } settings) return null;
+        var kind = settings.Kind ?? (settings.BaseUrl is { Length: > 0 } ? OpenCodeConnectionKind.Remote : null);
+        if (kind == OpenCodeConnectionKind.Wsl)
+            return OpenCodeSettings.IsValidWslDistributionName(settings.WslDistribution) ? "WSL · " + settings.WslDistribution : "WSL";
+        if (kind != OpenCodeConnectionKind.Remote) return null;
+        try
+        {
+            return _client is { } client && Uri.TryCreate(client.DisplayBaseUrl, UriKind.Absolute, out var uri) && uri.Host.Length > 0
+                ? "远程 · " + (uri.IsDefaultPort ? uri.Host : uri.Host + ":" + uri.Port) : "远程";
+        }
+        catch (ObjectDisposedException) { return "远程"; }
+    }
+
+    private string? HomeQuickAccessDirectory() => _homeView.SelectedProject?.Directory ?? _homeDefaultDirectory;
+
+    private WslQuickAccessState CurrentHomeWslQuickAccess()
+    {
+        var settings = _homeSettings.Current?.OpenCode;
+        var connected = _pageActive && _homeActive && _connection == ConnectionState.Connected && _client is not null
+            && _source is { IsRevoked: false };
+        return OpenCodeWslQuickAccess.Resolve(settings?.Kind, connected, settings?.WslDistribution, HomeQuickAccessDirectory());
+    }
+
+    private async Task LaunchHomeWslAsync(string? editorName)
+    {
+        // Re-read live state at invocation; the menu may outlive a project, directory or connection change.
+        var state = CurrentHomeWslQuickAccess();
+        if (!state.Visible || state.Target is null) { RefreshHomeChrome(); return; }
+        try
+        {
+            WslHostEditor? editor = null;
+            if (editorName is not null)
+            {
+                editor = WslHostEditorDetection.Detect(_wslEditorHost).First(e => e.Name == editorName);
+                if (editor.Executable is null) { _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost); RefreshHomeChrome(); return; }
+                _wslEditorPreference.Save(editor.Name);
+                _selectedWslEditor = editor.Name;
+            }
+            await OpenCodeWslQuickAccess.LaunchAsync(state, editor, _wslQuickAccessLauncher);
+            RefreshHomeChrome();
+        }
+        catch (Exception) { _homeQuickAccess.ShowFailure(); }
+    }
 
     private void ShowHomePage()
     {
@@ -274,6 +354,7 @@ public sealed partial class OpenCodePage
             }
         _homeView.SetSnapshot(new(++_homeRevision, _homeProjects.Values.ToArray(), rows,
             _homeCatalogLoading || _isLoadingMoreSessions, _homeSessionsMessage ?? _homeMessage, _sessionNextCursor is not null));
+        RefreshHomeChrome();
     }
 
     private async Task AddHomeDirectoryAsync()

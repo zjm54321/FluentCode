@@ -15,11 +15,12 @@ namespace Microsoft.UI.Xaml
     { public Thickness(double all):this(all,all,all,all){} }
     public readonly record struct CornerRadius(double Value);
     public class DependencyObject { internal Dictionary<string,object?> Attached = new(); }
-    public class UIElement:DependencyObject { public Visibility Visibility {get;set;} public double Opacity{get;set;}=1; }
+    public class UIElement:DependencyObject { public Visibility Visibility {get;set;} public double Opacity{get;set;}=1; public object? Shadow{get;set;} public System.Numerics.Vector3 Translation{get;set;} }
     public class FrameworkElement:UIElement
     {
         public object Tag {get;set;}=null!; public Style? Style {get;set;}
-        public double Width{get;set;} public double Height{get;set;} public double ActualWidth{get;set;}=1000;
+        public double Width{get;set;} public double Height{get;set;} public double ActualWidth{get;set;}=1000; public double ActualHeight{get;set;}=800;
+        public Thickness Margin{get;set;} public double MaxHeight{get;set;}
         public double MinWidth{get;set;} public double MinHeight{get;set;}
         public HorizontalAlignment HorizontalAlignment{get;set;} public VerticalAlignment VerticalAlignment{get;set;}
         public Thickness Padding{get;set;}
@@ -30,7 +31,7 @@ namespace Microsoft.UI.Xaml
     public class Style {public Style? BasedOn{get;set;} public string Xml{get;set;}="";}
     public class Application {public static Application? Current{get;set;} public Dictionary<string,object> Resources {get;}=new();}
 }
-namespace Microsoft.UI.Xaml.Media {public class Brush{}}
+namespace Microsoft.UI.Xaml.Media {public class Brush{} public class ThemeShadow{}}
 namespace Microsoft.UI.Xaml.Documents {}
 namespace Microsoft.UI.Xaml.Controls.Primitives {}
 namespace Microsoft.UI.Xaml.Markup
@@ -52,7 +53,7 @@ namespace Microsoft.UI.Xaml.Controls
     using Microsoft.UI.Xaml;
     public enum Orientation {Vertical,Horizontal}
     public enum ListViewSelectionMode {None,Single}
-    public enum ScrollMode{Disabled} public enum ScrollBarVisibility{Disabled}
+    public enum ScrollMode{Disabled,Enabled} public enum ScrollBarVisibility{Disabled,Hidden}
     public class Panel:FrameworkElement {public List<UIElement> Children{get;}=new();}
     public class StackPanel:Panel {public Orientation Orientation{get;set;} public double Spacing{get;set;}}
     public class ColumnDefinition {public GridLength Width{get;set;} public double MaxWidth{get;set;}}
@@ -70,7 +71,7 @@ namespace Microsoft.UI.Xaml.Controls
         public VerticalAlignment VerticalContentAlignment{get;set;}
     }
     public class UserControl:ContentControl{}
-    public class Border:FrameworkElement {public UIElement? Child{get;set;}public CornerRadius CornerRadius{get;set;}}
+    public class Border:FrameworkElement {public UIElement? Child{get;set;}public CornerRadius CornerRadius{get;set;}public Thickness BorderThickness{get;set;}}
     public class TextBlock:FrameworkElement
     {
         public string Text{get;set;}="";public TextWrapping TextWrapping{get;set;}public TextTrimming TextTrimming{get;set;}
@@ -84,7 +85,7 @@ namespace Microsoft.UI.Xaml.Controls
     public class FontIcon:FrameworkElement {public string Glyph{get;set;}="";public double FontSize{get;set;}}
     public class ProgressRing:FrameworkElement {public bool IsActive{get;set;}}
     public class Button:ContentControl
-    {public bool IsEnabled{get;set;}=true; public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
+    {public bool IsEnabled{get;set;}=true; public CornerRadius CornerRadius{get;set;} public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
     public class HyperlinkButton:Button{}
     public class ListViewItem:ContentControl
     {public bool IsHitTestVisible{get;set;}=true;public bool IsTabStop{get;set;}=true;public MenuFlyout? ContextFlyout{get;set;}}
@@ -98,9 +99,11 @@ namespace Microsoft.UI.Xaml.Controls
         public object? ContainerFromItem(object? value)=>Items.OfType<ListViewItem>().FirstOrDefault(i=>ReferenceEquals(i,value)||ReferenceEquals(i.Content,value));
         public void RaiseItemClick(object content)=>ItemClick?.Invoke(this,new(){ClickedItem=content});
     }
-    public class MenuFlyout:FrameworkElement {public List<MenuFlyoutItem> Items{get;}=new();public event EventHandler? Opening;public void RaiseOpening()=>Opening?.Invoke(this,EventArgs.Empty);}
-    public class MenuFlyoutItem:Button{public string Text{get;set;}="";}
+    public class MenuFlyoutItemBase:FrameworkElement{} public class MenuFlyoutSeparator:MenuFlyoutItemBase{}
+    public class MenuFlyout:FrameworkElement {public List<MenuFlyoutItemBase> Items{get;}=new();public event EventHandler? Opening;public void RaiseOpening()=>Opening?.Invoke(this,EventArgs.Empty);}
+    public class MenuFlyoutItem:MenuFlyoutItemBase{public string Text{get;set;}="";public bool IsEnabled{get;set;}=true;public FontIcon? Icon{get;set;}public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
     public class ScrollViewer:ContentControl
-    {public static void SetHorizontalScrollMode(DependencyObject e,ScrollMode m){}public static void SetHorizontalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}}
+    {public static void SetHorizontalScrollMode(DependencyObject e,ScrollMode m){}public static void SetHorizontalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}
+     public static void SetVerticalScrollMode(DependencyObject e,ScrollMode m){}public static void SetVerticalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}}
     public static class ToolTipService {public static void SetToolTip(DependencyObject e,object? value)=>e.Attached["Tooltip"]=value;}
 }
