@@ -44,7 +44,12 @@ public sealed partial class OpenCodePage
                 ApplySidebarLayout();
             }
         };
-        PageRoot.SizeChanged += (_, e) => OnSidebarWidthChanged(e.NewSize.Width);
+        PageRoot.SizeChanged += (_, e) =>
+        {
+            OnSidebarWidthChanged(e.NewSize.Width);
+            UpdateRightOverviewHeight();
+        };
+        _overviewFlyout.Opening += (_, _) => UpdateRightOverviewHeight();
         LeftDock.RenderTransform = _leftDockTransform;
         LeftDock.RenderTransformOrigin = new Point(0, 0.5);
         RightDock.RenderTransform = _rightDockTransform;
@@ -278,8 +283,9 @@ public sealed partial class OpenCodePage
             _overviewFlyout.Content = RightDock;
         }
         RightDock.Width = wide ? double.NaN : 304;
-        RightDock.RowDefinitions[0].Height = wide ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        RightDock.RowDefinitions[0].Height = new GridLength(1, GridUnitType.Star);
         RightDock.RowSpacing = wide ? 12 : 0;
+        UpdateRightOverviewHeight();
         foreach (var card in new[] { RightSessionCard, RightFooterCard })
         {
             if (wide)
@@ -296,6 +302,13 @@ public sealed partial class OpenCodePage
                 card.Shadow = null; // The native FlyoutPresenter owns the single narrow surface/shadow.
             }
         }
+    }
+
+    private void UpdateRightOverviewHeight()
+    {
+        // A native FlyoutPresenter can scroll oversized content. Give the shared dock a finite budget instead,
+        // leaving room for its anchor/header and presenter insets; only the ToDo viewport consumes the remainder.
+        RightDock.MaxHeight = _sidebarLayout.IsWide ? double.PositiveInfinity : Math.Max(0, PageRoot.ActualHeight - 96);
     }
 
     private static void ApplyDockSurface(Grid dock, bool wide)

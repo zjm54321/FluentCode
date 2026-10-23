@@ -187,7 +187,7 @@ internal static class Program
         Draw(view, Billion(OpenCodeBillionPhase.Idle, confirmed: true));
         var bar = Field<SelectorBar>(view, "_sections");
         var usage = Field<Border>(view, "_usageHost");
-        var pages = Field<StackPanel[]>(view, "_pages");
+        var pages = Field<Panel[]>(view, "_pages");
         // Wave 3 F10c: 任务 and Agents are merged into 概况 (ring + 任务 + Agents); only Billion (consent workflow) stays separate.
         Check(AutomationProperties.GetAutomationId(bar) == "OpenCodeInsightsSections" && bar.Items.Count == 2
             && bar.Items.Select(item => item.Text).SequenceEqual(new[] { "概况", "Billion" })
@@ -218,7 +218,7 @@ internal static class Program
         Draw(view, WithChildren(
             ("ses_c1", "explorer", true, "Search codebase"),
             ("ses_c2", "explorer", false, "Read config")));
-        var overview = Field<StackPanel[]>(view, "_pages")[0];
+        var overview = Field<Panel[]>(view, "_pages")[0];
         Check(overview.Children.Count == 0,
             "overview holds only to do below the usage block");
         var texts = AllText((UIElement)view.Content!).ToList();
@@ -237,16 +237,14 @@ internal static class Program
             "ses_synthetic", state, ImmutableArray.Create(items), items.Length > 0 ? "msg_todo" : null, complete,
             new OpenCodeCapabilityState(OpenCodeCapabilityAvailability.Available, "ok"), reason);
 
-    private static StackPanel DrawTodo(OpenCodeSessionInsightsView view, OpenCodeInsightState state, OpenCodeTodoSnapshot? todo, string note = "note")
+    private static Grid DrawTodo(OpenCodeSessionInsightsView view, OpenCodeInsightState state, OpenCodeTodoSnapshot? todo, string note = "note")
     {
         Draw(view, Billion(OpenCodeBillionPhase.Idle, confirmed: false) with
         {
             Todo = new OpenCodeInsightSection<OpenCodeTodoSnapshot>(state, todo, note),
         });
-        return (StackPanel)((StackPanel)Field<StackPanel[]>(view, "_pages")[0].Children[0]).Children[1];
+        return (Grid)((Grid)Field<Panel[]>(view, "_pages")[0].Children[0]).Children.Last();
     }
-
-    private static StackPanel TodoContent(StackPanel panel) => (StackPanel)panel.Children[1];
 
     private static string BadgeText(StackPanel panel)
     {
@@ -268,7 +266,14 @@ internal static class Program
             && heading.ColumnDefinitions[1].Width.GridUnitType == GridUnitType.Auto
             && count.Attached["Grid.Column"] is 1 && count.HorizontalAlignment == HorizontalAlignment.Right,
             "RC3 completed count is right-aligned in the same native header row");
-        var list = (StackPanel)panel.Children[1];
+        var viewport = (UserControl)panel.Children[1];
+        var scroll = (ScrollViewer)viewport.Content!;
+        var list = (StackPanel)scroll.Content!;
+        Check(panel.RowDefinitions[0].Height.GridUnitType == GridUnitType.Auto
+            && panel.RowDefinitions[1].Height.GridUnitType == GridUnitType.Star
+            && scroll.VerticalScrollBarVisibility == ScrollBarVisibility.Auto
+            && scroll.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled,
+            "RP9 fixed heading above a native list-only vertical viewport");
         var boxes = list.Children.Cast<CheckBox>().ToArray();
         Check(boxes.Select(box => box.IsChecked).SequenceEqual(new bool?[] { false, true, null, false }), "native pending/completed/in-progress/cancelled checkbox states");
         Check(boxes.All(box => box.IsThreeState && !box.IsHitTestVisible && !box.IsTabStop), "todos are view-only native checkboxes");
@@ -276,13 +281,35 @@ internal static class Program
         Check(texts[1].TextDecorations == Windows.UI.Text.TextDecorations.None
             && texts[3].TextDecorations == Windows.UI.Text.TextDecorations.Strikethrough, "TD1 completed is not struck, cancelled alone is struck");
         Check(texts.Select(text => text.Text).SequenceEqual(new[] { "pending", "completed", "working", "cancelled" }), "server order preserved");
+        Check(texts.All(text => text.TextWrapping == TextWrapping.Wrap), "RP9 long todo text wraps");
+        // Synthetic geometry exercises the real cap calculation, not WinUI's native text measurement.
+        foreach (var size in new[] { 1, 5, 8 })
+        {
+            var items = Enumerable.Range(0, size).Select(index => new OpenCodeTodoItem("row " + index, "pending")).ToArray();
+            panel = DrawTodo(view, OpenCodeInsightState.Loaded, TodoSnapshot(OpenCodeTodoState.Listed, true, "measure", items));
+            viewport = (UserControl)panel.Children[1];
+            scroll = (ScrollViewer)viewport.Content!;
+            list = (StackPanel)scroll.Content!;
+            for (var index = 0; index < size; index++) ((FrameworkElement)list.Children[index]).Height = 26 + index * 10;
+            viewport.Measure(new Windows.Foundation.Size(260, 600));
+            var shown = Math.Min(5, size);
+            var expected = Enumerable.Range(0, shown).Sum(index => 26 + index * 10) + (shown - 1) * list.Spacing;
+            Check(scroll.MaxHeight == expected, "RP9 cap measures first five template rows including variable heights and spacing");
+            viewport.Measure(new Windows.Foundation.Size(260, 80));
+            Check(scroll.MinHeight == Math.Min(size == 1 ? 26 : 64, 80), "RP9 prefer two measured rows in a short viewport");
+            viewport.Measure(new Windows.Foundation.Size(260, 20));
+            Check(scroll.MinHeight == 20, "RP9 extreme height yields space to pinned header/footer instead of whole-panel scrolling");
+            view.ShowContext = false;
+            Check(Field<Panel[]>(view, "_pages")[0] is Grid, "RP9 narrow drawer retains constrained overview grid");
+            view.ShowContext = true;
+        }
         foreach (var state in new[] { OpenCodeTodoState.Empty, OpenCodeTodoState.Unknown, OpenCodeTodoState.ReadFailure, OpenCodeTodoState.Disabled })
         {
             Draw(view, Empty() with { Todo = new(OpenCodeInsightState.Loaded, TodoSnapshot(state, true, "hidden"), "hidden") });
-            Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 0, "empty/unknown/unsupported to do hides whole section and divider");
+            Check(Field<Panel[]>(view, "_pages")[0].Children.Count == 0, "empty/unknown/unsupported to do hides whole section and divider");
         }
         Draw(view, Empty());
-        Check(Field<StackPanel[]>(view, "_pages")[0].Children.Count == 0, "not-loaded todo hidden");
+        Check(Field<Panel[]>(view, "_pages")[0].Children.Count == 0, "not-loaded todo hidden");
     }
 
     private static IEnumerable<string?> FlyoutGroupIds(OpenCodeContextRing ring)
@@ -607,7 +634,7 @@ internal static class Program
             && ReferenceEquals(origin, original.Item3), "same Billion control instances");
         Check(AutomationProperties.GetAutomationId(confirm) == "OpenCodeInsightsBillionConfirm"
             && AutomationProperties.GetAutomationId(button) == "OpenCodeInsightsBillionReadButton", "AutomationIds preserved");
-        var pages = Field<StackPanel[]>(view, "_pages");
+        var pages = Field<Panel[]>(view, "_pages");
         var body = Field<StackPanel>(view, "_billionPage");
         if (snapshot.UnavailableReason is not null)
         {

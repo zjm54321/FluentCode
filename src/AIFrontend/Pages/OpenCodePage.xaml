@@ -317,11 +317,9 @@
                                     <Border.Shadow>
                                         <ThemeShadow />
                                     </Border.Shadow>
-                                    <ScrollViewer
-                                        x:Name="RightSessionContent"
-                                        VerticalScrollBarVisibility="Auto"
-                                        HorizontalScrollBarVisibility="Disabled">
-                                        <StackPanel Padding="16" Spacing="16">
+                                    <!-- Only ToDo owns a vertical ScrollViewer. Star rows carry the dock's finite height to it. -->
+                                    <Grid x:Name="RightSessionContent" Padding="16" RowSpacing="16" RowDefinitions="Auto,*">
+                                        <StackPanel Spacing="16">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                                                 <Grid x:Name="RightPanelHeaderSlot" Visibility="Collapsed" />
                                                 <!-- Compatibility hosts; the ring is shown only in the narrow header. -->
@@ -347,9 +345,9 @@
                                                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                            AutomationProperties.AutomationId="OpenCodeWaitingText" />
                                             </StackPanel>
-                                            <Border x:Name="InsightsPaneHost" />
                                         </StackPanel>
-                                    </ScrollViewer>
+                                        <Border x:Name="InsightsPaneHost" Grid.Row="1" />
+                                    </Grid>
                                 </Border>
                                 <Border x:Name="RightFooterCard" Grid.Row="1" Visibility="Collapsed" Style="{StaticResource DockCard}"
                                         Translation="0,0,16" Padding="12,12,12,8"

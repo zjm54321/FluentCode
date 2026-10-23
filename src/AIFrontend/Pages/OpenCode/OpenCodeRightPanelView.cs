@@ -52,7 +52,7 @@ internal sealed class OpenCodeRightPanelView
         _directory.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
         // Native inset copy row: monospace ID and a copy glyph, with the full value in its tooltip.
         CopyButton.Padding = new Thickness(8, 4, 8, 4);
-        // The containing card supplies padding and scrolling.
+        // The containing card supplies padding; only the separate ToDo viewport scrolls.
         Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton, _hint } };
         // Read-only directory in a quiet inset box: folder glyph + one-line path (full path in the tooltip; selectable).
         var folder = new FontIcon { Glyph = "\uE8B7", FontSize = 14, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };

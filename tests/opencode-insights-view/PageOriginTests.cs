@@ -230,7 +230,7 @@ internal static class PageOriginTests
         // Unavailable render releases every persistent control before clearing.
         f.Page.SelectSession(null);
         f.Page.OpenFlyout();
-        Check(Field<StackPanel[]>(view, "_pages").All(page => page.Children.Count == 0)
+        Check(Field<Panel[]>(view, "_pages").All(page => page.Children.Count == 0)
             && panel.Owner is null && Field<CheckBox>(view, "_billionConfirm").Owner is null
             && Field<Button>(view, "_billionButton").Owner is null, "unavailable: all Billion controls released");
         Check(ShimTree.ForbiddenMutations == 0 && f.Page.Insights.BillionReadsStarted == 0, "no forbidden mutation, no Billion HTTP");

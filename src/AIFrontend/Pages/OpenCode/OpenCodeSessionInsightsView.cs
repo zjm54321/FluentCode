@@ -7,6 +7,7 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Foundation;
 using Windows.UI.Text;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -62,9 +63,9 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
     // 分区：SelectorBar + 四个常驻分区页（切换只改 Visibility）。
     private readonly SelectorBar _sections;
-    private readonly StackPanel _overviewPage;
+    private readonly Grid _overviewPage;
     private readonly StackPanel _billionPage;
-    private readonly StackPanel[] _pages;
+    private readonly Panel[] _pages;
     // wave5 G5：上下文圆环移到页头（“概况”按钮左侧）；实例仍由本视图持有并随快照渲染，页面把 ContextRing.Root 挂进页头宿主。
     private readonly OpenCodeContextRing _contextRing = new();
 
@@ -155,7 +156,9 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         ToolTipService.SetToolTip(_billionButton, "向所填地址读取一次 Billion 健康状态和这个会话的记录；不会自动刷新");
         _billionButton.Click += (_, _) => RaiseRead();
 
-        _overviewPage = Page("OpenCodeInsightsSection.Overview", "概况");
+        _overviewPage = new Grid { Visibility = Visibility.Collapsed };
+        AutomationProperties.SetAutomationId(_overviewPage, "OpenCodeInsightsSection.Overview");
+        AutomationProperties.SetName(_overviewPage, "概况");
         _billionPage = Page("OpenCodeInsightsSection.Billion", "Billion");
         _pages = [_overviewPage, _billionPage];
         var pagesHost = new Grid();
@@ -191,7 +194,16 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         setup.Click += (_, _) => { ShowBillionSection(); BillionSetupRequested?.Invoke(this, EventArgs.Empty); };
         _usageHost.ContextFlyout = new MenuFlyout { Items = { setup } };
 
-        var root = new StackPanel { Spacing = 16 };
+        var root = new Grid();
+        _sections.Margin = new Thickness(0, 0, 0, 16);
+        _statusRow.Margin = new Thickness(0, 0, 0, 16);
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(_statusRow, 1);
+        Grid.SetRow(_usageHost, 2);
+        Grid.SetRow(pagesHost, 3);
         root.Children.Add(_sections);
         root.Children.Add(_statusRow);
         root.Children.Add(_usageHost);
@@ -338,6 +350,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             // 页头圆环与面板同源：每次全量渲染都更新（不可用时显示“—”与原因）。
             _contextRing.Render(snapshot);
             _usageHost.Child = ContextUsageSection(snapshot);
+            _usageHost.Margin = new Thickness(0, 0, 0, snapshot.Todo.Value is { State: OpenCodeTodoState.Listed, Items.Length: > 0 } ? 16 : 0);
             if (snapshot.UnavailableReason is not null)
             {
                 _visual = snapshot;
@@ -347,9 +360,13 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             // 上下文与用量在上，to do 在下（同一张浮动卡片内，以分隔线分段）；子会话只进入用量，不混入 to do。
             if (snapshot.Todo.Value is { State: OpenCodeTodoState.Listed, Items.Length: > 0 })
             {
-                var todoCard = new StackPanel { Spacing = 16 };
+                var todoCard = new Grid { RowSpacing = _showContext ? 16 : 0 };
+                todoCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                todoCard.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 if (_showContext) todoCard.Children.Add(OpenCodeContextRing.Divider());
-                todoCard.Children.Add(TodoSection(snapshot));
+                var todoSection = TodoSection(snapshot);
+                Grid.SetRow(todoSection, 1);
+                todoCard.Children.Add(todoSection);
                 AutomationProperties.SetAutomationId(todoCard, "OpenCodeInsightsTodoCard");
                 _overviewPage.Children.Add(todoCard);
             }
@@ -567,10 +584,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     // Read-only native CheckBoxes: completed is checked, cancelled alone is struck through (TD1).
     internal const string TodoTitle = "ToDo";
 
-    private static UIElement TodoSection(OpenCodeSessionInsightsSnapshot snapshot)
+    private static FrameworkElement TodoSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
         var todo = snapshot.Todo.Value!;
-        var panel = new StackPanel { Spacing = 8 };
+        var panel = new Grid { RowSpacing = 8 };
+        panel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         AutomationProperties.SetAutomationId(panel, "OpenCodeInsightsTodo");
         AutomationProperties.SetName(panel, "ToDo：" + DescribeTodoState(todo));
         var heading = new Grid { ColumnSpacing = 8 };
@@ -586,8 +605,50 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var list = new StackPanel { Spacing = 2 };
         AutomationProperties.SetAutomationId(list, "OpenCodeInsightsTodoList");
         for (var index = 0; index < todo.Items.Length; index++) list.Children.Add(TodoRow(todo.Items[index], index));
-        panel.Children.Add(list);
+        var viewport = new TodoViewport(list);
+        Grid.SetRow(viewport, 1);
+        panel.Children.Add(viewport);
         return panel;
+    }
+
+    // Measure the actual native checkbox templates at the current width (including wrapped text), not 5 × a row constant.
+    // Finite star rows shrink only this viewport in short windows. Prefer two measured rows; below that physical budget,
+    // allow a smaller viewport rather than scrolling the header or displacing the pinned directory/version card.
+    private sealed class TodoViewport : UserControl
+    {
+        private readonly StackPanel _list;
+        private readonly ScrollViewer _scroll;
+
+        internal TodoViewport(StackPanel list)
+        {
+            _list = list;
+            _scroll = new ScrollViewer
+            {
+                Content = list,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalAlignment = VerticalAlignment.Top,
+            };
+            AutomationProperties.SetAutomationId(_scroll, "OpenCodeInsightsTodoScroll");
+            AutomationProperties.SetName(_scroll, "ToDo 列表");
+            Content = _scroll;
+        }
+
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            double maximum = 0, preferredMinimum = 0;
+            var count = Math.Min(5, _list.Children.Count);
+            for (var index = 0; index < count; index++)
+            {
+                var row = _list.Children[index];
+                row.Measure(new Size(availableSize.Width, double.PositiveInfinity));
+                maximum += row.DesiredSize.Height + (index > 0 ? _list.Spacing : 0);
+                if (index < 2) preferredMinimum = maximum;
+            }
+            _scroll.MaxHeight = maximum;
+            _scroll.MinHeight = Math.Min(preferredMinimum, availableSize.Height);
+            return base.MeasureOverride(availableSize);
+        }
     }
 
     // Shared with the todowrite tool detail (TL1) so both lists render identical states.
@@ -598,6 +659,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             item.Status == "in_progress" ? OpenCodeInteractionUi.BodyStrongStyleKey
                 : finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey);
         text.FontSize = 13;
+        text.TextWrapping = TextWrapping.Wrap;
         text.TextDecorations = item.Status == "cancelled" ? TextDecorations.Strikethrough : TextDecorations.None;
         var check = new CheckBox
         {

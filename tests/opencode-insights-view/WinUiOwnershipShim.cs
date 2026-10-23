@@ -90,6 +90,10 @@ namespace Microsoft.UI.Xaml
         public Visibility Visibility { get; set; }
         public bool IsHitTestVisible { get; set; } = true;
         public double Opacity { get; set; } = 1;
+        public Windows.Foundation.Size DesiredSize { get; private set; }
+        public void Measure(Windows.Foundation.Size availableSize) => DesiredSize = MeasureOverride(availableSize);
+        protected virtual Windows.Foundation.Size MeasureOverride(Windows.Foundation.Size availableSize)
+            => new(availableSize.Width, this is FrameworkElement element ? element.Height : 0);
         public FocusState FocusState => ReferenceEquals(ShimTree.Focused, this) ? FocusState.Programmatic : FocusState.Unfocused;
         public Microsoft.UI.Dispatching.DispatcherQueue? DispatcherQueue => Microsoft.UI.Dispatching.DispatcherQueue.Shared;
         public event RoutedEventHandler? LostFocus;
@@ -132,6 +136,7 @@ namespace Microsoft.UI.Xaml
 
 namespace Windows.Foundation
 {
+    public readonly record struct Size(double Width, double Height);
     public delegate void TypedEventHandler<TSender, TResult>(TSender sender, TResult args);
 }
 
