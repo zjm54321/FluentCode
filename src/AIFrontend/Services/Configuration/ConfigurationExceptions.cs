@@ -44,6 +44,19 @@ public sealed class SettingsValidationException : Exception
 }
 
 /// <summary>
+/// 设置已经成功写入并更新 <see cref="SettingsService.Current"/>，但至少一个 <see cref="SettingsService.Changed"/> 订阅者抛出异常。
+/// 调用方不得把它当作保存失败回滚；其余订阅者仍已收到通知。
+/// </summary>
+public sealed class SettingsChangeNotificationException : AggregateException
+{
+    /// <summary>创建异常。</summary>
+    public SettingsChangeNotificationException(IEnumerable<Exception> failures)
+        : base("设置已保存，但部分订阅者处理变更通知失败。", failures)
+    {
+    }
+}
+
+/// <summary>
 /// 凭据密文存取失败（DPAPI 加密/解密错误等）。密文原文件保留。
 /// </summary>
 public sealed class SecretStoreException : Exception

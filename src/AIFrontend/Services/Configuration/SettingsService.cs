@@ -89,7 +89,7 @@ public sealed class SettingsService
         {
             _gate.Release();
         }
-        Changed?.Invoke(this, new AppSettingsChangedEventArgs(settings));
+        RaiseChanged(settings);
         return settings;
     }
 
@@ -126,7 +126,21 @@ public sealed class SettingsService
         {
             _gate.Release();
         }
-        Changed?.Invoke(this, new AppSettingsChangedEventArgs(snapshot));
+        RaiseChanged(snapshot);
+    }
+
+    /// <summary>通知每个订阅者；单个订阅者失败不阻断其余订阅者，也不把已提交的写入伪装成失败。</summary>
+    private void RaiseChanged(AppSettings settings)
+    {
+        if (Changed is not { } handlers) return;
+        var args = new AppSettingsChangedEventArgs(settings);
+        List<Exception>? failures = null;
+        foreach (EventHandler<AppSettingsChangedEventArgs> handler in handlers.GetInvocationList())
+        {
+            try { handler(this, args); }
+            catch (Exception ex) { (failures ??= new()).Add(ex); }
+        }
+        if (failures is not null) throw new SettingsChangeNotificationException(failures);
     }
 
     private AppSettings ParseSettings(byte[] bytes)

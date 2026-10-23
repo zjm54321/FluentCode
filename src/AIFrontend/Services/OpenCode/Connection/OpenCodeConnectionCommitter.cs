@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Models;
+using AIFrontend.Services.Configuration;
 
 namespace AIFrontend.Services.OpenCode.Connection;
 
@@ -89,7 +90,11 @@ public sealed class OpenCodeConnectionCommitter
                 OpenCodeSettings next = OpenCodeConnectionProfile.Replace(latest.OpenCode, kind, options.BaseUrl,
                     options.AuthenticationMode, options.Username, wslDistribution);
                 next = next with { CredentialId = stagedId ?? latest.OpenCode.CredentialId };
-                await _save(latest with { OpenCode = next }, cancellationToken).ConfigureAwait(false);
+                try { await _save(latest with { OpenCode = next }, cancellationToken).ConfigureAwait(false); }
+                catch (SettingsChangeNotificationException)
+                {
+                    // Committed: the saved profile references stagedId, so a failing observer must not orphan it.
+                }
             }
             catch (Exception ex)
             {

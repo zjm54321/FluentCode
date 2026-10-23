@@ -199,6 +199,16 @@ internal static class Program
         Check(failed.Stage == OpenCodeCommitStage.SaveFailed && !failed.Message.Contains(Secret, StringComparison.Ordinal), "safe DPAPI failure result");
         Check(originalCiphertext.SequenceEqual(File.ReadAllBytes(secretPath)) && originalSettings.SequenceEqual(File.ReadAllBytes(settings.SettingsFilePath)), "failed replacement leaves legacy settings and DPAPI bytes intact");
         Check(Directory.GetFiles(Path.GetDirectoryName(secretPath)!).Length == 1, "staged DPAPI ciphertext cleaned on failure");
+
+        bool laterObserverRan = false;
+        settings.Changed += (_, _) => throw new InvalidOperationException("test-only observer failure");
+        settings.Changed += (_, _) => laterObserverRan = true;
+        var observed = new OpenCodeConnectionCommitter((o, ct) => Task.CompletedTask, secrets.SetAsync, ct => Task.FromResult(settings.Current!),
+            settings.SaveAsync, async (id, ct) => { await secrets.RemoveAsync(id, ct); });
+        var committed = await observed.CommitAsync(OpenCodeConnectionKind.Remote, Basic("https://observed.invalid", "new-user", "synthetic-observed-password"), null, default);
+        string activeId = settings.Current!.OpenCode.CredentialId!;
+        Check(committed.Succeeded && settings.Current.OpenCode.BaseUrl == "https://observed.invalid" && laterObserverRan, "throwing Changed observer after commit neither fails the commit nor skips later observers");
+        Check(activeId != oldId && await secrets.GetAsync(activeId) == "synthetic-observed-password", "committed profile keeps its staged credential when an observer throws");
     }
 
     private static void PairingLinks()
