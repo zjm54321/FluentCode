@@ -30,11 +30,16 @@ public sealed partial class OpenCodeClient
         ArgumentNullException.ThrowIfNull(text);
         if (delivery is not null and not "steer" and not "queue")
             throw new ArgumentException("Delivery must be steer or queue.", nameof(delivery));
-        var validated = OpenCodeAttachment.ValidateFiles(files);
-        var body = BuildPromptBody(text, validated is { Count: > 0 } ? validated : null, delivery);
-        OpenCodeAttachment.ValidateRequestSize(body);
+        byte[] Serialize()
+        {
+            var validated = OpenCodeAttachment.ValidateFiles(files);
+            var body = BuildPromptBody(text, validated is { Count: > 0 } ? validated : null, delivery);
+            return OpenCodeAttachment.SerializeRequest(body);
+        }
+        var bytes = files is { Count: > 0 }
+            ? await Task.Run(Serialize, cancellationToken).ConfigureAwait(false) : Serialize();
         cancellationToken.ThrowIfCancellationRequested();
-        using var content = CreateJsonContent(body);
+        using var content = CreateJsonContent(bytes);
         Task<JsonDocument>? pending = null;
         if (!starter(() => pending = SendForJsonAsync(HttpMethod.Post,
             "api/session/" + Uri.EscapeDataString(sessionId) + "/prompt", null, content, cancellationToken)))

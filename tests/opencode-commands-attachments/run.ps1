@@ -20,6 +20,7 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Open
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'AttachmentPreparation.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile"

@@ -33,7 +33,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private OpenCodeComposerCatalogState _catalogState;
     private IReadOnlyList<OpenCodeComposerCommandRow> _commands = Array.Empty<OpenCodeComposerCommandRow>();
     private string? _note;
-    private sealed record StoredFile(Guid Id, string Name, string Mime, byte[] Bytes);
+    private sealed record StoredFile(Guid Id, string Name, string Mime, byte[] Bytes, IReadOnlyList<PromptFileAttachment> Encoded);
     private sealed record CatalogRequest(OpenCodeComposerBinding Binding, long Scope, Guid Draft,
         OpenCodeComposerCatalogLifetime Lifetime, OpenCodeComposerCatalogHandle Handle);
     private static readonly IReadOnlyList<OpenCodeComposerCommandRow> NativeCommands = Array.AsReadOnly(new[]
@@ -606,17 +606,22 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             var sources = fileSources.ToArray();
             var staged = await OpenCodeComposerAttachmentLoader.ReadAsync(sources, existing.Length,
                 existing.Sum(f => (long)f.Bytes.Length), () => { lock (_sync) return OwnsPick(); }, linked.Token).ConfigureAwait(false);
-            var drafts = existing.Select(f => new OpenCodeAttachmentDraft(f.Name, f.Mime, f.Bytes)).Concat(staged).ToArray();
-            var encoded = OpenCodeAttachment.Encode(drafts); // Production sanitization, MIME and size validation.
+            var encoded = await Task.Run(() =>
+            {
+                var prepared = staged.Select(draft => OpenCodeAttachment.Prepare(new[] { draft })).ToArray();
+                var combined = OpenCodeAttachment.Combine(existing.Select(f => f.Encoded).Concat(prepared).ToArray());
+                OpenCodeAttachment.ValidateRequestSize(new OpenCodeAttachedPromptBody(string.Empty, combined));
+                return prepared;
+            }, linked.Token).ConfigureAwait(false);
             lock (_sync)
             {
                 if (!OwnsPick() || linked.IsCancellationRequested) return;
                 if (staged.Count != 0) _origin ??= binding;
                 for (var i = 0; i < staged.Count; i++)
                 {
-                    var file = encoded[existing.Length + i];
+                    var file = encoded[i][0];
                     var mime = file.Uri[5..file.Uri.IndexOf(";base64,", StringComparison.Ordinal)];
-                    _files.Add(new(Guid.NewGuid(), file.Name!, mime, staged[i].Bytes));
+                    _files.Add(new(Guid.NewGuid(), file.Name!, mime, staged[i].Bytes, encoded[i]));
                 }
                 _pickOwner = null;
                 if (staged.Count != 0) Edited();
@@ -691,7 +696,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         CancellationToken scopeCancellation;
         string text;
         string? command;
-        OpenCodeAttachmentDraft[] drafts;
+        IReadOnlyList<PromptFileAttachment>[] attachments;
         var operation = Guid.NewGuid();
         lock (_sync)
         {
@@ -703,7 +708,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             scopeCancellation = _scopeCancellation.Token;
             text = _text;
             command = _command;
-            drafts = _files.Select(f => new OpenCodeAttachmentDraft(f.Name, f.Mime, f.Bytes)).ToArray();
+            attachments = _files.Select(f => f.Encoded).ToArray();
             _submissionOwner = operation;
             _note = null;
         }
@@ -716,8 +721,8 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         try
         {
             Publish();
-            // Bytes are private, retained and never mutated. Entire validation occurs before Begin.
-            var encoded = OpenCodeAttachment.Encode(drafts);
+            // Reuse immutable validated payloads from the picker; no repeat Base64 work on submit.
+            var encoded = OpenCodeAttachment.Combine(attachments);
             if (command is not null && binding.Slot is not null)
             {
                 // A restored command is data, not the old menu's capability. Validate against a fresh
@@ -759,7 +764,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                         }
                         else
                         {
-                            await binding.Client.ExecuteCommandGuardedAsync(binding.SessionId, command, text, encoded, Start, linked.Token).ConfigureAwait(false);
+                            if (encoded.Count == 0)
+                                await binding.Client.ExecuteCommandGuardedAsync(binding.SessionId, command, text, encoded, Start, linked.Token).ConfigureAwait(false);
+                            else
+                                await Task.Run(() => binding.Client.ExecuteCommandGuardedAsync(binding.SessionId, command, text, encoded, Start, linked.Token), linked.Token).ConfigureAwait(false);
                             outcome = new OpenCodeComposerSubmitOutcome.CommandAcknowledged();
                         }
                         status = NotificationInteractionStatus.Succeeded;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -712,6 +713,13 @@ public sealed partial class OpenCodeClient : IDisposable
 
     private static StringContent CreateJsonContent<T>(T body)
         => new(JsonSerializer.Serialize(body, OpenCodeJson.Options), Encoding.UTF8, "application/json");
+
+    private static ByteArrayContent CreateJsonContent(byte[] body)
+    {
+        var content = new ByteArrayContent(body);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
+        return content;
+    }
 
     private static OpenCodeInboxUser ParsePromptReceipt(JsonDocument document, string sessionId)
     {

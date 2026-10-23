@@ -103,10 +103,12 @@ internal static partial class Program
         foreach (var change in new[] { "edit", "source", "unknown-read", "input-guard", "operation-owner" })
         {
             using var f = new Fixture(); await f.File(); f.Text("captured");
-            var response = Signal<HttpResponseMessage>(); f.Handler.ReadState = (_, _) => response.Task;
+            var response = Signal<HttpResponseMessage>(); var readStarted = Signal<bool>();
+            f.Handler.ReadState = (_, _) => { readStarted.TrySetResult(true); return response.Task; };
             var canStart = true; var owns = true;
             var context = f.Context() with { CanStart = _ => canStart, OwnsOperation = _ => owns };
             var pending = f.Core.SubmitAsync(context);
+            await readStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Check(f.Handler.StateReads == 1, "fresh stage read begins before mutation: " + change);
             if (change == "edit") f.Text("later");
             if (change == "source") { f.Switch("ses_other"); f.Switch("ses_test"); }
@@ -126,7 +128,8 @@ internal static partial class Program
             await f.File(); f.Text("submitted");
             f.Handler.ReadState = (_, _) => Task.FromResult(ControlState(stage: "msg_a"));
             var context = f.Context(); var question = await Question(f, context);
-            var response = Signal<HttpResponseMessage>(); f.Handler.Send = (_, _) => response.Task;
+            var response = Signal<HttpResponseMessage>(); var postStarted = Signal<bool>();
+            f.Handler.Send = (_, _) => { postStarted.TrySetResult(true); return response.Task; };
             var canStart = true;
             context = context with { Consent = question.ConsentToUse, CanStart = _ => canStart };
             var enteredHandoff = false;
@@ -139,6 +142,7 @@ internal static partial class Program
                 Check(token == context.Basis.Token && finalize() == OpenCodeComposerDraftFinalization.Retained,
                     "later edited staged prompt retains entire enhanced draft at accepted handoff");
             });
+            await postStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             var paired = ProtectedState(f);
             Check(paired.Composer is not null && paired.Control is not null && paired.Composer.OperationId == paired.Control.OperationId
                 && paired.Control.Kind == SessionControlKind.RevertContinuation && f.Handler.Posts == 1,
@@ -158,9 +162,11 @@ internal static partial class Program
             if (responseKind == "command204") await f.Command(); else { await f.File(); f.Text("draft"); }
             f.Handler.ReadState = (_, _) => Task.FromResult(ControlState(stage: "msg_a"));
             var context = f.Context(); var question = await Question(f, context);
-            var response = Signal<HttpResponseMessage>(); f.Handler.Send = (_, _) => response.Task;
+            var response = Signal<HttpResponseMessage>(); var postStarted = Signal<bool>();
+            f.Handler.Send = (_, _) => { postStarted.TrySetResult(true); return response.Task; };
             var pending = f.Core.SubmitAsync(context with { Consent = question.ConsentToUse }, acceptedDraftHandoff: (_, _, _) =>
                 responseKind == "handoff-failure" ? Task.FromException(new InvalidOperationException("synthetic display failure")) : Task.CompletedTask);
+            await postStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Check(f.Handler.Posts == 1, "staged failure scenario reached one actual synthetic POST: " + responseKind);
             if (responseKind == "origin-loss") f.Switch("ses_other");
             if (responseKind == "settlement-failure")

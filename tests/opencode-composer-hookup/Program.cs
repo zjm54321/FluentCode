@@ -251,6 +251,7 @@ internal static class Program
             f.Http.Respond=(r,ct)=>r.Method==HttpMethod.Post&&r.RequestUri!.AbsolutePath=="/api/session"
                 ?Task.FromResult(Json("{\"data\":{\"id\":\"ses_created\"}}")):respond(r,ct);
             await f.Page.CreateBlankSession();
+            await f.Page.Refreshed.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Check(f.Http.Posts == 2 && f.Http.Path!.EndsWith(command ? "/command" : "/prompt", StringComparison.Ordinal), "accepted-create association hands over and sends exactly once via fresh enhanced path");
             if (!command) Check(f.Http.Body!.Contains("\"delivery\":\"steer\"", StringComparison.Ordinal) && f.Http.Body.Contains("\"files\"", StringComparison.Ordinal), "enhanced guarded prompt preserves files and selected steer delivery");
             Check(!f.Page.Snapshot.HasDraft, "accepted handed-over draft cleared once");
@@ -530,8 +531,11 @@ internal static class Program
         {
             using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("sent");
             var response = Signal<HttpResponseMessage>(); var refresh = Signal<bool>();
-            f.Http.Respond = (_, _) => response.Task; f.Page.RefreshPending = refresh.Task;
-            var send = f.Page.Send(); Check(f.Http.Posts == 1 && f.Page.Pending && f.Page.Sending, "owner lifetime begins once before POST");
+            var started = Signal<bool>();
+            f.Http.Respond = (_, _) => { started.TrySetResult(true); return response.Task; }; f.Page.RefreshPending = refresh.Task;
+            var send = f.Page.Send();
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Check(f.Http.Posts == 1 && f.Page.Pending && f.Page.Sending, "owner lifetime begins once before POST");
             Check(!f.Page.SendEnabled && !f.Page.ShouldStop(), "local send disables both Send and Stop");
             f.Page.Text("later edit"); response.SetResult(Receipt());
             await f.Page.Refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10));
@@ -571,8 +575,15 @@ internal static class Program
         {
             using var f = new Fixture(); if (enhanced) await f.Page.File(); f.Page.Text("old");
             var oldResponse = Signal<HttpResponseMessage>(); var newResponse = Signal<HttpResponseMessage>();
-            f.Http.Respond = (r, _) => r.RequestUri!.AbsolutePath.Contains("ses_other", StringComparison.Ordinal) ? newResponse.Task : oldResponse.Task;
-            var oldSend = f.Page.Send(); f.Page.Switch("ses_other"); if (enhanced) f.Page.Discard(); f.Page.Text("new");
+            var oldStarted = Signal<bool>();
+            f.Http.Respond = (r, _) =>
+            {
+                if (r.RequestUri!.AbsolutePath.Contains("ses_other", StringComparison.Ordinal)) return newResponse.Task;
+                oldStarted.TrySetResult(true); return oldResponse.Task;
+            };
+            var oldSend = f.Page.Send();
+            await oldStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            f.Page.Switch("ses_other"); if (enhanced) f.Page.Discard(); f.Page.Text("new");
             var newSend = f.Page.Send(); oldResponse.SetResult(Receipt()); await oldSend;
             Check(f.Page.Sending && f.Page.Pending && !f.Page.SendEnabled, "late old finally cannot clear newer submission owner/buttons");
             Check(f.Page.Receipts == 0 && f.Page.Snapshot.Text == "new", "stale response never clears current editor or adds receipts");

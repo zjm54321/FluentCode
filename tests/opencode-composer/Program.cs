@@ -290,8 +290,10 @@ internal static partial class Program
         {
             await f.Command("old args");
             var completion = Signal<HttpResponseMessage>();
-            f.Handler.Send = (_, _) => completion.Task;
+            var started = Signal<bool>();
+            f.Handler.Send = (_, _) => { started.TrySetResult(true); return completion.Task; };
             var pending = f.SubmitAsync(f.Core.Snapshot.Token, () => true);
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             f.Text("new args");
             completion.SetResult(new(HttpStatusCode.NoContent));
             Check(await pending is OpenCodeComposerSubmitOutcome.CommandAcknowledged, "edit does not invalidate valid receipt settlement");
@@ -339,8 +341,10 @@ internal static partial class Program
         {
             await f.Command();
             var completion = Signal<HttpResponseMessage>();
-            f.Handler.Send = (_, _) => completion.Task;
+            var started = Signal<bool>();
+            f.Handler.Send = (_, _) => { started.TrySetResult(true); return completion.Task; };
             var pending = f.SubmitAsync(f.Core.Snapshot.Token, () => true);
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             f.Switch("ses_other");
             completion.SetResult(new(HttpStatusCode.NoContent));
             Check(await pending is OpenCodeComposerSubmitOutcome.OriginLost, "lost origin no page receipt effects");
@@ -351,12 +355,15 @@ internal static partial class Program
             await f.Command();
             using var cancellation = new CancellationTokenSource();
             var pendingResponse = Signal<HttpResponseMessage>();
+            var started = Signal<bool>();
             f.Handler.Send = (_, ct) =>
             {
+                started.TrySetResult(true);
                 ct.Register(() => pendingResponse.TrySetCanceled(ct));
                 return pendingResponse.Task;
             };
             var pending = f.SubmitAsync(f.Core.Snapshot.Token, () => true, cancellation.Token);
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Check(f.Handler.Posts == 1 && f.Core.Snapshot.IsBusy, "cancel test reached actual start");
             cancellation.Cancel();
             Check(await pending is OpenCodeComposerSubmitOutcome.Unknown, "after-start cancellation retains unknown");

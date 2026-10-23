@@ -18,6 +18,7 @@ internal static class Program
 
     private static async Task Main()
     {
+        await AttachmentPreparation.RunAsync();
         await Catalog();
         await Mutations();
         await Attachments();

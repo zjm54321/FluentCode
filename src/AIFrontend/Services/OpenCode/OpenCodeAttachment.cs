@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 
@@ -18,6 +19,14 @@ public static class OpenCodeAttachment
 
     /// <summary>先校验所有草稿再编码。总请求上限包含 JSON 转义及 Base64；发送时另计实际文本。</summary>
     public static IReadOnlyList<PromptFileAttachment> Encode(IReadOnlyList<OpenCodeAttachmentDraft> drafts)
+    {
+        var prepared = Prepare(drafts);
+        ValidateRequestSize(new OpenCodeAttachedPromptBody(string.Empty, prepared));
+        return prepared;
+    }
+
+    /// <summary>验证并编码一次；返回值只含不可变的传输投影，可跨异步边界复用。</summary>
+    internal static IReadOnlyList<PromptFileAttachment> Prepare(IReadOnlyList<OpenCodeAttachmentDraft> drafts)
     {
         ArgumentNullException.ThrowIfNull(drafts);
         ValidateCount(drafts.Count);
@@ -39,8 +48,7 @@ public static class OpenCodeAttachment
             var draft = validated[i];
             files[i] = new("data:" + draft.Mime + ";base64," + Convert.ToBase64String(draft.Bytes), draft.Name);
         }
-        ValidateRequestSize(new OpenCodeAttachedPromptBody(string.Empty, files));
-        return Array.AsReadOnly(files);
+        return new ValidatedFiles(files, total);
     }
 
     // Revalidate public DTOs and snapshot the list at the final transport boundary, so callers
@@ -48,6 +56,7 @@ public static class OpenCodeAttachment
     internal static IReadOnlyList<PromptFileAttachment>? ValidateFiles(IReadOnlyList<PromptFileAttachment>? files)
     {
         if (files is null) return null;
+        if (files is ValidatedFiles) return files;
         ValidateCount(files.Count);
         var snapshot = new PromptFileAttachment[files.Count];
         long total = 0;
@@ -70,15 +79,36 @@ public static class OpenCodeAttachment
             if (!encoded.SequenceEqual(Convert.ToBase64String(bytes).AsSpan())) throw Invalid("附件 Base64 数据必须为规范编码。");
             snapshot[i] = new(file.Uri, FileName(file.Name), file.Description);
         }
-        return Array.AsReadOnly(snapshot);
+        return new ValidatedFiles(snapshot, total);
+    }
+
+    internal static IReadOnlyList<PromptFileAttachment> Combine(IReadOnlyList<IReadOnlyList<PromptFileAttachment>> batches)
+    {
+        var files = new List<PromptFileAttachment>();
+        long total = 0;
+        foreach (var batch in batches)
+        {
+            var validated = (ValidatedFiles)ValidateFiles(batch)!;
+            total += validated.RawBytes;
+            if (total > MaxTotalBytes) throw Invalid("附件原始字节总量不得超过 20 MiB。");
+            files.AddRange(validated);
+            ValidateCount(files.Count);
+        }
+        return new ValidatedFiles(files.ToArray(), total);
     }
 
     internal static void ValidateRequestSize<T>(T body)
     {
-        // Count the exact production serialization without allocating an unbounded JSON string.
-        // The default encoder can expand '+' and non-ASCII text, not just the usual Base64 4/3.
         using var counter = new RequestSizeCounter();
         JsonSerializer.Serialize(counter, body, OpenCodeJson.Options);
+    }
+
+    /// <summary>Serialize once and enforce the exact UTF-8 request bound.</summary>
+    internal static byte[] SerializeRequest<T>(T body)
+    {
+        using var stream = new RequestBuffer();
+        JsonSerializer.Serialize(stream, body, OpenCodeJson.Options);
+        return stream.ToArray();
     }
 
     private static void ValidateCount(int count)
@@ -134,6 +164,32 @@ public static class OpenCodeAttachment
         "text/plain" or "text/markdown" or "application/pdf" or "application/json";
 
     private static ArgumentException Invalid(string reason) => new(reason, "files");
+
+    // Only this validator can create the marker; immutable records + private read-only snapshot
+    // let the transport reuse it without decoding and re-encoding trusted Base64.
+    private sealed class ValidatedFiles(PromptFileAttachment[] files, long rawBytes) : ReadOnlyCollection<PromptFileAttachment>(files)
+    {
+        public long RawBytes { get; } = rawBytes;
+    }
+
+    private sealed class RequestBuffer : MemoryStream
+    {
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            CheckSize(count);
+            base.Write(buffer, offset, count);
+        }
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            CheckSize(buffer.Length);
+            base.Write(buffer);
+        }
+        private void CheckSize(int count)
+        {
+            if (Length > MaxRequestBytes - count)
+                throw Invalid("含 Base64、文本及 JSON 转义的请求不得超过 28 MiB。");
+        }
+    }
 
     private sealed class RequestSizeCounter : Stream
     {
