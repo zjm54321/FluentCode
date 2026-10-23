@@ -637,10 +637,6 @@ internal sealed class OpenCodeAgentSelector : StackPanel
                 SetStatus("来源或选择已变化；本次未切换。");
                 break;
 
-            case AgentSwitchStatus.DefinitivelyRejected:
-                SetStatus("服务端明确拒绝；未切换。");
-                break;
-
             case AgentSwitchStatus.OutcomeUnknown:
                 _retainedUnknownOperationId = result.OperationId;
                 ShowRecovery("切换结果未知（可能已应用）；不会自动重试。请选择恢复方式：");
@@ -944,7 +940,6 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         AgentSwitchStatus.Blocked => "当前状态不允许切换。",
         AgentSwitchStatus.OriginLost => "来源或选择已变化；未切换。",
         AgentSwitchStatus.OutcomeUnknown => "切换结果未知；未自动重试。",
-        AgentSwitchStatus.DefinitivelyRejected => "服务端明确拒绝。",
         AgentSwitchStatus.ReconciliationRequired => "需要显式解除未知状态。",
         AgentSwitchStatus.Reconciled => "已解除未知状态（未重试）。",
         _ => "切换未完成。",

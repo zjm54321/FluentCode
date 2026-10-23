@@ -156,11 +156,6 @@ public sealed partial class OpenCodeNotificationMonitor
 
     private static DateTimeOffset? EarliestUiEvidence(DateTimeOffset now, params DateTimeOffset?[] times)
     {
-        if (times is null || times.Length == 0)
-        {
-            return null;
-        }
-
         DateTimeOffset? earliest = null;
         foreach (DateTimeOffset? candidate in times)
         {

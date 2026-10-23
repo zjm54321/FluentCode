@@ -8,7 +8,7 @@ using AIFrontend.Services.OpenCode;
 namespace AIFrontend.Services.Notifications;
 
 public sealed record AgentSwitchOrigin(OpenCodePageSource Source, long Revision, string SessionId, long SelectionGeneration);
-public enum AgentSwitchStatus { Applied, Blocked, OriginLost, OutcomeUnknown, DefinitivelyRejected, ReconciliationRequired, Reconciled }
+public enum AgentSwitchStatus { Applied, Blocked, OriginLost, OutcomeUnknown, ReconciliationRequired, Reconciled }
 public sealed record AgentSwitchResult(Guid OperationId, AgentSwitchStatus Status, string? ObservedAgentId,
     bool MutationStarted, bool UnknownProtectionRetained);
 
@@ -26,7 +26,7 @@ public sealed class AgentSwitchCoordinator
         Func<AgentSwitchOrigin, bool> isOriginCurrent, CancellationToken cancellationToken = default)
     {
         if (!NotificationArgumentCodec.IsValidRequestId(targetAgentId)) throw new ArgumentException("Invalid agent ID.", nameof(targetAgentId));
-        return RunAsync(origin, operationId, targetAgentId, false, false, isOriginCurrent, cancellationToken);
+        return RunAsync(origin, operationId, targetAgentId, false, isOriginCurrent, cancellationToken);
     }
 
     /// <summary>Explicit user confirmation for this exact unknown operation, not a causal inference from
@@ -34,10 +34,10 @@ public sealed class AgentSwitchCoordinator
     /// A new valid source/selection may reconcile the same endpoint/session's retained protection.</summary>
     public Task<AgentSwitchResult> ReconcileAsync(AgentSwitchOrigin origin, Guid operationId, bool allowNewOperation,
         Func<AgentSwitchOrigin, bool> isOriginCurrent, CancellationToken cancellationToken = default)
-        => RunAsync(origin, operationId, null, true, allowNewOperation, isOriginCurrent, cancellationToken);
+        => RunAsync(origin, operationId, null, true, isOriginCurrent, cancellationToken);
 
     private async Task<AgentSwitchResult> RunAsync(AgentSwitchOrigin origin, Guid operationId, string? target,
-        bool reconcile, bool allowNewOperation, Func<AgentSwitchOrigin, bool> current, CancellationToken cancellationToken)
+        bool reconcile, Func<AgentSwitchOrigin, bool> current, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(origin.Source);
@@ -81,13 +81,14 @@ public sealed class AgentSwitchCoordinator
             // may hold a session outside the first listed pages, which a capped scan would miss. Field
             // completeness is still re-checked here so a partial projection cannot slip past the gate.
             var session = await Read(() => client!.GetSessionInfoAsync(origin.SessionId, token)).ConfigureAwait(false);
-            if (session?.Id != origin.SessionId || string.IsNullOrWhiteSpace(session.Location?.Directory)
+            if (string.IsNullOrWhiteSpace(session.Location?.Directory)
                 || session.Time is null || !double.IsFinite(session.Time.Created) || !double.IsFinite(session.Time.Updated)
                 || session.Tokens is null || string.IsNullOrWhiteSpace(session.ProjectId)) return Result(AgentSwitchStatus.Blocked);
             observed = session.Agent;
             var agents = await Read(() => client!.ListAgentsAsync(session.Location.Directory, token)).ConfigureAwait(false);
-            if (agents.Location?.Directory != session.Location.Directory || agents.Data is null) return Result(AgentSwitchStatus.Blocked);
-            if (!reconcile && (agents.Data.Count(a => a.Id == target) != 1 || agents.Data.Single(a => a.Id == target).Hidden))
+            if (agents.Location?.Directory != session.Location.Directory) return Result(AgentSwitchStatus.Blocked);
+            var agentData = agents.Data!;
+            if (!reconcile && (agentData.Count(a => a.Id == target) != 1 || agentData.Single(a => a.Id == target).Hidden))
                 return Result(AgentSwitchStatus.Blocked);
 
             var messages = new List<OpenCodeMessage>();
@@ -98,11 +99,12 @@ public sealed class AgentSwitchCoordinator
             {
                 var page = await Read(() => client!.GetMessagesAsync(origin.SessionId, new() { Limit = PageSize,
                     Order = cursor is null ? OpenCodeSessionOrders.Desc : null, Cursor = cursor }, token)).ConfigureAwait(false);
-                if (page.Data is null || page.Data.Count > PageSize) return Result(AgentSwitchStatus.Blocked);
-                messages.AddRange(page.Data);
+                var pageData = page.Data!;
+                if (pageData.Count > PageSize) return Result(AgentSwitchStatus.Blocked);
+                messages.AddRange(pageData);
                 cursor = page.Cursor?.Next;
                 if (cursor is not null && (cursor.Length is 0 or > 4096 || cursor.Any(char.IsControl))) break;
-                if (page.Data.Count == 0 || cursor is null) { complete = true; break; }
+                if (pageData.Count == 0 || cursor is null) { complete = true; break; }
                 if (!cursors.Add(cursor!)) break;
             }
             if (!complete) return Result(AgentSwitchStatus.Blocked);
@@ -112,8 +114,9 @@ public sealed class AgentSwitchCoordinator
             var inbox = await Read(() => client!.GetInboxAsync(origin.SessionId, token)).ConfigureAwait(false);
             var active = await Read(() => client!.GetActiveSessionsAsync(token)).ConfigureAwait(false);
             if (permissions.Count > PendingBudget || forms.Count > PendingBudget || inbox.Count > PendingBudget
-                || inbox.Any(i => i?.SessionId != origin.SessionId) || active.Data is null) return Result(AgentSwitchStatus.Blocked);
-            bool activeKnown = !active.Data.TryGetValue(origin.SessionId, out var drain) || drain.Type == "running";
+                || inbox.Any(i => i?.SessionId != origin.SessionId)) return Result(AgentSwitchStatus.Blocked);
+            var activeData = active.Data!;
+            bool activeKnown = !activeData.TryGetValue(origin.SessionId, out var drain) || drain.Type == "running";
             var projection = OpenCodeExecutionProjection.Evaluate(new(origin.SessionId,
                 OpenCodeExecutionProjection.CreateWindow(origin.SessionId, messages, true, true, true),
                 activeKnown, drain?.Type == "running", true, permissions.Count != 0 || forms.Count != 0,
@@ -122,7 +125,7 @@ public sealed class AgentSwitchCoordinator
 
             if (reconcile)
             {
-                if (!Fence(() => lease.ResolveAgentSwitchUnknown(operationId, allowNewOperation))) return Result(AgentSwitchStatus.OriginLost);
+                if (!Fence(() => lease.ResolveAgentSwitchUnknown(operationId))) return Result(AgentSwitchStatus.OriginLost);
                 return Result(AgentSwitchStatus.Reconciled);
             }
             Task? mutation = null;

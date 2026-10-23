@@ -78,34 +78,16 @@ public sealed class OpenCodeInteractionGate
             return false; // Illegal identity: unreadable, NOT unprotected.
         }
 
-        SessionState? state = null;
         lock (_sync)
         {
-            // Read-only lookup: never add an entry, so the 256 capacity is untouched.
-            if (_sessions.TryGetValue((endpointIdentity, sessionId), out var found))
+            if (!_sessions.TryGetValue((endpointIdentity, sessionId), out var state)) return true;
+            if (!state.Mutex.Wait(0)) return false;
+            try
             {
-                state = found;
+                protection = state.SessionUnknown;
+                return true;
             }
-        }
-
-        if (state is null)
-        {
-            return true; // No existing state: truthfully "no protection" without creating one.
-        }
-
-        if (!state.Mutex.Wait(0))
-        {
-            return false; // Lease held: cannot read a coherent value; fail closed as "unknown".
-        }
-
-        try
-        {
-            protection = state.SessionUnknown;
-            return true;
-        }
-        finally
-        {
-            state.Mutex.Release();
+            finally { state.Mutex.Release(); }
         }
     }
 
@@ -116,18 +98,19 @@ public sealed class OpenCodeInteractionGate
         protection = null;
         canSubmitComposer = false;
         if (!NotificationArgumentCodec.IsValidRequestId(endpointIdentity) || !NotificationArgumentCodec.IsValidRequestId(sessionId)) return false;
-        SessionState? state;
-        lock (_sync) _sessions.TryGetValue((endpointIdentity, sessionId), out state);
-        if (state is null) { canSubmitComposer = true; return true; }
-        if (!state.Mutex.Wait(0)) return false;
-        try
+        lock (_sync)
         {
-            protection = state.ComposerUnknown;
-            canSubmitComposer = state.ComposerUnknown is null && state.SessionUnknown is null
-                && state.AgentSwitchUnknown is null && state.ControlUnknown is null;
-            return true;
+            if (!_sessions.TryGetValue((endpointIdentity, sessionId), out var state)) { canSubmitComposer = true; return true; }
+            if (!state.Mutex.Wait(0)) return false;
+            try
+            {
+                protection = state.ComposerUnknown;
+                canSubmitComposer = state.ComposerUnknown is null && state.SessionUnknown is null
+                    && state.AgentSwitchUnknown is null && state.ControlUnknown is null;
+                return true;
+            }
+            finally { state.Mutex.Release(); }
         }
-        finally { state.Mutex.Release(); }
     }
 
     public sealed class Lease : IDisposable
@@ -313,9 +296,9 @@ public sealed class OpenCodeInteractionGate
         }
 
         /// <summary>Explicit user-driven complete authoritative reconciliation under captured Source.TryExecute
-        /// and full origin validation only; never polling. allowRetry requires consent to possible duplicate effects.
-        /// Both choices close this exact unknown operation; any later switch requires a new explicit Begin.</summary>
-        public void ResolveAgentSwitchUnknown(Guid operationId, bool allowRetry)
+        /// and full origin validation only; never polling. Closes this exact unknown operation;
+        /// any later switch requires a new explicit Begin.</summary>
+        public void ResolveAgentSwitchUnknown(Guid operationId)
         {
             if (_mutation is not null || _agentSwitch is not null) throw new InvalidOperationException("Mutation in progress.");
             if (operationId == Guid.Empty || State.AgentSwitchUnknown?.OperationId != operationId)

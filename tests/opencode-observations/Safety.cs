@@ -119,7 +119,7 @@ static partial class Checks
         { gate.BeginAgentSwitch(operation, "agent_test"); gate.CompleteAgentSwitch(NotificationInteractionStatus.OutcomeUnknown); }
         app.Tick();
         Check(app.Snapshot.Status == TaskbarStatus.NeedsAttention, "timer also samples unresolved agent-switch protection");
-        using (var gate = await OpenCodeInteractionGate.Shared.EnterAsync("ep-app", "ses_test")) gate.ResolveAgentSwitchUnknown(operation, false);
+        using (var gate = await OpenCodeInteractionGate.Shared.EnterAsync("ep-app", "ses_test")) gate.ResolveAgentSwitchUnknown(operation);
         app.Tick();
         Check(app.Snapshot.Status == TaskbarStatus.Idle, "explicit switch recovery is reflected without fake execution");
         using (var gate = await OpenCodeInteractionGate.Shared.EnterAsync("ep-app", "ses_test"))
