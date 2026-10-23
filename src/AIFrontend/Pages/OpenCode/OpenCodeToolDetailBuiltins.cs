@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -310,51 +311,83 @@ internal static partial class OpenCodeToolDetailBuiltins
     private static FrameworkElement Execute(OpenCodeToolRowModel model, bool compact)
     {
         var detail = OpenCodeToolDetailBuiltinData.Execute(model);
-        var panel = new StackPanel { Spacing = 14 };
+        var panel = new StackPanel { Spacing = 12 };
+        var callsPanel = new StackPanel { Spacing = 12 };
         if (detail.Code is { } code)
         {
             var lines = new StackPanel();
-            foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(code))
+            var source = compact ? OpenCodeToolDetailBuiltinData.Excerpt(code, 4).Excerpt : code;
+            var lineNumber = 1;
+            foreach (var line in source.Replace("\r", "", StringComparison.Ordinal).Split('\n'))
             {
                 var block = OpenCodeToolDetailContent.Mono(string.Empty);
-                OpenCodeCodePalette.BindText(block, chunk, "javascript");
+                OpenCodeCodePalette.BindText(block, lineNumber++ + "  " + line, "javascript");
                 lines.Children.Add(block);
             }
 
-            panel.Children.Add(Section("代码", OpenCodeToolDetailContent.CodeBlockFrame(lines, code, "javascript")));
+            panel.Children.Add(Section("代码", lines));
         }
 
         if (detail.Calls.Count > 0)
         {
-            var list = new StackPanel { Spacing = 4 };
+            var list = new StackPanel { Spacing = 12 };
             AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailExecuteCalls");
             var shown = compact ? Math.Min(detail.Calls.Count, OpenCodeToolDetailBuiltinData.CompactExecuteCalls) : detail.Calls.Count;
             for (var i = 0; i < shown; i++) list.Children.Add(CallRow(detail.Calls[i], compact));
             var section = new StackPanel { Spacing = 8 };
             section.Children.Add(SectionTitle("调用的工具", detail.Calls.Count.ToString(CultureInfo.InvariantCulture)));
             section.Children.Add(list);
-            panel.Children.Add(section);
-            AddMore(panel, detail.Calls.Count - shown, "个调用");
+            callsPanel.Children.Add(section);
+            AddMore(callsPanel, detail.Calls.Count - shown, "个调用");
         }
 
         if (detail.Output is { } output)
-            panel.Children.Add(Section("结果", OpenCodeToolDetailContent.CodeBlock(output)));
+        {
+            var formatted = output;
+            try { using var json = JsonDocument.Parse(output); formatted = JsonSerializer.Serialize(json.RootElement, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }); }
+            catch (JsonException) { }
+            var result = OpenCodeToolDetailContent.Mono(string.Empty);
+            OpenCodeCodePalette.BindText(result, compact ? OpenCodeToolDetailBuiltinData.Excerpt(formatted, 2).Excerpt : formatted, "json");
+            panel.Children.Add(Section("返回", result));
+        }
         else if (panel.Children.Count == 0)
             panel.Children.Add(OpenCodeToolDetailContent.Caption(model.IsActive ? "代码运行中…" : "（没有可显示的内容）"));
-        return panel;
+        if (model.IsActive && panel.Children.Count > 0) panel.Children.Add(OpenCodeToolDetailContent.Caption("代码运行中…"));
+        if (compact)
+        {
+            // Code → calls → return in hover, without compact JSON arguments.
+            panel.Children.Insert(detail.Code is null ? 0 : 1, callsPanel);
+            return panel;
+        }
+        var layout = new Grid { ColumnSpacing = 20, RowSpacing = 20 };
+        layout.ColumnDefinitions.Add(new ColumnDefinition());
+        layout.ColumnDefinitions.Add(new ColumnDefinition());
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.Children.Add(panel);
+        layout.Children.Add(callsPanel);
+        void Arrange()
+        {
+            var wide = (layout.XamlRoot?.Size.Width ?? layout.ActualWidth) >= 900;
+            layout.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+            layout.ColumnDefinitions[1].Width = wide ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            Grid.SetColumn(callsPanel, wide ? 1 : 0);
+            Grid.SetRow(callsPanel, wide ? 0 : 1);
+        }
+        layout.Loaded += (_, _) => Arrange();
+        layout.SizeChanged += (_, _) => Arrange();
+        return layout;
     }
 
     private static FrameworkElement CallRow(OpenCodeExecuteCall call, bool compact)
     {
         var grid = new Grid { ColumnSpacing = 8, MinHeight = 24 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var state = call.Status?.ToLowerInvariant();
         FrameworkElement? icon = state switch
         {
-            "completed" => StatusGlyph("\uE73E", OpenCodeToolTheme.Success),
-            "error" or "failed" => StatusGlyph("\uE711", OpenCodeToolTheme.Critical),
             "running" or "pending" => new ProgressRing { IsActive = true, Width = 12, Height = 12, MinWidth = 12, MinHeight = 12 },
             _ => null, // unknown ≠ failure: no icon.
         };
@@ -364,30 +397,43 @@ internal static partial class OpenCodeToolDetailBuiltins
             grid.Children.Add(icon);
         }
 
-        var tool = OpenCodeToolDetailContent.Mono(call.Tool);
-        tool.TextWrapping = TextWrapping.NoWrap;
-        tool.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(tool, 1);
-        grid.Children.Add(tool);
+        var entry = OpenCodeExecuteInnerCatalog.Find(call.Tool);
+        if (icon is null) grid.Children.Add(new FontIcon { Glyph = entry?.Glyph ?? "\uEA86", FontSize = 12 });
+        var labels = new StackPanel { Spacing = 2 };
+        if (entry is not null) labels.Children.Add(OpenCodeInteractionUi.StyledText(entry.Name, OpenCodeInteractionUi.BodyStrongStyleKey));
+        var raw = OpenCodeToolDetailContent.Mono(call.Tool);
+        OpenCodeToolTheme.Apply(raw, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CodeStyleKey));
+        labels.Children.Add(raw);
+        var summary = OpenCodeExecuteInnerCatalog.Summary(call);
+        if (summary.Length > 0)
+        {
+            var text = OpenCodeToolDetailContent.Caption(summary);
+            if (compact) { text.MaxLines = 1; text.TextTrimming = TextTrimming.CharacterEllipsis; }
+            labels.Children.Add(text);
+        }
+        Grid.SetColumn(labels, 1);
+        grid.Children.Add(labels);
+        var failed = state is "error" or "failed";
+        var status = failed ? "× 失败" : state is "running" or "pending" ? "运行中" : state is null or "completed" ? "" : "状态：" + call.Status;
+        if (status.Length > 0)
+        {
+            var text = OpenCodeToolDetailContent.Caption(status);
+            if (failed) OpenCodeToolTheme.Apply(text, OpenCodeToolTheme.Text(OpenCodeToolTheme.Critical, OpenCodeInteractionUi.CaptionStyleKey));
+            Grid.SetColumn(text, 2);
+            grid.Children.Add(text);
+        }
+        var name = (entry?.Name ?? call.Tool) + " · " + call.Tool + (status.Length > 0 ? "，" + status : "");
+        AutomationProperties.SetName(grid, name);
+        if (compact) return grid;
+        FrameworkElement body = OpenCodeToolDetailContent.Caption("未提供参数");
         if (call.Input is { } input)
         {
-            var args = OpenCodeToolDetailContent.Mono(input);
-            OpenCodeToolTheme.Apply(args, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, OpenCodeInteractionUi.CodeStyleKey));
-            args.VerticalAlignment = VerticalAlignment.Center;
-            if (compact)
-            {
-                args.TextWrapping = TextWrapping.NoWrap;
-                args.TextTrimming = TextTrimming.CharacterEllipsis;
-                args.MaxLines = 1;
-            }
-
-            Grid.SetColumn(args, 2);
-            grid.Children.Add(args);
+            using var json = JsonDocument.Parse(input);
+            body = OpenCodeToolDetailContent.PropertyList(OpenCodeToolRowPresentation.BuildProperties(json.RootElement));
         }
-
-        var name = call.Tool + (call.Status is { } s ? "，" + s : string.Empty);
-        AutomationProperties.SetName(grid, name);
-        return grid;
+        var expander = Disclosure("", body, failed);
+        expander.Header = grid;
+        return expander;
     }
 
     private static FontIcon StatusGlyph(string glyph, string brushKey)

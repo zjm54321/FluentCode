@@ -257,7 +257,7 @@ internal static class OpenCodeToolDetailBuiltinData
                 if (Str(call, "tool") is { } tool)
                     calls.Add(new OpenCodeExecuteCall(tool, Str(call, "status"),
                         call.TryGetProperty("input", out var callInput) && callInput.ValueKind is JsonValueKind.Object or JsonValueKind.Array
-                            ? OneLine(callInput) : null));
+                            ? callInput.GetRawText() : null));
         return new OpenCodeExecuteDetail(Str(input, "code"), calls, string.IsNullOrWhiteSpace(model.OutputText) ? null : model.OutputText!.TrimEnd());
     }
 

@@ -24,7 +24,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"'
 }
 @('OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeChildChatReadSession.cs',
-    'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeToolDetailResultData.cs', 'OpenCodeContextStatusParser.cs') | ForEach-Object {
+    'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeToolDetailResultData.cs', 'OpenCodeContextStatusParser.cs', 'OpenCodeExecuteInnerCatalog.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'

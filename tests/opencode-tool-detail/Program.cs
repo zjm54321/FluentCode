@@ -90,7 +90,11 @@ internal static class Program
         var executeDetail = OpenCodeToolDetailBuiltinData.Execute(execute);
         Check(OpenCodeToolDetailBuiltinData.Resolve(execute) == OpenCodeBuiltinToolView.Execute && executeDetail.Code!.StartsWith("return await", StringComparison.Ordinal)
             && executeDetail.Calls.Count == 2 && executeDetail.Calls[0].Tool == "search" && executeDetail.Calls[0].Input == "{\"query\":\"codegraph_explore\",\"limit\":1}"
-            && executeDetail.Calls[1].Status == "error" && executeDetail.Calls[1].Input is null && executeDetail.Output!.Contains("ses_1"), "execute: code, nested tool calls, result");
+            && executeDetail.Calls[1].Status == "error" && executeDetail.Calls[1].Input == "{}" && executeDetail.Output!.Contains("ses_1"), "execute: code, nested tool calls, result");
+        Check(OpenCodeExecuteInnerCatalog.Entries.Count == 50, "D6 all 50 catalog ids");
+        Check(OpenCodeExecuteInnerCatalog.Target(executeDetail) == "移动会话目录 等 2 个调用", "D6 discovery counts but is not outer target");
+        Check(OpenCodeExecuteInnerCatalog.Summary(executeDetail.Calls[0]) == "query: codegraph_explore · limit: 1", "D6 fixed keys, not compact JSON");
+        Check(OpenCodeExecuteInnerCatalog.Find("future.plugin") is null, "D6 unknown id not guessed");
 
         var grep = Model("grep", """{"status":"completed","input":{"pattern":"x"},"content":[{"type":"text","text":"Found 12 matches\n/a:\n  Line 6: x"}],"metadata":{"matches":12,"truncated":false},"time":{"start":1,"end":2}}""");
         var glob = Model("glob", """{"status":"completed","input":{"pattern":"*.ps1"},"content":[{"type":"text","text":"/a.ps1"}],"metadata":{"count":26,"truncated":false},"time":{"start":1,"end":2}}""");
