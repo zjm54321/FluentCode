@@ -53,12 +53,13 @@ $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentIcons.cs"
 $sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeDirectoryPresentation.cs","$PSScriptRoot/DirectorySelectorTests.cs")
 $sources+="$PSScriptRoot/AgentPresentation.cs"
+$sources+="$PSScriptRoot/PickerFlyoutHost.cs"
 $selectorPath="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs";$selector=[IO.File]::ReadAllText($selectorPath)
 $pickerPath="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPickerDialog.cs";$picker=[IO.File]::ReadAllText($pickerPath)
 $normal=Join-Path $EvidenceRoot 'ActualAgentPresentation.cs'
 $selectorMembers=@('ApplyAgents','ApplyCurrentAgentPresentation','DisplayName','Configure','Clear','InvalidateContext','IsOriginCurrent','ResetUi','SelectPendingAgent','SwitchBlockedReason')|ForEach-Object{Extract $selector $_}
 $rowRecord=[regex]::Match($picker,'(?m)^internal sealed record OpenCodeAgentPickerRow.*;').Value
-"using System;using System.Linq;using System.Collections.Generic;using System.Threading;using AIFrontend.Services.OpenCode;using AIFrontend.Services.Notifications;using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Automation;namespace AIFrontend.Pages.OpenCode;`n"+$rowRecord+"`ninternal sealed partial class OpenCodeAgentSelector {`n"+($selectorMembers -join "`n")+"`n} internal static partial class OpenCodeAgentPickerDialog {`n"+(Extract $picker 'RowItem')+"`n}"|Set-Content -Encoding UTF8 $normal
+"using System;using System.Linq;using System.Collections.Generic;using System.Threading;using System.Threading.Tasks;using AIFrontend.Services.OpenCode;using AIFrontend.Services.Notifications;using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;using Microsoft.UI.Xaml.Automation;namespace AIFrontend.Pages.OpenCode;`n"+$rowRecord+"`ninternal sealed partial class OpenCodeAgentSelector {`n"+($selectorMembers -join "`n")+"`n} internal static partial class OpenCodeAgentPickerDialog {`n"+(Extract $picker 'RowItem')+"`n"+(Extract $picker 'ShowAsync')+"`n}"|Set-Content -Encoding UTF8 $normal
 $sources+=@($normal,"$PSScriptRoot/NormalAgentPresentation.cs","$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs")
 $sources+=@(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs"|Where-Object Name -NE 'OpenCodePairingService.cs'|ForEach-Object FullName)
 $sources+=@('OpenCodeComposerContracts.cs','OpenCodeComposerController.cs','OpenCodeComposerController.Continuation.cs','OpenCodeComposerController.Slots.cs','OpenCodeComposerEditorSync.cs','OpenCodeComposerInputEvidence.cs','OpenCodeComposerViewLifetime.cs','OpenCodeComposerAttachmentLoader.cs','OpenCodeComposerInputPolicy.cs','OpenCodeSessionControlCoordinator.cs','OpenCodeModelPresentation.cs','OpenCodeComposerNativeDialogModels.cs')|ForEach-Object{"$repo/src/AIFrontend/Pages/OpenCode/$_"}

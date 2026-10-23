@@ -7,7 +7,7 @@ using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-// B1a: new-session bottom working-directory selector — pure presentation + actual RefreshBlankPreferenceLabels / BlankProjectButton_Click.
+// NS2: working-directory flyout — pure presentation + actual RefreshBlankPreferenceLabels / BlankProjectButton_Click.
 internal static class DirectorySelectorTests
 {
     private static int checks;
@@ -47,18 +47,21 @@ internal static class DirectorySelectorTests
         var initial=p.Preferences!.Directory;Shows(p,initial,"initial");
         p.AddHomeProject(LongDirectory,"Long");
         var menu=p.ProjectMenu();
-        Check(menu.Placement==Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedLeft,"menu aligns with selector left edge");
-        var rows=menu.Items.OfType<RadioMenuFlyoutItem>().ToList();
-        Check(rows.Count>=2&&rows.All(r=>r.GroupName=="OpenCodeBlankProjectDirectory"),"each project is a radio row");
-        Check(rows.Single(r=>r.IsChecked).Text.EndsWith(initial,StringComparison.Ordinal),"current directory row is checked");
-        var longRow=rows.Single(r=>r.Text.EndsWith(LongDirectory,StringComparison.Ordinal));
-        Check(!longRow.IsChecked&&Equals(longRow.Attached.GetValueOrDefault("Tooltip"),LongDirectory)&&Equals(longRow.Attached.GetValueOrDefault("Help"),LongDirectory),"long row carries full path tooltip/help");
-        longRow.Press();await p.WaitAgentIdle();
+        Check(menu.Placement==Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,"flyout opens below directory sentence");
+        var panel=(StackPanel)menu.Content!;var list=panel.Children.OfType<ListView>().Single();
+        var rows=list.Items.OfType<ListViewItem>().ToList();
+        Check(rows.Count>=2&&list.SelectionMode==ListViewSelectionMode.Single,"projects use native single-selection ListView");
+        Check(list.SelectedItem is ListViewItem{Tag:string selected}&&selected==initial,"current directory selected natively");
+        var longRow=rows.Single(r=>Equals(r.Tag,LongDirectory));
+        Check(!ReferenceEquals(list.SelectedItem,longRow)&&Equals(longRow.Attached.GetValueOrDefault("Tooltip"),LongDirectory),"long row carries full path tooltip");
+        var search=panel.Children.OfType<AutoSuggestBox>().Single();search.Text="not-a-project";
+        Check(list.Items.Count==0,"directory search filters actual project rows");search.Text="";
+        list.ClickItem(longRow);await p.WaitAgentIdle();
         Shows(p,LongDirectory,"after switching to long directory");
-        menu=p.ProjectMenu();rows=menu.Items.OfType<RadioMenuFlyoutItem>().ToList();
-        Check(rows.Single(r=>r.IsChecked).Text.EndsWith(LongDirectory,StringComparison.Ordinal),"reopened menu keeps the switched selection checked");
+        menu=p.ProjectMenu();list=((StackPanel)menu.Content!).Children.OfType<ListView>().Single();rows=list.Items.OfType<ListViewItem>().ToList();
+        Check(list.SelectedItem is ListViewItem{Tag:LongDirectory},"reopened flyout keeps switched selection selected");
         var before=p.Preferences;var agent=p.AgentName;
-        rows.Single(r=>r.IsChecked).Press();
+        list.ClickItem(list.SelectedItem!);
         Check(ReferenceEquals(p.Preferences,before)&&p.AgentName==agent,"re-picking current directory keeps the draft context (agent/model/version) untouched");
         Shows(p,LongDirectory,"after re-picking current directory");
         Check(p.HttpMutations==0,"directory presentation/switch performs no config/send mutation");

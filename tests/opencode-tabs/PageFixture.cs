@@ -92,6 +92,10 @@ public sealed partial class OpenCodePage
     internal readonly TabView SessionTabs=new();internal TabViewItem HomeTab=new();
     private readonly PaneStub SessionPane=new(),InsightsPane=new();
     internal readonly TextBox Composer=new();internal readonly DispatcherQueue DispatcherQueue=new();
+    private XamlRoot XamlRoot { get; } = new();
+    private readonly bool _composerAgentApplyPending = false;
+    private bool IsChildComposerSession => false;
+    private Task AddHomeDirectoryAsync() => Task.CompletedTask; // Server-directory dialog boundary.
     internal string LastLayout="";internal int Invalidations,MessageLoads,Binds,Tracking,Requests,Notices,ReturnClears;
     internal string? Current=>_selectedSessionId;internal bool Home=>_homeActive;internal bool Blank=>_newSessionDraftActive;
     internal OpenCodeComposerController Controller=>_composerController!;
@@ -125,11 +129,11 @@ public sealed partial class OpenCodePage
     internal void AddHomeProject(string directory,string name)=>_homeProjects[directory]=new(new(_homeRuntimeSource,directory),name);
     internal string ProjectName=>BlankProjectName.Text;internal string ProjectParent=>BlankProjectPath.Text;internal Microsoft.UI.Xaml.Visibility ProjectParentVisibility=>BlankProjectPath.Visibility;
     internal object? ProjectToolTip=>BlankProjectButton.Attached.GetValueOrDefault("Tooltip");internal object? ProjectHelp=>BlankProjectButton.Attached.GetValueOrDefault("Help");internal object? ProjectAutomationName=>BlankProjectButton.Attached.GetValueOrDefault("Name");
-    internal MenuFlyout ProjectMenu(){MenuFlyout? shown=null;MenuFlyout.Shown=menu=>shown=menu;BlankProjectButton_Click(this,new());MenuFlyout.Shown=null;return shown??throw new InvalidOperationException("project menu not shown");}
-    internal async Task<MenuFlyout> AgentMenu()
+    internal Flyout ProjectMenu(){Flyout? shown=null;Flyout.Shown=menu=>shown=menu;BlankProjectButton_Click(this,new());Flyout.Shown=null;return shown??throw new InvalidOperationException("project menu not shown");}
+    internal async Task<ListView> AgentMenu()
     {
-        var shown=new TaskCompletionSource<MenuFlyout>(TaskCreationOptions.RunContinuationsAsynchronously);
-        MenuFlyout.Shown=menu=>shown.TrySetResult(menu);BlankAgentButton_Click(this,new());
+        var shown=new TaskCompletionSource<ListView>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Flyout.Shown=menu=>shown.TrySetResult((ListView)menu.Content!);BlankAgentButton_Click(BlankAgentButton,new());
         return await shown.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
     internal Guid SourceEpoch=>_draftSourceEpoch;

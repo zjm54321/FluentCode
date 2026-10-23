@@ -213,6 +213,8 @@ public sealed partial class OpenCodePage
             : _source is { } source && _blankCreationResults.ContainsKey((source.Identity, value!.BlankSlotId))
                 ? "此草稿已发起过创建；草稿已保留，不会再次创建。请先检查首页会话列表。"
                 : _blankPreferenceError ?? "选择仅用于此草稿的首次发送，不修改全局或已有会话。";
+        BlankPreferencesHint.Visibility = _blankPreferenceError is not null || current && _source is { } liveSource
+            && _blankCreationResults.ContainsKey((liveSource.Identity, value!.BlankSlotId)) ? Visibility.Visible : Visibility.Collapsed;
         BlankAgentButton.IsEnabled = current && !_newSessionCreatePending && !_blankPickerPending;
         BlankModelButton.IsEnabled = current && !_newSessionCreatePending && !_blankPickerPending;
         BlankStrengthButton.IsEnabled = current && model is not null && !_newSessionCreatePending && !_blankPickerPending;
@@ -244,25 +246,49 @@ public sealed partial class OpenCodePage
         var runtime = _homeRuntimeSource;
         var token = _composerController.Snapshot.Token;
         var current = _blankPreferences?.Directory;
-        var flyout = new MenuFlyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedLeft };
-        foreach (var project in _homeProjects.Values)
+        var source = _source;
+        var flyout = new Flyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
+        var panel = new StackPanel { Spacing = 10, Width = Math.Max(1, Math.Min(440, XamlRoot.Size.Width - 64)) };
+        panel.Children.Add(new TextBlock { Text = "工作目录", Style = OpenCodeInteractionUi.TryStyle("BodyStrongTextBlockStyle") });
+        var search = new AutoSuggestBox { PlaceholderText = "搜索项目或路径", QueryIcon = new SymbolIcon(Symbol.Find) };
+        panel.Children.Add(search);
+        var list = new ListView { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, MaxHeight = Math.Max(36, Math.Min(280, XamlRoot.Size.Height - 240)) };
+        AutomationProperties.SetName(list, "工作目录");
+        void Populate()
         {
-            var directory = project.Key.Directory;
-            // 单选勾选标记当前目录；完整路径保留在文本中，并另行放入 ToolTip / HelpText，长路径被菜单裁剪时仍可获知。
-            var item = new RadioMenuFlyoutItem { Text = project.DisplayName + " · " + directory, GroupName = "OpenCodeBlankProjectDirectory", IsChecked = directory == current };
-            ToolTipService.SetToolTip(item, directory);
-            AutomationProperties.SetHelpText(item, directory);
-            item.Click += (_, _) =>
+            list.Items.Clear();
+            foreach (var project in _homeProjects.Values.Where(project => string.IsNullOrWhiteSpace(search.Text)
+                || project.DisplayName.Contains(search.Text, StringComparison.OrdinalIgnoreCase)
+                || project.Key.Directory.Contains(search.Text, StringComparison.OrdinalIgnoreCase)))
             {
-                if (!_pageActive || !SourceReady || _homeActive || !_newSessionDraftActive || runtime != _homeRuntimeSource
-                    || _newSessionCreatePending || _composerController.Snapshot.Token != token) return;
-                // 重选当前目录不重建草稿上下文：保留已选智能体 / 模型 / 强度。
-                if (_blankPreferences?.Directory == directory) { RefreshBlankPreferenceLabels(); return; }
-                ChangeBlankSlotDirectory(directory);
-            };
-            flyout.Items.Add(item);
+                var row = new StackPanel { Spacing = 2 };
+                row.Children.Add(new TextBlock { Text = project.DisplayName, TextTrimming = TextTrimming.CharacterEllipsis });
+                row.Children.Add(new TextBlock { Text = project.Key.Directory, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas"),
+                    Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle"), TextTrimming = TextTrimming.CharacterEllipsis });
+                var item = new ListViewItem { Content = row, Tag = project.Key.Directory };
+                ToolTipService.SetToolTip(item, project.Key.Directory);
+                list.Items.Add(item);
+                if (project.Key.Directory == current) list.SelectedItem = item;
+            }
         }
-        if (flyout.Items.Count == 0) flyout.Items.Add(new MenuFlyoutItem { Text = "没有已读取的目录，请先在首页添加", IsEnabled = false });
+        bool Current() => _pageActive && SourceReady && !_homeActive && _newSessionDraftActive && ReferenceEquals(source, _source)
+            && runtime == _homeRuntimeSource && !_newSessionCreatePending && _composerController.Snapshot.Token == token;
+        list.ItemClick += (_, args) =>
+        {
+            if (!Current() || args.ClickedItem is not ListViewItem { Tag: string directory } || !_homeProjects.ContainsKey(directory)) return;
+            flyout.Hide();
+            if (_blankPreferences?.Directory == directory) { RefreshBlankPreferenceLabels(); return; }
+            ChangeBlankSlotDirectory(directory);
+        };
+        search.TextChanged += (_, _) => Populate();
+        Populate();
+        panel.Children.Add(list);
+        var add = new HyperlinkButton { Content = "添加项目文件夹…" };
+        add.Click += async (_, _) => { if (!Current()) return; flyout.Hide(); await AddHomeDirectoryAsync(); };
+        panel.Children.Add(add);
+        panel.Children.Add(new TextBlock { Text = "选择当前连接的项目目录；首次发送时创建会话。", TextWrapping = TextWrapping.Wrap,
+            Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle") });
+        flyout.Content = panel;
         flyout.ShowAt(BlankProjectButton);
     }
 

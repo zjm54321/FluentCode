@@ -114,13 +114,13 @@ internal static class Program
         Check(blank.Contains("await OpenCodeRecentModels.Shared.LoadAsync();\n            if (operation != _blankPickerEpoch || !OwnsHome(source, client, basis.RuntimeSourceId)\n                || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending) return;"), "blank picker revalidates captured source/token/epoch immediately after MRU load await");
         var strengthStart = blank.IndexOf("private async void BlankStrengthButton_Click", StringComparison.Ordinal);
         var strengthProducer = blank.Substring(strengthStart, blank.IndexOf("internal const string BlankVariantRadioGroup", StringComparison.Ordinal) - strengthStart);
-        Check(strengthProducer.Contains("foreach (var (variantId, label, isChecked) in BlankVariantMenuEntries(model, basis.Model.Variant))"), "blank strength menu is produced only from default plus catalog-offered entries");
-        Check(strengthProducer.Contains("new RadioMenuFlyoutItem { Text = label, GroupName = BlankVariantRadioGroup, IsChecked = isChecked }")
-            && !blank.Contains("ToggleMenuFlyoutItem"), "blank strength menu uses native WinUI radio items in one group, not checkbox toggles");
-        Check(strengthProducer.Contains("item.Click += async (_, _) => { if (variantId != basis.Model.Variant) await SetBlankVariantAsync(basis, token, variantId); };")
+        Check(strengthProducer.Contains("(model.Variants ?? new()).Select(variant => variant.Id!).ToArray()"), "blank strength picker receives only current-model catalog variants");
+        Check(strengthProducer.Contains("OpenCodeVariantPickerDialog.ShowAsync(XamlRoot, presentation, anchor: sender as FrameworkElement)")
+            && !strengthProducer.Contains("RadioMenuFlyoutItem"), "blank strength uses shared compact native ListView picker");
+        Check(strengthProducer.Contains("choice.Variant != basis.Model.Variant)") && strengthProducer.Contains("await SetBlankVariantAsync(basis, token, choice.Variant)")
             && !strengthProducer.Contains("Checked +=") && !strengthProducer.Contains("Unchecked +=") && !strengthProducer.Contains("RegisterPropertyChangedCallback"),
             "only an explicit click on a different item commits, via the guarded SetBlankVariantAsync entry");
-        Check(blank.Contains("await SetBlankVariantAsync(basis, token, variantId)") && blank.Contains("var fresh = await client.ListModelsAsync(basis.Directory") && blank.Contains("VariantAvailable(model, variantId)"), "variant gesture rechecks fresh catalog");
+        Check(blank.Contains("await SetBlankVariantAsync(basis, token, choice.Variant)") && blank.Contains("var fresh = await client.ListModelsAsync(basis.Directory") && blank.Contains("VariantAvailable(model, variantId)"), "variant gesture rechecks fresh catalog");
         Check(blank.Contains("Model = basis.Model with { Variant = variantId }") && blank.Contains("choice.Variant is { } variant && !(offered.Variants?.Any"), "opaque ID commit and model-dialog fresh variant validation retained");
         var logo = Read("src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs");
         Check(logo.Contains("new FontIcon") && logo.Contains("Glyph = \"\\uE99A\"") && logo.Contains("SymbolThemeFontFamily")

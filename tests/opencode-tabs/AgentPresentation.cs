@@ -11,7 +11,8 @@ internal static class AgentPresentationTests
     private static int checks;
     private static void Check(bool ok,string message){checks++;if(!ok)throw new Exception(message);}
     private static void IsA(OpenCodePage p,string where)=>Check(p.AgentName==LongName&&p.AgentColor is{R:0x12,G:0x3a,B:0xbc}&&Equals(p.AgentDescription,"description build"),"A exact full name/RGB/description "+where);
-    private static MenuFlyoutItem Item(MenuFlyout menu,string text)=>menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text==text);
+    private sealed record Choice(ListView List,ListViewItem Row){internal void Press()=>List.ClickItem(Row);}
+    private static Choice Item(ListView menu,string text)=>new(menu,menu.Items.OfType<ListViewItem>().Single(i=>i.Tag is AIFrontend.Pages.OpenCode.OpenCodeAgentPickerRow row && row.Name==text));
     internal static async Task BaselineProbe(string xaml)
     {
         var p=new OpenCodePage(xaml);p.Load();p.AgentData();p.New();await p.WaitDefaults();IsA(p,"baseline initial handler/default path");
@@ -27,8 +28,9 @@ internal static class AgentPresentationTests
         var p=new OpenCodePage(xaml);p.Load();p.AgentData();p.New();await p.WaitDefaults();var a=p.BlankTab!;IsA(p,"after initial actual defaults");
         var menu=await p.AgentMenu();
         Check(menu.Items.Count==2,"real agent menu omits hidden/subagent-only entries");
-        var colored=Item(menu,LongName);Check(colored.Foreground is SolidColorBrush{Color:{R:0x12,G:0x3a,B:0xbc}}&&Equals(colored.Attached["Tooltip"],"description build"),"real candidate carries accepted RGB/description");
-        Check(colored.Content is TextBlock{Text:LongName,TextWrapping:Microsoft.UI.Xaml.TextWrapping.Wrap,TextTrimming:Microsoft.UI.Xaml.TextTrimming.None,MaxLines:0},"actual Loaded menu name producer wraps complete name, no ellipsis");
+        var colored=Item(menu,LongName);
+        Check(colored.Row.Tag is AIFrontend.Pages.OpenCode.OpenCodeAgentPickerRow{Color:"#123aBc",Description:null},"compact picker receives real agent ID/color without description subtext");
+        Check(colored.Row.Content is Grid grid && grid.Children.OfType<TextBlock>().Single() is {Text:LongName,TextWrapping:Microsoft.UI.Xaml.TextWrapping.NoWrap,TextTrimming:Microsoft.UI.Xaml.TextTrimming.CharacterEllipsis},"native compact picker row is icon plus plain single-line name");
         Item(menu,"Other full agent").Press();await p.WaitAgentIdle();
         Check(p.AgentName=="Other full agent"&&p.AgentColor is null&&Equals(p.AgentDescription,"description other"),"real B selection clears local RGB back to theme and keeps B description");
         colored.Press();Check(p.AgentName=="Other full agent"&&p.AgentColor is null,"late A menu closure cannot overwrite a newer B choice");

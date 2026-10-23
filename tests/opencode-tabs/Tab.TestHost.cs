@@ -37,7 +37,7 @@ namespace Microsoft.UI.Xaml
     public class FrameworkElement:UIElement
     {
         public object Tag{get;set;}=null!;public string Name{get;set;}="";public object? Style{get;set;}
-        public double Width{get;set;}public double Height{get;set;}public double MaxWidth{get;set;}public double MinWidth{get;set;}public double MinHeight{get;set;}
+        public double Width{get;set;}public double Height{get;set;}public double MaxWidth{get;set;}public double MaxHeight{get;set;}public double MinWidth{get;set;}public double MinHeight{get;set;}
         public Thickness Padding{get;set;}public Thickness Margin{get;set;}public HorizontalAlignment HorizontalAlignment{get;set;}public VerticalAlignment VerticalAlignment{get;set;}
         public XamlRoot? XamlRoot{get;set;}=new();public event Action<object,RoutedEventArgs>? Loaded;public void RaiseLoaded()=>Loaded?.Invoke(this,new());
     }
@@ -47,6 +47,7 @@ namespace Microsoft.UI.Xaml
 namespace Microsoft.UI.Xaml.Media
 {
     using Microsoft.UI.Xaml;using Microsoft.UI.Xaml.Controls;
+    public sealed class FontFamily(string name){public string Name=>name;}
     public sealed class SolidColorBrush(Windows.UI.Color color){public Windows.UI.Color Color=color;}
     public static class VisualTreeHelper
     {
@@ -73,7 +74,7 @@ namespace Microsoft.UI.Xaml.Controls
     public class ColumnDefinition{public GridLength Width;}public class RowDefinition{public GridLength Height;}
     public class Grid:Panel{public double ColumnSpacing,RowSpacing;public List<ColumnDefinition> ColumnDefinitions=new();public List<RowDefinition> RowDefinitions=new();public static void SetColumn(UIElement e,int n){}public static void SetRow(UIElement e,int n){}public static void SetColumnSpan(UIElement e,int n){}}public class StackPanel:Panel{public Orientation Orientation{get;set;}public double Spacing{get;set;}}
     public class Border:FrameworkElement{public UIElement? Child{get;set;}public CornerRadius CornerRadius{get;set;}public Thickness BorderThickness{get;set;}}
-    public class ProgressRing:FrameworkElement{public bool IsActive{get;set;}}public class TextBlock:FrameworkElement{public static readonly object ForegroundProperty=new();public object? Foreground;public void ClearValue(object property)=>Foreground=null;private string _text="";public Action? TextUpdated;public string Text{get=>_text;set{_text=value;TextUpdated?.Invoke();}}public int MaxLines;public bool IsTextSelectionEnabled{get;set;}public TextWrapping TextWrapping{get;set;}public TextTrimming TextTrimming{get;set;}}
+    public class ProgressRing:FrameworkElement{public bool IsActive{get;set;}}public class TextBlock:FrameworkElement{public Microsoft.UI.Xaml.Media.FontFamily? FontFamily{get;set;}public static readonly object ForegroundProperty=new();public object? Foreground;public void ClearValue(object property)=>Foreground=null;private string _text="";public Action? TextUpdated;public string Text{get=>_text;set{_text=value;TextUpdated?.Invoke();}}public int MaxLines;public bool IsTextSelectionEnabled{get;set;}public TextWrapping TextWrapping{get;set;}public TextTrimming TextTrimming{get;set;}}
     public class Button:ContentControl{public bool IsEnabled{get;set;}=true;public event Action<object,RoutedEventArgs>? Click;public void Press()=>Click?.Invoke(this,new());}
     public class TextBox:FrameworkElement{private string _text="";public Action<string>? OnTextAssigned;public string Text{get=>_text;set{_text=value;OnTextAssigned?.Invoke(value);}}public bool IsReadOnly{get;set;} public int SelectionStart,SelectionLength;public void Select(int start,int length){SelectionStart=start;SelectionLength=length;}public bool Focus(FocusState state)=>true;}
     public class FontIcon:FrameworkElement{public string Glyph{get;set;}="";public double FontSize{get;set;}}
@@ -81,6 +82,12 @@ namespace Microsoft.UI.Xaml.Controls
     public class MenuFlyout:FrameworkElement{public List<object> Items{get;}=new();public Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode Placement{get;set;}public static Action<MenuFlyout>? Shown;public void ShowAt(FrameworkElement target){foreach(var row in Items.OfType<MenuFlyoutItem>()){row.Content=new TextBlock{Text=row.Text};row.RaiseLoaded();}Shown?.Invoke(this);}}
     public class MenuFlyoutItem:Button{public string Text{get;set;}="";public FontIcon? Icon{get;set;}}public class RadioMenuFlyoutItem:MenuFlyoutItem{public string GroupName{get;set;}="";public bool IsChecked{get;set;}}
     public class MenuFlyoutSeparator{}
+    public class Flyout:FrameworkElement{public object? Content{get;set;}public Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode Placement{get;set;}public static Action<Flyout>? Shown;public event Action<object,RoutedEventArgs>? Closed;public void ShowAt(FrameworkElement target)=>Shown?.Invoke(this);public void Hide()=>Closed?.Invoke(this,new());}
+    public class HyperlinkButton:Button{}
+    public enum Symbol{Find}public class SymbolIcon(Symbol symbol):FrameworkElement{public Symbol Symbol=>symbol;}
+    public class AutoSuggestBox:FrameworkElement{private string _text="";public string Text{get=>_text;set{_text=value;TextChanged?.Invoke(this,new());}}public string PlaceholderText{get;set;}="";public SymbolIcon? QueryIcon{get;set;}public event Action<object,RoutedEventArgs>? TextChanged;}
+    public enum ListViewSelectionMode{Single}
+    public class ItemClickEventArgs(object item):EventArgs{public object ClickedItem=>item;}
     public class ListViewItem:ContentControl{public bool IsEnabled{get;set;}=true;public MenuFlyout? ContextFlyout{get;set;}}
     public sealed class ItemVector:Collection<object>,IObservableVector<object>
     {
@@ -93,6 +100,8 @@ namespace Microsoft.UI.Xaml.Controls
     }
     public class ListView:FrameworkElement
     {
+        public ListViewSelectionMode SelectionMode{get;set;}public bool IsItemClickEnabled{get;set;}
+        public event Action<object,ItemClickEventArgs>? ItemClick;public void ClickItem(object item)=>ItemClick?.Invoke(this,new(item));public bool Focus(FocusState state)=>true;
         public ItemVector Items{get;}=new();private object? _selected;public event Action<object,SelectionChangedEventArgs>? SelectionChanged;
         public object? SelectedItem{get=>_selected;set{if(ReferenceEquals(_selected,value))return;_selected=value;SelectionChanged?.Invoke(this,new());}}
         public void ScrollIntoView(object item){}
