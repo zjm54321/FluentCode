@@ -9,6 +9,18 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
+    private bool IsChildComposerSession => !_newSessionDraftActive && !_homeActive
+        && ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision
+        && _agentSelectorSessionId == _selectedSessionId
+        && _agentSelector.CurrentSessionInfo is { ParentId: not null } child && child.Id == _selectedSessionId;
+
+    private void RefreshChildComposerVisibility()
+    {
+        var child = IsChildComposerSession;
+        ComposerCell.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
+        ComposerQueueHost.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
+        if (child) ExitShellComposer(focus: false);
+    }
     private readonly TextBlock _composerMeasure = new() { TextWrapping = TextWrapping.Wrap };
     private bool _composerLayoutPending;
     private bool _composerOverFiveLines;

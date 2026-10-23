@@ -281,31 +281,20 @@ public sealed partial class OpenCodePage
             var response = await client.ListAgentsAsync(basis.Directory, _homeCancellation.Token);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token)
                 || response.Location?.Directory != basis.Directory) return;
-            var flyout = new MenuFlyout();
             AcceptBlankAgentPresentation(basis, response.Data!);
-            void Add(OpenCodeAgentInfo agent)
-            {
-                var item = new MenuFlyoutItem { Text = agent.Name!, MaxWidth = Math.Max(1, Math.Min(520, (BlankAgentButton.XamlRoot?.Size.Width ?? 600) - 48)) };
-                OpenCodeAgentPresentation.Apply(item, agent.Color);
-                item.Loaded += (_, _) => OpenCodeAgentPresentation.WrapMenuName(item, agent.Name!, item.MaxWidth - 72);
-                ToolTipService.SetToolTip(item, agent.Description);
-                item.Click += (_, _) =>
-                {
-                    if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending) return;
-                    _blankPreferences = basis with { Agent = agent.Id, Model = _blankModelChosen ? basis.Model : null, Version = basis.Version + 1 };
-                    _blankPreferenceError = null;
-                    _blankMetadataDirectory = null;
-                    EnsureBlankPreferences();
-                };
-                flyout.Items.Add(item);
-            }
-            foreach (var agent in response.Data!.Where(IsBlankAgentSelectable))
-                Add(agent);
-            flyout.ShowAt(sender as FrameworkElement ?? BlankAgentButton);
+            var rows = response.Data!.Where(IsBlankAgentSelectable)
+                .Select(agent => new OpenCodeAgentPickerRow(agent.Id!, agent.Name!, null, true, null, agent.Color)).ToArray();
+            var selected = await OpenCodeAgentPickerDialog.ShowAsync(XamlRoot, rows, basis.Agent, null, null,
+                anchor: sender as FrameworkElement);
+            if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token)
+                || _newSessionCreatePending || selected is null || !rows.Any(row => row.Id == selected)) return;
+            _blankPreferences = basis with { Agent = selected, Model = _blankModelChosen ? basis.Model : null, Version = basis.Version + 1 };
+            _blankPreferenceError = null;
+            _blankMetadataDirectory = null;
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "智能体列表未能读取；现有选择与草稿未变。"; }
-        finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
+        finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); EnsureBlankPreferences(); } }
     }
 
     private async void BlankModelButton_Click(object sender, RoutedEventArgs e)
@@ -314,7 +303,7 @@ public sealed partial class OpenCodePage
             || _client is not { } client || _homeCancellation is null || _composerController is null) return;
         var token = _composerController.Snapshot.Token;
         if (!OwnsBlankPreferences(basis, token)) return;
-        await ChooseBlankModelAsync(basis, token);
+        await ChooseBlankModelAsync(basis, token, anchor: sender as FrameworkElement);
     }
 
     private async void BlankStrengthButton_Click(object sender, RoutedEventArgs e)
@@ -325,6 +314,7 @@ public sealed partial class OpenCodePage
         if (!OwnsBlankPreferences(basis, token)) return;
         _blankPickerPending = true;
         var operation = ++_blankPickerEpoch;
+        OpenCodeModelPickerResult? result = null;
         RefreshBlankPreferenceLabels();
         try
         {
@@ -334,20 +324,21 @@ public sealed partial class OpenCodePage
             if (model is null || model.Enabled == false) { _blankPreferenceError = "模型已不再可选，请重新选择。"; return; }
             OwnBlankMetadata(basis);
             _blankModels = response.Data!;
-            // Native WinUI radio menu items: one group, the system template draws the selected dot.
-            // Seeding IsChecked never commits; only an explicit Click goes through SetBlankVariantAsync.
-            var flyout = new MenuFlyout();
-            foreach (var (variantId, label, isChecked) in BlankVariantMenuEntries(model, basis.Model.Variant))
-            {
-                var item = new RadioMenuFlyoutItem { Text = label, GroupName = BlankVariantRadioGroup, IsChecked = isChecked };
-                item.Click += async (_, _) => { if (variantId != basis.Model.Variant) await SetBlankVariantAsync(basis, token, variantId); };
-                flyout.Items.Add(item);
-            }
-            flyout.ShowAt(sender as FrameworkElement ?? BlankStrengthButton);
+            var row = new OpenCodeModelPickerRow(model.ProviderId!, model.Id!, model.Name!, null, true,
+                (model.Variants ?? new()).Select(variant => variant.Id!).ToArray(), model.Status);
+            var presentation = new OpenCodeModelPickerPresentation("新会话", new[] { row },
+                new OpenCodeModelCurrent.Explicit(new(model.ProviderId!, model.Id!, basis.Model.Variant), true), null, basis);
+            result = await OpenCodeVariantPickerDialog.ShowAsync(XamlRoot, presentation, anchor: sender as FrameworkElement);
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "强度信息未能读取；当前选择未变。"; }
         finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
+        if (operation == _blankPickerEpoch && OwnsHome(source, client, basis.RuntimeSourceId)
+            && OwnsBlankPreferences(basis, token) && !_newSessionCreatePending
+            && result is { Outcome: OpenCodeModelPickerOutcome.Confirmed, Choice: { } choice }
+            && choice.ProviderId == basis.Model.ProviderId && choice.ModelId == basis.Model.Id
+            && choice.Variant != basis.Model.Variant)
+            await SetBlankVariantAsync(basis, token, choice.Variant);
     }
 
     internal const string BlankVariantRadioGroup = "OpenCodeBlankReasoningEffort";
@@ -361,7 +352,7 @@ public sealed partial class OpenCodePage
         return ids.Select(id => (id, OpenCodeModelPresentation.VariantLabel(id), id == current)).ToArray();
     }
 
-    private async Task ChooseBlankModelAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token)
+    private async Task ChooseBlankModelAsync(OpenCodeBlankDraftPreferences basis, OpenCodeComposerToken token, FrameworkElement? anchor = null)
     {
         if (_blankPickerPending || _newSessionCreatePending || _source is not { } source || _client is not { } client
             || _homeCancellation is null || !OwnsBlankPreferences(basis, token)) return;
@@ -383,7 +374,7 @@ public sealed partial class OpenCodePage
                 new(selected.ProviderId!, selected.Id!, selected.Variant), rows.Any(row => row.Available && row.ProviderId == selected.ProviderId && row.ModelId == selected.Id))
                 : new OpenCodeModelCurrent.Unknown();
             var result = await OpenCodeModelPickerDialog.ShowAsync(XamlRoot,
-                new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false);
+                new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false, anchor: anchor);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending
                 || result.Outcome != OpenCodeModelPickerOutcome.Confirmed || result.Choice is not { } choice) return;
             // Re-read metadata after confirmation. Never choose a withdrawn/disabled model or fabricated variant.

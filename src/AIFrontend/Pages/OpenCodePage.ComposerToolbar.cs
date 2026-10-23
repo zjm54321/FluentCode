@@ -109,7 +109,7 @@ public sealed partial class OpenCodePage
     {
         if (!SessionControlCardCanEdit()) return;
         if (_newSessionDraftActive) BlankAgentButton_Click(sender, e);
-        else _agentSelector.OpenSelection();
+        else _agentSelector.OpenSelection(sender as FrameworkElement);
     }
 
     private void ComposerModelButton_Click(object sender, RoutedEventArgs e)

@@ -484,12 +484,13 @@
                                 </StackPanel>
 
                                 <!-- Row 5 排队条宿主（L6：OpenCodeQueuedPromptsView 放入此处，有未投递条目时才显示） -->
+                                <Grid x:Name="ComposerQueueHost" Grid.Row="5">
                                 <Grid
                                     x:Name="QueuedPromptsHost"
-                                    Grid.Row="5"
                                     Margin="0,8,0,0"
                                     MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}"
-                                     Visibility="Collapsed" />
+                                      Visibility="Collapsed" />
+                                </Grid>
 
                                 <Button
                                     x:Name="ScrollToBottomButton"

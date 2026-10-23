@@ -17,6 +17,7 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerView? _composerView;
     private OpenCodeComposerBinding? _composerBinding;
     private bool _composerPickerPending;
+    private bool _composerAgentApplyPending;
     private bool _suppressComposerFocus;
     // Redesign §3 (L2): the blank "新会话" layout is shown with no selected session. The same composer then binds
     // an UNBOUND binding (controller never sends it); Enter asks OpenCodePage.NewSessionTab.cs to create first.
@@ -81,6 +82,7 @@ public sealed partial class OpenCodePage
         };
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
         InitializeShellComposer();
+        _agentSelector.DisplayChanged += (_, _) => RefreshChildComposerVisibility();
     }
 
     private OpenCodeComposerMentionSearch? ComposerMentionSearch()
@@ -117,7 +119,7 @@ public sealed partial class OpenCodePage
         var snapshot = _composerController!.Snapshot;
         // A native dialog may outlive a binding. Keep the page busy until it returns, and do not let
         // the view offer edits/picking during the separate legacy sender's local submission lifetime.
-        return _isSending || _composerPickerPending || _nativeActionOwner is not null || _nativeDialogPending
+        return _isSending || _composerPickerPending || _composerAgentApplyPending || IsChildComposerSession || _nativeActionOwner is not null || _nativeDialogPending
             || _newSessionCreatePending ? snapshot with { IsBusy = true, CanSubmit = false } : snapshot;
     }
 
@@ -131,6 +133,7 @@ public sealed partial class OpenCodePage
     private void RefreshComposerView()
     {
         if (_composerView is null) return;
+        RefreshChildComposerVisibility();
         // RequestRender is coalesced and pulls the latest snapshot on the UI dispatcher. It does not
         // focus the editor. An unloaded page can render its inactive snapshot, never its old context.
         _composerView.RequestRender();
@@ -206,6 +209,7 @@ public sealed partial class OpenCodePage
     // Both button and eligible Enter use this one event bridge. Enter never invokes Stop.
     private void RequestComposerSubmission(string? delivery = null)
     {
+        if (IsChildComposerSession || _composerAgentApplyPending) return;
         var shellHandled = false;
         TrySubmitShell(delivery, ref shellHandled);
         if (shellHandled) return; // Shell never reaches prompt, command, steer or queue paths.
@@ -269,10 +273,35 @@ public sealed partial class OpenCodePage
     {
         var controller = _composerController;
         var view = _composerView;
-        if (!_pageActive || controller is null || view is null || _isSending || _composerPickerPending
+        if (!_pageActive || controller is null || view is null || _isSending || _composerPickerPending || _composerAgentApplyPending || IsChildComposerSession
             || HasPendingNativeAction() || !view.PrepareSubmission()) return;
         var input = view.InputEvidence;
         if (!input.IsClean || controller.Snapshot.Token != token) return;
+        var capturedBinding = _composerBinding;
+        if (capturedBinding is null || !OwnsComposerBinding(capturedBinding)) return;
+        if (_agentSelector.HasPendingSelection)
+        {
+            _composerAgentApplyPending = true;
+            try
+            {
+                UpdateComposerButtons();
+                RefreshComposerView();
+                if (!await _agentSelector.ApplyPendingSelectionAsync()) return;
+            }
+            finally
+            {
+                _composerAgentApplyPending = false;
+                if (_pageActive) UpdateComposerButtons();
+                RefreshComposerView();
+            }
+            // A switch owns its own shared lease. It must finish before local submission begins;
+            // navigation, draft edits, IME activity or a replacement view invalidate this gesture.
+            if (!ReferenceEquals(controller, _composerController) || !ReferenceEquals(view, _composerView)
+                || !ReferenceEquals(capturedBinding, _composerBinding) || !OwnsComposerBinding(capturedBinding)
+                || IsChildComposerSession || _isSending || _composerPickerPending || HasPendingNativeAction()
+                || !view.PrepareSubmission() || !OpenCodeComposerInputEvidence.StillCurrent(input, view.InputEvidence)
+                || controller.Snapshot.Token != token || _isComposing) return;
+        }
         var localOwner = BeginLocalAgentSubmission();
         _isSending = true;
         OpenCodeComposerSendContext? context = null;

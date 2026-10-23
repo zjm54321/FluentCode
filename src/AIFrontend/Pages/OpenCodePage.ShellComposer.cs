@@ -72,7 +72,7 @@ public sealed partial class OpenCodePage
 
     private void EnterShellComposer()
     {
-        if (_shellComposer.Active || !_pageActive || _composerView is null || _composerBinding is not { } binding
+        if (_shellComposer.Active || IsChildComposerSession || !_pageActive || _composerView is null || _composerBinding is not { } binding
             || !OwnsComposerBinding(binding) || GetComposerSnapshot().IsBusy || HasPendingNativeAction()
             || ComposerCoveredByOverlay || !_composerView.PrepareShellMode()) return;
         if (!ReferenceEquals(_shellBinding, binding)) _shellComposer.Reset();
