@@ -317,10 +317,14 @@ public sealed partial class OpenCodePage
             _blankPreferences = basis with { Agent = selected, Model = _blankModelChosen ? basis.Model : null, Version = basis.Version + 1 };
             _blankPreferenceError = null;
             _blankMetadataDirectory = null;
+            // Hand directly to the metadata lifetime before publishing an idle picker state.
+            // A second click must not race the chosen agent's model/default refresh.
+            _blankPickerPending = false;
+            await LoadBlankMetadataAsync(_blankPreferences, token);
         }
         catch (OperationCanceledException) { }
         catch (Exception) { if (OwnsHome(source, client, basis.RuntimeSourceId) && operation == _blankPickerEpoch) _blankPreferenceError = "智能体列表未能读取；现有选择与草稿未变。"; }
-        finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); EnsureBlankPreferences(); } }
+        finally { if (operation == _blankPickerEpoch) { _blankPickerPending = false; RefreshBlankPreferenceLabels(); } }
     }
 
     private async void BlankModelButton_Click(object sender, RoutedEventArgs e)
