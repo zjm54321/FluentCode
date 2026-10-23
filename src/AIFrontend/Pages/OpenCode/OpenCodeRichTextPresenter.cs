@@ -107,7 +107,8 @@ public sealed class OpenCodeRichTextPresenter
     public OpenCodeRichTextPresenter()
     {
         _root.SizeChanged += (_, _) => ConstrainBlocks();
-        _root.Unloaded += (_, _) => _renderLifetime.Cancel();
+        // Reparenting can deliver the old Unloaded after the new Loaded.
+        _root.Unloaded += (_, _) => { if (!_root.IsLoaded) _renderLifetime.Cancel(); };
         _root.Loaded += async (_, _) =>
         {
             ConstrainBlocks();
