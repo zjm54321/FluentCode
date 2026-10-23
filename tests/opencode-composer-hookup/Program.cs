@@ -109,6 +109,7 @@ internal static class Program
         await SideQuestionTests.Run();
         if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }
         await RoutingAndProtection();
+        await DeferredAgentSubmission();
         var first = checks;
         await ReceiptsAndOwners();
         var second = checks - first;
@@ -123,6 +124,38 @@ internal static class Program
         BlankResolvedSelection();
         PermissionDismissalFocus();
         Console.WriteLine($"PASS: 5 production-linked page-partial groups, {checks} assertions ({first}/{second}/{third}/{fourth}/{checks-first-second-third-fourth}); real core/editor helpers, fake HTTP, WinUI/view/scheduler doubles; no live UI/service.");
+    }
+    private static async Task DeferredAgentSubmission()
+    {
+        var before = checks;
+        foreach (var outcome in new[] { "success", "rejected", "edit", "binding-aba" })
+        {
+            using var f = new Fixture();
+            f.Page.Text("retained agent draft");
+            var apply = Signal<bool>();
+            var entered = Signal<bool>();
+            f.Page.PendingAgent(async () =>
+            {
+                Check(!f.Page.Pending && f.Page.Begins == 0, "AS3 switch applies before local agent-submission lease: " + outcome);
+                entered.TrySetResult(true);
+                return await apply.Task;
+            });
+            var send = f.Page.Send();
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Check(f.Http.Posts == 0 && f.Page.Begins == 0, "AS3 prompt waits for agent apply: " + outcome);
+            await f.Page.Send();
+            Check(f.Http.Posts == 0 && f.Page.AgentApplyCalls == 1, "AS3 repeated submit cannot apply or send twice: " + outcome);
+            if (outcome == "edit") f.Page.Text("newer draft");
+            if (outcome == "binding-aba") { f.Page.Switch("other"); f.Page.Switch("ses_test"); }
+            apply.SetResult(outcome != "rejected");
+            await send;
+            if (outcome == "success")
+                Check(f.Http.Posts == 1 && f.Page.Begins == 1 && !f.Page.Snapshot.HasDraft, "AS3 unchanged successful switch sends exactly once");
+            else
+                Check(f.Http.Posts == 0 && f.Page.Begins == 0 && f.Page.Snapshot.Text == (outcome == "edit" ? "newer draft" : "retained agent draft"),
+                    "AS3 rejected/stale switch preserves draft and never starts submission: " + outcome);
+        }
+        Console.WriteLine($"PASS AS3 deferred agent apply/send fences: {checks - before} assertions; actual page route, selector/HTTP doubles.");
     }
     private static async Task TerminalButtons()
     {
@@ -843,6 +876,11 @@ namespace AIFrontend.Pages
         internal readonly Button ComposerQueueButton = new(), ComposerExpandButton = new();
         private bool _composerOverFiveLines = false;
         private void InitializeComposerLayout() { }
+        private bool FullScreenComposerActive => false; // Native overlay boundary, exercised by app-open check.
+        private bool IsChildComposerSession => false;
+        private void RefreshChildComposerVisibility() { }
+        private void OpenFullScreenComposer() { FullScreenOpens++; }
+        internal int FullScreenOpens;
         private void QueueComposerLayout() { }
         private void RefreshWslQuickAccess() { } // B12 quick access is outside this hookup host.
         internal readonly ProgressRing SendProgress = new();
@@ -878,6 +916,8 @@ namespace AIFrontend.Pages
         internal OpenCodeComposerController Controller => _composerController!;
         internal OpenCodeComposerSnapshot Snapshot => GetComposerSnapshot();
         internal bool Pending => _agentSelector.Pending;
+        internal void PendingAgent(Func<Task<bool>> apply) { _agentSelector.HasPendingSelection = true; _agentSelector.ApplySelection = apply; }
+        internal int AgentApplyCalls => _agentSelector.ApplyCalls;
         internal bool Sending => _isSending;
         internal bool SendEnabled => SendStopButton.IsEnabled;
         internal bool Missing => _sessionMissing;
@@ -1069,6 +1109,11 @@ namespace AIFrontend.Pages.OpenCode
     public sealed class OpenCodeAgentSelector
     {
         public event EventHandler<OpenCodeAgentSwitchReportedEventArgs>? SwitchReported;
+        public event EventHandler? DisplayChanged { add { } remove { } }
+        public bool HasPendingSelection { get; set; }
+        internal Func<Task<bool>> ApplySelection = () => Task.FromResult(true);
+        internal int ApplyCalls;
+        public async Task<bool> ApplyPendingSelectionAsync() { ApplyCalls++; var applied = await ApplySelection(); if (applied) HasPendingSelection = false; return applied; }
         internal bool Pending;
         public void Clear() => Pending = false;
         public void Configure(OpenCodePageSource source, long revision, string session, long generation) { }

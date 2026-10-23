@@ -25,8 +25,13 @@ namespace AIFrontend.Pages
             }
             Check(!IsBlankAgentSelectable(new() { Mode = "subagent" }), "subagent-only absent");
             var page = new OpenCodePage();
-            Check(!ExpandBlankComposerChoices(true, 599.99) && ExpandBlankComposerChoices(true, 600), "new-session labels collapse only below 600 editor epx");
-            Check(!ExpandBlankComposerChoices(false, 960), "session never duplicates labeled sidebar choices");
+            Check(ComposerChoiceLabels(760) == (true, true, true), "all choices expanded at 760");
+            Check(ComposerChoiceLabels(600) == (true, true, false), "effort collapses first at 600");
+            Check(ComposerChoiceLabels(480) == (true, false, false), "model collapses second at 480");
+            Check(ComposerChoiceLabels(380) == (false, false, false), "agent collapses last at 380");
+            Check(HideChildComposer("child", "child", "parent"), "child session has no composer");
+            Check(!HideChildComposer("main", "main", null) && !HideChildComposer("new", "old", "parent")
+                && !HideChildComposer(null, null, "parent"), "main, missing and stale session metadata do not hide another session composer");
             Check(UseSingleRowComposer(false, true) && !UseSingleRowComposer(false, false)
                 && !UseSingleRowComposer(true, true) && !UseSingleRowComposer(true, false), "only wide sessions use a single composer row");
             foreach (var literal in new[] { "#123456", "#aBcDeF", "#000000", "#FFFFFF" })
@@ -105,6 +110,10 @@ namespace AIFrontend.Pages
             Check(shell.Contains("AppFonts.Apply(ShellComposer, AppFontSlot.Monospace)")
                 && shell.Contains("AppFonts.Apply(ShellPromptGlyph, AppFontSlot.Monospace)")
                 && !shell.Contains("RequestedTheme"), "terminal uses live app fonts without forcing the surrounding card theme");
+            Check(Named("TerminalComposerMode").Descendants().Any(n => Attr(n, "Target") == "ComposerCard.Background"
+                && Attr(n, "Value") == "{ThemeResource ShellTerminalBackground}")
+                && shell.Contains("GoToState(this, \"TerminalComposerMode\", false)")
+                && shell.Contains("GoToState(this, \"NormalComposerMode\", false)"), "A3 whole card changes to terminal palette and restores normal card on exit");
             Check(shell.Contains("ShellComposer.IsEnabled = ready;") && shell.Contains("RequestComposerSubmission();")
                 && shell.Contains("ExecuteSessionShellGuardedAsync(binding.SessionId, command")
                 && shell.Contains("InfoBarSeverity.Error, \"Shell 请求失败\""), "terminal retains keyboard submission, busy disabling and error surfacing");
@@ -115,11 +124,13 @@ namespace AIFrontend.Pages
                 && Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "identity row retired; switch diagnostics/recovery retained in overview");
             foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "ComposerSubagentsButton", "ComposerConnectionButton", "ComposerExpandButton", "ComposerQueueButton", "SendStopButton" })
                 Check(Attr(Named(name), "AutomationProperties.Name") is not null && Attr(Named(name), "ToolTipService.ToolTip") is not null, "every compact entry named and tooltip reachable: " + name);
-            Check(Named("BlankAgentButton").Descendants().Any(n => Attr(n, "Property") == "Foreground"
-                && Attr(n, "Value") == "{ThemeResource AccentTextFillColorPrimaryBrush}"), "dynamic theme accent setter (not static/cached brush)");
+            Check(Attr(Named("BlankAgentButton"), "Style") == "{StaticResource ComposerAgentDropdownStyle}"
+                && xaml.Descendants().Single(n => Attr(n, "{http://schemas.microsoft.com/winfx/2006/xaml}Key") == "ComposerAgentDropdownStyle")
+                    .Descendants().Any(n => Attr(n, "Property") == "Foreground" && Attr(n, "Value") == "{ThemeResource AccentTextFillColorPrimaryBrush}"), "dynamic theme accent resource (not cached brush)");
             var blank = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"));
             Check(blank.Contains("_blankAgents.Where(IsBlankAgentSelectable)") && blank.Contains("response.Data!.Where(IsBlankAgentSelectable)"), "defaults and menu use same selection predicate");
-            Check(blank.Contains("ToolTipService.SetToolTip(BlankAgentButton, agent?.Description)") && blank.Contains("ToolTipService.SetToolTip(item, agent.Description)"), "current and candidates expose description");
+            Check(blank.Contains("ToolTipService.SetToolTip(BlankAgentButton, agent?.Description)")
+                && blank.Contains("OpenCodeAgentPickerDialog.ShowAsync"), "current agent retains description; choices use the shared compact native picker");
             Check(!blank.Contains("IsEnabled = agent.Mode"), "subagent entries not rendered disabled");
             var layout = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"));
             Check(layout.Contains("ArrangeComposerRows(singleRow)") && layout.Contains("Grid.SetRow(ComposerActions, singleRow ? 0 : 1)")
@@ -130,8 +141,8 @@ namespace AIFrontend.Pages
                 && Named("ComposerToolbarLeft").Parent == Named("ComposerInputLayout")
                 && Named("ComposerExpandButton").Parent == Named("Composer").Parent, "editor, actions and plus share a stable layout; fullscreen stays inside input");
             var binding = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs"));
-            Check(binding.Contains("OpenCodeModelLogo.Label(") && binding.Contains("OpenCodeAgentPresentation.Apply(agentLabel, color)")
-                && binding.Contains("expanded ? OpenCodeModelPresentation.VariantLabel(selected?.Variant)"), "expanded choices retain colored agent name, model logo/name and translated effort");
+            Check(binding.Contains("OpenCodeModelLogo.Label(") && binding.Contains("OpenCodeAgentPresentation.Apply(BlankAgentButton, color)")
+                && binding.Contains("ComposerChoiceLabel(\"\\uEC4A\", OpenCodeModelPresentation.VariantLabel(selected?.Variant)"), "choices retain colored agent, model logo/name and native effort glyph");
             Check(binding.Contains("description = info?.Description") && binding.Contains("owns ? _agentSelector.CurrentAgentDescription : null")
                 && binding.Contains("ToolTipService.SetToolTip(BlankAgentButton, description ??"), "visible composer agent tooltip uses owned draft/session description in both responsive modes");
             var card = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs"));
@@ -147,6 +158,20 @@ namespace AIFrontend.Pages
             Check(binding.Contains("SessionPaneToggleButton_Click(sender, e)") && binding.Contains("OpenSessionControlModelPicker(variantOnly: true)")
                 && binding.Contains("BlankStrengthButton_Click(sender, e)"), "drawer and existing independent strength routes preserved");
             Check(!binding.Contains("SendStopButton.IsEnabled") && !binding.Contains("ComposerQueueButton.IsEnabled"), "toolbar presentation never changes send/queue availability policy");
+            foreach (var name in new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "BlankProjectButton" })
+                Check(Named(name).Name.LocalName == "DropDownButton", "native dropdown control: " + name);
+            Check(Named("BlankProjectButton").Ancestors().Contains(Named("NewSessionHeader"))
+                && Named("BlankPreferencesHost").Descendants().Any(n => Attr(n, "Text") == "中开始新会话"), "directory sentence is under the wordmark, above composer");
+            Check(layout.Contains("var maximum = OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome)")
+                && !layout.Contains("line * 8") && !layout.Contains("blankMinimum"), "new and existing drafts use the same native five-line cap");
+            Check(layout.Contains("ComposerCell.Visibility = child ? Visibility.Collapsed")
+                && layout.Contains("ComposerQueueHost.Visibility = child ? Visibility.Collapsed"), "SA3 removes composer and queue host rather than disabling their chrome");
+            var full = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.FullScreenComposer.cs"));
+            Check(full.Contains("PageRoot.Children.Add(overlay)") && full.Contains("Grid.SetRow(overlay, 1)")
+                && full.Contains("AcceptsReturn = true, TextWrapping = TextWrapping.Wrap"), "fullscreen native editor covers the page below tabs");
+            Check(full.Contains("TryApplyEditorInput(_fullScreenToken") && full.Contains("OwnsComposerBinding(binding)")
+                && full.Contains("VirtualKey.Escape") && full.Contains("VirtualKey.Control")
+                && full.Contains("_composerController?.Snapshot.Token == token"), "fullscreen shares the guarded draft and fences keyboard/send origins");
             Console.WriteLine($"PASS A1: {count} focused checks (production policy/color + structural XAML/wiring; no native UI)");
         }
     }

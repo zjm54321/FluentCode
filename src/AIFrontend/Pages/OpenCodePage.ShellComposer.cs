@@ -80,6 +80,7 @@ public sealed partial class OpenCodePage
         _shellDraftStart = Composer.SelectionStart;
         _shellDraftLength = Composer.SelectionLength;
         _shellComposer.Enter();
+        VisualStateManager.GoToState(this, "TerminalComposerMode", false);
         ShellComposer.Text = _shellComposer.Text;
         ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Collapsed;
         ComposerShellHost.Visibility = Visibility.Visible;
@@ -93,6 +94,7 @@ public sealed partial class OpenCodePage
     {
         if (!_shellComposer.Active) return;
         _shellComposer.Exit();
+        VisualStateManager.GoToState(this, "NormalComposerMode", false);
         _shellComposing = false;
         ComposerShellHost.Visibility = Visibility.Collapsed;
         ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Visible;

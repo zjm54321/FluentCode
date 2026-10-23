@@ -41,7 +41,7 @@ public sealed partial class OpenCodePage
         _composerController = new(OwnsComposerBinding);
         _composerView = new(GetComposerSnapshot, _composerController.BeginCatalogLifetime, _composerController.EndCatalogLifetime);
         _composerView.MentionSearchProvider = ComposerMentionSearch;
-        _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || !_pageActive);
+        _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || FullScreenComposerActive || !_pageActive);
         InitializeComposerLayout();
         ComposerCompanionHost.Children.Add(_composerView);
         ComposerCompanionHost.Visibility = Visibility.Visible;

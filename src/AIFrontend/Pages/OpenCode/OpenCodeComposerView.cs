@@ -797,8 +797,10 @@ internal sealed class OpenCodeComposerView : StackPanel
             _editorReadOnlyApplied = readOnly;
             _editor.IsReadOnly = readOnly;
         }
-        // Precedence: staged command argument hint > splash (active) > neutral base placeholder (inactive/read-only).
-        var placeholder = OpenCodeComposerSplash.Resolve(s.SelectedCommand, s.IsActive, _splash.Current.Text, _editorPlaceholder ?? string.Empty);
+        // New-session copy is fixed; existing sessions keep their activation-only splash.
+        // A staged command argument hint still takes precedence in either context.
+        var splash = s.IsUnboundDraft ? _editorPlaceholder ?? string.Empty : _splash.Current.Text;
+        var placeholder = OpenCodeComposerSplash.Resolve(s.SelectedCommand, s.IsActive, splash, _editorPlaceholder ?? string.Empty);
         if (!string.Equals(_editor.PlaceholderText, placeholder, StringComparison.Ordinal)) _editor.PlaceholderText = placeholder;
     }
 

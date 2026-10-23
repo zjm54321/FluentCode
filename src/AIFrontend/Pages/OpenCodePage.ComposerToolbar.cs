@@ -10,20 +10,17 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
-    private readonly OpenCodeComposerEffortGauge _composerEffortGauge = new();
     private readonly Ellipse _composerConnectedDot = new() { Width = 6, Height = 6 };
     private FrameworkElement? _composerModelLogo;
-    private bool _composerExpandedChoices;
 
     // Use the actual editor width, not the sidebar threshold: a new-session page
     // has no sidebars and can fit labels well before two resident panes would fit.
-    internal static bool ExpandBlankComposerChoices(bool newSession, double composerWidth)
-        => newSession && composerWidth >= 600;
+    internal static (bool Agent, bool Model, bool Effort) ComposerChoiceLabels(double width)
+        => (width >= 430, width >= 540, width >= 680);
 
     private void UpdateComposerToolbarLayout()
     {
-        if (_composerExpandedChoices != ExpandBlankComposerChoices(_newSessionDraftActive, ComposerInputLayout.ActualWidth))
-            RefreshComposerToolbar();
+        RefreshComposerToolbar();
     }
 
     private void InitializeComposerToolbar()
@@ -36,8 +33,8 @@ public sealed partial class OpenCodePage
 
     private void RefreshComposerToolbar()
     {
-        var expanded = ExpandBlankComposerChoices(_newSessionDraftActive, ComposerInputLayout.ActualWidth);
-        _composerExpandedChoices = expanded;
+        var labels = ComposerChoiceLabels(ComposerInputLayout.ActualWidth);
+        RefreshChildComposerVisibility();
         var enabled = SessionControlCardCanEdit();
         OpenCodeModelInfo? model;
         OpenCodeModelRef? selected;
@@ -67,39 +64,47 @@ public sealed partial class OpenCodePage
             model = selected is not null && TryCaptureInsightsBinding(out var binding)
                 ? _insights?.CurrentModelInfo(binding!, selected) : null;
         }
-        BlankAgentButton.Content = expanded ? OpenCodeAgentPresentation.Name(agent ?? "不可用")
-            : new FontIcon { Glyph = "\uE99A", FontSize = 18 };
+        BlankAgentButton.Content = ComposerChoiceLabel(OpenCodeAgentIcons.Glyph(agent),
+            OpenCodeAgentIcons.DisplayName(agent ?? "不可用"), labels.Agent);
         OpenCodeAgentPresentation.Apply(BlankAgentButton, color);
-        if (BlankAgentButton.Content is TextBlock agentLabel) OpenCodeAgentPresentation.Apply(agentLabel, color);
         DescribeComposerIcon(BlankAgentButton, "选择智能体：" + (agent ?? "不可用"));
         ToolTipService.SetToolTip(BlankAgentButton, description ?? "智能体说明不可用");
-        var key = expanded + "\n" + model?.Id + "\n" + model?.Name + "\n" + selected?.Id;
+        var key = labels.Model + "\n" + model?.Id + "\n" + model?.Name + "\n" + selected?.Id;
         if (BlankModelButton.Tag as string != key || _composerModelLogo is null)
         {
             BlankModelButton.Tag = key;
-            _composerModelLogo = expanded
-                ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? selected?.Id ?? "不可用")
+            _composerModelLogo = labels.Model
+                ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? "模型不可用")
                 : OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
         }
         BlankModelButton.Content = _composerModelLogo;
-        DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? selected?.Id ?? "不可用"));
+        DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? "不可用"));
         var ticks = OpenCodeComposerEffort.Ticks(model, selected?.Variant);
-        _composerEffortGauge.Render(ticks);
-        BlankStrengthButton.Content = expanded ? OpenCodeModelPresentation.VariantLabel(selected?.Variant) : _composerEffortGauge;
+        BlankStrengthButton.Content = ComposerChoiceLabel("\uEC4A", OpenCodeModelPresentation.VariantLabel(selected?.Variant), labels.Effort);
         BlankStrengthButton.Visibility = ticks.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         DescribeComposerIcon(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));
         BlankAgentButton.IsEnabled = enabled;
         BlankModelButton.IsEnabled = enabled;
         BlankStrengthButton.IsEnabled = enabled && ticks.Count > 0;
-        _composerEffortGauge.Dimmed = !BlankStrengthButton.IsEnabled; // Visual only: mirror the button's disabled state.
-        foreach (var button in new[] { BlankAgentButton, BlankModelButton, BlankStrengthButton })
+        var buttons = new[] { BlankAgentButton, BlankModelButton, BlankStrengthButton };
+        var expandedLabels = new[] { labels.Agent, labels.Model, labels.Effort };
+        for (var i = 0; i < buttons.Length; i++)
         {
-            button.Width = expanded ? double.NaN : 32;
-            button.Padding = expanded ? new Thickness(8, 0, 8, 0) : new Thickness(0);
+            buttons[i].Width = expandedLabels[i] ? double.NaN : 32;
+            buttons[i].Padding = expandedLabels[i] ? new Thickness(8, 0, 8, 0) : new Thickness(0);
         }
+        RefreshFullScreenComposerChoices(agent, color, model, selected, enabled);
     }
 
-    private static void DescribeComposerIcon(Button button, string name)
+    private static FrameworkElement ComposerChoiceLabel(string glyph, string text, bool expanded)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        panel.Children.Add(new FontIcon { Glyph = glyph, FontSize = 16 });
+        if (expanded) panel.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
+        return panel;
+    }
+
+    private static void DescribeComposerIcon(Control button, string name)
     {
         AutomationProperties.SetName(button, name);
         ToolTipService.SetToolTip(button, name);

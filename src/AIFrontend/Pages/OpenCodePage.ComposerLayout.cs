@@ -9,10 +9,13 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
+    internal static bool HideChildComposer(string? selectedSessionId, string? infoSessionId, string? parentId)
+        => selectedSessionId is not null && selectedSessionId == infoSessionId && parentId is not null;
+
     private bool IsChildComposerSession => !_newSessionDraftActive && !_homeActive
         && ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision
         && _agentSelectorSessionId == _selectedSessionId
-        && _agentSelector.CurrentSessionInfo is { ParentId: not null } child && child.Id == _selectedSessionId;
+        && _agentSelector.CurrentSessionInfo is { } info && HideChildComposer(_selectedSessionId, info.Id, info.ParentId);
 
     private void RefreshChildComposerVisibility()
     {
@@ -20,6 +23,8 @@ public sealed partial class OpenCodePage
         ComposerCell.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         ComposerQueueHost.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         if (child) ExitShellComposer(focus: false);
+        if (FullScreenComposerActive && (child || _fullScreenBinding is not { } binding || !OwnsComposerBinding(binding)))
+            CloseFullScreenComposer(focus: false);
     }
     private readonly TextBlock _composerMeasure = new() { TextWrapping = TextWrapping.Wrap };
     private bool _composerLayoutPending;
@@ -37,6 +42,8 @@ public sealed partial class OpenCodePage
         ComposerInputLayout.RowSpacing = singleRow ? 0 : 8;
         BlankToolbarChoices.Visibility = singleRow ? Visibility.Collapsed : Visibility.Visible;
         ComposerToolbarMiddle.Visibility = !singleRow && !_newSessionDraftActive ? Visibility.Visible : Visibility.Collapsed;
+        ComposerChoiceSpacer.Width = _newSessionDraftActive ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        ComposerStatusColumn.Width = _newSessionDraftActive ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
     }
 
     private void InitializeComposerLayout()
@@ -91,11 +98,8 @@ public sealed partial class OpenCodePage
         var editorWidth = Math.Max(1, ComposerEditorHost.ActualWidth - horizontalChrome);
         measure.Text = Composer.Text + "\u200b"; // Preserve a trailing empty line in native text measure.
         measure.Measure(new Size(editorWidth, double.PositiveInfinity));
-        var maximum = _blankComposerPlacement ? Math.Max(180, line * 8 + chrome) : OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
-        // Reserve room for the naturally measured official brand and external preferences on short windows.
-        // Normal-session five-line sizing is unchanged; this is only the empty centered host's initial height.
-        var blankMinimum = Math.Clamp(SessionLayoutRoot.ActualHeight * 0.24, 104, 156);
-        Composer.MinHeight = _blankComposerPlacement ? Math.Min(blankMinimum, maximum) : singleRow ? line + chrome : 64;
+        var maximum = OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
+        Composer.MinHeight = line + chrome;
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
         _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(measure.DesiredSize.Height, line);
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;
@@ -143,7 +147,6 @@ public sealed partial class OpenCodePage
     {
         if (!_composerOverFiveLines || !ComposerExpandButton.IsEnabled || !_pageActive || _composerView is null
             || _composerController is null || !_composerView.PrepareSubmission() || HasPendingNativeAction()) return;
-        var ticket = _composerController.TryTakeDraftEditorAction(GetComposerSnapshot().Token);
-        if (ticket is not null) DispatchClientAction(ticket);
+        OpenFullScreenComposer();
     }
 }

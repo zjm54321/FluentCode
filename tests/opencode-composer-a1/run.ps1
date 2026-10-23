@@ -16,10 +16,11 @@ $members = @()
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
 $toolbar = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs")
-$expanded = [regex]::Match($toolbar, '(?ms)^    internal static bool ExpandBlankComposerChoices\(.*?;')
+$expanded = [regex]::Match($toolbar, '(?ms)^    internal static \(bool Agent, bool Model, bool Effort\) ComposerChoiceLabels\(.*?;')
 if (!$expanded.Success) { throw 'Missing composer choice width policy' }
 $members += $expanded.Value
 $layout = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs")
+$members += [regex]::Match($layout, '(?ms)^    internal static bool HideChildComposer\(.*?;').Value
 $singleRow = [regex]::Match($layout, '(?m)^    internal static bool UseSingleRowComposer\([^\r\n]*;')
 if (!$singleRow.Success) { throw 'Missing composer row policy' }
 $members += $singleRow.Value
