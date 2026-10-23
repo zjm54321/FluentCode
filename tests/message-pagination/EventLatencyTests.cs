@@ -178,4 +178,44 @@ internal static partial class Program
         await pending;
         Check(page.TestForeground is null && page.ActivityRefreshes == before, "old-source active REST cannot repopulate or notify the replacement page");
     }
+
+    private static Task HealthyStreamSkipsPolling()
+    {
+        var backend = new LatencyBackend(); using var client = backend.Client();
+        var page = new OpenCodePage(); page.TestActivate(Session, client);
+        var stream = page.TestBeginEvents();
+        page.TestPoll();
+        Check(backend.Messages == 1 && backend.Active == 1, "before handshake periodic tick keeps both fallback requests");
+        page.TestReady(stream);
+        var messages = backend.Messages; var active = backend.Active; var applies = page.TestAppliedCount;
+        for (var i = 0; i < 10; i++) page.TestPoll();
+        Check(backend.Messages == messages && backend.Active == active && page.TestAppliedCount == applies,
+            "ten healthy ticks perform zero message/status fetches and zero history applications");
+        page.TestReceive(stream, Wire("session.status", """{"sessionID":"ses_other","status":{"type":"busy"}}"""));
+        Check(page.TestSessionWorking("ses_other") == true, "public feed updates non-selected session before selected-session filter");
+        page.TestReceive(stream, Wire("session.status", """{"sessionID":"ses_other","status":{"type":"idle"}}"""));
+        Check(page.TestSessionWorking("ses_other") == false, "non-selected session terminal status arrives without polling");
+        page.TestDisconnected(stream);
+        page.TestPoll();
+        Check(backend.Messages == messages + 1 && backend.Active == active + 1, "disconnect clears readiness and restores both fallback requests");
+        page.TestReady(stream, reconnect: true);
+        Check(backend.Messages == messages + 2 && backend.Active == active + 2, "reconnect refetches message gap and listed session statuses");
+        page.TestPoll();
+        Check(backend.Messages == messages + 2 && backend.Active == active + 2, "reconnected stream suppresses periodic requests again");
+        var replacement = page.TestBeginEvents();
+        page.TestDisconnected(stream);
+        page.TestReady(stream, reconnect: true);
+        Check(!replacement.Ready.Task.IsCompleted, "old connection callbacks cannot mark replacement session ready");
+        page.TestPoll();
+        Check(backend.Messages == messages + 3 && backend.Active == active + 3, "replacement session polls while awaiting its own handshake");
+        page.TestReady(replacement);
+        messages = backend.Messages; active = backend.Active;
+        page.TestDisconnected(stream);
+        page.TestPoll();
+        Check(backend.Messages == messages && backend.Active == active, "stale disconnect cannot re-enable polling for healthy replacement");
+        page.TestUnload();
+        page.TestPoll();
+        Check(backend.Messages == messages && backend.Active == active, "inactive page tick keeps original no-fetch guard");
+        return Task.CompletedTask;
+    }
 }

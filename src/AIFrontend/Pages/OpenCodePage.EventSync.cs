@@ -51,8 +51,7 @@ public sealed partial class OpenCodePage
         _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _eventSnapshotBeforeReady = false;
         _eventReconciliationPending = false;
-        var ready = _eventReady;
-        _ = Task.Run(() => RunEventSyncAsync(client, source, cts, ready));
+        _ = Task.Run(() => RunEventSyncAsync(client, source, cts));
     }
 
     private void RestartSessionEventSync(string sessionId)
@@ -85,6 +84,7 @@ public sealed partial class OpenCodePage
     private void OnEventStreamConnected(CancellationTokenSource owner, bool reconnect)
     {
         if (owner.IsCancellationRequested || !ReferenceEquals(owner, _eventCts) || !_pageActive || !SourceReady) return;
+        _eventReady?.TrySetResult();
         var repair = reconnect || _eventSnapshotBeforeReady;
         _eventSnapshotBeforeReady = false;
         if (repair)
@@ -100,6 +100,13 @@ public sealed partial class OpenCodePage
         }
         _ = RefreshListedSessionStatusesAsync();
         OnAgentTreeConnected();
+    }
+
+    private void OnEventStreamDisconnected(CancellationTokenSource owner)
+    {
+        if (owner.IsCancellationRequested || !ReferenceEquals(owner, _eventCts)) return;
+        // Readiness belongs to this connection, not the first handshake of the subscription loop.
+        _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     partial void OnMessageHistoryWorkflowEnded()
@@ -121,7 +128,7 @@ public sealed partial class OpenCodePage
         while (await reader.MoveNextAsync().ConfigureAwait(false));
     }
 
-    private async Task RunEventSyncAsync(OpenCodeClient client, OpenCodePageSource source, CancellationTokenSource owner, TaskCompletionSource ready)
+    private async Task RunEventSyncAsync(OpenCodeClient client, OpenCodePageSource source, CancellationTokenSource owner)
     {
         var ct = owner.Token;
         var backoff = 1;
@@ -140,7 +147,6 @@ public sealed partial class OpenCodePage
                         {
                             if (readyInConnection) continue; // Duplicate readiness frames are not reconnects.
                             readyInConnection = true;
-                            ready.TrySetResult();
                             backoff = 1;
                             var reconnect = connectedOnce;
                             DispatcherQueue.TryEnqueue(() => OnEventStreamConnected(owner, reconnect));
@@ -171,6 +177,7 @@ public sealed partial class OpenCodePage
                 {
                     Debug.WriteLine($"OpenCode.SSE reconnect delay_s={backoff} error={ex.GetType().Name}");
                 }
+                DispatcherQueue.TryEnqueue(() => OnEventStreamDisconnected(owner));
                 await Task.Delay(TimeSpan.FromSeconds(backoff), ct).ConfigureAwait(false);
                 backoff = Math.Min(backoff * 2, 15);
             }

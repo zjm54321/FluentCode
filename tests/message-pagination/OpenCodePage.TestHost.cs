@@ -66,6 +66,7 @@ namespace Microsoft.UI.Xaml.Controls
 
 namespace Microsoft.UI.Dispatching
 {
+    public sealed class DispatcherQueueTimer { }
     public sealed class DispatcherQueue
     {
         public bool HasThreadAccess => true;

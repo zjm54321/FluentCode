@@ -43,9 +43,11 @@ public sealed partial class OpenCodePage
     }
     internal void TestReady(StreamBoundary stream, bool reconnect = false)
     {
-        stream.Ready.TrySetResult(); // The transport sets this before posting the actual UI callback.
         OnEventStreamConnected(stream.Owner, reconnect);
     }
+    internal void TestDisconnected(StreamBoundary stream) => OnEventStreamDisconnected(stream.Owner);
+    internal void TestPoll() => PollTimer_Tick(new(), new());
+    internal bool? TestSessionWorking(string id) => _liveSessionStatuses.TryGetValue(id, out var s) ? s.Working : null;
     internal void TestReceive(StreamBoundary stream, OpenCodeEvent item)
     {
         _eventQueue.Enqueue((stream.Owner, item));

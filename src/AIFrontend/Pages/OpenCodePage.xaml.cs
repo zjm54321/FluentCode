@@ -956,6 +956,10 @@ public sealed partial class OpenCodePage : Page
             return;
         }
 
+        // The public feed updates messages AND all listed sessions' activity. Reconnect refetches gaps.
+        if (SourceReady && _eventCts is { IsCancellationRequested: false }
+            && _eventReady?.Task.IsCompletedSuccessfully == true) return;
+
         _ = RefreshMessagesAsync();
         _ = RefreshListedSessionStatusesAsync();
     }

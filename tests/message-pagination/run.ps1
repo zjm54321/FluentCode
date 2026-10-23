@@ -58,12 +58,12 @@ $sources = $openCode + @(
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
 $eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
-$extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
+$extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'PollTimer_Tick', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
-    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
+    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
     $text = [IO.File]::ReadAllText($extraction.Path)
@@ -94,6 +94,7 @@ using Windows.ApplicationModel.DataTransfer;
 using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Dispatching;
 namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
