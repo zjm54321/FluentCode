@@ -13,7 +13,23 @@ $output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetT
 if (Test-Path $output) { throw "Evidence root already exists: $output" }
 New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeInstructionNoticeTests.dll'
+# Exact pure presenter metrics; native row classes still require the worktree app build.
+$chipSource = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeTimelineChipView.cs")
+$metrics = [regex]::Match($chipSource, '(?ms)^internal static class OpenCodeTimelineRowMetrics\r?\n\{.*?^\}')
+if (!$metrics.Success) { throw 'Timeline presenter metrics extraction failed.' }
+$metricsSource = Join-Path $output 'TimelineRowMetrics.Extracted.cs'
+[IO.File]::WriteAllText($metricsSource, "namespace AIFrontend.Pages.OpenCode;`n" + $metrics.Value)
+$reasoningSource = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeReasoningRowView.cs")
+foreach ($presenter in @($chipSource, $reasoningSource)) {
+    if (!$presenter.Contains('new GridLength(OpenCodeTimelineRowMetrics.IconColumn)') -or !$presenter.Contains('OpenCodeTimelineRowStyle.Apply(')) {
+        throw 'Timeline presenter is not wired to shared icon/row styling.'
+    }
+}
+if ($reasoningSource -notmatch 'TrackPointer\(_row, e\); OpenCodeToolDetailPopup.Shared.HoverEnter\(this\)') {
+    throw 'Reasoning preview must capture the pointer before hover entry.'
+}
 $arguments = @('/nologo', '/target:exe', '/debug:embedded', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
+$arguments += '"' + $metricsSource + '"'
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 # Full production OpenCode client/projection/DTOs, minus the in-progress UI-state lane and the WinUI pairing service.
 $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |

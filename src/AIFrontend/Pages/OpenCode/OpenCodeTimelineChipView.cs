@@ -4,13 +4,15 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
+using Windows.UI;
 
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
 /// 时间线中工具样式的紧凑单行（F8 / wave5 G4 / H5）：指令（“指令”）、异步完成（“终端完成”“子任务完成”“后台任务完成”）、
-/// 插件内部自动消息等。外观与工具行一致（高 32、左对齐）：类别字形 | 名称（BodyStrong）| 目标 | 摘要 | 右侧状态字形。
+/// 插件内部自动消息等。外观与工具行一致（进行中 36px / 已结束 30px、24px 图标列）：类别字形 | 名称 | 目标 | 摘要 | 右侧状态字形。
 /// 完整内容只在悬停片刻（延迟见 OpenCodeToolDetailPopup.HoverOpenDelayMs）后于共享的 <see cref="OpenCodeToolDetailPopup"/> 中显示；
 /// 子智能体点击直接打开真实子会话小窗，其余点击固定详情，Esc 关闭。调用/结果属性与正文留在悬停详情中。
 /// 普通 sealed 业务类（不是控件子类）：原生 Button（透明工具按钮样式）+ 内置文本样式与主题画刷。
@@ -66,7 +68,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _statusCell.Children.Add(_statusIcon);
         _statusCell.Children.Add(_progress);
 
-        _icon = new FontIcon { Glyph = _glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
+        _icon = new FontIcon { Glyph = _glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
 
         _label = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
@@ -90,7 +92,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _summaryText.Visibility = Visibility.Collapsed;
 
         var content = new Grid { ColumnSpacing = 8 };
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(OpenCodeTimelineRowMetrics.IconColumn) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -112,7 +114,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Height = 32,
+            Height = OpenCodeTimelineRowMetrics.Height(null),
             Padding = new Thickness(8, 0, 8, 0),
             BorderThickness = new Thickness(0),
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
@@ -146,6 +148,8 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         Grid.SetColumn(_rowChrome, 1);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_rowChrome);
+        _root.ActualThemeChanged += (_, _) => ApplyRowStyle();
+        ApplyRowStyle();
     }
 
     internal FrameworkElement Element => _root;
@@ -297,6 +301,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         }
 
         OpenCodeToolPartView.ApplyRowChrome(_rowChrome, chrome);
+        ApplyRowStyle();
 
         AutomationProperties.SetName(_chip, content.AccessibleName);
 
@@ -305,6 +310,9 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             OpenCodeToolDetailPopup.Shared.Refresh(Source);
         }
     }
+
+    private void ApplyRowStyle()
+        => OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, _label, _targetText, _summaryText);
 
     internal void Dispose()
     {
@@ -335,5 +343,39 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         public OpenCodeToolDetailView BuildDetailContent() => ((IOpenCodeDetailContentSource)owner).BuildDetailContent();
         public void OnDetailStateChanged(bool shown, bool pinned) => ((IOpenCodeDetailContentSource)owner).OnDetailStateChanged(shown, pinned);
         public void OpenChildChat() { if (!owner._disposed) owner._linkInvoked?.Invoke(); }
+    }
+}
+
+// Mirrors i-process OpenCodeProcessedRowMetrics without importing another lane's commits.
+// Kept separate from the native styling boundary so the exact policy is headlessly testable.
+internal static class OpenCodeTimelineRowMetrics
+{
+    internal const double IconColumn = 24;
+    internal static bool IsRunning(OpenCodeToolRowStatus? status) => status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
+    internal static double Height(OpenCodeToolRowStatus? status) => IsRunning(status) ? 36 : 30;
+    internal static double FontSize(OpenCodeToolRowStatus? status) => IsRunning(status) ? 14 : 13;
+    internal static double VerticalGap(OpenCodeToolRowStatus? status) => IsRunning(status) ? 2 : 0;
+}
+
+internal static class OpenCodeTimelineRowStyle
+{
+    internal static void Apply(Grid root, Button row, OpenCodeToolRowStatus? status, params TextBlock[] labels)
+    {
+        row.Height = OpenCodeTimelineRowMetrics.Height(status);
+        var gap = OpenCodeTimelineRowMetrics.VerticalGap(status);
+        // A4: each row owns its tint; its margins remain untinted even beside another active row.
+        root.Margin = new Thickness(0, gap, 0, gap);
+        foreach (var label in labels) label.FontSize = OpenCodeTimelineRowMetrics.FontSize(status);
+        var active = OpenCodeTimelineRowMetrics.IsRunning(status);
+        if (new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast)
+        {
+            root.ClearValue(Panel.BackgroundProperty);
+            OpenCodeToolTheme.Apply(root, OpenCodeToolTheme.Grid(active
+                ? "SystemColorHighlightColorBrush" : "SubtleFillColorTransparentBrush"));
+            return;
+        }
+        root.Style = null;
+        root.Background = active ? new SolidColorBrush(root.ActualTheme == ElementTheme.Dark
+            ? Color.FromArgb(26, 96, 205, 255) : Color.FromArgb(19, 0, 95, 184)) : null;
     }
 }

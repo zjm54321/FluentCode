@@ -9,7 +9,7 @@ namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
 /// 时间线中的“思考”行（F4，AutomationId <c>OpenCodeReasoningRow.{首个思考部件 key}</c>）：同一段内连续的 reasoning 部件
-/// 合并为一行，外观与工具行一致（高 32：类别图标 | “思考” | 首行预览 | 右侧状态）。进行中（S2）即使文本为空也立即显示“思考中…”行与进度环。
+/// 合并为一行，外观与工具行一致（进行中 36px / 已结束 30px：24px 类别图标 | “思考” | 首行预览 | 右侧状态）。进行中（S2）即使文本为空也立即显示“思考中…”行与进度环。
 /// 完整思考文本在详情中按 Markdown 呈现（H4，与助手正文同一个 <see cref="OpenCodeRichTextPresenter"/>）。
 /// 悬停片刻（延迟见 OpenCodeToolDetailPopup.HoverOpenDelayMs）后在共享的 <see cref="OpenCodeToolDetailPopup"/> 中预览完整思考文本（不移动焦点），点击 / Enter / Space 固定，Esc 关闭。
 /// 普通 sealed 业务类（不是控件子类）：原生 Button + Grid，内置文本样式与主题画刷。
@@ -59,7 +59,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         _previewText.TextTrimming = TextTrimming.CharacterEllipsis;
 
         var content = new Grid { ColumnSpacing = 8 };
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(OpenCodeTimelineRowMetrics.IconColumn) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
@@ -78,13 +78,13 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Height = 32,
+            Height = OpenCodeTimelineRowMetrics.Height(OpenCodeToolRowStatus.Completed),
             Padding = new Thickness(8, 0, 8, 0),
             BorderThickness = new Thickness(0),
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
         };
         _row.Click += (_, _) => OpenCodeToolDetailPopup.Shared.TogglePinned(this);
-        _row.PointerEntered += (_, _) => OpenCodeToolDetailPopup.Shared.HoverEnter(this);
+        _row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); OpenCodeToolDetailPopup.Shared.HoverEnter(this); };
         _row.PointerExited += (_, _) => OpenCodeToolDetailPopup.Shared.HoverExit(this);
         _row.KeyDown += OnRowKeyDown;
         _row.Unloaded += (_, _) => OpenCodeToolDetailPopup.Shared.CloseIf(this);
@@ -107,6 +107,8 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         Grid.SetColumn(_row, 1);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_row);
+        _root.ActualThemeChanged += (_, _) => ApplyRowStyle();
+        ApplyRowStyle();
     }
 
     internal FrameworkElement Element => _root;
@@ -174,6 +176,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeProcessedSummaryStyle.IsSettledRow(_model.Status)
             ? OpenCodeProcessedSummaryStyle.IconBrushKey
             : OpenCodeToolTheme.TextSecondary));
+        ApplyRowStyle();
         AutomationProperties.SetAutomationId(_row, "OpenCodeReasoningRow." + (rowKey ?? string.Empty));
         AutomationProperties.SetName(_row, _model.AccessibleName);
 
@@ -182,6 +185,9 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
             OpenCodeToolDetailPopup.Shared.Refresh(this);
         }
     }
+
+    private void ApplyRowStyle()
+        => OpenCodeTimelineRowStyle.Apply(_root, _row, _model.Status, _nameText, _previewText);
 
     internal void Dispose()
     {

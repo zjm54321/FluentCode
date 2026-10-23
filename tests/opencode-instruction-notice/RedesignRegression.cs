@@ -105,6 +105,13 @@ internal static class RedesignRegression
             "RP4: ordered native annotations include user and assistant text, never thinking rows");
         timeline.ClearMessages();
         Check(timeline.ScrollAnnotations().Count == 0, "session clear removes old annotation source");
+        Check(OpenCodeTimelineRowMetrics.IconColumn == 24, "V3: reasoning and synthetic/background rows share a 24px icon column");
+        foreach (var status in new OpenCodeToolRowStatus?[] { OpenCodeToolRowStatus.Running, OpenCodeToolRowStatus.Streaming })
+            Check(OpenCodeTimelineRowMetrics.Height(status) == 36 && OpenCodeTimelineRowMetrics.FontSize(status) == 14
+                && OpenCodeTimelineRowMetrics.VerticalGap(status) == 2, "V3/A4: every active status has larger text/row and an untinted per-row gap");
+        foreach (var status in new OpenCodeToolRowStatus?[] { null, OpenCodeToolRowStatus.Completed, OpenCodeToolRowStatus.Error, OpenCodeToolRowStatus.Unknown })
+            Check(OpenCodeTimelineRowMetrics.Height(status) == 30 && OpenCodeTimelineRowMetrics.FontSize(status) == 13
+                && OpenCodeTimelineRowMetrics.VerticalGap(status) == 0, "V3: settled/statusless rows reset height, type size and gap");
         if (queueOnly) { Console.WriteLine($"PASS production queue view: {checks} assertions; inert native boundary only."); return checks; }
 
         var previousApp = Application.Current;
