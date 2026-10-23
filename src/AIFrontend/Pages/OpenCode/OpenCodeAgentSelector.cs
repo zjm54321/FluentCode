@@ -398,7 +398,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
 
             if (surfaceProtection)
             {
-                await SurfaceProtectionAsync(origin, token).ConfigureAwait(true);
+                await SurfaceProtectionAsync(origin).ConfigureAwait(true);
                 if (!IsOriginCurrent(origin))
                 {
                     return;
@@ -782,7 +782,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         }
     }
 
-    private async Task SurfaceProtectionAsync(AgentSwitchOrigin origin, CancellationToken token)
+    private async Task SurfaceProtectionAsync(AgentSwitchOrigin origin)
     {
         if (_retainedUnknownOperationId is not null)
         {

@@ -1140,7 +1140,7 @@ public sealed partial class OpenCodePage : Page
                 ScrollToBottom(animated: !(initial || forceFollow));
             }
 
-            await RefreshAuxiliaryAsync(client, sessionId, generation, ct, () => OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead));
+            await RefreshAuxiliaryAsync(client, sessionId, ct, () => OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead));
         }
         catch (Exception)
         {
@@ -1175,7 +1175,7 @@ public sealed partial class OpenCodePage : Page
     }
 
     /// <summary>待处理权限/表单卡片与 inbox 待投递跟踪；失败不影响消息刷新的连接状态。</summary>
-    private async Task RefreshAuxiliaryAsync(OpenCodeClient client, string sessionId, int generation, CancellationToken ct, Func<bool> historyCurrent)
+    private async Task RefreshAuxiliaryAsync(OpenCodeClient client, string sessionId, CancellationToken ct, Func<bool> historyCurrent)
     {
         IReadOnlyList<OpenCodePermissionRequest>? permissions = null;
         IReadOnlyList<OpenCodeFormInfo>? forms = null;
@@ -3936,7 +3936,7 @@ public sealed partial class OpenCodePage : Page
         SendStopButton.IsEnabled = (buttons.CanSend || buttons.CanStop) && NativeSendStopDisplayAllowed()
             && !ComposerCoveredByOverlay;
         SendProgress.IsActive = buttons.ShowProgress;
-        SetSendStopMode(OpenCodeComposerSendPresentation.Map(buttons, isWorking), snapshot.HasDraft);
+        SetSendStopMode(OpenCodeComposerSendPresentation.Map(buttons), snapshot.HasDraft);
         UpdateComposerSecondaryActions(isWorking, buttons.CanSend && SendStopButton.IsEnabled, snapshot);
     }
 

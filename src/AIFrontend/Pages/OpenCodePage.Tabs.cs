@@ -375,7 +375,7 @@ public sealed partial class OpenCodePage
         var closeOthers = new MenuFlyoutItem { Text = "关闭其他标签" };
         closeOthers.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) CloseOtherSessionTabs(entry.SessionId); };
         var locate = new MenuFlyoutItem { Text = "在首页查看会话", Icon = new FontIcon { Glyph = "\uE8A4" } };
-        locate.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) LocateSessionInPane(entry.SessionId); };
+        locate.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) LocateSessionInPane(); };
         return new MenuFlyout { Items = { close, closeOthers, new MenuFlyoutSeparator(), locate } };
     }
 
@@ -665,7 +665,7 @@ public sealed partial class OpenCodePage
     /// <summary>“+”（L2）：打开或激活唯一的空白“新会话”标签（OpenCodeSessionTab.New）。</summary>
     private void SessionTabs_AddTabButtonClick(TabView sender, object args) => OpenNewSessionTab();
 
-    private void LocateSessionInPane(string sessionId)
+    private void LocateSessionInPane()
     {
         ShowHomePage();
     }

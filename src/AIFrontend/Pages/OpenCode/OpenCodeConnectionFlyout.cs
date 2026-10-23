@@ -110,7 +110,7 @@ internal static class OpenCodeConnectionFlyout
         {
             root.Children.Add(McpGroup(details, select));
             root.Children.Add(PluginGroup(details.Capabilities, select));
-            root.Children.Add(LspGroup(details.Capabilities, select));
+            root.Children.Add(LspGroup(select));
         }
 
         if (refresh is not null)
@@ -212,7 +212,7 @@ internal static class OpenCodeConnectionFlyout
         return panel;
     }
 
-    private static UIElement LspGroup(OpenCodeInsightSection<OpenCodeCapabilitySnapshot> section, Action<string?>? select)
+    private static UIElement LspGroup(Action<string?>? select)
     {
         var (panel, content) = OpenCodeSessionInsightsView.Section("LSP", OpenCodeInsightState.Loaded, "OpenCodeConnectionLsp");
         content.Children.Add(Row("OpenCodeConnectionLsp.Row", "LSP", null,

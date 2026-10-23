@@ -268,7 +268,7 @@ public sealed partial class SettingsView : UserControl
         {
             AppSettings loaded = await _settingsService.LoadAsync(cancellationToken);
             _settings = loaded;
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
         }
         catch (SettingsCorruptedException ex)
         {
@@ -366,13 +366,13 @@ public sealed partial class SettingsView : UserControl
             }
 
             _settings = _settingsService.Current ?? e.Settings;
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
         });
     }
 
     // ---- 应用快照到界面 ----
 
-    private void ApplySettingsToUi(bool preserveEdits)
+    private void ApplySettingsToUi()
     {
         if (_applying)
         {
@@ -650,7 +650,7 @@ public sealed partial class SettingsView : UserControl
         var theme = _codeThemeCombo.SelectedIndex == 1 ? AppCodeTheme.OneDarkPro : AppCodeTheme.Fluent;
         if (theme == _settings.CodeTheme) return;
         if (!await SaveAsync(settings => settings with { CodeTheme = theme }, "已保存代码配色。"))
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
     }
 
     private async void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -679,7 +679,7 @@ public sealed partial class SettingsView : UserControl
         else
         {
             // 保存失败：回滚选择，保持界面与持久化一致。
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
         }
     }
 
@@ -691,19 +691,19 @@ public sealed partial class SettingsView : UserControl
         {
             _settings = await _settingsService.UpdateAsync(transform, _lifetimeCts.Token);
             ShowStatus(InfoBarSeverity.Success, successMessage, null);
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
             return true;
         }
         catch (SettingsValidationException ex)
         {
             ShowStatus(InfoBarSeverity.Error, "保存失败：配置未通过校验", ex.Message);
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
             return false;
         }
         catch (SettingsCorruptedException ex)
         {
             ShowStatus(InfoBarSeverity.Error, "保存失败：现有设置文件损坏，已拒绝覆盖", ex.Message);
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
             return false;
         }
         catch (OperationCanceledException)
@@ -713,7 +713,7 @@ public sealed partial class SettingsView : UserControl
         catch (Exception ex)
         {
             ShowStatus(InfoBarSeverity.Error, "保存失败", DescribeSafeError(ex));
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
             return false;
         }
     }

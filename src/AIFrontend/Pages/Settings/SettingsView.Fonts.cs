@@ -389,7 +389,7 @@ public sealed partial class SettingsView
         AppFontSettings? normalized = AppFontDefaults.Normalize(next);
         if (Equals(normalized, AppFontDefaults.Normalize(_settings.Fonts)))
         {
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
             return;
         }
 
@@ -413,7 +413,7 @@ public sealed partial class SettingsView
             _fontSaveInProgress = false;
             _textSizeCombo.IsEnabled = true;
             foreach (FontSlotUi ui in _fontSlots.Values) ui.Combo.IsEnabled = true;
-            ApplySettingsToUi(preserveEdits: true);
+            ApplySettingsToUi();
         }
     }
 

@@ -140,7 +140,7 @@ namespace AIFrontend.Pages
         private void UpdateComposerButtons() { }
         internal Func<bool>? LastAuxiliaryFence;
         internal Func<Task> Auxiliary = () => Task.CompletedTask;
-        private Task RefreshAuxiliaryAsync(OpenCodeClient client, string id, int generation, CancellationToken ct, Func<bool> historyCurrent)
+        private Task RefreshAuxiliaryAsync(OpenCodeClient client, string id, CancellationToken ct, Func<bool> historyCurrent)
         { LastAuxiliaryFence = historyCurrent; return Auxiliary(); }
 
         private bool SourceReady => _testSourceReady && _client is not null;

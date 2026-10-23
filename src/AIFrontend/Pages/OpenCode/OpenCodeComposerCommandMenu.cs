@@ -541,7 +541,7 @@ internal enum OpenCodeComposerSendMode
 /// <summary>发送按钮外观映射与文案（WinUI 无关，供页面与离线测试共用）。</summary>
 internal static class OpenCodeComposerSendPresentation
 {
-    internal static OpenCodeComposerSendMode Map(OpenCodeComposerButtonState buttons, bool isWorking)
+    internal static OpenCodeComposerSendMode Map(OpenCodeComposerButtonState buttons)
     {
         if (buttons.ShowProgress) return OpenCodeComposerSendMode.Submitting;
         if (buttons.StopMode) return OpenCodeComposerSendMode.Working;

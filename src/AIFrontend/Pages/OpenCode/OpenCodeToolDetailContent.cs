@@ -322,11 +322,10 @@ internal static class OpenCodeToolDetailContent
                     "OpenCodeToolDetailShowAll"));
             }
 
-            var unified = options.Unified;
             var repeater = new ItemsRepeater
             {
                 ItemsSource = rows,
-                ItemTemplate = new LineFactory(data => BuildRow(data, unified)),
+                ItemTemplate = new LineFactory(BuildRow),
             };
             body = repeater;
             if (model.Kind == OpenCodeToolKind.Read)
@@ -726,7 +725,7 @@ internal static class OpenCodeToolDetailContent
         return panel;
     }
 
-    private static UIElement BuildRow(object data, bool unified)
+    private static UIElement BuildRow(object data)
     {
         switch (data)
         {
