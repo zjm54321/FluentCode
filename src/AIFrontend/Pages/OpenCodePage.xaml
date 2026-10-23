@@ -25,12 +25,21 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerFillColorDefaultBrush" />
+                    <SolidColorBrush x:Key="ShellTerminalBackground" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="ShellTerminalForeground" Color="#CCCCCC" />
+                    <SolidColorBrush x:Key="ShellTerminalPrompt" Color="#13A10E" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerFillColorDefaultBrush" />
+                    <SolidColorBrush x:Key="ShellTerminalBackground" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="ShellTerminalForeground" Color="#CCCCCC" />
+                    <SolidColorBrush x:Key="ShellTerminalPrompt" Color="#13A10E" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ShellTerminalBackground" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ShellTerminalForeground" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ShellTerminalPrompt" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <!-- Layout D dock columns: in wide mode they continue the opaque reading surface (theme-aware,
@@ -516,27 +525,6 @@
                                                   CornerRadius="{ThemeResource OverlayCornerRadius}"
                                                   Background="{ThemeResource ShellTerminalBackground}"
                                                   ColumnDefinitions="Auto,*">
-                                                <Grid.Resources>
-                                                    <ResourceDictionary>
-                                                        <ResourceDictionary.ThemeDictionaries>
-                                                            <ResourceDictionary x:Key="Default">
-                                                                <SolidColorBrush x:Key="ShellTerminalBackground" Color="#0C0C0C" />
-                                                                <SolidColorBrush x:Key="ShellTerminalForeground" Color="#CCCCCC" />
-                                                                <SolidColorBrush x:Key="ShellTerminalPrompt" Color="#13A10E" />
-                                                            </ResourceDictionary>
-                                                            <ResourceDictionary x:Key="Light">
-                                                                <SolidColorBrush x:Key="ShellTerminalBackground" Color="#0C0C0C" />
-                                                                <SolidColorBrush x:Key="ShellTerminalForeground" Color="#CCCCCC" />
-                                                                <SolidColorBrush x:Key="ShellTerminalPrompt" Color="#13A10E" />
-                                                            </ResourceDictionary>
-                                                            <ResourceDictionary x:Key="HighContrast">
-                                                                <StaticResource x:Key="ShellTerminalBackground" ResourceKey="SystemColorWindowColorBrush" />
-                                                                <StaticResource x:Key="ShellTerminalForeground" ResourceKey="SystemColorWindowTextColorBrush" />
-                                                                <StaticResource x:Key="ShellTerminalPrompt" ResourceKey="SystemColorWindowTextColorBrush" />
-                                                            </ResourceDictionary>
-                                                        </ResourceDictionary.ThemeDictionaries>
-                                                    </ResourceDictionary>
-                                                </Grid.Resources>
                                                 <TextBlock x:Name="ShellPromptGlyph" Text="$&#x20;" FontFamily="{ThemeResource AppMonospaceFontFamily}"
                                                            VerticalAlignment="Center"
                                                            Foreground="{ThemeResource ShellTerminalPrompt}"
