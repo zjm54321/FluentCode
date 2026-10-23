@@ -31,10 +31,11 @@ internal static class Program
         StrictMatchOrdinaryAndBoundedFallback();
         NoticeConflictStrippedUtf16AndIdempotent();
         await FakeHandlerSanitizesAndPreservesCursor();
+        await RemoteInstructionRead();
         var lifecycleAssertions = ConversationLifecycle.Run();
         var redesignAssertions = RedesignRegression.Run();
         var wave5Assertions = Wave5Timeline.Run();
-        Console.WriteLine($"PASS: 3 instruction-notice scenarios ({assertions} assertions), 6 UI lifecycle scenarios + formatting ({lifecycleAssertions} assertions), redesign regressions ({redesignAssertions} assertions), wave5 timeline ({wave5Assertions} assertions); total {assertions + lifecycleAssertions + redesignAssertions + wave5Assertions}; fake HTTP/inert UI only; no live server.");
+        Console.WriteLine($"PASS: 4 instruction-notice scenarios ({assertions} assertions), 6 UI lifecycle scenarios + formatting ({lifecycleAssertions} assertions), redesign regressions ({redesignAssertions} assertions), wave5 timeline ({wave5Assertions} assertions); total {assertions + lifecycleAssertions + redesignAssertions + wave5Assertions}; fake HTTP/inert UI only; no live server.");
     }
 
     private static void Check(bool condition, string message)
@@ -339,6 +340,44 @@ internal static class Program
         var protocol = await Expect<OpenCodeProtocolException>(
             () => missingClient.GetMessagesAsync("ses_x", null, CancellationToken.None), "missing data is a protocol error");
         Check(protocol is not null, "missing data raises OpenCodeProtocolException");
+    }
+
+    private static async Task RemoteInstructionRead()
+    {
+        var calls = 0;
+        var status = HttpStatusCode.OK;
+        var bytes = Encoding.UTF8.GetBytes("\uFEFF# 指令\n真实内容");
+        var oversized = false;
+        using var http = new HttpClient(new Handler((request, _) =>
+        {
+            calls++;
+            Check(request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath == "/api/fs/read/rules/AGENTS%20%23%25.md",
+                "rp3.fs-read-verified-route-and-segment-encoding");
+            Check(Uri.UnescapeDataString(request.RequestUri!.Query) == "?location[directory]=/repo 项目",
+                "rp3.fs-read-explicit-deepObject-session-location");
+            Check(request.Headers.Authorization?.ToString() == "Bearer tok", "rp3.fs-read-existing-auth");
+            var content = new ByteArrayContent(bytes);
+            content.Headers.ContentType = new("application/octet-stream");
+            if (oversized) content.Headers.ContentLength = 64L * 1024 * 1024 + 1;
+            return Task.FromResult(new HttpResponseMessage(status) { Content = content });
+        }));
+        using var client = new OpenCodeClient(http, new OpenCodeClientOptions { BaseUrl = "https://offline.invalid", Secret = "tok" }, true);
+        Check(await client.ReadTextFileAsync("/repo 项目", "/repo 项目/rules/AGENTS #%.md") == "# 指令\n真实内容",
+            "rp3.remote-utf8-octet-stream-with-bom");
+        Check(OpenCodeClient.RelativeTextFilePath("C:\\repo", "C:\\repo\\AGENTS.md") == "AGENTS.md", "rp3.remote-windows-path-lexical-only");
+        await Expect<ArgumentException>(() => client.ReadTextFileAsync("/repo 项目", "/outside/AGENTS.md"), "rp3.outside-location-unreadable");
+        await Expect<ArgumentException>(() => client.ReadTextFileAsync("/repo 项目", "../AGENTS.md"), "rp3.traversal-unreadable");
+        Check(calls == 1, "rp3.invalid-paths-never-read-local-or-remote-files");
+        status = HttpStatusCode.NotFound;
+        bytes = Encoding.UTF8.GetBytes("SECRET_SERVER_ERROR");
+        var missing = await Expect<OpenCodeApiException>(() => client.ReadTextFileAsync("/repo 项目", "rules/AGENTS #%.md"), "rp3.missing-file-visible-error");
+        Check(missing.StatusCode == 404 && !missing.Message.Contains("SECRET_SERVER_ERROR"), "rp3.404-error-body-not-disclosed");
+        status = HttpStatusCode.OK;
+        oversized = true;
+        await Expect<OpenCodeProtocolException>(() => client.ReadTextFileAsync("/repo 项目", "rules/AGENTS #%.md"), "rp3.existing-64MiB-bound-reused");
+        oversized = false;
+        bytes = new byte[] { 0xff };
+        await Expect<OpenCodeProtocolException>(() => client.ReadTextFileAsync("/repo 项目", "rules/AGENTS #%.md"), "rp3.invalid-utf8-visible-error");
     }
 
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler

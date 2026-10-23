@@ -1414,8 +1414,8 @@ public sealed class OpenCodeConversationView : StackPanel
         var async = !instruction && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out _);
         var manual = !instruction && !async && OpenCodeManualBackgroundIndex.TryReadNotice(message, out _);
         var initiator = !instruction && !async && !manual && OpenCodeStepRunPresentation.IsInternalInitiator(message);
-        var process = instruction || async || manual || message.Type is OpenCodeMessageTypes.Shell or OpenCodeMessageTypes.LocationSwitched;
-        var state = process || message.Type == OpenCodeMessageTypes.Assistant && !initiator
+        var process = !instruction && (async || manual || message.Type is OpenCodeMessageTypes.Shell or OpenCodeMessageTypes.LocationSwitched);
+        var state = process || !instruction && message.Type == OpenCodeMessageTypes.Assistant && !initiator
             ? new AssistantState { Message = message, IsProcessNotice = process } : null;
         var groups = new Dictionary<string, OpenCodeToolGroupView>(StringComparer.Ordinal);
         void Apply(OpenCodeMessage current)
@@ -1471,8 +1471,6 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
                 if (run.Leaves.Count > 0) state.Runs.Add(run);
             }
-            else if (instruction)
-                AddProcess(key + "/process", new OpenCodeToolRowModel { Name = "指令", Status = OpenCodeToolRowStatus.Unknown }, "notice:" + key, inline: true);
             else if (async && OpenCodeStepRunPresentation.TryReadAsyncCompletion(current, out var notification))
                 AddProcess(key + "/process", ChipModel(OpenCodeStepRunPresentation.DescribeAsyncCompletion(notification)),
                     notification.Key.Length > 0 ? "async:" + notification.Key : "notice:" + key);
@@ -1556,7 +1554,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 return CreateCaptionEntry(key, message,
                     m => "已切换 agent：" + (m.Agent ?? "（未提供）"));
             case OpenCodeMessageTypes.ModelSwitched:
-                return CreateCaptionEntry(key, message, DescribeModelSwitch);
+                return CreateModelSwitchEntry(key, message);
             case OpenCodeMessageTypes.LocationSwitched:
                 return CreateDirectoryEntry(key, message);
             default:
@@ -1627,15 +1625,20 @@ public sealed class OpenCodeConversationView : StackPanel
         };
     }
 
-    /// <summary>构造仅显示安全投影的指令通知条目；无 Dispose 资源，Update 再次取安全 notice 就地刷新。</summary>
+    private static Entry CreateModelSwitchEntry(string key, OpenCodeMessage message)
+    {
+        var view = new OpenCodeTurnChipView(message);
+        return new Entry { Key = key, Element = view.Element, Update = view.Update, Dispose = view.Dispose };
+    }
+
+    /// <summary>Safe standalone chip above the following work; never a processing-group leaf.</summary>
     private Entry CreateInstructionNoticeEntry(string key, OpenCodeInstructionNotice notice)
     {
         var view = new OpenCodeInstructionNoticeView(notice);
-        return CreateProcessEntry(key, null, view.Element, m =>
+        return new Entry { Key = key, Element = view.Element, IsInstructionNotice = true, Update = m =>
         {
             if (TryGetInstructionNotice(m, out var updated)) view.Update(updated);
-        }, () => new OpenCodeToolRowModel { Name = "指令", Status = OpenCodeToolRowStatus.Unknown },
-            view.OpenDetail, view.HoverEnter, view.HoverExit, view.SetDetailAnchor, () => "\uE82D", view.Dispose, instruction: true, inline: true);
+        }, Dispose = view.Dispose };
     }
 
     private static OpenCodeToolRowModel ChipModel(OpenCodeTimelineRowContent content) => new()
@@ -2978,15 +2981,6 @@ public sealed class OpenCodeConversationView : StackPanel
         var name = message.Name ?? message.Skill ?? "（未命名）";
         var text = string.IsNullOrWhiteSpace(message.Text) ? string.Empty : "：" + message.Text;
         return "技能调用：" + name + text;
-    }
-
-    private static string DescribeModelSwitch(OpenCodeMessage message)
-    {
-        var model = message.Model?.Id ?? "（未提供）";
-        var provider = string.IsNullOrWhiteSpace(message.Model?.ProviderId)
-            ? string.Empty
-            : "（provider " + message.Model!.ProviderId + "）";
-        return "已切换模型：" + model + provider;
     }
 
     private static string DescribeShell(OpenCodeMessage message)

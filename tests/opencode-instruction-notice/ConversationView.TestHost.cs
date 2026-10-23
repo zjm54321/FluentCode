@@ -324,7 +324,19 @@ namespace AIFrontend.Pages.OpenCode
         }
     }
 
-    // Intentionally has neither IDisposable nor an event, matching the real safe-DTO-only view.
+    internal sealed class OpenCodeTurnChipView
+    {
+        internal FrameworkElement Element { get; } = new StackPanel();
+        internal OpenCodeTurnChipView(OpenCodeMessage message)
+        {
+            ConversationViewTestProbe.Record("Construct", this, message, Element);
+            Update(message);
+        }
+        internal void Update(OpenCodeMessage message) { }
+        internal void Dispose() { }
+    }
+
+    // Safe DTO presenter probe; explicit file reads belong to the native view, not the projection.
     internal sealed class OpenCodeInstructionNoticeView
     {
         internal FrameworkElement Element { get; } = new StackPanel();

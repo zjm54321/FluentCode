@@ -32,7 +32,7 @@ internal static class Wave6Timeline
         var two = Step("msg_two", Tool("leaf_two"), new { type = "reasoning", text = "more thought" }, new { type = "text", text = "answer two" });
         view.ApplyMessages(new[] { one, directory, instruction, two });
         var groups = Made<OpenCodeToolGroupView>();
-        Check(groups.Length == 4 && groups[0].OpenLeaf is not null && groups[1].OpenLeaf is null, "wave7.one-leaf-direct-and-shared-multi-operation-group");
+        Check(groups.Length == 3 && groups[0].OpenLeaf is not null && groups[1].OpenLeaf is not null, "rp3.chips-not-processing-leaves");
         groups[0].OpenLeaf!(); groups[0].EnterLeaf!(); groups[0].ExitLeaf!();
         var row = Made<OpenCodeToolPartView>()[0];
         Check(ConversationViewTestProbe.Records.Any(r => r.Operation == "OpenLeaf" && ReferenceEquals(r.Subject, row))
@@ -40,8 +40,10 @@ internal static class Wave6Timeline
         Check(ReferenceEquals(row.DetailAnchorOverride, groups[0].DetailAnchor), "wave6.single-leaf-preview-uses-visible-header-anchor-not-hidden-row");
         var directoryChip = Made<OpenCodeTimelineChipView>().Single(c => c.Label == "目录");
         Check(groups.Any(g => g.ItemsHost.Children.Contains(directoryChip.Element)) && ConversationViewTestProbe.IsAttachedTo(directoryChip.Element, view), "wave7.directory-joins-processing-group");
-        Check(view.Children.Count == 4 && Made<OpenCodeInstructionNoticeView>().Length == 1 && groups.Count(g => g.HeaderVisible) == 2,
-            "wave7.instruction-directory-and-following-tools-share-one-header-without-body-folding");
+        var instructionChip = Made<OpenCodeInstructionNoticeView>().Single();
+        Check(view.Children.Count == 4 && ReferenceEquals(view.Children[2], instructionChip.Element)
+            && groups.All(g => !g.ItemsHost.Children.Contains(instructionChip.Element)) && groups.Count(g => g.HeaderVisible) == 3,
+            "rp3.instruction-chip-outside-and-above-following-processing-group");
 
         view.SetCurrentTurnActivity(true);
         Check(groups.All(g => g.IsExpanded && g.Summary!.IsActive && g.Summary.HeaderText.StartsWith("处理中", StringComparison.Ordinal)), "wave6.all-current-turn-groups-active-not-just-last-chain");
@@ -206,8 +208,17 @@ internal static class Wave6Timeline
         view.ClearMessages();
 
         view.ApplyMessages(new[] { instruction });
-        var instructionGroup = Made<OpenCodeToolGroupView>().Last();
-        Check(instructionGroup.InlineLeaf, "wave7.single-instruction-uses-inline-file-name-view-not-generic-detail-header");
+        Check(ReferenceEquals(view.Children.Single(), Made<OpenCodeInstructionNoticeView>().Last().Element),
+            "rp3.single-instruction-is-standalone-chip");
+        view.ClearMessages();
+        ConversationViewTestProbe.Reset();
+        var modelSwitch = M(new { id = "model-switch", type = "model-switched", model = new { id = "opaque-model", providerID = "provider" } });
+        view.ApplyMessages(new[] { instruction, modelSwitch, two });
+        var modelChip = Made<OpenCodeTurnChipView>().Single();
+        Check(ReferenceEquals(view.Children[0], Made<OpenCodeInstructionNoticeView>().Single().Element)
+            && ReferenceEquals(view.Children[1], modelChip.Element)
+            && Made<OpenCodeToolGroupView>().All(g => !g.ItemsHost.Children.Contains(modelChip.Element)),
+            "rp3.instruction-and-model-chips-above-work-never-inside-processing-group");
         Check(OpenCodeToolRowPresentation.DisplayName("acp_status") == "ACP状态"
             && OpenCodeToolRowPresentation.DisplayName("compress") == "压缩上下文"
             && OpenCodeToolRowPresentation.DisplayName("third_party_acp_status") == "third_party_acp_status",

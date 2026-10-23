@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +11,66 @@ namespace AIFrontend.Services.OpenCode;
 
 public sealed partial class OpenCodeClient
 {
+    /// <summary>Read UTF-8 text from the remote session location using fs.read, bounded to 64 MiB.</summary>
+    public async Task<string> ReadTextFileAsync(string directory, string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var relative = RelativeTextFilePath(directory, path);
+        var segments = relative.Split('/');
+        for (var i = 0; i < segments.Length; i++) segments[i] = Uri.EscapeDataString(segments[i]);
+        var endpoint = "api/fs/read/" + string.Join('/', segments);
+        var query = new[] { new KeyValuePair<string, string>("location[directory]", directory) };
+        const string label = "GET api/fs/read/{path}";
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_timeout);
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Get, endpoint, query, null, timeout.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new OpenCodeApiException((int)response.StatusCode, null, null,
+                    $"无法读取：OpenCode 服务返回 HTTP {(int)response.StatusCode}（{label}）。");
+            var bytes = await ReadResponseBodyAsync(response.Content, timeout.Token).ConfigureAwait(false);
+            var text = new UTF8Encoding(false, true).GetString(bytes.Span);
+            return text.Length > 0 && text[0] == '\uFEFF' ? text[1..] : text;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        { throw new OperationCanceledException("OpenCode 文件读取已取消。", cancellationToken); }
+        catch (OperationCanceledException)
+        { throw new OpenCodeTimeoutException($"无法读取：OpenCode 请求超时（{label}）。"); }
+        catch (DecoderFallbackException)
+        { throw new OpenCodeProtocolException("无法读取：文件不是有效的 UTF-8 文本。"); }
+        catch (HttpRequestException)
+        { throw new OpenCodeTransportException($"无法读取：OpenCode 请求或响应读取失败（{label}）。"); }
+        catch (IOException)
+        { throw new OpenCodeTransportException($"无法读取：OpenCode 响应读取失败（{label}）。"); }
+    }
+
+    // Remote lexical paths only; never resolve a server path through the local Windows filesystem.
+    internal static string RelativeTextFilePath(string directory, string path)
+    {
+        var root = directory.Replace('\\', '/').TrimEnd('/');
+        var relative = path.Replace('\\', '/');
+        var windows = root.Length > 1 && root[1] == ':';
+        if (relative.StartsWith('/') || relative.Length > 1 && relative[1] == ':')
+        {
+            var prefix = root + "/";
+            if (!relative.StartsWith(prefix, windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                throw new ArgumentException("无法读取：指令文件位于会话目录之外。", nameof(path));
+            relative = relative[prefix.Length..];
+        }
+        if (relative.StartsWith("./", StringComparison.Ordinal)) relative = relative[2..];
+        foreach (var segment in relative.Split('/'))
+        {
+            if (segment.Length == 0 || segment is "." or "..") throw InvalidTextPath();
+            foreach (var ch in segment)
+                if (char.IsControl(ch) || ch == ':') throw InvalidTextPath();
+        }
+        return relative;
+
+        static ArgumentException InvalidTextPath() => new("无法读取：指令文件路径无效。", "path");
+    }
+
     /// <summary>已知项目原始数组；不将 Git 项目身份当作已添加的目录，也不创建项目。</summary>
     public async Task<IReadOnlyList<OpenCodeProjectInfo>> GetProjectsAsync(
         bool? archived = null, CancellationToken cancellationToken = default)
