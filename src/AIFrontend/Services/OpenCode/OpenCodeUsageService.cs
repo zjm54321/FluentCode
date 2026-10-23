@@ -106,12 +106,7 @@ public static class OpenCodeUsageService
                     issues.Add(new(OpenCodeUsageIncompleteReason.RepeatedPage, parentId));
                     break;
                 }
-                if (page.Cursor is null)
-                {
-                    issues.Add(new(OpenCodeUsageIncompleteReason.MissingCursor, parentId));
-                    break;
-                }
-                var next = page.Cursor.Next;
+                var next = page.Cursor!.Next;
                 if (next is null) break;
                 if (!OpenCodeClient.IsUsageCursorValid(next))
                 {

@@ -83,7 +83,6 @@ public sealed partial class OpenCodeClient : IDisposable
 
     private OpenCodeClient(OpenCodeClientOptions options, HttpClient? injectedHttpClient, bool ownsHttpClient)
     {
-        ArgumentNullException.ThrowIfNull(options);
         ValidateOptions(options);
 
         _baseUri = NormalizeBaseUri(options.BaseUrl);
