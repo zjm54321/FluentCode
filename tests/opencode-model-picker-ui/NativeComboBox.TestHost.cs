@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 namespace Microsoft.UI.Xaml
 {
+    public class Application { public static Application Current { get; } = new(); public Dictionary<string, object> Resources { get; } = new() { ["DefaultComboBoxStyle"] = new Style() }; }
     public class FrameworkElement { public Style? Style { get; set; } public double MinWidth { get; set; } public double MinHeight { get; set; } public HorizontalAlignment HorizontalAlignment { get; set; } public VerticalAlignment VerticalAlignment { get; set; } }
     public class Style { }
     public class DataTemplate { }

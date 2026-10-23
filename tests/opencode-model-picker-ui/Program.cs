@@ -109,6 +109,8 @@ internal static class Program
             && flyout.Contains("OpenCodeBlankModel") && flyout.Contains("anchor.Unloaded += Unloaded"), "anchored native flyout supports sidebar/composer callers and dismisses on owner unload");
         var blank = Read("src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs");
         var combo = Read("src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs");
+        Check(combo.Contains("Application.Current.Resources[\"DefaultComboBoxStyle\"]") && !combo.Contains("<ControlTemplate")
+            && flyout.Contains("{ThemeResource OverlayCornerRadius}"), "PK3b derived ComboBoxes use current native WinUI style and flyouts use native overlay radius");
         Check(combo.Contains("OpenCodeModelLogo.Label(model.Id, model.Name!)") && blank.Contains("ToolTipService.SetToolTip(BlankModelButton, model?.Name)"), "composer brand label and clean friendly tooltip");
         Check(blank.Contains("sourceKey: source.Identity"), "blank picker uses captured stable source identity");
         Check(blank.Contains("allowStrengthSelection: false"), "blank picker uses its existing dedicated strength control instead of duplicate dialog entry");

@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -42,7 +43,7 @@ internal static class OpenCodePickerFlyout
     {
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var flyout = new Flyout { Content = content, Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
-        var presenter = new Style { TargetType = typeof(FlyoutPresenter) };
+        var presenter = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FlyoutPresenter\"><Setter Property=\"CornerRadius\" Value=\"{ThemeResource OverlayCornerRadius}\"/></Style>");
         presenter.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4)));
         presenter.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 0d));
         presenter.Setters.Add(new Setter(FrameworkElement.MaxWidthProperty, Math.Max(1, anchor.XamlRoot.Size.Width - 24)));

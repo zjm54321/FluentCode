@@ -27,6 +27,9 @@ public sealed class OpenCodeNativeComboBox : ComboBox
 
     public OpenCodeNativeComboBox()
     {
+        // Implicit styles are exact-type lookups. This derived control otherwise falls
+        // back to the platform ComboBox template, not WinUI's rounded overlay template.
+        Style = (Style)Application.Current.Resources["DefaultComboBoxStyle"];
         IsTextSearchEnabled = true;
         PlaceholderText = "未知";
         MinWidth = 0;
