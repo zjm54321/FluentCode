@@ -95,16 +95,6 @@ namespace AIFrontend.Pages
 {
     // These add only UI members absent from the reused inert ConversationView test host.
     public sealed class ReturnHostTextBlock : TextBlock { }
-    public sealed class ReturnHostButton : Button
-    {
-        private bool _enabled;
-        internal TaskCompletionSource<bool>? EnabledSignal;
-        public new bool IsEnabled
-        {
-            get => _enabled;
-            set { _enabled = value; if (value) EnabledSignal?.TrySetResult(true); }
-        }
-    }
     internal sealed class ReturnHostTimer { internal void Stop() { } }
     internal sealed class ReturnHostScroll : ScrollViewer
     {
@@ -165,7 +155,6 @@ namespace AIFrontend.Pages
         private readonly HashSet<string> _workingSessions = new();
         private enum ConnectionState { Unknown, Connected, Failed }
         private event EventHandler? TrustedEndpointIdentityChanged { add { } remove { } }
-        internal readonly ReturnHostButton SessionReturnButton = new() { Visibility = Visibility.Collapsed };
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
         public new ReturnHostDispatcher DispatcherQueue { get; } = new();
         public new bool IsLoaded => true;
@@ -177,8 +166,8 @@ namespace AIFrontend.Pages
         internal readonly List<OpenCodeNavigationStatus> NavigationStatuses = new();
         internal int BottomScrolls, MessageCount, QueuedNavigations;
         internal string? Viewed => _selectedSessionId;
-        internal string Label => SessionReturnLabel;
-        internal bool CanReturn => CanReturnToSession;
+        internal bool CanReturn => IsSessionReturnContextCurrent(_sessionReturnContext)
+            && !ReferenceEquals(_sessionReturnContext, _sessionReturnAttempt);
         internal object? ContextIdentity => _sessionReturnContext;
         internal object? AttemptIdentity => _sessionReturnAttempt;
         internal string? ReturnTarget => _sessionReturnContext?.TargetSessionId;
@@ -219,8 +208,6 @@ namespace AIFrontend.Pages
         private void MirrorSessionSelection(string id, bool userInitiated) { }
         internal string? Rebuild(List<OpenCodeSessionInfo> sessions) => RebuildSessionList(sessions);
         internal Task Return() => ReturnToSessionAsync();
-        internal void ClickReturn() => SessionReturnButton_Click(SessionReturnButton, new());
-        internal void RefreshReturnUi() => UpdateSessionReturnUi();
         // Controllable asynchronous boundary: tests explicitly render fixtures through real ApplyMessages.
         private Task RefreshMessagesAsync(bool initial)
         {

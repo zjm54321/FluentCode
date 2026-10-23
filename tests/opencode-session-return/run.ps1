@@ -79,7 +79,7 @@ $production = @()
     'NotificationActivationInfo.cs', 'NotificationSource.cs', 'OpenCodeExecutionProjection.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Services/Notifications" $_
 }
-@('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SessionReturn.Ui.cs', 'OpenCodePage.SubagentNavigation.cs',
+@('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SubagentNavigation.cs',
     'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages" $_
 }

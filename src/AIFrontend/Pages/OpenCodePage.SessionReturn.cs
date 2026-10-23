@@ -10,6 +10,10 @@ namespace AIFrontend.Pages;
 
 public sealed partial class OpenCodePage
 {
+    // Compatibility seam for the independently owned agent-tree partial. No right-side return UI remains;
+    // calls are erased by the compiler when there is no implementation.
+    partial void UpdateSessionReturnUi();
+
     /// <summary>已完成验证的返回目标来源类型。</summary>
     private enum SessionReturnKind
     {
@@ -51,7 +55,6 @@ public sealed partial class OpenCodePage
     {
         _sessionReturnContext = null;
         _sessionReturnAttempt = null;
-        UpdateSessionReturnUi();
     }
 
     /// <summary>
@@ -98,7 +101,6 @@ public sealed partial class OpenCodePage
             _sessionGeneration,
             target.SessionId,
             target.Kind);
-        UpdateSessionReturnUi();
     }
 
     /// <summary>复核给定上下文是否为当前上下文实例，且其绑定与目标仍然有效。</summary>
@@ -131,28 +133,6 @@ public sealed partial class OpenCodePage
             context.SourceGeneration,
             context.Client,
             context.SessionGeneration);
-    }
-
-    /// <summary>存在有效且未被返回 GET 占用的上下文时为 true。</summary>
-    private bool CanReturnToSession =>
-        IsSessionReturnContextCurrent(_sessionReturnContext)
-        && !ReferenceEquals(_sessionReturnContext, _sessionReturnAttempt);
-
-    /// <summary>返回入口的显示文案；无有效上下文时为空。</summary>
-    private string SessionReturnLabel
-    {
-        get
-        {
-            var context = _sessionReturnContext;
-            if (!IsSessionReturnContextCurrent(context))
-            {
-                return string.Empty;
-            }
-
-            return context!.Kind == SessionReturnKind.VisitedOrigin
-                ? "返回来源会话"
-                : "返回上级会话";
-        }
     }
 
     private async Task ReturnToSessionAsync()
@@ -229,7 +209,7 @@ public sealed partial class OpenCodePage
             {
                 ShowMessage(
                     InfoBarSeverity.Warning,
-                    SessionReturnLabel,
+                    "返回主智能体",
                     "返回目标不可用，已保留当前会话");
                 return;
             }
@@ -259,7 +239,7 @@ public sealed partial class OpenCodePage
             {
                 ShowMessage(
                     InfoBarSeverity.Warning,
-                    SessionReturnLabel,
+                    "返回主智能体",
                     "返回目标不可用，已保留当前会话");
             }
         }

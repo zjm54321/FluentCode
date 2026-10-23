@@ -336,9 +336,6 @@
                                             </StackPanel>
                                             <Border x:Name="RightContextDivider" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                                             <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
-                                                <Button x:Name="SessionReturnButton" Visibility="Collapsed" IsEnabled="False"
-                                                        HorizontalAlignment="Left" Click="SessionReturnButton_Click"
-                                                        AutomationProperties.AutomationId="OpenCodeSessionReturnButton" />
                                                 <!-- Preserve switch diagnostics and explicit unknown-outcome recovery, not the retired identity row. -->
                                                 <StackPanel x:Name="AgentSelectorHost" AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
                                                 <TextBlock x:Name="WaitingText" Visibility="Collapsed" TextWrapping="Wrap"

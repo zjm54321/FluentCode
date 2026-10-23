@@ -125,6 +125,8 @@ internal static class Program
         foreach (var split in new[] { "SessionPane", "InsightsPane" })
             Check((string?)Named(split).Attribute("PaneBackground") == "Transparent", split + " pane has no full-height chrome; cards float");
         Check(Named("RightSessionDiagnostics").Descendants().Contains(Named("AgentSelectorHost")), "switch diagnostics stay reachable in the right card");
+        Check(!names.Contains("SessionReturnButton") && !card.Descendants(ui + "Button").Any(),
+            "SA1b duplicate right-side return button deleted, not hidden");
         var sidebars = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Sidebars.cs"));
         Check(sidebars.Contains("OpenCodeSidebarLayout.AnimateModeSwitch(previous, next, _sidebarSettings?.AnimationsEnabled ?? false)")
             && sidebars.Contains("PlayDockMotion(fold: true") && sidebars.Contains("PlayDockMotion(fold: false"),

@@ -103,7 +103,7 @@ internal static class Program
         var parentTool = RenderTool(f.Page, "msg_parent");
         await f.Page.Card("msg_parent", "ses_child");
         Check(f.Page.Viewed == "ses_child" && f.Page.ReturnTarget == "ses_root", "card.validated-origin-not-direct-parent");
-        Check(f.Page.Label == "返回来源会话" && f.Page.CanReturn, "card.return-label-ready");
+        Check(f.Page.CanReturn, "card.verified-origin-navigation-ready");
         Check(parentTool.DisposeCount == 1 && f.Page.Conversation.Children.Count == 0, "card.real-switch-clears-real-conversation");
     }
 
@@ -131,7 +131,7 @@ internal static class Program
             Check(f.Http.Paths.Skip(count).SequenceEqual(new[] { "/api/session/ses_root" }), "return.exactly-one-origin-get");
             Check(f.Page.Viewed == "ses_root" && !f.Page.Catalog.ContainsKey("ses_root"), "return.offpage-root-allowed");
             Check(content.DisposeCount == 1 && f.Page.Conversation.Children.Count == 0, "return.real-clear-after-success");
-            Check(f.Page.Label.Length == 0 && f.Page.SessionReturnButton.Visibility == Visibility.Collapsed, "return.root-hides-entry");
+            Check(!f.Page.CanReturn, "return.root-clears-return-context");
         }
 
         foreach (var failure in new[] { "404", "403", "timeout" })
@@ -143,19 +143,15 @@ internal static class Program
             var context = f.Page.ContextIdentity;
             var before = f.Http.Paths.Count;
             var hold = f.Http.Hold("ses_root");
-            // Exercise the actual async-void button handler, observing completion via the inert property setter.
-            f.Page.ClickReturn();
+            // The right-side button is gone; exercise the shared navigation used by the left tree.
+            var navigation = f.Page.Return();
             await hold.Started.Task;
-            Check(!f.Page.SessionReturnButton.IsEnabled && f.Page.SessionReturnButton.Visibility == Visibility.Visible,
-                "return.busy-keeps-visible-button-disabled");
-            Check(!f.Page.CanReturn && Equals(f.Page.SessionReturnButton.Content, "返回来源会话"), "return.busy-label-preserved");
+            Check(!f.Page.CanReturn && ReferenceEquals(context, f.Page.AttemptIdentity), "return.busy-context-retained");
             await f.Page.Return();
             Check(f.Http.Paths.Count == before + 1, "return.busy-prevents-second-get");
-            var enabled = Signal<bool>();
-            f.Page.SessionReturnButton.EnabledSignal = enabled;
             if (failure == "timeout") hold.FailTimeout();
             else hold.ReleaseStatus((HttpStatusCode)int.Parse(failure));
-            await enabled.Task;
+            await navigation;
             Check(f.Page.Viewed == "ses_child" && ReferenceEquals(context, f.Page.ContextIdentity), "return.failure-retains-child-context");
             Check(ReferenceEquals(element, f.Page.Conversation.Children[0]) && tool.Element.IsExpanded && tool.DisposeCount == 0,
                 "return.failure-retains-content-expansion");
@@ -170,7 +166,7 @@ internal static class Program
         {
             await f.Page.Switch("ses_unrelated");
             await f.Page.Notify(Target(f, "ses_child"));
-            Check(f.Page.Viewed == "ses_child" && f.Page.ReturnTarget == "ses_mid" && f.Page.Label == "返回上级会话",
+            Check(f.Page.Viewed == "ses_child" && f.Page.ReturnTarget == "ses_mid" && f.Page.CanReturn,
                 "notify.parent-from-fenced-info-not-old-viewed");
             Check(f.Http.Paths.SequenceEqual(new[] { "/api/session" }), "notify.no-extra-parent-proof-get");
             await f.Page.Return();
@@ -183,9 +179,8 @@ internal static class Program
             f.Http.Sessions["ses_child"] = Session("ses_child", parent);
             await f.Page.Switch("ses_unrelated");
             await f.Page.Notify(Target(f, "ses_child"));
-            Check(f.Page.Viewed == "ses_child" && !f.Page.CanReturn && f.Page.Label.Length == 0,
+            Check(f.Page.Viewed == "ses_child" && !f.Page.CanReturn,
                 "notify.invalid-parent-no-return-entry");
-            Check(f.Page.SessionReturnButton.Visibility == Visibility.Collapsed, "notify.invalid-parent-button-hidden");
         }
 
         // Same-ID forced navigation isolates captured-generation freshness; different ID also checks target routing.
@@ -252,8 +247,8 @@ internal static class Program
             else
             {
                 f.Page.Unload();
-                Check(f.Page.ContextIdentity is null && f.Page.SessionReturnButton.Visibility == Visibility.Collapsed,
-                    "race.unload-clears-context-ui");
+                Check(f.Page.ContextIdentity is null && !f.Page.CanReturn,
+                    "race.unload-clears-navigation-context");
                 f.Page.BindFixture(f.NewSource(1));
             }
             await EnterChild(f);
