@@ -186,7 +186,7 @@ internal static class Program
             "SA2 child mode uses only plain display visuals with no selector hover/focus/flyout affordance");
         Check(readOnly.Contains("value.Agent is null ? Visibility.Collapsed") && readOnly.Contains("value.ModelName is null ? Visibility.Collapsed")
             && readOnly.Contains("value.Effort is null ? Visibility.Collapsed"), "SA2 unknown child values hide their own rows independently");
-        Check(cardBinding.Contains("CurrentSessionInfo is { ParentId: not null } child") && cardBinding.Contains("child.Id == _selectedSessionId")
+        Check(cardBinding.Contains("CurrentSessionInfo is { ParentId: not null, Id: { } childId } child") && cardBinding.Contains("childId == _selectedSessionId")
             && cardBinding.Contains("OpenCodeChildSessionControl.Project(child.Agent, child.Model, messages") && cardBinding.Contains("card.RenderReadOnly(projection)"),
             "SA2 card consumes real current-child metadata/messages, not pending UI or parent choices");
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
