@@ -57,6 +57,12 @@ internal static class Program
         group.ItemsHost.Children.Add(new TextBlock {Text="step two"});
         LoadTree(group.Element);
         Check(clock.SubscriberCount==baseline+1&&DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"group reuses one loaded header timer and shared clock");
+        group.Element.Load();group.Element.RaiseUnloaded();
+        Check(group.Element.IsLoaded&&DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"late Unloaded after reparented Loaded cannot stop the current group timer");
+        group.Element.Unload();
+        Check(!DispatcherQueueTimer.All.Any(t=>t.IsRunning),"genuine group unload still stops the timer");
+        group.Element.Load();
+        Check(DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"current group load restarts the retained timer");
         var expander=Walk(group.Element).OfType<Expander>().Single();
         var outline=(Border)expander.Parent!;
         Check(outline.BorderThickness==new Thickness(1)&&outline.CornerRadius==new CornerRadius(8)&&outline.Style?.Key=="SubtleFillColorTransparentBrush|ControlStrokeColorDefaultBrush","PG3 one thin theme-stroked 8px outline uses a visible subtle stroke in both themes without a fill");

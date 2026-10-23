@@ -169,7 +169,8 @@ internal sealed class OpenCodeToolGroupVisual
         _expander.GotFocus += (_, e) => { _focusVisible = e.OriginalSource is Control { FocusState: FocusState.Keyboard }; UpdateChevronAffordance(); };
         _expander.LostFocus += (_, _) => { _focusVisible = false; UpdateChevronAffordance(); };
         _root.Loaded += (_, _) => { _loaded = true; RefreshWorking(); };
-        _root.Unloaded += (_, _) => { _loaded = false; StopTimer(); };
+        // Reparenting can deliver an old Unloaded after the next Loaded; trust the current tree state.
+        _root.Unloaded += (_, _) => { if (_root.IsLoaded) return; _loaded = false; StopTimer(); };
         ConfigureContainer();
     }
 
