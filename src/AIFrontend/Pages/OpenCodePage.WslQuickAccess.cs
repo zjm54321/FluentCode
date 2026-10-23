@@ -14,13 +14,17 @@ public sealed partial class OpenCodePage
     private readonly IWslQuickAccessLauncher _wslQuickAccessLauncher = new WindowsWslQuickAccessLauncher();
     private readonly IWslHostEditorEnvironment _wslEditorHost = new WindowsWslHostEditorEnvironment();
     private IReadOnlyList<WslHostEditor> _wslEditors = Array.Empty<WslHostEditor>();
+    private readonly WslQuickAccessEditorPreference _wslEditorPreference = new(
+        System.IO.Path.Combine(AppDataPaths.GetRootDirectory(null), "opencode-wsl-quick-access-editor.txt"));
+    private string? _selectedWslEditor;
 
     private void InitializeWslQuickAccess()
     {
         _wslQuickAccessView = new();
         WslQuickAccessSlot.Children.Add(_wslQuickAccessView);
-        _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(false);
-        _wslQuickAccessView.EditorRequested += async (_, _) => await LaunchWslQuickAccessAsync(true);
+        _selectedWslEditor = _wslEditorPreference.Load();
+        _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(null);
+        _wslQuickAccessView.EditorRequested += async (_, e) => await LaunchWslQuickAccessAsync(e.Name);
         _wslQuickAccessView.EditorMenuRequested += (_, _) => DetectWslEditors();
         Loaded += (_, _) =>
         {
@@ -61,20 +65,24 @@ public sealed partial class OpenCodePage
         if (_wslQuickAccessView is null) return;
         var state = CurrentWslQuickAccess();
         WslQuickAccessSlot.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
-        _wslQuickAccessView.Render(state, _wslEditors);
+        _wslQuickAccessView.Render(state, _wslEditors, _selectedWslEditor);
     }
 
-    private async Task LaunchWslQuickAccessAsync(bool editor)
+    private async Task LaunchWslQuickAccessAsync(string? editorName)
     {
         // Re-read live state at invocation; a menu may outlive a directory or connection change.
         var state = CurrentWslQuickAccess();
         if (!state.Visible || state.Target is not { } target) { RefreshWslQuickAccess(); return; }
         try
         {
-            if (editor)
+            if (editorName is not null)
             {
-                var code = WslHostEditorDetection.Detect(_wslEditorHost).First(e => e.Name == "VS Code");
-                await OpenCodeWslQuickAccess.LaunchAsync(state, code, _wslQuickAccessLauncher);
+                var editor = WslHostEditorDetection.Detect(_wslEditorHost).First(e => e.Name == editorName);
+                if (editor.Executable is null) { DetectWslEditors(); return; }
+                _wslEditorPreference.Save(editor.Name);
+                _selectedWslEditor = editor.Name;
+                await OpenCodeWslQuickAccess.LaunchAsync(state, editor, _wslQuickAccessLauncher);
+                RefreshWslQuickAccess();
             }
             else await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher);
         }

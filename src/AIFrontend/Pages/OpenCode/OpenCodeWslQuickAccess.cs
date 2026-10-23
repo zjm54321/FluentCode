@@ -9,7 +9,12 @@ namespace AIFrontend.Pages.OpenCode;
 
 internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDirectory, string UncPath);
 internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason);
-internal sealed record WslHostEditor(string Name, string? Executable, bool VerifiedWsl, string? Reason);
+internal enum WslEditorOpenMode { RemoteWsl, UncFolder }
+internal sealed record WslHostEditor(string Name, string? Executable, WslEditorOpenMode OpenMode, string? Reason);
+internal sealed class WslEditorRequestedEventArgs(string name) : EventArgs
+{
+    public string Name { get; } = name;
+}
 internal sealed record WslHostLaunch(string Executable, IReadOnlyList<string> Arguments)
 {
     public ProcessStartInfo StartInfo()
@@ -36,7 +41,7 @@ internal static class OpenCodeWslQuickAccess
     {
         if (!state.Visible || state.Target is not { } target) return Task.CompletedTask;
         return editor is null ? launcher.OpenExplorerAsync(target)
-            : launcher.OpenEditorAsync(VsCodeLaunch(target, editor));
+            : launcher.OpenEditorAsync(EditorLaunch(target, editor));
     }
 
     public static WslQuickAccessState Resolve(OpenCodeConnectionKind? kind, bool connected,
@@ -73,11 +78,15 @@ internal static class OpenCodeWslQuickAccess
             @"\\wsl.localhost\" + distribution + "\\" + string.Join('\\', parts)), null);
     }
 
-    public static WslHostLaunch VsCodeLaunch(WslQuickAccessTarget target, WslHostEditor editor)
+    public static WslHostLaunch EditorLaunch(WslQuickAccessTarget target, WslHostEditor editor)
     {
-        if (editor.Name != "VS Code" || !editor.VerifiedWsl || editor.Executable is null)
-            throw new InvalidOperationException("未检测到支持 WSL 远程模式的 VS Code");
-        return new(editor.Executable, new[] { "--remote", "wsl+" + target.Distribution, target.LinuxDirectory });
+        if (editor.Executable is null)
+            throw new InvalidOperationException("未检测到此主机编辑器");
+        // VS Code's documented WSL CLI; other editors accept an ordinary Windows folder.
+        // UNC is intentional for those editors, not an unverified remote-extension flag.
+        return new(editor.Executable, editor.OpenMode == WslEditorOpenMode.RemoteWsl
+            ? new[] { "--remote", "wsl+" + target.Distribution, target.LinuxDirectory }
+            : new[] { target.UncPath });
     }
 }
 
@@ -93,11 +102,11 @@ internal static class WslHostEditorDetection
     public static IReadOnlyList<WslHostEditor> Detect(IWslHostEditorEnvironment host)
     {
         var result = new List<WslHostEditor>();
-        foreach (var (name, exe, folder) in new[] {
-            ("VS Code", "Code.exe", "Microsoft VS Code"),
-            ("VSCodium", "VSCodium.exe", "VSCodium"),
-            ("Emacs", "runemacs.exe", "Emacs"),
-            ("Zed", "zed.exe", "Zed") })
+        foreach (var (name, exe, folder, mode) in new[] {
+            ("VS Code", "Code.exe", "Microsoft VS Code", WslEditorOpenMode.RemoteWsl),
+            ("VSCodium", "VSCodium.exe", "VSCodium", WslEditorOpenMode.UncFolder),
+            ("Emacs", "runemacs.exe", "Emacs", WslEditorOpenMode.UncFolder),
+            ("Zed", "zed.exe", "Zed", WslEditorOpenMode.UncFolder) })
         {
             var candidates = new List<string>();
             if (host.AppPath(exe) is { Length: > 0 } appPath) candidates.Add(appPath.Trim('"'));
@@ -114,13 +123,11 @@ internal static class WslHostEditorDetection
                 candidates.Add(root + "\\" + exe);
                 // The official VS Code PATH entry is its bin directory. Resolve the native executable,
                 // never execute code.cmd or cmd.exe, and never fall back to opening a UNC folder.
-                if (name == "VS Code" && root.EndsWith(@"\bin", StringComparison.OrdinalIgnoreCase))
+                if ((name == "VS Code" || name == "VSCodium") && root.EndsWith(@"\bin", StringComparison.OrdinalIgnoreCase))
                     candidates.Add(root[..^4] + "\\" + exe);
             }
             var installed = candidates.Find(host.FileExists);
-            var verified = name == "VS Code";
-            result.Add(new(name, installed, verified, installed is null ? "未检测到安装"
-                : !verified ? "已安装；尚未核实此编辑器的 WSL 唤起方式" : null));
+            result.Add(new(name, installed, mode, installed is null ? "未检测到安装" : null));
         }
         return result;
     }

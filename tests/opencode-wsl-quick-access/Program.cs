@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AIFrontend.Models;
@@ -16,7 +17,7 @@ internal static class Program
 
     public static async Task Main()
     {
-        // No real launcher, registry, filesystem, network, or process access in this runner.
+        // No real launcher, registry, network, or process access; preference IO uses an isolated temp directory.
         foreach (var kind in new OpenCodeConnectionKind?[] { null, OpenCodeConnectionKind.Remote, OpenCodeConnectionKind.Wsl })
         foreach (var connected in new[] { false, true })
         {
@@ -61,27 +62,52 @@ internal static class Program
         Check(editors.Count == 4, "candidate matrix covers four editors");
         Check(editors[0].Name == "VS Code" && editors[0].Executable == @"C:\Editors\Code.exe" && editors[0].Reason is null, "VS Code registry first");
         foreach (var editor in editors.Skip(1))
-            Check(editor.Executable is not null && !editor.VerifiedWsl && editor.Reason!.Contains("尚未核实"), "installed unsupported editor disabled");
-        var launch = OpenCodeWslQuickAccess.VsCodeLaunch(special.Target!, editors[0]);
+            Check(editor.Executable is not null && editor.OpenMode == WslEditorOpenMode.UncFolder && editor.Reason is null, "installed UNC-capable editor selectable");
+        var launch = OpenCodeWslQuickAccess.EditorLaunch(special.Target!, editors[0]);
         var info = launch.StartInfo(); // This only constructs metadata; never Process.Start.
         Check(!info.UseShellExecute && info.Arguments == "", "no shell string");
         Check(info.FileName == @"C:\Editors\Code.exe", "native Windows editor executable (never .cmd)");
         Check(info.ArgumentList.SequenceEqual(new[] { "--remote", "wsl+发行版 Test", special.Target!.LinuxDirectory }), "VS Code remote distro + Linux path argument boundaries");
         Check(!info.ArgumentList.Any(a => a.StartsWith(@"\\wsl")), "never downgrade to UNC editor window");
-        var rejected = false;
-        try { OpenCodeWslQuickAccess.VsCodeLaunch(special.Target!, editors[1]); }
-        catch (InvalidOperationException) { rejected = true; }
-        Check(rejected, "unverified invocation cannot launch");
+        foreach (var editor in editors.Skip(1))
+        {
+            var recorderForChoice = new RecordingLauncher();
+            await OpenCodeWslQuickAccess.LaunchAsync(special, editor, recorderForChoice);
+            var chosen = recorderForChoice.Editors.Single().StartInfo();
+            Check(chosen.FileName == editor.Executable, editor.Name + " launches the selected executable, not VS Code");
+            Check(!chosen.UseShellExecute && chosen.Arguments == "" && chosen.ArgumentList.SequenceEqual(new[] { special.Target!.UncPath }),
+                editor.Name + " receives one exact UNC folder argument without shell flags");
+        }
         host.Registry.Clear();
         host.Files.Add(@"C:\Other\Microsoft VS Code\Code.exe");
         Check(WslHostEditorDetection.Detect(host)[0].Executable == @"C:\Other\Microsoft VS Code\Code.exe", "PATH bin resolves native code executable");
         host.Files.Clear();
         host.Registry["Code.exe"] = @"C:\stale\Code.exe";
         Check(WslHostEditorDetection.Detect(host).All(e => e.Executable is null && e.Reason == "未检测到安装"), "stale registry and missing executables not installed");
+        foreach (var editor in WslHostEditorDetection.Detect(host))
+        {
+            var rejected = false;
+            try { OpenCodeWslQuickAccess.EditorLaunch(special.Target!, editor); }
+            catch (InvalidOperationException) { rejected = true; }
+            Check(rejected, "missing " + editor.Name + " cannot launch");
+        }
         host.Variables["ProgramFiles"] = @"C:\Program Files";
         host.Files.Add(@"C:\Program Files\Microsoft VS Code\Code.exe");
         Check(WslHostEditorDetection.Detect(host)[0].Executable == @"C:\Program Files\Microsoft VS Code\Code.exe", "machine installation");
-        Console.WriteLine("PASS fake registry/filesystem editor detection + VS Code ArgumentList");
+        Console.WriteLine("PASS four-editor detection + selected executable/ArgumentList through injected launcher");
+
+        var preferenceRoot = Path.Combine(Path.GetTempPath(), "aif-wsl-editor-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var preferencePath = Path.Combine(preferenceRoot, "editor.txt");
+            Check(new WslQuickAccessEditorPreference(preferencePath).Load() is null, "no implicit editor choice");
+            foreach (var editor in editors)
+            {
+                new WslQuickAccessEditorPreference(preferencePath).Save(editor.Name);
+                Check(new WslQuickAccessEditorPreference(preferencePath).Load() == editor.Name, "editor choice survives recreation: " + editor.Name);
+            }
+        }
+        finally { if (Directory.Exists(preferenceRoot)) Directory.Delete(preferenceRoot, true); }
 
         var recorder = new RecordingLauncher();
         await OpenCodeWslQuickAccess.LaunchAsync(Resolve("/old"), null, recorder);
@@ -92,7 +118,7 @@ internal static class Program
         await OpenCodeWslQuickAccess.LaunchAsync(Resolve("~/unresolved"), null, recorder);
         Check(recorder.Explorers.Count == 2, "unresolved replacement cannot launch stale target");
         Console.WriteLine("PASS directory refresh + fake launch boundary");
-        Console.WriteLine($"PASS 4 groups / {_assertions} assertions; no external applications launched");
+        Console.WriteLine($"PASS 5 groups / {_assertions} assertions; no external applications launched");
     }
 
     private sealed class FakeHost : IWslHostEditorEnvironment

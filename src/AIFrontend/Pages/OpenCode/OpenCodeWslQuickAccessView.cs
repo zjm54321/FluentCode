@@ -14,7 +14,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     private const string EditorText = "在主机文本编辑器中打开";
     private readonly TextBlock _note = new() { TextWrapping = TextWrapping.Wrap };
     public event EventHandler? ExplorerRequested;
-    public event EventHandler? EditorRequested;
+    public event EventHandler<WslEditorRequestedEventArgs>? EditorRequested;
     public event EventHandler? EditorMenuRequested;
     private readonly MenuFlyout _editors = new();
 
@@ -35,24 +35,26 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _editors.Opening += (_, _) => EditorMenuRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    public void Render(WslQuickAccessState state, IReadOnlyList<WslHostEditor> editors)
+    public void Render(WslQuickAccessState state, IReadOnlyList<WslHostEditor> editors, string? selectedEditor)
     {
         _explorer.IsEnabled = state.Target is not null;
         var supported = false;
         _editors.Items.Clear();
         foreach (var editor in editors)
         {
-            var enabled = state.Target is not null && editor.VerifiedWsl && editor.Executable is not null;
+            var enabled = state.Target is not null && editor.Executable is not null;
             supported |= enabled;
-            var item = new MenuFlyoutItem { Text = editor.Name + (editor.Reason is { } reason ? " · " + reason : ""), IsEnabled = enabled };
-            item.Click += (_, _) => EditorRequested?.Invoke(this, EventArgs.Empty);
+            var item = new ToggleMenuFlyoutItem { Text = editor.Name + (editor.Reason is { } reason ? " · " + reason : ""), IsEnabled = enabled,
+                IsChecked = editor.Name == selectedEditor };
+            item.Click += (_, _) => EditorRequested?.Invoke(this, new(editor.Name));
             _editors.Items.Add(item);
         }
         _editor.IsEnabled = supported;
         _note.Text = state.Reason ?? (supported ? state.Target?.LinuxDirectory : "未检测到支持 WSL 的主机编辑器");
         ToolTipService.SetToolTip(_explorer, state.Reason ?? state.Target?.UncPath);
         var explanations = new List<string>();
-        foreach (var editor in editors) explanations.Add(editor.Name + "：" + (editor.Reason ?? "支持 WSL 远程模式"));
+        foreach (var editor in editors) explanations.Add(editor.Name + "：" + (editor.Reason
+            ?? (editor.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : "打开 WSL UNC 文件夹")));
         ToolTipService.SetToolTip(_editor, state.Reason ?? string.Join("\n", explanations));
     }
 
