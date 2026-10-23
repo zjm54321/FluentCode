@@ -37,39 +37,6 @@ namespace AIFrontend.Pages
         private readonly SplitView InsightsPane = new();
         private readonly ToggleButton SessionInsightsButton = new();
 
-        // ---- doubles for the Agents-section child navigation (OpenCodePage.SessionInsights.cs) ----
-        private sealed class AgentSelectorDouble { public string? CurrentAgentId { get; set; } = "build"; }
-        private readonly AgentSelectorDouble _agentSelector = new();
-        private bool _subagentNavigationBusy;
-        private enum SessionReturnKind { VisitedOrigin, VerifiedParent }
-        private sealed record SessionReturnTarget(string SessionId, SessionReturnKind Kind);
-        internal readonly List<string> SelectedItems = new();
-        internal readonly List<(string SessionId, string? ReturnTo)> Switches = new();
-        internal readonly List<string> Messages = new();
-        internal int ReadsStarted;
-        private void SelectSessionItem(string sessionId) => SelectedItems.Add(sessionId);
-        private System.Threading.Tasks.Task SwitchToSessionAsync(string sessionId, SessionReturnTarget? returnTarget = null)
-        {
-            Switches.Add((sessionId, returnTarget?.SessionId));
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-        private void ShowMessage(InfoBarSeverity severity, string title, string message) => Messages.Add(title);
-        /// <summary>DOUBLE of OpenCodePage.xaml.cs TryStartRead: field recheck then start (no source lock modelled).</summary>
-        private bool TryStartRead<T>(OpenCodePageSource source, long revision, int sourceGeneration, OpenCodeClient client,
-            int sessionGeneration, CancellationToken ct, Func<System.Threading.Tasks.Task<T>> read, out System.Threading.Tasks.Task<T>? task)
-        {
-            task = null;
-            if (ct.IsCancellationRequested || !_pageActive || !ReferenceEquals(source, _source) || revision != _sourceRevision
-                || sourceGeneration != _sourceGeneration || !ReferenceEquals(client, _client) || sessionGeneration != _sessionGeneration)
-            {
-                return false;
-            }
-
-            ReadsStarted++;
-            task = read();
-            return true;
-        }
-
         // ---- doubles for unrelated services referenced by the extracted InvalidateForSourceChange ----
         private enum ConnectionState { Unknown }
         private sealed class Clearable { public void ClearMessages() { } public void ClearAll() { } public void Clear() { } public void ApplyMessages(List<OpenCodeMessage> messages) { } }
@@ -119,7 +86,6 @@ namespace AIFrontend.Pages
         internal OpenCodeSessionInsightsController Insights => _insights!;
         internal OpenCodeSessionInsightsView View => _insightsView;
         internal Border PaneHost => InsightsPaneHost;
-        internal System.Threading.Tasks.Task OpenChild(string childSessionId) => OpenInsightsChildSessionAsync(childSessionId);
         internal System.Threading.Tasks.Task Reload() => LoadSessionInsightsAsync();
 
         /// <summary>Modelled: page Loaded state flag only (OnPageLoaded itself is not linked).</summary>

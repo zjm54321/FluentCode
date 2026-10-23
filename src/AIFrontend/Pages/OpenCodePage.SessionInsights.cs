@@ -1,31 +1,25 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages;
 
 /// <summary>
 /// 会话概况接线：标签栏右侧“概况”开关 + 右侧概况面板（重设计 v3 §10 + Wave 3 F10；SelectorBar 分区：概况 / Billion。
-/// 概况 = 上下文参考圆环（点击看当前上下文、用量计费、ACP/Billion 状态）+ to do + Agents；MCP/插件/LSP 由页头连接状态 Flyout 显示，
+/// 概况 = 上下文参考圆环（点击看当前上下文、用量计费、ACP/Billion 状态）+ to do；MCP/插件/LSP 由页头连接状态 Flyout 显示，
 /// 复用同一次读取结果）。读取与投影全部在
 /// <see cref="OpenCodeSessionInsightsController"/>，本文件只负责捕获页面绑定、生命周期与渲染。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 常驻面板或抽屉可见时自动加载；当前会话事件在安静窗口后合并刷新，不定时轮询。
-/// 上下文与 to do 仍复用已接纳消息即时本地更新。Billion 健康/详情保持单独确认并点击读取，
+/// 上下文与 to do 复用已接纳消息即时本地更新；to do 按需独立补读历史。Billion 健康/详情保持单独确认并点击读取，
 /// 地址元数据经当前来源和已核实会话目录发现。换会话取消排队读取并重新加载可见内容。
-/// </para>
-/// <para>
-/// Agents 分区“打开子会话”：只接受当前快照中、属于当前会话的子会话 ID，再经服务端祖先链复核（fail-closed）
-/// 后走与工具卡片“查看子会话”相同的切换路径（同步列表选中态 + 携带来源返回目标），与之共用防重入标记。
 /// </para>
 /// <para>
 /// 代际：绑定 = 来源引用 + Revision + 来源代际 + 页面客户端 + 页面/会话代际 + 选中会话 ID；
@@ -381,7 +375,6 @@ public sealed partial class OpenCodePage
         // LoadAsync/its discovery continuation preserve this UI caller's synchronization context; View owns queued visuals.
         if (snapshot.BillionContext is { } context
             && (!IsCurrentInsightsBinding(context.Binding) || context.Binding.Source.IsRevoked)) return;
-        _insightsView.PrimaryAgent = _agentSelector.CurrentAgentId;
         _insightsView.Render(snapshot);
         var description = OpenCodeSessionInsightsView.DescribeEntry(snapshot);
         // wave5 G5：图标按钮的 Tooltip 固定为“概况”；采样说明只作为无障碍帮助文本。
@@ -392,87 +385,4 @@ public sealed partial class OpenCodePage
     /// <summary>概况渲染后的扩展点：页头连接详情 Flyout（OpenCodePage.ConnectionFlyout.cs）在打开时据最新快照重建 MCP / 插件。</summary>
     partial void OnSessionInsightsRendered();
 
-    /// <summary>
-    /// Agents 分区“打开子会话”：仅当 ID 属于当前已显示快照、且快照属于当前会话时，经服务端祖先链复核
-    /// （<see cref="OpenCodeSessionAncestry.IsAncestorAsync"/>，fail-closed）后切换；每次 await 后复核概况绑定。
-    /// 失败保留当前会话并提示，取消静默返回。与工具卡片子会话导航共用 <c>_subagentNavigationBusy</c>。
-    /// </summary>
-    private async Task OpenInsightsChildSessionAsync(string childSessionId)
-    {
-        if (_subagentNavigationBusy || _insights is not { } insights || !TryCaptureInsightsBinding(out var captured))
-        {
-            return;
-        }
-
-        var binding = captured!;
-        var snapshot = insights.Snapshot;
-        if (!string.Equals(snapshot.SessionId, binding.SessionId, StringComparison.Ordinal)
-            || snapshot.Children.Value is not { } children
-            || !string.Equals(children.ParentSessionId, binding.SessionId, StringComparison.Ordinal)
-            || !children.Children.Any(child => string.Equals(child.SessionId, childSessionId, StringComparison.Ordinal)))
-        {
-            return; // 不是当前快照中当前会话的子会话：不导航。
-        }
-
-        _subagentNavigationBusy = true;
-        try
-        {
-            using var operation = CreateOperationToken(binding.Source);
-            var ct = operation.Token;
-            bool Current() => !ct.IsCancellationRequested && IsCurrentInsightsBinding(binding) && !binding.Source.IsRevoked;
-
-            if (!TryStartRead(binding.Source, binding.Revision, binding.SourceGeneration, binding.Client, binding.SessionGeneration, ct,
-                    () => OpenCodeSessionAncestry.IsAncestorAsync(binding.Client, childSessionId, binding.SessionId, ct),
-                    out var ancestryTask))
-            {
-                return; // 来源已撤销/已取消或上下文已变化：未起发任何请求。
-            }
-
-            bool isAncestor;
-            try
-            {
-                isAncestor = await ancestryTask!;
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception)
-            {
-                if (Current())
-                {
-                    ShowMessage(InfoBarSeverity.Error, "无法复核子会话归属", "复核归属时发生未预期错误；已保留当前会话，未执行导航。");
-                }
-
-                return;
-            }
-
-            if (!Current())
-            {
-                return;
-            }
-
-            if (!isAncestor)
-            {
-                ShowMessage(InfoBarSeverity.Warning, "无法确认子会话归属",
-                    "服务端父子链复核未确认该子会话属于当前会话；已保留当前会话，未执行导航。");
-                return;
-            }
-
-            SelectSessionItem(childSessionId);
-            await SwitchToSessionAsync(childSessionId, new SessionReturnTarget(binding.SessionId, SessionReturnKind.VisitedOrigin));
-        }
-        catch (OperationCanceledException)
-        {
-            // 取消不报错误。
-        }
-        catch (Exception)
-        {
-            ShowMessage(InfoBarSeverity.Error, "子会话导航失败", "子会话导航过程中发生未预期错误。");
-        }
-        finally
-        {
-            _subagentNavigationBusy = false;
-        }
-    }
 }

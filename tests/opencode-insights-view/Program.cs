@@ -215,7 +215,6 @@ internal static class Program
 
     private static void NoRightAgents(OpenCodeSessionInsightsView view)
     {
-        view.PrimaryAgent = "build";
         Draw(view, WithChildren(
             ("ses_c1", "explorer", true, "Search codebase"),
             ("ses_c2", "explorer", false, "Read config")));

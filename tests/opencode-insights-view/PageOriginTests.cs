@@ -35,7 +35,6 @@ internal static class PageOriginTests
         ("origin B: captured context, session retain, no-session source ABA + unload clear, stale callbacks", ContextAndLifecycle),
         ("origin C: persistent ownership, queued render outside TextChanging, focus/caret preserved", OwnershipAndFocus),
         ("origin D: clear manual override, reject delayed discovery, explicit refresh autofills without consent/read", ClearOverrideAndRediscover),
-        ("agents E: child navigation only for a child in the current snapshot; otherwise no read, no switch", ChildNavigationGate),
     };
 
     // ------------------------------------------------------------------ A
@@ -306,23 +305,6 @@ internal static class PageOriginTests
             && insights.Snapshot.Billion.Stats is null && http.Paths.All(path => !path.Contains("__bili", StringComparison.Ordinal)),
             "programmatic autofill emits no origin edit and no engine read");
         Check(ShimTree.ForbiddenMutations == 0, "discovery/edit sequence never mutates the tree inside TextChanging");
-    }
-
-    // ------------------------------------------------------------------ E
-
-    private static void ChildNavigationGate()
-    {
-        var f = Fixture();
-        Check(ReferenceEquals(f.Page.PaneHost.Child, f.Page.View), "view hosted once in the pane host");
-        // Offline fixture: OMO is not verified, so the snapshot lists no children for ses_a.
-        f.Page.OpenChild("ses_not_listed").GetAwaiter().GetResult();
-        f.Page.OpenChild("ses_other").GetAwaiter().GetResult(); // the view no longer raises child requests (left tree owns them)
-        f.Pump.RunUntil(() => true);
-        Check(f.Page.ReadsStarted == 0 && f.Page.Switches.Count == 0 && f.Page.SelectedItems.Count == 0 && f.Page.Messages.Count == 0,
-            "unlisted child id: no ancestry read, no selection, no switch");
-        f.Page.SelectSession(null);
-        f.Page.OpenChild("ses_not_listed").GetAwaiter().GetResult();
-        Check(f.Page.ReadsStarted == 0 && f.Page.Switches.Count == 0, "no session: nothing");
     }
 
     // ------------------------------------------------------------------ fixture

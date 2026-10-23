@@ -220,7 +220,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     internal OpenCodeContextRing ContextRing => _contextRing;
 
     /// <summary>当前主 agent（页面在每次渲染前写入；只读显示，下一次全量渲染生效）。</summary>
-    internal string? PrimaryAgent { get; set; }
 
     /// <summary>真实换源（引用/Revision/来源代际变化）时由页面调用：丢弃原始地址草稿，下一次渲染按新来源显示。</summary>
     internal void ForgetBillionOriginDraft()
@@ -236,7 +235,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     {
         if (snapshot.UnavailableReason is { } reason) return "会话概况：" + reason;
         if (snapshot.Loading) return "会话概况：读取中";
-        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文、to do 与 Agents";
+        if (snapshot.SampledAt is not { } sampled) return "会话概况：用量、费用、上下文与 to do";
         var cost = snapshot.Cost.Value is { Summary.HasKnownCost: true } view
             ? (snapshot.Cost.State == OpenCodeInsightState.Partial ? "已知部分 " : "") + Money(view.Summary.TotalCost)
             : "费用无法确认";
@@ -1037,7 +1036,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     }
 
     // ------------------------------------------------------------------
-    // 构件（Agents 分区共用）
+    // 概况与上下文 Flyout 共用构件
     // ------------------------------------------------------------------
 
     internal static (StackPanel Panel, StackPanel Content) Section(string title, OpenCodeInsightState state, string automationId)
