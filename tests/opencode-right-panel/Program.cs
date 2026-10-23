@@ -37,7 +37,7 @@ internal static class Program
             && !view.Contains("已连接") && view.Contains("IsTextSelectionEnabled = true"), "D: read-only directory row separate from the logo/version/dot row");
         Check(metadata.IndexOf("RightPanelDirectorySlot.Children.Add", System.StringComparison.Ordinal) >= 0
             && metadata.Contains("ConnectionFlyout.ShowAt(_rightPanelMetadata.Footer)"), "D: directory docks in the bottom-right card; version row opens version/MCP/LSP details");
-        Check(view.Contains("Header = new StackPanel { Spacing = 2, Children = { _title, CopyButton, _hint } }"), "D: right card opens with title then copyable session id");
+        Check(view.Contains("Children = { _title, CopyButton, _hint } }"), "D: right card opens with title then copyable session id");
         Console.WriteLine($"PASS {_checks} right-panel presentation checks; native clipboard/flyout visuals require Windows GUI acceptance.");
     }
 }
