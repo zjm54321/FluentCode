@@ -141,4 +141,59 @@ public sealed partial class OpenCodePage
         }
         catch (Exception) { _wslQuickAccessView?.ShowFailure(); }
     }
+
+    private WslQuickAccessState ResolveDetailPath(MessageHistoryRead read, string path)
+    {
+        var settings = _homeSettings?.Current?.OpenCode;
+        if (!IsCurrentMessageHistoryRead(read)) return new(true, null, "会话或连接已切换");
+        if (settings?.Kind != AIFrontend.Models.OpenCodeConnectionKind.Wsl)
+            return new(true, null, "当前连接未提供已授权的本机路径映射；不能将远程路径作为本机路径打开");
+        if (!path.StartsWith('/') && path is not "~" && !path.StartsWith("~/", StringComparison.Ordinal))
+        {
+            if (read.Directory?.StartsWith('/') != true) return new(true, null, "会话未提供可解析相对路径的绝对工作目录");
+            path = read.Directory.TrimEnd('/') + "/" + path;
+        }
+        var home = ReferenceEquals(_wslHomeSource, read.Source) && _wslHomeDistribution == settings.WslDistribution ? _wslAuthoritativeHome : null;
+        return OpenCodeWslQuickAccess.Resolve(settings.Kind, true, settings.WslDistribution, path, home);
+    }
+
+    private WslHostEditor? DetailPathEditor() => _selectedWslEditor is { } selected
+        ? _wslEditors.FirstOrDefault(editor => editor.Name == selected && editor.Executable is not null)
+        : _wslEditors.FirstOrDefault(editor => editor.Executable is not null);
+
+    private string? DetailPathUnavailableReason(MessageHistoryRead read, string path, bool directory)
+    {
+        var state = ResolveDetailPath(read, path);
+        return state.Target is null ? state.Reason ?? "当前路径不可用"
+            : !directory && DetailPathEditor() is null ? "未检测到可用于打开此 WSL 文件的主机编辑器" : null;
+    }
+
+    private async Task LaunchDetailPathAsync(MessageHistoryRead read, string path, bool directory, bool reveal, int? line)
+    {
+        var state = ResolveDetailPath(read, path);
+        if (state.Target is not { } target || DetailPathUnavailableReason(read, path, directory) is not null) return;
+        try
+        {
+            if (directory)
+            {
+                if (reveal)
+                {
+                    var parent = target.LinuxDirectory[..(target.LinuxDirectory.LastIndexOf('/') + 1)];
+                    state = OpenCodeWslQuickAccess.Resolve(AIFrontend.Models.OpenCodeConnectionKind.Wsl, true, target.Distribution, parent);
+                }
+                if (IsCurrentMessageHistoryRead(read)) await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher);
+            }
+            else if (DetailPathEditor() is { } editor && IsCurrentMessageHistoryRead(read))
+            {
+                var launch = OpenCodeWslQuickAccess.EditorLaunch(target, editor);
+                if (line is > 0 && editor.OpenMode == WslEditorOpenMode.RemoteWsl)
+                    launch = new(launch.Executable, new[] { "--remote", "wsl+" + target.Distribution, "--goto", target.LinuxDirectory + ":" + line.Value });
+                await _wslQuickAccessLauncher.OpenEditorAsync(launch);
+            }
+        }
+        catch (Exception)
+        {
+            if (IsCurrentMessageHistoryRead(read)) ShowMessage(Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning, "无法打开路径", "主机未能打开该路径；请复制路径后手动打开。");
+        }
+    }
 }

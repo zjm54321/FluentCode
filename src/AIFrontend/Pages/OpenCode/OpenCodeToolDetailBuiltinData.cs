@@ -66,6 +66,13 @@ internal sealed record OpenCodeCompanionDetail(IReadOnlyDictionary<string, strin
 /// </summary>
 internal static class OpenCodeToolDetailBuiltinData
 {
+    internal static string? DecompressPath(OpenCodeToolRowModel model)
+    {
+        if (StringValue(Input(model), "toFile") is { Length: > 0 } path) return path;
+        var written = Regex.Match(model.OutputText ?? "", @"(?m)^Content \(\d+ chars\) written to: ([^\r\n]+)");
+        return written.Success ? written.Groups[1].Value : null;
+    }
+
     internal static OpenCodeCompanionDetail Companion(OpenCodeToolRowModel model)
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal);

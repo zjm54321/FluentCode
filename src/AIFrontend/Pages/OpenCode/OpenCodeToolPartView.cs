@@ -34,7 +34,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// 增量移除 / 替换时由 <see cref="Dispose"/> 退订、关闭弹出层并停用回调，不产生 stale callbacks。
 /// </para>
 /// </remarks>
-public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeToolDetailOptionsSource
+public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeToolDetailOptionsSource, IOpenCodeToolDetailFileSource
 {
     private readonly Grid _root;
     private readonly Border _selectionBar;
@@ -102,6 +102,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             OpenCodeToolDetailPopup.Shared.Close();
             RaiseSubagentSessionRequested(child);
         };
+        options.OpenTerminal = _model.ShellId is { Length: > 0 } shellId
+            ? () => { if (!_disposed) { OpenCodeToolDetailPopup.Shared.Close(); TerminalRequested?.Invoke(shellId); } } : null;
     }
     void IOpenCodeToolDetailOptionsSource.ConfigureDetailOptions(OpenCodeToolDetailOptions options) => ConfigureDetailOptions(options);
     private FrameworkElement? _detailAnchorOverride;
@@ -253,6 +255,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     internal OpenCodeToolRowModel Model => _model;
 
     OpenCodeToolRowModel IOpenCodeToolDetailSource.DetailModel => _detailModel;
+    int? IOpenCodeToolDetailFileSource.DetailFileIndex => _detailModel.SourceFileIndex;
+    string? IOpenCodeToolDetailFileSource.DetailFileKey => _detailModel.SourceFileIndex is not null && _detailModel.DiffFiles.Count == 1
+        ? _detailModel.DiffFiles[0].Path : null;
 
     FrameworkElement IOpenCodeToolDetailSource.DetailAnchor => _detailAnchorOverride ?? _row;
 
@@ -726,7 +731,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     // Reuse the popup's existing click-action source hook: it invokes OpenChildChat rather
     // than pinning a large dialog. Here the action is the row's inline/terminal routing.
-    private sealed class RowActionPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource
+    private sealed class RowActionPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource, IOpenCodeDetailActivationSource
     {
         private readonly OpenCodeToolPartView _owner;
         internal RowActionPreviewSource(OpenCodeToolPartView owner) => _owner = owner;
@@ -736,6 +741,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         public OpenCodeToolDetailView BuildDetailContent() => OpenCodeToolDetailContent.Build(_owner._model,
             new OpenCodeToolDetailOptions { Compact = true }, () => OpenCodeToolDetailPopup.Shared.Refresh(this));
         public void OpenChildChat() => _owner.TogglePinnedDetail();
+        public void ActivateDetail() => _owner.TogglePinnedDetail();
         public void OnDetailStateChanged(bool shown, bool pinned)
             => ((IOpenCodeToolDetailSource)_owner).OnDetailStateChanged(shown, pinned);
     }
@@ -743,7 +749,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     /// <summary>
     /// subagent 悬停仍显示调用详情；点击独立请求真实子会话只读窗口，不复用大属性详情。
     /// </summary>
-    private sealed class SubagentPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource
+    private sealed class SubagentPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource, IOpenCodeDetailActivationSource
     {
         private readonly OpenCodeToolPartView _owner;
         private readonly OpenCodeToolDetailOptions _options = new();
@@ -768,6 +774,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             if (!_owner._disposed)
                 _owner.RaiseSubagentSessionRequested(_owner._childSessionId ?? string.Empty);
         }
+        public void ActivateDetail() => OpenChildChat();
 
         public FrameworkElement DetailAnchor => _owner._detailAnchorOverride ?? _owner._row;
 

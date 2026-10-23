@@ -14,7 +14,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// 悬停片刻（延迟见 OpenCodeToolDetailPopup.HoverOpenDelayMs）后在共享的 <see cref="OpenCodeToolDetailPopup"/> 中预览完整思考文本（不移动焦点），点击 / Enter / Space 固定，Esc 关闭。
 /// 普通 sealed 业务类（不是控件子类）：原生 Button + Grid，内置文本样式与主题画刷。
 /// </summary>
-internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, IOpenCodeChildChatSource
+internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, IOpenCodeChildChatSource, IOpenCodeDetailActivationSource
 {
     private readonly Grid _root;
     private readonly Border _selectionBar;
@@ -130,6 +130,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
         RefreshInlineContent();
     }
     void IOpenCodeChildChatSource.OpenChildChat() => OpenDetail();
+    void IOpenCodeDetailActivationSource.ActivateDetail() => OpenDetail();
 
     private void RefreshInlineContent()
     {

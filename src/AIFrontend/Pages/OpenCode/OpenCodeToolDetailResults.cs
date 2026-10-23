@@ -89,6 +89,13 @@ internal static partial class OpenCodeToolDetailContent
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 8, 4),
                 Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle") };
             if (!options.Compact && options.OpenFile is { } open) button.Click += (_, _) => open(file.Path, match.Line);
+            if (!options.Compact)
+            {
+                var reason = options.PathActionUnavailableReason?.Invoke(file.Path, false)
+                    ?? (options.OpenFile is null ? "当前连接未提供已授权的路径打开方式" : null);
+                button.IsEnabled = reason is null;
+                if (reason is not null) ToolTipService.SetToolTip(button, reason);
+            }
             return button;
         }
         var shownCount = 0;
@@ -159,6 +166,7 @@ internal static partial class OpenCodeToolDetailContent
         selector.Items.Add(treeChoice); selector.Items.Add(listChoice);
         void PathMenu(FrameworkElement element, string path)
         {
+            if (options.PathActionUnavailableReason?.Invoke(path, false) is { } reason) ToolTipService.SetToolTip(element, reason);
             var copy = new MenuFlyoutItem { Text = "复制路径" };
             copy.Click += (_, _) =>
             {

@@ -126,6 +126,8 @@ internal sealed class OpenCodeToolDetailOptions
     public Action<string, int?>? OpenFile { get; set; }
     public Action<string>? RevealFile { get; set; }
     public Action? OpenTerminal { get; set; }
+    public Action<string>? OpenDirectory { get; set; }
+    public Func<string, bool, string?>? PathActionUnavailableReason { get; set; }
     internal string? PreviewHint { get; set; }
     public Dictionary<string, int> FoldVisibleLines { get; } = new(StringComparer.Ordinal);
 

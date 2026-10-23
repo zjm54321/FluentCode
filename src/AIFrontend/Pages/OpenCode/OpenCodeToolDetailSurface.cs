@@ -164,6 +164,19 @@ internal static partial class OpenCodeToolDetailContent
 
     private static void AddToolActions(StackPanel actions, OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
     {
+        void PathAction(string label, string path, bool directory, Action? action)
+        {
+            var reason = options.PathActionUnavailableReason?.Invoke(path, directory)
+                ?? (action is null ? "当前连接未提供已授权的路径打开方式" : null);
+            var button = new Button { Content = label, IsEnabled = reason is null };
+            if (reason is not null) ToolTipService.SetToolTip(button, reason);
+            else button.Click += (_, _) => action?.Invoke();
+            actions.Children.Add(button);
+        }
+        if (model.ToolName == "skill" && OpenCodeToolDetailBuiltinData.Skill(model).Directory is { Length: > 0 } directory)
+            PathAction("打开技能目录", directory, true, options.OpenDirectory is { } openDirectory ? () => openDirectory(directory) : null);
+        if (model.ToolName == "decompress" && OpenCodeToolDetailBuiltinData.DecompressPath(model) is { Length: > 0 } restoredFile)
+            PathAction("打开文件", restoredFile, false, options.OpenFile is { } openRestored ? () => openRestored(restoredFile, null) : null);
         if (model.Kind == OpenCodeToolKind.Shell)
         {
             actions.Children.Add(CopyButton("复制命令", model.Command ?? model.Target));
@@ -187,18 +200,9 @@ internal static partial class OpenCodeToolDetailContent
         {
             var path = model.DiffFiles.Count > 0 ? model.DiffFiles[Math.Clamp(options.SelectedFile, 0, model.DiffFiles.Count - 1)].Path : model.Target;
             var offset = int.TryParse(Field(StateObject(model, "input"), "offset"), out var line) ? line : (int?)null;
-            if (options.RevealFile is { } reveal)
-            {
-                var button = new Button { Content = "在资源管理器中显示" };
-                button.Click += (_, _) => reveal(path);
-                actions.Children.Add(button);
-            }
-            if (options.OpenFile is { } open)
-            {
-                var button = new Button { Content = offset is { } number ? $"在编辑器中打开（第 {number} 行）" : "在编辑器中打开", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
-                button.Click += (_, _) => open(path, offset);
-                actions.Children.Add(button);
-            }
+            PathAction("在资源管理器中显示", path, true, options.RevealFile is { } reveal ? () => reveal(path) : null);
+            PathAction(offset is { } number ? $"在编辑器中打开（第 {number} 行）" : "在编辑器中打开", path, false,
+                options.OpenFile is { } open ? () => open(path, offset) : null);
         }
         if (model.Kind == OpenCodeToolKind.Shell && options.OpenTerminal is { } terminal)
         {

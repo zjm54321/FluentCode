@@ -80,9 +80,17 @@ public sealed partial class OpenCodePage
                 _toolDetailBindingCts = CreateOperationToken(detailSource);
                 var bindingToken = _toolDetailBindingCts.Token;
                 _conversationView.ConfigureToolDetail = (options, parent, rowCanRead) =>
+                {
+                    bool Current() => !bindingToken.IsCancellationRequested && IsCurrentMessageHistoryRead(read)
+                        && _conversationView.ContainsRenderedMessage(parent);
                     OpenCodeToolDetailBuiltins.BindLiveChildOutput(options, client,
-                        child => !bindingToken.IsCancellationRequested && IsCurrentMessageHistoryRead(read)
-                            && _conversationView.ContainsRenderedMessage(parent) && rowCanRead(child), bindingToken);
+                        child => Current() && rowCanRead(child), bindingToken);
+                    options.PathActionUnavailableReason = (path, directory) => !Current() ? "会话或连接已切换"
+                        : DetailPathUnavailableReason(read, path, directory);
+                    options.OpenDirectory = path => { if (Current()) _ = LaunchDetailPathAsync(read, path, true, false, null); };
+                    options.RevealFile = path => { if (Current()) _ = LaunchDetailPathAsync(read, path, true, true, null); };
+                    options.OpenFile = (path, line) => { if (Current()) _ = LaunchDetailPathAsync(read, path, false, false, line); };
+                };
             }
             _conversationView.SetBackgroundAction((messageId, part) => _ = BackgroundForegroundToolsAsync(read, messageId, part));
         }
