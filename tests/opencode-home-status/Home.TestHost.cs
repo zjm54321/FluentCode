@@ -13,12 +13,16 @@ namespace Microsoft.UI.Xaml
     public readonly record struct GridLength(double Value, GridUnitType Type = GridUnitType.Pixel) { public static GridLength Auto => new(0,GridUnitType.Auto); }
     public readonly record struct Thickness(double Left, double Top, double Right, double Bottom)
     { public Thickness(double all):this(all,all,all,all){} }
-    public readonly record struct CornerRadius(double Value);
+    public readonly record struct CornerRadius(double Value)
+    { public CornerRadius(double topLeft,double topRight,double bottomRight,double bottomLeft):this(topLeft){BottomRight=bottomRight;} public double BottomRight{get;init;} }
+    public enum FocusState {Programmatic}
     public class DependencyProperty{}
     public delegate void DependencyPropertyChangedCallback(DependencyObject sender,DependencyProperty dp);
     public class DependencyObject { internal Dictionary<string,object?> Attached = new();
         public long RegisterPropertyChangedCallback(DependencyProperty dp,DependencyPropertyChangedCallback callback)=>0; }
-    public class UIElement:DependencyObject { public Visibility Visibility {get;set;} public double Opacity{get;set;}=1; public object? Shadow{get;set;} public System.Numerics.Vector3 Translation{get;set;} }
+    public class UIElement:DependencyObject { public Visibility Visibility {get;set;} public double Opacity{get;set;}=1; public object? Shadow{get;set;} public System.Numerics.Vector3 Translation{get;set;}
+        public List<Input.KeyboardAccelerator> KeyboardAccelerators{get;}=new(); public bool Focus(FocusState state)=>true;
+        public event EventHandler<Input.KeyRoutedEventArgs>? KeyDown;public Input.KeyRoutedEventArgs RaiseKeyDown(Windows.System.VirtualKey key){var args=new Input.KeyRoutedEventArgs{Key=key};KeyDown?.Invoke(this,args);return args;} }
     public class FrameworkElement:UIElement
     {
         public object Tag {get;set;}=null!; public Style? Style {get;set;}
@@ -34,11 +38,19 @@ namespace Microsoft.UI.Xaml
     public class Style {public Style? BasedOn{get;set;} public string Xml{get;set;}="";}
     public class Application {public static Application? Current{get;set;} public Dictionary<string,object> Resources {get;}=new();}
 }
-namespace Microsoft.UI.Xaml.Media {public class Brush{} public class ThemeShadow{}
+namespace Windows.System {public enum VirtualKey {K,F2,Delete} public enum VirtualKeyModifiers {Control}}
+namespace Microsoft.UI.Xaml.Input
+{
+    public class KeyRoutedEventArgs:EventArgs {public Windows.System.VirtualKey Key{get;set;}public bool Handled{get;set;}}
+    public class KeyboardAcceleratorInvokedEventArgs:EventArgs {public bool Handled{get;set;}}
+    public class KeyboardAccelerator {public Windows.System.VirtualKey Key{get;set;}public Windows.System.VirtualKeyModifiers Modifiers{get;set;}
+        public event EventHandler<KeyboardAcceleratorInvokedEventArgs>? Invoked;public void RaiseInvoked()=>Invoked?.Invoke(this,new());}
+}
+namespace Microsoft.UI.Xaml.Media {public class Brush{} public class ThemeShadow{} public class FontFamily(string source){public string Source{get;}=source;}
     public static class VisualTreeHelper {public static int GetChildrenCount(Microsoft.UI.Xaml.DependencyObject e)=>0;
         public static Microsoft.UI.Xaml.DependencyObject GetChild(Microsoft.UI.Xaml.DependencyObject e,int i)=>throw new System.InvalidOperationException();}}
 namespace Microsoft.UI.Xaml.Documents {}
-namespace Microsoft.UI.Xaml.Controls.Primitives {}
+namespace Microsoft.UI.Xaml.Controls.Primitives {public class ToggleButton:Microsoft.UI.Xaml.Controls.Button {public bool? IsChecked{get;set;}}}
 namespace Microsoft.UI.Xaml.Markup
 {
     public static class XamlReader {public static object Load(string xml)=>new Microsoft.UI.Xaml.Style{Xml=xml};}
@@ -81,6 +93,7 @@ namespace Microsoft.UI.Xaml.Controls
     {
         public string Text{get;set;}="";public TextWrapping TextWrapping{get;set;}public TextTrimming TextTrimming{get;set;}
         public bool IsTextSelectionEnabled{get;set;}public double FontSize{get;set;}
+        public Microsoft.UI.Xaml.Media.FontFamily? FontFamily{get;set;}
     }
     public class TextBox:FrameworkElement
     {
@@ -88,12 +101,14 @@ namespace Microsoft.UI.Xaml.Controls
         public string PlaceholderText{get;set;}="";public event EventHandler? TextChanged;
     }
     public class FontIcon:FrameworkElement {public string Glyph{get;set;}="";public double FontSize{get;set;}}
+    public enum Symbol {Find} public class SymbolIcon(Symbol symbol):FrameworkElement {public Symbol Symbol{get;}=symbol;}
+    public class AutoSuggestBox:TextBox {public SymbolIcon? QueryIcon{get;set;}}
     public class ProgressRing:FrameworkElement {public bool IsActive{get;set;}}
     public class Button:ContentControl
-    {public bool IsEnabled{get;set;}=true; public CornerRadius CornerRadius{get;set;} public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
+    {public bool IsEnabled{get;set;}=true; public CornerRadius CornerRadius{get;set;} public MenuFlyout? Flyout{get;set;} public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
     public class HyperlinkButton:Button{}
     public class ListViewItem:ContentControl
-    {public bool IsHitTestVisible{get;set;}=true;public bool IsTabStop{get;set;}=true;public MenuFlyout? ContextFlyout{get;set;}}
+    {public bool IsHitTestVisible{get;set;}=true;public bool IsTabStop{get;set;}=true;public MenuFlyout? ContextFlyout{get;set;}public CornerRadius CornerRadius{get;set;}}
     public class ItemClickEventArgs:EventArgs {public object? ClickedItem{get;set;}}
     public class ListView:FrameworkElement
     {
@@ -106,7 +121,7 @@ namespace Microsoft.UI.Xaml.Controls
     }
     public class MenuFlyoutItemBase:FrameworkElement{} public class MenuFlyoutSeparator:MenuFlyoutItemBase{}
     public class MenuFlyout:FrameworkElement {public List<MenuFlyoutItemBase> Items{get;}=new();public event EventHandler? Opening;public void RaiseOpening()=>Opening?.Invoke(this,EventArgs.Empty);}
-    public class MenuFlyoutItem:MenuFlyoutItemBase{public string Text{get;set;}="";public bool IsEnabled{get;set;}=true;public FontIcon? Icon{get;set;}public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
+    public class MenuFlyoutItem:MenuFlyoutItemBase{public string Text{get;set;}="";public string KeyboardAcceleratorTextOverride{get;set;}="";public bool IsEnabled{get;set;}=true;public FontIcon? Icon{get;set;}public event EventHandler? Click;public void RaiseClick()=>Click?.Invoke(this,EventArgs.Empty);}
     public class ScrollViewer:ContentControl
     {public static void SetHorizontalScrollMode(DependencyObject e,ScrollMode m){}public static void SetHorizontalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}
      public static void SetVerticalScrollMode(DependencyObject e,ScrollMode m){}public static void SetVerticalScrollBarVisibility(DependencyObject e,ScrollBarVisibility v){}

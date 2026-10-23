@@ -5,6 +5,7 @@ using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Automation;
 
 internal static class Program
@@ -70,7 +71,7 @@ internal static class Program
         list.RaiseItemClick(Row().Content!);Check(selected==1,"independent badges preserve own-container content click semantics");
         // H4 layout (user-chosen): attention section, Fluent context-menu order, side cards vs narrow chips, real connection line.
         Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n)=="OpenCodeHomeRefresh"),"no refresh button: live events re-project Home");
-        Check(Find<Border>(view,"OpenCodeHomeProjectsCard").CornerRadius.Value==8&&Find<Border>(view,"OpenCodeHomeProjectsCard").Style?.Xml.Contains("AcrylicInAppFillColorDefaultBrush")==true,"floating acrylic project card");
+        Check(Find<Border>(view,"OpenCodeHomeProjectsCard").CornerRadius.Value==8&&Find<Border>(view,"OpenCodeHomeProjectsCard").Style?.Xml.Contains("CardBackgroundFillColorDefaultBrush")==true,"theme-aware floating project card above acrylic page");
         view.SetSnapshot(Snapshot(new(false,false,true,"succeeded")));
         var headers=list.Items.OfType<ListViewItem>().Where(i=>i.Tag is not OpenCodeHomeSessionRow).ToArray();
         Check(headers.Length==1&&AutomationProperties.GetAutomationId(headers[0])=="OpenCodeHomeAttentionHeader"&&((OpenCodeHomeSessionRow)Row().Tag!).NeedsAttention,"finished-but-unread sits under 需要你处理");
@@ -78,10 +79,16 @@ internal static class Program
         Check(!((OpenCodeHomeSessionRow)Row().Tag!).NeedsAttention&&AutomationProperties.GetAutomationId(list.Items.OfType<ListViewItem>().First())=="OpenCodeHomeDateHeader","still-running session with an old unread is not 需要你处理");
         view.SetSnapshot(Snapshot(new(true,true,false,null){QuestionPending=true}));
         Check(((OpenCodeHomeSessionRow)Row().Tag!).NeedsAttention,"question-blocked sits under 需要你处理");
+        Check(Row().Style?.Xml.Contains("CardBackgroundFillColorDefaultBrush")==true&&Row().CornerRadius.BottomRight==8,"attention rows share the card surface and the last row closes its rounded bottom");
         var menu=Row().ContextFlyout!;
         var labels=menu.Items.Select(i=>i is MenuFlyoutItem m?m.Text:"-").ToArray();
         Check(string.Join("|",labels)=="修改名称|复制 session ID|-|归档此会话|删除此会话","Fluent menu order with separator before archive/delete");
+        Check(menu.Items.OfType<MenuFlyoutItem>().First().KeyboardAcceleratorTextOverride=="F2"&&menu.Items.OfType<MenuFlyoutItem>().Last().KeyboardAcceleratorTextOverride=="Del","native menu exposes F2 and Del hints");
         view.CanRequestSessionAction=(_,_,a)=>a!=OpenCodeHomeSessionAction.Archive;menu.RaiseOpening();
+        var shortcuts=new List<OpenCodeHomeSessionAction>();view.SessionActionRequested+=(_,e)=>shortcuts.Add(e.Action);
+        Check(Row().RaiseKeyDown(Windows.System.VirtualKey.F2).Handled&&Row().RaiseKeyDown(Windows.System.VirtualKey.Delete).Handled
+            &&shortcuts.SequenceEqual(new[]{OpenCodeHomeSessionAction.Rename,OpenCodeHomeSessionAction.Delete}),"focused row F2/Del use the same current action gate");
+        Check(view.KeyboardAccelerators.Single().Key==Windows.System.VirtualKey.K,"search has Ctrl+K accelerator");
         Check(menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="归档此会话").IsEnabled==false&&menu.Items.OfType<MenuFlyoutItem>().Single(i=>i.Text=="删除此会话").Style?.Xml.Contains("SystemFillColorCriticalBrush")==true,"menu items follow the page action gate; delete is critical-coloured");
         view.SetConnection("1.4.2",true,"WSL · NixOS");
         Check(Walk(view).OfType<TextBlock>().Any(t=>t.Text=="v1.4.2 · WSL · NixOS"),"connection line shows real version + identity");
@@ -92,8 +99,18 @@ internal static class Program
         Check(!view.IsNarrow&&Find<Border>(view,"OpenCodeHomeProjectsCard").Visibility==Visibility.Visible&&Find<ScrollViewer>(view,"OpenCodeHomeProjectChips").Visibility==Visibility.Collapsed,"wide: side cards, no chips");
         view.ActualWidth=1180;view.RaiseSizeChanged();
         Check(view.IsNarrow&&Find<Border>(view,"OpenCodeHomeProjectsCard").Visibility==Visibility.Collapsed&&Find<ScrollViewer>(view,"OpenCodeHomeProjectChips").Visibility==Visibility.Visible,"narrow: cards fold into project chips");
+        Check(view.ActualWidth==1180&&Walk(view).OfType<Grid>().Any(g=>g.Width==1100),"narrow home uses the full available width with 40px outer insets, not the wide 820px cap");
         Check((int)Walk(view).OfType<Grid>().Single(g=>g.Children.Contains(Find<TextBox>(view,"OpenCodeHomeSearch"))).Attached["Row"]! == 0,"H2 search starts at row zero without a phantom connection gap");
         Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n)=="OpenCodeHomeConnectionCompact"),"H2 narrow: the removed connection row does not return on resize");
+        var manyProjects=Enumerable.Range(0,8).Select(i=>new OpenCodeHomeProject(new("source","/project/"+i),"Project "+i)).ToArray();
+        view.SetSnapshot(new(2,manyProjects,Array.Empty<OpenCodeHomeSession>()));
+        var chips=Find<ScrollViewer>(view,"OpenCodeHomeProjectChips");
+        Check(Walk(chips).OfType<ToggleButton>().Count()==6&&Walk(chips).OfType<ToggleButton>().Single(t=>t.IsChecked==true).Content?.ToString()=="全部","narrow project filter uses native selected ToggleButtons and limits visible projects");
+        var more=Find<Button>(view,"OpenCodeHomeProjectOverflow");
+        Check(more.Content?.ToString()=="…"&&more.Flyout!.Items.OfType<MenuFlyoutItem>().Count()==4,"overflow preserves the remaining projects and 添加项目");
+        more.Flyout!.Items.OfType<MenuFlyoutItem>().First().RaiseClick();
+        Check(view.SelectedProject==manyProjects[5].Key&&Equals(Walk(chips).OfType<ToggleButton>().Single(t=>t.IsChecked==true).Tag,manyProjects[5].Key),"overflow selection stays visible and selected in the chip row");
+        view.SetSelectedProject(null);
         // Infinite scroll (user m02186): no load-more/refresh button; near-bottom, cursor, in-flight and failure/retry guards.
         Check(!Walk(view).Any(n=>AutomationProperties.GetAutomationId(n)is"OpenCodeHomeLoadMore"or"OpenCodeHomeRefresh"),"no manual load-more or refresh button remains");
         Check(OpenCodeHomeInfiniteScroll.ShouldLoad(1200,600,2300,true,false,false),"within one viewport of the end loads the next page");

@@ -5,7 +5,10 @@ using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.System;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -66,7 +69,7 @@ public sealed class OpenCodeHomeView : UserControl
     private OpenCodeHomeSnapshot _snapshot = new(0, Array.Empty<OpenCodeHomeProject>(), Array.Empty<OpenCodeHomeSession>());
     private readonly ListView _projects = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ListView _sessions = new() { SelectionMode = ListViewSelectionMode.None, IsItemClickEnabled = true };
-    private readonly TextBox _search = new() { PlaceholderText = "搜索会话、项目或 session ID", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly AutoSuggestBox _search = new() { PlaceholderText = "搜索会话、项目或 session ID", QueryIcon = new SymbolIcon(Symbol.Find), HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap };
     private readonly ProgressRing _loading = new() { Width = 16, Height = 16, Visibility = Visibility.Collapsed };
     private readonly Border _leftCard = Card();
@@ -158,6 +161,10 @@ public sealed class OpenCodeHomeView : UserControl
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         SetIdentity(_search, "OpenCodeHomeSearch", "搜索会话、项目或 session ID");
+        ToolTipService.SetToolTip(_search, "搜索会话、项目或 session ID (Ctrl+K)");
+        var searchShortcut = new KeyboardAccelerator { Key = VirtualKey.K, Modifiers = VirtualKeyModifiers.Control };
+        searchShortcut.Invoked += (_, e) => { _search.Focus(FocusState.Programmatic); e.Handled = true; };
+        KeyboardAccelerators.Add(searchShortcut);
         _search.MinHeight = 36;
         searchRow.Children.Add(_search);
         _search.TextChanged += (_, _) =>
@@ -378,6 +385,7 @@ public sealed class OpenCodeHomeView : UserControl
         if (directory is not null)
         {
             var path = Label(directory, "CaptionTextBlockStyle");
+            path.FontFamily = new FontFamily("Cascadia Mono, Consolas");
             path.TextTrimming = TextTrimming.CharacterEllipsis;
             path.TextWrapping = TextWrapping.NoWrap;
             OpenCodeToolTheme.Apply(path, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
@@ -417,18 +425,37 @@ public sealed class OpenCodeHomeView : UserControl
     {
         _chips.Children.Clear();
         _chips.Children.Add(Chip("全部", null));
-        foreach (var project in DistinctProjects())
+        var projects = DistinctProjects().ToArray();
+        // Keep the narrow filter to one compact row. Every remaining project stays reachable in the native menu.
+        var visible = projects.Take(5).ToList();
+        if (SelectedProject is not null && visible.All(project => project.Key != SelectedProject)
+            && projects.FirstOrDefault(project => project.Key == SelectedProject) is { } selected)
+        {
+            if (visible.Count == 5) visible.RemoveAt(4);
+            visible.Add(selected);
+        }
+        foreach (var project in visible)
             _chips.Children.Add(Chip(ProjectName(project), project.Key));
-        var add = new Button { Content = IconText("\uE710", "添加项目", 11), CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
-        SetIdentity(add, "OpenCodeHomeAddProjectChip", "添加项目");
+        var overflow = new MenuFlyout();
+        foreach (var project in projects.Except(visible))
+        {
+            var entry = new MenuFlyoutItem { Text = ProjectName(project) };
+            ToolTipService.SetToolTip(entry, project.Key.Directory);
+            entry.Click += (_, _) => SelectProject(project.Key, notify: true);
+            overflow.Items.Add(entry);
+        }
+        if (overflow.Items.Count > 0) overflow.Items.Add(new MenuFlyoutSeparator());
+        var add = new MenuFlyoutItem { Text = "添加项目", Icon = new FontIcon { Glyph = "\uE710" } };
         add.Click += (_, _) => AddProject?.Invoke(this, Context());
-        _chips.Children.Add(add);
+        overflow.Items.Add(add);
+        var more = new Button { Content = "…", Flyout = overflow, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
+        SetIdentity(more, "OpenCodeHomeProjectOverflow", "更多项目和添加项目");
+        _chips.Children.Add(more);
     }
 
-    private Button Chip(string text, OpenCodeHomeProjectKey? key)
+    private ToggleButton Chip(string text, OpenCodeHomeProjectKey? key)
     {
-        var chip = new Button { Content = text, Tag = key!, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
-        if (key == SelectedProject) chip.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle");
+        var chip = new ToggleButton { Content = text, Tag = key!, IsChecked = key == SelectedProject, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
         AutomationProperties.SetName(chip, (key is null ? "全部项目" : text) + (key == SelectedProject ? "，已选择" : string.Empty));
         if (key is not null) ToolTipService.SetToolTip(chip, key.Directory);
         chip.Click += (_, _) => SelectProject(key, notify: true);
@@ -458,7 +485,7 @@ public sealed class OpenCodeHomeView : UserControl
         _right.Visibility = side;
         _chipScroller.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
         _center.Width = width <= 0 ? CenterMaxWidth
-            : Math.Max(0, Math.Min(CenterMaxWidth, _narrow ? width - 2 * SideMargin : width - 2 * SideColumnWidth - CenterPadding));
+            : Math.Max(0, _narrow ? width - 2 * 40 : Math.Min(CenterMaxWidth, width - 2 * SideColumnWidth - CenterPadding));
         var height = ActualHeight;
         if (height > 0) _leftCard.MaxHeight = Math.Max(0, height - 2 * SideMargin);
     }
@@ -509,6 +536,15 @@ public sealed class OpenCodeHomeView : UserControl
                 count.Text = counts[key].ToString(System.Globalization.CultureInfo.InvariantCulture);
                 AutomationProperties.SetName(current, GroupLabel(key) + "，" + count.Text + " 个会话");
             }
+            // One continuous attention card in the same scrolling/reconciled native list as the date groups.
+            if (Equals(key, AttentionKey) || row?.NeedsAttention == true)
+            {
+                current.Style = ThemeStyle("ListViewItem", ("Background", "CardBackgroundFillColorDefaultBrush"));
+                current.CornerRadius = Equals(key, AttentionKey) ? new CornerRadius(8, 8, 0, 0)
+                    : index + 1 == desired.Count || desired[index + 1].Row?.NeedsAttention != true
+                        ? new CornerRadius(0, 0, 8, 8) : new CornerRadius(0);
+            }
+            else { current.Style = null; current.CornerRadius = new CornerRadius(0); }
         }
         while (_sessions.Items.Count > desired.Count)
         {
@@ -643,15 +679,26 @@ public sealed class OpenCodeHomeView : UserControl
         grid.Children.Add(project);
         var time = Label(OpenCodeHomeProjection.TimeLabel(row, zone), "CaptionTextBlockStyle");
         time.HorizontalAlignment = HorizontalAlignment.Right;
-        OpenCodeToolTheme.Apply(time, OpenCodeToolTheme.Text(working || row.Tone == OpenCodeHomeTone.QuestionBlocked
-            ? OpenCodeToolTheme.TextSecondary : OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+        OpenCodeToolTheme.Apply(time, OpenCodeToolTheme.Text(row.Tone == OpenCodeHomeTone.QuestionBlocked ? OpenCodeToolTheme.Caution
+            : working ? OpenCodeToolTheme.Accent : OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
         AutomationProperties.SetAutomationId(time, "OpenCodeHomeTime");
         Grid.SetColumn(time, 3);
         grid.Children.Add(time);
         if (item is null)
         {
-            item = new ListViewItem { HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(12, 4, 12, 4) };
+            item = new ListViewItem { HorizontalContentAlignment = HorizontalAlignment.Stretch, MinHeight = 36, Padding = new Thickness(12, 4, 12, 4) };
             item.ContextFlyout = CreateSessionMenu(item);
+            var owner = item;
+            item.KeyDown += (_, e) =>
+            {
+                var action = e.Key switch { VirtualKey.F2 => OpenCodeHomeSessionAction.Rename, VirtualKey.Delete => OpenCodeHomeSessionAction.Delete, _ => (OpenCodeHomeSessionAction?)null };
+                if (action is { } choice && owner.Tag is OpenCodeHomeSessionRow current
+                    && CanRequestSessionAction?.Invoke(_snapshot.Revision, current.Session, choice) == true)
+                {
+                    SessionActionRequested?.Invoke(this, new(_snapshot.Revision, current.Session, choice));
+                    e.Handled = true;
+                }
+            };
         }
         item.Tag = row;
         item.Content = grid;
@@ -676,6 +723,7 @@ public sealed class OpenCodeHomeView : UserControl
             if (choice is not { } action) { menu.Items.Add(new MenuFlyoutSeparator()); continue; }
             var icon = new FontIcon { Glyph = glyph };
             var entry = new MenuFlyoutItem { Text = label, Tag = action, Icon = icon };
+            entry.KeyboardAcceleratorTextOverride = action switch { OpenCodeHomeSessionAction.Rename => "F2", OpenCodeHomeSessionAction.Delete => "Del", _ => string.Empty };
             AutomationProperties.SetAutomationId(entry, "OpenCodeHomeMenu" + action);
             if (action == OpenCodeHomeSessionAction.Delete)
             {
@@ -722,12 +770,12 @@ public sealed class OpenCodeHomeView : UserControl
         OpenCodeHomeTone.Unread => "未读", _ => "状态未知",
     };
 
-    /// <summary>Floating side card: in-app acrylic + card stroke from theme resources (incl. high contrast),
+    /// <summary>Floating side card: card surface + stroke from theme resources (incl. high contrast),
     /// 8epx overlay radius and ThemeShadow elevation — the same treatment as the session page's side cards.</summary>
     private static Border Card()
     {
         var card = new Border { CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1) };
-        OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border("AcrylicInAppFillColorDefaultBrush", OpenCodeToolTheme.CardStroke));
+        OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border("CardBackgroundFillColorDefaultBrush", OpenCodeToolTheme.CardStroke));
         card.Shadow = new ThemeShadow();
         card.Translation = new Vector3(0, 0, 16);
         return card;
