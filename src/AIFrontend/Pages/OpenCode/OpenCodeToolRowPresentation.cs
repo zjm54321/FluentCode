@@ -243,6 +243,10 @@ internal sealed class OpenCodeToolRowModel
     public bool CanMoveToBackground => IsActive && !IsBackground && Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent;
 
     public bool IsActive => Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
+
+    /// <summary>TL1: the server's tool name (trimmed, original case) and raw part state for built-in detail views.</summary>
+    public string ToolName { get; init; } = string.Empty;
+    public JsonElement? State { get; init; }
 }
 
 /// <summary>工具组头部摘要。</summary>
@@ -672,6 +676,8 @@ internal static class OpenCodeToolRowPresentation
             AccessibleName = accessible.ToString(),
             IsBackground = background,
             GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph : null,
+            ToolName = part.Name?.Trim() ?? string.Empty,
+            State = part.State,
         };
         return fileIndex is { } index ? BuildFileRow(model, index) : model;
     }

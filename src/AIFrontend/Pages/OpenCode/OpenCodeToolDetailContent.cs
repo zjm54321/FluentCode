@@ -120,6 +120,12 @@ internal sealed class OpenCodeToolDetailOptions
     public int SelectedFile { get; set; }
     public bool ShowSource { get; set; }
 
+    /// <summary>TL1: true while building the hover preview (built-in views cap their lists; the large view shows everything).</summary>
+    public bool Compact { get; set; }
+
+    /// <summary>TL1: opens a child session through the page's existing subagent navigation (null = no link).</summary>
+    public Action<string>? OpenChildSession { get; set; }
+
     /// <summary>已展开的折叠段（按折叠行首行号标识）。</summary>
     public HashSet<string> ExpandedFolds { get; } = new(StringComparer.Ordinal);
 }
@@ -288,7 +294,8 @@ internal static class OpenCodeToolDetailContent
             }
 
             default:
-                body = BuildGeneric(model);
+                // TL1: built-in tools (todowrite, subagent, question, skill, websearch, execute) get their own view.
+                body = OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);
                 break;
         }
 

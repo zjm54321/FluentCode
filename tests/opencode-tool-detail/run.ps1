@@ -23,7 +23,8 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
     'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"'
 }
-@('OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeChildChatReadSession.cs') | ForEach-Object {
+@('OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeChildChatReadSession.cs',
+    'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeSubagentPresentation.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_) + '"'
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
@@ -33,5 +34,6 @@ $arguments | Set-Content -Encoding UTF8 $responseFile
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeToolDetailTests.runtimeconfig.json')
 Write-Output 'Headless compilation passed (warnings treated as errors).'
+$env:AIF_REPO = $repo
 & $dotnet $assembly
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }

@@ -398,6 +398,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
             OutputProperties = model.OutputProperties,
             RawStateProperties = model.RawStateProperties,
             AccessibleName = model.AccessibleName,
+            ToolName = model.ToolName,
+            State = model.State,
         };
     }
 
@@ -642,7 +644,20 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
         private readonly OpenCodeToolPartView _owner;
         private readonly OpenCodeToolDetailOptions _options = new();
 
-        internal SubagentPreviewSource(OpenCodeToolPartView owner) => _owner = owner;
+        internal SubagentPreviewSource(OpenCodeToolPartView owner)
+        {
+            _owner = owner;
+            // Subagent rows only ever show the hover preview (click opens the child chat), so the view stays compact.
+            _options.Compact = true;
+            _options.OpenChildSession = id =>
+            {
+                if (!_owner._disposed)
+                {
+                    OpenCodeToolDetailPopup.Shared.CloseIf(this);
+                    _owner.RaiseSubagentSessionRequested(id);
+                }
+            };
+        }
 
         public void OpenChildChat()
         {

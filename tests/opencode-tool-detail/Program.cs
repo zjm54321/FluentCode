@@ -35,6 +35,77 @@ internal static class Program
         });
     }
 
+    /// <summary>TL1: built-in tool detail views read the real v2.1.1 part shapes (samples from the user's DB).</summary>
+    private static void BuiltinToolViews()
+    {
+        var todo = Model("todowrite", """{"status":"completed","input":{"todos":[{"content":"A","status":"completed"},{"content":"B","status":"in_progress"},{"content":"C","status":"cancelled"},{"content":"D","status":"pending"}]},"content":[{"type":"text","text":"Todos updated: 1/4 completed"}],"metadata":{"todos":[{"content":"A","status":"completed"},{"content":"B","status":"in_progress"},{"content":"C","status":"cancelled"},{"content":"D","status":"weird"}],"truncated":false},"time":{"start":1,"end":2}}""");
+        Check(OpenCodeToolDetailBuiltinData.Resolve(todo) == OpenCodeBuiltinToolView.Todo && todo.ToolName == "todowrite", "todowrite → to do view");
+        var todos = OpenCodeToolDetailBuiltinData.Todos(todo.State);
+        Check(todos.Select(t => t.Content + ":" + t.Status).SequenceEqual(new[] { "A:completed", "B:in_progress", "C:cancelled", "D:pending" }),
+            "metadata.todos normalized like the right panel (unknown status → pending)");
+        var inputOnly = Model("todowrite", """{"status":"running","input":{"todos":[{"content":"X","status":"pending"},{"content":"","status":"pending"},3]},"time":{"start":1}}""");
+        Check(OpenCodeToolDetailBuiltinData.Todos(inputOnly.State).Length == 1, "falls back to input.todos and drops invalid entries");
+        Check(OpenCodeToolDetailBuiltinData.Resolve(Model("todoread", """{"status":"completed","input":{},"content":[{"type":"text","text":"[]"}],"metadata":{"todos":[]},"time":{"start":1,"end":2}}""")) == OpenCodeBuiltinToolView.Todo, "todoread too");
+
+        var sub = Model("subagent", """{"status":"completed","input":{"agent":"fixer","description":"Fix card model logo fallback","prompt":"Bug fix lane (fixer)."},"content":[{"type":"text","text":"The subagent is working in the background (sessionID: ses_e968c556effekyfdW7mx2QsloS). You will be notified automatically when it finishes.\n<!-- slim-child-ref:v1 {} -->"}],"metadata":{"sessionID":"ses_e968c556effekyfdW7mx2QsloS","status":"running","truncated":false},"time":{"start":1,"end":2}}""");
+        var subDetail = OpenCodeToolDetailBuiltinData.Subagent(sub);
+        Check(OpenCodeToolDetailBuiltinData.Resolve(sub) == OpenCodeBuiltinToolView.Subagent && subDetail.Agent == "fixer" && subDetail.Description == "Fix card model logo fallback"
+            && subDetail.Prompt == "Bug fix lane (fixer)." && subDetail.SessionId == "ses_e968c556effekyfdW7mx2QsloS" && subDetail.RecordedStatus == "running",
+            "subagent: agent, description, prompt, child session and status from input/metadata");
+        Check(subDetail.Output is null, "background-launch instructions to the parent model are not shown as the result");
+        Check(OpenCodeToolDetailBuiltinData.SubagentOutput("Done.\n<!-- slim-child-ref:v1 {} -->") == "Done.", "result text keeps user content, drops HTML comments");
+        var badSession = Model("task", """{"status":"completed","input":{"subagent_type":"explorer"},"content":[{"type":"text","text":"ok"}],"metadata":{"sessionID":"ses bad/x"},"time":{"start":1,"end":2}}""");
+        Check(OpenCodeToolDetailBuiltinData.Subagent(badSession).SessionId is null && OpenCodeToolDetailBuiltinData.Subagent(badSession).Agent == "explorer", "invalid session id → no link; task alias");
+        Check(OpenCodeToolDetailBuiltinData.Resolve(Model("task_message", """{"status":"completed","input":{},"content":[{"type":"text","text":"x"}],"metadata":{},"time":{"start":1,"end":2}}""")) == OpenCodeBuiltinToolView.None, "task_message keeps the generic view");
+
+        var question = Model("question", """{"status":"completed","input":{"questions":[{"header":"monorepo 收拢范围","question":"要把源码收进来吗？","options":[{"label":"个人插件收拢即可","description":"只在此维护"},{"label":"第三方插件也收源码","description":"也纳入"}]},{"question":"第二个？","options":[{"label":"甲"}],"multiple":true},{"question":"第三个？","options":[{"label":"乙"}]}]},"content":[{"type":"text","text":"User has answered your questions"}],"metadata":{"answers":[["第三方插件也收源码"],["甲","自己写的"]],"truncated":false},"time":{"start":1,"end":2}}""");
+        var questions = OpenCodeToolDetailBuiltinData.Questions(question.State);
+        Check(OpenCodeToolDetailBuiltinData.Resolve(question) == OpenCodeBuiltinToolView.Question && questions.Count == 3
+            && questions[0].Header == "monorepo 收拢范围" && questions[0].Options.Count == 2 && questions[0].Options[0].Description == "只在此维护", "questions with options");
+        Check(!questions[0].IsSelected(questions[0].Options[0]) && questions[0].IsSelected(questions[0].Options[1]) && !questions[0].Multiple, "metadata.answers selects the chosen option");
+        Check(questions[1].Multiple && questions[1].IsSelected(questions[1].Options[0]) && questions[1].CustomAnswers().SequenceEqual(new[] { "自己写的" }), "multi-select + typed custom answer");
+        Check(questions[2].Answers is null, "missing answer → unanswered (未回答), never guessed");
+
+        var skill = Model("skill", """{"status":"completed","input":{"id":"verification-planning"},"content":[{"type":"text","text":"<skill_content name=\"verification-planning\">\n# Skill: verification-planning\n\nBody\n</skill_content>"}],"metadata":{"name":"verification-planning","directory":"/home/ming/.cache/x/skills/verification-planning","truncated":false},"time":{"start":1,"end":2}}""");
+        var skillDetail = OpenCodeToolDetailBuiltinData.Skill(skill);
+        Check(OpenCodeToolDetailBuiltinData.Resolve(skill) == OpenCodeBuiltinToolView.Skill && skillDetail.Name == "verification-planning"
+            && skillDetail.Directory == "/home/ming/.cache/x/skills/verification-planning" && skillDetail.Content == "# Skill: verification-planning\n\nBody", "skill name, directory, unwrapped content");
+
+        var search = Model("websearch", """{"status":"completed","input":{"query":"opencode-pty README"},"content":[{"type":"text","text":"## [opencode-pty - anomalyco](https://github.com/anomalyco/opencode-pty)\n\nExperimental threaded PTY.\n\n## [Releases · anomalyco/opencode · GitHub](https://github.com/anomalyco/opencode/releases)\n\nv1.19.4\n\n## [Bad](ftp://example.com/x)\n\nx"}],"metadata":{"provider":"tinyfish","truncated":false},"time":{"start":1,"end":2}}""");
+        var searchDetail = OpenCodeToolDetailBuiltinData.WebSearch(search);
+        Check(OpenCodeToolDetailBuiltinData.Resolve(search) == OpenCodeBuiltinToolView.WebSearch && searchDetail.Query == "opencode-pty README" && searchDetail.Provider == "tinyfish"
+            && searchDetail.Results.Count == 3 && searchDetail.Results[0].Title == "opencode-pty - anomalyco" && searchDetail.Results[0].Url == "https://github.com/anomalyco/opencode-pty"
+            && searchDetail.Results[0].Snippet == "Experimental threaded PTY." && searchDetail.PlainOutput is null, "websearch results parsed from markdown headings");
+        Check(searchDetail.Results[2].Url is null, "non-http result URLs are not linked");
+        var none = OpenCodeToolDetailBuiltinData.WebSearch(Model("websearch", """{"status":"completed","input":{"query":"q"},"content":[{"type":"text","text":"No search results found. Please try a different query."}],"metadata":{"provider":"firecrawl"},"time":{"start":1,"end":2}}"""));
+        Check(none.Results.Count == 0 && none.PlainOutput == "No search results found. Please try a different query.", "no headings → plain text output");
+
+        var execute = Model("execute", """{"status":"completed","input":{"code":"return await tools.opencode.session_move({directory:'/x'});"},"content":[{"type":"text","text":"{\n  \"sessionID\": \"ses_1\"\n}"}],"metadata":{"toolCalls":[{"tool":"search","status":"completed","input":{"query":"codegraph_explore","limit":1}},{"tool":"opencode.session_move","status":"error","input":{}}],"truncated":false},"time":{"start":1,"end":2}}""");
+        var executeDetail = OpenCodeToolDetailBuiltinData.Execute(execute);
+        Check(OpenCodeToolDetailBuiltinData.Resolve(execute) == OpenCodeBuiltinToolView.Execute && executeDetail.Code!.StartsWith("return await", StringComparison.Ordinal)
+            && executeDetail.Calls.Count == 2 && executeDetail.Calls[0].Tool == "search" && executeDetail.Calls[0].Input == "{\"query\":\"codegraph_explore\",\"limit\":1}"
+            && executeDetail.Calls[1].Status == "error" && executeDetail.Calls[1].Input is null && executeDetail.Output!.Contains("ses_1"), "execute: code, nested tool calls, result");
+
+        var grep = Model("grep", """{"status":"completed","input":{"pattern":"x"},"content":[{"type":"text","text":"Found 12 matches\n/a:\n  Line 6: x"}],"metadata":{"matches":12,"truncated":false},"time":{"start":1,"end":2}}""");
+        var glob = Model("glob", """{"status":"completed","input":{"pattern":"*.ps1"},"content":[{"type":"text","text":"/a.ps1"}],"metadata":{"count":26,"truncated":false},"time":{"start":1,"end":2}}""");
+        Check(OpenCodeToolDetailBuiltinData.CountHeader(grep) == "12 处匹配" && OpenCodeToolDetailBuiltinData.CountHeader(glob) == "26 个文件"
+            && OpenCodeToolDetailBuiltinData.CountHeader(Model("grep", """{"status":"completed","input":{},"content":[{"type":"text","text":""}],"metadata":{},"time":{"start":1,"end":2}}""")) is null,
+            "grep/glob count header only when metadata reports it");
+        Check(OpenCodeToolDetailBuiltinData.Resolve(grep) == OpenCodeBuiltinToolView.None && OpenCodeToolDetailBuiltinData.Resolve(Model("compress", """{"status":"completed","input":{},"content":[{"type":"text","text":"x"}],"metadata":{},"time":{"start":1,"end":2}}""")) == OpenCodeBuiltinToolView.None,
+            "other tools keep their existing views");
+        Check(OpenCodeToolDetailBuiltinData.Excerpt("1\n2\n3", 2) == ("1\n2", 1) && OpenCodeToolDetailBuiltinData.Excerpt("1", 2) == ("1", 0), "excerpt counts the rest");
+
+        // Source contract: dispatch only in the default branch; hover preview is compact, large view is not.
+        var root = Environment.GetEnvironmentVariable("AIF_REPO") ?? throw new InvalidOperationException("AIF_REPO not set");
+        var content = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailContent.cs"));
+        var popup = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailPopup.cs"));
+        var builtins = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltins.cs"));
+        Check(content.Contains("body = OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model);", StringComparison.Ordinal), "built-in views dispatched before the generic dump");
+        Check(popup.Contains("options.Compact = _mode == OpenCodeDetailPopupMode.Preview;", StringComparison.Ordinal), "preview builds compact, large view builds full");
+        Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(", StringComparison.Ordinal) && builtins.Contains("IsHitTestVisible = false", StringComparison.Ordinal)
+            && !builtins.Contains("Color.FromArgb", StringComparison.Ordinal), "to do reuses the right-panel rows; read-only; theme brushes only");
+    }
+
     /// <summary>Wave 5 G7/G8: large view ≈80% centered, hover preview small + adjacent, hide-on-leave, wrap-by-default, no truncation.</summary>
     private static void DetailPopupContract()
     {
@@ -282,6 +353,7 @@ internal static class Program
 
             DetailPopupContract();
             PatchTimelineContract();
+            BuiltinToolViews();
             ChildChatLifecycle().GetAwaiter().GetResult();
 
             Console.WriteLine($"PASS: tool detail property list + detail popup (G7/G8), {_assertions} assertions; real OpenCodeToolRowPresentation + OpenCodeDetailPopupLayout, no UI.");

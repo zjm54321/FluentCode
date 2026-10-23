@@ -678,7 +678,7 @@ internal sealed class OpenCodeToolDetailPopup
         {
             view = _source switch
             {
-                IOpenCodeToolDetailSource tool => OpenCodeToolDetailContent.Build(tool.DetailModel, _options, () => Rebuild(keepScroll: true)),
+                IOpenCodeToolDetailSource tool => OpenCodeToolDetailContent.Build(tool.DetailModel, Compact(_options), () => Rebuild(keepScroll: true)),
                 IOpenCodeDetailContentSource content => content.BuildDetailContent(),
                 _ => new OpenCodeToolDetailView(OpenCodeToolDetailContent.Caption("无法显示详情内容。"), null),
             };
@@ -712,6 +712,12 @@ internal sealed class OpenCodeToolDetailPopup
 
             scroller.Loaded += OnLoaded;
         }
+    }
+
+    private OpenCodeToolDetailOptions Compact(OpenCodeToolDetailOptions options)
+    {
+        options.Compact = _mode == OpenCodeDetailPopupMode.Preview;
+        return options;
     }
 
     /// <summary>大视图：遮罩铺满窗口，表面为窗口 80% 并居中（窗口改变时重算）。</summary>

@@ -583,7 +583,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         return panel;
     }
 
-    private static UIElement TodoRow(OpenCodeTodoItem item, int index)
+    // Shared with the todowrite tool detail (TL1) so both lists render identical states.
+    internal static UIElement TodoRow(OpenCodeTodoItem item, int index, string automationPrefix = "OpenCodeInsightsTodoItem.")
     {
         var finished = item.Status is "completed" or "cancelled";
         var text = OpenCodeInteractionUi.StyledText(item.Content,
@@ -598,7 +599,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             IsHitTestVisible = false, IsTabStop = false, MinWidth = 0, MinHeight = 26,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
-        AutomationProperties.SetAutomationId(check, "OpenCodeInsightsTodoItem." + index);
+        AutomationProperties.SetAutomationId(check, automationPrefix + index);
         AutomationProperties.SetName(check, DescribeTodoStatus(item.Status) + "：" + item.Content);
         return check;
     }
