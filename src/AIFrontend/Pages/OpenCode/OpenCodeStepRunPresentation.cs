@@ -96,6 +96,12 @@ internal sealed record OpenCodeTimelineRowContent(
 /// </summary>
 internal static class OpenCodeStepRunPresentation
 {
+    // Verified provider shape: reasoning.state.reasoningEncryptedContent. Plain text may coexist with it.
+    internal static bool IsEncryptedReasoning(OpenCodeContentPart? part)
+        => part?.Type == OpenCodePartTypes.Reasoning && string.IsNullOrWhiteSpace(part.Text)
+            && part.State is { ValueKind: System.Text.Json.JsonValueKind.Object } state
+            && state.TryGetProperty("reasoningEncryptedContent", out var encrypted)
+            && encrypted.ValueKind == System.Text.Json.JsonValueKind.String && !string.IsNullOrWhiteSpace(encrypted.GetString());
     internal const string SubagentLabel = "子智能体";
     internal const string SubagentGlyph = "\uE99A";
     internal const string TerminalGlyph = "\uE756";

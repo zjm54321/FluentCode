@@ -265,7 +265,7 @@ namespace AIFrontend.Pages.OpenCode
         internal string RowKey { get; private set; } = string.Empty;
         internal int DisposeCount { get; private set; }
         internal OpenCodeReasoningRowView() => ConversationViewTestProbe.Record("Construct", this, Element);
-        internal void Update(string text, bool streaming, string rowKey)
+        internal void Update(string text, bool streaming, string rowKey, bool encrypted = false)
         {
             Text = text;
             Streaming = streaming;

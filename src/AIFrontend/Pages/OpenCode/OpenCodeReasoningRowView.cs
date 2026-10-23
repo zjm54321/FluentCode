@@ -25,6 +25,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
     private readonly TextBlock _previewText;
     private readonly Border _inlineRegion;
     private bool _inlineExpanded;
+    private bool _encrypted;
     private OpenCodeToolRowModel _model = new() { Name = "思考" };
     private bool _disposed;
     private FrameworkElement? _detailAnchorOverride;
@@ -147,30 +148,20 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
         AccessibleName: _model.AccessibleName);
 
     OpenCodeToolDetailView IOpenCodeDetailContentSource.BuildDetailContent()
-        => OpenCodeToolDetailContent.Wrap(BuildReasoningBody());
+        => OpenCodeToolDetailContent.Wrap(BuildReasoningBody(compact: true));
 
-    private FrameworkElement BuildReasoningBody()
-    {
-        if (string.IsNullOrWhiteSpace(Text))
-        {
-            return OpenCodeToolDetailContent.Caption(
-                _model.Status == OpenCodeToolRowStatus.Streaming ? "思考中…" : "（没有可显示的思考内容）");
-        }
-
-        // 与助手正文同一个 Markdown 渲染器（标题 / 粗体 / 列表 / 代码块等）。
-        var presenter = new OpenCodeRichTextPresenter();
-        presenter.Render(Text, OpenCodeRichTextStyle.Body);
-        return presenter.Element;
-    }
+    private FrameworkElement BuildReasoningBody(bool compact = false)
+        => OpenCodeToolDetailBuiltins.BuildReasoning(Text, _encrypted, compact, _model.IsActive);
 
     void IOpenCodeDetailContentSource.OnDetailStateChanged(bool shown, bool pinned)
         => _selectionBar.Visibility = shown && pinned ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>就地更新合并后的思考文本；streaming = 该思考仍在生成（显示进度环）。</summary>
-    internal void Update(string text, bool streaming, string rowKey)
+    internal void Update(string text, bool streaming, string rowKey, bool encrypted = false)
     {
+        _encrypted = encrypted;
         text ??= string.Empty;
-        var preview = OpenCodeStepRunPresentation.DescribeReasoningPreview(text);
+        var preview = encrypted ? "思考内容已加密，无法显示" : OpenCodeStepRunPresentation.DescribeReasoningPreview(text);
         _model = new OpenCodeToolRowModel
         {
             PartId = rowKey ?? string.Empty,

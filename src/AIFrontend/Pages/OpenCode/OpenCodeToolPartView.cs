@@ -684,7 +684,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource
     {
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
         _inlineRegion.Child = _inlineExpanded
-            ? OpenCodeToolDetailBuiltins.Build(_model, new OpenCodeToolDetailOptions { Compact = false })
+            ? OpenCodeToolDetailBuiltins.BuildInline(_model)
                 ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供")
             : null;
     }

@@ -741,6 +741,7 @@ public sealed class OpenCodeConversationView : StackPanel
         public Action? EnsureVisual { get; set; }
         public Action? RefreshVisual { get; set; }
         public string ReasoningText { get; set; } = string.Empty;
+        public bool ReasoningEncrypted { get; set; }
 
         /// <summary>就地更新；第二参数为当前 assistant 消息 id（仅工具部件的导航事件使用，可为 null），第三参数为关联的异步完成通知。</summary>
         public required Action<OpenCodeContentPart, string?, OpenCodeAsyncCompletion?> Update { get; init; }
@@ -2110,6 +2111,7 @@ public sealed class OpenCodeConversationView : StackPanel
             var texts = new List<string?>();
 
             var leadInProgress = false;
+            var leadEncrypted = false;
 
             void FlushReasoning(bool atRunEnd)
             {
@@ -2118,15 +2120,17 @@ public sealed class OpenCodeConversationView : StackPanel
                     lead.ReasoningStatus = leadInProgress || (atRunEnd && runEndsParts && messageStreaming)
                         ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
                     lead.ReasoningText = OpenCodeStepRunPresentation.MergeReasoning(texts);
+                    lead.ReasoningEncrypted = leadEncrypted && string.IsNullOrWhiteSpace(lead.ReasoningText);
                     lead.RefreshVisual?.Invoke();
                     lead.Reasoning?.Update(
                         lead.ReasoningText,
                         leadInProgress || (atRunEnd && runEndsParts && messageStreaming),
-                        QualifyKey(message, lead));
+                        QualifyKey(message, lead), lead.ReasoningEncrypted);
                 }
 
                 lead = null;
                 leadInProgress = false;
+                leadEncrypted = false;
                 texts.Clear();
             }
 
@@ -2139,10 +2143,11 @@ public sealed class OpenCodeConversationView : StackPanel
                     var text = part.LastPart?.Text;
 
                     // S2：仍在生成的思考（消息未完成，且部件 time.completed 缺失；无时间字段时以“是消息最后一个部件”判断）
-                    // 即使文本为空也立即显示“思考中…”行；已结束的空白思考（如仅有加密状态）不显示。
+                    // Explicit provider encrypted content gets a real unavailable-content notice, not an empty row.
+                    var encrypted = OpenCodeStepRunPresentation.IsEncryptedReasoning(part.LastPart);
                     var inProgress = messageStreaming
                         && (part.LastPart?.Time is { Completed: null } || (part.LastPart?.Time is null && k == entries.Count - 1));
-                    if (string.IsNullOrWhiteSpace(text) && !inProgress)
+                    if (string.IsNullOrWhiteSpace(text) && !inProgress && !encrypted)
                     {
                         continue;
                     }
@@ -2155,6 +2160,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     }
 
                     leadInProgress |= inProgress;
+                    leadEncrypted |= encrypted;
                     texts.Add(text);
                     continue;
                 }
@@ -2589,7 +2595,7 @@ public sealed class OpenCodeConversationView : StackPanel
             if (kind == OpenCodePartTypes.Reasoning)
                 visual.Reasoning?.Update(descriptor.ReasoningText,
                     descriptor.ReasoningStatus == OpenCodeToolRowStatus.Streaming,
-                    snapshot.Id is { Length: > 0 } ? key : (messageId is { Length: > 0 } ? messageId : "anon") + "/" + key);
+                    snapshot.Id is { Length: > 0 } ? key : (messageId is { Length: > 0 } ? messageId : "anon") + "/" + key, descriptor.ReasoningEncrypted);
         }
         descriptor = new PartEntry
         {
