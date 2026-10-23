@@ -949,6 +949,7 @@ public sealed class OpenCodeConversationView : StackPanel
     /// 原始后台调用行据此显示最终状态；<see cref="ClearMessages"/> 清空。
     /// </summary>
     private Dictionary<string, OpenCodeAsyncCompletion> _asyncCompletions = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _subagentInvocationKeys = new(StringComparer.Ordinal);
 
     /// <summary>创建空的消息时间线视图。</summary>
     public OpenCodeConversationView()
@@ -1106,6 +1107,12 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         _asyncCompletions = completions;
+        _subagentInvocationKeys.Clear();
+        foreach (var message in messages)
+            if (!IsInstructionMessage(message) && message.Content is { } parts)
+                foreach (var part in parts)
+                    if (part.Type == OpenCodePartTypes.Tool && OpenCodeToolRowPresentation.Classify(part.Name) == OpenCodeToolKind.Subagent)
+                        foreach (var invocationKey in OpenCodeStepRunPresentation.AsyncKeys(part)) _subagentInvocationKeys.Add(invocationKey);
 
         // 完成卡片标题来源：按本次快照重建映射（只读消费；标题算法由 OpenCodeSubagentTaskTitles 提供）。
         _subagentTaskTitles = OpenCodeSubagentTaskTitles.Build(messages);
@@ -1338,6 +1345,8 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>assistant 消息中全部工具调用所关联异步完成通知的签名（非 assistant 为空串）。</summary>
     private string ComputeAsyncSignature(OpenCodeMessage message)
     {
+        if (OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out var notice))
+            return "completion-represented:" + _subagentInvocationKeys.Contains(notice.Key);
         if (OpenCodeManualBackgroundIndex.TryReadNotice(message, out var items))
             return "manual-notice:" + string.Join(",", items.Select(item =>
                 _manualBackground.IsNoticeItemRepresented(message.Id, item.Kind, item.Title) ? "represented" : "notice"));
@@ -1439,6 +1448,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 if (!state.CompletionShown || !OpenCodeSubagentPresentation.IsOpaqueSessionId(completion.ChildSessionId)) return;
                 state.HasBoundary = false;
                 state.Runs.Clear();
+                if (_subagentInvocationKeys.Contains(completion.ChildSessionId)) return;
                 var completed = new OpenCodeAsyncCompletion(OpenCodeAsyncCompletionKind.Subagent,
                     completion.ChildSessionId, completion.State ?? string.Empty, ResolveTaskTitle(current) ?? string.Empty, null,
                     CompletionBody(current) ?? string.Empty, completion.ChildSessionId, null);
@@ -1454,6 +1464,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 for (var i = 0; i < items.Count; i++)
                 {
                     var item = items[i];
+                    if (item.Kind != "shell") continue; // Historical subagent snapshots never create another live row.
                     if (_manualBackground.IsNoticeItemRepresented(current.Id, item.Kind, item.Title)) continue;
                     var name = item.Kind == "shell" ? "终端（后台）" : "子智能体（后台）";
                     var model = ChipModel(new OpenCodeTimelineRowContent(name, item.Title, "后台运行中", OpenCodeToolRowStatus.Running,
@@ -1463,8 +1474,11 @@ public sealed class OpenCodeConversationView : StackPanel
                 if (run.Leaves.Count > 0) state.Runs.Add(run);
             }
             else if (async && OpenCodeStepRunPresentation.TryReadAsyncCompletion(current, out var notification))
-                AddProcess(key + "/process", ChipModel(OpenCodeStepRunPresentation.DescribeAsyncCompletion(notification)),
-                    notification.Key.Length > 0 ? "async:" + notification.Key : "notice:" + key);
+            {
+                if (!_subagentInvocationKeys.Contains(notification.Key))
+                    AddProcess(key + "/process", ChipModel(OpenCodeStepRunPresentation.DescribeAsyncCompletion(notification)),
+                        notification.Key.Length > 0 ? "async:" + notification.Key : "notice:" + key);
+            }
             else if (current.Type == OpenCodeMessageTypes.LocationSwitched)
                 AddProcess(key + "/process", ChipModel(new OpenCodeTimelineRowContent("目录", current.Location?.Directory ?? "（未提供）", string.Empty, null,
                     "已切换目录：" + (current.Location?.Directory ?? "（未提供）"), "目录", Array.Empty<OpenCodeToolProperty>(), current.Location?.Directory)), "notice:" + key);
@@ -1585,6 +1599,7 @@ public sealed class OpenCodeConversationView : StackPanel
             for (var index = 0; index < items.Count; index++)
             {
                 var item = items[index];
+                if (item.Kind != "shell") continue;
                 // The exact existing call/real terminal owns that operation; never add a second one.
                 if (_manualBackground.IsNoticeItemRepresented(current.Id, item.Kind, item.Title)) continue;
                 var glyph = item.Kind == "shell" ? OpenCodeStepRunPresentation.TerminalGlyph : OpenCodeStepRunPresentation.SubagentGlyph;
@@ -1644,7 +1659,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private Entry CreateProcessEntry(string key, OpenCodeMessage? message, FrameworkElement content,
         Action<OpenCodeMessage> apply, Func<OpenCodeToolRowModel> presentation,
         Action open, Action enter, Action exit, Action<FrameworkElement?> anchor, Func<string> glyph,
-        Action dispose, bool instruction = false, bool async = false, Func<string>? operationKey = null, bool inline = false)
+        Action dispose, bool instruction = false, bool async = false, Func<string>? operationKey = null, bool inline = false, Func<bool>? represented = null)
     {
         var group = new OpenCodeToolGroupView(key + "/process", OnStepGroupToggled);
         var state = new AssistantState { Element = group.Element, Message = message, IsProcessNotice = true };
@@ -1658,12 +1673,19 @@ public sealed class OpenCodeConversationView : StackPanel
         var run = new StepRun { Group = group, Owner = state, StartsMessage = true, EndsMessage = true };
         run.Leaves.Add(leaf);
         run.Tools.Add(presentation());
-        state.Runs.Add(run);
+        if (represented?.Invoke() != true) state.Runs.Add(run);
+        group.Element.Visibility = state.Runs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         group.ItemsHost.Children.Add(content);
         return new Entry
         {
             Key = key, Element = group.Element, Assistant = state, IsInstructionNotice = instruction, IsAsyncCompletion = async,
-            Update = m => { apply(m); state.Message = m; run.Tools.Clear(); run.Tools.Add(presentation()); },
+            Update = m =>
+            {
+                apply(m); state.Message = m; run.Tools.Clear(); run.Tools.Add(presentation());
+                state.Runs.Clear();
+                if (represented?.Invoke() != true) state.Runs.Add(run);
+                group.Element.Visibility = state.Runs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            },
             Dispose = () => { dispose(); group.Dispose(); },
         };
     }
@@ -1743,7 +1765,8 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 childId = null;
                 chip.Dispose();
-            }, async: true, operationKey: () => operationKey);
+            }, async: true, operationKey: () => operationKey,
+            represented: () => childId is not null && _subagentInvocationKeys.Contains(childId));
     }
 
     private Entry CreateUserEntry(string key, OpenCodeMessage message)
@@ -1813,6 +1836,14 @@ public sealed class OpenCodeConversationView : StackPanel
             subagentMarker.Visibility = Visibility.Collapsed;
             var completion = OpenCodeSubagentPresentation.TryReadCompletionMetadata(m.Metadata, out var info) ? info : null;
             state.CompletionShown = completion is not null;
+            if (completion is not null && _subagentInvocationKeys.Contains(completion.ChildSessionId))
+            {
+                state.Runs.Clear();
+                state.HasBoundary = false;
+                root.Visibility = Visibility.Collapsed;
+                subagentCompletion.Update(null, null, null);
+                return;
+            }
             subagentCompletion.Update(completion, ResolveTaskTitle(m), CompletionBody(m));
             if (completion is not null && OpenCodeSubagentPresentation.IsOpaqueSessionId(completion.ChildSessionId))
             {
@@ -2759,6 +2790,15 @@ public sealed class OpenCodeConversationView : StackPanel
     /// </summary>
     private Entry CreateSyntheticEntry(string key, OpenCodeMessage message, Func<OpenCodeMessage, string> describe)
     {
+        const string interrupted = "The previous response was interrupted. Continue from where you left off without repeating completed content.";
+        if (message.Text == interrupted)
+        {
+            var notice = new OpenCodeTimelineChipView("OpenCodeInterruptedNotice", "\uE7BA");
+            void ApplyNotice(OpenCodeMessage current) => notice.Update("上次响应已中断，继续处理", "上次响应已中断，继续处理", "中断后继续",
+                Array.Empty<OpenCodeToolProperty>(), current.Text);
+            ApplyNotice(message);
+            return new Entry { Key = key, Element = notice.Element, Update = ApplyNotice, Dispose = notice.Dispose };
+        }
         var subagentMarker = CreateSubagentMarker(HorizontalAlignment.Center);
         var text = new TextBlock
         {

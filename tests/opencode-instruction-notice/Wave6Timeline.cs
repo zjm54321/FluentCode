@@ -96,6 +96,22 @@ internal static class Wave6Timeline
         view.ClearMessages();
 
         ConversationViewTestProbe.Reset();
+        var childInvocation = M(new { id = "child_invocation", type = "assistant", content = new[] { new
+        {
+            id = "child_call", type = "tool", name = "subagent", state = new { status = "completed",
+                input = new { agent = "fixer", description = "real child", background = true }, metadata = new { sessionID = "ses_child", status = "running" } }
+        } } });
+        view.ApplyMessages(new[] { childInvocation, Child("completed") });
+        Check(Made<OpenCodeToolGroupView>().Count(g => g.HeaderVisible && g.Element.Visibility == Microsoft.UI.Xaml.Visibility.Visible
+                && ConversationViewTestProbe.IsAttachedTo(g.Element, view)) == 1
+            && Made<OpenCodeToolGroupView>().First(g => g.OpenLeaf is not null).LeafStatus == OpenCodeToolRowStatus.Completed,
+            "v5.subagent-completion-merges-into-original-call-without-second-visible-row");
+        view.ApplyMessages(new[] { childInvocation, Child("failed") });
+        Check(Made<OpenCodeToolGroupView>().First(g => g.OpenLeaf is not null).LeafStatus == OpenCodeToolRowStatus.Error,
+            "v5.same-subagent-call-reflects-updated-completion-state");
+        view.ClearMessages();
+
+        ConversationViewTestProbe.Reset();
         var backgroundOrigin = M(new { id = "bg_origin", type = "assistant", content = new[] { new
         {
             id = "bg_call", type = "tool", name = "shell", state = new { status = "completed",
@@ -338,9 +354,9 @@ internal static class Wave6Timeline
         view.ClearMessages(); ConversationViewTestProbe.Reset();
         var multipleNotice = suppliedNotice with { Text = noticeBody.Replace("- shell: " + noticeCommand, "- shell: " + noticeCommand + "\n- subagent: inert child descriptor", StringComparison.Ordinal) };
         view.ApplyMessages(new[] { multipleNotice });
-        Check(Made<OpenCodeTimelineChipView>().Length == 2 && Made<OpenCodeTimelineChipView>()[1].Glyph == OpenCodeStepRunPresentation.SubagentGlyph
+        Check(Made<OpenCodeTimelineChipView>().Length == 1 && Made<OpenCodeTimelineChipView>()[0].Glyph == OpenCodeStepRunPresentation.TerminalGlyph
             && Made<OpenCodeTimelineChipView>().All(p => p.Content.Status == OpenCodeToolRowStatus.Running),
-            "wave13.one-compact-status-per-notice-item-terminal-or-robot-glyph-no-created-job-identifiers");
+            "v5.stale-subagent-background-snapshot-never-creates-another-running-row-terminal-notice-retained");
         view.ClearMessages();
         Console.WriteLine($"PASS wave6 timeline: {_checks} assertions; real renderer/policies with inert presenters, no UI.");
     }
