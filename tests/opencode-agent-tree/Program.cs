@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -16,8 +17,13 @@ internal static class Program
     private static void Check(bool value, string name) { if (!value) throw new Exception(name); Console.WriteLine("PASS " + name); _checks++; }
     private static JsonElement Json(string value) => JsonDocument.Parse(value).RootElement.Clone();
 
-    private static async Task Main()
+    private static async Task Main(string[] args)
     {
+        var view = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
+        Check(view.Contains("<TreeView.ItemTemplate>") && view.Contains("Content=\"{Binding Content}\""), "native node content template retained");
+        Check(view.Contains("Grid.SetColumn(model, 1)") && view.Contains("Grid.SetColumn(indicator, 2)")
+            && view.Contains("model.HorizontalAlignment = HorizontalAlignment.Right") && !view.Contains("text.Children.Add(model)"),
+            "small gray model occupies trailing column on same row, with separate aligned status");
         var agents = new[]
         {
             new OpenCodeAgentInfo { Id = "custom-main", Name = "主配置", Mode = "primary" },

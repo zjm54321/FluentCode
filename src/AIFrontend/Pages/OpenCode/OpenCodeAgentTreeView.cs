@@ -139,22 +139,26 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         return node;
     }
 
-    // Rows sit at one tree depth inside the fixed 320epx pane: a fixed text column keeps every status icon on
-    // the same vertical line (TreeViewItem content is not stretched), while long titles/models ellipsize.
+    // TreeViewItem content is not stretched. Reserve the same row budget at one tree depth so
+    // models occupy the space to the right of the title and every status stays on the same vertical line.
     private const double TextColumnWidth = 176;
+    private const double TitleColumnWidth = 64;
     private const double IndicatorSize = 16;
 
     private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag)
     {
         var row = new Grid { Tag = tag, ColumnSpacing = 8, Padding = new Thickness(0, 2, 0, 2), MinWidth = 130 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TextColumnWidth) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TitleColumnWidth) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TextColumnWidth - TitleColumnWidth - row.ColumnSpacing) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(IndicatorSize) });
-        var text = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock { Text = title, FontSize = 12, LineHeight = 16, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
+        row.Children.Add(new TextBlock { Text = title, FontSize = 12, LineHeight = 16, VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
         var model = (TextBlock)XamlReader.Load("<TextBlock xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" FontSize=\"11\" LineHeight=\"14\" Foreground=\"{ThemeResource TextFillColorSecondaryBrush}\" TextWrapping=\"NoWrap\" TextTrimming=\"CharacterEllipsis\" />");
         model.Text = subtitle;
-        text.Children.Add(model);
-        row.Children.Add(text);
+        model.VerticalAlignment = VerticalAlignment.Center;
+        model.HorizontalAlignment = HorizontalAlignment.Right;
+        Grid.SetColumn(model, 1);
+        row.Children.Add(model);
         FrameworkElement indicator;
         var statusText = status switch { OpenCodeTreeStatus.Running => "运行中", OpenCodeTreeStatus.Succeeded => "成功", OpenCodeTreeStatus.Failed => "失败", OpenCodeTreeStatus.Interrupted => "已中断", _ => "状态不可用" };
         if (status == OpenCodeTreeStatus.Running) indicator = new ProgressRing { IsActive = true, Width = 14, Height = 14, MinWidth = 0, MinHeight = 0 };
@@ -169,7 +173,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         }
         indicator.HorizontalAlignment = HorizontalAlignment.Center;
         indicator.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(indicator, 1);
+        Grid.SetColumn(indicator, 2);
         row.Children.Add(indicator);
         AutomationProperties.SetName(row, title + "，" + subtitle + "，" + statusText);
         ToolTipService.SetToolTip(row, title + "\n" + subtitle + " · " + statusText);
