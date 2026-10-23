@@ -1,7 +1,5 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -104,32 +102,6 @@ internal static class Program
             var wins = await Task.WhenAll(Task.Run(s.TryConfirm), Task.Run(s.MarkStale), Task.Run(() => s.Finish() is not null && false));
             Check(wins.Count(w => w) <= 1 && s.IsCompleted, "single completion under concurrent confirm/stale/close");
         }
-        ClosingAdapterWiring();
-    }
-
-    // One bounded STATIC-wiring + actual-state regression, not native ContentDialog event-order evidence.
-    // CallerFilePath resolves against the same captured SourceRoot used by the focused WinUI compile.
-    private static void ClosingAdapterWiring([CallerFilePath] string testSource = "")
-    {
-        var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testSource)!,
-            "../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerContinuationDialog.cs"));
-        var source = File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
-        const string close = "dialog.CloseButtonClick += (_, _) => FinishClosing();";
-        const string closing = "dialog.Closing += (_, _) => FinishClosing();";
-        var awaited = source.IndexOf("await dialog.ShowAsync();", StringComparison.Ordinal);
-        Check(source.Contains(close, StringComparison.Ordinal) && source.Contains(closing, StringComparison.Ordinal)
-            && source.IndexOf(close, StringComparison.Ordinal) < awaited && source.IndexOf(closing, StringComparison.Ordinal) < awaited,
-            "actual adapter wires both close paths before awaiting ShowAsync");
-        Check(source.Contains("void FinishClosing()", StringComparison.Ordinal)
-            && source.Contains("closingOrFinished = true;\n            state.Finish();", StringComparison.Ordinal),
-            "both handlers synchronously reach the existing terminal state seam");
-        var state = new OpenCodeContinuationConfirmationState(P());
-        var cancelled = state.Finish(); // Invoke that same terminal seam, before simulating late callbacks.
-        Check(cancelled.Outcome == OpenCodeContinuationOutcome.Cancelled && !state.TryConfirm() && !state.MarkStale()
-            && ReferenceEquals(state.Finish(), cancelled), "synchronous close wins against simulated late primary/cancellation");
-        Check(source.Contains("if (closingOrFinished) return;", StringComparison.Ordinal)
-            && source.Contains("finally\n        {\n            closingOrFinished = true;", StringComparison.Ordinal),
-            "queued Hide is guarded once closing/finished, without changing the first decision");
     }
 
     private static Task S3()

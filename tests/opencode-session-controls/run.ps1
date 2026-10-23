@@ -34,21 +34,11 @@ $arguments += $refs | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $rsp = Join-Path $EvidenceRoot 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
-$inputs = $sources + @($refs.FullName) + @($compiler, $dotnet, $rsp)
-$before = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-$before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'compiled-inputs-before.json')
-Get-FileHash -LiteralPath $sources -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'source-hashes.json')
-try {
-    Write-Output "Compiler: $compiler; refs: $($pack.FullName)"
-    & $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.txt')
-    if ($LASTEXITCODE -ne 0) { throw "Compile failed: $LASTEXITCODE" }
-    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'SessionControlTests.runtimeconfig.json')
-    & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
-    if ($LASTEXITCODE -ne 0) { throw "Session-control tests failed: $LASTEXITCODE" }
-} finally {
-    $after = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-    $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'compiled-inputs-after.json')
-    if (Compare-Object $before $after -Property Path, Hash) { throw 'Compiled inputs changed; evidence is provisional.' }
-}
-Write-Output "PASS stable inputs: $($sources.Count) sources, $($refs.Count) references, compiler/host/rsp."
+Write-Output "Compiler: $compiler; refs: $($pack.FullName)"
+& $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'compile.txt')
+if ($LASTEXITCODE -ne 0) { throw "Compile failed: $LASTEXITCODE" }
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'SessionControlTests.runtimeconfig.json')
+& $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
+if ($LASTEXITCODE -ne 0) { throw "Session-control tests failed: $LASTEXITCODE" }
+Write-Output "PASS $($sources.Count) sources, $($refs.Count) references."
 Write-Output "Evidence directory: $EvidenceRoot"

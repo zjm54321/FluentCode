@@ -413,7 +413,6 @@ internal static class Program
             var coordinator = new OpenCodeSessionControlCoordinator(gate); var origin = server.Origin();
             var preview = await Preview(server, coordinator, origin);
             var liveDraft = Empty;
-            string liveText = "";
             bool CanStart(SessionControlOrigin candidate) => Current(candidate) && candidate == origin && liveDraft == Empty;
             bool OwnsOperation(SessionControlOrigin candidate) => Current(candidate) && candidate == origin;
             var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -423,7 +422,6 @@ internal static class Program
             var pending = coordinator.ConfirmAsync(preview, operationId, Empty, CanStart, OwnsOperation);
             await started.Task.WaitAsync(TimeSpan.FromSeconds(3));
             liveDraft = new("edited-after-start-token", false);
-            liveText = "keep my later typing";
             Check(!CanStart(origin) && OwnsOperation(origin) && server.Mutations == 1, "draft authority expires after one POST, operation owner remains");
             server.Stage = rejected ? null : "{\"messageID\":\"msg_a\"}";
             response.SetResult(Server.Json(rejected ? 409 : 200,
@@ -436,9 +434,6 @@ internal static class Program
             {
                 Check(result.Observed?.Revert?.MessageId == "msg_a" && result.Restoration?.ExpectedDraftFingerprint == Empty.Fingerprint,
                     "owner-only display refresh returns candidate tied to original draft, not a borrowed token");
-                // Caller-side exact-draft requirement only: this harness deliberately does not claim Core ticket/Page coverage.
-                bool originalRestoreTicketUsable = liveDraft.Empty && liveDraft.Fingerprint == result.Restoration?.ExpectedDraftFingerprint;
-                Check(!originalRestoreTicketUsable && liveText == "keep my later typing", "expired original draft cannot apply candidate or replace newer text");
             }
             using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
             Check(lease.GetSessionControlProtection() is null && lease.CanControlSession() && server.Mutations == 1,

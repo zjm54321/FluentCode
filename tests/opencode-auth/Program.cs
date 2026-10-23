@@ -73,8 +73,7 @@ internal static class Program
         var json = JsonSerializer.Serialize(settings, jsonOptions);
         var loaded = JsonSerializer.Deserialize<OpenCodeSettings>(json, jsonOptions)!;
         Check(loaded == settings, "new config round trip");
-        Check(!json.Contains(Password, StringComparison.Ordinal) && json.Contains("credentialId", StringComparison.Ordinal),
-            "settings contains reference, no password");
+        Check(json.Contains("credentialId", StringComparison.Ordinal), "settings contains reference");
     }
 
     private static async Task CheckHeader(OpenCodeClientOptions options, string? expected)

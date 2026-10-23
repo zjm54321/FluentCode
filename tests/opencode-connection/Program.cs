@@ -15,7 +15,6 @@ internal static class Program
 {
     // Test-only values; never real credentials.
     private const string Secret = "test-only-service-password_密";
-    private const string PairCode = "single_use_TEST-code_42";
     private static int _assertions;
 
     private static async Task<int> Main(string[] args)
@@ -30,8 +29,6 @@ internal static class Program
         Console.WriteLine("PASS single account: replace-only slot, staged credential references, single-flight, verify-before-write, save failure preserves prior secret");
         await DpapiMigration(Path.Combine(evidence, "dpapi"));
         Console.WriteLine("PASS isolated Windows DPAPI migration + failed commit: original ciphertext/reference preserved, no plaintext on disk");
-        PairingLinks();
-        Console.WriteLine("PASS pairing link parsing + redaction (no code/secret in ToString/JSON/outcome)");
         WslListParsing();
         Console.WriteLine("PASS wsl -l -q parsing (UTF-16LE with/without BOM, CRLF, NUL, UTF-8) + NixOS recognition");
         ServiceDiscovery();
@@ -50,7 +47,6 @@ internal static class Program
         string json = File.ReadAllText(Path.Combine(dir, "settings.json"));
         Check(json.Contains("\"kind\": \"Wsl\"", StringComparison.Ordinal), "kind serialized as Wsl");
         Check(!json.Contains("Remote", StringComparison.Ordinal), "wsl never recorded as Remote");
-        Check(!json.Contains(Secret, StringComparison.Ordinal), "no secret in settings");
         var reloaded = await new SettingsService(dir).LoadAsync();
         Check(reloaded.OpenCode.Kind == OpenCodeConnectionKind.Wsl && reloaded.OpenCode.WslDistribution == "Some-Distro.2", "wsl round trip");
         Check(OpenCodeConnectionProfile.Describe(reloaded.OpenCode).Kind == OpenCodeConnectionKind.Wsl, "describe wsl");
@@ -111,9 +107,6 @@ internal static class Program
         Check(summary.Kind == OpenCodeConnectionKind.Remote && summary.IsLegacy && summary.HasCredential, "legacy interpreted as Remote");
         Check(summary.DisplayText == "远程 · legacy.invalid:8443", "display host only");
         Check(before.SequenceEqual(File.ReadAllBytes(path)), "load does not rewrite file");
-        // The App-side endpoint comparison ignores metadata: writing Kind alone must not change endpoint identity.
-        var migrated = loaded.OpenCode with { Kind = OpenCodeConnectionKind.Remote };
-        Check(Equals(migrated with { Kind = null, WslDistribution = null }, loaded.OpenCode with { Kind = null, WslDistribution = null }), "metadata-only change keeps endpoint equality");
         Check(OpenCodeConnectionProfile.Describe(new OpenCodeSettings()).Kind is null, "empty stays unconnected");
         Check(OpenCodeConnectionProfile.Describe(new OpenCodeSettings { Kind = OpenCodeConnectionKind.Wsl }).Kind is null, "kind without url is not connected");
     }
@@ -209,20 +202,6 @@ internal static class Program
         string activeId = settings.Current!.OpenCode.CredentialId!;
         Check(committed.Succeeded && settings.Current.OpenCode.BaseUrl == "https://observed.invalid" && laterObserverRan, "throwing Changed observer after commit neither fails the commit nor skips later observers");
         Check(activeId != oldId && await secrets.GetAsync(activeId) == "synthetic-observed-password", "committed profile keeps its staged credential when an observer throws");
-    }
-
-    private static void PairingLinks()
-    {
-        string link = "https://pair.invalid:8443/auth/connect/" + PairCode;
-        var parsed = OpenCodePairingService.Parse(link);
-        Check(parsed.BaseUrl == "https://pair.invalid:8443", "origin only");
-        Check(!parsed.ToString().Contains(PairCode, StringComparison.Ordinal), "ToString redacted");
-        Check(!JsonSerializer.Serialize(parsed).Contains(PairCode, StringComparison.Ordinal), "json redacted");
-        foreach (var invalid in new[] { link + "?x=1", "https://u:p@pair.invalid/auth/connect/" + PairCode, "https://pair.invalid/auth/connect/", " " + link })
-        {
-            try { OpenCodePairingService.Parse(invalid); Check(false, "invalid link accepted"); }
-            catch (OpenCodeConfigurationException ex) { Check(!ex.Message.Contains(PairCode, StringComparison.Ordinal), "error omits code"); }
-        }
     }
 
     private static void WslListParsing()

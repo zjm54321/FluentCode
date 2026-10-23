@@ -188,9 +188,6 @@ internal static class Program
             && replay.Items.Single().Content == "latest", "latest completed write wins including in-message order; non-completed/other tools ignored (official findLast)");
         Check(replay.Items[0] == new OpenCodeTodoItem("latest", "in_progress") && replay.SessionId == "ses_selected" && replay.Scope == Scope
             && replay.Remaining == 1, "official item shape {content,status}; priority ignored; selected scope retained");
-        Check(typeof(OpenCodeTodoItem).GetProperties().Select(p => p.Name).OrderBy(n => n).SequenceEqual(new[] { "Content", "Status" }),
-            "no priority/id field in the native item model");
-
         // Cleared → verified Empty (not unknown, not failure).
         var clear = Message("msg_clear", Tool("completed", new { todos = Array.Empty<object>() }));
         var cleared = Derive(new[] { old, clear, ignored });

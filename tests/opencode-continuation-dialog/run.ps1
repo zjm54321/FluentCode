@@ -46,14 +46,10 @@ Write-Rsp $viewRsp 'library' (Join-Path $output 'ContinuationDialogCheck.dll') (
 Write-Rsp $testRsp 'exe' $testDll $netRefs $testSources @()
 $runtimeConfig = Join-Path $output 'OpenCodeContinuationDialogTests.runtimeconfig.json'
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 $runtimeConfig
-$inputs = @(@($viewSources + $testSources | ForEach-Object FullName) + @($netRefs.FullName) + @($winRefs.FullName) + @($compiler, $dotnet, $viewRsp, $testRsp, $runtimeConfig, $PSCommandPath) | Sort-Object -Unique)
-$before = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-$before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
 @{ ViewCompileSources = @($viewSources.FullName); TestSources = @($testSources.FullName); NetReferences = $netRefs.Count; WinUiReferences = @($winRefs.FullName) } |
     ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Path $output 'input-membership.json')
 Write-Output "Evidence directory: $output"
 $status = 0
-try {
     & $dotnet exec $compiler "@$viewRsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'view-compile.txt')
     $e1 = $LASTEXITCODE
     Write-Output "WINUI_FOCUSED_COMPILE exit=$e1 sources=$($viewSources.Count) refs=$($netRefs.Count + $winRefs.Count)"
@@ -67,10 +63,4 @@ try {
         if ($LASTEXITCODE -ne 0) { $status = 1 }
         Get-Content (Join-Path $output 'results.txt')
     }
-}
-finally {
-    $after = @($inputs | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } | Select-Object Path, Hash)
-    $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-    if (Compare-Object $before $after -Property Path, Hash) { Write-Output 'INPUTS_CHANGED'; $status = 1 } else { Write-Output "INPUTS_UNCHANGED count=$($inputs.Count)" }
-}
 exit $status

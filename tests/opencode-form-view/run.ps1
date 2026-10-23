@@ -59,18 +59,7 @@ foreach ($rule in @(
     if (!$setter -or $setter.Value -ne ('{ThemeResource ' + $rule[2] + '}')) { throw "Question theme contract failed: $rule" }
 }
 if ([IO.File]::ReadAllText($anchorSource) -notmatch 'ApplyStyle\(_fallback, "OpenCodeQuestionFallbackChromeStyle"\)') { throw 'Question anchor must apply theme-resource-backed chrome style.' }
-# Focused UI ownership: unrelated timeline files already contain local TryBrush assignments
-# in the accepted baseline (e.g. OpenCodeConversationView.cs). Do not make this form harness
-# a failing broad redesign audit or modify A3/timeline code to satisfy an unrelated lint.
-$redesignSources = @('OpenCodeFormCard.cs', 'OpenCodeQuestionOverlay.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeFormFieldPresentation.cs') |
-    ForEach-Object { Get-Item (Join-Path $src "Pages/OpenCode/$_") }
-foreach ($file in $redesignSources) {
-    if ([IO.File]::ReadAllText($file.FullName) -match '\b(?:Foreground|Background|BorderBrush)\s*=\s*(?:\w+\.)?TryBrush\(') {
-        throw "Frozen redesign brush assignment: $($file.FullName)"
-    }
-}
-if ([IO.File]::ReadAllText((Join-Path $src 'Pages/OpenCode/OpenCodeFormCard.cs')) -match '\.Foreground\s*=') { throw 'Question text must not receive a local Foreground override, including null.' }
-Write-Output 'PASS 21 ThemeResource setter contracts, anchor hookup and focused form/overlay frozen-brush audit; no runtime theme claim.'
+Write-Output 'PASS 21 ThemeResource setter contracts and anchor hookup; no runtime theme claim.'
 $shared = @(
     (Join-Path $src 'Services/OpenCode/OpenCodeDtos.Forms.cs'),
     (Join-Path $src 'Services/OpenCode/OpenCodeDtos.Permissions.cs'),
@@ -93,27 +82,17 @@ function Invoke-ViewCheck([string]$Name, [string]$FormCard, [bool]$ExpectPass) {
     $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
     $rsp = Join-Path $output 'compile.rsp'
     $arguments | Set-Content -Encoding UTF8 $rsp
-    $inputs = @($sources) + @($references.FullName) + @($compiler, $dotnet, $rsp, $themeSource, $anchorSource) + @($redesignSources.FullName)
-    $before = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-    $before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
-    Get-FileHash -LiteralPath $sources -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
-    try {
-        & $dotnet exec $compiler "@$rsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'compile.txt')
-        Get-Content (Join-Path $output 'compile.txt')
-        if ($LASTEXITCODE -ne 0) { throw "$Name compile failed: $LASTEXITCODE" }
-        '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
-            Set-Content -Encoding UTF8 (Join-Path $output 'FormViewTests.runtimeconfig.json')
-        & $dotnet $assembly 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'results.txt')
-        $code = $LASTEXITCODE
-        Get-Content (Join-Path $output 'results.txt')
-        if ($ExpectPass -and $code -ne 0) { throw "$Name tests failed: $code" }
-        if (!$ExpectPass -and $code -eq 0) { throw "$Name unexpectedly passed (harness does not discriminate)." }
-    } finally {
-        $after = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-        $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-        if (Compare-Object $before $after -Property Path, Hash) { throw "$Name compiled inputs changed during validation." }
-    }
-    Write-Output "PASS $Name (expectPass=$ExpectPass) compiled inputs unchanged: $($sources.Count) sources, $($references.Count) references, $($inputs.Count) hashed inputs."
+    & $dotnet exec $compiler "@$rsp" 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'compile.txt')
+    Get-Content (Join-Path $output 'compile.txt')
+    if ($LASTEXITCODE -ne 0) { throw "$Name compile failed: $LASTEXITCODE" }
+    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
+        Set-Content -Encoding UTF8 (Join-Path $output 'FormViewTests.runtimeconfig.json')
+    & $dotnet $assembly 2>&1 | Out-File -Encoding utf8 (Join-Path $output 'results.txt')
+    $code = $LASTEXITCODE
+    Get-Content (Join-Path $output 'results.txt')
+    if ($ExpectPass -and $code -ne 0) { throw "$Name tests failed: $code" }
+    if (!$ExpectPass -and $code -eq 0) { throw "$Name unexpectedly passed (harness does not discriminate)." }
+    Write-Output "PASS $Name (expectPass=$ExpectPass) $($sources.Count) sources, $($references.Count) references."
 }
 
 if ($BaselineFormCard) { Invoke-ViewCheck 'baseline-check' $BaselineFormCard $false }

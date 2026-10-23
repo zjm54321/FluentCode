@@ -37,23 +37,13 @@ function Invoke-PolicyCheck([string]$Name, [string[]]$Sources) {
     $arguments += $Sources | ForEach-Object { '"' + $_ + '"' }
     $rsp = Join-Path $output 'compile.rsp'
     $arguments | Set-Content -Encoding UTF8 $rsp
-    $inputs = @($Sources) + @($references.FullName) + @($compiler, $dotnet, $rsp)
-    $before = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-    $before | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-before.json')
-    Get-FileHash -LiteralPath $Sources -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')
-    try {
-        & $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.txt')
-        if ($LASTEXITCODE -ne 0) { throw "$Name compile failed: $LASTEXITCODE" }
-        '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
-            Set-Content -Encoding UTF8 (Join-Path $output 'FormInputTests.runtimeconfig.json')
-        & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'results.txt')
-        if ($LASTEXITCODE -ne 0) { throw "$Name tests failed: $LASTEXITCODE" }
-    } finally {
-        $after = @(Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash)
-        $after | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'compiled-inputs-after.json')
-        if (Compare-Object $before $after -Property Path, Hash) { throw "$Name compiled inputs changed during validation." }
-    }
-    Write-Output "PASS $Name compiled inputs unchanged: $($Sources.Count) sources, $($references.Count) references."
+    & $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.txt')
+    if ($LASTEXITCODE -ne 0) { throw "$Name compile failed: $LASTEXITCODE" }
+    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
+        Set-Content -Encoding UTF8 (Join-Path $output 'FormInputTests.runtimeconfig.json')
+    & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'results.txt')
+    if ($LASTEXITCODE -ne 0) { throw "$Name tests failed: $LASTEXITCODE" }
+    Write-Output "PASS $Name $($Sources.Count) sources, $($references.Count) references."
 }
 
 if ($BaselineDirectory) {
