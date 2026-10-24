@@ -268,7 +268,8 @@ namespace AIFrontend.Pages.OpenCode
         internal OpenCodeToolRowStatus Status => Streaming ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
         internal string RowKey { get; private set; } = string.Empty;
         internal int DisposeCount { get; private set; }
-        internal OpenCodeReasoningRowView() => ConversationViewTestProbe.Record("Construct", this, Element);
+        internal OpenCodeReasoningRowView(OpenCodeReasoningExpansionState? expansion = null, Action<Action>? changeInline = null)
+            => ConversationViewTestProbe.Record("Construct", this, Element);
         internal void Update(string text, bool streaming, string rowKey, bool encrypted = false)
         {
             Text = text;

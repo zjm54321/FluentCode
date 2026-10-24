@@ -388,10 +388,42 @@ internal static class Program
         }
     }
 
+    private static void ReasoningExpansionLifecycle()
+    {
+        var state = new OpenCodeReasoningExpansionState();
+        Check(state.Resolve("part-live", true, "Streaming thought", false), "TH1.running-reasoning-expanded");
+        Check(!state.Resolve("part-live", false, "Finished thought", false), "TH1.ended-reasoning-collapsed");
+        Check(!state.Resolve("part-history", false, "Historical thought", false), "TH1.history-loads-collapsed");
+        Check(!state.Resolve("part-empty", true, "  ", false) && !state.Resolve("part-encrypted", true, "secret", true), "TH1.empty-encrypted-not-auto-expanded");
+        state.SetManual("part-live", false);
+        Check(!state.Resolve("part-live", true, "Next delta", false), "TH1.manual-collapse-sticky-across-rerender");
+        state.SetManual("part-live", true);
+        Check(state.Resolve("part-live", false, "Final snapshot", false), "TH1.manual-expand-survives-completion-and-realization");
+        Check(!state.Resolve("other-part", false, "History", false), "TH1.manual-choice-keyed-by-part");
+        Check(OpenCodeReasoningExpansionState.IsRunning(true, true, true)
+            && !OpenCodeReasoningExpansionState.IsRunning(true, false, true)
+            && !OpenCodeReasoningExpansionState.IsRunning(false, true, true)
+            && !OpenCodeReasoningExpansionState.IsRunning(true, true, false), "TH1.running-requires-open-part-message-and-turn");
+        state.Clear();
+        Check(!state.Resolve("part-live", false, "History", false), "TH1.session-clear-releases-manual-state");
+        var root = Environment.GetEnvironmentVariable("AIF_REPO")!;
+        var row = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeReasoningRowView.cs"));
+        var builtins = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltins.cs"));
+        var conversation = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs"));
+        Check(row.Contains("_expansion.Resolve(_model.PartId, streaming, text, encrypted)", StringComparison.Ordinal)
+            && row.Contains("_expansion.SetManual(_model.PartId, expanded)", StringComparison.Ordinal), "TH1.real-row-wires-manual-and-auto-state");
+        Check(row.Contains("_inlinePresenter ??= new OpenCodeRichTextPresenter()", StringComparison.Ordinal)
+            && row.Contains("ReferenceEquals(_inlineRegion.Child, body)", StringComparison.Ordinal)
+            && builtins.Contains("presenter.Render(content, OpenCodeRichTextStyle.Body)", StringComparison.Ordinal), "TH1.inline-reuses-markdown-presenter-and-render-gate");
+        Check(conversation.Contains("new OpenCodeReasoningRowView(_reasoningExpansion, change =>", StringComparison.Ordinal)
+            && conversation.Contains("ChangeIdleContent(change);\n                    QueueWindowUpdate();", StringComparison.Ordinal), "TH1.manual-resize-uses-existing-anchor-reconciliation");
+    }
+
     private static int Main()
     {
         try
         {
+            ReasoningExpansionLifecycle();
             // Scalars: short text, code-like keys, paths, numbers, booleans, empties.
             var rows = Props("{\"description\":\"列出文件\",\"command\":\"ls -la\",\"filePath\":\"src/a.cs\",\"other\":\"C:\\\\temp\\\\x\",\"timeout\":120,\"force\":true,\"note\":\"\",\"none\":null}");
             Check(Row(rows, "description").Kind == OpenCodeToolPropertyKind.Text && Row(rows, "description").Value == "列出文件", "plain text stays readable");

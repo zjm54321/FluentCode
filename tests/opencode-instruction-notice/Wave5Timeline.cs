@@ -116,6 +116,28 @@ internal static class Wave5Timeline
         view.ApplyMessages(new[] { withText });
         Check(!row.Streaming && row.Text == "**step**", "s2.reasoning-followed-by-tool-not-streaming");
         view.ClearMessages();
+
+        ConversationViewTestProbe.Reset();
+        var thinking = new OpenCodeConversationView();
+        var thought = Message(new
+        {
+            id = "msg_th1", type = "assistant", time = new { created = T0 },
+            content = new[] { new { id = "part_th1", type = "reasoning", text = "live", time = new { created = T0 } } },
+        });
+        thinking.ApplyMessages(new[] { thought });
+        var current = Constructed<OpenCodeReasoningRowView>().Single();
+        Check(current.Streaming, "TH1.projection-running-part-streaming");
+        thinking.SetCurrentTurnActivity(false);
+        Check(!current.Streaming, "TH1.authoritative-turn-end-settles-open-reasoning");
+        thinking.SetCurrentTurnActivity(true);
+        Check(current.Streaming, "TH1.authoritative-running-restores-open-reasoning");
+        thinking.ApplyMessages(new[] { Message(new
+        {
+            id = "msg_th1", type = "assistant", time = new { created = T0 },
+            content = new[] { new { id = "part_th1", type = "reasoning", text = "done", time = new { created = T0, completed = T0 + 1_000 } } },
+        }) });
+        Check(!current.Streaming, "TH1.ended-last-part-not-streaming-in-running-message");
+        thinking.ClearMessages();
     }
 
     // G3: the question tool row model (no live view needed): name "提问", detail = question + chosen answer property list.

@@ -68,6 +68,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private readonly List<Border> _windowGaps = new();
     private readonly Border _emptyHistoryMarker = new() { Height = 0 };
     private readonly Dictionary<string, bool> _rowExpansion = new(StringComparer.Ordinal);
+    private readonly OpenCodeReasoningExpansionState _reasoningExpansion = new();
     private ScrollViewer? _viewport;
     private OpenCodeConversationWindow.Anchor? _readAnchor;
     private bool _followingBottom;
@@ -780,6 +781,7 @@ public sealed class OpenCodeConversationView : StackPanel
         /// <summary>是否属于“处理过程”分组（思考或普通工具调用）。</summary>
         public bool IsReasoning => Kind == OpenCodePartTypes.Reasoning;
         public OpenCodeToolRowStatus ReasoningStatus { get; set; }
+        public bool ReasoningOpen { get; set; }
         public bool IsStepPart => IsGroupableTool || IsReasoning;
     }
 
@@ -1048,6 +1050,7 @@ public sealed class OpenCodeConversationView : StackPanel
         _asyncCompletions = new Dictionary<string, OpenCodeAsyncCompletion>(StringComparer.Ordinal);
         _groupExpansion.Clear();
         _rowExpansion.Clear();
+        _reasoningExpansion.Clear();
         _activeGroups.Clear();
         if (_questionAnchors.Count > 0)
         {
@@ -2119,7 +2122,6 @@ public sealed class OpenCodeConversationView : StackPanel
                 i++;
             }
 
-            var runEndsParts = i == entries.Count;
             var shown = new List<PartEntry>();
             var tools = new List<OpenCodeToolRowModel>();
             var reasoningRows = 0;
@@ -2131,18 +2133,19 @@ public sealed class OpenCodeConversationView : StackPanel
             var leadInProgress = false;
             var leadEncrypted = false;
 
-            void FlushReasoning(bool atRunEnd)
+            void FlushReasoning()
             {
                 if (lead is not null)
                 {
-                    lead.ReasoningStatus = leadInProgress || (atRunEnd && runEndsParts && messageStreaming)
+                    lead.ReasoningOpen = leadInProgress;
+                    lead.ReasoningStatus = leadInProgress
                         ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
                     lead.ReasoningText = OpenCodeStepRunPresentation.MergeReasoning(texts);
                     lead.ReasoningEncrypted = leadEncrypted && string.IsNullOrWhiteSpace(lead.ReasoningText);
                     lead.RefreshVisual?.Invoke();
                     lead.Reasoning?.Update(
                         lead.ReasoningText,
-                        leadInProgress || (atRunEnd && runEndsParts && messageStreaming),
+                        leadInProgress,
                         QualifyKey(message, lead), lead.ReasoningEncrypted);
                 }
 
@@ -2183,7 +2186,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     continue;
                 }
 
-                FlushReasoning(atRunEnd: false);
+                FlushReasoning();
                 var snapshot = part.LastPart ?? new OpenCodeContentPart();
                 tools.Add(StepModel(part)!);
                 shown.Add(part);
@@ -2201,7 +2204,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
             }
 
-            FlushReasoning(atRunEnd: true);
+            FlushReasoning();
             if (shown.Count == 0)
             {
                 // 只有空白思考：不显示分组。
@@ -2433,6 +2436,17 @@ public sealed class OpenCodeConversationView : StackPanel
                 run.HasVisibleLeaves = false;
                 foreach (var part in run.Leaves)
                 {
+                    if (part.IsReasoning)
+                    {
+                        // TH1: use one signal for the label and inline default, including authoritative turn end.
+                        var running = OpenCodeReasoningExpansionState.IsRunning(
+                            run.Owner.Message?.Time is { Completed: null }, part.ReasoningOpen,
+                            wholeTurnActive && currentOwners.Contains(run.Owner));
+                        part.ReasoningStatus = running ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
+                        part.RefreshVisual?.Invoke();
+                        if (run.Owner.Message is { } message)
+                            part.Reasoning?.Update(part.ReasoningText, running, QualifyKey(message, part), part.ReasoningEncrypted);
+                    }
                     var operation = part.OperationKey?.Invoke();
                     if (part.LastPart is { } snapshot && !part.IsReasoning)
                     {
@@ -2666,7 +2680,12 @@ public sealed class OpenCodeConversationView : StackPanel
             case OpenCodePartTypes.Reasoning:
             {
                 // “思考”行（F4）：外观同工具行，完整文本在悬停详情中；连续思考由 LayoutParts 合并到段首行。
-                var row = new OpenCodeReasoningRowView();
+                var row = new OpenCodeReasoningRowView(_reasoningExpansion, change =>
+                {
+                    // Same anchor/height reconciliation as snapshot updates; never cancel bottom-follow here.
+                    ChangeIdleContent(change);
+                    QueueWindowUpdate();
+                });
                 return new PartEntry
                 {
                     Key = partKey,

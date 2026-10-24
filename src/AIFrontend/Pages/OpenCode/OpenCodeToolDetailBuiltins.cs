@@ -52,7 +52,8 @@ internal static partial class OpenCodeToolDetailBuiltins
         };
 
     /// <summary>Reasoning is shared by hover, detail and D1 inline hosts. Content is never translated.</summary>
-    internal static FrameworkElement BuildReasoning(string? text, bool encrypted = false, bool compact = false, bool running = false)
+    internal static FrameworkElement BuildReasoning(string? text, bool encrypted = false, bool compact = false, bool running = false,
+        OpenCodeRichTextPresenter? presenter = null)
     {
         if (encrypted) return OpenCodeToolDetailContent.Caption("思考内容已加密，无法显示");
         if (string.IsNullOrWhiteSpace(text)) return OpenCodeToolDetailContent.Caption(running ? "思考中…" : "（没有可显示的思考内容）");
@@ -62,7 +63,10 @@ internal static partial class OpenCodeToolDetailBuiltins
             var lines = content.Replace("\r", "", StringComparison.Ordinal).Split('\n');
             content = string.Join('\n', running ? lines.TakeLast(5) : lines.Take(5));
         }
-        var body = MarkdownBody(content);
+        presenter ??= new OpenCodeRichTextPresenter();
+        presenter.Render(content, OpenCodeRichTextStyle.Body);
+        var body = presenter.Element;
+        OpenCodeToolDetailContent.EnforceWrapping(body);
         body.MaxWidth = 820;
         return body;
     }

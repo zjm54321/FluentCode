@@ -24,6 +24,9 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
     private readonly TextBlock _nameText;
     private readonly TextBlock _previewText;
     private readonly Border _inlineRegion;
+    private readonly OpenCodeReasoningExpansionState _expansion;
+    private readonly Action<Action>? _changeInline;
+    private OpenCodeRichTextPresenter? _inlinePresenter;
     private bool _inlineExpanded;
     private bool _encrypted;
     private OpenCodeToolRowModel _model = new() { Name = "思考" };
@@ -31,8 +34,10 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
     private FrameworkElement? _detailAnchorOverride;
     internal void SetDetailAnchor(FrameworkElement? anchor) => _detailAnchorOverride = anchor;
 
-    internal OpenCodeReasoningRowView()
+    internal OpenCodeReasoningRowView(OpenCodeReasoningExpansionState? expansion = null, Action<Action>? changeInline = null)
     {
+        _expansion = expansion ?? new OpenCodeReasoningExpansionState();
+        _changeInline = changeInline;
         _icon = new FontIcon { Glyph = "\uEA80", FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
         _progress = new ProgressRing
@@ -126,16 +131,30 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
     internal void OpenDetail()
     {
         OpenCodeToolDetailPopup.Shared.CloseIf(this);
-        _inlineExpanded = !_inlineExpanded;
-        RefreshInlineContent();
+        SetManualExpansion(!_inlineExpanded);
     }
     void IOpenCodeChildChatSource.OpenChildChat() => OpenDetail();
     void IOpenCodeDetailActivationSource.ActivateDetail() => OpenDetail();
 
+    private void SetManualExpansion(bool expanded)
+    {
+        void Change()
+        {
+            _expansion.SetManual(_model.PartId, expanded);
+            _inlineExpanded = expanded;
+            RefreshInlineContent();
+        }
+        if (_changeInline is { } change) change(Change);
+        else Change();
+    }
+
     private void RefreshInlineContent()
     {
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
-        _inlineRegion.Child = _inlineExpanded ? BuildReasoningBody() : null;
+        if (!_inlineExpanded) return;
+        // Keep the presenter/root attached: Render's gate skips duplicate snapshots and retains image leases.
+        var body = BuildReasoningBody();
+        if (!ReferenceEquals(_inlineRegion.Child, body)) _inlineRegion.Child = body;
     }
     internal void HoverEnter() => OpenCodeToolDetailPopup.Shared.HoverEnter(this);
     internal void HoverExit() => OpenCodeToolDetailPopup.Shared.HoverExit(this);
@@ -152,7 +171,8 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
         => OpenCodeToolDetailContent.Wrap(BuildReasoningBody(compact: true));
 
     private FrameworkElement BuildReasoningBody(bool compact = false)
-        => OpenCodeToolDetailBuiltins.BuildReasoning(Text, _encrypted, compact, _model.IsActive);
+        => OpenCodeToolDetailBuiltins.BuildReasoning(Text, _encrypted, compact, _model.IsActive,
+            compact ? null : _inlinePresenter ??= new OpenCodeRichTextPresenter());
 
     void IOpenCodeDetailContentSource.OnDetailStateChanged(bool shown, bool pinned)
         => _selectionBar.Visibility = shown && pinned ? Visibility.Visible : Visibility.Collapsed;
@@ -193,6 +213,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
 
         if (!_disposed)
         {
+            _inlineExpanded = _expansion.Resolve(_model.PartId, streaming, text, encrypted);
             RefreshInlineContent();
             OpenCodeToolDetailPopup.Shared.Refresh(this);
         }
@@ -219,8 +240,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
             case VirtualKey.Escape:
                 if (_inlineExpanded)
                 {
-                    _inlineExpanded = false;
-                    RefreshInlineContent();
+                    SetManualExpansion(false);
                     e.Handled = true;
                 }
                 if (OpenCodeToolDetailPopup.Shared.IsShowing(this))
