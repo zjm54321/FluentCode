@@ -82,6 +82,10 @@ public sealed record OpenCodeMessage
     [JsonPropertyName("text")]
     public string? Text { get; init; }
 
+    /// <summary>User file attachments (inline data/mime/source/name/mention), preserved verbatim.</summary>
+    [JsonPropertyName("files")]
+    public JsonElement? Files { get; init; }
+
     /// <summary>Bounded instruction body for explicit read-only viewing, never serialized into timeline fingerprints.</summary>
     [JsonIgnore]
     internal string? InstructionBody { get; init; }
@@ -247,6 +251,15 @@ public sealed record OpenCodeShellOutput
 /// </summary>
 public sealed record OpenCodeContentPart
 {
+    [JsonPropertyName("mime")]
+    public string? Mime { get; init; }
+
+    [JsonPropertyName("url")]
+    public string? Url { get; init; }
+
+    [JsonPropertyName("filename")]
+    public string? FileName { get; init; }
+
     /// <summary>Explicit machine-generated text-part origin, when supplied; absent/false is not trusted.</summary>
     [JsonPropertyName("synthetic")]
     public bool? Synthetic { get; init; }

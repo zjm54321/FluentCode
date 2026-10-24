@@ -12,7 +12,7 @@ public sealed record OpenCodeToolImageSource(string Reference, string? Mime, str
 public enum OpenCodeToolImageRoute { Inline, SessionFile, WslHost, Unavailable }
 public sealed record OpenCodeToolImagePlan(OpenCodeToolImageRoute Route, string Path, string? Reason = null);
 
-/// <summary>Tool-result images only. No arbitrary network fetch and no server-to-desktop path guessing.</summary>
+/// <summary>Timeline images. No arbitrary network fetch and no server-to-desktop path guessing.</summary>
 public static class OpenCodeToolImageResolver
 {
     public const int MaxBytes = OpenCodeClient.MaxImageFileBytes;
@@ -102,6 +102,14 @@ public static class OpenCodeToolImageResolver
     public static OpenCodeToolImagePlan Plan(string reference, string directory, bool wsl)
     {
         if (reference.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return new(OpenCodeToolImageRoute.Inline, reference);
+        if (reference.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Uri.TryCreate(reference, UriKind.Absolute, out var uri) || !uri.IsFile
+                || uri.Host.Length > 0 && !uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                || uri.Query.Length > 0 || uri.Fragment.Length > 0)
+                return new(OpenCodeToolImageRoute.Unavailable, reference, "图片路径无效");
+            reference = uri.LocalPath;
+        }
         if (string.IsNullOrWhiteSpace(reference) || string.IsNullOrWhiteSpace(directory) || reference.Contains("://", StringComparison.Ordinal) || wsl && reference.Contains('\\'))
             return new(OpenCodeToolImageRoute.Unavailable, reference, "图片路径无效");
         foreach (var ch in reference) if (char.IsControl(ch)) return new(OpenCodeToolImageRoute.Unavailable, reference, "图片路径包含控制字符");

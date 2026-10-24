@@ -336,12 +336,19 @@ namespace AIFrontend.Pages.OpenCode
         internal void SetExpanded(bool expanded) => IsExpanded = expanded;
         internal FrameworkElement Element { get; }
         internal bool Delivered { get; }
-        internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true)
+        internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true, FrameworkElement? attachments = null)
         {
             Delivered = delivered;
             Element = new Border { Child = content };
             ConversationViewTestProbe.Record("Construct", this, Element, content);
         }
+    }
+
+    internal sealed class OpenCodeUserAttachmentsView : IDisposable
+    {
+        internal FrameworkElement Element { get; } = new StackPanel();
+        internal void Update(OpenCodeMessage message) => ConversationViewTestProbe.Record("Attachments", this, message);
+        public void Dispose() { }
     }
 
     internal sealed class OpenCodeTurnChipView

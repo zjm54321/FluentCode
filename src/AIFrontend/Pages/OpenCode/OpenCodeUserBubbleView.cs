@@ -28,7 +28,7 @@ internal sealed class OpenCodeUserBubbleView
     private FrameworkElement? _widthOwner;
 
     /// <param name="content">要承载的内容元素（实例不重建；由本视图入树）。</param>
-    internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true)
+    internal OpenCodeUserBubbleView(FrameworkElement content, bool delivered = true, FrameworkElement? attachments = null)
     {
         ArgumentNullException.ThrowIfNull(content);
 
@@ -69,6 +69,15 @@ internal sealed class OpenCodeUserBubbleView
         Grid.SetColumn(_toggle, 1);
         layout.Children.Add(_clip);
         layout.Children.Add(_toggle);
+        if (attachments is not null)
+        {
+            // Only text is collapsed to two lines; images remain visible inside the bubble.
+            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(attachments, 1);
+            Grid.SetColumnSpan(attachments, 2);
+            layout.Children.Add(attachments);
+        }
 
         var surface = new Grid();
         var tint = new Border { Opacity = 0.12, IsHitTestVisible = false, CornerRadius = new CornerRadius(7) };

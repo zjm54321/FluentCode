@@ -1802,8 +1802,10 @@ public sealed class OpenCodeConversationView : StackPanel
         var presenter = new OpenCodeRichTextPresenter();
         presenter.Render(message.Text, OpenCodeRichTextStyle.Body);
 
+        var attachments = new OpenCodeUserAttachmentsView();
+        attachments.Update(message);
         // 默认最多两行，更长时用 chevron 展开 / 收起（H14）；呈现器实例与 key 跨更新保持。
-        var bubble = new OpenCodeUserBubbleView(presenter.Element, delivered: true);
+        var bubble = new OpenCodeUserBubbleView(presenter.Element, delivered: true, attachments: attachments.Element);
         if (_rowExpansion.TryGetValue(key, out var expanded)) bubble.SetExpanded(expanded);
         bubble.Element.Margin = new Thickness(0, 6, 0, 6);
 
@@ -1811,8 +1813,8 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             Key = key,
             Element = bubble.Element,
-            Update = m => presenter.Render(m.Text, OpenCodeRichTextStyle.Body),
-            Dispose = () => _rowExpansion[key] = bubble.IsExpanded,
+            Update = m => { presenter.Render(m.Text, OpenCodeRichTextStyle.Body); attachments.Update(m); },
+            Dispose = () => { _rowExpansion[key] = bubble.IsExpanded; attachments.Dispose(); },
         };
     }
 

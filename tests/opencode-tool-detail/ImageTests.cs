@@ -10,6 +10,7 @@ internal static partial class Program
 {
     private static void ToolImages()
     {
+        UserImages();
         const string data = "data:image/png;base64,AQID";
         var decoded = OpenCodeToolImageResolver.DecodeDataUrl(data);
         Check(decoded.Bytes.SequenceEqual(new byte[] { 1, 2, 3 }) && decoded.MediaType == "image/png", "IM1 bounded inline data bytes");
@@ -87,5 +88,72 @@ internal static partial class Program
         Check(Source("OpenCodeToolDetailContent.cs").Contains("top.Children.Add(BuildToolImages(model, options))") && Source("OpenCodeToolDetailBrowser.cs").Contains("return BuildToolImages(model, options"), "IM1 read/write/execute/browser detail builders include image section");
         Check(Source("OpenCodeToolPartView.cs").Contains("BuildToolImages(_model, options, thumbnail: true") && Source("OpenCodeToolPartView.cs").Contains("OpenCodeToolDetailPopup.Shared.TogglePinned(this)"), "IM1 expanded thumbnail opens existing large detail");
         Check(builder.Contains("thumbnail ? 240") && builder.Contains("CornerRadius(4)") && builder.Contains("DecodePixelWidth") && builder.Contains("DecodePixelHeight"), "IM1 thumbnail and decoded dimensions are bounded");
+    }
+
+    private static void UserImages()
+    {
+        // Exact v2 DB shape (payload shortened): no type/url/filename; data is base64, not a data URL.
+        var message = JsonSerializer.Deserialize<OpenCodeMessage>("""
+            {"id":"msg_user","type":"user","text":"[Image 1]","files":[
+              {"data":"AQID","mime":"image/png","source":{"type":"inline"},"name":"clipboard","mention":{"start":0,"end":9,"text":"[Image 1]"}},
+              {"mime":"application/pdf","name":"notes.pdf","url":"file:///work/notes.pdf"}
+            ]}
+            """, OpenCodeJson.Options)!;
+        var attachments = OpenCodeUserAttachments.FromMessage(message);
+        Check(attachments.Count == 2 && attachments[0] is { Key: "msg_user/file:0", Name: "clipboard", Image.Reference: "data:image/png;base64,AQID" }, "AI1 real DB files/data preserved and projected without decoding");
+        Check(attachments[1] is { Name: "notes.pdf", Image: null }, "AI1 non-image attachment keeps chip");
+        var parts = JsonSerializer.Deserialize<OpenCodeMessage>("""
+            {"id":"msg_parts","type":"user","content":[
+              {"id":"part_inline","type":"file","mime":"image/jpeg","url":"data:image/jpeg;base64,AQID","filename":"photo.jpg"},
+              {"id":"part_file","type":"file","mime":"image/png","url":"file:///work/a%20b.png","filename":"a b.png","source":{"type":"file","path":"/work/a b.png"}},
+              {"type":"text","text":"not an attachment"},
+              {"type":"file","mime":"text/plain","url":"file:///work/a.txt","filename":"a.txt"}
+            ]}
+            """, OpenCodeJson.Options)!;
+        var projected = OpenCodeUserAttachments.FromMessage(parts);
+        Check(projected.Count == 3 && projected[0] is { Key: "msg_parts/part_inline", Image.Mime: "image/jpeg", Name: "photo.jpg" }
+            && projected[1].Image?.Reference == "file:///work/a%20b.png" && projected[2].Image is null, "AI1 file part classification excludes text and keeps non-image chip");
+        Check(OpenCodeUserAttachments.FromMessage(new()).Count == 0, "AI1 text-only user message adds no attachments");
+        var sessionCalls = 0; var hostCalls = 0;
+        Task<OpenCodeImageFile> Session(string path, CancellationToken token)
+        {
+            sessionCalls++;
+            Check(path == "a b.png", "AI1 decoded file URL uses session-relative path");
+            return Task.FromResult(new OpenCodeImageFile(new byte[] { 1 }, "image/png"));
+        }
+        Task<OpenCodeImageFile> Host(string path, CancellationToken token)
+        {
+            hostCalls++;
+            Check(path == "/tmp/paste.png", "AI1 outside file URL preserves WSL host path");
+            return Task.FromResult(new OpenCodeImageFile(new byte[] { 1 }, "image/png"));
+        }
+        _ = OpenCodeToolImageResolver.ReadAsync(attachments[0].Image!, "", false, Session, Host, CancellationToken.None).GetAwaiter().GetResult();
+        Check(sessionCalls == 0 && hostCalls == 0, "AI1 pasted inline bytes never invoke a file reader");
+        _ = OpenCodeToolImageResolver.ReadAsync(projected[1].Image!, "/work", false, Session, Host, CancellationToken.None).GetAwaiter().GetResult();
+        _ = OpenCodeToolImageResolver.ReadAsync(projected[1].Image! with { Reference = "file:///tmp/paste.png" }, "/work", true, Session, Host, CancellationToken.None).GetAwaiter().GetResult();
+        Check(sessionCalls == 1 && hostCalls == 1, "AI1 file URLs reuse session/host routing");
+        Check(OpenCodeToolImageResolver.Plan("file:///tmp/paste.png", "/work", false).Route == OpenCodeToolImageRoute.Unavailable
+            && OpenCodeToolImageResolver.Plan("file://other-host/share/a.png", "/work", true).Route == OpenCodeToolImageRoute.Unavailable
+            && OpenCodeToolImageResolver.Plan("file:///work/%2e%2e/private.png", "/work", false).Route == OpenCodeToolImageRoute.Unavailable,
+            "AI1 remote outside, UNC authorities, and escaped traversal cannot bypass session reader rules");
+        var repo = Environment.GetEnvironmentVariable("AIF_REPO")!;
+        string Source(string name) => File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode", name));
+        var builder = Source("OpenCodeUserAttachmentsView.cs");
+        Check(builder.Contains("OpenCodeUserAttachments.FromMessage(message)") && builder.Contains("OpenCodeToolDetailContent.BuildImage(attachment.Key, source")
+            && builder.Contains("thumbnail: true, openLarge: detail.Open") && builder.Contains("new VariableSizedWrapGrid") && builder.Contains("Orientation.Horizontal"),
+            "AI1 builder maps image attachments to shared native thumbnails in a wrap row");
+        Check(builder.Contains("OpenCodeToolDetailPopup.Shared.TogglePinned(this)") && builder.Contains("IOpenCodeDetailContentSource")
+            && builder.Contains("BrowserImageScope = _scope") && builder.Contains("OpenCodeToolDetailContent.BuildImage(key, source") && builder.Contains("CloseIf(this)"),
+            "AI1 thumbnail click opens the existing LargeView with the captured session scope and closes on removal");
+        var bubble = Source("OpenCodeUserBubbleView.cs");
+        Check(bubble.Contains("Content = content") && bubble.Contains("Grid.SetRow(attachments, 1)") && bubble.Contains("layout.Children.Add(attachments)"),
+            "AI1 attachments are inside bubble but outside collapsed text clip");
+        var conversation = Source("OpenCodeConversationView.cs");
+        Check(conversation.Contains("attachments: attachments.Element") && conversation.Contains("attachments.Update(m)") && conversation.Contains("attachments.Dispose()"),
+            "AI1 realized conversation rows wire attachment update and disposal");
+        var images = Source("OpenCodeToolDetailImages.cs");
+        Check(images.Contains("options.BrowserImageScope ?? OpenCodeImageContext.Find(frame)") && images.Contains("scope.ReadToolImageAsync(partId, source, token)")
+            && images.Contains("frame.Loaded += async") && images.Contains("lifetime.Cancel(); image.Source = null"),
+            "AI1 shared renderer resolves realized row lease, caches bytes, and cancels/clears bitmap on unload");
     }
 }
