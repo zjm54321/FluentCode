@@ -1180,9 +1180,10 @@ public sealed partial class OpenCodePage : Page
     /// 中断当前选中会话（单按钮停止分支）：只捕获点击时的选中会话 ID，绝不涉及根会话/家族/其他会话；
     /// 只转述服务端 interrupted 结果，不推断执行状态、不自动重发。
     /// </summary>
-    private async Task InterruptSelectedSessionAsync()
+    private async Task InterruptSelectedSessionAsync(bool childStop = false)
     {
-        if (!SourceReady || !ShouldStopSelectedSession() || _composerView?.PrepareSubmission() != true)
+        if (!SourceReady || _composerView is null || (childStop ? !CanStopChildSession()
+            : !ShouldStopSelectedSession() || !_composerView.PrepareSubmission()))
         {
             return;
         }
@@ -1199,7 +1200,7 @@ public sealed partial class OpenCodePage : Page
         var historyEpoch = _messageHistoryEpoch;
         var submitted = _composerController.Snapshot.Token;
         var input = _composerView.InputEvidence;
-        if (!input.IsClean) return;
+        if (!childStop && !input.IsClean) return;
         using var cancellation = CreateOperationToken(binding.Source);
         var ct = cancellation.Token;
         _isSending = true;
@@ -1211,6 +1212,7 @@ public sealed partial class OpenCodePage : Page
         var fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(sessionId + ":" + binding.Revision + ":" + historyEpoch)));
         SendStopButton.IsEnabled = false;
+        RefreshChildStopButton();
         OpenCodeInteractionGate.Lease? interruptLease = null;
         try
         {
@@ -1219,9 +1221,9 @@ public sealed partial class OpenCodePage : Page
             Task<bool>? pending = null;
             binding.Source.TryExecute(ct, () =>
             {
-                if (CanStart() && !HasPendingNativeAction() && _composerController.Snapshot.Token == submitted
+                if (CanStart() && !HasPendingNativeAction() && (childStop ? IsChildComposerSession : _composerController.Snapshot.Token == submitted
                     && OpenCodeComposerInputEvidence.StillCurrent(input, _composerView.InputEvidence)
-                    && !_composerController.Snapshot.HasDraft && !_isComposing
+                    && !_composerController.Snapshot.HasDraft && !_isComposing)
                     && lease.CanControlSession())
                 {
                     var protectedMutation = false;
@@ -3729,6 +3731,7 @@ public sealed partial class OpenCodePage : Page
 
     private void UpdateComposerButtons()
     {
+        RefreshChildStopButton();
         if (_composerController is null) return;
         var hasClient = _client is not null;
         // The blank "新会话" tab has no session yet; its Send creates one first (no Stop: never Working).

@@ -583,6 +583,20 @@
                                     <FontIcon Glyph="&#xE70D;" FontSize="12" />
                                 </Button>
 
+                                <Grid x:Name="ChildStopHost" Grid.Row="6" Visibility="Collapsed"
+                                      HorizontalAlignment="Center" Margin="0,12,0,8">
+                                    <Button x:Name="ChildStopButton" Height="40" Padding="20,0"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            Click="ChildStopButton_Click"
+                                            AutomationProperties.AutomationId="OpenCodeChildStop"
+                                            AutomationProperties.Name="停止子智能体">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE71A;" FontSize="16" />
+                                            <TextBlock x:Name="ChildStopLabel" Text="停止子智能体" FontSize="16" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
                                 <!-- Row 6 输入区单元格：输入卡片 + 权限遮罩宿主（同一单元格，遮罩盖在输入区之上；L5 填充）。
                                      输入框在任何布局/遮罩状态下都留在可视树中、不换父元素。 -->
                                 <Grid

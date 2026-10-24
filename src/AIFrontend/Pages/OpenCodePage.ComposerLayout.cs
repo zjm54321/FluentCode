@@ -22,6 +22,7 @@ public sealed partial class OpenCodePage
         var child = IsChildComposerSession;
         ComposerCell.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         ComposerQueueHost.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
+        RefreshChildStopButton();
         if (child) ExitShellComposer(focus: false);
         if (FullScreenComposerActive && (child || _fullScreenBinding is not { } binding || !OwnsComposerBinding(binding)))
             CloseFullScreenComposer(focus: false);

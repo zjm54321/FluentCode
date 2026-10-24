@@ -32,6 +32,7 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Noti
     $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
 }
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.Composer.cs"
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.ChildStop.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SideQuestion.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSideQuestion.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'SideQuestions.cs')

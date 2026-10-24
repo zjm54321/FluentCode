@@ -881,7 +881,12 @@ namespace AIFrontend.Pages
         private bool _composerOverFiveLines = false;
         private void InitializeComposerLayout() { }
         private bool FullScreenComposerActive => false; // Native overlay boundary, exercised by app-open check.
-        private bool IsChildComposerSession => false;
+        internal bool IsChildComposerSession { get; set; }
+        internal readonly Panel ChildStopHost = new();
+        internal readonly Button ChildStopButton = new();
+        internal readonly TextBox ChildStopLabel = new();
+        internal void RefreshChildStop() => RefreshChildStopButton();
+        internal Task StopChild() => InterruptSelectedSessionAsync(childStop: true);
         private void RefreshChildComposerVisibility() { }
         private void OpenFullScreenComposer() { FullScreenOpens++; }
         internal int FullScreenOpens;

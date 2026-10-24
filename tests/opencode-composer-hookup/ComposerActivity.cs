@@ -12,6 +12,40 @@ internal static class ComposerActivityTests
 {
     internal static async Task Run()
     {
+        using (var f = new Program.Fixture())
+        {
+            f.Page.Foreground("ses_test", true);
+            f.Page.RefreshChildStop();
+            Program.Check(f.Page.ChildStopHost.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed,
+                "root sessions never show the child stop surface");
+            f.Page.IsChildComposerSession = true;
+            f.Page.Foreground("ses_other", true);
+            f.Page.RefreshChildStop();
+            Program.Check(f.Page.ChildStopHost.Visibility == Microsoft.UI.Xaml.Visibility.Visible && f.Page.ChildStopButton.IsEnabled,
+                "selected running child exposes enabled native stop");
+            var entered = Program.Signal<bool>(); var response = Program.Signal<HttpResponseMessage>();
+            f.Http.Respond = (_, _) => { entered.TrySetResult(true); return response.Task; };
+            var pending = f.Page.StopChild(); await entered.Task;
+            Program.Check(!f.Page.ChildStopButton.IsEnabled && f.Page.ChildStopHost.Visibility == Microsoft.UI.Xaml.Visibility.Visible,
+                "child stop remains visible and disabled while request is in flight");
+            await f.Page.StopChild();
+            Program.Check(f.Http.Interrupts == 1 && f.Http.Path == "/api/session/ses_test/interrupt",
+                "child stop uses official main-stop client for only the selected child, never other running sessions");
+            response.SetResult(Program.Json("{\"interrupted\":true}")); await pending;
+            f.Page.Foreground("ses_test", false); f.Page.RefreshChildStop();
+            Program.Check(f.Page.ChildStopHost.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed,
+                "idle child removes stop even while another session is running");
+            await f.Page.StopChild();
+            Program.Check(f.Http.Interrupts == 1, "idle child cannot dispatch another stop");
+        }
+        using (var f = new Program.Fixture())
+        {
+            f.Page.IsChildComposerSession = true; f.Page.Foreground("ses_test", true);
+            f.Http.Respond = (_, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic disconnect"));
+            await f.Page.StopChild(); f.Page.RefreshChildStop();
+            Program.Check(f.Page.Messages.Count > 0 && !f.Page.ChildStopButton.IsEnabled,
+                "failed child stop reports inline error and unknown outcome blocks duplicate mutation");
+        }
         Program.Check(!OpenCodeComposerHeightPolicy.UseBottomToolbar(20, 20)
             && OpenCodeComposerHeightPolicy.UseBottomToolbar(40, 20)
             && !OpenCodeComposerHeightPolicy.CanExpand(100, 20)
