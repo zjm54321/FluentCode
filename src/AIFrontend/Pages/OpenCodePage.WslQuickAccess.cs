@@ -13,6 +13,8 @@ public sealed partial class OpenCodePage
 {
     private OpenCodeWslQuickAccessView? _wslQuickAccessView;
     private readonly IWslQuickAccessLauncher _wslQuickAccessLauncher = new WindowsWslQuickAccessLauncher();
+    private readonly WslHostPathMapping _wslHostPaths = new(
+        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe"), new WslHomeCommandRunner());
     private readonly IWslHostEditorEnvironment _wslEditorHost = new WindowsWslHostEditorEnvironment();
     private IReadOnlyList<WslHostEditor> _wslEditors = Array.Empty<WslHostEditor>();
     private readonly WslQuickAccessEditorPreference _wslEditorPreference = new(
@@ -128,6 +130,10 @@ public sealed partial class OpenCodePage
         if (!state.Visible || state.Target is not { } target) { RefreshWslQuickAccess(); return; }
         try
         {
+            var mapped = await _wslHostPaths.MapAsync(target);
+            // Mapping is asynchronous: do not launch a folder from a superseded session/connection.
+            if (CurrentWslQuickAccess().Target != target) return;
+            state = state with { Target = mapped };
             if (editorName is not null)
             {
                 var editor = WslHostEditorDetection.Detect(_wslEditorHost).First(e => e.Name == editorName);
@@ -181,10 +187,14 @@ public sealed partial class OpenCodePage
                     var parent = target.LinuxDirectory[..(target.LinuxDirectory.LastIndexOf('/') + 1)];
                     state = OpenCodeWslQuickAccess.Resolve(AIFrontend.Models.OpenCodeConnectionKind.Wsl, true, target.Distribution, parent);
                 }
+                if (state.Target is not { } folder) return;
+                state = state with { Target = await _wslHostPaths.MapAsync(folder) };
                 if (IsCurrentMessageHistoryRead(read)) await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher);
             }
             else if (DetailPathEditor() is { } editor && IsCurrentMessageHistoryRead(read))
             {
+                target = await _wslHostPaths.MapAsync(target);
+                if (!IsCurrentMessageHistoryRead(read)) return;
                 var launch = OpenCodeWslQuickAccess.EditorLaunch(target, editor);
                 if (line is > 0 && editor.OpenMode == WslEditorOpenMode.RemoteWsl)
                     launch = new(launch.Executable, new[] { "--remote", "wsl+" + target.Distribution, "--goto", target.LinuxDirectory + ":" + line.Value });

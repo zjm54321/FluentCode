@@ -7,9 +7,9 @@ using AIFrontend.Models;
 
 namespace AIFrontend.Pages.OpenCode;
 
-internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDirectory, string UncPath);
+internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDirectory, string HostPath);
 internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason);
-internal enum WslEditorOpenMode { RemoteWsl, UncFolder }
+internal enum WslEditorOpenMode { RemoteWsl, HostFolder }
 internal sealed record WslHostEditor(string Name, string? Executable, WslEditorOpenMode OpenMode, string? Reason);
 internal sealed class WslEditorRequestedEventArgs(string name) : EventArgs
 {
@@ -35,7 +35,7 @@ internal interface IWslQuickAccessLauncher
 internal static class OpenCodeWslQuickAccess
 {
     public static WslHostLaunch ExplorerLaunch(WslQuickAccessTarget target, string windowsDirectory)
-        => new(Path.Combine(windowsDirectory, "explorer.exe"), new[] { target.UncPath });
+        => new(Path.Combine(windowsDirectory, "explorer.exe"), new[] { target.HostPath });
 
     public static Task LaunchAsync(WslQuickAccessState state, WslHostEditor? editor, IWslQuickAccessLauncher launcher)
     {
@@ -74,8 +74,7 @@ internal static class OpenCodeWslQuickAccess
             else parts.Add(part);
         }
         var linux = "/" + string.Join('/', parts);
-        return new(true, new(distribution!, linux,
-            @"\\wsl.localhost\" + distribution + "\\" + string.Join('\\', parts)), null);
+        return new(true, new(distribution!, linux, WslHostPathMapping.Fallback(distribution!, linux)), null);
     }
 
     public static WslHostLaunch EditorLaunch(WslQuickAccessTarget target, WslHostEditor editor)
@@ -83,10 +82,10 @@ internal static class OpenCodeWslQuickAccess
         if (editor.Executable is null)
             throw new InvalidOperationException("未检测到此主机编辑器");
         // VS Code's documented WSL CLI; other editors accept an ordinary Windows folder.
-        // UNC is intentional for those editors, not an unverified remote-extension flag.
+        // Host paths are mapped by wslpath (drive path for drvfs, UNC for Linux files).
         return new(editor.Executable, editor.OpenMode == WslEditorOpenMode.RemoteWsl
             ? new[] { "--remote", "wsl+" + target.Distribution, target.LinuxDirectory }
-            : new[] { target.UncPath });
+            : new[] { target.HostPath });
     }
 }
 
@@ -104,9 +103,9 @@ internal static class WslHostEditorDetection
         var result = new List<WslHostEditor>();
         foreach (var (name, exe, folder, mode) in new[] {
             ("VS Code", "Code.exe", "Microsoft VS Code", WslEditorOpenMode.RemoteWsl),
-            ("VSCodium", "VSCodium.exe", "VSCodium", WslEditorOpenMode.UncFolder),
-            ("Emacs", "runemacs.exe", "Emacs", WslEditorOpenMode.UncFolder),
-            ("Zed", "zed.exe", "Zed", WslEditorOpenMode.UncFolder) })
+            ("VSCodium", "VSCodium.exe", "VSCodium", WslEditorOpenMode.HostFolder),
+            ("Emacs", "runemacs.exe", "Emacs", WslEditorOpenMode.HostFolder),
+            ("Zed", "zed.exe", "Zed", WslEditorOpenMode.HostFolder) })
         {
             var candidates = new List<string>();
             if (host.AppPath(exe) is { Length: > 0 } appPath) candidates.Add(appPath.Trim('"'));

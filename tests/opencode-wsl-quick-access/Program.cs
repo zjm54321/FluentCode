@@ -33,8 +33,8 @@ internal static class Program
         WslQuickAccessState Resolve(string? path, string? home = null, string? distro = "发行版 Test")
             => OpenCodeWslQuickAccess.Resolve(OpenCodeConnectionKind.Wsl, true, distro, path, home);
         var special = Resolve("/home/真实 用户/中文 项目/$d & 'x';next");
-        Check(special.Target?.UncPath == @"\\wsl.localhost\发行版 Test\home\真实 用户\中文 项目\$d & 'x';next", "UNC preserves argument data");
-        Check(Resolve("/").Target?.UncPath == @"\\wsl.localhost\发行版 Test\", "root UNC");
+        Check(special.Target?.HostPath == @"\\wsl.localhost\发行版 Test\home\真实 用户\中文 项目\$d & 'x';next", "UNC preserves argument data");
+        Check(Resolve("/").Target?.HostPath == @"\\wsl.localhost\发行版 Test\", "root UNC");
         Check(Resolve("/a/./b/../c//").Target?.LinuxDirectory == "/a/c", "normalize Linux components");
         Check(Resolve("~/项目 空格", "/home/动态 用户").Target?.LinuxDirectory == "/home/动态 用户/项目 空格", "tilde expands from actual home only");
         Check(Resolve("~", "/root").Target?.LinuxDirectory == "/root", "bare tilde");
@@ -46,7 +46,7 @@ internal static class Program
         var explorerInfo = OpenCodeWslQuickAccess.ExplorerLaunch(special.Target!, @"C:\Windows").StartInfo();
         Check(explorerInfo.FileName == @"C:\Windows\explorer.exe" && !explorerInfo.UseShellExecute,
             "Explorer narrow host fallback without shell");
-        Check(explorerInfo.ArgumentList.Count == 1 && explorerInfo.ArgumentList[0] == special.Target!.UncPath,
+        Check(explorerInfo.ArgumentList.Count == 1 && explorerInfo.ArgumentList[0] == special.Target!.HostPath,
             "Explorer receives a single UNC argument");
         Console.WriteLine("PASS UNC + Unicode/spaces/special chars + real-data tilde resolution");
 
@@ -57,7 +57,7 @@ internal static class Program
         var homeCommand = homeRunner.Commands.Single().StartInfo();
         Check(!homeCommand.UseShellExecute && homeCommand.Arguments == "" && homeCommand.FileName == @"C:\Windows\System32\wsl.exe"
             && homeCommand.ArgumentList.SequenceEqual(new[] { "--distribution", "发行版 Test", "--exec", "printenv", "HOME" }), "HOME uses selected distro, no Linux/Windows shell or interpolated command");
-        Check(Resolve("~/a", authoritative).Target?.UncPath == @"\\wsl.localhost\发行版 Test\srv\真实 用户\a", "actual distro HOME flows into tilde UNC resolution");
+        Check(Resolve("~/a", authoritative).Target?.HostPath == @"\\wsl.localhost\发行版 Test\srv\真实 用户\a", "actual distro HOME flows into tilde UNC resolution");
         Check(Resolve("~", authoritative).Target?.LinuxDirectory == "/srv/真实 用户", "bare tilde flows from authoritative source");
         homeRunner.Output = "/root\r\n";
         Check(await WslQuickAccessHome.ResolveAsync("Other Distro", "wsl.exe", homeRunner, CancellationToken.None) == "/root"
@@ -81,6 +81,37 @@ internal static class Program
         }
         Console.WriteLine("PASS selected-distro HOME command via injected runner, tilde wiring, failures/cancellation");
 
+        const string mounted = "/mnt/c/Users/Zhang/source/repos/AIFrontend-history-20261020";
+        const string windows = @"C:\Users\Zhang\source\repos\AIFrontend-history-20261020";
+        Check(Resolve(mounted).Target?.HostPath == windows, "drvfs fallback is a host drive path, not WSL UNC");
+        Check(Resolve("/mnt/d").Target?.HostPath == @"D:\", "drive mount root");
+        Check(Resolve("/mnt/cat/work").Target?.HostPath == @"\\wsl.localhost\发行版 Test\mnt\cat\work", "not a drive mount boundary");
+        var mappingRunner = new FakeHomeRunner { Output = windows + "\r\n" };
+        var mapping = new WslHostPathMapping(@"C:\Windows\System32\wsl.exe", mappingRunner);
+        var mapped = await mapping.MapAsync(Resolve(mounted).Target!);
+        Check(mapped.HostPath == windows && mapped.LinuxDirectory == mounted, "wslpath keeps Linux path for VS Code");
+        var mappingCommand = mappingRunner.Commands.Single().StartInfo();
+        Check(!mappingCommand.UseShellExecute && mappingCommand.Arguments == ""
+            && mappingCommand.ArgumentList.SequenceEqual(new[] { "--distribution", "发行版 Test", "--exec", "wslpath", "-w", mounted }), "wslpath exact arguments without any shell");
+        await Task.WhenAll(mapping.MapAsync(Resolve(mounted).Target!), mapping.MapAsync(Resolve(mounted).Target!));
+        Check(mappingRunner.Commands.Count == 1, "per distro/path mapping is cached including concurrent callers");
+        mappingRunner.Output = @"E:\custom mount\项目" + "\n";
+        Check((await mapping.MapAsync(Resolve("/windows/e/项目").Target!)).HostPath == @"E:\custom mount\项目", "wslpath respects a custom automount root");
+        await mapping.MapAsync(Resolve(mounted, distro: "Other").Target!);
+        Check(mappingRunner.Commands.Count == 3, "cache is separated by distro and Linux path");
+        foreach (var output in new string?[] { null, "", "relative", "C:\\bad\npath" })
+        {
+            var failedMapping = new WslHostPathMapping("wsl.exe", new FakeHomeRunner { Output = output });
+            Check((await failedMapping.MapAsync(Resolve(mounted).Target!)).HostPath == windows, "failed/malformed wslpath falls back to drive mapping");
+            Check((await failedMapping.MapAsync(Resolve("/home/用户/项目").Target!)).HostPath == @"\\wsl.localhost\发行版 Test\home\用户\项目", "Linux-native fallback stays UNC");
+        }
+        var throwingMapping = new WslHostPathMapping("wsl.exe", new FakeHomeRunner { Failure = new System.ComponentModel.Win32Exception("unavailable") });
+        Check((await throwingMapping.MapAsync(Resolve(mounted).Target!)).HostPath == windows, "process failure falls back");
+        mappingRunner.Output = @"\\wsl.localhost\发行版 Test\home\用户\项目" + "\n";
+        Check((await mapping.MapAsync(Resolve("/home/用户/项目").Target!)).HostPath == @"\\wsl.localhost\发行版 Test\home\用户\项目", "wslpath Linux-native success stays UNC");
+        Check(OpenCodeWslQuickAccess.ExplorerLaunch(mapped, @"C:\Windows").Arguments.SequenceEqual(new[] { windows }), "Explorer gets mapped host path");
+        Console.WriteLine("PASS wslpath success + custom automount + cache + failure fallbacks (pure fake runner)");
+
         var host = new FakeHost();
         host.Registry["Code.exe"] = @"C:\Editors\Code.exe";
         host.Files.Add(@"C:\Editors\Code.exe");
@@ -94,7 +125,7 @@ internal static class Program
         Check(editors.Count == 4, "candidate matrix covers four editors");
         Check(editors[0].Name == "VS Code" && editors[0].Executable == @"C:\Editors\Code.exe" && editors[0].Reason is null, "VS Code registry first");
         foreach (var editor in editors.Skip(1))
-            Check(editor.Executable is not null && editor.OpenMode == WslEditorOpenMode.UncFolder && editor.Reason is null, "installed UNC-capable editor selectable");
+            Check(editor.Executable is not null && editor.OpenMode == WslEditorOpenMode.HostFolder && editor.Reason is null, "installed host editor selectable");
         var launch = OpenCodeWslQuickAccess.EditorLaunch(special.Target!, editors[0]);
         var info = launch.StartInfo(); // This only constructs metadata; never Process.Start.
         Check(!info.UseShellExecute && info.Arguments == "", "no shell string");
@@ -107,8 +138,14 @@ internal static class Program
             await OpenCodeWslQuickAccess.LaunchAsync(special, editor, recorderForChoice);
             var chosen = recorderForChoice.Editors.Single().StartInfo();
             Check(chosen.FileName == editor.Executable, editor.Name + " launches the selected executable, not VS Code");
-            Check(!chosen.UseShellExecute && chosen.Arguments == "" && chosen.ArgumentList.SequenceEqual(new[] { special.Target!.UncPath }),
+            Check(!chosen.UseShellExecute && chosen.Arguments == "" && chosen.ArgumentList.SequenceEqual(new[] { special.Target!.HostPath }),
                 editor.Name + " receives one exact UNC folder argument without shell flags");
+        }
+        foreach (var editor in editors)
+        {
+            var mountedLaunch = OpenCodeWslQuickAccess.EditorLaunch(mapped, editor).StartInfo();
+            Check(mountedLaunch.ArgumentList.SequenceEqual(editor.OpenMode == WslEditorOpenMode.RemoteWsl
+                ? new[] { "--remote", "wsl+发行版 Test", mounted } : new[] { windows }), editor.Name + " mounted path arguments");
         }
         host.Registry.Clear();
         host.Files.Add(@"C:\Other\Microsoft VS Code\Code.exe");
@@ -150,7 +187,7 @@ internal static class Program
         await OpenCodeWslQuickAccess.LaunchAsync(Resolve("~/unresolved"), null, recorder);
         Check(recorder.Explorers.Count == 2, "unresolved replacement cannot launch stale target");
         Console.WriteLine("PASS directory refresh + fake launch boundary");
-        Console.WriteLine($"PASS 6 groups / {_assertions} assertions; no external applications launched");
+        Console.WriteLine($"PASS 7 groups / {_assertions} assertions; no external applications launched");
     }
 
     private sealed class FakeHost : IWslHostEditorEnvironment
@@ -172,11 +209,13 @@ internal static class Program
     private sealed class FakeHomeRunner : IWslHomeCommandRunner
     {
         public string? Output { get; set; }
+        public Exception? Failure { get; set; }
         public List<WslHostLaunch> Commands { get; } = new();
         public Task<string?> ReadAsync(WslHostLaunch command, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Commands.Add(command);
+            if (Failure is { } failure) throw failure;
             return Task.FromResult(Output);
         }
     }

@@ -36,7 +36,7 @@ internal sealed class WindowsWslQuickAccessLauncher : IWslQuickAccessLauncher
         // WinRT first. UNC support varies by host; false/exception uses the narrow native fallback.
         try
         {
-            if (await Windows.System.Launcher.LaunchFolderPathAsync(target.UncPath)) return;
+            if (await Windows.System.Launcher.LaunchFolderPathAsync(target.HostPath)) return;
         }
         catch (Exception) { /* Unsupported/unavailable UNC folder launcher: use Explorer directly. */ }
         Start(OpenCodeWslQuickAccess.ExplorerLaunch(target, Environment.GetFolderPath(Environment.SpecialFolder.Windows)));

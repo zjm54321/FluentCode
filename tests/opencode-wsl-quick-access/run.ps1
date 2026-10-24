@@ -13,6 +13,7 @@ $sources += Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeClientOpti
 $sources += Join-Path $repo 'src/AIFrontend/Services/OpenCode/OpenCodeAuthenticationMode.cs'
 $sources += Join-Path $repo 'src/AIFrontend/Services/Appearance/AppFontSettings.cs'
 $sources += Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccess.cs'
+$sources += Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccess.PathMapping.cs'
 $sources += Join-Path $repo 'src/AIFrontend/Pages/OpenCode/WslQuickAccessEditorPreference.cs'
 $sources += Join-Path $repo 'src/AIFrontend/Pages/OpenCode/WslQuickAccessHome.cs'
 $sources += Join-Path $PSScriptRoot 'Program.cs'

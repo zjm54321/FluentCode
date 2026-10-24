@@ -52,7 +52,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _editor.IsEnabled = supported;
         // The directory row already shows the path; only explain what is unavailable.
         SetNote(state.Reason ?? (supported ? null : "未检测到支持 WSL 的主机编辑器"));
-        ToolTipService.SetToolTip(_explorer, ExplorerText + "\n" + (state.Reason ?? state.Target?.UncPath));
+        ToolTipService.SetToolTip(_explorer, ExplorerText + "\n" + (state.Reason ?? state.Target?.HostPath));
         var explanations = new List<string>();
         foreach (var editor in editors) explanations.Add(editor.Name + "：" + (editor.Reason
             ?? (editor.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : "打开 WSL UNC 文件夹")));
