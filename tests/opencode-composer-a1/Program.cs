@@ -81,16 +81,26 @@ namespace AIFrontend.Pages
             var terminal = Named("ComposerShellHost");
             var shellEditor = Named("ShellComposer");
             var shellPrompt = Named("ShellPromptGlyph");
-            Check(terminal.Elements().Where(n => n.Name.LocalName != "Grid.Resources").SequenceEqual(new[] { shellPrompt, shellEditor })
-                && Attr(terminal, "RowDefinitions") is null && Attr(terminal, "ColumnDefinitions") == "Auto,*",
-                "terminal surface contains only a prompt and editor on one row");
-            Check(Attr(shellPrompt, "Text") == "$ " && Attr(shellEditor, "Grid.Column") == "1"
+            Check(terminal.Elements().SequenceEqual(new[] { shellEditor, shellPrompt })
+                && Attr(terminal, "RowDefinitions") is null && Attr(terminal, "ColumnDefinitions") is null,
+                "terminal overlays the same editor bounds; prompt does not take width away from command text");
+            Check(Attr(shellPrompt, "Text") == "$ " && Attr(shellEditor, "Grid.Column") is null
                 && Attr(shellEditor, "AcceptsReturn") == "False" && Attr(shellEditor, "TextWrapping") == "NoWrap"
                 && Attr(shellEditor, "PlaceholderText") is null, "terminal command starts after dollar-space, without placeholder or extra lines");
             Check(Attr(shellEditor, "AutomationProperties.Name") == "Shell 命令"
                 && Attr(shellEditor, "AutomationProperties.HelpText")!.Contains("Esc"), "terminal exit instructions remain accessible without visible copy");
-            Check(Attr(shellPrompt, "FontFamily") == "{ThemeResource AppMonospaceFontFamily}"
-                && Attr(shellEditor, "FontFamily") == "{ThemeResource AppMonospaceFontFamily}", "prompt and command share the app monospace slot");
+            Check(Attr(shellPrompt, "FontFamily") == "{Binding FontFamily, ElementName=Composer}"
+                && Attr(shellEditor, "FontFamily") == "{Binding FontFamily, ElementName=Composer}", "terminal retains the normal editor's live typography");
+            foreach (var property in new[] { "Padding", "BorderThickness", "CornerRadius", "FontSize", "FontWeight", "FontStyle", "CharacterSpacing", "IsTextScaleFactorEnabled", "FlowDirection", "Language" })
+                Check(Attr(shellEditor, property) == "{Binding " + property + ", ElementName=Composer}", "terminal/editor geometry and typography stay identical: " + property);
+            Check(Attr(terminal, "Width") == "{Binding ActualWidth, ElementName=Composer}"
+                && Attr(terminal, "Height") == "{Binding ActualHeight, ElementName=Composer}"
+                && Attr(terminal, "Padding") is null && Attr(terminal, "Margin") is null,
+                "separate terminal surface follows the measured editor without extra or negative padding/margins");
+            Check(Named("ComposerCard").Elements().Single() == Named("ComposerSurfaceRoot")
+                && Named("ComposerNormalSurface").Parent == terminal.Parent
+                && Named("ComposerNormalSurface").Descendants().Contains(Named("ComposerInputLayout")),
+                "one card owns both modes and normal layout stays measured underneath terminal overlay");
             foreach (var mode in new[] { "Default", "Light", "HighContrast" })
             {
                 // The palette lives in the page theme dictionaries: an element cannot resolve its own
@@ -114,13 +124,19 @@ namespace AIFrontend.Pages
                     Check(Attr(resource, "ResourceKey") == (part == "Foreground" ? "ShellTerminalForeground" : "ShellTerminalBackground"),
                         "native text control states retain terminal colors: " + part + state);
                 }
-            Check(Attr(shellEditor, "BorderThickness") == "0" && Attr(shellEditor, "UseSystemFocusVisuals") == "False"
-                && shellEditor.Descendants().Single(n => (string?)n.Attribute(x + "Key") == "TextControlBorderThemeThicknessFocused").Value == "0"
-                && !shellEditor.Descendants().Any(n => n.Name.LocalName == "Button"), "terminal has no inner border, focus underline or clear button");
+            Check(Attr(shellEditor, "UseSystemFocusVisuals") == "False"
+                && shellEditor.Descendants().Any(n => n.Name.LocalName == "Border" && Attr(n, "BorderThickness") == "{TemplateBinding BorderThickness}")
+                && !shellEditor.Descendants().Any(n => n.Name.LocalName == "Button"), "terminal preserves native editor chrome dimensions without adding a focus underline or clear button");
             var shell = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ShellComposer.cs"));
-            Check(shell.Contains("AppFonts.Apply(ShellComposer, AppFontSlot.Monospace)")
-                && shell.Contains("AppFonts.Apply(ShellPromptGlyph, AppFontSlot.Monospace)")
-                && !shell.Contains("RequestedTheme"), "terminal uses live app fonts without forcing the surrounding card theme");
+            Check(shell.Contains("ComposerNormalSurface.Opacity = 0;") && shell.Contains("ComposerNormalSurface.IsEnabled = false;")
+                && shell.Contains("ComposerNormalSurface.IsHitTestVisible = false;")
+                && !shell.Contains("ComposerInputLayout.Visibility =") && !shell.Contains("FadeInComposerSurface")
+                && shell.Contains("Composer.TransformToVisual(ComposerSurfaceRoot).TransformPoint(new Point(0, 0))")
+                && shell.Contains("Composer.LayoutUpdated +=") && !shell.Contains("RequestedTheme"),
+                "terminal switch keeps normal size/placement measured across responsive rows, disables hidden controls and overlays without a fade");
+            Check(Named("TerminalComposerMode").Descendants().Where(n => n.Name.LocalName == "Setter")
+                .All(n => Attr(n, "Target") is "ComposerCard.Background" or "ComposerCard.BorderBrush"),
+                "terminal mode changes only card colors, never its padding, thickness, radius or dimensions");
             Check(Named("TerminalComposerMode").Descendants().Any(n => Attr(n, "Target") == "ComposerCard.Background"
                 && Attr(n, "Value") == "{ThemeResource ShellTerminalBackground}")
                 && shell.Contains("GoToState(this, \"TerminalComposerMode\", false)")

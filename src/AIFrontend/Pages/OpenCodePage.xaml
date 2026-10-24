@@ -598,20 +598,26 @@
                                         BorderThickness="1"
                                         CornerRadius="{ThemeResource OverlayCornerRadius}"
                                         Padding="12,12,12,10">
-                                        <StackPanel>
-                                            <!-- Shell 模式只有一行：$ 和命令。沿用外层卡片的唯一边框；配色不随应用明暗主题改变。 -->
+                                        <Grid x:Name="ComposerSurfaceRoot">
+                                            <!-- Keep the normal surface measured in place; overlay its exact editor bounds. -->
                                             <Grid x:Name="ComposerShellHost" Visibility="Collapsed"
-                                                  Margin="-12,-12,-12,-10" Padding="14,10,12,10"
-                                                  CornerRadius="{ThemeResource OverlayCornerRadius}"
-                                                  Background="{ThemeResource ShellTerminalBackground}"
-                                                  ColumnDefinitions="Auto,*">
-                                                <TextBlock x:Name="ShellPromptGlyph" Text="$&#x20;" FontFamily="{ThemeResource AppMonospaceFontFamily}"
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{ThemeResource ShellTerminalPrompt}"
-                                                           AutomationProperties.AccessibilityView="Raw" />
-                                                <TextBox x:Name="ShellComposer" Grid.Column="1" FontFamily="{ThemeResource AppMonospaceFontFamily}"
-                                                         AcceptsReturn="False" TextWrapping="NoWrap" MinHeight="32"
-                                                         Padding="0,5,0,6" BorderThickness="0" UseSystemFocusVisuals="False"
+                                                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                   Width="{Binding ActualWidth, ElementName=Composer}"
+                                                   Height="{Binding ActualHeight, ElementName=Composer}">
+                                                <TextBox x:Name="ShellComposer"
+                                                         FontFamily="{Binding FontFamily, ElementName=Composer}"
+                                                         FontSize="{Binding FontSize, ElementName=Composer}"
+                                                         FontWeight="{Binding FontWeight, ElementName=Composer}"
+                                                         FontStyle="{Binding FontStyle, ElementName=Composer}"
+                                                         CharacterSpacing="{Binding CharacterSpacing, ElementName=Composer}"
+                                                         IsTextScaleFactorEnabled="{Binding IsTextScaleFactorEnabled, ElementName=Composer}"
+                                                         FlowDirection="{Binding FlowDirection, ElementName=Composer}"
+                                                         Language="{Binding Language, ElementName=Composer}"
+                                                         AcceptsReturn="False" TextWrapping="NoWrap"
+                                                         Padding="{Binding Padding, ElementName=Composer}"
+                                                         BorderThickness="{Binding BorderThickness, ElementName=Composer}"
+                                                         CornerRadius="{Binding CornerRadius, ElementName=Composer}"
+                                                         UseSystemFocusVisuals="False"
                                                          Background="{ThemeResource ShellTerminalBackground}" BorderBrush="{ThemeResource ShellTerminalBackground}"
                                                          Foreground="{ThemeResource ShellTerminalForeground}"
                                                          AutomationProperties.AutomationId="OpenCodeShellComposer" AutomationProperties.Name="Shell 命令"
@@ -629,21 +635,31 @@
                                                         <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="ShellTerminalForeground" />
                                                         <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="ShellTerminalForeground" />
                                                         <StaticResource x:Key="TextControlForegroundDisabled" ResourceKey="ShellTerminalForeground" />
-                                                        <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
                                                     </TextBox.Resources>
                                                     <!-- 保留原生 TextBox 编辑/滚动宿主，不生成清空按钮或焦点下划线。 -->
                                                     <TextBox.Template>
                                                         <ControlTemplate TargetType="TextBox">
+                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
                                                             <ScrollViewer x:Name="ContentElement" Background="{TemplateBinding Background}"
                                                                           Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}"
                                                                           HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Hidden"
                                                                           VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Hidden"
                                                                           IsTabStop="False" ZoomMode="Disabled"
-                                                                          AutomationProperties.AccessibilityView="Raw" />
+                                                                           AutomationProperties.AccessibilityView="Raw" />
+                                                            </Border>
                                                         </ControlTemplate>
                                                     </TextBox.Template>
                                                 </TextBox>
-                                            </Grid>
+                                                <TextBlock x:Name="ShellPromptGlyph" Text="$&#x20;"
+                                                           FontFamily="{Binding FontFamily, ElementName=Composer}"
+                                                           FontSize="{Binding FontSize, ElementName=Composer}"
+                                                           VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"
+                                                           Foreground="{ThemeResource ShellTerminalPrompt}"
+                                                           AutomationProperties.AccessibilityView="Raw" />
+                                             </Grid>
+                                            <ContentControl x:Name="ComposerNormalSurface" HorizontalContentAlignment="Stretch" IsTabStop="False">
+                                        <StackPanel>
                                             <!-- 命令 / 附件伴随视图宿主：页面代码挂入 OpenCodeComposerView 后设为可见；未挂入时折叠、不占位。 -->
                                             <Grid
                                                 x:Name="ComposerCompanionHost"
@@ -769,9 +785,11 @@
                                                                     FontSize="14" />
                                                             </Button>
                                                         </StackPanel>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Border>
+                                             </Grid>
+                                         </StackPanel>
+                                            </ContentControl>
+                                        </Grid>
+                                     </Border>
 
                                     <!-- 权限遮罩宿主（L5：OpenCodePermissionOverlay 放入此处；显示时宽高不小于输入卡片，
                                          输入框保持在可视树中，仅 IsEnabled=False）。默认折叠、无内容。 -->

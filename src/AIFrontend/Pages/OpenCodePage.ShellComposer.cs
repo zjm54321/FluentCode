@@ -1,15 +1,14 @@
 using System;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Appearance;
 using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
 using Windows.UI.Core;
+using Windows.Foundation;
 
 namespace AIFrontend.Pages;
 
@@ -21,8 +20,8 @@ public sealed partial class OpenCodePage
 
     partial void InitializeShellComposer()
     {
-        AppFonts.Apply(ShellComposer, AppFontSlot.Monospace);
-        AppFonts.Apply(ShellPromptGlyph, AppFontSlot.Monospace);
+        // The terminal editor binds typography/chrome/size to the normal editor; never substitute a smaller box.
+        Composer.LayoutUpdated += (_, _) => { if (_shellComposer.Active) UpdateShellComposerGeometry(); };
         _composerView!.TerminalRequested += (_, _) => EnterShellComposer();
         _composerView.SlotGesturesRevoked += (_, _) =>
         {
@@ -82,9 +81,11 @@ public sealed partial class OpenCodePage
         _shellComposer.Enter();
         VisualStateManager.GoToState(this, "TerminalComposerMode", false);
         ShellComposer.Text = _shellComposer.Text;
-        ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Collapsed;
+        ComposerNormalSurface.Opacity = 0;
+        ComposerNormalSurface.IsEnabled = false; // Also removes invisible draft controls from keyboard interaction.
+        ComposerNormalSurface.IsHitTestVisible = false;
         ComposerShellHost.Visibility = Visibility.Visible;
-        FadeInComposerSurface(ComposerShellHost);
+        UpdateShellComposerGeometry();
         UpdateShellComposerState();
         ShellComposer.Focus(FocusState.Programmatic);
         ShellComposer.Select(ShellComposer.Text.Length, 0);
@@ -97,8 +98,9 @@ public sealed partial class OpenCodePage
         VisualStateManager.GoToState(this, "NormalComposerMode", false);
         _shellComposing = false;
         ComposerShellHost.Visibility = Visibility.Collapsed;
-        ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Visible;
-        FadeInComposerSurface(ComposerInputLayout);
+        ComposerNormalSurface.Opacity = 1;
+        ComposerNormalSurface.IsEnabled = true;
+        ComposerNormalSurface.IsHitTestVisible = true;
         // The normal TextBox and controller draft were never overwritten (including chips/attachments).
         if (focus && _pageActive)
         {
@@ -110,26 +112,12 @@ public sealed partial class OpenCodePage
         }
     }
 
-    private static Windows.UI.ViewManagement.UISettings? _shellMotionSettings;
-
-    /// <summary>Visual only: a short fade for the surface that just became visible. Skipped when the system
-    /// "Animation effects" setting is off; never delays focus, input or state changes.</summary>
-    private static void FadeInComposerSurface(UIElement surface)
+    private void UpdateShellComposerGeometry()
     {
-        bool animate;
-        try { animate = (_shellMotionSettings ??= new Windows.UI.ViewManagement.UISettings()).AnimationsEnabled; }
-        catch (Exception) { animate = false; }
-        if (!animate) { surface.Opacity = 1; return; }
-        var fade = new DoubleAnimation
-        {
-            From = 0, To = 1, Duration = new Duration(TimeSpan.FromMilliseconds(140)),
-            EasingFunction = new ExponentialEase { EasingMode = EasingMode.EaseOut, Exponent = 4 },
-        };
-        Storyboard.SetTarget(fade, surface);
-        Storyboard.SetTargetProperty(fade, "Opacity");
-        var story = new Storyboard();
-        story.Children.Add(fade);
-        story.Begin();
+        // Normal layout remains measured (including CP2 rows and any chips/status), so the card never shrinks.
+        var origin = Composer.TransformToVisual(ComposerSurfaceRoot).TransformPoint(new Point(0, 0));
+        var offset = new Thickness(origin.X, origin.Y, 0, 0);
+        if (ComposerShellHost.Margin != offset) ComposerShellHost.Margin = offset;
     }
 
     partial void UpdateShellComposerState()

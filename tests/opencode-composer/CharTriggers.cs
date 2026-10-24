@@ -122,7 +122,9 @@ internal static partial class Program
         var blankPage = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"));
         Check(page.IndexOf("TrySubmitShell(delivery, ref shellHandled)", StringComparison.Ordinal) < page.IndexOf("if (TryHandleSideQuestionSubmission(snapshot))", StringComparison.Ordinal)
             && shellPage.Contains("delivery == OpenCodeDeliveryModes.Queue") && !shellPage.Contains("SendPromptAsync("), "shell intercepted before all normal submission and queue routes");
-        Check(shellPage.Contains("e.Cancel = true;") && !shellPage.Contains("\n        Composer.Text =") && shellPage.Contains("ComposerInputLayout.Visibility = ComposerCompanionHost.Visibility = Visibility.Collapsed;"), "bang canceled before ledger; dedicated terminal hides whole normal toolbar without replacing normal text");
+        Check(shellPage.Contains("e.Cancel = true;") && !shellPage.Contains("\n        Composer.Text =")
+            && shellPage.Contains("ComposerNormalSurface.Opacity = 0;") && shellPage.Contains("ComposerNormalSurface.IsEnabled = false;")
+            && !shellPage.Contains("ComposerInputLayout.Visibility ="), "bang canceled before ledger; terminal hides and disables normal controls while retaining their measured layout and draft");
         Check(shellPage.Contains("CreateSessionAndSubmitAsync(_composerController!.Snapshot.Token, _shellComposer.Text)")
             && blankPage.Contains("if (shellCommand is not null) OnCreatedShellSubmit(shellCommand);"), "blank shell uses existing configured creation and exact handoff, never normal prompt");
         Check(view.Contains("foreach (var entry in OpenCodeComposerPlusMenu.Entries)") && view.Contains("new MenuFlyoutSeparator()"), "view uses tested menu definition and native divider");
