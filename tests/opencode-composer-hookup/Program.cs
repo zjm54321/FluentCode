@@ -343,15 +343,23 @@ internal static class Program
             await f.Page.Send();
             Check(f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft, kind + ": fresh explicit submit remains allowed exactly once");
         }
-        using (var f = new Fixture())
+        foreach (var ready in new[] { false, true })
         {
+            using var f = new Fixture();
             f.Page.EnterBlank(); f.Page.Text("unchanged create and send");
+            f.Page.NewSessionBound = () => {
+                f.Page.CompleteBindingSnapshot(); // Binding HTTP/projection executes in the pagination fixture.
+                f.Page.EventCoverage = ready ? Task.CompletedTask : null;
+            };
             var respond = f.Http.Respond;
             f.Http.Respond = (request, ct) => request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/api/session"
                 ? Task.FromResult(Json("{\"data\":{\"id\":\"ses_created\"}}")) : respond(request, ct);
             await f.Page.CreateBlankSession();
             Check(f.Page.Created == "ses_created" && f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft,
                 "unchanged exact new binding still creates and auto-sends once; guard does not reject every handoff");
+            Check(f.Http.Calls.Count == 3 && f.Page.Refreshes == (ready ? 0 : 1),
+                "PF2 first send retains create + fresh revert GET + prompt POST; only covered post-action refresh is skipped");
+            Console.WriteLine($"PF2 first-send composition ready={ready}: measured composer calls=3, binding=5/1 RTT (pagination fixture), post-action refreshes={f.Page.Refreshes}; total calls 12 -> {(ready ? 8 : 12)}, sequential RTTs 11 -> {(ready ? 4 : 5)} for known directory/no correction.");
         }
         Console.WriteLine($"PASS blank-tab delayed-refresh ABA: {checks - before} assertions; actual create/handoff methods, fake HTTP/refresh.");
     }
@@ -1056,6 +1064,11 @@ namespace AIFrontend.Pages
         private void UpdateComposerLayout() { }
         private void SetSendStopMode(OpenCodeComposerSendMode mode, bool hasDraft) { SendMode = mode; StopMode = mode == OpenCodeComposerSendMode.Working; }
         private Task RefreshMessagesAsync(bool forceFollow = false, bool explicitRefresh = false) { Refreshes++; Refreshed.TrySetResult(true); return RefreshPending; }
+        internal Task? EventCoverage;
+        internal void CompleteBindingSnapshot() { _messageHistoryNeedsState = false; _messageHistoryBoundaryKnown = true; }
+        private Task? CaptureHealthyEventStream() => EventCoverage;
+        private bool HasContinuousEventCoverage(Task? coverage) => coverage is not null && ReferenceEquals(coverage, EventCoverage) && !_messageHistoryNeedsState;
+        private void ScrollToBottom(bool animated) { }
         private void UpdateWaitingText() => WaitingUpdates++;
         private void RaiseSessionTracked(string session, OpenCodeSessionTrackReason reason) => Tracked++;
         private void MarkWorking(string session) { Working++; _workingSessions.Add(session); }

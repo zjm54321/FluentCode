@@ -309,6 +309,7 @@ public sealed partial class OpenCodePage
         _isSending = true;
         OpenCodeComposerSendContext? context = null;
         OpenCodeComposerSubmitOutcome outcome = new OpenCodeComposerSubmitOutcome.NotStarted();
+        var eventCoverage = CaptureHealthyEventStream();
         try
         {
             var basis = controller.CaptureDraft(token, delivery ?? RequestedComposerDelivery);
@@ -390,8 +391,15 @@ public sealed partial class OpenCodePage
             }
             if (outcome.Effects?.Revert == OpenCodeComposerRevertEvidence.Unresolved)
                 ShowMessage(InfoBarSeverity.Warning, "撤回影响尚未确认", "提交结果与撤回影响分别记录；需要重新读取会话。读取不会解除未知结果保护，不会自动重试。");
-            await RefreshMessagesAsync(forceFollow: outcome is OpenCodeComposerSubmitOutcome.PromptAccepted,
-                explicitRefresh: resetHistory);
+            // Native session.inbox.enqueued/delivered invalidate the authoritative history;
+            // permission/form events invalidate their snapshots. The stream owns that refresh,
+            // rather than racing a second identical action-triggered request against it.
+            // Unknown/command/revert outcomes and any connection gap retain the explicit read.
+            if (outcome is not OpenCodeComposerSubmitOutcome.PromptAccepted || resetHistory
+                || !HasContinuousEventCoverage(eventCoverage))
+                await RefreshMessagesAsync(forceFollow: outcome is OpenCodeComposerSubmitOutcome.PromptAccepted,
+                    explicitRefresh: resetHistory);
+            else ScrollToBottom(animated: false);
         }
         catch (Exception)
         {

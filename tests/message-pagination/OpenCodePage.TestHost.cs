@@ -141,8 +141,8 @@ namespace AIFrontend.Pages
         private void UpdateComposerButtons() { }
         internal Func<bool>? LastAuxiliaryFence;
         internal Func<Task> Auxiliary = () => Task.CompletedTask;
-        private Task RefreshAuxiliaryAsync(OpenCodeClient client, string id, CancellationToken ct, Func<bool> historyCurrent)
-        { LastAuxiliaryFence = historyCurrent; return Auxiliary(); }
+        private async Task RefreshAuxiliaryAsync(Task<OpenCodeAuxiliarySnapshot?> pending, string id, Func<bool> historyCurrent)
+        { await pending; LastAuxiliaryFence = historyCurrent; await Auxiliary(); }
 
         private bool SourceReady => _testSourceReady && _client is not null;
         // Existing runtime-feedback visuals are an explicit native presentation boundary in this headless host.

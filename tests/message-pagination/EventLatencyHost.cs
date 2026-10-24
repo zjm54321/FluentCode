@@ -22,6 +22,7 @@ public sealed partial class OpenCodePage
     private bool _eventSnapshotBeforeReady, _eventReconciliationPending, _statusRefreshRunning;
     private readonly CancellationTokenSource _pageCts = new();
     private readonly ConcurrentQueue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _eventQueue = new();
+    private readonly Queue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _workflowEventQueue = new();
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new();
     private long _liveStatusVersion;
     private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new();
@@ -47,6 +48,8 @@ public sealed partial class OpenCodePage
         OnEventStreamConnected(stream.Owner, reconnect);
     }
     internal void TestDisconnected(StreamBoundary stream) => OnEventStreamDisconnected(stream.Owner);
+    internal Task? TestCaptureCoverage() => CaptureHealthyEventStream();
+    internal bool TestCoverage(Task? coverage) => HasContinuousEventCoverage(coverage);
     internal void TestPoll() => PollTimer_Tick(new(), new());
     internal bool? TestSessionWorking(string id) => _liveSessionStatuses.TryGetValue(id, out var s) ? s.Working : null;
     internal void TestReceive(StreamBoundary stream, OpenCodeEvent item)

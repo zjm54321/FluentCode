@@ -209,6 +209,8 @@ internal static partial class Program
         {
             foreach (var (name, run) in new (string, Func<Task>)[]
             {
+                ("PF2 independent refresh reads share one round-trip; unknown/canceled display snapshots stay fenced", ParallelRefreshReads),
+                ("PF2 workflow events survive handoff; stream identity/gap/boundary checks retain fallback", WorkflowEventCoverage),
                 ("warm direct/Home first real text body applies with state AND messages held", BindingFirstBodyWithoutNetworkWait),
                 ("cold parallel reads start immediately but authoritative rollback gates Apply", BindingColdReadOverlap),
                 ("authoritative directory/epoch correction discards speculative read without serial wait", BindingCorrectedParallelRead),
@@ -576,7 +578,9 @@ internal static partial class Program
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            send(request, cancellationToken);
+            request.RequestUri!.AbsolutePath.EndsWith("/permission") || request.RequestUri.AbsolutePath.EndsWith("/form")
+                || request.RequestUri.AbsolutePath.EndsWith("/inbox")
+                ? Task.FromResult(Json(new { data = Array.Empty<object>() })) : send(request, cancellationToken);
     }
 
     private static async Task SendHistoryWorkflow()

@@ -96,28 +96,40 @@ public sealed class AgentSwitchCoordinator
             // Keep shared protection/origin/catalog checks; ordinary switching and recovery retain idle policy.
             if (!forNextSend)
             {
-                var messages = new List<OpenCodeMessage>();
-                string? cursor = null;
-                var cursors = new HashSet<string>(StringComparer.Ordinal);
-                bool complete = false;
-                for (int pageIndex = 0; pageIndex < PageBudget; pageIndex++)
+                async Task<(List<OpenCodeMessage> Messages, bool Complete)> HistoryAsync()
                 {
-                    var page = await Read(() => client!.GetMessagesAsync(origin.SessionId, new() { Limit = PageSize,
-                        Order = cursor is null ? OpenCodeSessionOrders.Desc : null, Cursor = cursor }, token)).ConfigureAwait(false);
-                    var pageData = page.Data!;
-                    if (pageData.Count > PageSize) return Result(AgentSwitchStatus.Blocked);
-                    messages.AddRange(pageData);
-                    cursor = page.Cursor?.Next;
-                    if (cursor is not null && (cursor.Length is 0 or > 4096 || cursor.Any(char.IsControl))) break;
-                    if (pageData.Count == 0 || cursor is null) { complete = true; break; }
-                    if (!cursors.Add(cursor!)) break;
+                    var history = new List<OpenCodeMessage>();
+                    string? cursor = null;
+                    var cursors = new HashSet<string>(StringComparer.Ordinal);
+                    // Later pages depend on the preceding cursor, unlike the other guard reads.
+                    for (int pageIndex = 0; pageIndex < PageBudget; pageIndex++)
+                    {
+                        var page = await Read(() => client!.GetMessagesAsync(origin.SessionId, new() { Limit = PageSize,
+                            Order = cursor is null ? OpenCodeSessionOrders.Desc : null, Cursor = cursor }, token)).ConfigureAwait(false);
+                        var pageData = page.Data!;
+                        if (pageData.Count > PageSize) return (history, false);
+                        history.AddRange(pageData);
+                        cursor = page.Cursor?.Next;
+                        if (cursor is not null && (cursor.Length is 0 or > 4096 || cursor.Any(char.IsControl))) break;
+                        if (pageData.Count == 0 || cursor is null) return (history, true);
+                        if (!cursors.Add(cursor!)) break;
+                    }
+                    return (history, false);
                 }
+                var historyRead = HistoryAsync();
+                var permissionsRead = Read(() => client!.GetPendingPermissionsAsync(origin.SessionId, token));
+                var formsRead = Read(() => client!.GetPendingFormsAsync(origin.SessionId, token));
+                var inboxRead = Read(() => client!.GetInboxAsync(origin.SessionId, token));
+                var activeRead = Read(() => client!.GetActiveSessionsAsync(token));
+                await Task.WhenAll(historyRead, permissionsRead, formsRead, inboxRead, activeRead).ConfigureAwait(false);
+                var (messages, complete) = await historyRead.ConfigureAwait(false);
+                var permissions = await permissionsRead.ConfigureAwait(false);
+                var forms = await formsRead.ConfigureAwait(false);
+                var inbox = await inboxRead.ConfigureAwait(false);
+                var active = await activeRead.ConfigureAwait(false);
+                if (!Fence(() => { })) throw new OriginLostException();
                 if (!complete) return Result(AgentSwitchStatus.Blocked);
                 messages.Reverse();
-                var permissions = await Read(() => client!.GetPendingPermissionsAsync(origin.SessionId, token)).ConfigureAwait(false);
-                var forms = await Read(() => client!.GetPendingFormsAsync(origin.SessionId, token)).ConfigureAwait(false);
-                var inbox = await Read(() => client!.GetInboxAsync(origin.SessionId, token)).ConfigureAwait(false);
-                var active = await Read(() => client!.GetActiveSessionsAsync(token)).ConfigureAwait(false);
                 if (permissions.Count > PendingBudget || forms.Count > PendingBudget || inbox.Count > PendingBudget
                     || inbox.Any(i => i?.SessionId != origin.SessionId)) return Result(AgentSwitchStatus.Blocked);
                 var activeData = active.Data!;

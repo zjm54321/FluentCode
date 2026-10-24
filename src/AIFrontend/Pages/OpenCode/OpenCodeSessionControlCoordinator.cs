@@ -299,17 +299,36 @@ public sealed class OpenCodeSessionControlCoordinator
         else if (request.Kind == SessionControlKind.ClearRevert && state.Revert is null) return new(SessionControlStatus.NoStage, null);
         else if (request.Kind == SessionControlKind.RevertContinuation) return new(SessionControlStatus.Blocked, null);
 
-        var descending = new List<SessionControlHistoryMessage>();
-        var cursors = new HashSet<string>(StringComparer.Ordinal);
-        string? cursor = null; bool complete = false;
-        for (int pageIndex = 0; pageIndex < HistoryPageBudget; pageIndex++)
+        async Task<(List<SessionControlHistoryMessage> Messages, bool Complete)> HistoryAsync()
         {
-            var page = await Get(() => client.GetSessionControlHistoryPageAsync(origin.SessionId, cursor, HistoryPageSize, ct)).ConfigureAwait(false);
-            descending.AddRange(page.Messages);
-            if (page.Next is null) { complete = true; break; }
-            if (page.Messages.IsEmpty || !cursors.Add(page.Next)) break;
-            cursor = page.Next;
+            var messages = new List<SessionControlHistoryMessage>();
+            var cursors = new HashSet<string>(StringComparer.Ordinal);
+            string? cursor = null;
+            // A continuation cursor gates the next history page; those reads remain serial.
+            for (int pageIndex = 0; pageIndex < HistoryPageBudget; pageIndex++)
+            {
+                var page = await Get(() => client.GetSessionControlHistoryPageAsync(origin.SessionId, cursor, HistoryPageSize, ct)).ConfigureAwait(false);
+                messages.AddRange(page.Messages);
+                if (page.Next is null) return (messages, true);
+                if (page.Messages.IsEmpty || !cursors.Add(page.Next)) break;
+                cursor = page.Next;
+            }
+            return (messages, false);
         }
+        // All reads share the captured origin/lease; Read fences initiation AND settlement.
+        // State/directory and selectable-model validation above gate this read-only batch.
+        var historyRead = HistoryAsync();
+        var permissionsRead = Get(() => client.GetPendingPermissionsAsync(origin.SessionId, ct));
+        var formsRead = Get(() => client.GetPendingFormsAsync(origin.SessionId, ct));
+        var inboxRead = Get(() => client.GetInboxAsync(origin.SessionId, ct));
+        var activeRead = Get(() => client.GetActiveSessionsAsync(ct));
+        await Task.WhenAll(historyRead, permissionsRead, formsRead, inboxRead, activeRead).ConfigureAwait(false);
+        var (descending, complete) = await historyRead.ConfigureAwait(false);
+        var permissions = await permissionsRead.ConfigureAwait(false);
+        var forms = await formsRead.ConfigureAwait(false);
+        var inbox = await inboxRead.ConfigureAwait(false);
+        var active = await activeRead.ConfigureAwait(false);
+        if (!Fence(origin, current, ct, () => { })) throw new Lost();
         if (!complete || descending.Any(m => !m.ReferencesComplete)
             || descending.Select(m => m.Id).Distinct(StringComparer.Ordinal).Count() != descending.Count)
             return new(SessionControlStatus.InsufficientHistory, null);
@@ -328,10 +347,6 @@ public sealed class OpenCodeSessionControlCoordinator
             if (target is null) return new(SessionControlStatus.NothingToUndo, null);
         }
 
-        var permissions = await Get(() => client.GetPendingPermissionsAsync(origin.SessionId, ct)).ConfigureAwait(false);
-        var forms = await Get(() => client.GetPendingFormsAsync(origin.SessionId, ct)).ConfigureAwait(false);
-        var inbox = await Get(() => client.GetInboxAsync(origin.SessionId, ct)).ConfigureAwait(false);
-        var active = await Get(() => client.GetActiveSessionsAsync(ct)).ConfigureAwait(false);
         if (permissions.Count > PendingBudget || forms.Count > PendingBudget || inbox.Count > PendingBudget
             || inbox.Any(i => i.SessionId != origin.SessionId) || active.Data is null) return new(SessionControlStatus.Blocked, null);
         active.Data.TryGetValue(origin.SessionId, out var drain);

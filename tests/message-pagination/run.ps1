@@ -24,7 +24,7 @@ $assembly = Join-Path $output 'MessagePaginationTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $openCode = @(
-    'OpenCodeClient.cs', 'OpenCodeClient.Events.cs', 'OpenCodeEventReducer.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
+    'OpenCodeClient.cs', 'OpenCodeAuxiliarySnapshot.cs', 'OpenCodeClient.Events.cs', 'OpenCodeEventReducer.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
     'OpenCodeClient.View.cs', 'OpenCodeClient.Usage.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs',
     'OpenCodeClient.SessionControls.cs', 'OpenCodeClient.SessionManagement.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
@@ -51,6 +51,7 @@ $sources = $openCode + @(
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyTests.cs'),
+    (Join-Path $PSScriptRoot 'Pf2LatencyTests.cs'),
     (Join-Path $PSScriptRoot 'SessionBindingTests.cs'),
     (Join-Path $PSScriptRoot 'Viewport.TestHost.cs'),
     (Join-Path $PSScriptRoot 'ViewportTests.cs'),
@@ -58,12 +59,12 @@ $sources = $openCode + @(
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
 $builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
 $eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
-$extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'PollTimer_Tick', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
+$extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'StartAuxiliaryRead', 'PollTimer_Tick', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn', 'ConversationScrollBarLeft') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
-    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
+    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'CaptureHealthyEventStream', 'HasContinuousEventCoverage', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
     $text = [IO.File]::ReadAllText($extraction.Path)

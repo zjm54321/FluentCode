@@ -14,6 +14,29 @@ internal static class DeferredSelectionTests
 {
     internal static async Task Run()
     {
+        await ParallelIdleReads();
+        foreach (var mode in new[] { "healthy", "disconnected", "gap", "unknown", "rejected", "revert" })
+        {
+            using var f = new NativeTests.Fixture();
+            f.Page.Text("event covered send");
+            f.Page.EventCoverage = mode == "disconnected" ? null : Task.CompletedTask;
+            if (mode == "revert")
+            {
+                f.Stage = "{\"messageID\":\"msg_older\"}";
+                OpenCodeComposerContinuationDialog.Next = p => Task.FromResult(new OpenCodeContinuationResult(OpenCodeContinuationOutcome.Confirmed, p));
+            }
+            f.Mutation = _ => {
+                if (mode == "gap") f.Page.EventCoverage = null;
+                if (mode == "unknown") throw new OpenCodeTransportException("test-only unknown");
+                return Task.FromResult(mode == "rejected"
+                    ? new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.BadRequest) : Program.Receipt());
+            };
+            await f.Page.Send();
+            Program.Check(f.Page.Refreshes == (mode == "healthy" ? 0 : 1),
+                "PF2 only continuously event-covered prompt acceptance skips action refresh: " + mode);
+            Program.Check(f.Http.Posts == 1, "PF2 no event fallback retries a mutation: " + mode);
+        }
+        Console.WriteLine("PF2 send foreground: 6 -> 2 calls / 6 -> 2 sequential RTTs with healthy SSE; event-owned history+aux invalidation remains 4 calls / 1 RTT; disconnected fallback 6 calls / 3 RTTs.");
         foreach (bool files in new[] { false, true })
         {
             using var f = new NativeTests.Fixture();
@@ -105,6 +128,100 @@ internal static class DeferredSelectionTests
                 "ED1 actual busy native picker uses cached catalog and stages choice without server calls");
         }
         Console.WriteLine("PASS ED1 pending agent/model/effort: 8 queue/steer legacy/attachment success/failure flows plus native busy pickers; actual pending/apply members, coordinators and HTTP DTOs.");
+    }
+
+    private static async Task ParallelIdleReads()
+    {
+        foreach (var inherited in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture();
+            if (!inherited) f.Model = "{\"id\":\"catalog-id\",\"providerID\":\"provider\"}";
+            var coordinator = new OpenCodeSessionControlCoordinator(new OpenCodeInteractionGate());
+            var origin = new SessionControlOrigin(f.Source, f.Source.Revision, "ses_test", 1);
+            var draft = new SessionControlDraft("empty", true);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var allStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var respond = f.Http.Respond;
+            var metric = new RoundTripCounter();
+            var count = 0;
+            f.Http.Respond = metric.Wrap(async (r, ct) => {
+                var path = r.RequestUri!.AbsolutePath;
+                if (r.Method == System.Net.Http.HttpMethod.Get && IsGuardRead(path))
+                {
+                    if (Interlocked.Increment(ref count) == 5) allStarted.TrySetResult();
+                    await release.Task;
+                }
+                return await respond(r, ct);
+            });
+            var previewRead = coordinator.PreviewAsync(origin,
+                new(SessionControlKind.SwitchModel, new("catalog-id", "provider", "fast")), draft, _ => true);
+            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Program.Check(!previewRead.IsCompleted && count == 5 && f.Http.Posts == 0,
+                "PF2 idle model history/permission/form/inbox/active all start before any held response completes");
+            release.SetResult();
+            var preview = await previewRead;
+            Program.Check(preview.Status == SessionControlStatus.Ready, "PF2 parallel preview retains complete idle validation");
+            release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            allStarted = new(TaskCreationOptions.RunContinuationsAsynchronously); count = 0;
+            var confirm = coordinator.ConfirmAsync(preview.Preview!, Guid.NewGuid(), draft, _ => true, _ => true);
+            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Program.Check(!confirm.IsCompleted && f.Http.Posts == 0, "PF2 model POST waits for every fresh guard read");
+            release.SetResult();
+            Program.Check((await confirm).Status == SessionControlStatus.Accepted && f.Http.Posts == 1,
+                "PF2 fresh parallel confirm makes exactly one mutation");
+            var expected = inherited ? 20 : 18;
+            Program.Check(f.Http.Calls.Count == expected, "PF2 model preview+confirm preserves required call count: " + expected);
+            Program.Check(metric.Depth == (inherited ? 12 : 10), "PF2 measured model critical-path response waves");
+            Console.WriteLine($"PF2 model preview+confirm inherited={inherited}: calls {expected} -> {f.Http.Calls.Count}; sequential RTTs {expected} -> {metric.Depth}; five held guard reads observed concurrently in both phases.");
+        }
+        foreach (var loseOrigin in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture();
+            var coordinator = new AgentSwitchCoordinator(new OpenCodeInteractionGate());
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var allStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var respond = f.Http.Respond; var count = 0; var current = true;
+            var metric = new RoundTripCounter();
+            f.Http.Respond = metric.Wrap(async (r, ct) => {
+                if (r.Method == System.Net.Http.HttpMethod.Get && IsGuardRead(r.RequestUri!.AbsolutePath))
+                {
+                    if (Interlocked.Increment(ref count) == 5) allStarted.TrySetResult();
+                    await release.Task;
+                }
+                return await respond(r, ct);
+            });
+            var change = coordinator.SwitchAsync(new(f.Source, f.Source.Revision, "ses_test", 1), Guid.NewGuid(), "next_agent", _ => current);
+            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Program.Check(!change.IsCompleted && f.Http.Posts == 0, "PF2 agent mutation waits for all parallel idle guards");
+            if (loseOrigin) current = false;
+            release.SetResult(); var result = await change;
+            Program.Check(result.Status == (loseOrigin ? AgentSwitchStatus.OriginLost : AgentSwitchStatus.Applied)
+                && f.Http.Posts == (loseOrigin ? 0 : 1), "PF2 agent read settlement keeps source/owner fences");
+            if (!loseOrigin)
+            {
+                Program.Check(f.Http.Calls.Count == 8 && metric.Depth == 4, "PF2 measured agent call count/depth");
+                Console.WriteLine($"PF2 idle agent switch: calls 8 -> {f.Http.Calls.Count}; sequential RTTs 8 -> {metric.Depth}; five held guard reads observed concurrently.");
+            }
+        }
+    }
+
+    private static bool IsGuardRead(string path) => path.EndsWith("/message") || path.EndsWith("/permission")
+        || path.EndsWith("/form") || path.EndsWith("/inbox") || path == "/api/session/active";
+
+    // Logical round trips, not wall-clock speed: requests started before any response in a
+    // held batch settles share a wave. Dependent reads necessarily start in the next wave.
+    private sealed class RoundTripCounter
+    {
+        private readonly object sync = new();
+        internal int Depth;
+        internal Func<System.Net.Http.HttpRequestMessage, CancellationToken, Task<System.Net.Http.HttpResponseMessage>> Wrap(
+            Func<System.Net.Http.HttpRequestMessage, CancellationToken, Task<System.Net.Http.HttpResponseMessage>> next)
+            => async (request, ct) => {
+                int wave; lock (sync) wave = Depth + 1;
+                var response = await next(request, ct);
+                lock (sync) Depth = Math.Max(Depth, wave);
+                return response;
+            };
     }
 }
 

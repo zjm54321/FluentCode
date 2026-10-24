@@ -19,6 +19,7 @@ public sealed partial class OpenCodePage
     private TaskCompletionSource? _eventReady;
     private OpenCodeEventReducer? _eventReducer;
     private readonly ConcurrentQueue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _eventQueue = new();
+    private readonly Queue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _workflowEventQueue = new();
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new(StringComparer.Ordinal);
     private long _liveStatusVersion;
     private bool _statusRefreshRunning;
@@ -29,6 +30,17 @@ public sealed partial class OpenCodePage
     partial void OnBrowserEventSyncStopped();
     partial void OnBrowserEventStreamHealthChanged(bool connected);
     partial void OnBrowserControlEvent(OpenCodeEvent item);
+
+    // Capture connection identity as well as readiness: a disconnect/reconnect during an action
+    // cannot retroactively cover its missed interval. Boundary/gap repair is never suppressed.
+    private Task? CaptureHealthyEventStream()
+        => SourceReady && _eventCts is { IsCancellationRequested: false }
+            && _eventReady?.Task.IsCompletedSuccessfully == true && !_eventReconciliationPending
+            ? _eventReady.Task : null;
+
+    private bool HasContinuousEventCoverage(Task? coverage)
+        => coverage is not null && ReferenceEquals(coverage, CaptureHealthyEventStream())
+            && !_messageHistoryNeedsState;
 
     private void StopEventSync()
     {
@@ -41,6 +53,7 @@ public sealed partial class OpenCodePage
         _eventSnapshotBeforeReady = false;
         _eventReconciliationPending = false;
         while (_eventQueue.TryDequeue(out _)) { }
+        _workflowEventQueue.Clear();
         _liveSessionStatuses.Clear();
         RefreshSessionStateUi();
         RefreshComposerSessionActivity();
@@ -52,6 +65,7 @@ public sealed partial class OpenCodePage
         if (_client is not { } client || _source is not { } source || _pageCts is null || !SourceReady) return;
         _eventCts?.Cancel();
         while (_eventQueue.TryDequeue(out _)) { }
+        _workflowEventQueue.Clear();
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_pageCts.Token, source.RevocationToken);
         _eventCts = cts;
         _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -70,6 +84,7 @@ public sealed partial class OpenCodePage
 
     partial void OnEventMessageHistoryReset()
     {
+        _workflowEventQueue.Clear(); // Buffered pre-revert/handoff events cannot cross the retired epoch.
         ResetRuntimeFeedback();
         _eventReducer = _selectedSessionId is { } id ? new(id) : null;
     }
@@ -120,6 +135,7 @@ public sealed partial class OpenCodePage
 
     partial void OnMessageHistoryWorkflowEnded()
     {
+        DrainEventQueue(); // Publish buffered events only after the send/handoff ownership fence ends.
         if (_eventReconciliationPending && _eventCts is { IsCancellationRequested: false }
             && _pageActive && SourceReady) _ = RefreshMessagesAsync();
     }
@@ -203,10 +219,22 @@ public sealed partial class OpenCodePage
         var statusesChanged = false;
         var first = DateTimeOffset.MaxValue;
         var count = 0;
-        while (_eventQueue.TryDequeue(out var queued))
+        bool Next(out (CancellationTokenSource Owner, OpenCodeEvent Event) queued)
+        {
+            if (_messageHistoryWorkflowOwner is null && _workflowEventQueue.TryDequeue(out queued)) return true;
+            return _eventQueue.TryDequeue(out queued);
+        }
+        while (Next(out var queued))
         {
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
+            if (_messageHistoryWorkflowOwner is not null && (item.SessionId is null || item.SessionId == _selectedSessionId))
+            {
+                // These events used to be discarded, forcing a post-action snapshot. Keep FIFO
+                // ownership instead; a source/session replacement clears or rejects old events.
+                _workflowEventQueue.Enqueue(queued);
+                continue;
+            }
             OnBrowserControlEvent(item); // Before selected-session reducer filtering; includes background tabs.
             OnAgentTreeEvent(item);
             count++;

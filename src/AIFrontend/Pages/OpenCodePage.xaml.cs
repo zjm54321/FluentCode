@@ -929,6 +929,7 @@ public sealed partial class OpenCodePage : Page
             var eventVersion = eventReducer?.Version ?? 0;
             PrepareEventSnapshot(); // Buffered events drained here must win along with subsequent inflight events.
             OpenCodeSessionMessagesResponse response;
+            Task<OpenCodeAuxiliarySnapshot?>? auxiliaryRead = null;
             try
             {
                 // Start both reads in the same turn; state is still authoritative for publication.
@@ -941,6 +942,7 @@ public sealed partial class OpenCodePage : Page
                     ? StartMessageHistoryRead(messageRead,
                         new OpenCodeMessageQuery { Order = OpenCodeSessionOrders.Desc, Limit = 100 }, speculativeCts.Token)
                     : null;
+                auxiliaryRead = StartAuxiliaryRead(messageRead, ct);
                 if (pendingMessages is not null)
                 {
                     // State failure/correction can abandon this task. Observe late faults without
@@ -965,6 +967,11 @@ public sealed partial class OpenCodePage : Page
                         speculativeCts.Cancel();
                         pendingMessages = StartMessageHistoryRead(historyRead,
                             new OpenCodeMessageQuery { Order = OpenCodeSessionOrders.Desc, Limit = 100 }, ct);
+                        // Auxiliary endpoints take only sessionID, not directory. Resolving a
+                        // formerly unknown directory does not change their source/epoch scope;
+                        // an actual rollback/directory correction DOES retire that epoch.
+                        if (auxiliaryRead is null || messageRead.Epoch != historyRead.Epoch)
+                            auxiliaryRead = StartAuxiliaryRead(historyRead, ct);
                     }
                     response = await pendingMessages;
                 }
@@ -1059,7 +1066,9 @@ public sealed partial class OpenCodePage : Page
                 ScrollToBottom(animated: !(initial || forceFollow));
             }
 
-            await RefreshAuxiliaryAsync(client, sessionId, ct, () => OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead));
+            if (auxiliaryRead is not null)
+                await RefreshAuxiliaryAsync(auxiliaryRead, sessionId,
+                    () => OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead));
         }
         catch (Exception)
         {
@@ -1094,44 +1103,34 @@ public sealed partial class OpenCodePage : Page
     }
 
     /// <summary>待处理权限/表单卡片与 inbox 待投递跟踪；失败不影响消息刷新的连接状态。</summary>
-    private async Task RefreshAuxiliaryAsync(OpenCodeClient client, string sessionId, CancellationToken ct, Func<bool> historyCurrent)
+    private Task<OpenCodeAuxiliarySnapshot?>? StartAuxiliaryRead(MessageHistoryRead read, CancellationToken ct)
     {
-        IReadOnlyList<OpenCodePermissionRequest>? permissions = null;
-        IReadOnlyList<OpenCodeFormInfo>? forms = null;
+        Task<OpenCodeAuxiliarySnapshot?>? pending = null;
+        read.Source?.TryExecute(ct, () =>
+        {
+            if (IsCurrentMessageHistoryRead(read)) pending = OpenCodeAuxiliarySnapshot.ReadAsync(read.Client, read.SessionId, ct);
+        });
+        // Boundary failure/correction can abandon these reads. Observe faults without awaiting
+        // a stale transport or extending its authority to the replacement refresh.
+        if (pending is not null)
+            _ = pending.ContinueWith(static task => { _ = task.Exception; }, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        return pending;
+    }
 
-        try
-        {
-            permissions = await client.GetPendingPermissionsAsync(sessionId, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-        catch (OpenCodeException)
+    private async Task RefreshAuxiliaryAsync(Task<OpenCodeAuxiliarySnapshot?> pending, string sessionId, Func<bool> historyCurrent)
+    {
+        var snapshot = await pending;
+        if (snapshot is null || !historyCurrent()) return;
+        var permissions = snapshot.Permissions;
+        var forms = snapshot.Forms;
+        if (permissions is null)
         {
             // 获取失败：不推断“无等待”，保留现有卡片（提交前总会重新查询，陈旧展示不会导致误提交）。
             if (historyCurrent())
             {
                 PermissionBar.IsOpen = false;
             }
-        }
-
-        if (!historyCurrent())
-        {
-            return;
-        }
-
-        try
-        {
-            forms = await client.GetPendingFormsAsync(sessionId, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-        catch (OpenCodeException)
-        {
-            // 同上：保留现有表单卡片。
         }
 
         if (!historyCurrent())
@@ -1150,9 +1149,8 @@ public sealed partial class OpenCodePage : Page
         _ = externallyRemoved;
         UpdateInteractionsSection();
 
-        try
+        if (snapshot.Inbox is { } inbox)
         {
-            var inbox = await client.GetInboxAsync(sessionId, ct);
             if (!historyCurrent())
             {
                 return;
@@ -1179,13 +1177,6 @@ public sealed partial class OpenCodePage : Page
             }
 
             UpdateWaitingText();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (OpenCodeException)
-        {
-            // inbox 查询失败不改变任何状态；下一轮刷新重试。
         }
     }
 

@@ -38,6 +38,8 @@ internal static partial class Program
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("/permission") || path.EndsWith("/form") || path.EndsWith("/inbox"))
+                return Task.FromResult(Json(new { data = Array.Empty<object>() }));
             if (!path.StartsWith("/api/session/", StringComparison.Ordinal)) throw new InvalidOperationException(path);
             var key = path[13..]; var messages = key.EndsWith("/message", StringComparison.Ordinal);
             var id = messages ? key[..^8] : key;

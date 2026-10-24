@@ -34,6 +34,9 @@ internal static partial class Program
                 case "/api/session/ses_test": States++; return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(State) });
                 case "/api/session/ses_test/message": Messages++; return ReadMessages();
                 case "/api/session/active": Active++; return ReadActive();
+                case "/api/session/ses_test/permission":
+                case "/api/session/ses_test/form":
+                case "/api/session/ses_test/inbox": return Task.FromResult(Json(new { data = Array.Empty<object>() }));
                 default: throw new InvalidOperationException("Unexpected latency fixture route: " + request.RequestUri.AbsolutePath);
             }
         }
