@@ -41,8 +41,8 @@ $headless += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresenta
 $winui = foreach ($name in @('OpenCodeComposerView.cs', 'OpenCodeComposerNativeDialogs.cs', 'OpenCodeVariantPickerDialog.cs', 'OpenCodePickerFlyout.cs', 'OpenCodeModelLogo.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeInteractionUi.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
 # Browser attachment chips use the real selection-list image helper and its pure policy types.
 $winui += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectedList.cs", "$repo/src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserSelectionPolicy.cs"
-# Native model dialogs now read the real favorites store and its WSL preference-file closure.
-$winui += foreach ($name in @('OpenCodeModelFavoriteStore.cs', 'OpenCodeModelPickerFavorites.cs', 'OpenCodeModelFavoriteJson.cs', 'OpenCodeWslQuickAccess.cs', 'OpenCodeWslQuickAccess.PathMapping.cs', 'WslQuickAccessHome.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
+# Native model dialogs use the real RPC-only favorites store; its shared Bridge service is in $services.
+$winui += foreach ($name in @('OpenCodeModelFavoriteStore.cs', 'OpenCodeModelPickerFavorites.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
 # The view/dialogs read the user-chosen monospace font (AppFonts); compile its real settings closure (WinUI side only).
 $appearance = @(Get-ChildItem "$repo/src/AIFrontend/Services/Appearance/*.cs") + @(Get-ChildItem "$repo/src/AIFrontend/Services/Configuration/*.cs" | Where-Object Name -NE 'DpapiSecretStore.cs') + @(Get-ChildItem "$repo/src/AIFrontend/Models/*.cs")
 $viewSources = @($services) + @($notifications) + @($headless) + @($winui) + @($appearance)

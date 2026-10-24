@@ -26,6 +26,7 @@ $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dl
 $openCode = @(
     'OpenCodeClient.cs', 'OpenCodeAuxiliarySnapshot.cs', 'OpenCodeClient.Events.cs', 'OpenCodeEventReducer.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
     'OpenCodeClient.View.cs', 'OpenCodeClient.Usage.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs',
+    'OpenCodeDesktopBridge.cs', 'OpenCodeClient.PluginRpc.cs', 'OpenCodeModelFavoritesRpc.cs',
     'OpenCodeClient.SessionControls.cs', 'OpenCodeClient.SessionManagement.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',

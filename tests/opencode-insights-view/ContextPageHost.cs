@@ -25,6 +25,7 @@ public sealed partial class OpenCodePage
     #pragma warning restore CS0414
     private OpenCodeEventReducer? _eventReducer;
     private readonly ConcurrentQueue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _eventQueue = new();
+    private readonly Queue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _workflowEventQueue = new();
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new();
     private long _liveStatusVersion;
     private readonly List<OpenCodeMessage> _latestMessages = new();

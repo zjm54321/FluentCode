@@ -69,6 +69,7 @@ $extracted = Join-Path $output 'OpenCodePage.Extracted.cs'
 
 $production = @()
 @('OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.View.cs',
+    'OpenCodeDesktopBridge.cs', 'OpenCodeClient.PluginRpc.cs', 'OpenCodeModelFavoritesRpc.cs',
     'OpenCodeClient.SessionInfo.cs', 'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs', 'OpenCodeClient.ImageFiles.cs', 'OpenCodeImageFile.cs', 'OpenCodeAttachment.cs', 'OpenCodeDtos.Commands.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
     'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeToolImageResolver.cs', 'OpenCodeManualBackgroundIndex.cs', 'OpenCodeNoticeDismissals.cs', 'OpenCodeSessionAncestry.cs',
     'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Inbox.cs',

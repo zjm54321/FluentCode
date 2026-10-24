@@ -112,7 +112,7 @@ foreach ($pair in @(@($publicationPaths[0], 'DrainEventQueue'), @($publicationPa
     $publicationMembers += $block.Value
 }
 $publicationGenerated = Join-Path $Output 'ContextPublicationMembers.cs'
-("using System; using System.Linq; using System.Collections.Generic; using System.Diagnostics; using AIFrontend.Services.OpenCode;`nnamespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($publicationMembers -join "`n") + "`n}") | Set-Content -Encoding UTF8 $publicationGenerated
+("using System; using System.Linq; using System.Collections.Generic; using System.Diagnostics; using System.Threading; using AIFrontend.Services.OpenCode;`nnamespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($publicationMembers -join "`n") + "`n}") | Set-Content -Encoding UTF8 $publicationGenerated
 $sources += $publicationGenerated
 
 # Compile the actual visibility hook expression from layout, with production sidebar surface state.

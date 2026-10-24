@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using AIFrontend.Services.Notifications;
+using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 
 namespace AIFrontend.Pages;
@@ -30,6 +32,8 @@ public sealed partial class OpenCodePage
     private void RefreshRightPanelMetadata() { }
     private void RevokeMessageRefresh() { }
     private void ResetConversationImages() { } // Image leases are exercised by opencode-session-return.
+    // Bridge negotiation/notice IO is outside this lifecycle fixture; compile its real service in the feature runners.
+    private Task InitializeDesktopBridgeAsync(OpenCodePageSource source, OpenCodeClient client) => Task.CompletedTask;
     private void PauseTerminalView() { }
     private void ResetAgentTree() { }
     private void SessionStateUi_Unloaded(object sender, RoutedEventArgs e) { }
