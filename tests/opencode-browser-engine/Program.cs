@@ -106,7 +106,11 @@ internal static class Program
         var snapshot = new OpenCodeBrowserSnapshot();
         var nodes = JsonNode.Parse("[{\"nodeId\":\"1\",\"role\":{\"value\":\"RootWebArea\"},\"name\":{\"value\":\"Page\"},\"childIds\":[\"2\"]},{\"nodeId\":\"2\",\"backendDOMNodeId\":7,\"role\":{\"value\":\"button\"},\"name\":{\"value\":\"Submit\"}}]")!.AsArray();
         var formatted = snapshot.Format(nodes); Check(formatted.Content.Contains("[e1] button \"Submit\"") && !formatted.Truncated, "AX ref text"); Check(snapshot.Resolve("@e1") == 7, "optional @ ref");
+        Check(formatted.Content.Count(c => c == '\n') == 2 && !formatted.Content.Contains('\r'), "snapshot separators are LF on every host");
+        var lfBoxes = snapshot.AddBoxes(formatted.Content, new Dictionary<int, OpenCodeBrowserBox> { [7] = new(1, 2, 3, 4) });
+        Check(lfBoxes.Content.Contains("box={") && lfBoxes.Content.Count(c => c == '\n') == 2 && !lfBoxes.Content.Contains('\r'), "boxed snapshot uses LF without doubled separators");
         var found = snapshot.Format(nodes, find: "sUbMiT"); Check(found.Content.Contains("[e2]") && !found.Content.Contains("RootWebArea"), "find refreshes refs case insensitive"); Error(() => snapshot.Resolve("e1"), "stale_ref", "new snapshot invalidates refs");
+        Check(found.Content.Count(c => c == '\n') == 1 && !found.Content.Contains('\r'), "find output separators are LF");
         snapshot.Clear(); Error(() => snapshot.Resolve("e2"), "stale_ref", "navigation invalidates refs");
         snapshot.Format(nodes, 1); Check(snapshot.Refs.Count == 0, "depth bound");
         var duplicateNodes = JsonNode.Parse("""[{"nodeId":"-1000000210","ignored":true},{"nodeId":"-1000000210","ignored":true},{"nodeId":"1","frameId":"a","role":{"value":"button"},"name":{"value":"First"},"backendDOMNodeId":8},{"nodeId":"1","frameId":"b","role":{"value":"button"},"name":{"value":"Second"},"backendDOMNodeId":9}]""")!.AsArray();
@@ -126,6 +130,10 @@ internal static class Program
         snapshot.Format(aria, find: "Only once"); Check(snapshot.Refs.Count == 0, "find excludes refs absent from output");
         var huge = new JsonArray(new JsonObject { ["nodeId"] = "1", ["backendDOMNodeId"] = 30, ["role"] = new JsonObject { ["value"] = "button" }, ["name"] = new JsonObject { ["value"] = new string('x', 100001) } });
         var bounded = snapshot.Format(huge); Check(bounded.Truncated && bounded.Content.Length <= 100000 && snapshot.Refs.Count == 0, "oversize aria line bounded without dangling refs");
+        var nearLimit = new JsonArray(new JsonObject { ["nodeId"] = "1", ["backendDOMNodeId"] = 31, ["role"] = new JsonObject { ["value"] = "button" }, ["name"] = new JsonObject { ["value"] = new string('b', 99960) } });
+        var nearText = snapshot.Format(nearLimit);
+        var boundedBoxes = snapshot.AddBoxes(nearText.Content, new Dictionary<int, OpenCodeBrowserBox> { [31] = new(123.45, 678.9, 123.45, 678.9) });
+        Check(!nearText.Truncated && boundedBoxes.Truncated && boundedBoxes.Content.Length <= 100000 && !boundedBoxes.Content.Contains('\r'), "boxed output accounts for one-character LF within size bound");
         var many = new JsonArray(); for (var n = 0; n < 10001; n++) many.Add(new JsonObject { ["nodeId"] = n.ToString(), ["ignored"] = true });
         Check(snapshot.Format(many).Truncated, "AX visit bound includes ignored nodes");
         const string unicode = "该域名 café Ελληνικά Русский \"quoted\"\nnext\\line";

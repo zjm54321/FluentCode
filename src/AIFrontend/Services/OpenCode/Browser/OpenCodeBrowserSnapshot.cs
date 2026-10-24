@@ -66,11 +66,11 @@ public sealed class OpenCodeBrowserSnapshot
                     // Do not allocate refs for filtered/truncated text or non-element text leaves.
                     var hasRef = role is not ("StaticText" or "RootWebArea" or "WebArea") && node["backendDOMNodeId"] is JsonValue id && id.TryGetValue<int>(out var backend) && backend > 0;
                     var prefixLength = hasRef ? ("e" + (_nextRef + 1)).Length + 3 : 0;
-                    if (builder.Length + level * 2 + prefixLength + text.Length + Environment.NewLine.Length <= 100000)
+                    if (builder.Length + level * 2 + prefixLength + text.Length + 1 <= 100000)
                     {
                         builder.Append(' ', level * 2);
                         if (hasRef) builder.Append('[').Append(Register(node["backendDOMNodeId"]!.GetValue<int>())).Append("] ");
-                        builder.AppendLine(text);
+                        builder.Append(text).Append('\n');
                     }
                     else truncated = true;
                 }
@@ -79,6 +79,20 @@ public sealed class OpenCodeBrowserSnapshot
             foreach (var id in links[Key(node)]) if (Child(node, id) is { } child) Visit(child, transparent ? level : level + 1);
         }
         foreach (var root in roots) Visit(root, 0);
+        return (builder.ToString(), truncated);
+    }
+
+    public (string Content, bool Truncated) AddBoxes(string content, IReadOnlyDictionary<int, OpenCodeBrowserBox> boxes)
+    {
+        var builder = new StringBuilder(); var truncated = false;
+        foreach (var line in content.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var output = line; var start = line.IndexOf('['); var end = start < 0 ? -1 : line.IndexOf(']', start);
+            if (end > start && _refs.TryGetValue(line[(start + 1)..end], out var node) && boxes.TryGetValue(node, out var box))
+                output = line.Insert(end + 1, " box=" + System.Text.Json.JsonSerializer.Serialize(new { x = box.X, y = box.Y, width = box.Width, height = box.Height }));
+            if (builder.Length + output.Length + 1 > 100000) { truncated = true; break; }
+            builder.Append(output).Append('\n');
+        }
         return (builder.ToString(), truncated);
     }
 }

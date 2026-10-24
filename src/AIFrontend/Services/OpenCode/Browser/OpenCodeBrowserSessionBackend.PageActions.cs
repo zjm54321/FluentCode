@@ -27,19 +27,8 @@ public sealed partial class OpenCodeBrowserSessionBackend
         {
             // One renderer-wide read replaces N sequential DOM.getBoxModel/resolveNode calls.
             var boxes = OpenCodeBrowserGeometry.SnapshotBoxes(await Call(c, "DOMSnapshot.captureSnapshot", new() { ["computedStyles"] = new JsonArray(), ["includeDOMRects"] = true }, ct));
-            var lines = text.Split(Environment.NewLine); var builder = new System.Text.StringBuilder();
-            foreach (var line in lines)
-            {
-                if (line.Length == 0) continue;
-                var output = line; var start = line.IndexOf('['); var end = start < 0 ? -1 : line.IndexOf(']', start);
-                if (end > start && c.Snapshot.Refs.TryGetValue(line[(start + 1)..end], out var node) && boxes.TryGetValue(node, out var box))
-                {
-                    output = line.Insert(end + 1, " box=" + JsonSerializer.Serialize(new { x = box.X, y = box.Y, width = box.Width, height = box.Height }));
-                }
-                if (builder.Length + output.Length + Environment.NewLine.Length > 100000) { truncated = true; break; }
-                builder.AppendLine(output);
-            }
-            text = builder.ToString();
+            var annotated = c.Snapshot.AddBoxes(text, boxes);
+            text = annotated.Content; truncated |= annotated.Truncated;
         }
         Debug.WriteLine($"Browser snapshot: ax={axTime:F1}ms format={formatTime:F1}ms boxes={timer.Elapsed.TotalMilliseconds - axTime - formatTime:F1}ms total={timer.Elapsed.TotalMilliseconds:F1}ms nodes={tree["nodes"]!.AsArray().Count} refs={c.Snapshot.Refs.Count}");
         var value = WithTab(c.Page); value["content"] = text; value["truncated"] = truncated; return Ok(value);
