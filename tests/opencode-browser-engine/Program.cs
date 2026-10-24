@@ -103,6 +103,13 @@ internal static class Program
         var bounded = snapshot.Format(huge); Check(bounded.Truncated && bounded.Content.Length <= 100000 && snapshot.Refs.Count == 0, "oversize aria line bounded without dangling refs");
         var many = new JsonArray(); for (var n = 0; n < 10001; n++) many.Add(new JsonObject { ["nodeId"] = n.ToString(), ["ignored"] = true });
         Check(snapshot.Format(many).Truncated, "AX visit bound includes ignored nodes");
+        const string unicode = "该域名 café Ελληνικά Русский \"quoted\"\nnext\\line";
+        var unicodeNodes = new JsonArray(new JsonObject { ["nodeId"] = "1", ["backendDOMNodeId"] = 40, ["role"] = new JsonObject { ["value"] = "textbox" }, ["name"] = new JsonObject { ["value"] = unicode }, ["value"] = new JsonObject { ["value"] = "输入值" } });
+        var unicodeText = snapshot.Format(unicodeNodes).Content;
+        Check(unicodeText.Contains("该域名 café Ελληνικά Русский") && unicodeText.Contains("输入值") && !unicodeText.Contains("\\u"), "snapshot names and values use raw Unicode");
+        Check(JsonNode.Parse(OpenCodeBrowserText.Quote(unicode))!.GetValue<string>() == unicode, "human text still escapes quotes newlines and backslashes");
+        Check(OpenCodeBrowserText.Json(new JsonObject { ["消息"] = "控制台中文" }).Contains("控制台中文"), "console objects and exception JSON use raw Unicode");
+        Check(snapshot.Format(unicodeNodes, find: "输入值").Content.Contains("该域名"), "Unicode find matches display text");
         var browserTab = new OpenCodeBrowserTab(tab, "about:blank", "Title", false, null, false, false, 2);
         var state = OpenCodeBrowserPolicy.State(new(new[] { browserTab }, tab)); Check(state["focusedTabID"]!.ToString() == tab && state["tabs"]![0]!["generation"]!.GetValue<long>() == 2, "state exact casing"); Check(!state["tabs"]![0]!.AsObject().ContainsKey("loadError"), "optional loadError omitted");
         var success = OpenCodeBrowserPolicy.Outcome(new OpenCodeBrowserOutcome.Success(null, new[] { fileBytes })); Check(success["result"]!.AsObject().ContainsKey("value") && success["result"]!["value"] is null, "success requires JSON null value"); Check(success["result"]!["files"]![0]!["data"]!.ToString() == "AQ==", "wire file bytes base64");

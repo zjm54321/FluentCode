@@ -59,8 +59,8 @@ public sealed class OpenCodeBrowserSnapshot
             {
                 var properties = node["properties"]?.AsArray().OfType<JsonObject>().Where(p => p["name"]?.ToString() is "checked" or "disabled" or "expanded" or "selected" or "required")
                     .Select(p => p["name"] + "=" + p["value"]?["value"]);
-                var text = role + " " + System.Text.Json.JsonSerializer.Serialize(name)
-                    + (value is null ? "" : " value=" + System.Text.Json.JsonSerializer.Serialize(value)) + (properties is null ? "" : " " + string.Join(' ', properties));
+                var text = role + " " + OpenCodeBrowserText.Quote(name)
+                    + (value is null ? "" : " value=" + OpenCodeBrowserText.Quote(value)) + (properties is null ? "" : " " + string.Join(' ', properties));
                 if (find is null || text.Contains(find, StringComparison.OrdinalIgnoreCase))
                 {
                     // Do not allocate refs for filtered/truncated text or non-element text leaves.

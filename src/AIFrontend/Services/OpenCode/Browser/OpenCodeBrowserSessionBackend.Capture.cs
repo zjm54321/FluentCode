@@ -126,7 +126,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
         private void ConsoleEvent(JsonObject value)
         {
             var type = S(value, "type"); var level = type is "error" or "assert" ? "error" : type == "warning" ? "warning" : type == "debug" ? "debug" : "info";
-            var text = string.Join(" ", value["args"]!.AsArray().OfType<JsonObject>().Select(arg => arg["value"]?.ToJsonString() ?? arg["description"]?.ToString() ?? S(arg, "type")));
+            var text = string.Join(" ", value["args"]!.AsArray().OfType<JsonObject>().Select(arg => arg["value"] is { } json ? OpenCodeBrowserText.Json(json) : arg["description"]?.ToString() ?? S(arg, "type")));
             AddConsole(level, text, value["timestamp"]?.GetValue<double>() ?? Now(), value["stackTrace"]?["callFrames"]?.AsArray().FirstOrDefault() as JsonObject);
         }
         private void AddConsole(string level, string text, double timestamp, JsonObject? source)

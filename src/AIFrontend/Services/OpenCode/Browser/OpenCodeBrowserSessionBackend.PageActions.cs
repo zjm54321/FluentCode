@@ -52,7 +52,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static JsonNode? ScriptValue(JsonObject response)
     {
-        if (response["exceptionDetails"] is not null) throw new OpenCodeBrowserException("evaluation_failed", response["exceptionDetails"]?["exception"]?["description"]?.ToString() ?? response["exceptionDetails"]!.ToJsonString());
+        if (response["exceptionDetails"] is not null) throw new OpenCodeBrowserException("evaluation_failed", response["exceptionDetails"]?["exception"]?["description"]?.ToString() ?? OpenCodeBrowserText.Json(response["exceptionDetails"]!));
         var result = response["result"]!.AsObject();
         if (result["unserializableValue"] is not null || result["objectId"] is not null || S(result, "type") is "undefined" or "function" or "symbol" or "bigint") throw new OpenCodeBrowserException("invalid_result", "JavaScript 结果必须可序列化为 JSON");
         return result["value"]?.DeepClone();
