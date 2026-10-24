@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -13,25 +14,34 @@ public sealed partial class OpenCodeBrowserSessionBackend
 {
     private static async Task<OpenCodeBrowserOutcome> SnapshotAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
+        var timer = Stopwatch.StartNew();
         int? root = a["ref"] is null ? null : c.Snapshot.Resolve(S(a, "ref"));
         var parameters = new JsonObject(); if (a["frameID"] is not null) parameters["frameId"] = S(a, "frameID");
         var tree = await Call(c, "Accessibility.getFullAXTree", parameters, ct);
+        var axTime = timer.Elapsed.TotalMilliseconds;
         var formatted = c.Snapshot.Format(tree["nodes"]!.AsArray(), I(a, "depth", 20), S(a, "type") == "find" ? S(a, "text") : null, root, c.ActiveSession + "/" + S(a, "frameID"));
         c.RefSessions.Clear(); foreach (var reference in c.Snapshot.Refs.Keys) c.RefSessions[reference] = c.ActiveSession;
+        var formatTime = timer.Elapsed.TotalMilliseconds - axTime;
         var text = formatted.Content; var truncated = formatted.Truncated;
-        if (B(a, "boxes"))
+        if (B(a, "boxes") && c.Snapshot.Refs.Count > 0)
         {
-            foreach (var reference in c.Snapshot.Refs)
+            // One renderer-wide read replaces N sequential DOM.getBoxModel/resolveNode calls.
+            var boxes = OpenCodeBrowserGeometry.SnapshotBoxes(await Call(c, "DOMSnapshot.captureSnapshot", new() { ["computedStyles"] = new JsonArray(), ["includeDOMRects"] = true }, ct));
+            var lines = text.Split(Environment.NewLine); var builder = new System.Text.StringBuilder();
+            foreach (var line in lines)
             {
-                try
+                if (line.Length == 0) continue;
+                var output = line; var start = line.IndexOf('['); var end = start < 0 ? -1 : line.IndexOf(']', start);
+                if (end > start && c.Snapshot.Refs.TryGetValue(line[(start + 1)..end], out var node) && boxes.TryGetValue(node, out var box))
                 {
-                    var box = await BoxAsync(c, reference.Key, ct); var marker = "[" + reference.Key + "]";
-                    text = text.Replace(marker, marker + " box=" + JsonSerializer.Serialize(new { x = box.X, y = box.Y, width = box.Width, height = box.Height }), StringComparison.Ordinal);
+                    output = line.Insert(end + 1, " box=" + JsonSerializer.Serialize(new { x = box.X, y = box.Y, width = box.Width, height = box.Height }));
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException && ex is not OpenCodeBrowserException) { /* AX nodes without layout keep their text/ref, not a fabricated box. */ }
-                if (text.Length > 100000) { text = text[..100000]; truncated = true; break; }
+                if (builder.Length + output.Length + Environment.NewLine.Length > 100000) { truncated = true; break; }
+                builder.AppendLine(output);
             }
+            text = builder.ToString();
         }
+        Debug.WriteLine($"Browser snapshot: ax={axTime:F1}ms format={formatTime:F1}ms boxes={timer.Elapsed.TotalMilliseconds - axTime - formatTime:F1}ms total={timer.Elapsed.TotalMilliseconds:F1}ms nodes={tree["nodes"]!.AsArray().Count} refs={c.Snapshot.Refs.Count}");
         var value = WithTab(c.Page); value["content"] = text; value["truncated"] = truncated; return Ok(value);
     }
     private static async Task<int?> FrameContextAsync(PageContext c, JsonObject a, CancellationToken ct)

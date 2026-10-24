@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
 
@@ -12,6 +13,24 @@ public readonly record struct OpenCodeBrowserBox(double X, double Y, double Widt
 
 public static class OpenCodeBrowserGeometry
 {
+    public static IReadOnlyDictionary<int, OpenCodeBrowserBox> SnapshotBoxes(JsonObject snapshot)
+    {
+        var boxes = new Dictionary<int, OpenCodeBrowserBox>();
+        foreach (var document in snapshot["documents"]!.AsArray().OfType<JsonObject>())
+        {
+            var ids = document["nodes"]!["backendNodeId"]!.AsArray();
+            var layout = document["layout"]!; var indices = layout["nodeIndex"]!.AsArray(); var bounds = layout["bounds"]!.AsArray();
+            var scrollX = document["scrollOffsetX"]?.GetValue<double>() ?? 0; var scrollY = document["scrollOffsetY"]?.GetValue<double>() ?? 0;
+            for (var i = 0; i < indices.Count; i++)
+            {
+                var id = ids[indices[i]!.GetValue<int>()]!.GetValue<int>(); var rect = bounds[i]!.AsArray();
+                var box = new OpenCodeBrowserBox(rect[0]!.GetValue<double>() - scrollX, rect[1]!.GetValue<double>() - scrollY, rect[2]!.GetValue<double>(), rect[3]!.GetValue<double>());
+                if (box.Width > 0 && box.Height > 0) boxes.TryAdd(id, box);
+            }
+        }
+        return boxes;
+    }
+
     public static OpenCodeBrowserBox Bounds(JsonArray quad)
     {
         var points = quad.Select(n => n!.GetValue<double>()).ToArray();

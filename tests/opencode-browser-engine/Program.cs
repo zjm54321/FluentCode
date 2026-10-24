@@ -120,7 +120,15 @@ internal static class Program
         Check(legacyClip.ToJsonString() == clip.ToJsonString(), "legacy device-pixel offsets normalized to CSS pixels");
         var negativeClip = OpenCodeBrowserGeometry.ScreenshotClip(new(-0.25, -0.5, 1.5, 2.25), Parse("""{"cssVisualViewport":{"pageX":0,"pageY":0,"scale":1}}"""));
         Check(negativeClip["x"]!.GetValue<double>() == -1 && negativeClip["width"]!.GetValue<double>() == 3, "outward rounding handles negative fractional origin");
-        Error(() => OpenCodeBrowserGeometry.Bounds(new JsonArray(1, 1, 1, 1, 1, 1, 1, 1)), "not_interactable", "empty border quad rejected");
+        Error(() => OpenCodeBrowserGeometry.Bounds(new JsonArray(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)), "not_interactable", "empty border quad rejected");
+        var batchBoxes = OpenCodeBrowserGeometry.SnapshotBoxes(Parse("""{"documents":[{"scrollOffsetX":10.5,"scrollOffsetY":200,"nodes":{"backendNodeId":[7,8]},"layout":{"nodeIndex":[0,1],"bounds":[[20.5,220,40.25,10.5],[0,0,0,0]]}},{"nodes":{"backendNodeId":[9]},"layout":{"nodeIndex":[0],"bounds":[[1,2,3,4]]}}]}"""));
+        Check(batchBoxes.Count == 2 && batchBoxes[7] == new OpenCodeBrowserBox(10, 20, 40.25, 10.5) && batchBoxes.ContainsKey(9), "batch boxes map backend IDs across documents and subtract scroll");
+        var actionsSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserSessionBackend.PageActions.cs"));
+        var snapshotSource = actionsSource[..actionsSource.IndexOf("private static async Task<int?> FrameContextAsync", StringComparison.Ordinal)];
+        Check(snapshotSource.Contains("DOMSnapshot.captureSnapshot") && !snapshotSource.Contains("await BoxAsync("), "snapshot boxes use one batch, no per-node CDP calls (source fence)");
+        var snapshotTimer = System.Diagnostics.Stopwatch.StartNew();
+        for (var n = 0; n < 1000; n++) snapshot.Format(aria);
+        Console.WriteLine($"PROFILE 1000 simple-page AX formats: {snapshotTimer.Elapsed.TotalMilliseconds:F1} ms (CDP/transport excluded)");
         var browserTab = new OpenCodeBrowserTab(tab, "about:blank", "Title", false, null, false, false, 2);
         var state = OpenCodeBrowserPolicy.State(new(new[] { browserTab }, tab)); Check(state["focusedTabID"]!.ToString() == tab && state["tabs"]![0]!["generation"]!.GetValue<long>() == 2, "state exact casing"); Check(!state["tabs"]![0]!.AsObject().ContainsKey("loadError"), "optional loadError omitted");
         var success = OpenCodeBrowserPolicy.Outcome(new OpenCodeBrowserOutcome.Success(null, new[] { fileBytes })); Check(success["result"]!.AsObject().ContainsKey("value") && success["result"]!["value"] is null, "success requires JSON null value"); Check(success["result"]!["files"]![0]!["data"]!.ToString() == "AQ==", "wire file bytes base64");
