@@ -36,6 +36,7 @@ internal sealed class OpenCodeMarkdownImageScope : IDisposable
     }
 
     internal OpenCodeImageScopeIdentity Identity { get; }
+    internal Func<string, CancellationToken, Task<string>>? ReadInstructionFileAsync { get; init; }
     internal bool IsCurrent => !_disposed && !_token.IsCancellationRequested && _current();
 
     internal async Task<OpenCodeImageFile> ReadAsync(string reference, CancellationToken renderToken)

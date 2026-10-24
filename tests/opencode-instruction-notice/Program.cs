@@ -32,6 +32,7 @@ internal static class Program
         NoticeConflictStrippedUtf16AndIdempotent();
         await FakeHandlerSanitizesAndPreservesCursor();
         await RemoteInstructionRead();
+        await InstructionSources();
         var lifecycleAssertions = ConversationLifecycle.Run();
         var redesignAssertions = RedesignRegression.Run();
         var wave5Assertions = Wave5Timeline.Run();
@@ -139,7 +140,7 @@ internal static class Program
         Check(safe.Type == OpenCodeMessageTypes.System, "matched type preserved");
         Check(safe.Id == "msg_notice", "matched id preserved");
         Check(safe.Description == "指令已更新，来源：AGENTS.md、opencode.json", "summary built from source keys");
-        Check(safe.Text is null, "raw text stripped on match");
+        Check(safe.Text is null && safe.InstructionBody == "RAW_SENTINEL", "instruction body retained only in explicit non-serialized viewer field");
         Check(!Has(safe, "RAW_SENTINEL"), "no raw text leaks into the safe projection");
         Check(safe.Time is { Created: 12.5 }, "created preserved (streamed/completed dropped)");
 
@@ -327,6 +328,8 @@ internal static class Program
         Check(response.Data is { Count: 2 }, "message count and order preserved");
         Check(response.Cursor is { Previous: "CURSOR_PREV", Next: "CURSOR_NEXT" }, "cursor returned verbatim");
         Check(response.Data![0].Description == "指令已更新，来源：AGENTS.md", "notice sanitized through the client boundary");
+        Check(OpenCodeInstructionNoticeProjection.TryGetInstructionsNotice(response.Data[0], out var notice)
+            && notice.Body == secret, "in1.client-retains-supplied-body-for-explicit-viewer");
         Check(!Serialize(response.Data[0]).Contains(secret, StringComparison.Ordinal), "secrets stripped end to end");
         Check(response.Data[1].Text == "visible text", "ordinary message content preserved in place");
 
@@ -378,6 +381,42 @@ internal static class Program
         oversized = false;
         bytes = new byte[] { 0xff };
         await Expect<OpenCodeProtocolException>(() => client.ReadTextFileAsync("/repo 项目", "rules/AGENTS #%.md"), "rp3.invalid-utf8-visible-error");
+    }
+
+    private static async Task InstructionSources()
+    {
+        const string catalog = "The Code Mode tool catalog has changed.\n# Code Mode\nCatalog text";
+        var plan = OpenCodeInstructionSource.Resolve(catalog, "/repo", "core/codemode", false);
+        Check(plan.Route == OpenCodeInstructionRoute.Text && plan.Value == catalog, "in1.logical-codemode-key-displays-notice-body-no-file-read");
+        Check(OpenCodeInstructionSource.Resolve(catalog, "/repo", "/nix/store/rules-AGENTS.md", true).Route == OpenCodeInstructionRoute.Text,
+            "in1.supplied-file-body-precedes-wsl-read");
+        Check(OpenCodeInstructionSource.Resolve(null, "/repo", "/repo/rules/AGENTS.md", true) is { Route: OpenCodeInstructionRoute.Http, Value: "rules/AGENTS.md" },
+            "in1.inside-wsl-session-keeps-fs-read");
+        Check(OpenCodeInstructionSource.Resolve(null, "/repo", "AGENTS.md", false) is { Route: OpenCodeInstructionRoute.Http, Value: "AGENTS.md" },
+            "in1.inside-remote-session-keeps-fs-read");
+        Check(OpenCodeInstructionSource.Resolve(null, "/repo", "/nix/store/rules-AGENTS.md", true) is { Route: OpenCodeInstructionRoute.WslMapping, Value: "/nix/store/rules-AGENTS.md" },
+            "in1.outside-wsl-file-uses-host-mapping");
+        Check(OpenCodeInstructionSource.Resolve(null, "/repo", "/nix/store/rules-AGENTS.md", false) is { Route: OpenCodeInstructionRoute.Unavailable, Reason: "此文件不在会话目录内，远程连接无法读取。" },
+            "in1.remote-outside-specific-unavailable-not-404");
+        Check(OpenCodeInstructionSource.Resolve(null, "/repo", "core/codemode", true).Route == OpenCodeInstructionRoute.Unavailable,
+            "in1.logical-key-without-body-never-fetched-as-file");
+        foreach (var path in new[] { "../AGENTS.md", "/repo/../AGENTS.md", "file:///etc/rules", "/etc/\nrules" })
+            Check(OpenCodeInstructionSource.Resolve(null, "/repo", path, true).Route == OpenCodeInstructionRoute.Unavailable, "in1.invalid-path-blocked:" + path);
+        Check(!OpenCodeInstructionSource.ReadFailure(new OpenCodeApiException(404, null, null, "HTTP 404 GET api/fs/read/{path}")).Contains("404"),
+            "in1.file-not-found-message-does-not-leak-raw-api-error");
+        var file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "in1-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            await System.IO.File.WriteAllBytesAsync(file, Encoding.UTF8.GetBytes("\uFEFF# 指令\n真实内容"));
+            Check(await OpenCodeInstructionSource.ReadLocalUtf8Async(file, CancellationToken.None) == "# 指令\n真实内容", "in1.local-byte-reader-strict-utf8-bom");
+            await System.IO.File.WriteAllBytesAsync(file, new byte[] { 0xff });
+            await Expect<DecoderFallbackException>(() => OpenCodeInstructionSource.ReadLocalUtf8Async(file, CancellationToken.None), "in1.invalid-local-utf8-rejected");
+            using (var stream = System.IO.File.OpenWrite(file)) stream.SetLength(OpenCodeInstructionSource.MaximumBytes + 1L);
+            await Expect<System.IO.IOException>(() => OpenCodeInstructionSource.ReadLocalUtf8Async(file, CancellationToken.None), "in1.local-size-bound-before-allocation");
+            using var canceled = new CancellationTokenSource(); canceled.Cancel();
+            await Expect<OperationCanceledException>(() => OpenCodeInstructionSource.ReadLocalUtf8Async(file, canceled.Token), "in1.local-read-cancelled");
+        }
+        finally { System.IO.File.Delete(file); }
     }
 
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler

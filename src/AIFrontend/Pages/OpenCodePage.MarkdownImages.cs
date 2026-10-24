@@ -42,7 +42,7 @@ public sealed partial class OpenCodePage
     /// current must compare source/client/revision/all generations and selected session; child callers additionally
     /// require successful ancestry and current child-window binding. Identity.SessionId is the CHILD for child scopes.
     /// </summary>
-    internal static OpenCodeMarkdownImageScope BindMarkdownImages(FrameworkElement subtree,
+    internal OpenCodeMarkdownImageScope BindMarkdownImages(FrameworkElement subtree,
         OpenCodeImageScopeIdentity identity, Func<bool> current, CancellationToken bindingToken)
     {
         var scope = new OpenCodeMarkdownImageScope(identity, current, async token =>
@@ -52,7 +52,10 @@ public sealed partial class OpenCodePage
             if (!string.Equals(info.Id, identity.SessionId, StringComparison.Ordinal))
                 throw new InvalidOperationException("图片会话信息不匹配。");
             return info.Location?.Directory ?? throw new InvalidOperationException("会话未提供图片目录。");
-        }, identity.Client.ReadImageFileAsync, bindingToken);
+        }, identity.Client.ReadImageFileAsync, bindingToken)
+        {
+            ReadInstructionFileAsync = CreateInstructionFileReader(identity, current, bindingToken),
+        };
         OpenCodeImageContext.Bind(subtree, scope);
         return scope;
     }

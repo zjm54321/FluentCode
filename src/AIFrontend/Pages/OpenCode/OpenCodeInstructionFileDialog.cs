@@ -7,13 +7,13 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>Explicit remote read only. Native selectable text; no local filesystem access or instruction-body projection.</summary>
+/// <summary>Explicit read-only instruction viewing: supplied text first, otherwise the bound session's file reader.</summary>
 internal sealed class OpenCodeInstructionFileDialog : IDisposable
 {
     private CancellationTokenSource? _read;
     private ContentDialog? _dialog;
 
-    internal async void Open(FrameworkElement owner, string path)
+    internal async void Open(FrameworkElement owner, string path, string? body = null)
     {
         if (_dialog is not null || owner.XamlRoot is null) return;
         using var read = _read = new CancellationTokenSource();
@@ -42,8 +42,16 @@ internal sealed class OpenCodeInstructionFileDialog : IDisposable
             try
             {
                 if (scope is not { IsCurrent: true }) throw new InvalidOperationException("无法读取：会话连接已失效。");
-                var directory = await OpenCodeTurnChipSession.For(scope).Directory(read.Token);
-                var content = await scope.Identity.Client.ReadTextFileAsync(directory, path, read.Token);
+                string content;
+                if (OpenCodeInstructionSource.BoundedBody(body) is { } supplied) content = supplied;
+                else if (scope.ReadInstructionFileAsync is { } reader) content = await reader(path, read.Token);
+                else
+                {
+                    var directory = await OpenCodeTurnChipSession.For(scope).Directory(read.Token);
+                    var plan = OpenCodeInstructionSource.Resolve(body, directory, path, false);
+                    if (plan.Route == OpenCodeInstructionRoute.Unavailable) throw new System.IO.IOException(plan.Reason);
+                    content = await scope.Identity.Client.ReadTextFileAsync(directory, plan.Value, read.Token);
+                }
                 if (!read.IsCancellationRequested && scope.IsCurrent && ReferenceEquals(scope, OpenCodeImageContext.Find(owner)))
                     text.Text = content;
             }
@@ -51,8 +59,7 @@ internal sealed class OpenCodeInstructionFileDialog : IDisposable
             catch (Exception error)
             {
                 if (!read.IsCancellationRequested)
-                    text.Text = error is OpenCodeException or ArgumentException or InvalidOperationException
-                        ? "无法读取\n" + error.Message : "无法读取：远程文件读取失败。";
+                    text.Text = OpenCodeInstructionSource.ReadFailure(error);
             }
         }
         try

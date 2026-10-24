@@ -256,7 +256,7 @@ internal static class Wave5Timeline
     }
 
     // H5: synthetic "Instructions from:" messages and system notices render as the "指令" row (file list in detail);
-    // the instruction body never reaches any presenter, text probe, or fingerprint.
+    // the instruction body reaches only the explicit viewer DTO, never timeline text or fingerprints.
     private static void InstructionRows()
     {
         ConversationViewTestProbe.Reset();
@@ -274,6 +274,7 @@ internal static class Wave5Timeline
         Check(dto.SourceKeys.SequenceEqual(new[] { "/repo/AGENTS.md", "/repo/sub/AGENTS.md" }) && dto.MessageId == "msg_instr",
             "h5.synthetic-instruction-paths-projected");
         Check(OpenCodeStepRunPresentation.DescribeInstructionTarget(dto) == "AGENTS.md 等 2 项", "h5.instruction-row-target");
+        Check(dto.Body == synthetic.Text, "in1.synthetic-instruction-body-available-for-explicit-viewer");
         Check(!ConversationViewTestProbe.Records.Any(r => r.Input is string t && t.Contains(Secret, StringComparison.Ordinal))
               && !ConversationViewTestProbe.Records.Any(r => r.Operation == "Render"), "h5.no-instruction-body-rendered");
         var entry = ((System.Collections.IDictionary)typeof(OpenCodeConversationView)

@@ -82,6 +82,10 @@ public sealed record OpenCodeMessage
     [JsonPropertyName("text")]
     public string? Text { get; init; }
 
+    /// <summary>Bounded instruction body for explicit read-only viewing, never serialized into timeline fingerprints.</summary>
+    [JsonIgnore]
+    internal string? InstructionBody { get; init; }
+
     /// <summary>synthetic/system 的描述。</summary>
     [JsonPropertyName("description")]
     public string? Description { get; init; }

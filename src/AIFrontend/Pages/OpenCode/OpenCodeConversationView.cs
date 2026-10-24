@@ -1297,7 +1297,7 @@ public sealed class OpenCodeConversationView : StackPanel
         => OpenCodeInstructionNoticeProjection.TryGetInstructionsNotice(message, out _)
             || OpenCodeStepRunPresentation.TryGetInstructionPaths(message, out _);
 
-    /// <summary>取指令消息的安全投影（system 通知原样投影；synthetic 指令只取路径列表，绝不取正文）。</summary>
+    /// <summary>指令正文仅保留给显式只读查看，不进入时间线文本或指纹。</summary>
     private static bool TryGetInstructionNotice(OpenCodeMessage message, out OpenCodeInstructionNotice notice)
     {
         if (OpenCodeInstructionNoticeProjection.TryGetInstructionsNotice(message, out notice))
@@ -1313,7 +1313,10 @@ public sealed class OpenCodeConversationView : StackPanel
                     ? "已加载指令"
                     : "已加载 " + paths.Length.ToString(CultureInfo.InvariantCulture) + " 个指令文件",
                 paths,
-                message.Time is { Created: > 0 } time ? time.Created : (double?)null);
+                message.Time is { Created: > 0 } time ? time.Created : (double?)null)
+            {
+                Body = OpenCodeInstructionSource.BoundedBody(message.InstructionBody ?? message.Text),
+            };
             return true;
         }
 
@@ -1323,7 +1326,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
     /// <summary>
     /// synthetic 指令消息的客户端安全化：只保留 id / type / time.created 与 metadata.instruction.paths，
-    /// 正文（指令全文）与其余字段不进入指纹、呈现或任何视图。非指令消息原样返回（同一引用）。
+    /// 正文仅存入不序列化的查看器字段，其余字段不进入指纹或时间线呈现。非指令消息原样返回。
     /// </summary>
     private static OpenCodeMessage SanitizeSyntheticInstruction(OpenCodeMessage message)
     {
@@ -1339,6 +1342,7 @@ public sealed class OpenCodeConversationView : StackPanel
             Type = message.Type,
             Time = message.Time is { } time ? new OpenCodeMessageTime { Created = time.Created } : null,
             Metadata = JsonSerializer.SerializeToElement(new { instruction = new { paths } }),
+            InstructionBody = OpenCodeInstructionSource.BoundedBody(message.InstructionBody ?? message.Text),
         };
     }
 

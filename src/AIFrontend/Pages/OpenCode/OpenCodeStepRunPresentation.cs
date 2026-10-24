@@ -445,7 +445,7 @@ internal static class OpenCodeStepRunPresentation
 
     /// <summary>
     /// synthetic 指令消息（<c>metadata.instruction.paths</c>，正文以 “Instructions from:” 开头）：只取文件路径列表，
-    /// 绝不读取或显示正文。最多 32 项，空白项忽略。
+    /// 时间线只显示路径（正文另供显式查看）。最多 32 项，空白项忽略。
     /// </summary>
     internal static bool TryGetInstructionPaths(OpenCodeMessage? message, out System.Collections.Immutable.ImmutableArray<string> paths)
     {

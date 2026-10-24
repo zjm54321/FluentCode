@@ -13,7 +13,11 @@ public record OpenCodeInstructionNotice(
     string? MessageId,
     string Summary,
     ImmutableArray<string> SourceKeys,
-    double? Created);
+    double? Created)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? Body { get; init; }
+}
 
 /// <summary>
 /// 将 <see cref="OpenCodeMessageTypes.System"/> 且 metadata.notice == "instructions" 的消息
@@ -30,7 +34,7 @@ public static class OpenCodeInstructionNoticeProjection
     /// <summary>
     /// 命中时返回仅含 Id、Type、Description、安全 metadata（notice/instructionSources）
     /// 与只含 Created 的新 Time 的消息；其余字段（Text/Content/Snapshot/provider/Error/Retry/
-    /// subagent 等）一律丢弃。未命中返回原消息不变。重复 sanitize 语义稳定。
+    /// subagent 等）一律丢弃；有界正文仅存入不序列化的显式查看字段。未命中返回原消息不变。
     /// </summary>
     public static OpenCodeMessage SanitizeForClient(OpenCodeMessage message)
     {
@@ -52,6 +56,7 @@ public static class OpenCodeInstructionNoticeProjection
             Id = message.Id,
             Type = message.Type,
             Description = notice.Summary,
+            InstructionBody = notice.Body,
             Metadata = metadata,
             Time = notice.Created is { } created
                 ? new OpenCodeMessageTime { Created = created }
@@ -93,7 +98,10 @@ public static class OpenCodeInstructionNoticeProjection
         var summary = BuildSummary(sourceKeys, message.Description);
         var created = ReadCreated(message.Time);
 
-        notice = new OpenCodeInstructionNotice(message.Id, summary, sourceKeys, created);
+        notice = new OpenCodeInstructionNotice(message.Id, summary, sourceKeys, created)
+        {
+            Body = OpenCodeInstructionSource.BoundedBody(message.InstructionBody ?? message.Text),
+        };
         return true;
     }
 

@@ -17,7 +17,7 @@ internal sealed class OpenCodeInstructionNoticeView
     {
         _button.Click += (_, _) =>
         {
-            if (_notice.SourceKeys.Length == 1) _viewer.Open(_button, _notice.SourceKeys[0]);
+            if (_notice.SourceKeys.Length <= 1) _viewer.Open(_button, _notice.SourceKeys.IsDefaultOrEmpty ? "指令正文" : _notice.SourceKeys[0], _notice.Body);
         };
         Update(notice);
     }
@@ -32,7 +32,7 @@ internal sealed class OpenCodeInstructionNoticeView
         var name = count == 0 ? "来源未提供" : OpenCodeStepRunPresentation.ShortSourceName(notice.SourceKeys[0]);
         var label = "指令 " + name + (count > 1 ? " 等 " + count + " 个 ▾" : string.Empty);
         _button.Content = new TextBlock { Text = label, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-        _button.IsEnabled = count > 0;
+        _button.IsEnabled = count > 0 || notice.Body is not null;
         _button.Flyout = null;
         if (count > 1)
         {
@@ -41,7 +41,8 @@ internal sealed class OpenCodeInstructionNoticeView
             {
                 var item = new MenuFlyoutItem { Text = OpenCodeStepRunPresentation.ShortSourceName(path) };
                 ToolTipService.SetToolTip(item, path);
-                item.Click += (_, _) => _viewer.Open(_button, path);
+                // Multi-source system notices contain one combined body, not one file per source key.
+                item.Click += (_, _) => _viewer.Open(_button, path, notice.Body);
                 flyout.Items.Add(item);
             }
             _button.Flyout = flyout;
