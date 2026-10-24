@@ -54,5 +54,6 @@ internal static class ScrollBarTests
         var assistantDetail = OpenCodeScrollBarProjection.DetailText(false, "Assistant message");
         Check(!string.IsNullOrWhiteSpace(assistantDetail) && assistantDetail == "AI 回复\nAssistant message", "SB3b: assistant detail is non-empty role plus full source text");
         Console.WriteLine($"Scroll bar computations passed: {_passed}");
+        AnnotatedScrollBarBridgeTests.Run();
     }
 }

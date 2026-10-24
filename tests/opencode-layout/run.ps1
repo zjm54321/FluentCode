@@ -82,6 +82,8 @@ $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enabl
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += '"' + (Join-Path $src 'Pages/OpenCode/OpenCodeScrollBarProjection.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'ScrollBarTests.cs') + '"'
+$arguments += '"' + (Join-Path $src 'Pages/OpenCodePage.AnnotatedScrollBar.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'AnnotatedScrollBarBridgeTests.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
