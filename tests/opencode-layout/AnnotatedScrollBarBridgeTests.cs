@@ -13,14 +13,15 @@ internal static class AnnotatedScrollBarBridgeTests
     private static void Check(bool condition, string name)
     {
         if (!condition) throw new Exception(name);
-        _passed++; Console.WriteLine("PASS: SB4: " + name);
+        _passed++; Console.WriteLine("PASS: SB4/SB5: " + name);
     }
     internal static void Run()
     {
         var page = new OpenCodePage();
         page.LoadBridge();
         var bar = page.Bar;
-        Check(bar.HandledEventsToo == 2, "exit/capture loss observed even when a native child handles the event");
+        Check(bar.HandledEventsToo == 4, "enter/move/exit/capture loss observed even when a native child handles the event");
+        Check(!page.Tip.IsHitTestVisible, "native detail pill cannot intercept pointer input over the left side of the rail");
         bar.RaiseEntered();
         Check(page.Detail() is string detail && detail == "AI 回复\nReply", "native detail still uses nearest conversation text while hovered");
         page.Tip.IsOpen = true;
@@ -36,6 +37,36 @@ internal static class AnnotatedScrollBarBridgeTests
             "pointer-exit layout does not SetValues or refresh unchanged labels");
         page.Tip.IsOpen = true;
         Check(!page.Tip.IsOpen, "delayed native tooltip open after exit is immediately closed");
+
+        bar.RaiseEntered(); page.Tip.IsOpen = true;
+        bar.RaiseExited(2, 100);
+        Check(!page.Tip.IsOpen && page.Detail() is null,
+            "left exit inside outer control padding but outside native interaction grid closes detail");
+        page.Tip.IsOpen = true;
+        Check(!page.Tip.IsOpen && page.Detail() is null, "delayed detail request/open after left exit cannot reopen pill");
+        bar.RaiseEntered(); page.Tip.IsOpen = true;
+        bar.RaiseExited(-40, 100);
+        Check(!page.Tip.IsOpen && page.Detail() is null, "left exit over the native pill closes detail");
+        bar.RaiseEntered(-40, 100); page.Tip.IsOpen = true;
+        Check(!page.Tip.IsOpen && page.Detail() is null, "popup-induced enter outside rail does not restore hover");
+
+        bar.RaiseMoved(10, 100); page.Tip.IsOpen = true;
+        Check(page.Tip.IsOpen && page.Detail() is string, "fresh movement inside restores ordinary hover");
+        bar.RaiseMoved(4.5, 100);
+        Check(!page.Tip.IsOpen && page.Detail() is null, "left-edge rounding tolerance agrees with native hit area");
+        bar.RaiseMoved(10, 100); page.Tip.IsOpen = true;
+        bar.RaiseExited(2, 100, 1000);
+        bar.RaiseMoved(10, 100, 999); page.Tip.IsOpen = true;
+        Check(!page.Tip.IsOpen && page.Detail() is null, "stale inside move cannot undo newer left exit");
+        bar.RaiseMoved(10, 100, 1001); page.Tip.IsOpen = true;
+        bar.RaiseExited(2, 100, 1000);
+        Check(page.Tip.IsOpen && page.Detail() is string, "quick left-right jitter retains newest inside position");
+        bar.RaiseMoved(80, 100); page.Tip.IsOpen = true;
+        Check(!page.Tip.IsOpen && page.Detail() is null, "quick jitter ending outside right leaves no pill");
+        bar.RaiseMoved(10, 100); page.Tip.IsOpen = true;
+        bar.RaiseExited(10, 8);
+        Check(!page.Tip.IsOpen, "button row outside native interaction grid is not detail hover");
+
         bar.RaiseEntered(); page.Tip.IsOpen = true;
         bar.RaiseCaptureLost();
         Check(!page.Tip.IsOpen && bar.ScrollController.Values == values && bar.Labels.Mutations == labels,
@@ -49,7 +80,7 @@ internal static class AnnotatedScrollBarBridgeTests
         Check(page.Tip.IsOpen, "unload removes tooltip opened subscription");
         page.Tip.IsOpen = false;
         page.LoadBridge();
-        Check(bar.HandlerCount == 2 && !page.Tip.IsOpen, "reload starts clean without duplicate exit handlers");
+        Check(bar.HandlerCount == 4 && !page.Tip.IsOpen && page.Detail() is null, "reload starts clean without duplicate handlers or stale position");
         page.UnloadBridge();
         Console.WriteLine($"Scroll bar bridge passed: {_passed}");
     }
@@ -65,8 +96,9 @@ namespace AIFrontend.Pages
         internal readonly ToolTip Tip = new();
         public OpenCodePage()
         {
-            var rail = new FrameworkElement { Name = "PART_ToolTipRail", NativeToolTip = Tip };
-            ConversationScrollBar.Children.Add(rail);
+            var grid = new FrameworkElement { Name = "PART_VerticalGrid", ActualWidth = 48, ActualHeight = 468, Left = 4, Top = 16 };
+            grid.Children.Add(new FrameworkElement { Name = "PART_ToolTipRail", NativeToolTip = Tip });
+            ConversationScrollBar.Children.Add(grid);
         }
         internal AnnotatedScrollBar Bar => ConversationScrollBar;
         internal void LoadBridge() => ConversationScrollBar_Loaded(this, new());
@@ -92,34 +124,48 @@ namespace Microsoft.UI.Xaml
     public delegate void RoutedEventHandler(object sender, RoutedEventArgs args);
     public class UIElement : DependencyObject
     {
-        public static readonly object PointerExitedEvent = new(), PointerCaptureLostEvent = new();
+        public static readonly object PointerEnteredEvent = new(), PointerMovedEvent = new(), PointerExitedEvent = new(), PointerCaptureLostEvent = new();
         private readonly Dictionary<object, PointerEventHandler> _handlers = new();
         public int HandledEventsToo { get; private set; }
         public int HandlerCount => _handlers.Count;
-        public event PointerEventHandler? PointerEntered;
+        public bool IsHitTestVisible { get; set; } = true;
+        private ulong _timestamp;
         public void AddHandler(object key, PointerEventHandler handler, bool handledEventsToo)
         { _handlers.Add(key, handler); if (handledEventsToo) HandledEventsToo++; }
         public void RemoveHandler(object key, PointerEventHandler handler) => _handlers.Remove(key);
-        public void RaiseEntered() => PointerEntered?.Invoke(this, new(10, 100));
-        public void RaiseExited(double x, double y) => _handlers[PointerExitedEvent](this, new(x, y));
-        public void RaiseCaptureLost() => _handlers[PointerCaptureLostEvent](this, new(10, 100));
+        private void Raise(object key, double x, double y, ulong? timestamp)
+        {
+            var time = timestamp ?? _timestamp + 1;
+            _timestamp = Math.Max(time, _timestamp);
+            _handlers[key](this, new(x, y, time));
+        }
+        public void RaiseEntered(double x = 10, double y = 100) => Raise(PointerEnteredEvent, x, y, null);
+        public void RaiseMoved(double x, double y, ulong? timestamp = null) => Raise(PointerMovedEvent, x, y, timestamp);
+        public void RaiseExited(double x, double y, ulong? timestamp = null) => Raise(PointerExitedEvent, x, y, timestamp);
+        public void RaiseCaptureLost() => Raise(PointerCaptureLostEvent, 10, 100, null);
     }
     public class FrameworkElement : UIElement
     {
         public string Name { get; set; } = "";
         public double ActualWidth { get; set; }
         public double ActualHeight { get; set; }
+        public double Left { get; set; }
+        public double Top { get; set; }
         public object? NativeToolTip { get; set; }
     }
 }
 namespace Microsoft.UI.Xaml.Input
 {
     public delegate void PointerEventHandler(object sender, PointerRoutedEventArgs args);
-    public sealed class PointerRoutedEventArgs(double x, double y) : RoutedEventArgs
+    public sealed class PointerRoutedEventArgs(double x, double y, ulong timestamp) : RoutedEventArgs
     {
-        public PointProbe GetCurrentPoint(object relativeTo) => new(x, y);
+        public PointProbe GetCurrentPoint(FrameworkElement relativeTo) => new(x - relativeTo.Left, y - relativeTo.Top, timestamp);
     }
-    public sealed class PointProbe(double x, double y) { public (double X, double Y) Position => (x, y); }
+    public sealed class PointProbe(double x, double y, ulong timestamp)
+    {
+        public (double X, double Y) Position => (x, y);
+        public ulong Timestamp => timestamp;
+    }
 }
 namespace Microsoft.UI.Xaml.Media
 {

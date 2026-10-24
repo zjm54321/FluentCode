@@ -17,6 +17,8 @@ public sealed partial class OpenCodePage
     private CompositionPropertySet? _annotatedSources;
     private (double Maximum, double Offset, double ViewportLength)? _annotatedPosition;
     private ToolTip? _annotatedDetailToolTip;
+    private FrameworkElement? _annotatedHitArea;
+    private (double X, double Y, ulong Timestamp)? _annotatedPointerPosition;
     private bool _annotatedPointerInside;
 
     // Native AnnotatedScrollBar controller, bridged to the existing single ScrollViewer owner.
@@ -24,10 +26,18 @@ public sealed partial class OpenCodePage
     private void ConversationScrollBar_Loaded(object sender, RoutedEventArgs e)
     {
         ConversationScrollBar.ApplyTemplate();
-        _annotatedDetailToolTip = FindAnnotatedDetailToolTip(ConversationScrollBar);
-        if (_annotatedDetailToolTip is { } toolTip) toolTip.Opened += AnnotatedDetailToolTipOpened;
-        ConversationScrollBar.PointerEntered += AnnotatedPointerEntered;
+        _annotatedHitArea = FindAnnotatedPart(ConversationScrollBar, "PART_VerticalGrid");
+        if (FindAnnotatedPart(ConversationScrollBar, "PART_ToolTipRail") is { } rail)
+            _annotatedDetailToolTip = ToolTipService.GetToolTip(rail) as ToolTip;
+        if (_annotatedDetailToolTip is { } toolTip)
+        {
+            // Public UIElement property on the existing native ToolTip; the pill must not own hover input.
+            toolTip.IsHitTestVisible = false;
+            toolTip.Opened += AnnotatedDetailToolTipOpened;
+        }
         // Observe handled child events too: native pointer capture/tooltip ownership can swallow ordinary handlers.
+        ConversationScrollBar.AddHandler(UIElement.PointerEnteredEvent, new PointerEventHandler(AnnotatedPointerMoved), true);
+        ConversationScrollBar.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(AnnotatedPointerMoved), true);
         ConversationScrollBar.AddHandler(UIElement.PointerExitedEvent, new PointerEventHandler(AnnotatedPointerExited), true);
         ConversationScrollBar.AddHandler(UIElement.PointerCaptureLostEvent, new PointerEventHandler(AnnotatedPointerCaptureLost), true);
         _annotatedSources = ElementCompositionPreview.GetElementVisual(ConversationScrollBar).Compositor.CreatePropertySet();
@@ -46,11 +56,14 @@ public sealed partial class OpenCodePage
     private void ConversationScrollBar_Unloaded(object sender, RoutedEventArgs e)
     {
         CloseAnnotatedDetail();
-        ConversationScrollBar.PointerEntered -= AnnotatedPointerEntered;
+        ConversationScrollBar.RemoveHandler(UIElement.PointerEnteredEvent, new PointerEventHandler(AnnotatedPointerMoved));
+        ConversationScrollBar.RemoveHandler(UIElement.PointerMovedEvent, new PointerEventHandler(AnnotatedPointerMoved));
         ConversationScrollBar.RemoveHandler(UIElement.PointerExitedEvent, new PointerEventHandler(AnnotatedPointerExited));
         ConversationScrollBar.RemoveHandler(UIElement.PointerCaptureLostEvent, new PointerEventHandler(AnnotatedPointerCaptureLost));
         if (_annotatedDetailToolTip is { } toolTip) toolTip.Opened -= AnnotatedDetailToolTipOpened;
         _annotatedDetailToolTip = null;
+        _annotatedHitArea = null;
+        _annotatedPointerPosition = null;
         MessageScroll.ViewChanged -= AnnotatedViewportChanged;
         MessageScroll.LayoutUpdated -= AnnotatedLayoutUpdated;
         ConversationScrollBar.ScrollController.PanningInfo?.SetPanningElementExpressionAnimationSources(null!, "", "", "", "");
@@ -97,29 +110,49 @@ public sealed partial class OpenCodePage
 
     private void ConversationScrollBar_DetailLabelRequested(AnnotatedScrollBar sender, AnnotatedScrollBarDetailLabelRequestedEventArgs args)
     {
-        if (!_annotatedPointerInside || _scrollAnnotations.Count == 0) return;
+        if (!_annotatedPointerInside || !AnnotatedPointerIsInHitArea() || _scrollAnnotations.Count == 0) return;
         var item = _scrollAnnotations.OrderBy(a => Math.Abs(a.Offset - args.ScrollOffset)).First();
         // Native DetailLabelTemplate binds Content as text, not as a child UIElement.
         args.Content = OpenCodeScrollBarProjection.DetailText(item.User, item.Text);
     }
 
-    private void AnnotatedPointerEntered(object sender, PointerRoutedEventArgs args) => _annotatedPointerInside = true;
+    private void AnnotatedPointerMoved(object sender, PointerRoutedEventArgs args)
+    {
+        if (UpdateAnnotatedPointerPosition(args) && !_annotatedPointerInside) CloseAnnotatedDetail();
+    }
 
     private void AnnotatedPointerExited(object sender, PointerRoutedEventArgs args)
     {
-        var point = args.GetCurrentPoint(ConversationScrollBar).Position;
-        // Routed exits between template children (or into a tooltip overlapping the rail) are not rail exits.
-        if (point.X >= 0 && point.X < ConversationScrollBar.ActualWidth
-            && point.Y >= 0 && point.Y < ConversationScrollBar.ActualHeight) return;
-        CloseAnnotatedDetail();
+        // Test the native interaction grid, not the control's padding/button rows or the popup.
+        // Genuine child-to-child exits inside that grid retain hover; left/right exits both invalidate it.
+        if (UpdateAnnotatedPointerPosition(args) && !_annotatedPointerInside) CloseAnnotatedDetail();
     }
 
     private void AnnotatedPointerCaptureLost(object sender, PointerRoutedEventArgs args) => CloseAnnotatedDetail();
 
+    private bool UpdateAnnotatedPointerPosition(PointerRoutedEventArgs args)
+    {
+        if (_annotatedHitArea is not { } hitArea) return false;
+        var point = args.GetCurrentPoint(hitArea);
+        // Input timestamps are monotonic microseconds. A late enter/move must not undo a newer exit.
+        if (_annotatedPointerPosition is { } previous && point.Timestamp < previous.Timestamp) return false;
+        _annotatedPointerPosition = (point.Position.X, point.Position.Y, point.Timestamp);
+        _annotatedPointerInside = AnnotatedPointerIsInHitArea();
+        return true;
+    }
+
+    private bool AnnotatedPointerIsInHitArea()
+    {
+        // Match WinUI's IsOutOfVerticalGridBounds 1px rounding tolerance, including the left edge.
+        return _annotatedHitArea is { } hitArea && _annotatedPointerPosition is { } point
+            && point.X >= 1 && point.X <= hitArea.ActualWidth - 1
+            && point.Y >= 1 && point.Y <= hitArea.ActualHeight - 1;
+    }
+
     private void AnnotatedDetailToolTipOpened(object sender, RoutedEventArgs args)
     {
         // ToolTipService can complete a delayed open after the native exit close; do not leave a stale pill.
-        if (!_annotatedPointerInside) CloseAnnotatedDetail();
+        if (!_annotatedPointerInside || !AnnotatedPointerIsInHitArea()) CloseAnnotatedDetail();
     }
 
     private void CloseAnnotatedDetail()
@@ -130,12 +163,11 @@ public sealed partial class OpenCodePage
         if (_annotatedDetailToolTip is { } toolTip) toolTip.IsOpen = false;
     }
 
-    private static ToolTip? FindAnnotatedDetailToolTip(DependencyObject root)
+    private static FrameworkElement? FindAnnotatedPart(DependencyObject root, string name)
     {
-        if (root is FrameworkElement { Name: "PART_ToolTipRail" } rail
-            && ToolTipService.GetToolTip(rail) is ToolTip toolTip) return toolTip;
+        if (root is FrameworkElement element && element.Name == name) return element;
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-            if (FindAnnotatedDetailToolTip(VisualTreeHelper.GetChild(root, i)) is { } child) return child;
+            if (FindAnnotatedPart(VisualTreeHelper.GetChild(root, i), name) is { } child) return child;
         return null;
     }
 }
