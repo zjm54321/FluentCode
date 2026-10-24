@@ -18,11 +18,10 @@ internal sealed partial class ComposerStatusHost
     }
     private sealed class SyncState
     {
-        internal bool IsSuspendedForRecovery;
         internal OpenCodeComposerInputState State;
     }
     private readonly ControlState _statusBar = new(), _statusText = new(), _statusRing = new(),
-        _statusIcon = new(), _statusDiscardButton = new();
+        _statusIcon = new();
     private SyncState? _sync;
     private string? _slotUnavailableReason, _localNote;
     private bool _picking;
@@ -34,6 +33,13 @@ internal sealed partial class ComposerStatusHost
         OpenCodeComposerSnapshot idle = new(default, "", null, OpenCodeComposerCatalogState.Closed,
             Array.Empty<OpenCodeComposerCommandRow>(), Array.Empty<OpenCodeComposerAttachmentRow>(),
             false, false, true, false, false, false, null);
+        foreach (var enhanced in new[] { false, true })
+        {
+            var draft = new ComposerStatusHost();
+            draft.RenderStatus(idle with { HasDraft = true, IsBoundDraft = true }, enhanced, false);
+            Program.Check(draft._statusBar.Visibility == Visibility.Collapsed,
+                "DD1 ordinary bound text/command/attachment draft has no synthetic discard-status row");
+        }
         var sending = idle with { IsBusy = true, IsProtected = true, HasDraft = true, IsBoundDraft = true };
         foreach (var route in new[] { "text", "command", "attachment", "new-session" })
         {
@@ -55,13 +61,17 @@ internal sealed partial class ComposerStatusHost
             var failed = new ComposerStatusHost();
             failed.RenderStatus(idle with { HasDraft = true, IsBoundDraft = true, Note = note }, true, false);
             Program.Check(failed._statusBar.Visibility == Visibility.Visible && failed._statusText.Text == note
-                && failed._statusDiscardButton.Visibility == Visibility.Visible && !failed._statusRing.IsActive,
-                "failure/unknown and draft discard remain visible");
+                && !failed._statusRing.IsActive,
+                "failure/unknown recovery note remains visible without draft-discard UI");
         }
-        var recovery = new ComposerStatusHost { _slotUnavailableReason = "恢复草稿失败。", _sync = new() { IsSuspendedForRecovery = true } };
+        var recovery = new ComposerStatusHost { _slotUnavailableReason = "恢复草稿失败。" };
         recovery.RenderStatus(sending, true, false);
-        Program.Check(recovery._statusBar.Visibility == Visibility.Visible && recovery._statusDiscardButton.Visibility == Visibility.Visible,
-            "actionable recovery stays visible even while the page is busy");
+        Program.Check(recovery._statusBar.Visibility == Visibility.Visible && recovery._statusText.Text == recovery._slotUnavailableReason,
+            "recovery explanation stays visible even while the page is busy");
+        var held = new ComposerStatusHost { _sync = new() { State = OpenCodeComposerInputState.HeldStale } };
+        held.RenderStatus(idle, false, false);
+        Program.Check(held._statusBar.Visibility == Visibility.Visible && held._statusText.Text.Contains("复制")
+            && !held._statusText.Text.Contains("丢弃"), "stale-input recovery retains copy guidance without advertising removed action");
         var local = new ComposerStatusHost { _localNote = "附件未添加；原附件保持不变。" };
         local.RenderStatus(sending, true, false);
         Program.Check(local._statusBar.Visibility == Visibility.Visible && local._statusText.Text == local._localNote,
@@ -72,9 +82,9 @@ internal sealed partial class ComposerStatusHost
             "actionable protection outside a send remains visible");
         var inactive = new ComposerStatusHost();
         inactive.RenderStatus(idle with { IsActive = false, IsBoundDraft = true }, true, true);
-        Program.Check(inactive._statusBar.Visibility == Visibility.Visible && inactive._statusDiscardButton.Visibility == Visibility.Visible,
-            "inactive draft retains its recovery/discard row");
-        Console.WriteLine("PASS: 12 production status-renderer checks; in-memory UI seams, no native UI.");
+        Program.Check(inactive._statusBar.Visibility == Visibility.Visible && inactive._statusText.Text.Contains("返回原会话")
+            && !inactive._statusText.Text.Contains("丢弃"), "inactive draft retains return-to-origin recovery without discard action");
+        Console.WriteLine("PASS: 15 production status-renderer checks; in-memory UI seams, no native UI.");
     }
 }
 

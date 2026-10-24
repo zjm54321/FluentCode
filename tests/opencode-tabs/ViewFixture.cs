@@ -38,7 +38,8 @@ internal sealed partial class OpenCodeComposerView
     internal void RecordOnly()=>_inputEvidence.RecordTextChanging(); // Native TextChanging before the queued flush; real sync pending basis.
     internal void NativeUnloaded()=>_lifetime.OnUnloaded();
     internal void NativeLoaded()=>_lifetime.OnLoaded();
-    internal void Discard(){_sync.ResolveDiscard();_inputEvidence.Refresh();}
+    // Fixture-only core reset reconciliation, not a user-facing discard action.
+    internal void Discard(){_sync.Reconcile();_inputEvidence.Refresh();}
     internal void BeginDraftSlotTransition(){}internal void EndDraftSlotTransition(){}
     internal void RequestRender(){}internal void RevokeSlotGestures(){_lifetime.OnEditorAttached();}
     internal Action Removal()

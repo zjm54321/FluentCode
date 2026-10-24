@@ -69,7 +69,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     // Context inserts a legal "@"; terminal is a separate editor/transport owned by the page.
     private readonly MenuFlyoutItem _contextItem;
     private readonly MenuFlyoutItem _terminalItem;
-    private readonly Flyout _discardFlyout;
     private readonly TextBlock _summaryText;
 
     // Draft chips
@@ -93,7 +92,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     private readonly FontIcon _statusIcon;
     private readonly ProgressRing _statusRing;
     private readonly TextBlock _statusText;
-    private readonly Button _statusDiscardButton;
     private int _sideQuestionPending;
 
     internal void SetSideQuestionPending(int count)
@@ -165,7 +163,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved;
     internal event EventHandler<OpenCodeComposerTokenEventArgs>? PickRequested;
     internal event EventHandler<OpenCodeComposerAttachmentRemovedEventArgs>? AttachmentRemoved;
-    internal event EventHandler<OpenCodeComposerTokenEventArgs>? DiscardRequested;
     internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
     /// <summary>Raised on the UI thread after a render whose visible/eligibility state changed (page refreshes Send/Stop).</summary>
     internal event EventHandler? StateChanged;
@@ -244,7 +241,6 @@ internal sealed class OpenCodeComposerView : StackPanel
         _terminalItem.Click += (_, _) => TerminalRequested?.Invoke(this, EventArgs.Empty);
         ToolTipService.SetToolTip(_terminalItem, OpenCodeComposerPlusMenu.TerminalTooltip);
         AutomationProperties.SetHelpText(_terminalItem, OpenCodeComposerPlusMenu.TerminalTooltip);
-        _discardFlyout = BuildDiscardFlyout();
         _addButton = new Button
         {
             Content = new FontIcon { Glyph = "\uE710", FontSize = 16 },
@@ -354,19 +350,14 @@ internal sealed class OpenCodeComposerView : StackPanel
         _statusRing = new ProgressRing { Width = 14, Height = 14, IsActive = false, Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Top };
         _statusText = Caption(string.Empty, 0.9);
         _statusText.VerticalAlignment = VerticalAlignment.Center;
-        _statusDiscardButton = new Button { Content = "丢弃草稿", Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center };
-        AutomationProperties.SetAutomationId(_statusDiscardButton, "OpenCodeComposerInactiveDiscard");
-        _statusDiscardButton.Flyout = _discardFlyout;
         var statusGrid = new Grid { ColumnSpacing = 8 };
         statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var glyphHost = new Grid();
         glyphHost.Children.Add(_statusIcon);
         glyphHost.Children.Add(_statusRing);
         Place(statusGrid, glyphHost, 0);
         Place(statusGrid, _statusText, 1);
-        Place(statusGrid, _statusDiscardButton, 2);
         _statusBar = new Border
         {
             CornerRadius = new CornerRadius(6),
@@ -609,7 +600,6 @@ internal sealed class OpenCodeComposerView : StackPanel
         if (_menuShown) _menuSession.Dismiss(this, _menuSession.Capture());
         CloseMention();
         _addButton.Flyout?.Hide();
-        _discardFlyout.Hide();
         _picking = false;
         _localNote = null;
         _localNoteToken = null;
@@ -1740,28 +1730,24 @@ internal sealed class OpenCodeComposerView : StackPanel
         string glyph = "\uE946"; // Info
         var tone = "neutral";
         var busy = false;
-        var offerDiscard = false;
         if (_slotUnavailableReason is { } unavailable)
         {
             text = unavailable;
             glyph = "\uE7BA";
             tone = "caution";
-            offerDiscard = _sync?.IsSuspendedForRecovery == true;
         }
         else if (inactiveBound)
         {
-            text = (s.Note ?? "草稿属于原会话；返回原会话或明确丢弃。")
-                + " 此草稿含命令或附件，不会转到当前会话；丢弃后才能在此输入新内容。";
+            text = (s.Note ?? "草稿属于原会话；请返回原会话继续。")
+                + " 此草稿含命令或附件，不会转到当前会话。";
             glyph = "\uE7BA";
             tone = "caution";
-            offerDiscard = !s.IsBusy;
         }
         else if (_sync?.State == OpenCodeComposerInputState.HeldStale)
         {
-            text = "这段输入未能同步到当前草稿（会话或草稿已变化），已保留显示但不能发送；丢弃草稿后可重新输入。";
+            text = "这段输入未能同步到当前草稿（会话或草稿已变化），已保留显示但不能发送；请先复制需要的内容。";
             glyph = "\uE7BA";
             tone = "caution";
-            offerDiscard = !s.IsBusy;
         }
         else if (s.IsBusy && _picking)
         {
@@ -1787,10 +1773,6 @@ internal sealed class OpenCodeComposerView : StackPanel
             glyph = tone == "caution" ? "\uE7BA" : "\uE946";
         }
 
-        // Discard lives with draft status/recovery, not among the four composer insertion modes.
-        offerDiscard |= (enhanced || s.IsBoundDraft) && !inactiveBound && !s.IsBusy;
-        if (offerDiscard) text ??= "草稿尚未发送。";
-
         if (_sideQuestionPending > 0 && !s.IsBusy)
         {
             var pending = $"/btw ({_sideQuestionPending}) · 正在回答旁路问题…";
@@ -1808,45 +1790,12 @@ internal sealed class OpenCodeComposerView : StackPanel
         _statusIcon.Style = ThemedForeground("FontIcon", tone == "caution" ? "SystemFillColorCautionBrush" : "TextFillColorSecondaryBrush");
         _statusBar.Style = OpenCodeThemedXaml.BrushStyle("Border",
             ("Background", tone == "caution" ? "SystemFillColorCautionBackgroundBrush" : "SubtleFillColorSecondaryBrush"));
-        _statusDiscardButton.Visibility = offerDiscard ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetName(_statusBar, text);
     }
 
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
-
-    private Flyout BuildDiscardFlyout()
-    {
-        var flyout = new Flyout { Placement = FlyoutPlacementMode.BottomEdgeAlignedRight };
-        OpenCodeComposerToken? opening = null;
-        long generation = -1;
-        flyout.Opening += (_, _) => { opening = _source().Token; generation = _lifetime.Generation; };
-        var confirm = new Button { Content = "丢弃", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
-        AutomationProperties.SetAutomationId(confirm, "OpenCodeComposerDiscardConfirm");
-        var cancel = new Button { Content = "保留" };
-        confirm.Click += (_, _) =>
-        {
-            flyout.Hide();
-            var fresh = _source();
-            if (!_lifetime.IsLive || generation != _lifetime.Generation || opening != fresh.Token || fresh.IsBusy) return;
-            opening = null; // One confirmation, never a reusable discard capability.
-            DiscardRequested?.Invoke(this, new(fresh.Token));
-            // Explicit discard is the only disposal of held input: only when it actually replaced the draft.
-            if (_source().Token != fresh.Token && _lifetime.IsLive) { _sync?.ResolveDiscard(); _inputEvidence.Refresh(); }
-            if (_editor is { IsEnabled: true }) _editor.Focus(FocusState.Programmatic);
-        };
-        cancel.Click += (_, _) => flyout.Hide();
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
-        buttons.Children.Add(cancel);
-        buttons.Children.Add(confirm);
-        var body = new StackPanel { Spacing = 12, MaxWidth = 300 };
-        body.Children.Add(new TextBlock { Text = "丢弃这份草稿？", FontWeight = FontWeights.SemiBold });
-        body.Children.Add(OpenCodeInteractionUi.Caption("将移除已选命令、全部附件和输入内容。不会影响已发送的内容或任何未确认结果的保护。", 0.8));
-        body.Children.Add(buttons);
-        flyout.Content = body;
-        return flyout;
-    }
 
     private void Raise(EventHandler<OpenCodeComposerTokenEventArgs>? handler)
     {

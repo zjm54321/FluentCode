@@ -137,7 +137,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                     Array.AsReadOnly(_files.Select(f => new OpenCodeComposerAttachmentRow(f.Id, f.Name, f.Mime, f.Bytes.Length) { Presentation = f.Presentation }).ToArray()),
                     HasDraft, _origin is not null, active, Busy, active && HasDraft && !Busy && !protectedSession && !HasClientAction,
                     protectedSession, !active && HasDraft
-                        ? (IsUnbound(_origin) ? "草稿属于“新会话”标签；返回该标签或明确丢弃。" : "草稿属于原会话；返回原会话或明确丢弃。")
+                        ? (IsUnbound(_origin) ? "草稿属于“新会话”标签；请返回该标签继续。" : "草稿属于原会话；请返回原会话继续。")
                         : _note)
                 {
                     CatalogHandle = _catalogOwner?.Handle,

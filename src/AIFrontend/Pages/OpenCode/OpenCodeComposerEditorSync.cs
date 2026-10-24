@@ -254,19 +254,6 @@ internal sealed class OpenCodeComposerEditorSync
     }
 
     /// <summary>
-    /// After an explicit discard the controller holds a new draft: held/pending input is disposed and the editor
-    /// takes the new draft through the guard. Callers invoke this only when the discard actually changed the token.
-    /// </summary>
-    internal void ResolveDiscard()
-    {
-        _recoveryEpoch++;
-        _suspendedForRecovery = false; // Explicit user discard only, never an ordinary slot switch.
-        _pending = null;
-        State = OpenCodeComposerInputState.Clean;
-        WriteSnapshot(_source());
-    }
-
-    /// <summary>
     /// One synchronous UI turn of the accepted-draft handoff (§4): flush → held check → composition wait →
     /// finalize → guarded write. No await or callback between the flush, finalize and the editor baseline.
     /// </summary>

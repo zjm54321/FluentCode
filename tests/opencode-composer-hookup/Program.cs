@@ -527,6 +527,9 @@ internal static class Program
                 Check(lease.GetComposerSubmissionProtection() is { Kind: ComposerSubmissionKind.Command }, "unknown enhanced request retained typed command protection");
                 Check(!lease.CanSwitchAgent(), "actual gate blocks agent switch for typed composer protection");
             }
+            await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Page.Snapshot.HasDraft && !f.Page.SendEnabled,
+                "DD1 unknown result retains draft and blocks another explicit send; removing discard never resends it");
             f.Page.RemoveCommand();
             await f.Page.SendLegacyDirect();
             Check(f.Http.Posts == 1 && f.Page.Snapshot.Text == "arguments", "actual legacy sender rejects typed protection before zero additional POST");
@@ -604,6 +607,11 @@ internal static class Program
             await f.Page.Send();
             Check(!f.Page.Missing && f.Page.Snapshot.SelectedCommand == "review" && f.Page.Snapshot.Text == "keep", "command404 rejection is NOT generic session-missing");
             Check(f.Page.Receipts == 0 && f.Page.Tracked == 0, "rejected command no receipt publication");
+            Check(f.Http.Posts == 1 && f.Page.SendEnabled, "DD1 rejected draft remains sendable without a discard action or automatic retry");
+            f.Http.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+            await f.Page.Send();
+            Check(f.Http.Posts == 2 && !f.Page.Snapshot.HasDraft,
+                "DD1 existing Send retries preserved rejected command once after an explicit user action");
         }
         using (var f = new Fixture())
         {
@@ -754,6 +762,9 @@ internal static class Program
             @"\b(?:OpenCodeClient|HttpClient|HttpMessageInvoker|OpenCodePageSource|OpenCodeInteractionGate|OpenCodeComposerBinding|OpenCodeComposerController)\b"),
             "static real-view boundary: no transport/client/source/gate/binding/controller type dependency");
         var composer = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        Check(new[] { "DiscardRequested", "_statusDiscardButton", "_discardFlyout", "BuildDiscardFlyout", "OpenCodeComposerInactiveDiscard", "OpenCodeComposerDiscardConfirm", "丢弃草稿" }
+            .All(removed => !(view + composer).Contains(removed, StringComparison.Ordinal)),
+            "DD1 no discard UI, confirmation, event or page hookup remains");
         Check(composer.Split("TextEdited +=", StringSplitOptions.None).Length == 2
             && composer.Contains("e.Acknowledgment =", StringComparison.Ordinal)
             && !composer.Contains("_composerController.SetText(", StringComparison.Ordinal), "one acknowledged bridge; no parallel SetText or manual clear");
@@ -990,7 +1001,8 @@ namespace AIFrontend.Pages
         internal async Task Command(string args) { Text("/review " + args); await Controller.LoadCatalogAsync(Snapshot.Token, _composerView!.Lifetime); _composerView.Choose(Snapshot.Token, Snapshot.CatalogHandle!, new OpenCodeComposerCommandIdentity.Server("review")); DrainView(); UpdateComposerButtons(); }
         internal async Task File() { var ticket = Controller.BeginPick(Snapshot.Token)!; await Controller.AddFilesAsync(ticket, new[] { new OpenCodeComposerFileSource("synthetic.txt", null, _ => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3 }))) }); DrainView(); UpdateComposerButtons(); }
         internal void RemoveCommand() { Controller.RemoveCommand(Snapshot.Token); DrainView(); UpdateComposerButtons(); }
-        internal void Discard() { Controller.DiscardDraft(Snapshot.Token); _composerView!.Sync.ResolveDiscard(); UpdateComposerButtons(); }
+        // Fixture-only core reset to probe protection persistence; no corresponding composer UI action.
+        internal void Discard() { Controller.DiscardDraft(Snapshot.Token); _composerView!.Sync.Reconcile(); UpdateComposerButtons(); }
         internal Task Send(string? delivery = null) => RouteComposerSubmissionAsync(Snapshot.Token, delivery ?? RequestedComposerDelivery);
         internal Task SendLegacyDirect() => SendPromptAsync();
         internal Task RouteToken(OpenCodeComposerToken token) => RouteComposerSubmissionAsync(token, RequestedComposerDelivery);
@@ -1199,7 +1211,7 @@ namespace AIFrontend.Pages.OpenCode
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
         internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
         internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
-        internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, DiscardRequested, PickRequested;
+        internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, PickRequested;
         internal event EventHandler<OpenCodeComposerCatalogOpenRequestedEventArgs>? CatalogOpenRequested;
         internal event EventHandler<OpenCodeComposerCatalogDismissRequestedEventArgs>? CatalogDismissRequested;
         internal event EventHandler<OpenCodeComposerCommandChosenEventArgs>? CommandChosen;

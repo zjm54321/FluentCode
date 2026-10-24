@@ -360,6 +360,13 @@ internal static partial class Program
                 Check(await f.SubmitAsync(f.Core.Snapshot.Token, () => true) is OpenCodeComposerSubmitOutcome.NotStarted, "unknown blocks repeat " + code);
                 Check(f.Handler.Posts == 1, "unknown never retries " + code);
             }
+            else
+            {
+                Check(f.Core.Snapshot.CanSubmit, "DD1 definite rejection keeps explicit send available without discarding " + code);
+                f.Handler.Send = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+                Check(await f.SubmitAsync(f.Core.Snapshot.Token, () => true) is OpenCodeComposerSubmitOutcome.CommandAcknowledged
+                    && f.Handler.Posts == 2 && !f.Core.Snapshot.HasDraft, "DD1 explicit retry sends preserved draft exactly once " + code);
+            }
         }
         using (var f = new Fixture())
         {

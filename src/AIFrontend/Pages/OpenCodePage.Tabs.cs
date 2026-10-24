@@ -453,7 +453,7 @@ public sealed partial class OpenCodePage
         if (isCurrent && _createdDraftTransfers.TryGetValue((_draftSourceEpoch, entry.SessionId), out var pending)) ReleaseDraftSlot(pending);
         if (entry.DraftSlotKey is { } key && _draftSlots.TryGetValue(key, out var slot))
         {
-            if (ReferenceEquals(slot, _activeDraftSlot)) ForceSuspendDraftSlot("当前会话标签已移除。输入只读保留，请复制需要的内容后明确丢弃。");
+            if (ReferenceEquals(slot, _activeDraftSlot)) ForceSuspendDraftSlot("当前会话标签已移除。输入只读保留，请先复制需要的内容。");
             else ReleaseDraftSlot(slot);
         }
         entry.Working.IsActive = false;

@@ -799,7 +799,7 @@ public sealed partial class OpenCodePage : Page
         if (!TryPrepareDraftSlotNavigation())
         {
             if (!forceDraftTransition) { RestoreDraftSlotTabSelection(); return; }
-            ForceSuspendDraftSlot("会话已创建，但输入尚未完成同步。内容已只读保留，请复制需要的内容后明确丢弃；不会自动发送。");
+            ForceSuspendDraftSlot("会话已创建，但输入尚未完成同步。内容已只读保留，请先复制需要的内容；不会自动发送。");
         }
         if (string.IsNullOrWhiteSpace(directory)) directory = null;
         directory ??= KnownSessionDirectory(sessionId);

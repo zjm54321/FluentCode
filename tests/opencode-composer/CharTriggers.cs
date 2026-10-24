@@ -128,9 +128,10 @@ internal static partial class Program
         Check(shellPage.Contains("CreateSessionAndSubmitAsync(_composerController!.Snapshot.Token, _shellComposer.Text)")
             && blankPage.Contains("if (shellCommand is not null) OnCreatedShellSubmit(shellCommand);"), "blank shell uses existing configured creation and exact handoff, never normal prompt");
         Check(view.Contains("foreach (var entry in OpenCodeComposerPlusMenu.Entries)") && view.Contains("new MenuFlyoutSeparator()"), "view uses tested menu definition and native divider");
-        Check(!view.Contains("_discardItem") && !view.Contains("_discardSeparator") && view.Contains("_statusDiscardButton.Flyout = _discardFlyout;"), "discard confirmation belongs to status recovery, not the + menu");
-        Check(view.Contains("offerDiscard |= (enhanced || s.IsBoundDraft) && !inactiveBound && !s.IsBusy;")
-            && view.Contains("opening != fresh.Token || fresh.IsBusy") && view.Contains("DiscardRequested?.Invoke(this, new(fresh.Token))"), "active enhanced drafts retain guarded discard via the existing recovery entry");
+        Check(new[] { "_discardItem", "_discardSeparator", "_statusDiscardButton", "_discardFlyout", "BuildDiscardFlyout", "丢弃草稿", "丢弃这份草稿" }
+            .All(removed => !view.Contains(removed)), "DD1 no discard entry or confirmation remains in the + menu or draft/recovery status");
+        Check(!view.Contains("DiscardRequested") && !page.Contains("DiscardRequested") && !view.Contains("offerDiscard"),
+            "DD1 discard-only event, page subscription and status offer wiring removed");
         Check(page.Contains("_composerView.MentionSearchProvider = ComposerMentionSearch;") && page.Contains("OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct)"), "real provider wired to active binding directory");
         Check(view.Contains("_attachItem.Click += (_, _) => RequestPick();") && page.Contains("_composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);"), "existing attachment picker handoff intact");
         Check(view.Contains("没有匹配的 agent 或 skill") && view.Contains("result.Error") && view.Contains("_mentionQueries.IsCurrent(result)"), "view exposes empty/error and rejects queued stale results");

@@ -72,7 +72,7 @@ public sealed partial class OpenCodePage
         if (_composerView is not null)
         {
             _composerView.CurrentValueSource = ComposerCurrentValue;
-            // 重设计 wave3 F1：输入框左侧唯一的“+”按钮（原生 Button + MenuFlyout：添加附件 / 命令… / 丢弃草稿…）。
+            // 重设计 wave3 F1：输入框左侧唯一的“+”按钮（原生 Button + MenuFlyout：添加附件 / 命令 / 上下文 / 终端）。
             ComposerLeadingHost.Children.Add(_composerView.AddButton);
         }
     }

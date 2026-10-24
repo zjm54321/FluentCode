@@ -75,11 +75,6 @@ public sealed partial class OpenCodePage
         };
         _composerView.CommandRemoved += (_, e) => _composerController.RemoveCommand(e.Token);
         _composerView.AttachmentRemoved += (_, e) => _composerController.RemoveAttachment(e.Token, e.Id);
-        _composerView.DiscardRequested += (_, e) =>
-        {
-            if (_draftRecoveryPending) DiscardDraftSlotRecovery();
-            else { _composerController.DiscardDraft(e.Token); if (_newSessionDraftActive) EnsureBlankPreferences(); }
-        };
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
         InitializeShellComposer();
         _agentSelector.DisplayChanged += (_, _) => RefreshChildComposerVisibility();

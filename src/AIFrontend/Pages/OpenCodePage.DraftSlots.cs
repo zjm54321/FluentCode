@@ -74,7 +74,7 @@ public sealed partial class OpenCodePage
             _draftNavigationPrepared = _lastCapturedDraftToken;
             if (SuspendPreparedDraftSlot(displayUnavailable: false)) return;
         }
-        ForceSuspendDraftSlot("页面已离开。未完成的输入只读保留；返回后请复制需要的内容，再明确丢弃后继续。");
+        ForceSuspendDraftSlot("页面已离开。未完成的输入只读保留；返回后请先复制需要的内容。");
     }
 
     private void ForceSuspendDraftSlot(string reason)
@@ -138,11 +138,11 @@ public sealed partial class OpenCodePage
         { RefreshComposerView(); return; }
         if (_draftNavigationPrepared is null && _activeDraftSlot is not null)
         {
-            ForceSuspendDraftSlot("来源、会话或目录已变化。旧输入已只读保留；请先复制需要的内容，再明确丢弃后继续。");
+            ForceSuspendDraftSlot("来源、会话或目录已变化。旧输入已只读保留；请先复制需要的内容。");
             if (_draftRecoveryPending) return;
         }
         var expected = _draftNavigationPrepared ?? controller.Snapshot.Token;
-        if (expected != controller.Snapshot.Token) { ForceSuspendDraftSlot("草稿在切换前已变化，已只读保留；请复制后明确丢弃。"); return; }
+        if (expected != controller.Snapshot.Token) { ForceSuspendDraftSlot("草稿在切换前已变化，已只读保留；请先复制需要的内容。"); return; }
         var previous = _activeDraftSlot;
         var previousBinding = _composerBinding;
         _draftSlotChanging = true;
@@ -177,7 +177,7 @@ public sealed partial class OpenCodePage
             }
             if (_composerView?.TryActivateDraftSlot(activated, target.SelectionStart, target.SelectionLength) == false)
             {
-                ForceSuspendDraftSlot("输入在恢复期间发生变化，已保留为只读；请复制后明确丢弃。");
+                ForceSuspendDraftSlot("输入在恢复期间发生变化，已保留为只读；请先复制需要的内容。");
                 return;
             }
             InvalidateNativeActionIfBindingLost();
@@ -206,7 +206,7 @@ public sealed partial class OpenCodePage
 
     private void InvalidateDraftSourceEpoch()
     {
-        ForceSuspendDraftSlot("来源已更换或断开。旧来源草稿只读保留，请复制需要的内容后明确丢弃。");
+        ForceSuspendDraftSlot("来源已更换或断开。旧来源草稿只读保留，请先复制需要的内容。");
         // A second replacement must not relabel an already held A recovery as B.
         if (_draftRecoveryPending) _draftRecoveryActor = new object();
         foreach (var entry in _sessionTabs.Values)
@@ -265,7 +265,7 @@ public sealed partial class OpenCodePage
         _draftRecoverySlot = slot; _draftRecoveryTab = item; _draftRecoveryPending = true;
         _draftRecoveryStart = slot?.SelectionStart ?? 0; _draftRecoveryLength = slot?.SelectionLength ?? 0;
         _homeActive = false; _newSessionDraftActive = false; _activeBlankSlotId = null; _activeTabSessionId = null;
-        _composerView?.SuspendDraftSlotForRecovery("旧来源草稿只读保留。请复制需要的内容，再明确丢弃或关闭此标签。");
+        _composerView?.SuspendDraftSlotForRecovery("旧来源草稿只读保留。请复制需要的内容，再关闭此标签。");
         Microsoft.UI.Xaml.VisualStateManager.GoToState(this, "NewSessionLayout", false);
         SetBlankComposerPlacement(true);
         UpdateComposerButtons(); // A disconnected editor must become enabled/read-only for native copying.
