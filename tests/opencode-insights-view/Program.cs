@@ -418,17 +418,20 @@ internal static class Program
         Draw(view, sample);
         var host = Field<Border>(view, "_usageHost");
         var texts = AllText(host).Reverse().ToArray();
-        Check(texts.Take(3).SequenceEqual(new[] { "上下文", "6.2%", "12.5K / 200K" }),
-            "RC2 context + right-aligned percentage, then main-agent used / limit");
+        Check(texts.Take(4).SequenceEqual(new[] { "上下文", "3", "12.5K / 200K", "6.2%" }),
+            "CX1 title + turn first, then context label + percentage");
         var panel = (StackPanel)host.Child!;
         var heading = (Grid)panel.Children[0];
-        var percent = heading.Children.OfType<TextBlock>().Last();
+        var turn = heading.Children.OfType<StackPanel>().Single();
+        var current = heading.Children.OfType<Grid>().Single();
+        var percent = current.Children.OfType<TextBlock>().Last();
         Check(heading.ColumnDefinitions[0].Width.GridUnitType == GridUnitType.Star
             && heading.ColumnDefinitions[1].Width.GridUnitType == GridUnitType.Auto
             && percent.HorizontalAlignment == HorizontalAlignment.Right
-            && heading.Attached["ToolTip"] is "第 3 轮", "percentage at header trailing edge; turns available by tooltip");
-        var current = (StackPanel)panel.Children[1];
-        Check(panel.Spacing == 16 && current.Spacing == 8 && current.Children.Count == 1
+            && turn.Attached["ToolTip"] is "第 3 轮" && turn.Children.OfType<FontIcon>().Single().Glyph == "\uE72C",
+            "percentage at context trailing edge; refresh glyph and turn tooltip in first row");
+        Check(panel.Spacing == 16 && heading.RowSpacing == 8 && current.Children.Count == 2
+            && current.Attached["Grid.Row"] is 1
             && !current.Children.OfType<ProgressBar>().Any(), "RC2b context progress removed; RC2 spacing and used/limit preserved");
         Check(OpenCodeSessionInsightsView.UsageLabels.SequenceEqual(new[] { "输入", "输出", "思考", "缓存读", "缓存写", "命中率" }), "V4 row order");
         var usage = ((StackPanel)host.Child!).Children.OfType<Grid>().Single(grid => AutomationProperties.GetAutomationId(grid) == "OpenCodeInsightsUsageGrid");
@@ -448,10 +451,12 @@ internal static class Program
         Check(OpenCodeSessionInsightsView.CurrentContextLine(child) == "12.5K / 200K · 6.2%", "SA4 child's own assistant usage and model limit, not tree tokens");
         Check(OpenCodeContextRing.Measure(child with { Context = sample.Context }).Tokens is null, "mismatched parent context cannot populate child ring");
         Draw(view, Empty());
-        Check(!((StackPanel)((StackPanel)host.Child!).Children[1]).Children.OfType<ProgressBar>().Any(),
+        Check(!((Grid)((StackPanel)host.Child!).Children[0]).Children.OfType<ProgressBar>().Any(),
             "RC2b unknown context also has no progress bar");
         Check(OpenCodeSessionInsightsView.TurnsText(null) == "" && !AllText(host).Contains("轮次不可用"), "unknown turns hidden");
-        Check(!AllText(host).Contains("不可用") && ((StackPanel)host.Child!).Children.OfType<Grid>().SelectMany(grid => grid.Children).OfType<Grid>().All(cell => cell.Visibility == Visibility.Collapsed), "unknown numeric cells hidden, never zero placeholders");
+        Check(!AllText(host).Contains("不可用") && ((StackPanel)host.Child!).Children.OfType<Grid>()
+            .Where(grid => AutomationProperties.GetAutomationId(grid) == "OpenCodeInsightsUsageGrid")
+            .SelectMany(grid => grid.Children).OfType<Grid>().All(cell => cell.Visibility == Visibility.Collapsed), "unknown numeric cells hidden, never zero placeholders");
         var stale = sample with { Context = sample.Context with { Value = sample.Context.Value! with { StaleReasons = ImmutableArray.Create(OpenCodeContextStaleReason.CompactionAfterUsage) } } };
         Check(OpenCodeSessionInsightsView.CurrentContextLine(stale) == "", "compaction awaits fresh session usage");
     }

@@ -298,6 +298,7 @@ namespace Microsoft.UI.Xaml.Controls
         public List<RowDefinition> RowDefinitions { get; } = new();
         public static void SetColumn(FrameworkElement element, int value) => element.Attached["Grid.Column"] = value;
         public static void SetRow(FrameworkElement element, int value) => element.Attached["Grid.Row"] = value;
+        public static void SetColumnSpan(FrameworkElement element, int value) => element.Attached["Grid.ColumnSpan"] = value;
     }
 
     public class Control : FrameworkElement

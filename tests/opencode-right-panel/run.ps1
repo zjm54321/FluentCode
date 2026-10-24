@@ -9,7 +9,7 @@ $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where
 if (!$sdk -or !$pack) { throw '.NET 10 SDK/reference pack required.' }
 New-Item -ItemType Directory -Path $EvidenceRoot -Force | Out-Null
 $dll = Join-Path $EvidenceRoot 'RightPanelTests.dll'
-$sources = @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeRightPanelPresentation.cs", "$PSScriptRoot/Program.cs")
+$sources = @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeRightPanelPresentation.cs", "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeContextHeader.cs", "$PSScriptRoot/Program.cs")
 $refs = @(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object FullName)
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $dll + '"'))
