@@ -29,4 +29,7 @@ if ($LASTEXITCODE -ne 0) { throw "WSL quick-access compilation failed: $LASTEXIT
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'OpenCodeWslQuickAccessTests.runtimeconfig.json')
 & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $EvidenceRoot 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "WSL quick-access tests failed: $LASTEXITCODE" }
+$launcherSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccess.Windows.cs')
+if ($launcherSource -match 'LaunchFolderPathAsync|StorageFolder' -or $launcherSource -notmatch 'Start\(OpenCodeWslQuickAccess.ExplorerLaunch\(target,') { throw 'Explorer must use the mapped native launch command directly.' }
+Write-Output 'PASS native Explorer route source contract (no host application launched)'
 Write-Output "PASS WSL quick access; evidence: $EvidenceRoot"

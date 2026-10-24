@@ -31,15 +31,12 @@ internal sealed class WindowsWslHostEditorEnvironment : IWslHostEditorEnvironmen
 
 internal sealed class WindowsWslQuickAccessLauncher : IWslQuickAccessLauncher
 {
-    public async Task OpenExplorerAsync(WslQuickAccessTarget target)
+    public Task OpenExplorerAsync(WslQuickAccessTarget target)
     {
-        // WinRT first. UNC support varies by host; false/exception uses the narrow native fallback.
-        try
-        {
-            if (await Windows.System.Launcher.LaunchFolderPathAsync(target.HostPath)) return;
-        }
-        catch (Exception) { /* Unsupported/unavailable UNC folder launcher: use Explorer directly. */ }
+        // A WinRT "accepted" result is not proof that Explorer opened a WSL folder.
+        // Use Explorer's native path argument directly for both drive paths and Linux UNC.
         Start(OpenCodeWslQuickAccess.ExplorerLaunch(target, Environment.GetFolderPath(Environment.SpecialFolder.Windows)));
+        return Task.CompletedTask;
     }
 
     public Task OpenEditorAsync(WslHostLaunch launch)
