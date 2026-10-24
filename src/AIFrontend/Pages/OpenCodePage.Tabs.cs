@@ -40,6 +40,9 @@ public sealed partial class OpenCodePage
     private bool _homeNormalizeQueued;
     private bool _homeNormalizeApplying;
 
+    partial void OnBrowserSessionTabOpened(string sessionId);
+    partial void OnBrowserSessionTabClosed(string sessionId);
+
     private void InitializePinnedHomeTab()
     {
         HomeTab.Tag = HomeSessionTabTag;
@@ -194,6 +197,7 @@ public sealed partial class OpenCodePage
         _activeTabSessionId = sessionId;
         SelectSessionTabSilently(sessionId);
         UpdateSessionTabsEmptyState();
+        OnBrowserSessionTabOpened(sessionId);
     }
 
     private void CreateSessionTab(string sessionId, int insertAt = -1)
@@ -258,6 +262,7 @@ public sealed partial class OpenCodePage
         {
             _suppressTabSelection = previous;
         }
+        OnBrowserSessionTabOpened(sessionId);
     }
 
     private MenuFlyout CreateSessionTabMenu(SessionTabEntry entry)
@@ -453,7 +458,11 @@ public sealed partial class OpenCodePage
         }
         entry.Working.IsActive = false;
         entry.Shimmer.SetWorking(false);
-        if (isCurrent) _sessionTabs.Remove(entry.SessionId);
+        if (isCurrent)
+        {
+            _sessionTabs.Remove(entry.SessionId);
+            OnBrowserSessionTabClosed(entry.SessionId);
+        }
         _retiredSessionTabs.Remove(entry.Item);
         var previous = _suppressTabSelection;
         _suppressTabSelection = true;

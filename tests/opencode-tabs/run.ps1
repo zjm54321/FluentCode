@@ -19,6 +19,7 @@ $homePath="$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs";$homeSource=[IO.File
 $pagePath="$repo/src/AIFrontend/Pages/OpenCodePage.xaml.cs";$page=[IO.File]::ReadAllText($pagePath)
 $bindingPath="$repo/src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs";$binding=[IO.File]::ReadAllText($bindingPath)
 $members=@([regex]::Match($tabs,'(?ms)^    private sealed class SessionTabEntry\(.*?^    \}').Value)
+$members += [regex]::Matches($tabs, '(?m)^    partial void OnBrowserSessionTab(?:Opened|Closed)\([^;]+;') | ForEach-Object Value
 $members+=@('InitializePinnedHomeTab','HomeTab_DragStarting','SessionTabs_TabItemsChanged','QueuePinnedHomeNormalization','SessionTabs_Loaded','TagSessionTabAddButton','FindDescendant','MirrorSessionSelection','CreateSessionTab','CreateSessionTabMenu','SelectSessionTabSilently','SessionTabs_SelectionChanged','ActivateSessionTab','SessionTabs_TabCloseRequested','CloseSessionTabActor','CloseSessionTab','CloseOtherSessionTabs','RemoveSessionTab','UpdateSessionTabsEmptyState','ActivateAdjacentTab','LocateSessionInPane')|ForEach-Object{Extract $tabs $_}
 $members+=@('OpenNewSessionTab','TryGetBlankTab','EnterNewSessionLayout','ExitNewSessionLayout','OnSessionContextSelected','SelectNewSessionTabSilently','RemoveNewSessionTab','CloseNewSessionTab','DeselectSessionForNewTab','OnNativeSessionCreating','OnNativeSessionCreated','CreateSessionAndSubmitAsync')|ForEach-Object{Extract $blank $_}
 $members+=Extract $homeSource 'ShowHomePage'

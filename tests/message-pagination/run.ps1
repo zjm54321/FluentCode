@@ -78,6 +78,7 @@ foreach ($extraction in $extractions) {
         if (!$block.Success) { throw "Extraction failed: $name" }; $members += $block.Value
     }
 }
+$members += [regex]::Matches([IO.File]::ReadAllText($eventPath), '(?m)^    partial void OnBrowser[^;]+;') | ForEach-Object Value
 $generated = Join-Path $output 'PageMembers.cs'
 @'
 using System;

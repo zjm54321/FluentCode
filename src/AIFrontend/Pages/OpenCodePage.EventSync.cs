@@ -25,8 +25,14 @@ public sealed partial class OpenCodePage
     private bool _eventSnapshotBeforeReady;
     private bool _eventReconciliationPending;
 
+    partial void OnBrowserEventSyncStarting();
+    partial void OnBrowserEventSyncStopped();
+    partial void OnBrowserEventStreamHealthChanged(bool connected);
+    partial void OnBrowserControlEvent(OpenCodeEvent item);
+
     private void StopEventSync()
     {
+        OnBrowserEventSyncStopped();
         OnAgentTreeReset();
         ResetRuntimeFeedback();
         _eventCts?.Cancel();
@@ -51,6 +57,7 @@ public sealed partial class OpenCodePage
         _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _eventSnapshotBeforeReady = false;
         _eventReconciliationPending = false;
+        OnBrowserEventSyncStarting();
         _ = Task.Run(() => RunEventSyncAsync(client, source, cts));
     }
 
@@ -85,6 +92,7 @@ public sealed partial class OpenCodePage
     {
         if (owner.IsCancellationRequested || !ReferenceEquals(owner, _eventCts) || !_pageActive || !SourceReady) return;
         _eventReady?.TrySetResult();
+        OnBrowserEventStreamHealthChanged(true);
         var repair = reconnect || _eventSnapshotBeforeReady;
         _eventSnapshotBeforeReady = false;
         if (repair)
@@ -107,6 +115,7 @@ public sealed partial class OpenCodePage
         if (owner.IsCancellationRequested || !ReferenceEquals(owner, _eventCts)) return;
         // Readiness belongs to this connection, not the first handshake of the subscription loop.
         _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        OnBrowserEventStreamHealthChanged(false);
     }
 
     partial void OnMessageHistoryWorkflowEnded()
@@ -198,6 +207,7 @@ public sealed partial class OpenCodePage
         {
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
+            OnBrowserControlEvent(item); // Before selected-session reducer filtering; includes background tabs.
             OnAgentTreeEvent(item);
             count++;
             if (item.ReceivedAt < first) first = item.ReceivedAt;
