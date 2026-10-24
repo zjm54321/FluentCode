@@ -35,6 +35,7 @@ public sealed partial class OpenCodePage
         _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(null);
         _wslQuickAccessView.EditorRequested += async (_, e) => await LaunchWslQuickAccessAsync(e.Name);
         _wslQuickAccessView.EditorMenuRequested += (_, _) => DetectWslEditors();
+        InitializeBrowserPanel();
         Loaded += (_, _) =>
         {
             _homeSettings!.Changed += WslQuickAccessSettingsChanged;
@@ -97,6 +98,7 @@ public sealed partial class OpenCodePage
         WslQuickAccessSection.Visibility = WslQuickAccessSlot.Visibility;
         WslQuickAccessNoteSlot.Visibility = WslQuickAccessSlot.Visibility;
         _wslQuickAccessView.Render(state, _wslEditors, _selectedWslEditor);
+        RefreshBrowserPanel();
     }
 
     private void ResetWslQuickAccessHome()

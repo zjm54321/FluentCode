@@ -1,0 +1,105 @@
+using System;
+using AIFrontend.Services.OpenCode.Browser;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
+using Windows.System;
+using Windows.UI.Core;
+
+namespace AIFrontend.Pages.OpenCode;
+
+internal sealed class OpenCodeBrowserButton : Grid
+{
+    private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
+    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontSize = 18 };
+    private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
+    private readonly Button _unavailable = new() { Width = 16, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Content = new TextBlock { Text = "断开", FontSize = 8 } };
+    private readonly Border _bar = new() { Height = 3, Width = 20, VerticalAlignment = VerticalAlignment.Bottom, IsHitTestVisible = false };
+    private readonly TextBlock _new = new() { Text = "NEW", FontSize = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
+    private readonly TextBlock _tipTitle = new();
+    private readonly TextBlock _tipStatus = new();
+    private readonly Border _dot = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Center };
+    private readonly HyperlinkButton _reclaim = new() { Padding = new Thickness(0) };
+    private readonly TextBlock _reason = new() { TextWrapping = TextWrapping.Wrap, MaxWidth = 260 };
+    private readonly Flyout _availabilityFlyout;
+    public event EventHandler? Invoked;
+    public event EventHandler? NewPageRequested;
+    public event EventHandler? ReclaimRequested;
+
+    public OpenCodeBrowserButton()
+    {
+        ColumnDefinitions.Add(new() { Width = GridLength.Auto }); ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        var icon = new Grid { Width = 36, Height = 32, Children = { _globe, _count } };
+        _toggle.Content = icon;
+        // Native ToggleButton chrome with subtle checked states, never the stock accent-filled state.
+        _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
+        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
+        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
+        _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
+        _toggle.Background = new SolidColorBrush(Colors.Transparent); _toggle.BorderThickness = new Thickness(0);
+        _bar.Background = Brush("AccentFillColorDefaultBrush");
+        Children.Add(_toggle); Children.Add(_bar); Children.Add(_unavailable); Children.Add(_new); Grid.SetColumn(_new, 1);
+        AutomationProperties.SetName(_toggle, "浏览器"); AutomationProperties.SetAutomationId(_toggle, "OpenCodeBrowserButton");
+        AutomationProperties.SetName(_unavailable, "浏览器连接状态");
+        _toggle.Click += (_, _) =>
+        {
+            if ((Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) != 0) NewPageRequested?.Invoke(this, EventArgs.Empty);
+            else Invoked?.Invoke(this, EventArgs.Empty);
+        };
+        _toggle.AddHandler(PointerPressedEvent, new PointerEventHandler((_, e) =>
+        {
+            if (!e.GetCurrentPoint(_toggle).Properties.IsMiddleButtonPressed) return;
+            e.Handled = true; NewPageRequested?.Invoke(this, EventArgs.Empty);
+        }), true);
+        ToolTipService.SetToolTip(_toggle, new ToolTip { Content = new StackPanel { Spacing = 4, Children = { _tipTitle,
+            new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _tipStatus } } } } });
+        _availabilityFlyout = new Flyout { Content = new StackPanel { Spacing = 8, Children = { _reason, _reclaim } } };
+        _unavailable.Flyout = _availabilityFlyout;
+        _reclaim.Click += (_, _) => { _availabilityFlyout.Hide(); ReclaimRequested?.Invoke(this, EventArgs.Empty); };
+        ActualThemeChanged += (_, _) => RefreshTheme();
+    }
+
+    private int _pages;
+    private bool _available;
+    private void RefreshTheme()
+    {
+        _globe.Foreground = OpenCodeBrowserPanelState.ColoredIcon(_pages) && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast
+            ? new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1), GradientStops = {
+                new GradientStop { Color = ColorHelper.FromArgb(255, 34, 211, 238), Offset = 0 },
+                new GradientStop { Color = ColorHelper.FromArgb(255, 59, 130, 246), Offset = .5 },
+                new GradientStop { Color = ColorHelper.FromArgb(255, 168, 85, 247), Offset = 1 } } }
+            : Brush("TextFillColorPrimaryBrush");
+        _bar.Background = Brush("AccentFillColorDefaultBrush");
+        _dot.Background = Brush(_available ? "SystemFillColorSuccessBrush" : "TextFillColorDisabledBrush");
+        _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
+        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
+        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
+    }
+
+    public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen)
+    {
+        _pages = workspace?.Pages.Count ?? 0; _available = workspace?.Availability == OpenCodeBrowserAvailability.Available;
+        _toggle.IsEnabled = workspace is not null;
+        _toggle.IsChecked = state?.ShowCommands(_pages) == true;
+        _bar.Visibility = _toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        _count.Value = _pages; _count.Visibility = OpenCodeBrowserPanelState.ShowCount(_pages) ? Visibility.Visible : Visibility.Collapsed;
+        _new.Visibility = seen ? Visibility.Collapsed : Visibility.Visible;
+        _unavailable.Visibility = workspace is not null && OpenCodeBrowserPanelState.ShowUnavailable(workspace.Availability) ? Visibility.Visible : Visibility.Collapsed;
+        _tipTitle.Text = OpenCodeBrowserPanelState.TooltipTitle(_pages);
+        _tipStatus.Text = OpenCodeBrowserPanelState.TooltipStatus(workspace?.Availability ?? OpenCodeBrowserAvailability.Detached, workspace?.AvailabilityReason);
+        _reason.Text = _tipStatus.Text;
+        var reclaim = OpenCodeBrowserPanelState.ReclaimLabel(workspace?.Availability ?? OpenCodeBrowserAvailability.Detached);
+        _reclaim.Content = reclaim; _reclaim.Visibility = reclaim is null ? Visibility.Collapsed : Visibility.Visible;
+        ToolTipService.SetToolTip(_unavailable, _tipStatus.Text);
+        RefreshTheme();
+    }
+
+    internal static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
+}

@@ -90,7 +90,7 @@ public sealed partial class OpenCodePage
         {
             if (!ReferenceEquals(args.Source, _browserSource)) return;
             if (_browserBackends.Remove(args.SessionId, out var backend)) backend.Dispose();
-            if (_browserWorkspaces.Remove(args.SessionId, out var workspace)) workspace.Dispose();
+            if (_browserWorkspaces.Remove(args.SessionId, out var workspace)) { ReleaseBrowserPanelWorkspace(workspace); workspace.Dispose(); }
         };
         SizeBrowserHosts();
     }
@@ -100,6 +100,7 @@ public sealed partial class OpenCodePage
         _browserSelectedSession = _selectedSessionId;
         foreach (var workspace in _browserWorkspaces.Values) if (workspace.SessionId != _browserSelectedSession) workspace.HideOverlay();
         UpdateBrowserOverlay(_browserSelectedSession is not null && _browserWorkspaces.TryGetValue(_browserSelectedSession, out var current) ? current : null);
+        RefreshBrowserPanel();
     }
     private void SyncBrowserSource()
     {
@@ -122,12 +123,13 @@ public sealed partial class OpenCodePage
     partial void OnBrowserEngineSessionTabClosed(string sessionId)
     {
         if (_browserBackends.Remove(sessionId, out var backend)) backend.Dispose();
-        if (_browserWorkspaces.Remove(sessionId, out var workspace)) workspace.Dispose();
+        if (_browserWorkspaces.Remove(sessionId, out var workspace)) { ReleaseBrowserPanelWorkspace(workspace); workspace.Dispose(); }
     }
     private void DisposeBrowserEngineResources()
     {
         _browserSourceRevocation.Dispose(); _browserSourceRevocation = default;
         _browserSource = null;
+        ReleaseBrowserPanelWorkspaces();
         foreach (var backend in _browserBackends.Values) backend.Dispose();
         foreach (var workspace in _browserWorkspaces.Values.ToArray()) workspace.Dispose();
         _browserBackends.Clear(); _browserWorkspaces.Clear();

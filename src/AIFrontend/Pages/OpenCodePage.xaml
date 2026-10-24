@@ -332,10 +332,15 @@
                                                     <Border x:Name="RightConnectionStatusHost" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Grid>
-                                            <StackPanel x:Name="WslQuickAccessSection" Visibility="Collapsed" Spacing="12">
+                                            <StackPanel x:Name="WslQuickAccessSection" Visibility="Collapsed" Spacing="0">
                                                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                                <Grid x:Name="WslQuickAccessSlot" Visibility="Collapsed" HorizontalAlignment="Left" />
-                                                <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" />
+                                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="4" Margin="0,12,0,0">
+                                                    <Grid x:Name="WslQuickAccessSlot" Visibility="Collapsed" HorizontalAlignment="Left" />
+                                                    <Grid x:Name="BrowserButtonSlot" Grid.Column="1" Visibility="Collapsed" />
+                                                    <Grid x:Name="BrowserCommandsSlot" Grid.Column="3" Visibility="Collapsed" />
+                                                </Grid>
+                                                <Grid x:Name="BrowserStripSlot" />
+                                                <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" Margin="0,12,0,0" />
                                             </StackPanel>
                                             <Border x:Name="RightContextDivider" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                                             <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
