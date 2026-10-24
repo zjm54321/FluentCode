@@ -26,6 +26,7 @@ internal enum OpenCodeToolKind
     Question,
     Subagent,
     Todo,
+    Browser,
 }
 
 /// <summary>工具行状态（严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值；其余为 Unknown）。</summary>
@@ -291,6 +292,7 @@ internal static class OpenCodeToolRowPresentation
         }
 
         var lower = name.Trim().ToLowerInvariant();
+        if (OpenCodeBrowserToolPresentation.Action(name) is not null) return OpenCodeToolKind.Browser;
         var kind = ClassifyExact(lower);
         if (kind != OpenCodeToolKind.Other)
         {
@@ -370,6 +372,7 @@ internal static class OpenCodeToolRowPresentation
     {
         if (string.IsNullOrWhiteSpace(name)) return "工具";
         var trimmed = name.Trim();
+        if (OpenCodeBrowserToolPresentation.DisplayName(trimmed) is { } browserName) return browserName;
         if (trimmed.StartsWith("lsp_", StringComparison.OrdinalIgnoreCase)) return "代码导航";
         var kind = Classify(trimmed);
         return kind == OpenCodeToolKind.Other ? trimmed : kind switch
@@ -455,6 +458,10 @@ internal static class OpenCodeToolRowPresentation
 
         switch (kind)
         {
+            case OpenCodeToolKind.Browser:
+                target = OpenCodeBrowserToolPresentation.Target(builtinModel);
+                summary = OpenCodeBrowserToolPresentation.Summary(builtinModel);
+                break;
             case OpenCodeToolKind.Read:
             {
                 target = FirstString(input, "path", "filePath", "file") ?? string.Empty;
@@ -707,6 +714,7 @@ internal static class OpenCodeToolRowPresentation
             errorText = asyncError ?? DescribeError(state?.Error);
             name = "失败 · " + name;
             summary = DescribeRowError(state?.Error, errorText);
+            if (kind == OpenCodeToolKind.Browser) summary = OpenCodeBrowserToolPresentation.Failure(errorText);
         }
 
         string? rawState = null;

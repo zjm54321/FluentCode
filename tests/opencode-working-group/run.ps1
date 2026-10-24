@@ -11,7 +11,7 @@ $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where
 $sources += @('OpenCodeInteractionGate.cs','OpenCodeExecutionProjection.cs','NotificationInteractions.cs','NotificationArgumentCodec.cs','NotificationActivationInfo.cs','NotificationSource.cs') | ForEach-Object { "$repo/src/AIFrontend/Services/Notifications/$_" }
 $sources += @('OpenCodeToolRowPresentation.cs','OpenCodeLineDiff.cs','OpenCodeStepRunPresentation.cs','OpenCodeModelPresentation.cs','OpenCodeComposerNativeDialogModels.cs','OpenCodeWorkingClock.cs','OpenCodeWorkingPhrases.cs','OpenCodeWorkingIndicator.cs','OpenCodeToolGroupView.cs') | ForEach-Object { "$repo/src/AIFrontend/Pages/OpenCode/$_" }
 $sources += @("$PSScriptRoot/TestHost.cs", "$PSScriptRoot/Program.cs")
-$sources += @('OpenCodeToolDetailBuiltinData.cs','OpenCodeExecuteInnerCatalog.cs','OpenCodeSubagentPresentation.cs','OpenCodeContextStatusParser.cs') | ForEach-Object { "$repo/src/AIFrontend/Pages/OpenCode/$_" }
+$sources += @('OpenCodeBrowserToolPresentation.cs','OpenCodeToolDetailBuiltinData.cs','OpenCodeExecuteInnerCatalog.cs','OpenCodeSubagentPresentation.cs','OpenCodeContextStatusParser.cs') | ForEach-Object { "$repo/src/AIFrontend/Pages/OpenCode/$_" }
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerInputPolicy.cs"
 $dll = Join-Path $EvidenceRoot 'WorkingGroupTests.dll'; $rsp = Join-Path $EvidenceRoot 'compile.rsp'
 $refs = @(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object FullName)

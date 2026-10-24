@@ -126,6 +126,9 @@ internal sealed class OpenCodeToolDetailOptions
     public Action<string, int?>? OpenFile { get; set; }
     public Action<string>? RevealFile { get; set; }
     public Action? OpenTerminal { get; set; }
+    public Action<string>? ShowBrowserPage { get; set; }
+    internal OpenCodeMarkdownImageScope? BrowserImageScope { get; set; }
+    internal OpenCodeBrowserCaptureImage? BrowserCaptureImage { get; set; }
     public Action<string>? OpenDirectory { get; set; }
     public Func<string, bool, string?>? PathActionUnavailableReason { get; set; }
     internal string? PreviewHint { get; set; }
@@ -225,6 +228,9 @@ internal static partial class OpenCodeToolDetailContent
 
         switch (model.Kind)
         {
+            case OpenCodeToolKind.Browser:
+                body = BuildBrowser(model, options);
+                break;
             case OpenCodeToolKind.Read:
                 BuildRead(model, rows, top);
                 if (rows.Count == 0 && ReadImage(model) is { } imageBody) body = imageBody;
@@ -348,7 +354,7 @@ internal static partial class OpenCodeToolDetailContent
         root.RowDefinitions[0].Height = GridLength.Auto;
         root.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
         root.RowDefinitions[2].Height = GridLength.Auto;
-        if (!options.Compact) root.Children.Add(FactsBar(model));
+        if (!options.Compact) root.Children.Add(FactsBar(model, options));
         Grid.SetRow(scroller, 1);
         root.Children.Add(scroller);
         if (!options.Compact && OpenCodeToolRowPresentation.IsDiffKind(model.Kind)) AddDiffNavigation(root, scroller);

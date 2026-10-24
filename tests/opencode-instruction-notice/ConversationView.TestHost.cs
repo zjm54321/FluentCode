@@ -112,6 +112,7 @@ namespace AIFrontend.Pages.OpenCode
         internal int UpdateCount { get; private set; }
 
         public event Action<string>? TerminalRequested { add { } remove { } }
+        public event Action<string?, string>? BrowserPageRequested { add { } remove { } }
         internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false, int? fileIndex = null)
         {
             _parentMessageId = parentMessageId;

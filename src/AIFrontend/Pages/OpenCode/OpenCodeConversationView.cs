@@ -961,6 +961,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private (string? Agent, string? Description)? FindChildTool(string child)
         => _childToolTargets.TryGetValue(child, out var target) ? target : null;
     public event Action<string>? TerminalRequested;
+    public event Action<string?, string>? BrowserPageRequested;
 
     /// <summary>创建空的消息时间线视图。</summary>
     public OpenCodeConversationView()
@@ -2773,6 +2774,8 @@ public sealed class OpenCodeConversationView : StackPanel
                 view.SubagentSessionRequested += handler;
                 Action<string> terminalHandler = shellId => TerminalRequested?.Invoke(shellId);
                 view.TerminalRequested += terminalHandler;
+                Action<string?, string> browserHandler = (parent, tabId) => BrowserPageRequested?.Invoke(parent, tabId);
+                view.BrowserPageRequested += browserHandler;
                 return new PartEntry
                 {
                     Key = partKey, FileIndex = fileIndex,
@@ -2791,6 +2794,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     {
                         view.SubagentSessionRequested -= handler;
                         view.TerminalRequested -= terminalHandler;
+                        view.BrowserPageRequested -= browserHandler;
                         view.Dispose();
                     },
                 };

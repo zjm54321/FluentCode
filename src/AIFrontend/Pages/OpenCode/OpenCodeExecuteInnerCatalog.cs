@@ -17,7 +17,7 @@ internal static class OpenCodeExecuteInnerCatalog
     {
         ["fetch"] = new("获取资源", "web", "method url"),
         ["webfetch"] = new("获取网页", "web", "url format"),
-        ["browser.tabs.open"] = new("打开浏览器标签页", "web", "url focus"),
+        ["browser.tabs.open"] = new("浏览器 · 打开页面", "web", "url focus"),
         ["gh_grep.searchGitHub"] = new("搜索 GitHub 代码", "code", "query repo"),
         ["search"] = new("搜索工具", "code", "query limit"),
         ["context7.query-docs"] = new("查询文档", "code", "libraryId query"),
@@ -67,7 +67,10 @@ internal static class OpenCodeExecuteInnerCatalog
         ["image_gen"] = new("生成图片", "misc", "prompt aspect_ratio"),
     };
 
-    internal static OpenCodeExecuteInnerName? Find(string id) => Entries.TryGetValue(id, out var entry) ? entry : null;
+    internal static OpenCodeExecuteInnerName? Find(string id)
+        => OpenCodeBrowserToolPresentation.Action(id) is { } action
+            ? new(OpenCodeBrowserToolPresentation.DisplayName(id)!, "web", OpenCodeBrowserToolPresentation.Actions[action].Keys)
+            : Entries.TryGetValue(id, out var entry) ? entry : null;
     internal static string Summary(OpenCodeExecuteCall call)
     {
         if (call.Input is null) return ""; // metadata did not record arguments; do not invent “no parameters”.

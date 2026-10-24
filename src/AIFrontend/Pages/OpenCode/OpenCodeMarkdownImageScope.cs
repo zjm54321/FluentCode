@@ -68,6 +68,19 @@ internal sealed class OpenCodeMarkdownImageScope : IDisposable
         return image;
     }
 
+    internal async Task<OpenCodeImageFile> ReadBrowserCaptureAsync(string path, CancellationToken renderToken)
+    {
+        CheckCurrent();
+        _metadata ??= _directory(_token);
+        var directory = await _metadata.WaitAsync(renderToken);
+        CheckCurrent();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_token, renderToken);
+        var image = await Identity.Client.ReadBrowserImageFileAsync(directory, path, linked.Token);
+        renderToken.ThrowIfCancellationRequested();
+        CheckCurrent();
+        return image;
+    }
+
     private void CheckCurrent()
     {
         if (!IsCurrent) throw new OperationCanceledException(_token);

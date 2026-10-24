@@ -53,6 +53,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     private readonly Border _inlineRegion;
     private bool _inlineExpanded;
     private readonly Button _backgroundButton;
+    private readonly Button _showBrowserButton;
     private Action<string, OpenCodeContentPart>? _backgroundAction;
     private OpenCodeContentPart? _lastPart;
     internal Action? BackgroundAction => _backgroundAction is not null && _model.CanMoveToBackground ? RequestBackground : null;
@@ -104,6 +105,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         };
         options.OpenTerminal = _model.ShellId is { Length: > 0 } shellId
             ? () => { if (!_disposed) { OpenCodeToolDetailPopup.Shared.Close(); TerminalRequested?.Invoke(shellId); } } : null;
+        options.BrowserImageScope = OpenCodeImageContext.Find(_root);
+        options.ShowBrowserPage = tabId => { if (!_disposed) { OpenCodeToolDetailPopup.Shared.Close(); RequestBrowserPage(tabId); } };
     }
     void IOpenCodeToolDetailOptionsSource.ConfigureDetailOptions(OpenCodeToolDetailOptions options) => ConfigureDetailOptions(options);
     private FrameworkElement? _detailAnchorOverride;
@@ -119,6 +122,12 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     /// </summary>
     public event EventHandler<OpenCodeSubagentSessionRequestedEventArgs>? SubagentSessionRequested;
     public event Action<string>? TerminalRequested;
+    /// <summary>Navigation hint only: parent message id + exact protocol tabID. Host validates session ownership.</summary>
+    public event Action<string?, string>? BrowserPageRequested;
+    private void RequestBrowserPage(string tabId)
+    {
+        if (!_disposed) BrowserPageRequested?.Invoke(_parentMessageId, tabId);
+    }
 
     /// <summary>创建空的工具行；通过 <see cref="Update"/> 填充内容。</summary>
     public OpenCodeToolPartView()
@@ -227,6 +236,16 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         Grid.SetColumn(_rowChrome, 1);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_rowChrome);
+        _showBrowserButton = new Button
+        {
+            Content = "显示页面", Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(8, 2, 8, 2),
+        };
+        AutomationProperties.SetAutomationId(_showBrowserButton, "OpenCodeToolShowBrowserPage");
+        _showBrowserButton.Click += (_, _) =>
+        {
+            if (OpenCodeBrowserToolPresentation.TabId(_model) is { } tabId) RequestBrowserPage(tabId);
+        };
         _backgroundButton = new Button
         {
             Content = OpenCodeInteractionUi.StyledText("转后台", OpenCodeInteractionUi.CaptionStyleKey),
@@ -240,6 +259,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _backgroundButton.Click += (_, _) => RequestBackground();
         Grid.SetColumn(_backgroundButton, 2);
         _root.Children.Add(_backgroundButton);
+        Grid.SetColumn(_showBrowserButton, 2);
+        _root.Children.Add(_showBrowserButton);
         Grid.SetColumn(statusCell, 3);
         statusCell.Margin = new Thickness(0, 0, 8, 0);
         _root.Children.Add(statusCell);
@@ -290,6 +311,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             _rowActionSource = null;
         }
         ApplyModel(_model);
+        _showBrowserButton.Visibility = _model.Kind == OpenCodeToolKind.Browser && _model.IsActive
+            ? Visibility.Visible : Visibility.Collapsed;
+        _showBrowserButton.IsEnabled = OpenCodeBrowserToolPresentation.TabId(_model) is not null;
         RefreshInlineContent();
         RefreshBackgroundAction();
 
@@ -456,6 +480,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     /// <summary>工具类别的内置字形（Segoe Fluent Icons）。</summary>
     internal static string KindGlyph(OpenCodeToolKind kind) => kind switch
     {
+        OpenCodeToolKind.Browser => OpenCodeBrowserToolPresentation.Glyph,
         OpenCodeToolKind.Read => "\uE8A5",
         OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit => "\uE70F",
         OpenCodeToolKind.Patch => "\uE8C8",

@@ -57,7 +57,7 @@ internal static partial class OpenCodeToolDetailContent
 
     private sealed record Fact(string Key, string Value, bool Link = false);
 
-    private static FrameworkElement FactsBar(OpenCodeToolRowModel model)
+    private static FrameworkElement FactsBar(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
     {
         var facts = new List<Fact>();
         var input = StateObject(model, "input");
@@ -68,6 +68,10 @@ internal static partial class OpenCodeToolDetailContent
         }
         switch (model.Kind)
         {
+            case OpenCodeToolKind.Browser:
+                foreach (var fact in OpenCodeBrowserToolPresentation.Facts(model)) Add(fact.Key, fact.Value);
+                if (OpenCodeBrowserToolPresentation.Action(model.ToolName) == "screenshot") Add("尺寸", "未提供");
+                break;
             case OpenCodeToolKind.Read:
                 Add("范围", model.Summary.Length > 0 ? model.Summary : null);
                 Add("文件总行数", ReadTotal(model.OutputText));
@@ -112,6 +116,7 @@ internal static partial class OpenCodeToolDetailContent
                 panel.Children.Add(Caption(fact.Key));
                 if (fact.Link && Uri.TryCreate(fact.Value, UriKind.Absolute, out var uri))
                     panel.Children.Add(new HyperlinkButton { Content = fact.Value, NavigateUri = uri, Padding = new Thickness(0), FontSize = 12 });
+                else if (model.Kind == OpenCodeToolKind.Browser && fact.Key == "尺寸") panel.Children.Add(BrowserDimensionValue(options));
                 else panel.Children.Add(Caption(fact.Value));
                 return panel;
             }),
@@ -165,6 +170,11 @@ internal static partial class OpenCodeToolDetailContent
 
     private static void AddToolActions(StackPanel actions, OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
     {
+        if (model.Kind == OpenCodeToolKind.Browser)
+        {
+            AddBrowserActions(actions, model, options);
+            return;
+        }
         void PathAction(string label, string path, bool directory, Action? action)
         {
             var reason = options.PathActionUnavailableReason?.Invoke(path, directory)

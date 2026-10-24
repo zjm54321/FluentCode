@@ -23,14 +23,34 @@ public sealed partial class OpenCodeClient
     /// The backend owns filesystem permissions and symlink resolution within the location.
     /// Timeout covers response headers AND body; errors never include paths or response bodies.
     /// </remarks>
-    public async Task<OpenCodeImageFile> ReadImageFileAsync(
+    public Task<OpenCodeImageFile> ReadImageFileAsync(
         string directory, string relativePath, CancellationToken cancellationToken = default)
+        => ReadImageEndpointAsync(directory, OpenCodeImageReference.EscapeRelativePath(relativePath), cancellationToken);
+
+    /// <summary>Explicit browser result file path, through the same authenticated, bounded raster reader.</summary>
+    public Task<OpenCodeImageFile> ReadBrowserImageFileAsync(string directory, string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        // Unlike Markdown, protocol file paths are literal server paths, not URI references.
+        var segments = path.Replace('\\', '/').Split('/');
+        for (var index = 0; index < segments.Length; index++)
+        {
+            if (segments[index] is "." or "..") throw new ArgumentException("浏览器图片路径包含无效段。", nameof(path));
+            foreach (var ch in segments[index]) if (char.IsControl(ch)) throw new ArgumentException("浏览器图片路径包含控制字符。", nameof(path));
+            segments[index] = Uri.EscapeDataString(segments[index]);
+        }
+        var escaped = string.Join('/', segments);
+        if (escaped.StartsWith('/')) escaped = "%2F" + escaped[1..];
+        return ReadImageEndpointAsync(directory, escaped, cancellationToken);
+    }
+
+    private async Task<OpenCodeImageFile> ReadImageEndpointAsync(string directory, string escapedPath, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(directory))
             throw new ArgumentException("An explicit session location directory is required.", nameof(directory));
         foreach (var ch in directory)
             if (char.IsControl(ch)) throw new ArgumentException("Session location must not contain controls.", nameof(directory));
-        var endpoint = "api/fs/read/" + OpenCodeImageReference.EscapeRelativePath(relativePath);
+        var endpoint = "api/fs/read/" + escapedPath;
         var query = new[] { new KeyValuePair<string, string>("location[directory]", directory) };
         const string label = "GET api/fs/read/*";
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

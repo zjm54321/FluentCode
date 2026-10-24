@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 
-internal static class Program
+internal static partial class Program
 {
     private static int _assertions;
 
@@ -513,6 +513,7 @@ internal static class Program
             DetailPopupContract();
             PatchTimelineContract();
             BuiltinToolViews();
+            BrowserToolViews();
             ChildChatLifecycle().GetAwaiter().GetResult();
 
             Console.WriteLine($"PASS: tool detail property list + detail popup (G7/G8), {_assertions} assertions; real OpenCodeToolRowPresentation + OpenCodeDetailPopupLayout, no UI.");
