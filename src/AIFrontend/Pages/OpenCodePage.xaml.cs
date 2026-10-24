@@ -347,6 +347,8 @@ public sealed partial class OpenCodePage : Page
         UnsubscribeAppSourceChanged();
         _recoveryOrigin = null;
         DetachConversationEvents();
+        // The paused page's image lease is dead (page CTS cancelled); the resume refresh rebinds it.
+        ResetConversationImages();
         ClearAgentSelector();
         _sessionRecoveryPanel.HideConfirm();
         _mutationEpoch++;
