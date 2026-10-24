@@ -15,6 +15,7 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
     public string? Id { get; init; }
     public double? Created { get; init; }
     public JsonElement? Metadata { get; init; }
+    public string? LocationDirectory { get; init; }
     public string? SessionId => Data.TryGetProperty("sessionID", out var id) ? id.GetString() : null;
 
     internal static OpenCodeEvent Parse(string json)
@@ -35,6 +36,9 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
             Created = root.TryGetProperty("created", out var created) && created.ValueKind == JsonValueKind.Number
                 && created.TryGetDouble(out var timestamp) ? timestamp : null,
             Metadata = root.TryGetProperty("metadata", out var metadata) ? metadata.Clone() : null,
+            LocationDirectory = root.TryGetProperty("location", out var location) && location.ValueKind == JsonValueKind.Object
+                && location.TryGetProperty("directory", out var directory) && directory.ValueKind == JsonValueKind.String
+                ? directory.GetString() : null,
         };
     }
 }
