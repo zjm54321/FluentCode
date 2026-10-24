@@ -39,7 +39,8 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
     {
         // Validate before adding a tab; failed input must not leave a ghost page.
         var normalized = OpenCodeBrowserPolicy.NormalizeUrl(url);
-        var page = new OpenCodeBrowserPage(Remove, uri => CreatePage(uri, true), agent, previewPath);
+        OpenCodeBrowserPage? page = null;
+        page = new OpenCodeBrowserPage(Remove, uri => CreatePage(uri, page?.AgentActivity is not null), agent, previewPath);
         _pages.Insert(agent && _pages.Count > 0 ? 1 : 0, page);
         _hiddenHost.Children.Add(page.Surface);
         page.PropertyChanged += (_, _) => PagesChanged?.Invoke(this, EventArgs.Empty);
@@ -56,10 +57,10 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
         Move(owned.Surface, _shownHost); _pages.Remove(owned); _pages.Insert(0, owned);
         OverlayChanged?.Invoke(this, EventArgs.Empty); PagesChanged?.Invoke(this, EventArgs.Empty);
     }
-    public void ActivateByAgent(OpenCodeBrowserPage page)
+    public void ActivateByAgent(OpenCodeBrowserPage page, bool switchShown = true)
     {
         FocusedTabId = page.Id;
-        if (Shown is not null) Show(page);
+        if (switchShown && Shown is not null) Show(page);
         PageActivatedByAgent?.Invoke(this, page); PagesChanged?.Invoke(this, EventArgs.Empty);
     }
     public void HideOverlay()

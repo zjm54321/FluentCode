@@ -10,12 +10,18 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
     private readonly Dictionary<string, OpenCodeBrowserWorkspace> _browserWorkspaces = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeBrowserSessionBackend> _browserBackends = new(StringComparer.Ordinal);
     private readonly Grid _browserShownHost = new();
     private string? _browserSelectedSession;
     private bool _browserInitialized;
     private OpenCodeBrowserOverlay? _browserOverlay;
     public OpenCodeBrowserOverlay? BrowserOverlay => _browserOverlay;
     public event EventHandler<OpenCodeBrowserWorkspace>? BrowserWorkspaceCreated;
+    public OpenCodeBrowserSessionBackend GetBrowserBackend(string sessionId)
+    {
+        GetBrowserWorkspace(sessionId);
+        return _browserBackends[sessionId];
+    }
 
     /// <summary>Shared composition API for the peer, strip and selection lanes. UI thread only.</summary>
     public OpenCodeBrowserWorkspace GetBrowserWorkspace(string sessionId)
@@ -23,6 +29,7 @@ public sealed partial class OpenCodePage
         if (_browserWorkspaces.TryGetValue(sessionId, out var existing)) return existing;
         var workspace = new OpenCodeBrowserWorkspace(sessionId, BrowserHiddenHost, _browserShownHost);
         _browserWorkspaces.Add(sessionId, workspace);
+        _browserBackends.Add(sessionId, new OpenCodeBrowserSessionBackend(workspace));
         var source = _source;
         workspace.ReadPreviewTextAsync = (path, ct) => ReferenceEquals(_source, source) && _client is { } client && KnownSessionDirectory(sessionId) is { } directory
             ? client.ReadTextFileAsync(directory, path, ct)
@@ -55,6 +62,7 @@ public sealed partial class OpenCodePage
         Unloaded += (_, _) => { foreach (var workspace in _browserWorkspaces.Values) workspace.HideOverlay(); };
         SessionRetired += (_, args) =>
         {
+            if (_browserBackends.Remove(args.SessionId, out var backend)) backend.Dispose();
             if (_browserWorkspaces.Remove(args.SessionId, out var workspace)) workspace.Dispose();
         };
         SizeBrowserHosts();

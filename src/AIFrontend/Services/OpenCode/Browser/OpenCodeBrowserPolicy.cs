@@ -24,9 +24,9 @@ public static class OpenCodeBrowserPolicy
         if (!text.Contains("://", StringComparison.Ordinal))
         {
             if (System.Text.RegularExpressions.Regex.IsMatch(text, @"^[a-zA-Z][a-zA-Z0-9+.-]*:")
-                && !System.Text.RegularExpressions.Regex.IsMatch(text, @"^[^/:]+:[0-9]+(?:/|$)"))
+                && !System.Text.RegularExpressions.Regex.IsMatch(text, @"^[^/:]+:[0-9]+(?:[/?#]|$)"))
                 throw new OpenCodeBrowserException("invalid_input", "仅支持 HTTP、HTTPS 和 about:blank");
-            var host = text.Split('/')[0];
+            var host = text.Split('/', '?', '#')[0];
             var local = host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.StartsWith("localhost:", StringComparison.OrdinalIgnoreCase)
                 || host.StartsWith("127.", StringComparison.Ordinal) || host.Equals("[::1]", StringComparison.OrdinalIgnoreCase)
                 || host.StartsWith("[::1]:", StringComparison.OrdinalIgnoreCase);

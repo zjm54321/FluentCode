@@ -56,10 +56,13 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     public bool Closed => _closed;
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? Committed;
+    public event EventHandler? Navigating;
     public event EventHandler? Ready;
     public event EventHandler? Closing;
+    internal Func<Task>? PrepareNavigationAsync { get; set; }
     public Task EnsureReadyAsync() { EnsureUi(); return _initialization ??= InitializeAsync(); }
-    private static Task<CoreWebView2Environment> EnvironmentAsync() => _environment ??= CoreWebView2Environment.CreateAsync(null,
+    private static Task<CoreWebView2Environment> EnvironmentAsync() => _environment ??= CreateEnvironmentAsync();
+    private static async Task<CoreWebView2Environment> CreateEnvironmentAsync() => await CoreWebView2Environment.CreateWithOptionsAsync(null,
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AIFrontend", "Browser", "UserData"), null);
     private async Task InitializeAsync()
     {
@@ -68,7 +71,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
             await View.EnsureCoreWebView2Async(await EnvironmentAsync());
             if (_closed) return;
             Core.Settings.IsBuiltInErrorPageEnabled = false;
-            Core.NavigationStarting += (_, _) => { Set(ref _loading, true, nameof(Loading)); Set(ref _error, null, nameof(LoadError)); };
+            Core.NavigationStarting += (_, _) => { Navigating?.Invoke(this, EventArgs.Empty); Set(ref _loading, true, nameof(Loading)); Set(ref _error, null, nameof(LoadError)); };
             Core.ContentLoading += (_, _) =>
             {
                 _contentLoaded = true; Generation++; Refresh(); Changed(nameof(Generation)); Committed?.Invoke(this, EventArgs.Empty);
@@ -99,6 +102,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     {
         var normalized = OpenCodeBrowserPolicy.NormalizeUrl(url);
         await EnsureReadyAsync();
+        if (PrepareNavigationAsync is not null) await PrepareNavigationAsync();
         await NavigateOperationAsync(() => Core.Navigate(normalized), ct);
     }
     public async Task NavigateOperationAsync(Action operation, CancellationToken ct)

@@ -229,5 +229,9 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private static void Copy(string text) { var package = new DataPackage(); package.SetText(text); Clipboard.SetContent(package); }
     private static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
     private static void Theme(DependencyObject target, DependencyProperty property, string key)
-        => target.SetValue(property, Brush(key));
+    {
+        var name = property == Border.BorderBrushProperty ? "BorderBrush" : "Background";
+        if (target is FrameworkElement element) element.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"" + target.GetType().Name + "\"><Setter Property=\"" + name + "\" Value=\"{ThemeResource " + key + "}\"/></Style>");
+    }
 }
