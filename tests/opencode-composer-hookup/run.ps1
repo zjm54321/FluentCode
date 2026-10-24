@@ -47,6 +47,14 @@ $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs"
 $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'Program.cs')
+$sources += Get-Item (Join-Path $PSScriptRoot 'ComposerStatus.cs')
+# Execute the actual status renderer against explicit in-memory control state, without native UI.
+$view = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs")
+$statusMember = [regex]::Match($view, '(?ms)^    private void RenderStatus\(.*?^    \}\r?$')
+if (!$statusMember.Success) { throw 'Missing production composer status renderer.' }
+$statusGenerated = Join-Path $output 'ComposerStatusMember.cs'
+"using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages.OpenCode; internal sealed partial class ComposerStatusHost {`n" + $statusMember.Value + "`n}" | Set-Content -Encoding UTF8 $statusGenerated
+$sources += Get-Item $statusGenerated
 $sources += Get-Item (Join-Path $PSScriptRoot 'NativeActions.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs"

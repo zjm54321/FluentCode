@@ -106,6 +106,7 @@ internal static class Program
             Path.Combine(Path.GetTempPath(),"a7-offline-recents-"+Guid.NewGuid().ToString("N")+".json"));
         typeof(OpenCodeRecentModels).GetField("_loaded",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,true);
         await ComposerActivityTests.Run();
+        ComposerStatusHost.Run();
         await SideQuestionTests.Run();
         await DeferredSelectionTests.Run();
         if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }

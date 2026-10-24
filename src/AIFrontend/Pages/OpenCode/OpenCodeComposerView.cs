@@ -1730,7 +1730,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     }
 
     // ------------------------------------------------------------------
-    // Status line: inactive draft > busy > local note > protection > controller note
+    // Status line: recovery/inactive draft > picking > local note > protection > controller note.
+    // Submission progress belongs only to the send button, never a second row above the editor.
     // ------------------------------------------------------------------
 
     private void RenderStatus(OpenCodeComposerSnapshot s, bool enhanced, bool inactiveBound)
@@ -1762,10 +1763,10 @@ internal sealed class OpenCodeComposerView : StackPanel
             tone = "caution";
             offerDiscard = !s.IsBusy;
         }
-        else if (s.IsBusy)
+        else if (s.IsBusy && _picking)
         {
             busy = true;
-            text = _picking ? "正在选择或读取附件…" : "正在提交命令或附件…发送与停止暂不可用。";
+            text = "正在选择或读取附件…";
         }
         else if (_localNote is not null)
         {
@@ -1773,7 +1774,7 @@ internal sealed class OpenCodeComposerView : StackPanel
             glyph = "\uE7BA";
             tone = "caution";
         }
-        else if (s.IsActive && enhanced && s.IsProtected)
+        else if (!s.IsBusy && s.IsActive && enhanced && s.IsProtected)
         {
             text = "此会话有结果尚未确认的操作或正在进行的交互，命令/附件暂不能提交；不会自动重试。";
             glyph = "\uE72E"; // Lock
@@ -1790,7 +1791,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         offerDiscard |= (enhanced || s.IsBoundDraft) && !inactiveBound && !s.IsBusy;
         if (offerDiscard) text ??= "草稿尚未发送。";
 
-        if (_sideQuestionPending > 0)
+        if (_sideQuestionPending > 0 && !s.IsBusy)
         {
             var pending = $"/btw ({_sideQuestionPending}) · 正在回答旁路问题…";
             // Visual only: on its own the pending answer reads as quiet progress; protection notices keep their icon/tone.
