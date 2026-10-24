@@ -136,8 +136,8 @@ public sealed partial class OpenCodePage
             state = state with { Target = mapped };
             if (editorName is not null)
             {
-                var editor = WslHostEditorDetection.Detect(_wslEditorHost).First(e => e.Name == editorName);
-                if (editor.Executable is null) { DetectWslEditors(); return; }
+                var editor = WslHostEditorDetection.Detect(_wslEditorHost).FirstOrDefault(e => e.Name == editorName && e.Executable is not null);
+                if (editor is null) { DetectWslEditors(); return; }
                 _wslEditorPreference.Save(editor.Name);
                 _selectedWslEditor = editor.Name;
                 await OpenCodeWslQuickAccess.LaunchAsync(state, editor, _wslQuickAccessLauncher);
@@ -163,9 +163,7 @@ public sealed partial class OpenCodePage
         return OpenCodeWslQuickAccess.Resolve(settings.Kind, true, settings.WslDistribution, path, home);
     }
 
-    private WslHostEditor? DetailPathEditor() => _selectedWslEditor is { } selected
-        ? _wslEditors.FirstOrDefault(editor => editor.Name == selected && editor.Executable is not null)
-        : _wslEditors.FirstOrDefault(editor => editor.Executable is not null);
+    private WslHostEditor? DetailPathEditor() => WslEditorChoices.Resolve(_wslEditors, _selectedWslEditor).Current;
 
     private string? DetailPathUnavailableReason(MessageHistoryRead read, string path, bool directory)
     {

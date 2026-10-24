@@ -32,4 +32,10 @@ if ($LASTEXITCODE -ne 0) { throw "WSL quick-access tests failed: $LASTEXITCODE" 
 $launcherSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccess.Windows.cs')
 if ($launcherSource -match 'LaunchFolderPathAsync|StorageFolder' -or $launcherSource -notmatch 'Start\(OpenCodeWslQuickAccess.ExplorerLaunch\(target,') { throw 'Explorer must use the mapped native launch command directly.' }
 Write-Output 'PASS native Explorer route source contract (no host application launched)'
+$viewSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessView.cs')
+foreach ($pattern in @('SplitButton _editor', '_editor.Click \+=', '_editor.Flyout = _editors', 'new RadioMenuFlyoutItem', 'foreach \(var editor in choices.Installed\)', 'IsChecked = editor.Name == _currentEditor\?\.Name')) {
+    if ($viewSource -notmatch $pattern) { throw "Native editor SplitButton/menu contract missing: $pattern" }
+}
+if ($viewSource -match 'ToggleMenuFlyoutItem') { throw 'Editor choice must use native radio items.' }
+Write-Output 'PASS native SplitButton/menu source contract; detection/preference tested in pure projection'
 Write-Output "PASS WSL quick access; evidence: $EvidenceRoot"

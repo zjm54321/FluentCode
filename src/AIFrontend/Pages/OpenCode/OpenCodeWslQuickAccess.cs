@@ -11,6 +11,16 @@ internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDir
 internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason);
 internal enum WslEditorOpenMode { RemoteWsl, HostFolder }
 internal sealed record WslHostEditor(string Name, string? Executable, WslEditorOpenMode OpenMode, string? Reason);
+internal sealed record WslEditorChoices(IReadOnlyList<WslHostEditor> Installed, WslHostEditor? Current)
+{
+    public static WslEditorChoices Resolve(IReadOnlyList<WslHostEditor> detected, string? preference)
+    {
+        var installed = new List<WslHostEditor>();
+        foreach (var editor in detected) if (editor.Executable is not null) installed.Add(editor);
+        return new(installed, installed.Find(editor => editor.Name == preference)
+            ?? (installed.Count > 0 ? installed[0] : null));
+    }
+}
 internal sealed class WslEditorRequestedEventArgs(string name) : EventArgs
 {
     public string Name { get; } = name;

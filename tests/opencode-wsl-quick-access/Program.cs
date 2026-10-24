@@ -122,6 +122,13 @@ internal static class Program
         host.Variables["PATH"] = @"C:\Emacs\bin;C:\Other\Microsoft VS Code\bin";
         host.Files.Add(@"C:\Emacs\bin\runemacs.exe");
         var editors = WslHostEditorDetection.Detect(host);
+        var choices = WslEditorChoices.Resolve(editors, "Zed");
+        Check(choices.Installed.Count == 4 && choices.Current?.Name == "Zed", "menu includes only detected editors and checks persisted choice");
+        Check(WslEditorChoices.Resolve(editors, null).Current?.Name == "VS Code", "primary button has a detected default before first preference");
+        var partialDetection = editors.Select(e => e.Name == "Zed" ? e : e with { Executable = null }).ToArray();
+        choices = WslEditorChoices.Resolve(partialDetection, "VS Code");
+        Check(choices.Installed.Single().Name == "Zed" && choices.Current?.Name == "Zed", "removed preference falls back to installed editor and hides missing entries");
+        Check(WslEditorChoices.Resolve(Array.Empty<WslHostEditor>(), "Zed").Current is null, "no editor disables primary action");
         Check(editors.Count == 4, "candidate matrix covers four editors");
         Check(editors[0].Name == "VS Code" && editors[0].Executable == @"C:\Editors\Code.exe" && editors[0].Reason is null, "VS Code registry first");
         foreach (var editor in editors.Skip(1))
@@ -174,6 +181,8 @@ internal static class Program
             {
                 new WslQuickAccessEditorPreference(preferencePath).Save(editor.Name);
                 Check(new WslQuickAccessEditorPreference(preferencePath).Load() == editor.Name, "editor choice survives recreation: " + editor.Name);
+                Check(WslEditorChoices.Resolve(editors, new WslQuickAccessEditorPreference(preferencePath).Load()).Current?.Name == editor.Name,
+                    "recreated menu checks persisted editor for primary action: " + editor.Name);
             }
         }
         finally { if (Directory.Exists(preferenceRoot)) Directory.Delete(preferenceRoot, true); }
