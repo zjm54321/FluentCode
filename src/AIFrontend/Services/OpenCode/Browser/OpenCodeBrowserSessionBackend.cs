@@ -115,7 +115,7 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
         {
             var path = S(a, "path");
             if (string.IsNullOrWhiteSpace(path)) throw new OpenCodeBrowserException("invalid_input", "预览文件路径不能为空");
-            var preview = _workspace.Pages.OfType<OpenCodeBrowserPage>().FirstOrDefault(p => p.PreviewPath == path) ?? _workspace.CreatePage("about:blank", true, path);
+            var preview = _workspace.Pages.OfType<OpenCodeBrowserPage>().FirstOrDefault(p => OpenCodeBrowserPreviewPolicy.SamePath(p.PreviewPath, path)) ?? _workspace.CreatePage("about:blank", true, path);
             _workspace.Show(preview); return Ok(new JsonObject { ["path"] = path });
         }
         var page = _workspace.Find(S(a, "tabID")) ?? throw new OpenCodeBrowserException("not_found", "此会话中找不到该页面");

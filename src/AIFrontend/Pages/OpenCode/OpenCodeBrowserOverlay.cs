@@ -1,6 +1,5 @@
 using System;
 using System.ComponentModel;
-using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode.Browser;
 using Microsoft.UI.Xaml;
@@ -31,7 +30,8 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly StackPanel _error;
     private readonly TextBlock _errorReason = new() { TextWrapping = TextWrapping.Wrap, MaxWidth = 620 };
     private readonly TextBlock _errorCode = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly TextBox _preview = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
+    private readonly OpenCodeBrowserPreviewView _preview = new();
+    private readonly TextBlock _serverFile = new() { Text = "服务器文件", VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 0, 12, 0), Visibility = Visibility.Collapsed };
     private readonly Grid _body = new();
     private readonly Canvas _pointerLayer = new() { IsHitTestVisible = false };
     private readonly StackPanel _pointer = new() { Orientation = Orientation.Horizontal, Spacing = 4, Visibility = Visibility.Collapsed };
@@ -40,7 +40,6 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private OpenCodeBrowserWorkspace? _workspace;
     private OpenCodeBrowserPage? _page;
     private bool _editing;
-    private CancellationTokenSource? _previewRead;
     private UIElement? _returnFocus;
     private Storyboard? _outlineFade;
     private bool _wasAgentActive;
@@ -73,9 +72,10 @@ public sealed class OpenCodeBrowserOverlay : Grid
         toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         _back = Button("\uE72B", "后退", () => _page?.GoBack()); _forward = Button("\uE72A", "前进", () => _page?.GoForward());
-        _refresh = Button("\uE72C", "刷新", () => { if (_page?.PreviewPath is not null) _ = ReadPreviewAsync(); else if (_page?.Loading == true) _page.Stop(); else _page?.Reload(); });
+        _refresh = Button("\uE72C", "刷新", () => { if (_page?.PreviewPath is not null) _ = _preview.ReadAsync(); else if (_page?.Loading == true) _page.Stop(); else _page?.Reload(); });
         nav.Children.Add(_back); nav.Children.Add(_forward); nav.Children.Add(_refresh); toolbar.Children.Add(nav);
         var addressHost = new Grid(); addressHost.Children.Add(_address); addressHost.Children.Add(_displayAddress); addressHost.Children.Add(_security);
+        addressHost.Children.Add(_serverFile);
         Grid.SetColumn(addressHost, 1); toolbar.Children.Add(addressHost);
         AutomationProperties.SetName(_address, "页面地址");
         _address.GotFocus += (_, _) => { _editing = true; _displayAddress.Visibility = Visibility.Collapsed; _security.Visibility = Visibility.Collapsed; _address.Text = _page?.PreviewPath ?? _page?.Url ?? ""; _address.SelectAll(); };
@@ -143,16 +143,16 @@ public sealed class OpenCodeBrowserOverlay : Grid
         if (_page is not null) { _page.PropertyChanged -= PagePropertyChanged; _page.AgentPointerMoved -= AgentPointerMoved; }
         var wasShown = _page is not null;
         _workspace = workspace; _page = workspace?.Shown as OpenCodeBrowserPage;
+        _preview.Bind(workspace, _page);
         if (_page is not null) { _page.PropertyChanged += PagePropertyChanged; _page.AgentPointerMoved += AgentPointerMoved; }
         _pointer.Visibility = Visibility.Collapsed;
         Render();
         if (_page is not null)
         {
             if (!wasShown) _returnFocus = FocusManager.GetFocusedElement(XamlRoot) as UIElement;
-            if (_page.PreviewPath is not null) _ = ReadPreviewAsync();
-            else if (_page.Url == "about:blank") _address.Focus(FocusState.Programmatic);
+            if (_page.PreviewPath is null && _page.Url == "about:blank") _address.Focus(FocusState.Programmatic);
         }
-        else { _previewRead?.Cancel(); if (_returnFocus is Control control) control.Focus(FocusState.Programmatic); _returnFocus = null; }
+        else { if (_returnFocus is Control control) control.Focus(FocusState.Programmatic); _returnFocus = null; }
         if (_page is not null) PageChanged?.Invoke(this, _page);
     }
     private void PagePropertyChanged(object? sender, PropertyChangedEventArgs args) => Render();
@@ -160,14 +160,23 @@ public sealed class OpenCodeBrowserOverlay : Grid
     {
         var page = _page; if (page is null) return;
         _chrome.Name.Text = page.Title; _chrome.Target.Text = Uri.TryCreate(page.Url, UriKind.Absolute, out var uri) ? uri.Host : "";
+        var preview = page.PreviewPath is not null;
+        _chrome.Icon.Glyph = preview ? "\uE8A5" : "\uE774";
+        _chrome.Target.Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
+        for (var i = 0; i < 3; i++) _chrome.Actions.Children[i].Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
+        _serverFile.Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
+        _displayAddress.Margin = new(36, 0, preview ? 110 : 36, 0);
+        _preview.UpdateActions();
+        if (PageTools.Children.Count == 5) { PageTools.Children[1].Visibility = preview ? Visibility.Collapsed : Visibility.Visible; PageTools.Children[2].Visibility = preview ? Visibility.Collapsed : Visibility.Visible; }
+        ToolTipService.SetToolTip(_refresh, preview ? "重新读取服务器文件（仅手动刷新）" : "刷新");
         _back.IsEnabled = page.CanGoBack; _forward.IsEnabled = page.CanGoForward;
-        (_refresh.Content as FontIcon)!.Glyph = page.Loading ? "\uE711" : "\uE72C";
+        (_refresh.Content as FontIcon)!.Glyph = !preview && page.Loading ? "\uE711" : "\uE72C";
         _address.IsReadOnly = page.PreviewPath is not null;
         if (!_editing)
         {
             _address.Text = ""; _security.Visibility = Visibility.Visible; _security.Glyph = uri?.Scheme == "https" ? "\uE72E" : "\uE946";
             _displayAddress.Inlines.Clear();
-            if (page.PreviewPath is not null) _displayAddress.Text = page.PreviewPath + " · 服务器文件";
+            if (page.PreviewPath is not null) { _displayAddress.Text = page.PreviewPath; _security.Glyph = "\uE8A5"; }
             else if (uri?.Scheme is "http" or "https")
             {
                 _displayAddress.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = uri.Authority, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -211,17 +220,6 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _ => "此页面未能加载，请检查网络或重试。",
     };
     private string ErrorText() => (_page?.Url ?? "") + "\n" + ErrorReason(_page?.LoadError) + "\n" + _page?.LoadError;
-    private async Task ReadPreviewAsync()
-    {
-        _previewRead?.Cancel(); _previewRead?.Dispose(); _previewRead = new();
-        var page = _page; var reader = _workspace?.ReadPreviewTextAsync; var ct = _previewRead.Token;
-        _preview.Text = "正在读取服务器文件…";
-        if (page?.PreviewPath is null) return;
-        if (reader is null) { _preview.Text = "服务器文件读取尚未接入"; return; }
-        try { var text = await reader(page.PreviewPath, ct); if (!ct.IsCancellationRequested && _page == page) _preview.Text = OpenCodeBrowserPolicy.Bound(text, 100000); }
-        catch (OperationCanceledException) { }
-        catch (Exception ex) { if (!ct.IsCancellationRequested && _page == page) _preview.Text = "无法读取服务器文件：" + ex.Message; }
-    }
     private MenuFlyout MoreMenu()
     {
         var menu = new MenuFlyout();

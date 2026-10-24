@@ -46,6 +46,7 @@ public sealed partial class OpenCodePage
         workspace.ReadPreviewTextAsync = (path, ct) => ReferenceEquals(_source, source) && source is { IsRevoked: false } && _client is { } client && KnownSessionDirectory(sessionId) is { } directory
             ? client.ReadTextFileAsync(directory, path, ct)
             : System.Threading.Tasks.Task.FromException<string>(new OpenCodeBrowserException("unavailable", "会话服务器未连接"));
+        ConfigureBrowserPreview(workspace, source);
         workspace.OverlayChanged += (_, _) => UpdateBrowserOverlay(workspace);
         BrowserWorkspaceCreated?.Invoke(this, workspace);
         return workspace;

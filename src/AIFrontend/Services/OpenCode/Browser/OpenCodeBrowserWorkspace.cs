@@ -25,6 +25,9 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
     public OpenCodeBrowserAvailability Availability => _availability().Availability;
     public string? AvailabilityReason => _availability().Reason;
     public Func<string, CancellationToken, Task<string>>? ReadPreviewTextAsync { get; set; }
+    public Func<string, CancellationToken, Task<OpenCodeBrowserPreviewContent>>? ReadPreviewAsync { get; set; }
+    public Func<string, bool, string?>? PreviewPathUnavailableReason { get; set; }
+    public Func<string, bool, Task>? OpenPreviewPathAsync { get; set; }
     public event EventHandler? PagesChanged;
     public event EventHandler? AvailabilityChanged;
     public event EventHandler? OverlayChanged;

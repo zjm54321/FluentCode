@@ -54,6 +54,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     public string AgentName { get; set; } = "智能体";
     public bool UserTakeover { get => _takeover; set { EnsureUi(); Set(ref _takeover, value); } }
     public string? PreviewPath { get; }
+    public string? PreviewBadge => PreviewPath is null ? null : OpenCodeBrowserPreviewPolicy.Badge(PreviewPath);
     public byte[]? PreviewBytes => _previewBytes;
     public WebView2 View { get; }
     public Grid Surface { get; }
@@ -94,7 +95,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
                 Set(ref _error, e.IsSuccess ? null : e.WebErrorStatus.ToString(), nameof(LoadError));
                 Refresh(); _navigation?.TrySetResult(e.IsSuccess);
             };
-            Core.NewWindowRequested += (_, e) => { e.Handled = true; _newWindow(e.Uri); };
+            Core.NewWindowRequested += (_, e) => { e.Handled = true; if (PreviewPath is null) _newWindow(e.Uri); };
             Ready?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex) { Set(ref _error, OpenCodeBrowserPolicy.Bound(ex.Message), nameof(LoadError)); throw; }
