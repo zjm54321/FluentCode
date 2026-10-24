@@ -15,9 +15,22 @@ public static class OpenCodeBrowserProfileAnalysis
         var events = trace["traceEvents"]!.AsArray().OfType<JsonObject>().ToArray();
         var timed = events.Where(e => S(e, "ph") == "X" && e["dur"] is not null).ToArray();
         var totals = timed.GroupBy(e => S(e, "name")).Select(g => new { Name = g.Key, Count = g.Count(), Total = g.Sum(e => N(e, "dur")) / 1000, Max = g.Max(e => N(e, "dur")) / 1000 }).OrderByDescending(e => e.Total).Take(limit);
+        var metrics = new JsonArray(new JsonObject { ["name"] = "eventCount", ["value"] = events.Length, ["unit"] = "count" }, new JsonObject { ["name"] = "longTaskCount", ["value"] = timed.Count(e => S(e, "name") is "RunTask" or "ThreadControllerImpl::RunTask" && N(e, "dur") >= 50000), ["unit"] = "count" });
+        foreach (var category in new[] { (Name: "scriptingEventTime", Events: new[] { "FunctionCall", "EvaluateScript", "RunMicrotasks", "CompileScript" }), (Name: "renderingEventTime", Events: new[] { "Layout", "UpdateLayoutTree", "RecalculateStyles" }), (Name: "paintingEventTime", Events: new[] { "Paint", "PrePaint", "CompositeLayers" }) })
+        {
+            var observed = timed.Where(e => category.Events.Contains(S(e, "name"))).ToArray();
+            if (observed.Length > 0) metrics.Add(new JsonObject { ["name"] = category.Name, ["value"] = observed.Sum(e => N(e, "dur")) / 1000, ["unit"] = "ms" });
+        }
+        var navigation = events.Where(e => S(e, "name") == "navigationStart").OrderBy(e => N(e, "ts")).FirstOrDefault();
+        if (navigation is not null)
+            foreach (var name in new[] { "firstPaint", "firstContentfulPaint", "domContentLoadedEventEnd", "loadEventEnd" })
+            {
+                var observed = events.FirstOrDefault(e => S(e, "name") == name && N(e, "ts") >= N(navigation, "ts"));
+                if (observed is not null) metrics.Add(new JsonObject { ["name"] = name, ["value"] = (N(observed, "ts") - N(navigation, "ts")) / 1000, ["unit"] = "ms since observed navigationStart" });
+            }
         return new()
         {
-            ["metrics"] = new JsonArray(new JsonObject { ["name"] = "eventCount", ["value"] = events.Length, ["unit"] = "count" }, new JsonObject { ["name"] = "longTaskCount", ["value"] = timed.Count(e => S(e, "name") is "RunTask" or "ThreadControllerImpl::RunTask" && N(e, "dur") >= 50000), ["unit"] = "count" }),
+            ["metrics"] = metrics,
             ["events"] = new JsonArray(totals.Select(e => (JsonNode)new JsonObject { ["name"] = OpenCodeBrowserPolicy.Bound(e.Name), ["count"] = e.Count, ["totalMs"] = e.Total, ["maxMs"] = e.Max }).ToArray()),
             ["insights"] = new JsonArray("事件时长可能嵌套，不能相加视为总耗时。未记录的 Web Vitals 不作推断。"),
         };

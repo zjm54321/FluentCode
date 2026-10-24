@@ -58,6 +58,25 @@ public static class OpenCodeBrowserPolicy
     {
         ["tabs"] = new JsonArray(state.Tabs.Select(t => (JsonNode)Tab(t)).ToArray()), ["focusedTabID"] = state.FocusedTabId,
     };
+    public static JsonObject FileResult(OpenCodeBrowserTab tab, IReadOnlyList<OpenCodeBrowserFile> files)
+    {
+        if (files.Sum(file => (long)file.Data.Length) > MaxFileBytes) throw new OpenCodeBrowserException("file_too_large", "导出文件超过 5 MiB");
+        return new() { ["tab"] = Tab(tab), ["files"] = new JsonArray(files.Select(file => (JsonNode)new JsonObject
+        {
+            ["id"] = file.Id, ["name"] = file.Name, ["mime"] = file.Mime, ["bytes"] = file.Data.Length, ["path"] = "",
+        }).ToArray()) };
+    }
+    /// <summary>Protocol-4 outcome shape, also usable by the peer serializer. Bytes are base64, not JSON number arrays.</summary>
+    public static JsonObject Outcome(OpenCodeBrowserOutcome outcome) => outcome switch
+    {
+        OpenCodeBrowserOutcome.Success success => new() { ["type"] = "success", ["result"] = new JsonObject
+        {
+            ["value"] = success.Value?.DeepClone(), ["files"] = new JsonArray(success.Files.Select(file => (JsonNode)new JsonObject
+            { ["id"] = file.Id, ["name"] = file.Name, ["mime"] = file.Mime, ["data"] = Convert.ToBase64String(file.Data) }).ToArray()),
+        } },
+        OpenCodeBrowserOutcome.Failure failure => new() { ["type"] = "failure", ["code"] = Bound(failure.Code), ["message"] = Bound(failure.Message) },
+        _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
+    };
     public static string Bound(string? text, int max = 2048) => text is null ? string.Empty : text[..Math.Min(text.Length, max)];
 }
 

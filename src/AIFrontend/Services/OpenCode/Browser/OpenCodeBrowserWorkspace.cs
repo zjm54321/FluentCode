@@ -43,6 +43,7 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
         page = new OpenCodeBrowserPage(Remove, uri => CreatePage(uri, page?.AgentActivity is not null), agent, previewPath);
         _pages.Insert(agent && _pages.Count > 0 ? 1 : 0, page);
         _hiddenHost.Children.Add(page.Surface);
+        page.View.IsTabStop = false;
         page.PropertyChanged += (_, _) => PagesChanged?.Invoke(this, EventArgs.Empty);
         PagesChanged?.Invoke(this, EventArgs.Empty);
         if (agent) PageActivatedByAgent?.Invoke(this, page);
@@ -55,6 +56,7 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
         if (page is not OpenCodeBrowserPage owned || !_pages.Contains(owned)) throw new OpenCodeBrowserException("not_found", "页面不属于此会话");
         HideOverlay(); Shown = owned; FocusedTabId = owned.Id;
         Move(owned.Surface, _shownHost); _pages.Remove(owned); _pages.Insert(0, owned);
+        owned.View.IsTabStop = true;
         OverlayChanged?.Invoke(this, EventArgs.Empty); PagesChanged?.Invoke(this, EventArgs.Empty);
     }
     public void ActivateByAgent(OpenCodeBrowserPage page, bool switchShown = true)
@@ -66,7 +68,7 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
     public void HideOverlay()
     {
         if (Shown is not OpenCodeBrowserPage page) return;
-        Move(page.Surface, _hiddenHost); Shown = null; OverlayChanged?.Invoke(this, EventArgs.Empty);
+        Move(page.Surface, _hiddenHost); page.View.IsTabStop = false; Shown = null; OverlayChanged?.Invoke(this, EventArgs.Empty);
         PagesChanged?.Invoke(this, EventArgs.Empty);
     }
     private static void Move(Grid surface, Grid to)

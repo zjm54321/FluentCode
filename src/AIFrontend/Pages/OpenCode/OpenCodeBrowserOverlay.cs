@@ -24,7 +24,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly TextBlock _displayAddress = new() { VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false, Margin = new(36, 0, 36, 0), TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly FontIcon _security = new() { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left, Margin = new(12, 0, 0, 0) };
     private readonly Button _back, _forward, _refresh;
-    private readonly Border _agentOutline = new() { BorderThickness = new(3), IsHitTestVisible = false };
+    private readonly Border _agentOutline = new() { BorderThickness = new(3), IsHitTestVisible = false, Opacity = 0 };
     private readonly Border _agentPill;
     private readonly TextBlock _activity = new() { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _takeover;
@@ -33,11 +33,17 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly TextBlock _errorCode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBox _preview = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
     private readonly Grid _body = new();
+    private readonly Canvas _pointerLayer = new() { IsHitTestVisible = false };
+    private readonly StackPanel _pointer = new() { Orientation = Orientation.Horizontal, Spacing = 4, Visibility = Visibility.Collapsed };
+    private readonly TextBlock _pointerName = new();
+    private readonly Microsoft.UI.Xaml.Shapes.Ellipse _ripple = new() { Width = 28, Height = 28, StrokeThickness = 2, Visibility = Visibility.Collapsed };
     private OpenCodeBrowserWorkspace? _workspace;
     private OpenCodeBrowserPage? _page;
     private bool _editing;
     private CancellationTokenSource? _previewRead;
     private UIElement? _returnFocus;
+    private Storyboard? _outlineFade;
+    private bool _wasAgentActive;
 
     public OpenCodeBrowserOverlay(Grid shownHost)
     {
@@ -101,6 +107,10 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var errorSurface = new Grid(); Theme(errorSurface, Panel.BackgroundProperty, "SolidBackgroundFillColorBaseBrush"); errorSurface.Children.Add(_error);
         ErrorSurface = errorSurface; _body.Children.Add(errorSurface);
         Theme(_agentOutline, Border.BorderBrushProperty, "AccentFillColorDefaultBrush"); _body.Children.Add(_agentOutline);
+        var pointerIcon = new FontIcon { Glyph = "\uE8B0", FontSize = 18 }; OpenCodeToolTheme.Apply(pointerIcon, OpenCodeToolTheme.Icon("AccentFillColorDefaultBrush"));
+        OpenCodeToolTheme.Apply(_pointerName, OpenCodeToolTheme.Text("AccentTextFillColorPrimaryBrush"));
+        _pointer.Children.Add(pointerIcon); _pointer.Children.Add(_pointerName); _pointerLayer.Children.Add(_pointer); _pointerLayer.Children.Add(_ripple);
+        _ripple.Stroke = Brush("AccentFillColorDefaultBrush"); _body.Children.Add(_pointerLayer);
         var pillContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         pillContent.Children.Add(_activity); _takeover = TextButton("接管", () => { if (_page is not null) _page.UserTakeover = !_page.UserTakeover; });
         pillContent.Children.Add(_takeover); pillContent.Children.Add(TextButton("停止", () => { if (_page is not null) StopRequested?.Invoke(this, _page); }));
@@ -130,10 +140,11 @@ public sealed class OpenCodeBrowserOverlay : Grid
     public event EventHandler<OpenCodeBrowserPage>? PageChanged;
     public void Bind(OpenCodeBrowserWorkspace? workspace)
     {
-        if (_page is not null) _page.PropertyChanged -= PagePropertyChanged;
+        if (_page is not null) { _page.PropertyChanged -= PagePropertyChanged; _page.AgentPointerMoved -= AgentPointerMoved; }
         var wasShown = _page is not null;
         _workspace = workspace; _page = workspace?.Shown as OpenCodeBrowserPage;
-        if (_page is not null) _page.PropertyChanged += PagePropertyChanged;
+        if (_page is not null) { _page.PropertyChanged += PagePropertyChanged; _page.AgentPointerMoved += AgentPointerMoved; }
+        _pointer.Visibility = Visibility.Collapsed;
         Render();
         if (_page is not null)
         {
@@ -168,18 +179,28 @@ public sealed class OpenCodeBrowserOverlay : Grid
         ErrorSurface.Visibility = page.LoadError is null || page.PreviewPath is not null ? Visibility.Collapsed : Visibility.Visible;
         _errorReason.Text = ErrorReason(page.LoadError); _errorCode.Text = page.LoadError ?? "";
         _preview.Visibility = page.PreviewPath is null ? Visibility.Collapsed : Visibility.Visible;
-        _activity.Text = page.AgentName + " 正在操作此页面 · " + page.AgentActivity;
+        _activity.Text = page.UserTakeover ? "用户已接管此页面" : page.AgentName + " 正在操作此页面 · " + page.AgentActivity;
         _takeover.Content = page.UserTakeover ? "交还" : "接管";
         var active = page.AgentActivity is not null || page.UserTakeover;
         _agentPill.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        if (active) _agentOutline.Opacity = 1;
-        else if (new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+        if (!active) _pointer.Visibility = Visibility.Collapsed;
+        if (active) { _outlineFade?.Stop(); _agentOutline.Opacity = 1; }
+        else if (_wasAgentActive && new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
         {
             var animation = new DoubleAnimation { To = 0, Duration = new Duration(TimeSpan.FromMilliseconds(180)) };
             Storyboard.SetTarget(animation, _agentOutline); Storyboard.SetTargetProperty(animation, "Opacity");
-            var storyboard = new Storyboard(); storyboard.Children.Add(animation); storyboard.Begin();
+            _outlineFade = new Storyboard(); _outlineFade.Children.Add(animation); _outlineFade.Begin();
         }
-        else _agentOutline.Opacity = 0;
+        else if (!_wasAgentActive) _agentOutline.Opacity = 0;
+        _wasAgentActive = active;
+    }
+    private async void AgentPointerMoved(object? sender, OpenCodeBrowserPointer pointer)
+    {
+        _pointerName.Text = _page?.AgentName ?? "智能体"; _pointer.Visibility = Visibility.Visible;
+        Canvas.SetLeft(_pointer, pointer.X); Canvas.SetTop(_pointer, pointer.Y);
+        if (!pointer.Click) return;
+        Canvas.SetLeft(_ripple, pointer.X - 14); Canvas.SetTop(_ripple, pointer.Y - 14); _ripple.Visibility = Visibility.Visible;
+        await Task.Delay(250); _ripple.Visibility = Visibility.Collapsed;
     }
     public static string ErrorReason(string? code) => code switch
     {

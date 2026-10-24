@@ -12,6 +12,11 @@ public sealed class OpenCodeBrowserSnapshot
     private readonly Dictionary<string, int> _refs = new(StringComparer.Ordinal);
     private int _nextRef;
     public IReadOnlyDictionary<string, int> Refs => _refs;
+    public string Register(int backendNodeId)
+    {
+        if (backendNodeId <= 0) throw new OpenCodeBrowserException("invalid_input", "backendNodeId 必须为正整数");
+        var reference = "e" + ++_nextRef; _refs.Add(reference, backendNodeId); return reference;
+    }
     public void Clear() => _refs.Clear();
     public int Resolve(string reference) => _refs.TryGetValue(reference.TrimStart('@'), out var node) ? node
         : throw new OpenCodeBrowserException("stale_ref", "元素引用已失效，请重新读取页面结构");
@@ -26,12 +31,13 @@ public sealed class OpenCodeBrowserSnapshot
         var builder = new StringBuilder(); var truncated = false; var visited = new HashSet<string>();
         void Visit(JsonObject node, int level)
         {
+            if (visited.Count >= 10000) { truncated = true; return; }
             if (level >= depth || !visited.Add(node["nodeId"]!.GetValue<string>())) return;
             var ignored = node["ignored"]?.GetValue<bool>() == true;
             if (!ignored)
             {
                 var reference = "";
-                if (node["backendDOMNodeId"] is JsonValue id && id.TryGetValue<int>(out var backend)) { reference = "e" + ++_nextRef; _refs.Add(reference, backend); }
+                if (node["backendDOMNodeId"] is JsonValue id && id.TryGetValue<int>(out var backend) && backend > 0) reference = Register(backend);
                 var role = node["role"]?["value"]?.ToString() ?? "unknown";
                 var name = node["name"]?["value"]?.ToString() ?? "";
                 var value = node["value"]?["value"]?.ToString();

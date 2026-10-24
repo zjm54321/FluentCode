@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -16,6 +17,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
         var parameters = new JsonObject(); if (a["frameID"] is not null) parameters["frameId"] = S(a, "frameID");
         var tree = await Call(c, "Accessibility.getFullAXTree", parameters, ct);
         var formatted = c.Snapshot.Format(tree["nodes"]!.AsArray(), I(a, "depth", 20), S(a, "type") == "find" ? S(a, "text") : null, root);
+        c.RefSessions.Clear(); foreach (var reference in c.Snapshot.Refs.Keys) c.RefSessions[reference] = c.ActiveSession;
         var text = formatted.Content; var truncated = formatted.Truncated;
         if (B(a, "boxes"))
         {
@@ -52,11 +54,13 @@ public sealed partial class OpenCodeBrowserSessionBackend
     {
         if (response["exceptionDetails"] is not null) throw new OpenCodeBrowserException("evaluation_failed", response["exceptionDetails"]?["exception"]?["description"]?.ToString() ?? response["exceptionDetails"]!.ToJsonString());
         var result = response["result"]!.AsObject();
-        if (result["unserializableValue"] is not null || result["objectId"] is not null) throw new OpenCodeBrowserException("invalid_result", "JavaScript 结果必须可序列化为 JSON");
+        if (result["unserializableValue"] is not null || result["objectId"] is not null || S(result, "type") is "undefined" or "function" or "symbol" or "bigint") throw new OpenCodeBrowserException("invalid_result", "JavaScript 结果必须可序列化为 JSON");
         return result["value"]?.DeepClone();
     }
     private static async Task<string> ResolveObjectAsync(PageContext c, string reference, CancellationToken ct, int? context = null)
     {
+        c.ActiveSession = c.RefSessions.GetValueOrDefault(reference.TrimStart('@'));
+        if (c.ActiveSession is { } session) await c.EnsureFrameSessionAsync(session);
         var parameters = new JsonObject { ["backendNodeId"] = c.Snapshot.Resolve(reference), ["objectGroup"] = "aif-browser" };
         if (context is { } id) parameters["executionContextId"] = id;
         var result = await Call(c, "DOM.resolveNode", parameters, ct);
@@ -69,7 +73,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
         {
             return ScriptValue(await Call(c, "Runtime.callFunctionOn", new() { ["objectId"] = id, ["functionDeclaration"] = function, ["arguments"] = arguments ?? new(), ["returnByValue"] = true, ["awaitPromise"] = true, ["userGesture"] = true }, ct));
         }
-        finally { await c.Page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = id }); }
+        finally { await c.Page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = id }, c.ActiveSession); }
     }
     private static async Task<OpenCodeBrowserOutcome> EvaluateAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
@@ -85,6 +89,8 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static async Task<ElementBox> BoxAsync(PageContext c, string reference, CancellationToken ct, bool scroll = false)
     {
+        c.ActiveSession = c.RefSessions.GetValueOrDefault(reference.TrimStart('@'));
+        if (c.ActiveSession is { } session) await c.EnsureFrameSessionAsync(session);
         var node = c.Snapshot.Resolve(reference);
         if (scroll) await Call(c, "DOM.scrollIntoViewIfNeeded", new() { ["backendNodeId"] = node }, ct);
         var result = await Call(c, "DOM.getBoxModel", new() { ["backendNodeId"] = node }, ct);
@@ -96,7 +102,10 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static int Modifiers(JsonArray? keys) => keys?.Sum(key => key?.ToString() switch { "Alt" => 1, "Control" => 2, "Meta" => 4, "Shift" => 8, _ => 0 }) ?? 0;
     private static async Task MouseAsync(PageContext c, string type, double x, double y, CancellationToken ct, string button = "none", int count = 0, int modifiers = 0, int buttons = 0)
-        => await Call(c, "Input.dispatchMouseEvent", new() { ["type"] = type, ["x"] = x, ["y"] = y, ["button"] = button, ["clickCount"] = count, ["modifiers"] = modifiers, ["buttons"] = buttons }, ct);
+    {
+        c.Page.ReportPointer(x, y, type == "mousePressed");
+        await Call(c, "Input.dispatchMouseEvent", new() { ["type"] = type, ["x"] = x, ["y"] = y, ["button"] = button, ["clickCount"] = count, ["modifiers"] = modifiers, ["buttons"] = buttons }, ct);
+    }
     private static async Task ClickAsync(PageContext c, string reference, JsonObject a, CancellationToken ct)
     {
         var box = await BoxAsync(c, reference, ct, true); var button = S(a, "button", "left"); var count = I(a, "count", 1); var modifiers = Modifiers(a["modifiers"] as JsonArray);
@@ -115,6 +124,8 @@ public sealed partial class OpenCodeBrowserSessionBackend
             case "click": await ClickAsync(c, S(a, "ref"), a, ct); break;
             case "hover": var box = await BoxAsync(c, S(a, "ref"), ct, true); await MouseAsync(c, "mouseMoved", box.CenterX, box.CenterY, ct); break;
             case "drag":
+                if (c.RefSessions.GetValueOrDefault(S(a, "from").TrimStart('@')) != c.RefSessions.GetValueOrDefault(S(a, "to").TrimStart('@')))
+                    throw new OpenCodeBrowserException("unsupported", "不能跨渲染进程拖动两个 frame 中的元素");
                 var start = await BoxAsync(c, S(a, "from"), ct, true); var end = await BoxAsync(c, S(a, "to"), ct);
                 await MouseAsync(c, "mouseMoved", start.CenterX, start.CenterY, ct);
                 await MouseAsync(c, "mousePressed", start.CenterX, start.CenterY, ct, "left", 1, buttons: 1);
@@ -214,6 +225,8 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static async Task UploadAsync(PageContext c, OpenCodeBrowserCommand command, CancellationToken ct)
     {
+        var bytes = command.Files.Sum(f => (long)f.Data.Length);
+        if (c.UploadBytes + bytes > 25 * 1024 * 1024) throw new OpenCodeBrowserException("resource_limit", "此页面保留的上传临时文件已达 25 MiB，请关闭页面以释放");
         var a = command.Action; var paths = a["paths"]!.AsArray(); Directory.CreateDirectory(c.TempDirectory); var local = new JsonArray(); var created = new System.Collections.Generic.List<string>();
         try
         {
@@ -233,6 +246,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                     await Call(c, "Input.dispatchDragEvent", new() { ["type"] = type, ["x"] = box.CenterX, ["y"] = box.CenterY, ["data"] = new JsonObject { ["items"] = new JsonArray(), ["files"] = local.DeepClone(), ["dragOperationsMask"] = 1 } }, ct);
             }
             // Chromium may read File bytes lazily after the event; keep uploads until page/session close.
+            c.UploadBytes += bytes;
         }
         catch { foreach (var folder in created) if (Directory.Exists(folder)) Directory.Delete(folder, true); throw; }
     }

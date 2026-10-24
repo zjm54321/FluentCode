@@ -129,7 +129,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
             await c.Page.CdpAsync("Tracing.end");
             var complete = await c.TraceComplete.Task.WaitAsync(ct); stream = S(complete, "stream");
             c.TraceClock!.Stop(); c.TraceDuration = c.TraceClock.Elapsed.TotalMilliseconds;
-            c.TraceIncomplete = B(complete, "dataLossOccurred") || c.TraceGeneration != c.Page.Generation;
+            c.TraceIncomplete = B(complete, "dataLossOccurred");
             using var bytes = new MemoryStream();
             while (true)
             {
@@ -145,6 +145,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                 if (item["args"]?["data"]?["frames"] is JsonArray frames)
                     foreach (var frame in frames.OfType<JsonObject>()) if (S(frame, "frame") == c.TraceFrame && frame["processId"] is not null) processes.Add(frame["processId"]!.ToJsonString());
             if (processes.Count == 0) throw new OpenCodeBrowserException("unsupported", "跟踪中没有此页面的渲染进程标识，不能导出应用级全局跟踪冒充页面跟踪");
+            c.TraceIncomplete |= processes.Count > 1;
             trace["traceEvents"] = new JsonArray(events.Where(e => processes.Contains(e["pid"]?.ToJsonString() ?? "")).Select(e => e.DeepClone()).ToArray());
             c.TraceFile = c.Save("capture.trace.json.gz", "application/gzip", Compress(Encoding.UTF8.GetBytes(trace.ToJsonString())), new() { ["kind"] = "trace" });
         }

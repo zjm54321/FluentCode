@@ -9,6 +9,8 @@ using Microsoft.UI.Dispatching;
 
 namespace AIFrontend.Services.OpenCode.Browser;
 
+public sealed record OpenCodeBrowserActionCompleted(OpenCodeBrowserCommand Command, OpenCodeBrowserOutcome Outcome, DateTimeOffset CompletedAt);
+
 /// <summary>The protocol peer consumes this backend, not the WebView controls. All 45 discriminants are dispatched here.</summary>
 public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSessionBackend, IDisposable
 {
@@ -25,6 +27,17 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
     public string SessionId => _workspace.SessionId;
     public OpenCodeBrowserState State => Volatile.Read(ref _state);
     public event EventHandler? StateChanged;
+    /// <summary>Local timeline/inspection hook; always delivered on the UI thread. Protocol command/results remain authoritative.</summary>
+    public event EventHandler<OpenCodeBrowserActionCompleted>? ActionCompleted;
+    /// <summary>Selection lane registers the DOM backend node from a user annotation. Same expiry as snapshot refs.</summary>
+    public string RegisterElementRef(string tabId, int backendNodeId, long generation, string? frameId = null)
+    {
+        if (!_dispatcher.HasThreadAccess) throw new InvalidOperationException("RegisterElementRef requires the UI thread.");
+        var page = _workspace.Find(tabId) ?? throw new OpenCodeBrowserException("not_found", "此会话中找不到该页面");
+        if (page.Generation != generation) throw new OpenCodeBrowserException("stale_generation", "选择期间页面已导航，请重新选择元素");
+        var context = _contexts[tabId]; var reference = context.Snapshot.Register(backendNodeId);
+        context.RefSessions[reference] = frameId is null ? null : context.FrameSessions.GetValueOrDefault(frameId); return reference;
+    }
     private void WorkspaceChanged(object? sender, EventArgs args)
     {
         foreach (var page in _workspace.Pages.OfType<OpenCodeBrowserPage>())
@@ -39,6 +52,18 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
         Volatile.Write(ref _state, _workspace.GetState()); StateChanged?.Invoke(this, EventArgs.Empty);
     }
     public async Task<OpenCodeBrowserOutcome> ExecuteAsync(OpenCodeBrowserCommand command, CancellationToken cancellationToken)
+    {
+        var outcome = await ExecuteCommandAsync(command, cancellationToken).ConfigureAwait(false);
+        var completed = new OpenCodeBrowserActionCompleted(command, outcome, DateTimeOffset.UtcNow);
+        void Notify()
+        {
+            try { ActionCompleted?.Invoke(this, completed); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("Browser timeline observer failed: " + ex.GetType().Name); }
+        }
+        if (_dispatcher.HasThreadAccess) Notify(); else _dispatcher.TryEnqueue(Notify);
+        return outcome;
+    }
+    private async Task<OpenCodeBrowserOutcome> ExecuteCommandAsync(OpenCodeBrowserCommand command, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(60));
@@ -107,7 +132,15 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
             await page.EnsureReadyAsync();
             var context = _contexts[page.Id]; await context.InitializeAsync();
             OpenCodeBrowserPolicy.CheckPage(command.Generation, page.Generation, page.UserTakeover);
-            return await DispatchAsync(context, command, ct);
+            context.ActiveSession = a["frameID"] is not null ? context.FrameSessions.GetValueOrDefault(S(a, "frameID"))
+                : a["ref"] is not null ? context.RefSessions.GetValueOrDefault(S(a, "ref").TrimStart('@'))
+                : a["from"] is not null ? context.RefSessions.GetValueOrDefault(S(a, "from").TrimStart('@')) : null;
+            try
+            {
+                if (context.ActiveSession is { } session) await context.EnsureFrameSessionAsync(session);
+                return await DispatchAsync(context, command, ct);
+            }
+            finally { context.ActiveSession = null; }
         }
         finally
         {
@@ -164,13 +197,13 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
     {
         ct.ThrowIfCancellationRequested();
         if (c.Page.UserTakeover) throw new OpenCodeBrowserException("user_takeover", "用户已接管此页面");
-        var result = await c.Page.CdpAsync(method, parameters); ct.ThrowIfCancellationRequested(); return result;
+        // Input and screenshots are expressed in the top-level viewport; DOM/Runtime/AX use the ref's renderer session.
+        var session = method.StartsWith("Input.", StringComparison.Ordinal) || method == "Page.captureScreenshot" || method == "Page.getLayoutMetrics" ? null : c.ActiveSession;
+        var result = await c.Page.CdpAsync(method, parameters, session); ct.ThrowIfCancellationRequested(); return result;
     }
     private static OpenCodeBrowserOutcome Export(PageContext c, params OpenCodeBrowserFile[] files)
     {
-        if (files.Sum(f => (long)f.Data.Length) > OpenCodeBrowserPolicy.MaxFileBytes) throw new OpenCodeBrowserException("file_too_large", "导出文件超过 5 MiB");
-        var value = WithTab(c.Page); value["files"] = new JsonArray(files.Select(f => (JsonNode)new JsonObject { ["id"] = f.Id, ["name"] = f.Name, ["mime"] = f.Mime, ["bytes"] = f.Data.Length, ["path"] = "" }).ToArray());
-        return Ok(value, files);
+        return Ok(OpenCodeBrowserPolicy.FileResult(c.Page.ToTab(), files), files);
     }
     public void Dispose()
     {

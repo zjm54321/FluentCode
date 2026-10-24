@@ -37,13 +37,19 @@ public sealed partial class OpenCodeBrowserSessionBackend
         public OpenCodeBrowserRing<JsonObject> Console { get; } = new(500);
         public OpenCodeBrowserRing<JsonObject> Network { get; } = new(500);
         public Dictionary<string, JsonObject> NetworkDetails { get; } = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _networkIds = new(StringComparer.Ordinal);
         public Dictionary<string, int> Contexts { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, string?> FrameSessions { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, string?> RefSessions { get; } = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _initializedSessions = new(StringComparer.Ordinal);
+        public string? ActiveSession;
         public Dictionary<string, RetainedFile> Files { get; } = new(StringComparer.Ordinal);
         public JsonObject? Dialog { get; private set; }
         public string TempDirectory { get; } = Path.Combine(Path.GetTempPath(), "AIFrontend-browser", Guid.NewGuid().ToString("N"));
         public string? InitializationError { get; private set; }
-        private void Committed(object? sender, EventArgs args) => Snapshot.Clear();
-        private void Navigating(object? sender, EventArgs args) { Console.Clear(); Network.Clear(); NetworkDetails.Clear(); Snapshot.Clear(); }
+        public long UploadBytes;
+        private void Committed(object? sender, EventArgs args) { Snapshot.Clear(); RefSessions.Clear(); }
+        private void Navigating(object? sender, EventArgs args) { Console.Clear(); Network.Clear(); NetworkDetails.Clear(); _networkIds.Clear(); Snapshot.Clear(); RefSessions.Clear(); }
         public void ObserveInitialization() => _ = ObserveAsync(InitializeAsync());
         public Task InitializeAsync() => _initialization ??= InitializeCoreAsync();
         private async Task InitializeCoreAsync()
@@ -51,6 +57,15 @@ public sealed partial class OpenCodeBrowserSessionBackend
             try
             {
                 await Page.EnsureReadyAsync();
+                Subscribe("Target.attachedToTarget", value =>
+                {
+                    if (S(value["targetInfo"]!.AsObject(), "type") == "iframe") FrameSessions[S(value["targetInfo"]!.AsObject(), "targetId")] = S(value, "sessionId");
+                });
+                Subscribe("Target.detachedFromTarget", value =>
+                {
+                    var session = S(value, "sessionId"); _initializedSessions.Remove(session);
+                    foreach (var frame in FrameSessions.Where(pair => pair.Value == session).Select(pair => pair.Key).ToArray()) { FrameSessions.Remove(frame); Contexts.Remove(frame); }
+                });
                 Subscribe("Runtime.consoleAPICalled", ConsoleEvent);
                 Subscribe("Runtime.exceptionThrown", value =>
                 {
@@ -84,6 +99,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                 await Page.CdpAsync("Page.enable"); await Page.CdpAsync("DOM.enable"); await Page.CdpAsync("Accessibility.enable");
                 await Page.CdpAsync("Runtime.enable"); await Page.CdpAsync("Log.enable");
                 await Page.CdpAsync("Network.enable", new() { ["maxTotalBufferSize"] = 5 * 1024 * 1024, ["maxResourceBufferSize"] = 1024 * 1024, ["maxPostDataSize"] = 100000 });
+                await Page.CdpAsync("Target.setAutoAttach", new() { ["autoAttach"] = true, ["waitForDebuggerOnStart"] = false, ["flatten"] = true });
             }
             catch (Exception ex) { InitializationError = ex.Message; throw; }
         }
@@ -92,10 +108,19 @@ public sealed partial class OpenCodeBrowserSessionBackend
             var receiver = Page.Core.GetDevToolsProtocolEventReceiver(name);
             void Handler(CoreWebView2 _, CoreWebView2DevToolsProtocolEventReceivedEventArgs args)
             {
-                if (!_disposed && JsonNode.Parse(args.ParameterObjectAsJson) is JsonObject value) receive(value);
+                if (_disposed || JsonNode.Parse(args.ParameterObjectAsJson) is not JsonObject value) return;
+                if (name == "Runtime.executionContextCreated" && value["context"]?["auxData"] is JsonObject aux && B(aux, "isDefault"))
+                    FrameSessions[S(aux, "frameId")] = string.IsNullOrEmpty(args.SessionId) ? null : args.SessionId;
+                receive(value);
             }
             receiver.DevToolsProtocolEventReceived += Handler;
             _unsubscribe.Add(() => receiver.DevToolsProtocolEventReceived -= Handler);
+        }
+        public async Task EnsureFrameSessionAsync(string session)
+        {
+            if (_initializedSessions.Contains(session)) return;
+            foreach (var domain in new[] { "Page.enable", "DOM.enable", "Accessibility.enable", "Runtime.enable" }) await Page.CdpAsync(domain, null, session);
+            _initializedSessions.Add(session);
         }
         private static double Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private void ConsoleEvent(JsonObject value)
@@ -112,30 +137,41 @@ public sealed partial class OpenCodeBrowserSessionBackend
         }
         private void RequestStarted(JsonObject value)
         {
-            var id = S(value, "requestId");
-            // Redirects reuse requestId; retain the final request as the canonical inspectable entry.
-            var existing = Network.Items.FirstOrDefault(item => S(item, "id") == id);
-            if (existing is not null) { NetworkDetails.Remove(id); existing["state"] = "completed"; existing["durationMs"] = 0; }
+            var cdpId = S(value, "requestId"); var id = "request_" + Guid.NewGuid().ToString("N");
+            // Chromium reuses requestId on redirects. Public IDs remain unique and never inspect the final body's bytes as an earlier redirect's body.
+            var previous = _networkIds.GetValueOrDefault(cdpId);
+            var existing = Network.Items.FirstOrDefault(item => S(item, "id") == previous);
+            if (existing is not null && value["redirectResponse"] is JsonObject redirect)
+            {
+                existing["state"] = "completed"; existing["durationMs"] = Math.Max(0, value["timestamp"]!.GetValue<double>() * 1000 - existing["timestampMs"]!.GetValue<double>());
+                existing["statusCode"] = Math.Max(0, I(redirect, "status"));
+                if (NetworkDetails.TryGetValue(previous!, out var prior)) { prior["bodyAvailable"] = false; prior["responseHeaders"] = redirect["headers"]?.DeepClone() ?? new JsonObject(); }
+            }
             var request = value["request"]!.AsObject(); var resource = S(value, "type").ToLowerInvariant();
             if (!new[] { "document", "stylesheet", "image", "media", "font", "script", "xhr", "fetch", "eventsource", "websocket", "manifest" }.Contains(resource)) resource = "other";
             var timestamp = value["timestamp"]!.GetValue<double>() * 1000;
             var item = new JsonObject { ["id"] = OpenCodeBrowserPolicy.Bound(id), ["url"] = OpenCodeBrowserPolicy.Bound(S(request, "url"), 100000), ["method"] = OpenCodeBrowserPolicy.Bound(S(request, "method")), ["resourceType"] = resource, ["timestampMs"] = timestamp, ["state"] = "pending" };
-            if (Network.Items.Count == 500) NetworkDetails.Remove(S(Network.Items[0], "id"));
+            if (Network.Items.Count == 500)
+            {
+                var evicted = S(Network.Items[0], "id");
+                if (NetworkDetails.Remove(evicted, out var old) && _networkIds.GetValueOrDefault(S(old, "cdpId")) == evicted) _networkIds.Remove(S(old, "cdpId"));
+            }
             Network.Add(item);
             var requestBody = request["postData"] is JsonValue body ? BodyText(body.ToString(), 20000) : new JsonObject { ["state"] = B(request, "hasPostData") ? "unavailable" : "empty" };
             if (S(requestBody, "state") == "unavailable") requestBody["reason"] = "notCaptured";
-            NetworkDetails[id] = new JsonObject { ["requestHeaders"] = request["headers"]?.DeepClone() ?? new JsonObject(), ["responseHeaders"] = new JsonObject(), ["requestBody"] = requestBody };
+            NetworkDetails[id] = new JsonObject { ["cdpId"] = cdpId, ["bodyAvailable"] = true, ["requestHeaders"] = request["headers"]?.DeepClone() ?? new JsonObject(), ["responseHeaders"] = new JsonObject(), ["requestBody"] = requestBody };
+            _networkIds[cdpId] = id;
         }
         private void ResponseReceived(JsonObject value)
         {
-            var id = S(value, "requestId"); var item = Network.Items.LastOrDefault(item => S(item, "id") == id);
+            var id = _networkIds.GetValueOrDefault(S(value, "requestId"), ""); var item = Network.Items.LastOrDefault(item => S(item, "id") == id);
             if (item is null || !NetworkDetails.TryGetValue(id, out var detail)) return;
             var response = value["response"]!.AsObject(); item["statusCode"] = Math.Max(0, I(response, "status"));
             detail["responseHeaders"] = response["headers"]?.DeepClone() ?? new JsonObject(); detail["mime"] = S(response, "mimeType");
         }
         private void RequestFinished(JsonObject value, bool failed)
         {
-            var id = S(value, "requestId"); var item = Network.Items.LastOrDefault(item => S(item, "id") == id); if (item is null) return;
+            var id = _networkIds.GetValueOrDefault(S(value, "requestId"), ""); var item = Network.Items.LastOrDefault(item => S(item, "id") == id); if (item is null) return;
             item["state"] = failed ? "failed" : "completed"; item["durationMs"] = Math.Max(0, value["timestamp"]!.GetValue<double>() * 1000 - item["timestampMs"]!.GetValue<double>());
             if (failed) item["failure"] = OpenCodeBrowserPolicy.Bound(S(value, "errorText"));
         }
@@ -145,6 +181,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
             if (download.TotalBytesToReceive > OpenCodeBrowserPolicy.MaxFileBytes) { args.Cancel = true; return; }
             Directory.CreateDirectory(TempDirectory);
             var file = new RetainedFile("file_" + Guid.NewGuid().ToString("D"), Path.GetFileName(args.ResultFilePath), download.MimeType) { LocalPath = Path.Combine(TempDirectory, Guid.NewGuid().ToString("N")) };
+            if (Files.Count >= 32 && Files.Values.All(f => f.State == "pending")) { args.Cancel = true; return; }
             Retain(file); args.ResultFilePath = file.LocalPath; args.Handled = true;
             void Progress(CoreWebView2DownloadOperation _, object e)
             {
@@ -208,7 +245,8 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static JsonArray Headers(JsonObject headers, out bool truncated)
     {
-        truncated = headers.Count > 200; return new JsonArray(headers.Take(200).Select(pair => (JsonNode)new JsonObject { ["name"] = OpenCodeBrowserPolicy.Bound(pair.Key), ["value"] = OpenCodeBrowserPolicy.Bound(pair.Value?.ToString(), 100000) }).ToArray());
+        truncated = headers.Count > 200 || headers.Any(pair => pair.Key.Length > 2048 || pair.Value?.ToString().Length > 100000);
+        return new JsonArray(headers.Take(200).Select(pair => (JsonNode)new JsonObject { ["name"] = OpenCodeBrowserPolicy.Bound(pair.Key), ["value"] = OpenCodeBrowserPolicy.Bound(pair.Value?.ToString(), 100000) }).ToArray());
     }
     private static async Task<OpenCodeBrowserOutcome> NetworkGetAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
@@ -218,14 +256,18 @@ public sealed partial class OpenCodeBrowserSessionBackend
         result["requestHeaders"] = Headers(detail["requestHeaders"]!.AsObject(), out var requestTruncated); result["responseHeaders"] = Headers(detail["responseHeaders"]!.AsObject(), out var responseTruncated); result["headersTruncated"] = requestTruncated || responseTruncated;
         var include = B(a, "includeBody"); var max = I(a, "maxBodyChars", 20000);
         result["requestBody"] = include ? detail["requestBody"]?.DeepClone() : new JsonObject { ["state"] = "notRequested" };
-        if (include && result["requestBody"] is JsonObject body && S(body, "state") == "text") result["requestBody"] = BodyText(S(body, "text"), max);
+        if (include && result["requestBody"] is JsonObject body && S(body, "state") == "text")
+        {
+            var bounded = BodyText(S(body, "text"), max); bounded["truncated"] = B(body, "truncated") || S(body, "text").Length > max; result["requestBody"] = bounded;
+        }
         if (!include) result["responseBody"] = new JsonObject { ["state"] = "notRequested" };
         else if (S(request, "state") == "pending") result["responseBody"] = new JsonObject { ["state"] = "pending" };
+        else if (!B(detail, "bodyAvailable")) result["responseBody"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "notCaptured" };
         else
         {
             try
             {
-                var response = await Call(c, "Network.getResponseBody", new() { ["requestId"] = id }, ct);
+                var response = await Call(c, "Network.getResponseBody", new() { ["requestId"] = S(detail, "cdpId") }, ct);
                 result["responseBody"] = B(response, "base64Encoded") ? new JsonObject { ["state"] = "unavailable", ["reason"] = "binary" } : BodyText(S(response, "body"), max);
             }
             catch (Exception ex) when (ex is not OperationCanceledException && ex is not OpenCodeBrowserException)

@@ -9,9 +9,12 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
+using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 
 namespace AIFrontend.Services.OpenCode.Browser;
+
+public sealed record OpenCodeBrowserPointer(double X, double Y, bool Click);
 
 /// <summary>One live WebView, one protocol tab. All access except immutable state is UI-dispatched.</summary>
 public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
@@ -26,6 +29,9 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     private string? _error, _activity;
     private long _activityVersion;
     private TaskCompletionSource<bool>? _navigation;
+    private byte[]? _previewBytes;
+    private DateTimeOffset _previewAt;
+    private bool _capturingPreview;
     private CancellationTokenSource _lifetime = new();
     public OpenCodeBrowserPage(Action<OpenCodeBrowserPage> close, Action<string> newWindow, bool agent = false, string? previewPath = null)
     {
@@ -37,7 +43,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     }
     public string Id { get; } = "tab_" + Guid.NewGuid().ToString("D");
     public string Url => _url;
-    public string Title => PreviewPath is null ? _title : "预览 · " + Path.GetFileName(PreviewPath);
+    public string Title => PreviewPath is null ? _title : OpenCodeBrowserPolicy.Bound("预览 · " + Path.GetFileName(PreviewPath));
     public bool Loading => _loading;
     public string? LoadError => _error;
     public bool CanGoBack => _back && PreviewPath is null;
@@ -48,6 +54,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     public string AgentName { get; set; } = "智能体";
     public bool UserTakeover { get => _takeover; set { EnsureUi(); Set(ref _takeover, value); } }
     public string? PreviewPath { get; }
+    public byte[]? PreviewBytes => _previewBytes;
     public WebView2 View { get; }
     public Grid Surface { get; }
     public CoreWebView2 Core => View.CoreWebView2 ?? throw new OpenCodeBrowserException("not_ready", "页面浏览器尚未就绪");
@@ -59,6 +66,8 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     public event EventHandler? Navigating;
     public event EventHandler? Ready;
     public event EventHandler? Closing;
+    public event EventHandler<OpenCodeBrowserPointer>? AgentPointerMoved;
+    internal void ReportPointer(double x, double y, bool click) => AgentPointerMoved?.Invoke(this, new(x, y, click));
     internal Func<Task>? PrepareNavigationAsync { get; set; }
     public Task EnsureReadyAsync() { EnsureUi(); return _initialization ??= InitializeAsync(); }
     private static Task<CoreWebView2Environment> EnvironmentAsync() => _environment ??= CreateEnvironmentAsync();
@@ -123,18 +132,36 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
         _closed = true; _lifetime.Cancel(); _navigation?.TrySetCanceled(); Closing?.Invoke(this, EventArgs.Empty);
         View.Close(); _lifetime.Dispose();
     }
-    public async Task<JsonObject> CdpAsync(string method, JsonObject? parameters = null)
+    public async Task<JsonObject> CdpAsync(string method, JsonObject? parameters = null, string? sessionId = null)
     {
         EnsureUi(); await EnsureReadyAsync();
-        return JsonNode.Parse(await Core.CallDevToolsProtocolMethodAsync(method, (parameters ?? new()).ToJsonString())) as JsonObject ?? new();
+        var json = (parameters ?? new()).ToJsonString();
+        var response = sessionId is null ? await Core.CallDevToolsProtocolMethodAsync(method, json)
+            : await Core.CallDevToolsProtocolMethodForSessionAsync(sessionId, method, json);
+        return JsonNode.Parse(response) as JsonObject ?? new();
     }
+    public async Task<string> ExecuteScriptAsync(string script) { EnsureUi(); await EnsureReadyAsync(); return await Core.ExecuteScriptAsync(script); }
     public async Task<byte[]?> CapturePreviewAsync()
     {
         EnsureUi(); if (!_contentLoaded || _closed) return null;
-        using var stream = new InMemoryRandomAccessStream();
-        await Core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
-        stream.Seek(0); using var reader = new DataReader(stream);
-        await reader.LoadAsync((uint)stream.Size); var data = new byte[(int)stream.Size]; reader.ReadBytes(data); return data;
+        if (_capturingPreview || DateTimeOffset.UtcNow - _previewAt < TimeSpan.FromSeconds(2)) return _previewBytes;
+        _capturingPreview = true;
+        try
+        {
+            using var stream = new InMemoryRandomAccessStream();
+            await Core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream); stream.Seek(0);
+            var decoder = await BitmapDecoder.CreateAsync(stream); var width = Math.Min(320u, decoder.PixelWidth);
+            var height = Math.Max(1u, (uint)Math.Round(decoder.PixelHeight * (double)width / decoder.PixelWidth));
+            var pixels = await decoder.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
+                new BitmapTransform { ScaledWidth = width, ScaledHeight = height }, ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
+            using var output = new InMemoryRandomAccessStream(); var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, output);
+            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, width, height, 96, 96, pixels.DetachPixelData()); await encoder.FlushAsync();
+            output.Seek(0); using var reader = new DataReader(output); await reader.LoadAsync((uint)output.Size);
+            var data = new byte[(int)output.Size]; reader.ReadBytes(data);
+            if (_closed) return null;
+            _previewBytes = data; _previewAt = DateTimeOffset.UtcNow; Changed(nameof(PreviewBytes)); return data;
+        }
+        finally { _capturingPreview = false; }
     }
     public void BeginAgentActivity(string activity)
     {
