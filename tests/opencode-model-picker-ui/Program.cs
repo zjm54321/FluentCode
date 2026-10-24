@@ -232,7 +232,7 @@ internal static class Program
         Check(busyModels.Contains("_agentSelector.ModelChoices") && busyModels.Contains("DeferredModelPickerBasis")
             && !busyModels.Contains("await ") && !busyModels.Contains("client."), "ED1 busy picker selection uses the existing catalog with zero server calls");
         Check(cardBinding.Contains("RunClientActionAsync(ticket, variantOnly, anchor)")
-            && actions.Contains("variantOnly, anchor, selectedChoice)") && actions.Contains("sourceKey, anchor: anchor)"),
+            && actions.Contains("variantOnly, anchor, selectedChoice)") && actions.Contains("sourceKey, anchor: anchor,"),
             "PK2 model/effort keep the invoking anchor across catalog awaits and disabling the button");
         var toolbar = Read("src/AIFrontend/Pages/OpenCodePage.ComposerToolbar.cs");
         Check(cardBinding.Contains("model.Click += ComposerModelButton_Click")
@@ -276,6 +276,7 @@ internal static class Program
         var effortVisual = (Microsoft.UI.Xaml.Controls.StackPanel)OpenCodeNativeComboBox.Effort("high").CreateVisual();
         Check(effortVisual.Children[0] is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uEC4A" }, "PK3a effort choices carry the Fluent gauge icon");
         RunComboBoxChecks();
+        FavoriteRpcChecks.Run(Check, root, args[1]).GetAwaiter().GetResult();
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
     }
 

@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.Appearance;
+using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -13,7 +15,7 @@ using Windows.System;
 
 namespace AIFrontend.Pages.OpenCode;
 
-// Native builtin dialogs require the page's XamlRoot (no Window.Current), hold no client/lease/gate/binding,
+// Native builtin dialogs require the page's XamlRoot (no Window.Current), hold no lease/gate/binding,
 // and return a typed result the page re-validates. Only model favorites perform preference IO.
 
 internal static class OpenCodeModelPickerDialog
@@ -21,14 +23,15 @@ internal static class OpenCodeModelPickerDialog
     // Legacy optional parameters are retained for the existing page callers; there is no refresh UI.
     internal static async Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot? owner, OpenCodeModelPickerPresentation presentation,
         Func<Task<OpenCodeModelPickerPresentation?>>? refresh = null, string? sourceKey = null, bool allowStrengthSelection = true,
-        FrameworkElement? anchor = null)
+        FrameworkElement? anchor = null, OpenCodeClient? favoriteClient = null, string? favoriteDirectory = null,
+        CancellationToken favoriteCancellation = default)
     {
         ArgumentNullException.ThrowIfNull(presentation);
         anchor = OpenCodePickerFlyout.Anchor(owner, anchor, "OpenCodeSidebarModel");
         if (owner is null || anchor is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
         var cancelled = new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null);
         var state = new OpenCodeModelPickerState(presentation);
-        var favoriteStore = new OpenCodeModelFavoriteStore(sourceKey ?? string.Empty);
+        var favoriteStore = new OpenCodeModelFavoriteStore(sourceKey ?? string.Empty, favoriteClient, favoriteDirectory, favoriteCancellation);
         string? favoriteError = null;
         try { await favoriteStore.LoadAsync(); }
         catch (Exception) { favoriteError = "收藏设置未能读取；更改收藏时将再次尝试保存。"; }
@@ -60,8 +63,7 @@ internal static class OpenCodeModelPickerDialog
         var body = new StackPanel { Spacing = 8, Width = ModelBodyWidth(owner), Padding = new Thickness(8) };
         body.Children.Add(OpenCodeInteractionUi.StyledText("选择模型", OpenCodeInteractionUi.BodyStrongStyleKey));
         body.Children.Add(search);
-        var favoriteStatus = OpenCodeInteractionUi.Caption(favoriteError ?? string.Empty, 0.85);
-        favoriteStatus.Visibility = favoriteError is null ? Visibility.Collapsed : Visibility.Visible;
+        var favoriteStatus = OpenCodeInteractionUi.Caption(favoriteError ?? favoriteStore.Status, 0.85);
         AutomationProperties.SetLiveSetting(favoriteStatus, AutomationLiveSetting.Polite);
         body.Children.Add(favoriteStatus);
         body.Children.Add(lists);
@@ -76,7 +78,7 @@ internal static class OpenCodeModelPickerDialog
             try
             {
                 await favoriteStore.SaveAsync(row, value);
-                favoriteStatus.Text = favoriteStore.Status.StartsWith("无法", StringComparison.Ordinal) ? favoriteStore.Status : string.Empty;
+                favoriteStatus.Text = favoriteStore.Status;
             }
             catch (Exception)
             {

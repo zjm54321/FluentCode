@@ -413,7 +413,8 @@ public sealed partial class OpenCodePage
             var result = selectedChoice is { } requested
                 ? new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Confirmed, requested, null)
                 : await OpenCodeModelPickerDialog.ShowAsync(XamlRoot,
-                    new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false, anchor: anchor);
+                    new("新对话 · " + basis.Directory, rows, current, null, basis), sourceKey: source.Identity, allowStrengthSelection: false, anchor: anchor,
+                    favoriteClient: client, favoriteDirectory: basis.Directory, favoriteCancellation: _homeCancellation.Token);
             if (!OwnsHome(source, client, basis.RuntimeSourceId) || !OwnsBlankPreferences(basis, token) || _newSessionCreatePending
                 || result.Outcome != OpenCodeModelPickerOutcome.Confirmed || result.Choice is not { } choice) return;
             // Re-read metadata after confirmation. Never choose a withdrawn/disabled model or fabricated variant.

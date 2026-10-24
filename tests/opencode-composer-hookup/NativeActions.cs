@@ -603,7 +603,8 @@ namespace AIFrontend.Pages.OpenCode
     {
         internal static Func<OpenCodeModelPickerPresentation, Task<OpenCodeModelPickerResult>> Next = null!;
         internal static string? LastSourceKey;
-        internal static Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot root, OpenCodeModelPickerPresentation p, Func<Task<OpenCodeModelPickerPresentation?>> refresh, string? sourceKey = null, FrameworkElement? anchor = null)
+        internal static Task<OpenCodeModelPickerResult> ShowAsync(XamlRoot root, OpenCodeModelPickerPresentation p, Func<Task<OpenCodeModelPickerPresentation?>> refresh, string? sourceKey = null, FrameworkElement? anchor = null,
+            OpenCodeClient? favoriteClient = null, string? favoriteDirectory = null, CancellationToken favoriteCancellation = default)
         { LastSourceKey = sourceKey; return Next(p); }
     }
     internal static class OpenCodeVariantPickerDialog

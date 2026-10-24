@@ -222,7 +222,10 @@ public sealed partial class OpenCodePage
         OpenCodeModelPickerResult choice;
         try { choice = variantOnly
             ? await OpenCodeVariantPickerDialog.ShowAsync(XamlRoot, presentation, anchor)
-            : await OpenCodeModelPickerDialog.ShowAsync(XamlRoot, presentation, () => ReadNativeModelsAsync(owner, ct), sourceKey, anchor: anchor); }
+            : await OpenCodeModelPickerDialog.ShowAsync(XamlRoot, presentation, () => ReadNativeModelsAsync(owner, ct), sourceKey, anchor: anchor,
+                favoriteClient: owner.Ticket.Binding.Client,
+                favoriteDirectory: presentation.Basis is ModelPickerBasis modelBasis ? modelBasis.Catalog.Directory : owner.Ticket.Binding.Slot?.Directory,
+                favoriteCancellation: ct); }
         finally { _nativeDialogPending = false; }
         await CommitNativeModelAsync(owner, choice, ct);
     }
