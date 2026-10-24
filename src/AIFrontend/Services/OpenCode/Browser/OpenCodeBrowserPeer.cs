@@ -21,6 +21,8 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
         internal Dictionary<string, CancellationTokenSource> Requests { get; } = new(StringComparer.Ordinal);
         internal HashSet<string> Seen { get; } = new(StringComparer.Ordinal);
         internal List<Task> Workers { get; } = new();
+        internal SemaphoreSlim StateGate { get; } = new(1, 1);
+        internal OpenCodeBrowserState? PostedState;
         internal bool Attached;
         public void Dispose()
         {
@@ -222,11 +224,26 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
     {
         try
         {
-            await foreach (var state in owner.States.Reader.ReadAllAsync(ct))
-                await _client.PostBrowserStateAsync(_directory, SessionId, owner.ConnectionId, state, ct);
+            await foreach (var _ in owner.States.Reader.ReadAllAsync(ct))
+                await PostCurrentStateAsync(owner, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex) { _signals.Writer.TryWrite(new("fault", Owner: owner, Error: ex)); }
+    }
+
+    private async Task PostCurrentStateAsync(Attempt owner, CancellationToken ct)
+    {
+        await owner.StateGate.WaitAsync(ct);
+        try
+        {
+            // Read after acquiring the gate: a queued pre-commit state must never overwrite a
+            // newer command-result state. The server chooses the next command's generation here.
+            var state = _backend.State;
+            if (ReferenceEquals(state, owner.PostedState)) return;
+            await _client.PostBrowserStateAsync(_directory, SessionId, owner.ConnectionId, state, ct);
+            owner.PostedState = state;
+        }
+        finally { owner.StateGate.Release(); }
     }
 
     private async Task ExecuteAsync(Attempt owner, string requestId, CancellationTokenSource request, CancellationToken attachment)
@@ -260,6 +277,9 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
             catch (Exception)
             { outcome = new OpenCodeBrowserOutcome.Failure("execution_failed", "浏览器操作失败。"); }
             attachment.ThrowIfCancellationRequested();
+            // A tabs.open result can expose generation 1 while its coalesced state post still
+            // contains generation 0. Publish/acknowledge current state before unblocking the caller.
+            await PostCurrentStateAsync(owner, attachment);
             await _client.PostBrowserResultAsync(_directory, SessionId, owner.ConnectionId, requestId, outcome, attachment);
         }
         catch (OperationCanceledException) when (attachment.IsCancellationRequested) { }
@@ -298,12 +318,13 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
         var requests = new List<CancellationTokenSource>(owner.Requests.Values);
         owner.Dispose();
         _cleanup.RemoveAll(task => task.IsCompletedSuccessfully);
-        _cleanup.Add(CleanupAsync(owner.Workers, requests));
+        _cleanup.Add(CleanupAsync(owner, requests));
     }
 
-    private static async Task CleanupAsync(List<Task> workers, List<CancellationTokenSource> requests)
+    private static async Task CleanupAsync(Attempt owner, List<CancellationTokenSource> requests)
     {
-        await Task.WhenAll(workers);
+        await Task.WhenAll(owner.Workers);
+        owner.StateGate.Dispose();
         foreach (var request in requests) request.Dispose();
     }
 

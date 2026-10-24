@@ -128,6 +128,7 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
         try
         {
             ct.ThrowIfCancellationRequested(); OpenCodeBrowserPolicy.CheckPage(command.Generation, page.Generation, page.UserTakeover);
+            var navigationVersion = page.Navigation.Version;
             page.BeginAgentActivity("browser." + type + (a["ref"] is null ? "" : " · ref " + S(a, "ref")));
             if (type == "tabs.focus") { _workspace.ActivateByAgent(page); return Ok(OpenCodeBrowserPolicy.Tab(page.ToTab())); }
             if (type == "tabs.close") { page.Close(); return Ok(OpenCodeBrowserPolicy.State(_workspace.GetState())); }
@@ -141,7 +142,7 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
             try
             {
                 if (context.ActiveSession is { } session) await context.EnsureFrameSessionAsync(session);
-                return await DispatchAsync(context, command, ct);
+                return await DispatchAsync(context, command, ct, navigationVersion);
             }
             finally { context.ActiveSession = null; }
         }
@@ -151,7 +152,7 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
             page.ActionGate.Release();
         }
     }
-    private async Task<OpenCodeBrowserOutcome> DispatchAsync(PageContext c, OpenCodeBrowserCommand command, CancellationToken ct)
+    private async Task<OpenCodeBrowserOutcome> DispatchAsync(PageContext c, OpenCodeBrowserCommand command, CancellationToken ct, long navigationVersion)
     {
         var p = c.Page; var a = command.Action; var type = command.ActionType;
         switch (type)
@@ -174,7 +175,7 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
             case "evaluate": return await EvaluateAsync(c, a, ct);
             case "click": case "hover": case "drag": case "fill": case "fill_form": case "select": case "check": case "press": case "scroll":
                 await InteractAsync(c, a, ct); break;
-            case "wait": await WaitAsync(c, a, ct); break;
+            case "wait": await WaitAsync(c, a, ct, navigationVersion); break;
             case "screenshot": return await ScreenshotAsync(c, a, ct);
             case "dialog":
                 var dialog = c.Dialog?.DeepClone();

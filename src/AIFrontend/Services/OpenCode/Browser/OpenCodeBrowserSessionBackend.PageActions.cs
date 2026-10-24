@@ -183,17 +183,28 @@ public sealed partial class OpenCodeBrowserSessionBackend
         var parameters = new JsonObject { ["type"] = text.Length > 0 ? "keyDown" : "rawKeyDown", ["key"] = key == "Space" ? " " : key, ["windowsVirtualKeyCode"] = vk, ["modifiers"] = modifiers, ["text"] = text };
         await Call(c, "Input.dispatchKeyEvent", parameters, ct); parameters["type"] = "keyUp"; parameters.Remove("text"); await Call(c, "Input.dispatchKeyEvent", parameters, ct);
     }
-    private static async Task WaitAsync(PageContext c, JsonObject a, CancellationToken ct)
+    private static async Task WaitAsync(PageContext c, JsonObject a, CancellationToken ct, long navigationVersion)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(I(a, "timeoutMs", 10000)); var token = timeout.Token;
         var condition = S(a, "condition");
-        var expression = condition == "load" ? "document.readyState === 'complete'" : "(document.body?.innerText ?? '').includes(" + JsonSerializer.Serialize(S(a, "text")) + ")";
+        var expression = "(document.body?.innerText ?? '').includes(" + JsonSerializer.Serialize(S(a, "text")) + ")";
         try
         {
             while (true)
             {
-                var value = await ScriptAsync(c, expression, a, token);
-                if (value?.GetValue<bool>() == (condition != "textGone")) return;
+                c.Page.Navigation.CheckWait(navigationVersion);
+                if (condition == "load")
+                {
+                    // NavigationCompleted belongs to this same top-level navigation, including
+                    // redirects. Do not evaluate a transient/old execution context during loading.
+                    if (!c.Page.Loading) return;
+                }
+                else
+                {
+                    var value = await ScriptAsync(c, expression, a, token);
+                    c.Page.Navigation.CheckWait(navigationVersion);
+                    if (value?.GetValue<bool>() == (condition != "textGone")) return;
+                }
                 await Task.Delay(100, token);
             }
         }

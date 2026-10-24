@@ -41,6 +41,17 @@ internal static class Program
         Error(() => OpenCodeBrowserPolicy.CheckPage(2, 3, false), "stale_generation", "old generation");
         Error(() => OpenCodeBrowserPolicy.CheckPage(3, 3, true), "user_takeover", "takeover");
         Error(() => OpenCodeBrowserPolicy.CheckPage(-1, 3, false), "invalid_input", "negative generation");
+        var navigation = new OpenCodeBrowserNavigation(); navigation.Start(100);
+        var initialVersion = navigation.Version;
+        Check(navigation.Generation == 0 && navigation.Commit(100) && navigation.Generation == 1, "initial commit advances generation exactly once");
+        OpenCodeBrowserPolicy.CheckPage(1, navigation.Generation, false);
+        navigation.Start(100); navigation.CheckWait(initialVersion);
+        Check(!navigation.Commit(100) && navigation.Generation == 1 && navigation.Version == initialVersion, "redirect/duplicate content event retains tabs.open generation and load wait");
+        Check(!navigation.Commit(99) && !navigation.IsCurrent(99) && navigation.Generation == 1, "old navigation cannot commit or finish current load");
+        navigation.Start(101);
+        Error(() => navigation.CheckWait(initialVersion), "stale_generation", "new navigation fails existing wait before its commit");
+        Check(navigation.Commit(101) && navigation.Generation == 2, "unrelated navigation advances generation");
+        Error(() => OpenCodeBrowserPolicy.CheckPage(1, navigation.Generation, false), "stale_generation", "old caller generation still fails on unrelated navigation");
         Check(OpenCodeBrowserInput.Actions.Count == 45, "45 exact protocol actions");
         const string tab = "tab_00000000-0000-0000-0000-000000000000";
         const string file = "file_00000000-0000-0000-0000-000000000000";
@@ -49,6 +60,7 @@ internal static class Program
         Check(dispatch.Contains("startNavigation: false") && dispatch.Contains("await opened.NavigateAsync(url, opening.Token, waitForCommit: true)"), "tabs.open owns and awaits exactly one navigation (source fence)");
         var pageSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserPage.cs"));
         Check(pageSource.Contains("commit.Task.WaitAsync(TimeSpan.FromSeconds(15), ct)") && pageSource.Contains("_navigationCommit?.TrySetResult(e.IsSuccess)"), "tab-open commit wait bounded and load errors complete it (source fence)");
+        Check(pageSource.Contains("Navigation.Commit(e.NavigationId)") && pageSource.Contains("Navigation.IsCurrent(e.NavigationId)") && !pageSource.Contains("Generation++"), "only current unique top-level navigation commits drive generation (source fence)");
         foreach (var type in OpenCodeBrowserInput.Actions)
         {
             var action = new JsonObject { ["type"] = type };

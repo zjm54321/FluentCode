@@ -25,6 +25,7 @@ internal static class Program
         await Test("typed tunnel RPC shapes", Tunnels);
         await Test("subscribe before attach, held request, attached posts state", Handshake);
         await Test("state changes coalesced and posted in order", StateOrder);
+        await Test("initial navigation state acknowledged before open result and next load wait", NavigationResultOrder);
         await Test("command executes and posts success, backend failure and exception", Commands);
         await Test("cancel interrupts backend wait and posts cancelled", Cancel);
         await Test("timeout guard returns failure even for uncooperative backend", Timeout);
@@ -37,7 +38,7 @@ internal static class Program
         await Test("dispose aborts attach and cancels commands", Disposal);
         await Test("source revocation aborts all attachments before page teardown", Revocation);
         await Test("SSE envelope location and page hookup fences", () => Hookup(args[0]));
-        Console.WriteLine($"PASS {_passed}/17 browser peer tests");
+        Console.WriteLine($"PASS {_passed}/18 browser peer tests");
     }
 
     private static async Task Test(string name, Func<Task> test)
@@ -247,6 +248,58 @@ internal static class Program
         server.Feed.Emit(connection, "command", "r3");
         Equal((await server.Next("result")).Input["outcome"], "{\"type\":\"failure\",\"code\":\"execution_failed\",\"message\":\"浏览器操作失败。\"}");
         Assert(backend.Executions == 3);
+    }
+    private static async Task NavigationResultOrder()
+    {
+        using var server = new Server();
+        var backend = new Backend(); backend.Change(0);
+        var releaseCommit = Completion<bool>(); var commitPosted = Completion<bool>(); var backendReturned = Completion<bool>();
+        long serverGeneration = 0;
+        server.Reply = async call =>
+        {
+            if (call.Method == "state")
+            {
+                var generation = call.Input["state"]!["tabs"]![0]!["generation"]!.GetValue<long>();
+                if (generation == 1) { commitPosted.TrySetResult(true); await releaseCommit.Task; }
+                Interlocked.Exchange(ref serverGeneration, generation);
+            }
+            if (call.Method == "command")
+            {
+                var wait = call.Input["requestID"]!.GetValue<string>() == "wait";
+                return Server.Json(new JsonObject { ["output"] = new JsonObject
+                {
+                    ["action"] = wait ? new JsonObject { ["type"] = "wait", ["condition"] = "load" } : new JsonObject { ["type"] = "tabs.open" },
+                    ["generation"] = Interlocked.Read(ref serverGeneration), ["files"] = new JsonArray(),
+                } });
+            }
+            return Server.Json(new JsonObject());
+        };
+        backend.Execute = async (command, _) =>
+        {
+            if (command.ActionType == "tabs.open")
+            {
+                backend.Change(1); await commitPosted.Task; backendReturned.TrySetResult(true);
+                return new OpenCodeBrowserOutcome.Success(new JsonObject { ["generation"] = 1, ["loading"] = true }, Array.Empty<OpenCodeBrowserFile>());
+            }
+            Assert(command.Generation == 1 && serverGeneration == 1, "load wait must receive committed state, not generation 0");
+            return new OpenCodeBrowserOutcome.Success(null, Array.Empty<OpenCodeBrowserFile>());
+        };
+        await using var peer = Peer(server, backend);
+        var connection = (await Attach(server, peer)).Input["connectionID"]!.GetValue<string>();
+        server.Feed.Emit(connection, "command", "open");
+        await backendReturned.Task;
+        await Task.Delay(25); // Give the result worker a turn while the commit state response is held.
+        Assert(server.Count("result") == 0, "open result must not race ahead of state acknowledgement");
+        releaseCommit.TrySetResult(true);
+        var result = await server.Next("result");
+        Assert(result.Input["requestID"]!.GetValue<string>() == "open" && serverGeneration == 1);
+        server.Feed.Emit(connection, "command", "wait");
+        Assert((await server.Next("result")).Input["outcome"]!["type"]!.GetValue<string>() == "success");
+        lock (server.History)
+        {
+            var generations = server.History.Where(c => c.Method == "state").Select(c => c.Input["state"]!["tabs"]![0]!["generation"]!.GetValue<long>()).ToArray();
+            Assert(generations.SequenceEqual(generations.OrderBy(g => g)), "queued older state must not overwrite the commit state");
+        }
     }
     private static async Task Cancel()
     {

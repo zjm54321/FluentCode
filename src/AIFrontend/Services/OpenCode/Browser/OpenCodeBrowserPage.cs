@@ -50,7 +50,8 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     public string? LoadError => _error;
     public bool CanGoBack => _back && PreviewPath is null;
     public bool CanGoForward => _forward && PreviewPath is null;
-    public long Generation { get; private set; }
+    internal OpenCodeBrowserNavigation Navigation { get; } = new();
+    public long Generation => Navigation.Generation;
     public bool OpenedByAgent { get; }
     public string? AgentActivity => _activity;
     public string AgentName { get; set; } = "智能体";
@@ -85,12 +86,14 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
             Core.Settings.IsBuiltInErrorPageEnabled = false;
             Core.NavigationStarting += (_, e) =>
             {
+                Navigation.Start(e.NavigationId);
                 _pendingUrl = e.Uri; Set(ref _url, OpenCodeBrowserPolicy.Bound(e.Uri, 16384), nameof(Url));
                 Navigating?.Invoke(this, EventArgs.Empty); Set(ref _loading, true, nameof(Loading)); Set(ref _error, null, nameof(LoadError));
             };
-            Core.ContentLoading += (_, _) =>
+            Core.ContentLoading += (_, e) =>
             {
-                _contentLoaded = true; _pendingUrl = null; Generation++; Refresh(); Changed(nameof(Generation)); Committed?.Invoke(this, EventArgs.Empty);
+                if (!Navigation.Commit(e.NavigationId)) return;
+                _contentLoaded = true; _pendingUrl = null; Refresh(); Changed(nameof(Generation)); Committed?.Invoke(this, EventArgs.Empty);
                 _navigationCommit?.TrySetResult(true);
             };
             Core.SourceChanged += (_, _) => Refresh();
@@ -98,6 +101,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
             Core.HistoryChanged += (_, _) => Refresh();
             Core.NavigationCompleted += (_, e) =>
             {
+                if (!Navigation.IsCurrent(e.NavigationId)) return;
                 Set(ref _loading, false, nameof(Loading));
                 Set(ref _error, e.IsSuccess ? null : e.WebErrorStatus.ToString(), nameof(LoadError));
                 Refresh(); _pendingUrl = null; _navigation?.TrySetResult(e.IsSuccess); _navigationCommit?.TrySetResult(e.IsSuccess);
