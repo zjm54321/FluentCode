@@ -1,4 +1,4 @@
-# Headless BG1/SB1/SB2 source contracts. Does not launch the app or access the desktop (AU1).
+# Headless layout source contracts + production SB3 scroll-coordinate computations (AU1).
 param([string]$EvidenceRoot)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -57,8 +57,33 @@ Check ($bridge -match 'Text = item.User \? "[^"]+" : "[^"]+"' -and $bridge.Conta
 Check ($bridge.Contains('args.Cancel = true;') -and $bridge.Contains('MessageScroll.ChangeView(null, Math.Clamp(args.ScrollOffset, 0, MessageScroll.ScrollableHeight), null, disableAnimation: true)')) 'SB2: native track/dash navigation still uses the single conversation scroll owner'
 $conversation = [IO.File]::ReadAllText((Join-Path $src 'Pages/OpenCode/OpenCodeConversationView.cs'))
 Check (!$conversation.Contains('AnnotationLabel(') -and !$bridge.Contains('AnnotationLabel(')) 'SB2: obsolete A6 two-character label computation removed'
+Check ($bridge.Contains('OpenCodeScrollBarProjection.Position(MessageScroll.ScrollableHeight, MessageScroll.VerticalOffset)') -and $bridge.Contains('controller.SetValues(0, position.Maximum, position.Offset, position.ViewportLength)') -and $bridge.Contains('InsertScalar("Offset", (float)position.Offset)')) 'SB3a: controller and native thumb expression consume the same projected live viewport position'
+Check (!$bridge.Contains('InsertScalar("Multiplier"') -and $bridge.Contains('_annotatedSources, "MinOffset", "MaxOffset", "Offset", "Multiplier"')) 'SB3a: native PanningInfo owns the rail-to-offset multiplier'
+Check ($bridge.Contains('MessageScroll.ViewChanged += AnnotatedViewportChanged') -and $bridge.Contains('MessageScroll.LayoutUpdated += AnnotatedLayoutUpdated') -and $bridge.Contains('OpenCodeScrollBarProjection.ScrollTarget(item.Offset, position.Maximum)')) 'SB3a: view/layout changes refresh labels and clamp to reachable scroll targets'
+Check ($conversation.Contains('var viewTop = ContentTop()') -and $conversation.Contains('OpenCodeScrollBarProjection.ContentOffset(viewTop, Padding.Top, precedingHeight)') -and $conversation.Contains('precedingHeight += _window.Height(entry.Key)') -and $conversation.Contains('_viewport.VerticalOffset - ContentTop() - Padding.Top')) 'SB3a: labels and window anchors share content-top coordinates and current row heights'
 if ($EvidenceRoot) {
     New-Item -ItemType Directory -Path $EvidenceRoot -Force | Out-Null
     $results | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'results.txt')
 }
 $results
+
+$output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-layout-' + [guid]::NewGuid().ToString('N')) }
+New-Item -ItemType Directory -Path $output -Force | Out-Null
+$dotnet = (Get-Command dotnet.exe).Source
+$dotnetRoot = Split-Path $dotnet
+$sdk = Get-ChildItem (Join-Path $dotnetRoot 'sdk') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+$pack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+if (!$sdk -or !$pack) { throw '.NET 10 SDK/reference pack required.' }
+$assembly = Join-Path $output 'ScrollBarTests.dll'
+$arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
+$arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
+$arguments += '"' + (Join-Path $src 'Pages/OpenCode/OpenCodeScrollBarProjection.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'ScrollBarTests.cs') + '"'
+$responseFile = Join-Path $output 'compile.rsp'
+$arguments | Set-Content -Encoding UTF8 $responseFile
+& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
+if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'ScrollBarTests.runtimeconfig.json')
+& $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'computations.txt')
+if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
+Write-Output "Evidence directory: $output"

@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Text;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml.Hosting;
+using AIFrontend.Pages.OpenCode;
 
 namespace AIFrontend.Pages;
 
@@ -20,10 +21,10 @@ public sealed partial class OpenCodePage
     {
         _annotatedSources = ElementCompositionPreview.GetElementVisual(ConversationScrollBar).Compositor.CreatePropertySet();
         _annotatedSources.InsertScalar("MinOffset", 0);
-        _annotatedSources.InsertScalar("MaxOffset", (float)MessageScroll.ScrollableHeight);
-        _annotatedSources.InsertScalar("Offset", (float)MessageScroll.VerticalOffset);
-        _annotatedSources.InsertScalar("Multiplier", -1);
-        // The native panning implementation owns its thumb expression and movement ratio.
+        _annotatedSources.InsertScalar("MaxOffset", 0);
+        _annotatedSources.InsertScalar("Offset", 0);
+        // WinUI writes Multiplier itself from its measured rail and our SetValues range.
+        // Never replace it with a fixed ratio or a second thumb-position expression.
         ConversationScrollBar.ScrollController.PanningInfo?.SetPanningElementExpressionAnimationSources(
             _annotatedSources, "MinOffset", "MaxOffset", "Offset", "Multiplier");
         MessageScroll.ViewChanged += AnnotatedViewportChanged;
@@ -47,11 +48,16 @@ public sealed partial class OpenCodePage
     private void UpdateAnnotatedScrollBar()
     {
         var controller = ConversationScrollBar.ScrollController;
-        controller.SetIsScrollable(MessageScroll.ScrollableHeight > 0);
-        controller.SetValues(0, Math.Max(0, MessageScroll.ScrollableHeight), MessageScroll.VerticalOffset, MessageScroll.ViewportHeight);
-        _annotatedSources?.InsertScalar("MaxOffset", (float)Math.Max(0, MessageScroll.ScrollableHeight));
-        _annotatedSources?.InsertScalar("Offset", (float)MessageScroll.VerticalOffset);
-        var annotations = _conversationView.ScrollAnnotations();
+        var position = OpenCodeScrollBarProjection.Position(MessageScroll.ScrollableHeight, MessageScroll.VerticalOffset);
+        controller.SetIsScrollable(position.Maximum > 0);
+        controller.SetValues(0, position.Maximum, position.Offset, position.ViewportLength);
+        // SetValues updates native state, but only the panning expression moves the blue thumb.
+        // Feed both paths the same live offset after every view/layout/window-height change.
+        _annotatedSources?.InsertScalar("MaxOffset", (float)position.Maximum);
+        _annotatedSources?.InsertScalar("Offset", (float)position.Offset);
+        var annotations = _conversationView.ScrollAnnotations()
+            .Select(item => (item.Text, item.User, Offset: OpenCodeScrollBarProjection.ScrollTarget(item.Offset, position.Maximum)))
+            .ToArray();
         if (annotations.SequenceEqual(_scrollAnnotations)) return;
         _scrollAnnotations = annotations;
         ConversationScrollBar.Labels.Clear();

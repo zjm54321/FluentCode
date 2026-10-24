@@ -91,7 +91,8 @@ public sealed class OpenCodeConversationView : StackPanel
     internal IReadOnlyList<(string Text, bool User, double Offset)> ScrollAnnotations()
     {
         var labels = new List<(string, bool, double)>();
-        double offset = Padding.Top;
+        var viewTop = ContentTop();
+        double precedingHeight = 0;
         foreach (var entry in _entries)
         {
             var message = entry.Snapshot;
@@ -99,8 +100,8 @@ public sealed class OpenCodeConversationView : StackPanel
             var text = user ? message?.Text : message?.Type == OpenCodeMessageTypes.Assistant
                 ? string.Join("\n", message.Content?.Where(p => p.Type == OpenCodePartTypes.Text).Select(p => p.Text) ?? Array.Empty<string>()) : null;
             if (!string.IsNullOrWhiteSpace(text) && !entry.IsInstructionNotice && !entry.IsInitiatorChip && !entry.IsAsyncCompletion && !entry.IsManualBackgroundNotice)
-                labels.Add((text, user, offset));
-            offset += _window.Height(entry.Key);
+                labels.Add((text, user, OpenCodeScrollBarProjection.ContentOffset(viewTop, Padding.Top, precedingHeight)));
+            precedingHeight += _window.Height(entry.Key);
         }
         return labels;
     }
@@ -111,10 +112,11 @@ public sealed class OpenCodeConversationView : StackPanel
         // A transform to the viewport includes the compositor's in-flight pan, which can
         // be ahead of VerticalOffset. Never subtract that transform from a logical offset:
         // the resulting "anchor correction" fights the next native inertia frame.
-        var top = _viewport.Content is UIElement content
-            ? TransformToVisual(content).TransformPoint(new Point(0, 0)).Y : 0;
-        return Math.Max(0, _viewport.VerticalOffset - top - Padding.Top);
+        return Math.Max(0, _viewport.VerticalOffset - ContentTop() - Padding.Top);
     }
+
+    private double ContentTop() => _viewport?.Content is UIElement content
+        ? TransformToVisual(content).TransformPoint(new Point(0, 0)).Y : 0;
 
     private void ConnectViewport()
     {
