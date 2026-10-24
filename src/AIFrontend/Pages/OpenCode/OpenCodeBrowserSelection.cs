@@ -47,7 +47,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     {
         _overlay = overlay; _register = register; _attach = attach;
         overlay.PageTools.Children.Clear();
-        foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选", "\uE7EF"), (OpenCodeBrowserSelectionTool.Lasso, "圈选", "\uED5C"), (OpenCodeBrowserSelectionTool.Annotate, "标注", "\uE70F") })
+        foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选", "\uE7EF"), (OpenCodeBrowserSelectionTool.Annotate, "标注", "\uE70F") })
         {
             var tool = entry.Item1;
             var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, MinWidth = 0 };
@@ -151,7 +151,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         foreach (var pair in _buttons) { pair.Value.IsChecked = _tool == pair.Key; pair.Value.Visibility = OpenCodeBrowserSelectionPolicy.Offers(pair.Key, _page?.PreviewPath is not null) ? Visibility.Visible : Visibility.Collapsed; }
         _pill.Visibility = _tool == OpenCodeBrowserSelectionTool.None ? Visibility.Collapsed : Visibility.Visible;
         _annotationTools.Visibility = _tool == OpenCodeBrowserSelectionTool.Annotate ? Visibility.Visible : Visibility.Collapsed;
-        _modeLabel.Text = _tool switch { OpenCodeBrowserSelectionTool.Element => "选择元素 · Shift + 单击多选 · Esc 退出", OpenCodeBrowserSelectionTool.Region => "框选 · Shift 正方形 · Esc 退出", OpenCodeBrowserSelectionTool.Lasso => "圈选 · 拖动闭合 · Esc 退出", OpenCodeBrowserSelectionTool.Annotate => "标注 · Esc 退出", _ => "截图 · 拖动选择区域 · Esc 退出" };
+        _modeLabel.Text = _tool switch { OpenCodeBrowserSelectionTool.Element => "选择元素 · Shift + 单击多选 · Esc 退出", OpenCodeBrowserSelectionTool.Region => "框选 · Shift 正方形 · Esc 退出", OpenCodeBrowserSelectionTool.Annotate => "标注 · Esc 退出", _ => "截图 · 拖动选择区域 · Esc 退出" };
         if (State is { } state) _list.Render(state.List); else _list.Visibility = Visibility.Collapsed;
     }
     private async void MessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -172,7 +172,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
             {
                 if (_page != page || activation != _activation || page.Generation != generation) return;
                 if (type == "element" && _tool == OpenCodeBrowserSelectionTool.Element) await SelectElementAsync(page, message!, generation);
-                if (type == "region" && _tool is OpenCodeBrowserSelectionTool.Region or OpenCodeBrowserSelectionTool.Lasso or OpenCodeBrowserSelectionTool.Screenshot) await SelectRegionAsync(page, message!, generation);
+                if (type == "region" && _tool is OpenCodeBrowserSelectionTool.Region or OpenCodeBrowserSelectionTool.Screenshot) await SelectRegionAsync(page, message!, generation);
             }
             finally { page.ActionGate.Release(); _working = false; }
             if (_page == page) { Render(); await SyncSelectedAsync(); }
@@ -195,7 +195,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     }
     private async Task SelectRegionAsync(OpenCodeBrowserPage page, JsonObject message, long generation)
     {
-        var kind = _tool == OpenCodeBrowserSelectionTool.Lasso ? OpenCodeBrowserSelectionKind.Lasso : _tool == OpenCodeBrowserSelectionTool.Screenshot ? OpenCodeBrowserSelectionKind.Screenshot : OpenCodeBrowserSelectionKind.Region;
+        var kind = _tool == OpenCodeBrowserSelectionTool.Screenshot ? OpenCodeBrowserSelectionKind.Screenshot : OpenCodeBrowserSelectionKind.Region;
         var b = message["box"]!; var box = new BrowserRect(N(b, "x"), N(b, "y"), N(b, "width"), N(b, "height"));
         var selectors = message["selectors"]!.AsArray();
         if (selectors.Count > 200) throw new InvalidOperationException("此区域包含超过 200 个元素，请缩小选择范围。");
@@ -207,12 +207,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
             var id = found["nodeId"]!.GetValue<int>(); if (id == 0) continue;
             var described = await page.CdpAsync("DOM.describeNode", new() { ["nodeId"] = id });
             var element = await ReadElementAsync(page, described["node"]!["backendNodeId"]!.GetValue<int>(), generation, null);
-            if (message["polygon"] is JsonArray polygon)
-            {
-                var points = polygon.Select(p => new BrowserPoint(N(p!, "x"), N(p!, "y"))).ToArray();
-                if (!OpenCodeBrowserSelectionPolicy.ContainsElement(points, element.Box)) continue;
-            }
-            else if (!OpenCodeBrowserSelectionPolicy.ContainsElement(box, element.Box)) continue;
+            if (!OpenCodeBrowserSelectionPolicy.ContainsElement(box, element.Box)) continue;
             elements.Add(element);
         }
         var image = await CaptureAsync(page, box);

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json.Nodes;
+using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode.Browser;
 
 internal static class SelectionTests
@@ -16,25 +17,24 @@ internal static class SelectionTests
         }
         check(OpenCodeBrowserSelectionPolicy.ContainsElement(rect, new(25, 35, 20, 20)), "element fully contained in rectangle");
         check(!OpenCodeBrowserSelectionPolicy.ContainsElement(rect, new(10, 35, 20, 20)), "partial rectangle overlap excluded");
-        var polygon = new[] { new BrowserPoint(0, 0), new BrowserPoint(100, 0), new BrowserPoint(100, 100), new BrowserPoint(0, 100) };
-        check(OpenCodeBrowserSelectionPolicy.PointInPolygon(polygon, new(50, 50)), "lasso point inside");
-        check(OpenCodeBrowserSelectionPolicy.PointInPolygon(polygon, new(100, 100)), "lasso boundary included");
-        check(!OpenCodeBrowserSelectionPolicy.PointInPolygon(polygon, new(-1, 50)), "lasso outside excluded");
-        check(OpenCodeBrowserSelectionPolicy.ContainsElement(polygon, new(20, 20, 40, 40)), "lasso fully contains element");
-        check(!OpenCodeBrowserSelectionPolicy.ContainsElement(polygon, new(90, 20, 40, 40)), "lasso partial overlap excluded");
-        var concave = new[] { new BrowserPoint(0, 0), new BrowserPoint(100, 0), new BrowserPoint(100, 100), new BrowserPoint(60, 100), new BrowserPoint(60, 40), new BrowserPoint(40, 40), new BrowserPoint(40, 100), new BrowserPoint(0, 100) };
-        check(!OpenCodeBrowserSelectionPolicy.ContainsElement(concave, new(20, 20, 60, 60)), "concave notch cutting interior excluded even with four corners inside");
-        check(!OpenCodeBrowserSelectionPolicy.ContainsElement(Array.Empty<BrowserPoint>(), rect), "empty polygon excludes element");
+        check(OpenCodeBrowserSelectionPolicy.ContainsElement(rect, rect), "rectangle includes elements on its exact boundary");
+        check(!OpenCodeBrowserSelectionPolicy.ContainsElement(rect, new(25, 35, 80, 50)), "rectangle excludes elements crossing right or bottom edges");
+        check(Enum.GetValues<OpenCodeBrowserSelectionTool>().SequenceEqual(new[] { OpenCodeBrowserSelectionTool.None, OpenCodeBrowserSelectionTool.Element, OpenCodeBrowserSelectionTool.Region, OpenCodeBrowserSelectionTool.Annotate, OpenCodeBrowserSelectionTool.Screenshot }), "BS1 four tools plus inactive mode");
+        check(Enum.GetValues<OpenCodeBrowserSelectionKind>().SequenceEqual(new[] { OpenCodeBrowserSelectionKind.Element, OpenCodeBrowserSelectionKind.Region, OpenCodeBrowserSelectionKind.Annotation, OpenCodeBrowserSelectionKind.Screenshot, OpenCodeBrowserSelectionKind.Page }), "BS1 retained selection kinds");
+        var script = OpenCodeBrowserSelectionScript.Source;
+        check(script.Contains("if(mode==='Region'||mode==='Screenshot'){let r=rect(start,p,e.shiftKey);draft={box:r,elements:candidates(r)}}"), "STATIC rectangle and region screenshot preserve Shift-square drag path");
+        check(script.Contains("corners(draft.box).findIndex") && script.Contains("start=corners(draft.box)[(handle+2)%4]"), "STATIC rectangle resize handles preserve opposite corner anchor");
+        check(script.Contains("corners(r).every(p=>p.x>=box.x&&p.y>=box.y&&p.x<=box.x+box.width&&p.y<=box.y+box.height)"), "STATIC rectangle candidate filter requires full containment");
+        check(script.Contains("send('region',{key:draftKey,box:draft.box,selectors:draft.elements.map(e=>e.selector),kind:mode})"), "STATIC rectangle sends draft key, box and real element selectors");
         check(OpenCodeBrowserSelectionPolicy.DefaultFullPage && OpenCodeBrowserSelectionPolicy.DefaultElementInfo, "BQ9 both checkboxes default checked");
         foreach (var tool in Enum.GetValues<OpenCodeBrowserSelectionTool>())
         {
             check(OpenCodeBrowserSelectionPolicy.Offers(tool, false), "normal page offers " + tool);
-            check(OpenCodeBrowserSelectionPolicy.Offers(tool, true) == (tool is not (OpenCodeBrowserSelectionTool.Region or OpenCodeBrowserSelectionTool.Lasso)), "preview subset " + tool);
+            check(OpenCodeBrowserSelectionPolicy.Offers(tool, true) == (tool != OpenCodeBrowserSelectionTool.Region), "preview subset " + tool);
             check(OpenCodeBrowserSelectionPolicy.EscapeExitsTool(tool) == (tool != OpenCodeBrowserSelectionTool.None), "Esc tool before overlay " + tool);
         }
         check(OpenCodeBrowserSelectionPolicy.Color(OpenCodeBrowserSelectionKind.Element) == "#8B5CF6", "element purple");
         check(OpenCodeBrowserSelectionPolicy.Color(OpenCodeBrowserSelectionKind.Region) == "#38BDF8", "region blue");
-        check(OpenCodeBrowserSelectionPolicy.Color(OpenCodeBrowserSelectionKind.Lasso) == "#22C55E", "lasso green");
         check(OpenCodeBrowserSelectionPolicy.Color(OpenCodeBrowserSelectionKind.Annotation) == "#F43F5E", "annotation red");
         var list = new OpenCodeBrowserSelectionList(); var bytes = new byte[] { 137, 80, 78, 71 };
         var element = new BrowserSelectedElement("input#search", "Search", "hello", rect, "font: 14px; color: red", "e42", "frame1", 123);

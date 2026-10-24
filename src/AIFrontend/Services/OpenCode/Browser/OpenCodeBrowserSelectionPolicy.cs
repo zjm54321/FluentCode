@@ -5,8 +5,8 @@ using System.Text.Json;
 
 namespace AIFrontend.Services.OpenCode.Browser;
 
-public enum OpenCodeBrowserSelectionTool { None, Element, Region, Lasso, Annotate, Screenshot }
-public enum OpenCodeBrowserSelectionKind { Element, Region, Lasso, Annotation, Screenshot, Page }
+public enum OpenCodeBrowserSelectionTool { None, Element, Region, Annotate, Screenshot }
+public enum OpenCodeBrowserSelectionKind { Element, Region, Annotation, Screenshot, Page }
 public readonly record struct BrowserPoint(double X, double Y);
 public readonly record struct BrowserRect(double X, double Y, double Width, double Height)
 {
@@ -31,53 +31,18 @@ public static class OpenCodeBrowserSelectionPolicy
         if (square) { var side = Math.Max(Math.Abs(dx), Math.Abs(dy)); dx = Math.CopySign(side, dx); dy = Math.CopySign(side, dy); }
         return new(Math.Min(start.X, start.X + dx), Math.Min(start.Y, start.Y + dy), Math.Abs(dx), Math.Abs(dy));
     }
-    public static bool PointInPolygon(IReadOnlyList<BrowserPoint> polygon, BrowserPoint point)
-    {
-        var inside = false;
-        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
-        {
-            var a = polygon[j]; var b = polygon[i];
-            var cross = (point.X - a.X) * (b.Y - a.Y) - (point.Y - a.Y) * (b.X - a.X);
-            if (Math.Abs(cross) < .00001 && point.X >= Math.Min(a.X, b.X) && point.X <= Math.Max(a.X, b.X)
-                && point.Y >= Math.Min(a.Y, b.Y) && point.Y <= Math.Max(a.Y, b.Y)) return true;
-            if ((a.Y > point.Y) != (b.Y > point.Y) && point.X < (b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y) + a.X) inside = !inside;
-        }
-        return inside;
-    }
     public static bool ContainsElement(BrowserRect region, BrowserRect element) => element.Corners.All(region.Contains);
-    public static bool ContainsElement(IReadOnlyList<BrowserPoint> polygon, BrowserRect element)
-    {
-        // Every corner must be inside, and no polygon edge may cut the rectangle's interior.
-        if (polygon.Count < 3 || !element.Corners.All(p => PointInPolygon(polygon, p))) return false;
-        for (var i = 0; i < polygon.Count; i++)
-        {
-            var a = polygon[i]; var b = polygon[(i + 1) % polygon.Count];
-            var t0 = 0d; var t1 = 1d; var dx = b.X - a.X; var dy = b.Y - a.Y;
-            bool Clip(double p, double q)
-            {
-                if (Math.Abs(p) < .00001) return q >= 0;
-                var t = q / p;
-                if (p < 0) { if (t > t1) return false; t0 = Math.Max(t0, t); }
-                else { if (t < t0) return false; t1 = Math.Min(t1, t); }
-                return true;
-            }
-            const double inset = .001;
-            if (Clip(-dx, a.X - element.X - inset) && Clip(dx, element.X + element.Width - inset - a.X)
-                && Clip(-dy, a.Y - element.Y - inset) && Clip(dy, element.Y + element.Height - inset - a.Y) && t0 <= t1) return false;
-        }
-        return true;
-    }
     public static bool Offers(OpenCodeBrowserSelectionTool tool, bool preview) => !preview || tool is
         OpenCodeBrowserSelectionTool.None or OpenCodeBrowserSelectionTool.Element or OpenCodeBrowserSelectionTool.Annotate or OpenCodeBrowserSelectionTool.Screenshot;
     public static bool EscapeExitsTool(OpenCodeBrowserSelectionTool tool) => tool != OpenCodeBrowserSelectionTool.None;
     public static string Color(OpenCodeBrowserSelectionKind kind) => kind switch
     {
-        OpenCodeBrowserSelectionKind.Element => "#8B5CF6", OpenCodeBrowserSelectionKind.Lasso => "#22C55E",
+        OpenCodeBrowserSelectionKind.Element => "#8B5CF6",
         OpenCodeBrowserSelectionKind.Annotation => "#F43F5E", _ => "#38BDF8"
     };
     public static string Label(OpenCodeBrowserSelectionKind kind) => kind switch
     {
-        OpenCodeBrowserSelectionKind.Element => "元素", OpenCodeBrowserSelectionKind.Region => "区域", OpenCodeBrowserSelectionKind.Lasso => "圈选",
+        OpenCodeBrowserSelectionKind.Element => "元素", OpenCodeBrowserSelectionKind.Region => "区域",
         OpenCodeBrowserSelectionKind.Annotation => "标注", OpenCodeBrowserSelectionKind.Page => "页面", _ => "截图"
     };
     public static BrowserSelectionAttachment Attachment(string url, string tabId, long generation, BrowserSelectionItem item, bool elementInfo)

@@ -116,7 +116,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         PageTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         PageTools.Resources = (ResourceDictionary)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Width\" Value=\"34\"/><Setter Property=\"Height\" Value=\"32\"/><Setter Property=\"Padding\" Value=\"0\"/></Style><Style TargetType=\"SplitButton\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Height\" Value=\"32\"/></Style></ResourceDictionary>");
-        foreach (var item in new[] { ("\uE8B0", "选择元素"), ("\uE7EF", "框选"), ("\uED5C", "圈选"), ("\uE70F", "标注"), ("\uE722", "截图") })
+        foreach (var item in new[] { ("\uE8B0", "选择元素"), ("\uE7EF", "框选"), ("\uE70F", "标注"), ("\uE722", "截图") })
         {
             var toggle = new ToggleButton { Content = new FontIcon { Glyph = item.Item1, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, IsEnabled = false, MinWidth = 0 };
             ToolTipService.SetToolTip(toggle, item.Item2); AutomationProperties.SetName(toggle, item.Item2); PageTools.Children.Add(toggle);
@@ -248,7 +248,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _network.Visibility = local && !_editing ? Visibility.Visible : Visibility.Collapsed;
         _displayAddress.Margin = new(32, 0, preview ? 110 : local ? 100 : 12, 0);
         _preview.UpdateActions();
-        if (PageTools.Children.Count == 5) { PageTools.Children[1].Visibility = preview ? Visibility.Collapsed : Visibility.Visible; PageTools.Children[2].Visibility = preview ? Visibility.Collapsed : Visibility.Visible; }
+        if (PageTools.Children.Count == 4) PageTools.Children[1].Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
         ToolTipService.SetToolTip(_refresh, preview ? "重新读取服务器文件（仅手动刷新）" : page.Loading ? "停止加载" : "刷新");
         _back.IsEnabled = page.CanGoBack; _forward.IsEnabled = page.CanGoForward;
         (_refresh.Content as FontIcon)!.Glyph = !preview && page.Loading ? "\uE711" : "\uE72C";
