@@ -38,6 +38,10 @@ namespace AIFrontend.Pages
                 Check(UseSingleRowComposer(false, true, overTwo) == (lines <= 2), "wide session switches below editor only beyond two lines");
                 Check(!UseSingleRowComposer(false, false, overTwo) && !UseSingleRowComposer(true, true, overTwo)
                     && !UseSingleRowComposer(true, false, overTwo), "narrow/new-session drafts always retain two rows");
+                Check(!ShowComposerToolbarChoices(false, true), "wide session never duplicates sidebar choices/shortcuts, including multiline bottom row");
+                Check(ShowComposerToolbarChoices(false, false), "narrow session keeps its existing picker/shortcut toolbar at every line count");
+                Check(ShowComposerToolbarChoices(true, true) && ShowComposerToolbarChoices(true, false),
+                    "new-session toolbar remains available without resident panels at either width");
             }
             Check(!ComposerOverTwoLines(40.4, 20, false) && ComposerOverTwoLines(40.4, 20, true)
                 && !ComposerOverTwoLines(40, 20, false) && !ComposerOverTwoLines(40, 20, true), "half-pixel hysteresis suppresses measure jitter; two real lines return to one row");
@@ -181,6 +185,16 @@ namespace AIFrontend.Pages
             Check(layout.Contains("ArrangeComposerRows(singleRow)") && layout.Contains("Grid.SetRow(ComposerActions, singleRow ? 0 : 1)")
                 && layout.Contains("Grid.SetRow(ComposerToolbarLeft, singleRow ? 0 : 1)")
                 && !layout.Contains("Children.Remove") && layout.Contains("Composer.TextCompositionEnded +="), "responsive rows change attached layout only, never editor parent or identity");
+            Check(layout.Contains("ShowComposerToolbarChoices(_newSessionDraftActive, _sidebarLayout.IsWide)")
+                && layout.Contains("BlankToolbarChoices.Visibility = choices ? Visibility.Visible : Visibility.Collapsed;")
+                && layout.Contains("ComposerToolbarMiddle.Visibility = choices && !_newSessionDraftActive ? Visibility.Visible : Visibility.Collapsed;"),
+                "CB1 toolbar contents follow resident-panel mode, not editor line count or row arrangement");
+            Check(Named("BlankToolbarChoices").Descendants().Contains(Named("ComposerToolbarMiddle"))
+                && new[] { "BlankAgentButton", "BlankModelButton", "BlankStrengthButton", "ComposerSubagentsButton", "ComposerConnectionButton" }
+                    .All(name => Named(name).Ancestors().Contains(Named("BlankToolbarChoices")))
+                && Named("ComposerToolbarLeft").Elements().Single() == Named("ComposerLeadingHost")
+                && !Named("ComposerActions").Ancestors().Contains(Named("BlankToolbarChoices")),
+                "CB1 wide mode hides all five duplicate controls as a group while retaining plus and send/stop hosts");
             Check(layout.Contains("ComposerSingleRowTextWidth(ComposerInputLayout.ActualWidth,")
                 && layout.Contains("ComposerOverTwoLines(measure.DesiredSize.Height, line, _composerOverTwoLines)")
                 && !layout.Contains("ComposerEditorHost.ActualWidth")

@@ -28,7 +28,7 @@ $shell = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.ShellCo
 $promptTop = [regex]::Match($shell, '(?m)^    internal static double ShellPromptTextTop\([^\r\n]*;')
 if (!$promptTop.Success) { throw 'Missing terminal prompt text-top policy' }
 $members += $promptTop.Value
-foreach ($name in @('ComposerOverTwoLines', 'ComposerSingleRowTextWidth')) {
+foreach ($name in @('ShowComposerToolbarChoices', 'ComposerOverTwoLines', 'ComposerSingleRowTextWidth')) {
     $member = [regex]::Match($layout, '(?ms)^    internal static [^\r\n]*\b' + $name + '\(.*?;')
     if (!$member.Success) { throw "Missing composer measurement policy: $name" }
     $members += $member.Value

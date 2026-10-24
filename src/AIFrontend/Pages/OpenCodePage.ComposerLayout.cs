@@ -34,6 +34,8 @@ public sealed partial class OpenCodePage
 
     internal static bool UseSingleRowComposer(bool newSession, bool wide, bool overTwoLines) => !newSession && wide && !overTwoLines;
 
+    internal static bool ShowComposerToolbarChoices(bool newSession, bool wide) => newSession || !wide;
+
     internal static bool ComposerOverTwoLines(double height, double line, bool wasOverTwoLines)
         => height > 2 * line + (wasOverTwoLines ? 0 : 0.5);
 
@@ -53,8 +55,10 @@ public sealed partial class OpenCodePage
         ComposerActions.Margin = lastLine;
         ComposerActions.VerticalAlignment = singleRow ? VerticalAlignment.Bottom : VerticalAlignment.Center;
         ComposerInputLayout.RowSpacing = singleRow ? 0 : 8;
-        BlankToolbarChoices.Visibility = singleRow ? Visibility.Collapsed : Visibility.Visible;
-        ComposerToolbarMiddle.Visibility = !singleRow && !_newSessionDraftActive ? Visibility.Visible : Visibility.Collapsed;
+        // Resident wide-session panels own these controls even when a long draft moves actions below.
+        var choices = ShowComposerToolbarChoices(_newSessionDraftActive, _sidebarLayout.IsWide);
+        BlankToolbarChoices.Visibility = choices ? Visibility.Visible : Visibility.Collapsed;
+        ComposerToolbarMiddle.Visibility = choices && !_newSessionDraftActive ? Visibility.Visible : Visibility.Collapsed;
         ComposerChoiceSpacer.Width = _newSessionDraftActive ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
         ComposerStatusColumn.Width = _newSessionDraftActive ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
     }
