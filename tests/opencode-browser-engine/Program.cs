@@ -91,6 +91,15 @@ internal static class Program
         var repeatedWrapper = JsonNode.Parse("""[{"nodeId":"-1","ignored":true,"childIds":["2"]},{"nodeId":"-1","ignored":true,"childIds":["3"]},{"nodeId":"2","role":{"value":"button"},"name":{"value":"First child"}},{"nodeId":"3","role":{"value":"button"},"name":{"value":"Second child"}}]""")!.AsArray();
         var mergedText = snapshot.Format(repeatedWrapper).Content;
         Check(mergedText.Contains("First child") && mergedText.Contains("Second child"), "duplicate ignored wrappers preserve both sets of descendants");
+        var aria = JsonNode.Parse("""[{"nodeId":"1","ignored":true,"childIds":["2"]},{"nodeId":"2","backendDOMNodeId":20,"role":{"value":"generic"},"childIds":["3","5"]},{"nodeId":"3","backendDOMNodeId":21,"role":{"value":"StaticText"},"name":{"value":"Only once"},"childIds":["4"]},{"nodeId":"4","backendDOMNodeId":22,"role":{"value":"InlineTextBox"},"name":{"value":"Only once"}},{"nodeId":"5","backendDOMNodeId":23,"role":{"value":"link"},"name":{"value":"Go"}}]""")!.AsArray();
+        var ariaText = snapshot.Format(aria, depth: 1).Content;
+        Check(ariaText.Split("Only once").Length == 2 && !ariaText.Contains("InlineTextBox") && !ariaText.Contains("generic"), "aria snapshot removes duplicate text and layout wrappers");
+        Check(ariaText.Contains("link") && snapshot.Refs.Count == 1 && snapshot.Refs.Values.Single() == 23, "transparent wrappers preserve depth and refs only on meaningful elements");
+        snapshot.Format(aria, find: "Only once"); Check(snapshot.Refs.Count == 0, "find excludes refs absent from output");
+        var huge = new JsonArray(new JsonObject { ["nodeId"] = "1", ["backendDOMNodeId"] = 30, ["role"] = new JsonObject { ["value"] = "button" }, ["name"] = new JsonObject { ["value"] = new string('x', 100001) } });
+        var bounded = snapshot.Format(huge); Check(bounded.Truncated && bounded.Content.Length <= 100000 && snapshot.Refs.Count == 0, "oversize aria line bounded without dangling refs");
+        var many = new JsonArray(); for (var n = 0; n < 10001; n++) many.Add(new JsonObject { ["nodeId"] = n.ToString(), ["ignored"] = true });
+        Check(snapshot.Format(many).Truncated, "AX visit bound includes ignored nodes");
         var browserTab = new OpenCodeBrowserTab(tab, "about:blank", "Title", false, null, false, false, 2);
         var state = OpenCodeBrowserPolicy.State(new(new[] { browserTab }, tab)); Check(state["focusedTabID"]!.ToString() == tab && state["tabs"]![0]!["generation"]!.GetValue<long>() == 2, "state exact casing"); Check(!state["tabs"]![0]!.AsObject().ContainsKey("loadError"), "optional loadError omitted");
         var success = OpenCodeBrowserPolicy.Outcome(new OpenCodeBrowserOutcome.Success(null, new[] { fileBytes })); Check(success["result"]!.AsObject().ContainsKey("value") && success["result"]!["value"] is null, "success requires JSON null value"); Check(success["result"]!["files"]![0]!["data"]!.ToString() == "AQ==", "wire file bytes base64");

@@ -49,24 +49,34 @@ public sealed class OpenCodeBrowserSnapshot
             if (visited.Count >= 10000) { truncated = true; return; }
             if (level >= depth || !visited.Add(Key(node))) return;
             var ignored = node["ignored"]?.GetValue<bool>() == true;
-            if (!ignored)
+            var role = node["role"]?["value"]?.ToString() ?? "unknown";
+            var name = node["name"]?["value"]?.ToString() ?? "";
+            var value = node["value"]?["value"]?.ToString();
+            // Inline boxes repeat StaticText. Ignored/layout-only wrappers are transparent to aria depth.
+            if (role == "InlineTextBox") return;
+            var transparent = ignored || (role is "generic" or "none" or "presentation" or "unknown" && string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(value));
+            if (!transparent)
             {
-                var reference = "";
-                if (node["backendDOMNodeId"] is JsonValue id && id.TryGetValue<int>(out var backend) && backend > 0) reference = Register(backend);
-                var role = node["role"]?["value"]?.ToString() ?? "unknown";
-                var name = node["name"]?["value"]?.ToString() ?? "";
-                var value = node["value"]?["value"]?.ToString();
                 var properties = node["properties"]?.AsArray().OfType<JsonObject>().Where(p => p["name"]?.ToString() is "checked" or "disabled" or "expanded" or "selected" or "required")
                     .Select(p => p["name"] + "=" + p["value"]?["value"]);
-                var line = new string(' ', level * 2) + (reference.Length == 0 ? "" : "[" + reference + "] ") + role + " " + System.Text.Json.JsonSerializer.Serialize(name)
+                var text = role + " " + System.Text.Json.JsonSerializer.Serialize(name)
                     + (value is null ? "" : " value=" + System.Text.Json.JsonSerializer.Serialize(value)) + (properties is null ? "" : " " + string.Join(' ', properties));
-                if (find is null || line.Contains(find, StringComparison.OrdinalIgnoreCase))
+                if (find is null || text.Contains(find, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (builder.Length + line.Length + 1 <= 100000) builder.AppendLine(line);
+                    // Do not allocate refs for filtered/truncated text or non-element text leaves.
+                    var hasRef = role is not ("StaticText" or "RootWebArea" or "WebArea") && node["backendDOMNodeId"] is JsonValue id && id.TryGetValue<int>(out var backend) && backend > 0;
+                    var prefixLength = hasRef ? ("e" + (_nextRef + 1)).Length + 3 : 0;
+                    if (builder.Length + level * 2 + prefixLength + text.Length + Environment.NewLine.Length <= 100000)
+                    {
+                        builder.Append(' ', level * 2);
+                        if (hasRef) builder.Append('[').Append(Register(node["backendDOMNodeId"]!.GetValue<int>())).Append("] ");
+                        builder.AppendLine(text);
+                    }
                     else truncated = true;
                 }
             }
-            foreach (var id in links[Key(node)]) if (Child(node, id) is { } child) Visit(child, ignored ? level : level + 1);
+            if (truncated && builder.Length > 0) return;
+            foreach (var id in links[Key(node)]) if (Child(node, id) is { } child) Visit(child, transparent ? level : level + 1);
         }
         foreach (var root in roots) Visit(root, 0);
         return (builder.ToString(), truncated);
