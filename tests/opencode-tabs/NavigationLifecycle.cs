@@ -29,6 +29,7 @@ public sealed partial class OpenCodePage
     private void QueueAgentTreeRefresh() { }
     private void RefreshRightPanelMetadata() { }
     private void RevokeMessageRefresh() { }
+    private void ResetConversationImages() { } // Image leases are exercised by opencode-session-return.
     private void PauseTerminalView() { }
     private void ResetAgentTree() { }
     private void SessionStateUi_Unloaded(object sender, RoutedEventArgs e) { }

@@ -156,11 +156,14 @@ internal static class Program
 
         // Owned transport actually disables redirects/default credentials/cookies (no socket needed).
         var create = typeof(OpenCodeClient).GetMethod("CreateOwnedHttpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-        using var owned = (HttpClient)create.Invoke(null, null)!;
         var handlerField = typeof(HttpMessageInvoker).GetField("_handler", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var ownedHandler = (HttpClientHandler)handlerField.GetValue(owned)!;
-        Check(!ownedHandler.AllowAutoRedirect && !ownedHandler.UseDefaultCredentials && !ownedHandler.UseCookies,
-            "owned transport disables automatic credentials and redirects");
+        foreach (var wslRecovery in new[] { false, true })
+        {
+            using var owned = (HttpClient)create.Invoke(null, new object[] { wslRecovery })!;
+            var ownedHandler = (SocketsHttpHandler)handlerField.GetValue(owned)!;
+            Check(!ownedHandler.AllowAutoRedirect && ownedHandler.Credentials is null && !ownedHandler.UseCookies,
+                "owned transport disables automatic credentials and redirects");
+        }
     }
 
     private static void Redacted(Exception error)

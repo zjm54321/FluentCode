@@ -45,7 +45,7 @@ $openCode = @(
     'OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
     'OpenCodeClient.View.cs', 'OpenCodeClient.Usage.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.BillionDiscovery.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
-    'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',
+    'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs', 'OpenCodeDtos.BillionDiscovery.cs',
     'OpenCodeUsageAggregator.cs', 'OpenCodeUsageService.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionAncestry.cs',

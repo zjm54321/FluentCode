@@ -127,6 +127,11 @@ namespace AIFrontend.Pages
         private bool _newSessionDraftActive = false;
         private bool _homeActive = false;
         private void ResetHomeSource() => _homeActive = false;
+        // Session-bound file readers (production: OpenCodePage.InstructionFiles.cs / OpenCodePage.ToolImages.cs) are not exercised here.
+        private Func<string, CancellationToken, Task<string>>? CreateInstructionFileReader(
+            OpenCodeImageScopeIdentity identity, Func<bool> current, CancellationToken bindingToken) => null;
+        private Func<OpenCodeToolImageSource, CancellationToken, Task<OpenCodeImageFile>>? CreateToolImageReader(
+            OpenCodeImageScopeIdentity identity, Func<bool> current, CancellationToken bindingToken) => null;
         internal bool BlankTabActive { set => _newSessionDraftActive = value; }
         // Home layout boundary for the real RebuildSessionList; full tab actor/selection is
         // compiled and exercised by opencode-tabs, not substituted into this return harness.
@@ -157,7 +162,7 @@ namespace AIFrontend.Pages
         private event EventHandler? TrustedEndpointIdentityChanged { add { } remove { } }
         private readonly InfoBar PermissionBar = new(), MessageBar = new();
         public new ReturnHostDispatcher DispatcherQueue { get; } = new();
-        public new bool IsLoaded => true;
+        public new bool IsLoaded { get; private set; } = true;
         public new double ActualWidth => 800;
         public new double ActualHeight => 600;
         internal readonly Queue<Task> MessageLoads = new();
@@ -188,6 +193,7 @@ namespace AIFrontend.Pages
         // Fixture boot/reload binding, not an imitation of source reconciliation or navigation.
         internal void BindFixture(OpenCodePageSource source)
         {
+            IsLoaded = true;
             _source = source;
             _sourceRevision = source.Revision;
             _client = source.CreateClient();
@@ -195,7 +201,7 @@ namespace AIFrontend.Pages
             _pageCts = new();
         }
         internal void ChangeSource(OpenCodePageSource source) { InvalidateForSourceChange(); BindFixture(source); }
-        internal void Unload() => OnPageUnloaded(this, new());
+        internal void Unload() { IsLoaded = false; OnPageUnloaded(this, new()); }
         private const string FixtureMessageDirectory = "/synthetic/return-fixture";
         internal Task Switch(string id) => SwitchToSessionAsync(id, directory: FixtureMessageDirectory);
         internal Task<int> Navigate(string id) => NavigateToSessionAsync(id);
@@ -251,6 +257,9 @@ namespace AIFrontend.Pages
         private void UpdateInteractionsSection() { }
         private void ConfigureAgentSelectorForSession(string id) { }
         private void ClearAgentSelector() { }
+        private void PauseTerminalView() { }
+        private bool _isLoadingMoreSessions, _statusRefreshRunning;
+        internal bool PausedLoadingFlags => _isLoadingMoreSessions || _statusRefreshRunning;
         private void DetachConversationEvents() { }
         private void UnsubscribeAppSourceChanged() { }
         private void OpenCodePage_TrustedEndpointIdentityChanged(object? sender, EventArgs e) { }

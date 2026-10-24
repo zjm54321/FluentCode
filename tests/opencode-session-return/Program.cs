@@ -247,8 +247,20 @@ internal static class Program
             else
             {
                 f.Page.Unload();
-                Check(f.Page.ContextIdentity is null && !f.Page.CanReturn,
-                    "race.unload-clears-navigation-context");
+                // NAV2: the cached page keeps its return context across main navigation; pausing
+                // still cancels the in-flight return so it can never complete after reload.
+                Check(oldHold.Token.IsCancellationRequested, "race.unload-cancels-in-flight-return");
+                Check(ReferenceEquals(oldContext, f.Page.ContextIdentity) && !f.Page.CanReturn,
+                    "race.pause-retains-context-without-navigation-capability");
+                var pausedPaths = f.Http.Paths.Count;
+                await f.Page.Return();
+                Check(f.Http.Paths.Count == pausedPaths, "race.paused-return-cannot-start-read");
+                var hiddenIdle = new[] { new OpenCodeMessage { Id = "msg_hidden_idle", Type = OpenCodeMessageTypes.Idle,
+                    Time = new OpenCodeMessageTime { Created = 43 } } };
+                f.Page.Conversation.ApplyMessages(hiddenIdle);
+                f.Page.NotifyViewAcknowledgementRendered(hiddenIdle, windowVisible: true);
+                f.Page.ProveViewport();
+                Check(f.App.Acks.Count == 1 && !f.App.Acks[0].Fence(), "ack.paused-page-cannot-ack-new-watermark");
                 f.Page.BindFixture(f.NewSource(1));
             }
             await EnterChild(f);
@@ -385,6 +397,11 @@ internal static class Program
         var current = f.Page.Images!;
         f.Page.Unload();
         Check(!current.IsCurrent && f.Page.Images is null, "images.unload-disposes-and-unbinds-main");
+        f.Page.BindFixture(f.NewSource(1));
+        await f.Page.Switch("ses_other");
+        Check(f.Page.Images is { IsCurrent: true } resumed && !ReferenceEquals(current, resumed)
+            && resumed.Identity.SessionId == "ses_other" && !current.IsCurrent,
+            "images.reload-rebinds-current-scope-without-reviving-paused-lease");
     }
 
     private sealed class Fixture : IDisposable

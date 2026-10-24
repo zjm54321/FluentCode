@@ -27,8 +27,9 @@ namespace Microsoft.UI.Xaml
         public VerticalAlignment VerticalAlignment { get; set; }
         public event Action<object, RoutedEventArgs>? Loaded;
         public event Action<object, RoutedEventArgs>? Unloaded;
-        internal void Load() => Loaded?.Invoke(this, new());
-        internal void Unload() => Unloaded?.Invoke(this, new());
+        public bool IsLoaded { get; private set; }
+        internal void Load() { IsLoaded = true; Loaded?.Invoke(this, new()); }
+        internal void Unload() { IsLoaded = false; Unloaded?.Invoke(this, new()); }
     }
     public class Application { public static Application? Current { get; set; } }
 }
@@ -134,6 +135,7 @@ namespace AIFrontend.Pages
         private OpenCodePageSource? _source;
         private long _sourceRevision;
         private bool _pageActive;
+        private bool _pageReleased = false; // This host exercises temporary load/unload, not window shutdown.
         private string? _selectedSessionId;
         public TestDispatcher DispatcherQueue { get; } = new();
         internal TextBlock SessionStateHint { get; } = new() { Visibility = Visibility.Collapsed };

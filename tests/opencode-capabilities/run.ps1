@@ -18,7 +18,7 @@ $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dl
     'OpenCodeConstants.cs', 'OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs',
     'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Messages.cs',
     'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs',
-    'OpenCodeInstructionNotice.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.McpControl.cs', 'OpenCodeClient.ServerInfo.cs', 'OpenCodeDtos.Capabilities.cs',
+    'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.McpControl.cs', 'OpenCodeClient.ServerInfo.cs', 'OpenCodeDtos.Capabilities.cs',
     'OpenCodeCapabilityStatus.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeSubagentStatus.cs'
 ) | ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_) + '"' }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
