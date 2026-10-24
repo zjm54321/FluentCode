@@ -38,4 +38,8 @@ foreach ($pattern in @('SplitButton _editor', '_editor.Click \+=', '_editor.Flyo
 }
 if ($viewSource -match 'ToggleMenuFlyoutItem') { throw 'Editor choice must use native radio items.' }
 Write-Output 'PASS native SplitButton/menu source contract; detection/preference tested in pure projection'
+foreach ($pattern in @('Width = 40, Height = 36', 'Width = 72, Height = 36', 'FontSize = 18', 'VerticalAlignment = VerticalAlignment.Center')) {
+    if ($viewSource -notmatch $pattern) { throw "Quick-access sizing/alignment contract missing: $pattern" }
+}
+Write-Output 'PASS larger native quick-access targets/glyphs and aligned row source contract'
 Write-Output "PASS WSL quick access; evidence: $EvidenceRoot"

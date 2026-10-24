@@ -11,8 +11,9 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     private readonly Button _explorer = Action("\uEC50", ExplorerText);
     private readonly SplitButton _editor = new()
     {
-        Width = 64, Height = 30, MinWidth = 0, Padding = new Thickness(0),
-        Content = new FontIcon { Glyph = "\uE70F", FontSize = 14 },
+        // ~40px primary target plus the native dropdown segment.
+        Width = 72, Height = 36, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0),
+        Content = new FontIcon { Glyph = "\uE70F", FontSize = 18 },
     };
     private WslHostEditor? _currentEditor;
     private const string ExplorerText = "在资源管理器中打开";
@@ -29,7 +30,8 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     {
         // Session card: two native icon buttons directly below the session ID.
         Orientation = Orientation.Horizontal;
-        Spacing = 2;
+        Spacing = 4;
+        VerticalAlignment = VerticalAlignment.Center;
         _note.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         Children.Add(_explorer);
         Children.Add(_editor);
@@ -79,8 +81,8 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     {
         var button = new Button
         {
-            Width = 30, Height = 30, MinWidth = 0, Padding = new Thickness(0),
-            Content = new FontIcon { Glyph = glyph, FontSize = 14 },
+            Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0),
+            Content = new FontIcon { Glyph = glyph, FontSize = 18 },
         };
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) button.Style = quiet;
         AutomationProperties.SetName(button, text);
