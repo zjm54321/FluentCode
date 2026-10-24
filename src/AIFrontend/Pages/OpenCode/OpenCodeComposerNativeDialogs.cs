@@ -6,6 +6,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
@@ -26,6 +28,7 @@ internal static class OpenCodeModelPickerDialog
         if (owner is null || anchor is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
         var cancelled = new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null);
         var state = new OpenCodeModelPickerState(presentation);
+        var favorites = OpenCodeModelPickerFavorites.Shared;
         var search = new AutoSuggestBox { PlaceholderText = "搜索模型或提供方", QueryIcon = new SymbolIcon(Symbol.Find) };
         AutomationProperties.SetAutomationId(search, "OpenCodeModelPickerSearch");
         AutomationProperties.SetName(search, "搜索模型");
@@ -33,27 +36,53 @@ internal static class OpenCodeModelPickerDialog
             MaxHeight = ModelListMaxHeight(owner), Padding = new Thickness(0, 4, 0, 4) };
         AutomationProperties.SetAutomationId(list, "OpenCodeModelPickerList");
         AutomationProperties.SetName(list, "可选模型");
+        var favoriteList = new ListView { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true,
+            Padding = new Thickness(0, 4, 0, 4) };
+        AutomationProperties.SetAutomationId(favoriteList, "OpenCodeModelPickerFavorites");
+        AutomationProperties.SetName(favoriteList, "收藏模型");
+        var favoriteSection = new Grid { RowSpacing = 4 };
+        favoriteSection.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        favoriteSection.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        favoriteSection.Children.Add(OpenCodeInteractionUi.StyledText("收藏", OpenCodeInteractionUi.BodyStrongStyleKey));
+        Grid.SetRow(favoriteList, 1);
+        favoriteSection.Children.Add(favoriteList);
+        var lists = new Grid { Height = ModelListMaxHeight(owner), RowSpacing = 8 };
+        lists.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        lists.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        lists.Children.Add(favoriteSection); // Auto row stays pinned, outside the all-models scroller.
+        Grid.SetRow(list, 1);
+        lists.Children.Add(list);
         var body = new StackPanel { Spacing = 8, Width = ModelBodyWidth(owner), Padding = new Thickness(8) };
         body.Children.Add(OpenCodeInteractionUi.StyledText("选择模型", OpenCodeInteractionUi.BodyStrongStyleKey));
         body.Children.Add(search);
-        body.Children.Add(list);
+        body.Children.Add(lists);
         void Refit(XamlRoot sender, XamlRootChangedEventArgs args)
         {
             body.Width = ModelBodyWidth(sender);
             list.MaxHeight = ModelListMaxHeight(sender);
+            lists.Height = ModelListMaxHeight(sender);
+            favoriteList.MaxHeight = Math.Max(34, lists.Height * 0.4 - 28);
+            favoriteSection.MaxHeight = lists.Height * 0.4;
         }
+        Refit(owner, null!);
         owner.Changed += Refit;
         void Render()
         {
             list.Items.Clear();
+            favoriteList.Items.Clear();
             var filter = search.Text.Trim();
             var current = presentation.Current switch { OpenCodeModelCurrent.Explicit e => e.Key,
                 OpenCodeModelCurrent.Inherited i => i.Default, _ => null };
-            foreach (var provider in OpenCodeModelPresentation.Order(presentation.Rows, sourceKey)
-                .Where(row => filter.Length == 0 || row.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase)
-                    || row.ModelId.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                    || (row.ProviderName ?? row.ProviderId).Contains(filter, StringComparison.CurrentCultureIgnoreCase))
-                .GroupBy(row => row.ProviderId))
+            var sections = favorites.Filter(OpenCodeModelPresentation.Order(presentation.Rows, sourceKey), filter);
+            foreach (var row in sections.Favorites)
+            {
+                var item = RowItem(row, favorites.Contains(row), () => { favorites.Toggle(row); Render(); });
+                favoriteList.Items.Add(item);
+                if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) favoriteList.SelectedItem = item;
+            }
+            if (favoriteList.Items.Count == 0)
+                favoriteList.Items.Add(new ListViewItem { Content = filter.Length == 0 ? "尚无收藏模型" : "没有匹配的收藏模型", IsEnabled = false, IsTabStop = false });
+            foreach (var provider in sections.All.GroupBy(row => row.ProviderId))
             {
                 var label = OpenCodeInteractionUi.StyledText(provider.First().ProviderName ?? provider.Key,
                     OpenCodeInteractionUi.CaptionSubtleStyleKey);
@@ -61,7 +90,7 @@ internal static class OpenCodeModelPickerDialog
                     Padding = new Thickness(10, 12, 10, 4), MinHeight = 28 });
                 foreach (var row in provider)
                 {
-                    var item = RowItem(row);
+                    var item = RowItem(row, favorites.Contains(row), () => { favorites.Toggle(row); Render(); });
                     list.Items.Add(item);
                     if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) list.SelectedItem = item;
                 }
@@ -73,11 +102,13 @@ internal static class OpenCodeModelPickerDialog
         search.KeyDown += (_, e) =>
         {
             if (e.Key != VirtualKey.Down && e.Key != VirtualKey.Up) return;
-            var rows = list.Items.OfType<ListViewItem>().Where(item => item.IsEnabled && item.Tag is OpenCodeModelPickerRow);
-            var target = list.SelectedItem as ListViewItem ?? (e.Key == VirtualKey.Down ? rows.FirstOrDefault() : rows.LastOrDefault());
+            var rows = favoriteList.Items.OfType<ListViewItem>().Concat(list.Items.OfType<ListViewItem>())
+                .Where(item => item.IsEnabled && item.Tag is OpenCodeModelPickerRow);
+            var target = e.Key == VirtualKey.Down ? rows.FirstOrDefault() : rows.LastOrDefault();
             if (target is null) return;
-            list.SelectedItem = target;
-            list.ScrollIntoView(target);
+            var targetList = favoriteList.Items.Contains(target) ? favoriteList : list;
+            targetList.SelectedItem = target;
+            targetList.ScrollIntoView(target);
             target.Focus(FocusState.Keyboard);
             e.Handled = true; // Native ListView arrows/Enter handle the rest; no custom selection renderer.
         };
@@ -85,7 +116,8 @@ internal static class OpenCodeModelPickerDialog
         try
         {
             return await OpenCodePickerFlyout.ShowAsync(anchor, body, cancelled, choose =>
-                list.ItemClick += (_, e) =>
+            {
+                void Select(object sender, ItemClickEventArgs e)
                 {
                     if (e.ClickedItem is not ListViewItem { Tag: OpenCodeModelPickerRow row }
                         || !state.SelectModel(row.ProviderId, row.ModelId)) return;
@@ -94,7 +126,10 @@ internal static class OpenCodeModelPickerDialog
                         && current.Key.ProviderId == row.ProviderId && current.Key.ModelId == row.ModelId)
                         state.SelectVariant(current.Key.Variant);
                     choose(state.TryFreezeConfirmation() ?? cancelled);
-                }, () =>
+                }
+                list.ItemClick += Select;
+                favoriteList.ItemClick += Select;
+            }, () =>
                 {
                     if (list.SelectedItem is { } selected) list.ScrollIntoView(selected);
                     search.Focus(FocusState.Programmatic);
@@ -109,13 +144,29 @@ internal static class OpenCodeModelPickerDialog
     private static double ModelListMaxHeight(XamlRoot? owner) =>
         Math.Max(34, Math.Min(640, (owner?.Size.Height ?? 760) - 192));
 
-    private static ListViewItem RowItem(OpenCodeModelPickerRow row)
+    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, Action toggleFavorite)
     {
         var grid = OpenCodeModelLogo.Label(row.ModelId, row.Name);
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(grid);
+        var favorite = new ToggleButton { IsChecked = isFavorite, MinWidth = 32, MinHeight = 28,
+            Padding = new Thickness(6), VerticalAlignment = VerticalAlignment.Center,
+            Content = new FontIcon { Glyph = isFavorite ? "\uE735" : "\uE734", FontSize = 16 } };
+        if (isFavorite && Application.Current.Resources.TryGetValue("SystemControlHighlightAccentBrush", out var accent)
+            && accent is Brush brush) ((FontIcon)favorite.Content).Foreground = brush;
+        var favoriteName = isFavorite ? "取消收藏" : "收藏";
+        ToolTipService.SetToolTip(favorite, favoriteName);
+        AutomationProperties.SetAutomationId(favorite, "OpenCodeModelFavorite:" + row.ProviderId + "/" + row.ModelId);
+        AutomationProperties.SetName(favorite, favoriteName + " " + row.Name);
+        // The native button consumes its gesture before the containing ListViewItem can invoke.
+        favorite.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((_, e) => e.Handled = true), true);
+        favorite.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler((_, e) => e.Handled = true), true);
+        favorite.KeyDown += (_, e) => { if (e.Key is VirtualKey.Enter or VirtualKey.Space) e.Handled = true; };
+        favorite.Click += (_, _) => toggleFavorite(); // Never selects a model or calls choose/flyout.Hide.
+        Grid.SetColumn(favorite, 1);
+        content.Children.Add(favorite);
         var item = new ListViewItem { Content = content, Tag = row, IsEnabled = row.Available, MinHeight = 34,
             Padding = new Thickness(10, 4, 10, 4), HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(item, row.Name + (row.Available ? string.Empty : "，不可用"));

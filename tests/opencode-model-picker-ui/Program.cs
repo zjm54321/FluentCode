@@ -91,7 +91,23 @@ internal static class Program
         var root = args[0];
         string Read(string path) => File.ReadAllText(Path.Combine(root, path));
         var dialog = Read("src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs").Split("internal static class OpenCodeRollbackConfirmationDialog")[0];
-        Check(dialog.Contains("row.ModelId.Contains(filter") && dialog.Contains("row.ProviderName ?? row.ProviderId") && dialog.Contains("row.Name.Contains(filter"), "search keeps true fields without exposing subtitles");
+        var favoritePolicy = Read("src/AIFrontend/Pages/OpenCode/OpenCodeModelPickerFavorites.cs");
+        Check(favoritePolicy.Contains("row.ModelId.Contains(filter") && favoritePolicy.Contains("row.ProviderName ?? row.ProviderId") && favoritePolicy.Contains("row.Name.Contains(filter"), "search keeps true fields without exposing subtitles");
+        var favorites = new OpenCodeModelPickerFavorites();
+        Check(favorites.Toggle(rows[1]) && !favorites.Contains(rows[2]), "MP3 favorites use provider plus model identity");
+        Check(favorites.Filter(rows, "Alpha").Favorites.SequenceEqual(new[] { rows[1] })
+            && favorites.Filter(rows, "Alpha").All.Length == 2, "MP3 display-name search filters favorites and all models together");
+        Check(favorites.Filter(rows, "duplicate").Favorites.Length == 1 && favorites.Filter(rows, "technical provider").All.Length == 4
+            && favorites.Filter(rows, "absent").Favorites.Length == 0 && favorites.Filter(rows, "absent").All.Length == 0,
+            "MP3 ID/provider search and no matches work in both sections");
+        Check(!favorites.Toggle(rows[1]) && favorites.Filter(rows, "").Favorites.Length == 0, "MP3 unfavorite removes the pinned row");
+        Check(dialog.Contains("lists.Children.Add(favoriteSection)") && dialog.Contains("Grid.SetRow(list, 1)")
+            && dialog.Contains("favoriteSection.MaxHeight = lists.Height * 0.4") && dialog.Contains("favoriteList.MaxHeight"),
+            "MP3 favorites occupy a pinned Auto row above the independent all-models scroll");
+        Check(dialog.Contains("new ToggleButton") && dialog.Contains("\\uE734") && dialog.Contains("\\uE735")
+            && dialog.Contains("favorite.Click += (_, _) => toggleFavorite()") && dialog.Contains("e.Handled = true), true)")
+            && dialog.Contains("ToolTipService.SetToolTip(favorite, favoriteName)") && dialog.Contains("AutomationProperties.SetName(favorite"),
+            "MP3 accessible native star handles its gesture without selecting or dismissing");
         Check(dialog.Contains("OpenCodeModelLogo.Label(row.ModelId, row.Name)") && dialog.Contains("Tag = row") && dialog.Contains("ListViewSelectionMode.Single"), "logo plus name preserves native selection identity/keyboard surface");
         Check(!dialog.Contains("OpenCodeCurrentStrengthEntry") && !dialog.Contains("strengthButton")
             && !dialog.Contains("OpenCodeVariantPickerDialog.ShowAsync"), "model dialog has no duplicate reasoning-strength entry or variant dialog handoff");
@@ -103,7 +119,7 @@ internal static class Program
             && !dialog.Contains("\"当前模型\"") && dialog.Contains("new AutoSuggestBox") && dialog.Contains("\"选择模型\""),
             "P1/P3 model flyout has title/search/list only, no current header, refresh or confirm footer");
         Check(dialog.Contains("OpenCodeModelPresentation.Order(presentation.Rows, sourceKey)") && !dialog.Contains("await OpenCodeRecentModels.Shared.LoadAsync()"), "flyout only reads in-memory shared MRU and never loads preferences while rendering");
-        Check(dialog.Contains("list.ItemClick +=") && dialog.Contains("state.TryFreezeConfirmation()")
+        Check(dialog.Contains("list.ItemClick += Select") && dialog.Contains("favoriteList.ItemClick += Select") && dialog.Contains("state.TryFreezeConfirmation()")
             && dialog.Contains("state.SelectVariant(current.Key.Variant)"), "model click freezes exact basis; clicking current model never resets effort");
         var flyout = Read("src/AIFrontend/Pages/OpenCode/OpenCodePickerFlyout.cs");
         Check(flyout.Contains("LightDismissOverlayMode = LightDismissOverlayMode.Off"), "MP1 picker explicitly has no light-dismiss dimming overlay");
