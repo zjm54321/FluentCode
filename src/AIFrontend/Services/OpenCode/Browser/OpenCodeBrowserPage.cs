@@ -60,7 +60,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     public event EventHandler? Closing;
     public Task EnsureReadyAsync() { EnsureUi(); return _initialization ??= InitializeAsync(); }
     private static Task<CoreWebView2Environment> EnvironmentAsync() => _environment ??= CoreWebView2Environment.CreateAsync(null,
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AIFrontend", "Browser", "UserData"));
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AIFrontend", "Browser", "UserData"), null);
     private async Task InitializeAsync()
     {
         try

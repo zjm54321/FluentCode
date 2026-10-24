@@ -1165,7 +1165,7 @@ internal sealed class OpenCodeToolDetailPopup
         return _closeTimer;
     }
 
-    private static FlyoutPresenter CreatePresenter(UIElement content, Thickness padding, float elevation)
+    internal static FlyoutPresenter CreatePresenter(UIElement content, Thickness padding, float elevation)
     {
         // 原生 FlyoutPresenter：背景/描边/圆角全部来自其默认样式（FlyoutPresenterBackground 亚克力、
         // FlyoutBorderThemeBrush、OverlayCornerRadius）；只解除默认最大尺寸并关闭模板内滚动（内容区自带滚动）。
@@ -1196,7 +1196,7 @@ internal sealed class OpenCodeToolDetailPopup
     }
 
     /// <summary>一套标题栏 + 内容宿主（预览与大视图各一套；内置文本样式 + 主题画刷，文字全部可换行）。</summary>
-    private sealed class Chrome
+    internal sealed class Chrome
     {
         internal Chrome(bool large)
         {
