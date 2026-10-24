@@ -63,7 +63,7 @@ Source identity: `anomalyco/opencode`, commit
   objects for input and output, inside a plain structural RPC definition.
   Validators require exact keys rather than depending on any host codec's
   unknown-property stripping policy. No Effect/SDK runtime or npm dependency is
-  bundled. Local minimal `node:process` typings cover our only Node API.
+  bundled. Local minimal Node typings cover only the builtins used here.
 - [`packages/core/src/rpc.ts:108-141`](https://github.com/anomalyco/opencode/blob/v2.0.30/packages/core/src/rpc.ts#L108-L141)
   validates method inputs before invoking handlers (`rpc.invalid_input`) and
   validates outputs afterward (`rpc.invalid_output`). Our handlers also check
@@ -79,7 +79,7 @@ Source identity: `anomalyco/opencode`, commit
   normalization can admit alternate host/port spellings. Only a trailing slash
   is removed. IPv6 and localhost are preserved, not rewritten to IPv4.
 - Empty version lists are valid and negotiate no common version; the list is
-  bounded to eight positive integers. Phase 2 features are absent.
+  bounded to eight positive integers.
 - Build tools come from the pinned Nix flake; the package derivation has no
   dependency fetchers. Source pin initially matches the available system
   nixpkgs revision but is independently locked here. No npm lockfile is needed
@@ -91,6 +91,24 @@ Source identity: `anomalyco/opencode`, commit
    the actual host.
 
 ## Local verification (2026-10-16)
+
+## Model favorites extension (2026-10-24)
+
+- Protocol remains v1; hello additionally advertises `model.favorites.v1`.
+  Both WSL and Remote use the same authenticated, location-scoped server RPC.
+- OpenCode v2.1.3 bundle preference evidence (recorded in
+  `/tmp/opencode/aif-mp-bundle-preference-source.txt`) uses root `favorite`,
+  preserves other state through fresh reads, and writes a pid/UUID temp followed
+  by same-directory rename. This implementation follows that atomic writer and
+  preserves non-favorite raw JSON values, including future fields/large integers.
+  State uses `XDG_STATE_HOME` or `~/.local/state`, then `opencode/model.json`.
+- Only ENOENT is treated as empty; malformed/non-object state and filesystem
+  errors propagate. No RPC input can choose a filesystem path. Set is a full
+  favorite-list replacement; simultaneous independent TUI writes are last-writer-wins.
+- Fixtures and isolated temporary state test the extension; no real host state,
+  global configuration, running OpenCode instance, or app is modified/launched.
+
+### Historical baseline verification
 
 From the plugin directory:
 

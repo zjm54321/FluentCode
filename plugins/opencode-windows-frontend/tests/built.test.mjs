@@ -14,7 +14,7 @@ test("built dist/index.js imports as ESM with a default setup plugin and working
     assert.equal(definition.id, plugin.id);
     assert.deepEqual(definition.events, {});
     assert.deepEqual(await handlers.hello({ protocolVersions: [1] }), {
-      protocolVersion: 1, capabilities: ["billion.origin.v1"],
+      protocolVersion: 1, capabilities: ["billion.origin.v1", "model.favorites.v1"],
     });
     await assert.rejects(handlers["billion.origin"]({ extra: true }), TypeError);
     return { dispose: async () => { disposed = true; } };

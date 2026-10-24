@@ -96,7 +96,7 @@ test("output schemas reject additional fields and malformed variants", () => {
   assert.ok("issues" in validate(definition.methods.hello.output, { protocolVersion: 1, capabilities: [] }));
 });
 
-test("setup only registers the RPC id, two methods, and no events; teardown disposes once", async (t) => {
+test("setup only registers the RPC id, four methods, and no events; teardown disposes once", async (t) => {
   const fetch = t.mock.method(globalThis, "fetch", () => { throw new Error("Network forbidden"); });
   let count = 0;
   let disposals = 0;
@@ -106,7 +106,7 @@ test("setup only registers the RPC id, two methods, and no events; teardown disp
       assert.equal(actualDefinition, definition);
       assert.equal(actualHandlers, handlers);
       assert.equal(actualDefinition.id, "opencode.windows-frontend");
-      assert.deepEqual(Object.keys(actualDefinition.methods), ["hello", "billion.origin"]);
+      assert.deepEqual(Object.keys(actualDefinition.methods), ["hello", "billion.origin", "model.favorites.get", "model.favorites.set"]);
       assert.deepEqual(Object.keys(actualDefinition), ["id", "methods", "events"]);
       assert.deepEqual(actualDefinition.events, {});
       return { dispose: async () => { disposals++; } };

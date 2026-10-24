@@ -3,7 +3,7 @@ import { normalizeOrigin, type BillionOrigin } from "./billion-origin.ts";
 export const PLUGIN_ID = "opencode.windows-frontend";
 export type HelloInput = { protocolVersions: number[] };
 export type HelloOutput =
-  | { protocolVersion: 1; capabilities: ["billion.origin.v1"] }
+  | { protocolVersion: 1; capabilities: ["billion.origin.v1", "model.favorites.v1"] }
   | { protocolVersion: null; supportedVersions: [1]; capabilities: [] };
 
 type Validation<T> = { value: T } | { issues: readonly { message: string }[] };
@@ -40,8 +40,8 @@ function isHelloInput(value: unknown): value is HelloInput {
 
 function isHelloOutput(value: unknown): value is HelloOutput {
   if (exactObject(value, ["protocolVersion", "capabilities"]) && value.protocolVersion === 1) {
-    return Array.isArray(value.capabilities) && value.capabilities.length === 1
-      && value.capabilities[0] === "billion.origin.v1";
+    return Array.isArray(value.capabilities) && value.capabilities.length === 2
+      && value.capabilities[0] === "billion.origin.v1" && value.capabilities[1] === "model.favorites.v1";
   }
   return exactObject(value, ["protocolVersion", "supportedVersions", "capabilities"])
     && value.protocolVersion === null
@@ -60,6 +60,21 @@ function isBillionOrigin(value: unknown): value is BillionOrigin {
     && (value.reason === "not-ready" || value.reason === "disabled");
 }
 
+export type ModelFavorite = { providerID: string; modelID: string };
+export type ModelFavorites = { favorites: ModelFavorite[] };
+
+export function isModelFavorite(value: unknown): value is ModelFavorite {
+  const id = (value: unknown, max: number) => typeof value === "string" && value.length > 0
+    && value.length <= max && !/[\s\u0000-\u001f\u007f-\u009f]/u.test(value);
+  return exactObject(value, ["providerID", "modelID"])
+    && id(value.providerID, 256) && id(value.modelID, 512);
+}
+
+function isModelFavorites(value: unknown): value is ModelFavorites {
+  return exactObject(value, ["favorites"]) && Array.isArray(value.favorites)
+    && value.favorites.length <= 200 && Array.from(value.favorites).every(isModelFavorite);
+}
+
 export const definition = {
   id: PLUGIN_ID,
   methods: {
@@ -70,6 +85,14 @@ export const definition = {
     "billion.origin": {
       input: schema("billion.origin input", (value): value is Record<string, never> => exactObject(value, [])),
       output: schema("billion.origin output", isBillionOrigin),
+    },
+    "model.favorites.get": {
+      input: schema("model.favorites.get input", (value): value is Record<string, never> => exactObject(value, [])),
+      output: schema("model.favorites output", isModelFavorites),
+    },
+    "model.favorites.set": {
+      input: schema("model.favorites.set input", isModelFavorites),
+      output: schema("model.favorites output", isModelFavorites),
     },
   },
   events: {},
@@ -84,6 +107,6 @@ export function parseInput<T>(schema: PortableSchema<T>, input: unknown): T {
 export function hello(input: unknown): HelloOutput {
   const { protocolVersions } = parseInput(definition.methods.hello.input, input);
   return protocolVersions.includes(1)
-    ? { protocolVersion: 1, capabilities: ["billion.origin.v1"] }
+    ? { protocolVersion: 1, capabilities: ["billion.origin.v1", "model.favorites.v1"] }
     : { protocolVersion: null, supportedVersions: [1], capabilities: [] };
 }

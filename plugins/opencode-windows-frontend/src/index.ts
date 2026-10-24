@@ -1,4 +1,5 @@
 import { billionOrigin } from "./billion-origin.ts";
+import { getModelFavorites, setModelFavorites } from "./model-favorites.ts";
 import { definition, hello, parseInput, PLUGIN_ID } from "./protocol.ts";
 
 export interface Registration {
@@ -11,6 +12,11 @@ export const handlers = {
     parseInput(definition.methods["billion.origin"].input, input);
     return billionOrigin();
   },
+  "model.favorites.get": async (input: unknown) => {
+    parseInput(definition.methods["model.favorites.get"].input, input);
+    return getModelFavorites();
+  },
+  "model.favorites.set": async (input: unknown) => setModelFavorites(input),
 };
 
 export interface SetupContext {

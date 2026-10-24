@@ -1,0 +1,4 @@
+{
+  "input": { "favorites": [{ "providerID": "provider", "modelID": "vendor/model:latest" }] },
+  "output": { "favorites": [{ "providerID": "provider", "modelID": "vendor/model:latest" }] }
+}
