@@ -39,6 +39,9 @@ public sealed record OpenCodeClientOptions
     /// <summary>单次请求超时（含发送、响应体读取及 JSON 解析）；0 &lt; 毫秒数 &lt;= 4294967294，默认 30 秒。</summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 
+    // App-owned recovery notification only; the failed HTTP request is never retried here.
+    internal Action<bool>? ConnectionFailure { get; init; }
+
     /// <summary>避免 record 默认 ToString 回显凭据。</summary>
     public override string ToString() => "OpenCodeClientOptions { [redacted] }";
 }

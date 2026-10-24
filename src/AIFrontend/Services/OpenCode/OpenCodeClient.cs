@@ -53,6 +53,7 @@ public sealed partial class OpenCodeClient : IDisposable
     private readonly Uri _baseUri;
     private readonly string? _authorization;
     private readonly TimeSpan _timeout;
+    private readonly Action<bool>? _connectionFailure;
     private bool _disposed;
 
     /// <summary>
@@ -88,9 +89,10 @@ public sealed partial class OpenCodeClient : IDisposable
 
         _baseUri = NormalizeBaseUri(options.BaseUrl);
         _ownsHttpClient = ownsHttpClient;
-        _httpClient = injectedHttpClient ?? CreateOwnedHttpClient();
+        _httpClient = injectedHttpClient ?? CreateOwnedHttpClient(options.ConnectionFailure is not null);
         _authorization = CreateAuthorization(options);
         _timeout = options.Timeout;
+        _connectionFailure = options.ConnectionFailure;
     }
 
     /// <summary>
@@ -497,18 +499,22 @@ public sealed partial class OpenCodeClient : IDisposable
 
     // Request-scoped authorization and disabled cookies/default credentials make this pool safe
     // across source revisions. Disposing a short-lived control client must not discard its sockets.
-    private static readonly SocketsHttpHandler SharedHandler = new()
+    private static readonly SocketsHttpHandler SharedHandler = CreateSharedHandler(Timeout.InfiniteTimeSpan);
+    private static readonly SocketsHttpHandler SharedWslHandler = CreateSharedHandler(TimeSpan.FromSeconds(3));
+
+    private static SocketsHttpHandler CreateSharedHandler(TimeSpan connectTimeout) => new()
     {
         AllowAutoRedirect = false,
         UseCookies = false,
         Credentials = null,
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        ConnectTimeout = connectTimeout,
     };
 
-    private static HttpClient CreateOwnedHttpClient()
+    private static HttpClient CreateOwnedHttpClient(bool wslRecovery)
     {
         // 超时统一由逐请求的 linked CTS 强制，避免与 HttpClient.Timeout 双重语义。
-        return new HttpClient(SharedHandler, disposeHandler: false)
+        return new HttpClient(wslRecovery ? SharedWslHandler : SharedHandler, disposeHandler: false)
         {
             Timeout = Timeout.InfiniteTimeSpan,
         };
@@ -568,9 +574,22 @@ public sealed partial class OpenCodeClient : IDisposable
 #endif
         try
         {
-            return await _httpClient
+            var response = await _httpClient
                 .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ConfigureAwait(false);
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                ReportConnectionFailure(unreachable: false);
+            return response;
+        }
+        catch (HttpRequestException error) when (error.HttpRequestError is HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError)
+        {
+            ReportConnectionFailure(unreachable: true);
+            throw;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            ReportConnectionFailure(unreachable: true); // Handler's bounded connect timeout, not caller cancellation.
+            throw;
         }
         finally
         {
@@ -579,6 +598,12 @@ public sealed partial class OpenCodeClient : IDisposable
             System.Diagnostics.Debug.WriteLine($"OpenCode HTTP {method.Method} {GetEndpointTemplate(relativePath)} headers {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds:F1} ms");
 #endif
         }
+    }
+
+    private void ReportConnectionFailure(bool unreachable)
+    {
+        try { _connectionFailure?.Invoke(unreachable); }
+        catch (Exception) { /* Recovery notification cannot change the original transport result. */ }
     }
 
     private async Task<JsonDocument> SendForJsonAsync(

@@ -38,7 +38,8 @@ internal static class Program
         await ServiceDiscovery();
         Console.WriteLine("PASS WSL CLI discovery: current service, login environment, URL mapping, password in memory, no configuration-file probes");
         await PooledTransport();
-        Console.WriteLine($"9 groups passed; {_assertions} assertions; fake CLI, isolated settings/DPAPI + loopback HTTP only.");
+        await WslRecovery();
+        Console.WriteLine($"10 groups passed; {_assertions} assertions; fake CLI, isolated settings/DPAPI + loopback HTTP only.");
         if (args.Contains("--real-wsl", StringComparer.Ordinal)) await RealWsl();
         return 0;
     }
@@ -345,6 +346,100 @@ internal static class Program
             Calls.Add((distribution, command));
             return Task.FromResult(Output[command]);
         }
+    }
+
+    private static async Task WslRecovery()
+    {
+        var settings = new OpenCodeSettings { Kind = OpenCodeConnectionKind.Wsl, WslDistribution = "TestDistro", BaseUrl = "http://localhost:1" };
+        var cli = new RecoveryCli();
+        var locator = new WslOpenCodeServiceLocator(cli);
+        var statuses = new List<string>();
+        var verified = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int verifies = 0;
+        var recovery = new WslOpenCodeRecovery(cli, locator, async (options, ct) =>
+        {
+            Check(options.BaseUrl == "http://127.0.0.1:49375" && options.Secret == Secret, "WK1 re-resolves endpoint + credential in memory");
+            Check(options.Timeout == TimeSpan.FromSeconds(3), "WK1 verification is bounded");
+            verifies++;
+            verified.SetResult();
+            await release.Task.WaitAsync(ct);
+        });
+        Check(await recovery.RecoverAsync(settings with { Kind = OpenCodeConnectionKind.Remote }, true, statuses.Add, default) is null
+            && cli.Calls.Count == 0, "WK1 Remote unchanged: no boot, start, discovery or verification");
+        var first = recovery.RecoverAsync(settings, true, statuses.Add, default);
+        await verified.Task;
+        var concurrent = recovery.RecoverAsync(settings, true, statuses.Add, default);
+        Check(ReferenceEquals(first, concurrent), "WK1 concurrent source failures share one recovery");
+        release.SetResult();
+        var options = await first;
+        Check(options is not null && verifies == 1 && cli.Calls.SequenceEqual(new[] {
+            WslOpenCodeCommand.BootDistribution, WslOpenCodeCommand.ServiceStatus, WslOpenCodeCommand.ServiceStart,
+            WslOpenCodeCommand.ServiceStatus, WslOpenCodeCommand.ServicePassword }), "WK1 stopped WSL -> boot -> status -> official start -> resolve -> verify -> replacement options");
+        Check(statuses.SequenceEqual(new[] { "正在启动 WSL…", "正在启动 OpenCode…", "正在重新连接 OpenCode…" }), "WK1 visible bounded startup stages");
+        int reconnectReads = 0;
+        using var http = new System.Net.Http.HttpClient(new RecoveryHttp((_, _) => { reconnectReads++; return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK)
+            { Content = new System.Net.Http.StringContent("{\"directory\":\"/test\",\"project\":{\"id\":\"test\"}}") }); }));
+        var source = new AIFrontend.Services.Notifications.OpenCodePageSource("same-logical-endpoint", 2,
+            () => new OpenCodeClient(http, options!, true));
+        using (var reconnected = source.CreateClient()) await reconnected.GetLocationAsync(null, default);
+        Check(reconnectReads == 1, "WK1 verified options reconnect a new source and refetch, without replaying mutations");
+        source.Revoke();
+
+        cli = new RecoveryCli { Running = true };
+        locator = new WslOpenCodeServiceLocator(cli);
+        await locator.DiscoverAsync(new("TestDistro", false, 2, null, 0), default);
+        cli.Port = 49376;
+        recovery = new(cli, locator, (_, _) => Task.CompletedTask);
+        var auth = await recovery.RecoverAsync(settings, false, _ => { }, default);
+        Check(auth!.BaseUrl == "http://127.0.0.1:49376" && !cli.Calls.Contains(WslOpenCodeCommand.BootDistribution)
+            && !cli.Calls.Contains(WslOpenCodeCommand.ServiceStart), "WK1 auth failure invalidates cached discovery without boot/start/restart");
+
+        cli = new RecoveryCli { FailBoot = true };
+        var delays = new List<TimeSpan>();
+        recovery = new(cli, new(cli), (_, _) => Task.CompletedTask, (time, _) => { delays.Add(time); return Task.CompletedTask; });
+        Check(await recovery.RecoverAsync(settings, true, _ => { }, default) is null, "WK1 failed recovery returns no replacement source");
+        Check(await recovery.RecoverAsync(settings, true, _ => { }, default) is null && cli.Calls.Count == WslOpenCodeRecovery.AttemptLimit,
+            "WK1 retry cap persists across later failure notifications");
+        Check(delays.SequenceEqual(new[] { TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2) }), "WK1 bounded 1s/2s backoff");
+
+        foreach (bool unreachable in new[] { false, true })
+        {
+            int notices = 0;
+            using var failingHttp = new System.Net.Http.HttpClient(new RecoveryHttp((_, _) => unreachable
+                ? Task.FromException<System.Net.Http.HttpResponseMessage>(new System.Net.Http.HttpRequestException(System.Net.Http.HttpRequestError.ConnectionError, "test"))
+                : Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.Unauthorized))));
+            using var client = new OpenCodeClient(failingHttp, new() { BaseUrl = "http://offline.invalid", ConnectionFailure = wake => { Check(wake == unreachable, "WK1 transport distinguishes unreachable from auth failure"); notices++; } }, true);
+            try { await client.GetLocationAsync(null, default); } catch (OpenCodeException) { }
+            Check(notices == 1, "WK1 actual HTTP failure emits one recovery notification and is not retried");
+        }
+        Console.WriteLine("PASS WK1 recovery: stopped WSL/service, running service/auth refresh, Remote unchanged, single-flight, retry cap/backoff, fresh source/refetch, real transport notification; all CLI/HTTP injected.");
+    }
+
+    private sealed class RecoveryCli : IWslOpenCodeCommandRunner
+    {
+        internal bool Running, FailBoot;
+        internal int Port = 49375;
+        internal readonly List<WslOpenCodeCommand> Calls = new();
+        public Task<string> RunAsync(string distribution, WslOpenCodeCommand command, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            Calls.Add(command);
+            if (command == WslOpenCodeCommand.BootDistribution && FailBoot) throw new OpenCodeConfigurationException("test-only boot failure");
+            if (command == WslOpenCodeCommand.ServiceStart) Running = true;
+            return Task.FromResult(command switch {
+                WslOpenCodeCommand.ServiceStatus => Running ? "http://0.0.0.0:" + Port : "not running",
+                WslOpenCodeCommand.ServicePassword => Secret,
+                _ => string.Empty,
+            });
+        }
+    }
+
+    private sealed class RecoveryHttp(Func<System.Net.Http.HttpRequestMessage, CancellationToken, Task<System.Net.Http.HttpResponseMessage>> respond)
+        : System.Net.Http.HttpMessageHandler
+    {
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken ct)
+            => respond(request, ct);
     }
 
     private static async Task RealWsl()

@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 
 namespace AIFrontend.Services.OpenCode.Connection;
 
-public enum WslOpenCodeCommand { ServiceStatus, ServicePassword, OsRelease }
+public enum WslOpenCodeCommand { ServiceStatus, ServicePassword, OsRelease, BootDistribution, ServiceStart }
 
-/// <summary>固定的只读 CLI 操作。输出可能包含密码，调用者不得记录输出。</summary>
+/// <summary>固定的 CLI 操作。输出可能包含密码，调用者不得记录输出。启动仅用于 WSL 故障恢复。</summary>
 public interface IWslOpenCodeCommandRunner
 {
     Task<string> RunAsync(string distribution, WslOpenCodeCommand command, CancellationToken cancellationToken);
 }
 
-/// <summary>以发行版默认用户的登录环境运行 opencode；不读配置/凭据文件，也不启动服务。</summary>
+/// <summary>以发行版默认用户的登录环境运行 opencode；不直接读取配置/凭据文件。</summary>
 public sealed class WslOpenCodeCommandRunner : IWslOpenCodeCommandRunner
 {
     public async Task<string> RunAsync(string distribution, WslOpenCodeCommand command, CancellationToken cancellationToken)
@@ -28,6 +28,8 @@ public sealed class WslOpenCodeCommandRunner : IWslOpenCodeCommandRunner
             WslOpenCodeCommand.ServiceStatus => "exec opencode service status",
             WslOpenCodeCommand.ServicePassword => "exec opencode service get password",
             WslOpenCodeCommand.OsRelease => ". /etc/os-release; printf '%s\\n' \"$ID\"",
+            WslOpenCodeCommand.BootDistribution => "true",
+            WslOpenCodeCommand.ServiceStart => "exec opencode service start",
             _ => throw new ArgumentOutOfRangeException(nameof(command)),
         };
         var start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe"))
@@ -39,7 +41,10 @@ public sealed class WslOpenCodeCommandRunner : IWslOpenCodeCommandRunner
             // Linux commands emit UTF-8, unlike wsl.exe's own UTF-16LE distro list.
             StandardOutputEncoding = new UTF8Encoding(false),
         };
-        foreach (string argument in new[] { "--distribution", distribution, "--cd", "~", "--exec", "sh", "-lc", script })
+        var arguments = command == WslOpenCodeCommand.BootDistribution
+            ? new[] { "--distribution", distribution, "--exec", "true" }
+            : new[] { "--distribution", distribution, "--cd", "~", "--exec", "sh", "-lc", script };
+        foreach (string argument in arguments)
             start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new OpenCodeConfigurationException("无法运行 WSL 中的 OpenCode 命令。");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -52,12 +57,12 @@ public sealed class WslOpenCodeCommandRunner : IWslOpenCodeCommandRunner
             await drainError.ConfigureAwait(false);
             string value = await output.ConfigureAwait(false);
             if (process.ExitCode != 0)
-                throw new OpenCodeConfigurationException("WSL 中的只读 OpenCode 命令失败；请确认所选发行版的 opencode 命令可用且后台服务正在运行。");
+                throw new OpenCodeConfigurationException("WSL 中的 OpenCode 命令失败；请确认所选发行版的 opencode 命令可用。");
             return value;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new OpenCodeConfigurationException("WSL OpenCode 命令超时；未启动或更改后台服务。");
+            throw new OpenCodeConfigurationException("WSL OpenCode 命令超时。");
         }
         finally
         {
@@ -142,6 +147,13 @@ public sealed class WslOpenCodeServiceLocator
             if (_services.TryGetValue(failed.Distribution, out var current) && ReferenceEquals(current, failed))
                 _services.Remove(failed.Distribution);
         }
+        finally { _discoveryGate.Release(); }
+    }
+
+    internal async Task InvalidateAsync(string distribution, CancellationToken cancellationToken)
+    {
+        await _discoveryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { _services.Remove(distribution); }
         finally { _discoveryGate.Release(); }
     }
 

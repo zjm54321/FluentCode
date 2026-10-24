@@ -82,20 +82,20 @@ public partial class App
     private void OnAppSettingsChanged(object? sender, AppSettingsChangedEventArgs args) =>
         PostToApp(() => RequestOpenCodeConfiguration(_settingsService?.Current));
 
-    private void RequestOpenCodeConfiguration(AppSettings? settings)
+    private void RequestOpenCodeConfiguration(AppSettings? settings, OpenCodeClientOptions? recoveredOptions = null)
     {
         if (_closing) return;
-        // B11：连接类型 / WSL 发行版只是元数据，不影响端点与凭据；比较前剥离，避免仅写入类型就重建连接（闪断）。
-        OpenCodeSettings? relevant = settings?.OpenCode is { } current
-            ? current with { Kind = null, WslDistribution = null }
-            : null;
+        // WK1: kind/distribution now own recovery authority, not just presentation metadata.
+        // Changing them must retire the old WSL recovery worker as well as its source capability.
+        OpenCodeSettings? relevant = settings?.OpenCode;
         try
         {
             if (relevant is not null && !string.IsNullOrWhiteSpace(relevant.BaseUrl))
                 relevant = relevant with { BaseUrl = OpenCodeClient.NormalizeBaseUri(relevant.BaseUrl).AbsoluteUri };
         }
         catch (Exception ex) { RecordDiagnostic("opencode-configuration-invalid", error: ex); }
-        if (_configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
+        if (recoveredOptions is null && _configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
+        StopWslRecovery();
         _configurationRequested = true;
         _requestedOpenCodeConfiguration = relevant;
         ResetOpenCodeObservations();
@@ -114,10 +114,11 @@ public partial class App
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_appLifetime.Token);
         var previous = Interlocked.Exchange(ref _configurationCancellation, cancellation);
         try { previous?.Cancel(); } catch (ObjectDisposedException) { /* Previous configuration already drained. */ }
-        _ = ConfigureOpenCodeAsync(settings, generation, cancellation);
+        _ = ConfigureOpenCodeAsync(settings, generation, cancellation, recoveredOptions);
     }
 
-    private async Task ConfigureOpenCodeAsync(AppSettings? settings, int generation, CancellationTokenSource cancellation)
+    private async Task ConfigureOpenCodeAsync(AppSettings? settings, int generation, CancellationTokenSource cancellation,
+        OpenCodeClientOptions? recoveredOptions = null)
     {
         bool held = false;
         try
@@ -132,7 +133,7 @@ public partial class App
             var options = settings.OpenCode;
             if (string.IsNullOrWhiteSpace(options.BaseUrl)) { RecordDiagnostic("opencode-not-configured"); return; }
             string? secret = null;
-            if (options.AuthenticationMode != OpenCodeAuthenticationMode.None)
+            if (recoveredOptions is null && options.AuthenticationMode != OpenCodeAuthenticationMode.None)
             {
                 if (!string.IsNullOrWhiteSpace(options.CredentialId))
                 {
@@ -145,7 +146,7 @@ public partial class App
                 { RecordDiagnostic("opencode-basic-credential-required"); return; }
             }
             token.ThrowIfCancellationRequested();
-            var clientOptions = new OpenCodeClientOptions
+            var clientOptions = recoveredOptions ?? new OpenCodeClientOptions
             {
                 // Apply the IPv4 forwarding route to existing saved WSL profiles too; retain
                 // the saved endpoint identity so unknown-result tombstones stay in scope.
@@ -155,6 +156,10 @@ public partial class App
                 AuthenticationMode = options.AuthenticationMode,
                 Username = options.Username, Secret = secret
             };
+            var recoveryOwner = CreateWslRecoveryOwner(settings, generation);
+            if (recoveryOwner is not null)
+                clientOptions = clientOptions with { ConnectionFailure = unreachable =>
+                    PostToApp(() => BeginWslRecovery(recoveryOwner, unreachable)) };
             var client = new OpenCodeClient(clientOptions); // Validates options before publishing a page factory.
             // Identity is endpoint-only so credential changes do NOT bypass unknown-result tombstones.
             string endpoint = CreateOpenCodeEndpointIdentity(options.BaseUrl);
@@ -164,8 +169,9 @@ public partial class App
             lock (_integrationSync)
             {
                 if (_closing || token.IsCancellationRequested || generation != _configurationGeneration)
-                { monitor.Dispose(); client.Dispose(); return; }
+                { recoveryOwner?.Cancellation.Dispose(); monitor.Dispose(); client.Dispose(); return; }
                 _openCodeClient = client;
+                _wslRecoveryOwner = recoveryOwner;
                 _openCodeMonitor = monitor;
                 _openCodeEndpointIdentity = endpoint;
                 _openCodePageSource = new OpenCodePageSource(endpoint, checked(++_openCodeSourceRevision),
@@ -211,6 +217,7 @@ public partial class App
 
     private void StopOpenCodeRequests()
     {
+        StopWslRecovery();
         OpenCodePageSource? stoppedSource;
         lock (_integrationSync)
         {

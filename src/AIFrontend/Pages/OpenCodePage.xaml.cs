@@ -379,6 +379,7 @@ public sealed partial class OpenCodePage : Page
             if (Application.Current is App app)
             {
                 app.OpenCodeSourceChanged += App_OpenCodeSourceChanged;
+                app.OpenCodeRecoveryStatusChanged += App_OpenCodeRecoveryStatusChanged;
             }
         }
         catch
@@ -394,11 +395,17 @@ public sealed partial class OpenCodePage : Page
             if (Application.Current is App app)
             {
                 app.OpenCodeSourceChanged -= App_OpenCodeSourceChanged;
+                app.OpenCodeRecoveryStatusChanged -= App_OpenCodeRecoveryStatusChanged;
             }
         }
         catch
         {
         }
+    }
+
+    private void App_OpenCodeRecoveryStatusChanged(object? sender, EventArgs e)
+    {
+        if (_pageActive) UpdateConnectionStatus();
     }
 
     private static OpenCodePageSource? ReadAppSource()
@@ -3701,6 +3708,12 @@ public sealed partial class OpenCodePage : Page
                 break;
         }
 
+        if ((Application.Current as App)?.OpenCodeRecoveryStatus is { } recoveryStatus)
+        {
+            text = recoveryStatus;
+            tooltip = recoveryStatus;
+            brushKey = "TextFillColorSecondaryBrush";
+        }
         ConnectionStatusText.Text = text;
         // ThemeResource 样式（XamlReader 构造、按键缓存）：主题切换时由框架重取，不是一次性画刷。
         if (OpenCodeInsightsTheme.Dot(brushKey) is { } dotStyle)
