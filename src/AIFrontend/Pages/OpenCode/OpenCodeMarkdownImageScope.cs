@@ -22,6 +22,8 @@ internal sealed class OpenCodeMarkdownImageScope : IDisposable
     private readonly Dictionary<string, Task<OpenCodeImageFile>> _images = new(StringComparer.Ordinal);
     private Task<string>? _metadata;
     private bool _disposed;
+    private readonly OpenCodeToolImageCache _toolImages = new();
+    internal Func<OpenCodeToolImageSource, CancellationToken, Task<OpenCodeImageFile>>? ToolImageReader { get; set; }
 
     internal OpenCodeMarkdownImageScope(OpenCodeImageScopeIdentity identity, Func<bool> current,
         Func<CancellationToken, Task<string>> directory,
@@ -82,6 +84,34 @@ internal sealed class OpenCodeMarkdownImageScope : IDisposable
         return image;
     }
 
+    internal async Task<OpenCodeImageFile> ReadToolImageAsync(string partId, OpenCodeToolImageSource source, CancellationToken renderToken)
+    {
+        renderToken.ThrowIfCancellationRequested();
+        CheckCurrent();
+        lock (_sync) if (_toolImages.Get(partId, source) is { } cached) return cached;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_token, renderToken);
+        OpenCodeImageFile image;
+        if (source.Reference.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            image = OpenCodeToolImageResolver.DecodeDataUrl(source.Reference);
+        else
+        {
+            if (ToolImageReader is { } read) image = await read(source, linked.Token);
+            else
+            {
+                _metadata ??= _directory(_token);
+                var directory = await _metadata.WaitAsync(linked.Token);
+                CheckCurrent();
+                image = await OpenCodeToolImageResolver.ReadAsync(source, directory, false,
+                    (path, ct) => Identity.Client.ReadBrowserImageFileAsync(directory, path, ct),
+                    (_, _) => throw new InvalidOperationException(OpenCodeToolImageResolver.RemoteOutside), linked.Token);
+            }
+        }
+        linked.Token.ThrowIfCancellationRequested();
+        CheckCurrent();
+        lock (_sync) _toolImages.Add(partId, source, image);
+        return image;
+    }
+
     private void CheckCurrent()
     {
         if (!IsCurrent) throw new OperationCanceledException(_token);
@@ -96,6 +126,8 @@ internal sealed class OpenCodeMarkdownImageScope : IDisposable
             _lifetime.Cancel();
             _lifetime.Dispose();
             _images.Clear();
+            _toolImages.Clear();
+            ToolImageReader = null;
         }
     }
 }

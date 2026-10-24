@@ -15,7 +15,7 @@ public sealed partial class OpenCodeClient
     /// <summary>
     /// Reads a relative image through authenticated GET api/fs/read/* with explicit
     /// location[directory]. No local path translation, persistent cache, or external URL fetch.
-    /// PNG/JPEG/GIF/WebP signatures are required; absent/octet-stream MIME is allowed.
+    /// PNG/JPEG/GIF/WebP/BMP signatures are required; absent/octet-stream MIME is allowed.
     /// </summary>
     /// <remarks>
     /// The caller must capture the source client, session directory and render generation,
@@ -111,9 +111,10 @@ public sealed partial class OpenCodeClient
         if (bytes.StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) return "image/png";
         if (bytes.StartsWith(new byte[] { 255, 216, 255 })) return "image/jpeg";
         if (bytes.StartsWith("GIF87a"u8) || bytes.StartsWith("GIF89a"u8)) return "image/gif";
+        if (bytes.Length >= 14 && bytes.StartsWith("BM"u8)) return "image/bmp";
         if (bytes.Length >= 16 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8)
             && (bytes[12..16].SequenceEqual("VP8 "u8) || bytes[12..16].SequenceEqual("VP8L"u8) || bytes[12..16].SequenceEqual("VP8X"u8)))
             return "image/webp";
-        throw new OpenCodeProtocolException("Image has no supported PNG, JPEG, GIF or WebP signature (GET api/fs/read/*); SVG and non-image content are not supported.");
+        throw new OpenCodeProtocolException("Image has no supported PNG, JPEG, GIF, WebP or BMP signature (GET api/fs/read/*); SVG and non-image content are not supported.");
     }
 }

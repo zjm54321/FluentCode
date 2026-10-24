@@ -29,6 +29,7 @@ $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'BrowserTests.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'ImageTests.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile"

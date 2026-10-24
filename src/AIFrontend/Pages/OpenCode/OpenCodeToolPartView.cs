@@ -376,6 +376,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         }
 
         _disposed = true;
+        _inlineRegion.Child = null;
         ConfigureDetail = null;
         FindChild = null;
         _backgroundAction = null;
@@ -720,7 +721,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             if (!_disposed) TerminalRequested?.Invoke(shellId);
             return;
         }
-        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question)
+        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question || OpenCodeToolDetailContent.ToolImages(_model).Count > 0)
         {
             CloseDetailIfShowing();
             _inlineExpanded = !_inlineExpanded;
@@ -742,10 +743,16 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     {
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
         ApplyRunningTint();
-        _inlineRegion.Child = _inlineExpanded
-            ? OpenCodeToolDetailBuiltins.BuildInline(_model)
-                ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供")
-            : null;
+        if (!_inlineExpanded) { _inlineRegion.Child = null; return; }
+        if (OpenCodeToolDetailContent.ToolImages(_model).Count > 0)
+        {
+            var options = new OpenCodeToolDetailOptions();
+            ConfigureDetailOptions(options);
+            _inlineRegion.Child = OpenCodeToolDetailContent.BuildToolImages(_model, options, thumbnail: true,
+                openLarge: () => { if (!_disposed) OpenCodeToolDetailPopup.Shared.TogglePinned(this); });
+        }
+        else _inlineRegion.Child = OpenCodeToolDetailBuiltins.BuildInline(_model)
+            ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供");
     }
 
     private void CloseDetailIfShowing()

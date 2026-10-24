@@ -231,21 +231,6 @@ internal static partial class OpenCodeToolDetailContent
         return panel;
     }
 
-    private static FrameworkElement? ReadImage(OpenCodeToolRowModel model)
-    {
-        if (model.State is not { ValueKind: JsonValueKind.Object } state || !state.TryGetProperty("content", out var content)
-            || content.ValueKind != JsonValueKind.Array) return null;
-        foreach (var item in content.EnumerateArray())
-        {
-            if (Field(item, "type") != "file" || Field(item, "mime") is not { } mime || !mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) continue;
-            if (Field(item, "url") is not { } url) continue;
-            var markdown = new OpenCodeRichTextPresenter();
-            markdown.Render("![图片](" + url + ")", OpenCodeRichTextStyle.Body);
-            return markdown.Element;
-        }
-        return null;
-    }
-
     private static bool ShiftPressed() => (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
         & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
 

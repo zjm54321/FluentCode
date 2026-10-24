@@ -33,19 +33,11 @@ internal sealed class OpenCodeBrowserCaptureImage(OpenCodeBrowserCapture capture
         if (Scope is not null && !Scope.IsCurrent) throw new OperationCanceledException(token);
         if (_image is { } cached) return cached;
         OpenCodeImageFile image;
-        if (Capture.Uri is { } uri && uri.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
-        {
-            var comma = uri.IndexOf(',');
-            if (comma < 0 || !uri[..comma].EndsWith(";base64", StringComparison.OrdinalIgnoreCase)
-                || uri.Length - comma > 7 * 1024 * 1024) throw new InvalidOperationException("截图附件格式无效或超过 5 MiB。");
-            var mime = uri[5..(comma - 7)].ToLowerInvariant();
-            if (mime is not ("image/png" or "image/jpeg" or "image/webp" or "image/gif")) throw new InvalidOperationException("不支持此截图格式。");
-            var bytes = Convert.FromBase64String(uri[(comma + 1)..]);
-            if (bytes.Length > 5 * 1024 * 1024) throw new InvalidOperationException("截图附件超过 5 MiB。");
-            image = new(bytes, mime);
-        }
-        else if (Capture.Path is { Length: > 0 } path && Scope is { IsCurrent: true } current)
-            image = await current.ReadBrowserCaptureAsync(path, token);
+        var reference = Capture.Uri ?? Capture.Path ?? throw new InvalidOperationException("服务端未提供截图附件或文件路径");
+        var source = new OpenCodeToolImageSource(reference, Capture.Mime, Capture.Name ?? "screenshot.png");
+        if (Scope is { IsCurrent: true } current)
+            image = await current.ReadToolImageAsync("browser-capture", source, token);
+        else if (reference.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) image = OpenCodeToolImageResolver.DecodeDataUrl(reference);
         else throw new InvalidOperationException("当前会话未提供已授权的截图文件读取方式。");
         token.ThrowIfCancellationRequested();
         if (Scope is not null && !Scope.IsCurrent) throw new OperationCanceledException(token);
@@ -89,38 +81,10 @@ internal static partial class OpenCodeToolDetailContent
 
     private static FrameworkElement BuildBrowser(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options)
     {
-        if (OpenCodeBrowserToolPresentation.Action(model.ToolName) == "screenshot" && BrowserImage(model, options) is { } source)
+        if (ToolImages(model).Count > 0)
         {
-            var panel = new StackPanel { Spacing = 8 };
-            var image = new Image { Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Stretch };
-            AutomationProperties.SetAutomationId(image, "OpenCodeBrowserScreenshot");
-            AutomationProperties.SetName(image, "本次浏览器工具返回的截图");
-            var size = Caption("正在读取截图…");
-            panel.Children.Add(image);
-            panel.Children.Add(size);
-            CancellationTokenSource? lifetime = null;
-            panel.Loaded += async (_, _) =>
-            {
-                lifetime?.Cancel();
-                lifetime?.Dispose();
-                var current = lifetime = new CancellationTokenSource();
-                var token = current.Token;
-                try
-                {
-                    var file = await source.ReadAsync(token);
-                    using var stream = await OpenCodeBrowserCaptureImage.StreamAsync(file.Bytes);
-                    var bitmap = new BitmapImage();
-                    await bitmap.SetSourceAsync(stream);
-                    if (token.IsCancellationRequested || source.Scope is { IsCurrent: false }) return;
-                    image.Source = bitmap;
-                    source.SetDimensions(bitmap.PixelWidth, bitmap.PixelHeight);
-                    size.Text = "尺寸 " + bitmap.PixelWidth + " × " + bitmap.PixelHeight;
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception error) { if (!token.IsCancellationRequested) size.Text = "无法读取截图：" + error.Message; }
-            };
-            panel.Unloaded += (_, _) => { lifetime?.Cancel(); lifetime?.Dispose(); lifetime = null; };
-            return panel;
+            var source = BrowserImage(model, options);
+            return BuildToolImages(model, options, dimensions: (width, height) => source?.SetDimensions(width, height));
         }
         if (!options.Compact) return OpenCodeToolDetailBuiltins.BrowserProperties(model);
         var preview = new StackPanel { Spacing = 8 };

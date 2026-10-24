@@ -225,6 +225,9 @@ internal static partial class OpenCodeToolDetailContent
         var rows = new List<object>();
         FrameworkElement? body = null;
         var toolHidden = 0;
+        var hasImages = ToolImages(model).Count > 0;
+        if (hasImages && model.Kind != OpenCodeToolKind.Browser)
+            top.Children.Add(BuildToolImages(model, options));
 
         switch (model.Kind)
         {
@@ -232,8 +235,7 @@ internal static partial class OpenCodeToolDetailContent
                 body = BuildBrowser(model, options);
                 break;
             case OpenCodeToolKind.Read:
-                BuildRead(model, rows, top);
-                if (rows.Count == 0 && ReadImage(model) is { } imageBody) body = imageBody;
+                if (!hasImages) BuildRead(model, rows, top);
                 if (rows.Count > 0 && OpenCodeFileDetailPolicy.IsMarkdown(model.Target))
                 {
                     var source = string.Join("\n", rows.ConvertAll(row => row is CodeLine line ? line.Text : string.Empty));
@@ -245,6 +247,7 @@ internal static partial class OpenCodeToolDetailContent
             case OpenCodeToolKind.MultiEdit:
             case OpenCodeToolKind.Patch:
             case OpenCodeToolKind.Write:
+                if (hasImages) break;
                 if (model.DiffFiles.Count > 0)
                 {
                     var file = model.DiffFiles[Math.Clamp(options.SelectedFile, 0, model.DiffFiles.Count - 1)];

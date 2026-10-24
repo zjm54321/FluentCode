@@ -55,6 +55,7 @@ public sealed partial class OpenCodePage
         }, identity.Client.ReadImageFileAsync, bindingToken)
         {
             ReadInstructionFileAsync = CreateInstructionFileReader(identity, current, bindingToken),
+            ToolImageReader = CreateToolImageReader(identity, current, bindingToken),
         };
         OpenCodeImageContext.Bind(subtree, scope);
         return scope;

@@ -514,6 +514,7 @@ internal static partial class Program
             PatchTimelineContract();
             BuiltinToolViews();
             BrowserToolViews();
+            ToolImages();
             ChildChatLifecycle().GetAwaiter().GetResult();
 
             Console.WriteLine($"PASS: tool detail property list + detail popup (G7/G8), {_assertions} assertions; real OpenCodeToolRowPresentation + OpenCodeDetailPopupLayout, no UI.");
