@@ -2,6 +2,7 @@
 // Presentation primitives and context lifecycle are explicit headless boundaries.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -13,6 +14,15 @@ internal static class DeferredSelectionTests
 {
     internal static async Task Run()
     {
+        foreach (bool files in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture();
+            f.Page.Text("ordinary send");
+            if (files) await f.Page.File();
+            await f.Page.Send();
+            Program.Check(f.Http.Calls.SequenceEqual(new[] { "GET /api/session/ses_test", "POST /api/session/ses_test/prompt" }),
+                "PF1 ordinary legacy/attachment send has only the required fresh revert guard and POST; no capability/model/agent reads");
+        }
         foreach (var delivery in new[] { "queue", "steer" })
         foreach (var files in new[] { false, true })
         foreach (var rejected in new[] { false, true })
@@ -45,12 +55,42 @@ internal static class DeferredSelectionTests
             Program.Check(f.MutationPaths.Count == 3 && f.MutationPaths[0].EndsWith("/agent")
                 && f.MutationPaths[1].EndsWith("/model") && f.MutationPaths[2].EndsWith("/prompt"), "ED1 one agent/model pre-send apply precedes legacy/enhanced prompt: "
                     + delivery + "/files=" + files + "/rejected=" + rejected + "; paths=" + string.Join(",", f.MutationPaths) + "; last=" + f.Http.Path + "; messages=" + string.Join(";", f.Page.Messages));
+            Program.Check(f.Http.Calls.SequenceEqual(new[] {
+                "GET /api/session/ses_test", "GET /api/agent", "POST /api/session/ses_test/agent",
+                "GET /api/session/ses_test", "GET /api/model", "POST /api/session/ses_test/model",
+                "GET /api/session/ses_test", "GET /api/session/ses_test", "POST /api/session/ses_test/prompt" }),
+                "PF1 pending choices use 9 calls instead of 13: no duplicate preview or unused inherited default read; actual=" + string.Join(",", f.Http.Calls));
             Program.Check(promptBody!.Contains("\"delivery\":\"" + delivery + "\"") && promptBody.Contains("\"files\"") == files,
                 "ED1 queue/steer and attachments retain original prompt fields");
             Program.Check(selection.Pending == rejected && f.Page.SelectionPending == rejected,
                 "ED1 rejection keeps every pending choice; durable acceptance consumes them");
             if (rejected)
                 Program.Check(f.Page.Snapshot.HasDraft, "ED1 failed send retains draft alongside choices");
+        }
+        foreach (var scenario in new[] { "unavailable", "revoked", "unknown" })
+        {
+            using var f = new NativeTests.Fixture();
+            var selection = new DeferredSelectionHost(f.Source);
+            selection.ChooseModelOnly();
+            if (scenario == "unavailable") f.Catalog = f.Catalog.Replace("\"fast\"", "\"slow\"");
+            if (scenario == "revoked")
+            {
+                var respond = f.Http.Respond;
+                f.Http.Respond = (request, ct) => {
+                    var response = respond(request, ct);
+                    if (request.RequestUri!.AbsolutePath == "/api/model") f.Source.Revoke();
+                    return response;
+                };
+            }
+            if (scenario == "unknown") f.Mutation = _ => throw new OpenCodeTransportException("test-only unknown");
+            Program.Check(!await selection.ApplyPendingSelectionAsync(forNextSend: true) && selection.Pending,
+                "PF1 single-shot selection retains pending choices on " + scenario);
+            Program.Check(f.Http.Posts == (scenario == "unknown" ? 1 : 0), "PF1 no mutation after stale origin/catalog; unknown is attempted once");
+            if (scenario == "unknown")
+            {
+                Program.Check(!await selection.ApplyPendingSelectionAsync(forNextSend: true) && f.Http.Posts == 1,
+                    "PF1 unknown model switch protection prevents a later automatic retry");
+            }
         }
         foreach (var variantOnly in new[] { false, true })
         {
@@ -93,6 +133,7 @@ namespace AIFrontend.Pages.OpenCode
             SelectPendingAgent(_currentOrigin!, "next_agent");
             SelectPendingModel(new() { Id = "catalog-id", ProviderId = "provider", Variant = "fast" });
         }
+        internal void ChooseModelOnly() => SelectPendingModel(new() { Id = "catalog-id", ProviderId = "provider", Variant = "fast" });
         private bool IsOriginCurrent(AgentSwitchOrigin origin) => ReferenceEquals(origin, _currentOrigin) && !origin.Source.IsRevoked;
         private string? SwitchBlockedReason() => null;
         private void ApplyCurrentAgentPresentation() { }

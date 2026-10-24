@@ -163,10 +163,17 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             bool Current(SessionControlOrigin _) => IsOriginCurrent(origin);
             var draft = new SessionControlDraft("pending-send-selection", false);
             var ct = _contextCts?.Token ?? CancellationToken.None;
-            var preview = await controls.PreviewAsync(controlOrigin, new(SessionControlKind.SwitchModel,
-                new(model.Id!, model.ProviderId!, model.Variant)), draft, Current, ct).ConfigureAwait(true);
-            if (preview.Preview is null || !IsOriginCurrent(origin)) return false;
-            var result = await controls.ConfirmAsync(preview.Preview, Guid.NewGuid(), draft, Current, Current, ct).ConfigureAwait(true);
+            SessionControlResult result;
+            if (forNextSend)
+                result = await controls.ApplySendModelAsync(controlOrigin, Guid.NewGuid(),
+                    new(model.Id!, model.ProviderId!, model.Variant), draft, Current, ct).ConfigureAwait(true);
+            else
+            {
+                var preview = await controls.PreviewAsync(controlOrigin, new(SessionControlKind.SwitchModel,
+                    new(model.Id!, model.ProviderId!, model.Variant)), draft, Current, ct).ConfigureAwait(true);
+                if (preview.Preview is null || !IsOriginCurrent(origin)) return false;
+                result = await controls.ConfirmAsync(preview.Preview, Guid.NewGuid(), draft, Current, Current, ct).ConfigureAwait(true);
+            }
             if (!result.AcceptanceKnown || !IsOriginCurrent(origin)) return false;
             ApplyModel(model);
         }

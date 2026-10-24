@@ -36,6 +36,7 @@ internal static class Program
     internal sealed class Handler : HttpMessageHandler
     {
         internal int Posts, Gets, Interrupts;
+        internal readonly List<string> Calls = new();
         internal bool NoStagePreflight;
         internal string? Path, Body;
         internal Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> Respond =
@@ -51,6 +52,7 @@ internal static class Program
             if (request.Method == HttpMethod.Get) Gets++; else Posts++;
             if (request.RequestUri!.AbsolutePath.EndsWith("/interrupt", StringComparison.Ordinal)) Interrupts++;
             Path = request.RequestUri!.AbsolutePath;
+            Calls.Add(request.Method.Method + " " + Path);
             Body = request.Content?.ReadAsStringAsync(ct).GetAwaiter().GetResult();
             // Legacy fixture callbacks below intentionally control mutation responses only.
             // Give the current continuation preflight its own authoritative no-stage GET,

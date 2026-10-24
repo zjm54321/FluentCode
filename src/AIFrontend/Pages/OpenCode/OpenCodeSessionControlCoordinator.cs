@@ -105,7 +105,7 @@ public sealed class OpenCodeSessionControlCoordinator
     /// <summary>canStart includes exact draft/action authority; ownsOperation is the stable captured operation
     /// owner. Both gate initiation; only ownsOperation gates settlement/refresh. Restoration still requires
     /// the caller's original exact draft ticket, never a newer token or a post-start bypass flag.</summary>
-    public async Task<SessionControlResult> ConfirmAsync(SessionControlPreview preview, Guid operationId,
+    public Task<SessionControlResult> ConfirmAsync(SessionControlPreview preview, Guid operationId,
         SessionControlDraft draft, Func<SessionControlOrigin, bool> canStart,
         Func<SessionControlOrigin, bool> ownsOperation, CancellationToken ct = default)
     {
@@ -113,10 +113,31 @@ public sealed class OpenCodeSessionControlCoordinator
         if (operationId == Guid.Empty) throw new ArgumentException("Empty operation ID.", nameof(operationId));
         Validate(preview.Origin, preview.Request, draft, canStart);
         ArgumentNullException.ThrowIfNull(ownsOperation);
-        bool StartAuthority(SessionControlOrigin candidate) => ownsOperation(candidate) && canStart(candidate);
         if (Interlocked.Exchange(ref preview.Consumed, 1) != 0 || preview.Draft != draft)
-            return new(operationId, SessionControlStatus.ConfirmationRequired, false, false, false, null, null);
-        var origin = preview.Origin;
+            return Task.FromResult(new SessionControlResult(operationId, SessionControlStatus.ConfirmationRequired, false, false, false, null, null));
+        return ApplyAsync(preview.Origin, preview.Request, preview, operationId, draft, canStart, ownsOperation, ct);
+    }
+
+    /// <summary>A pending next-send choice has no intervening preview dialog. Validate it once
+    /// under the same lease as its mutation; never borrow stale picker/catalog evidence.</summary>
+    public Task<SessionControlResult> ApplySendModelAsync(SessionControlOrigin origin, Guid operationId,
+        SessionControlModelRef model, SessionControlDraft draft, Func<SessionControlOrigin, bool> canStart,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        if (!origin.ApplyingSendSelection) throw new ArgumentException("Not a pending send selection.", nameof(origin));
+        ArgumentNullException.ThrowIfNull(model);
+        return ApplyAsync(origin, new(SessionControlKind.SwitchModel, model), null, operationId, draft, canStart, canStart, ct);
+    }
+
+    private async Task<SessionControlResult> ApplyAsync(SessionControlOrigin origin, SessionControlRequest request,
+        SessionControlPreview? preview, Guid operationId, SessionControlDraft draft,
+        Func<SessionControlOrigin, bool> canStart, Func<SessionControlOrigin, bool> ownsOperation, CancellationToken ct)
+    {
+        if (operationId == Guid.Empty) throw new ArgumentException("Empty operation ID.", nameof(operationId));
+        Validate(origin, request, draft, canStart);
+        ArgumentNullException.ThrowIfNull(ownsOperation);
+        bool StartAuthority(SessionControlOrigin candidate) => ownsOperation(candidate) && canStart(candidate);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, origin.Source.RevocationToken);
         OpenCodeInteractionGate.Lease? lease = null;
         bool started = false, accepted = false;
@@ -128,33 +149,34 @@ public sealed class OpenCodeSessionControlCoordinator
             lease = await _gate.EnterAsync(origin.Source.Identity, origin.SessionId, linked.Token).ConfigureAwait(false);
             if (!lease.CanControlSession()) return Result(SessionControlStatus.Blocked);
             using var client = CreateClient(origin, StartAuthority, linked.Token);
-            var fresh = await FreshAsync(origin, preview.Request, draft, StartAuthority, client, linked.Token).ConfigureAwait(false);
-            if (fresh.Status != SessionControlStatus.Ready || fresh.Preview?.Fingerprint != preview.Fingerprint)
+            var fresh = await FreshAsync(origin, request, draft, StartAuthority, client, linked.Token).ConfigureAwait(false);
+            if (fresh.Status != SessionControlStatus.Ready || fresh.Preview is null
+                || preview is not null && fresh.Preview.Fingerprint != preview.Fingerprint)
                 return Result(SessionControlStatus.ConfirmationRequired);
 
             bool Start(Action send) => Fence(origin, StartAuthority, linked.Token, () =>
             {
                 if (!lease.CanControlSession()) throw new InvalidOperationException("Session control protected.");
-                lease.BeginSessionControl(operationId, preview.Request.Kind, preview.Fingerprint);
+                lease.BeginSessionControl(operationId, request.Kind, fresh.Preview.Fingerprint);
                 started = true;
                 send();
             });
             SessionControlRevert? acceptedStage = null;
-            switch (preview.Request.Kind)
+            switch (request.Kind)
             {
                 case SessionControlKind.SwitchModel:
-                    await client.SwitchModelGuardedAsync(origin.SessionId, preview.Request.Model!, Start, linked.Token).ConfigureAwait(false); break;
+                    await client.SwitchModelGuardedAsync(origin.SessionId, request.Model!, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.StageRevert:
-                    acceptedStage = await client.StageRevertGuardedAsync(origin.SessionId, preview.Target!.Id,
-                        preview.Request.Files, Start, linked.Token).ConfigureAwait(false); break;
+                    acceptedStage = await client.StageRevertGuardedAsync(origin.SessionId, fresh.Preview.Target!.Id,
+                        request.Files, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.ClearRevert:
                     await client.ClearRevertGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.DeleteRoot:
                     await client.DeleteSessionGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.RenameRoot:
-                    await client.RenameSessionGuardedAsync(origin.SessionId, preview.Request.NewTitle!, preview.Request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
+                    await client.RenameSessionGuardedAsync(origin.SessionId, request.NewTitle!, request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.ArchiveRoot:
-                    await client.ArchiveSessionGuardedAsync(origin.SessionId, preview.Request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
+                    await client.ArchiveSessionGuardedAsync(origin.SessionId, request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
                 default: throw new InvalidOperationException("Continuation uses the already-held-lease seam.");
             }
             accepted = true;
@@ -163,10 +185,10 @@ public sealed class OpenCodeSessionControlCoordinator
                 () => lease.CompleteSessionControl(operationId, NotificationInteractionStatus.Succeeded)))
                 return Result(SessionControlStatus.OutcomeUnknown);
             SessionControlState? observed = null;
-            try { if (preview.Request.Kind != SessionControlKind.DeleteRoot) observed = await Read(origin, ownsOperation, linked.Token, () => client.GetSessionControlStateAsync(origin.SessionId, linked.Token)).ConfigureAwait(false); }
+            try { if (request.Kind != SessionControlKind.DeleteRoot) observed = await Read(origin, ownsOperation, linked.Token, () => client.GetSessionControlStateAsync(origin.SessionId, linked.Token)).ConfigureAwait(false); }
             catch (Exception e) when (ReadFailure(e) || e is Lost) { /* Accepted remains accepted; display refresh is separate. */ }
             SessionControlRestoration? restoration = null;
-            if (acceptedStage is not null && observed?.Revert?.Fingerprint == acceptedStage.Fingerprint && preview.Target is { } target)
+            if (acceptedStage is not null && observed?.Revert?.Fingerprint == acceptedStage.Fingerprint && fresh.Preview.Target is { } target)
                 restoration = new(origin, target.Id, target.Text!, target.HasNonTextReferences, draft.Fingerprint, acceptedStage.Fingerprint);
             return Result(SessionControlStatus.Accepted, observed, restoration);
         }
@@ -258,7 +280,7 @@ public sealed class OpenCodeSessionControlCoordinator
             catalog = await Get(() => client.GetSelectableModelsAsync(state.Directory, ct)).ConfigureAwait(false);
             if (catalog.Directory != state.Directory || request.Model is null || !catalog.Models.Any(m => m.Offers(request.Model)))
                 return new(SessionControlStatus.Blocked, null);
-            if (state.Model is null)
+            if (state.Model is null && !origin.ApplyingSendSelection)
             {
                 inherited = await Get(() => client.GetDefaultModelAsync(state.Directory, ct)).ConfigureAwait(false);
                 if (inherited.Directory != state.Directory) return new(SessionControlStatus.Blocked, null);
