@@ -90,6 +90,46 @@ internal static class RedesignRegression
         expander.IsExpanded = true;
         view.Apply([item]);
         Check(expander.IsExpanded, "inbox refresh retains the user's expanded state");
+        // QB1: live v2.1.3 Session.Inbox.Info is a type-discriminated work list, not a user-only queue.
+        var mixedInbox = JsonSerializer.Deserialize<OpenCodeInboxListResponse>("""
+            {"data":[
+              {"id":"msg_system_first","sessionID":"ses_test","type":"synthetic","delivery":"queue","payload":{"text":"<task id=\"ses_child\" state=\"completed\"><summary>Background task completed: test</summary><task_result>Completed.</task_result></task>","metadata":{"oh-my-opencode-slim.internalInitiator":true}}},
+              {"id":"msg_other_client","sessionID":"ses_test","type":"user","delivery":"queue","payload":{"text":"another client's prompt"}},
+              {"id":"msg_compaction","sessionID":"ses_test","type":"compaction","delivery":"queue","payload":{}},
+              {"id":"msg_steer_notice","sessionID":"ses_test","type":"synthetic","delivery":"steer","payload":{"text":"background notice"}},
+              {"id":"msg_pasted_notice","sessionID":"ses_test","type":"user","delivery":"queue","payload":{"text":"<task_result>user pasted text</task_result>","metadata":{"oh-my-opencode-slim.internalInitiator":true}}},
+              {"id":"msg_move","sessionID":"ses_test","type":"move","delivery":"queue","payload":{"projectID":"project_test","location":{"type":"local"}}},
+              {"id":"msg_attachment","sessionID":"ses_test","type":"user","delivery":"queue","payload":{"text":"","files":[{"name":"image.png"}]}},
+              {"id":"msg_user_steer","sessionID":"ses_test","type":"user","delivery":"steer","payload":{"text":"already in chat"}},
+              {"id":"msg_future","sessionID":"ses_test","type":"future-system-kind","delivery":"queue","payload":{"text":"not a user"}},
+              {"id":"msg_missing_type","sessionID":"ses_test","delivery":"queue","payload":{"text":"not explicitly a user"}}
+            ]}
+            """)!.Data!;
+        int actionChecks = 0;
+        bool CanAct(OpenCodeInboxItem candidate)
+        {
+            actionChecks++;
+            Check(candidate.Type == OpenCodeInboxItemTypes.User, "QB1: system items never reach user-action eligibility callbacks");
+            return candidate.Id != "msg_other_client";
+        }
+        view.Apply(mixedInbox, CanAct, CanAct);
+        Check(list.Items.Select(AutomationProperties.GetAutomationId).SequenceEqual(new[] {
+                "OpenCodeQueuedPrompt.msg_other_client", "OpenCodeQueuedPrompt.msg_pasted_notice", "OpenCodeQueuedPrompt.msg_attachment" }),
+            "QB1: explicit user queue items from every client survive in server order; all system/unknown kinds and user steer are excluded");
+        Check(((TextBlock)expander.Header!).Text == "排队 3 条 · 下一条：another client's prompt" && actionChecks == 6,
+            "QB1: header count/next preview and action predicates include only visible user queue items");
+        Check(((Grid)list.Items[0]).Children.OfType<Button>().Count() == 0
+            && ((Grid)list.Items[1]).Children.OfType<Button>().Count() == 2
+            && ((Grid)list.Items[1]).Children.OfType<TextBlock>().First().Text == "<task_result>user pasted text</task_result>"
+            && ((Grid)list.Items[2]).Children.OfType<TextBlock>().First().Text == "（仅附件）",
+            "QB1: non-owned users remain read-only; text/metadata resemblance does not hide users; attachment-only users remain visible");
+        var retainedUserRow = list.Items[0];
+        view.Apply(mixedInbox.Where(candidate => candidate.Type == "user").ToArray(), CanAct, CanAct);
+        Check(ReferenceEquals(retainedUserRow, list.Items[0]), "QB1: disappearing system notices do not rebuild unchanged user rows");
+        view.Apply(mixedInbox.Where(candidate => candidate.Type != "user").ToArray(), _ => throw new InvalidOperationException("system withdraw"),
+            _ => throw new InvalidOperationException("system delivery edit"));
+        Check(!view.HasItems && view.Visibility == Visibility.Collapsed && list.Items.Count == 0 && ((TextBlock)expander.Header!).Text.Length == 0,
+            "QB1: system-only inbox clears panel/count/preview and creates no withdraw or delivery-edit actions");
         // SB2 replaces A6's two-character labels with native dash templates; retain full detail text.
         var timeline = new OpenCodeConversationView();
         timeline.ApplyMessages([

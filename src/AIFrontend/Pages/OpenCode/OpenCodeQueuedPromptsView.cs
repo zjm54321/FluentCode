@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// 输入区上方的待投递消息平铺列表：保留 inbox 顺序，明确区分插入当前回合与回合结束后发送。
+/// 输入区上方的待投递用户消息列表：保留 inbox 顺序，不显示系统生成的工作项。
 /// </summary>
 /// <remarks>
 /// 数据来自页面已有的 <c>GET /api/session/{id}/inbox</c> 读取（条目仍在 inbox = 尚未投递）。
@@ -100,15 +100,17 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         {
             foreach (var item in items)
             {
-                if (item?.Id is not { Length: > 0 } id)
+                // Session.Inbox.Info also contains synthetic (including background completions),
+                // compaction and move work. Only the explicit user variant belongs in this panel/count.
+                if (item?.Type != OpenCodeInboxItemTypes.User || item.Id is not { Length: > 0 } id)
                 {
                     continue;
                 }
                 if (IsSteerUser(item)) continue; // Admitted steer is projected as chat by ConversationView, not a lower pending row.
 
-                var withdrawable = item.Type == OpenCodeInboxItemTypes.User && canWithdraw?.Invoke(item) == true;
+                var withdrawable = canWithdraw?.Invoke(item) == true;
                 rows.Add((id, DescribeContent(item), item.Delivery ?? string.Empty, withdrawable,
-                    item.Type == OpenCodeInboxItemTypes.User && canChangeDelivery?.Invoke(item) == true));
+                    canChangeDelivery?.Invoke(item) == true));
             }
         }
 
@@ -145,24 +147,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
 
     private static string DescribeContent(OpenCodeInboxItem item)
     {
-        switch (item.Type)
-        {
-            case OpenCodeInboxItemTypes.User:
-            case OpenCodeInboxItemTypes.Synthetic:
-                var text = ReadText(item.Payload);
-                if (text is { Length: > 0 })
-                {
-                    return text;
-                }
-
-                return item.Type == OpenCodeInboxItemTypes.User ? "（仅附件）" : "（系统输入）";
-            case OpenCodeInboxItemTypes.Compaction:
-                return "压缩会话上下文";
-            case OpenCodeInboxItemTypes.Move:
-                return "移动会话";
-            default:
-                return item.Type is { Length: > 0 } type ? "（" + type + "）" : "（未知条目）";
-        }
+        var text = ReadText(item.Payload);
+        return text is { Length: > 0 } ? text : "（仅附件）";
     }
 
     internal static string? ReadText(JsonElement? payload)

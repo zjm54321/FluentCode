@@ -20,7 +20,7 @@ public sealed partial class OpenCodePage
 
     /// <summary>只对本页发出、仍在跟踪的用户输入显示“撤回”（不撤回其他客户端的排队工作）。</summary>
     private bool CanWithdrawQueued(OpenCodeInboxItem item)
-        => !_queuedWithdrawInFlight && item.Id is { } id && _pendingAckIds.Contains(id)
+        => item.Type == OpenCodeInboxItemTypes.User && !_queuedWithdrawInFlight && item.Id is { } id && _pendingAckIds.Contains(id)
         && _selectedSessionId is { } sessionId && OpenCodeQueuedPromptWithdrawal.IsWithdrawableId(sessionId, id);
 
     private async void QueuedPromptsView_WithdrawRequested(object? sender, string inboxId)
