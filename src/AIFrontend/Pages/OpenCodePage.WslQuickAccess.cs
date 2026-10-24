@@ -24,6 +24,7 @@ public sealed partial class OpenCodePage
     private string? _wslAuthoritativeHome;
     private Task<string?>? _wslHomeRead;
     private CancellationTokenSource? _wslHomeCts;
+    private bool _wslQuickAccessSubscribed;
 
     private void InitializeWslQuickAccess()
     {
@@ -37,11 +38,15 @@ public sealed partial class OpenCodePage
         InitializeBrowserPanel();
         Loaded += (_, _) =>
         {
+            if (_wslQuickAccessSubscribed) return;
+            _wslQuickAccessSubscribed = true;
             _homeSettings!.Changed += WslQuickAccessSettingsChanged;
             DetectWslEditors();
         };
         Unloaded += (_, _) =>
         {
+            if (IsLoaded) return;
+            _wslQuickAccessSubscribed = false;
             _homeSettings!.Changed -= WslQuickAccessSettingsChanged;
             ResetWslQuickAccessHome();
             WslQuickAccessSlot.Visibility = Visibility.Collapsed;

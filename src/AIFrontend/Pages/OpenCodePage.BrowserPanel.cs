@@ -64,7 +64,7 @@ public sealed partial class OpenCodePage
             BrowserWorkspaceCreated += BrowserPanelWorkspaceCreated;
             RefreshBrowserPanel();
         };
-        Unloaded += (_, _) => { BrowserWorkspaceCreated -= BrowserPanelWorkspaceCreated; ReleaseBrowserPanelWorkspaces(); };
+        PageReleased += (_, _) => { BrowserWorkspaceCreated -= BrowserPanelWorkspaceCreated; ReleaseBrowserPanelWorkspaces(); };
     }
 
     private static Button BrowserCommand(string glyph, string name)

@@ -82,6 +82,19 @@ public sealed partial class OpenCodePage
         UpdateEmptyState();
     }
 
+    private void ResumeMessageBinding()
+    {
+        // Same source/client only (the caller already ran ApplyCurrentSource). Rebase visual
+        // ownership without clearing/reapplying rows or resetting the native ScrollViewer.
+        if (_messageBinding is { } binding)
+            _messageBinding = binding with { PageGeneration = _pageGeneration };
+        for (var i = 0; i < _retainedMessageWindows.Count; i++)
+        {
+            var window = _retainedMessageWindows[i];
+            _retainedMessageWindows[i] = window with { Binding = window.Binding with { PageGeneration = _pageGeneration } };
+        }
+    }
+
     private void RetainMessageWindow()
     {
         if (!_messageWindowAccepted || _messageBinding is not { Directory: not null } binding

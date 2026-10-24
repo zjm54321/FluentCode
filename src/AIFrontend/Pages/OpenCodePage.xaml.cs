@@ -48,7 +48,8 @@ namespace AIFrontend.Pages;
 /// 无变化 / 单条助手消息推断请求级成功，也不发送任何“完成”通知。
 /// </para>
 /// <para>
-/// 生命周期：Loaded 时加载设置并启动轮询；Unloaded 时停止轮询、取消在途请求并释放客户端。
+/// 生命周期：Loaded 时绑定当前来源并恢复同步；Unloaded 仅暂停活动，缓存的标签、草稿与浏览器保留。
+/// 窗口关闭时由宿主调用 ShutdownPage，最终释放页面自持资源。
 /// 切换会话会递增 generation 并取消旧会话的 CancellationTokenSource，
 /// 迟到的旧响应在应用前一律丢弃，不会污染当前页面。
 /// </para>
@@ -120,6 +121,8 @@ public sealed partial class OpenCodePage : Page
     private int _pageGeneration;
     private int _sessionGeneration;
     private bool _pageActive;
+    private bool _pageReleased;
+    private event EventHandler? PageReleased;
     private bool _isRefreshing;
     private bool _refreshQueued;
     private bool _refreshQueuedInitial;
@@ -159,6 +162,7 @@ public sealed partial class OpenCodePage : Page
         _homeSettings = settingsService;
 
         this.InitializeComponent();
+        NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
         InitializeNoticeDismissal();
 
         _conversationView.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -258,7 +262,7 @@ public sealed partial class OpenCodePage : Page
 
     private void OnPageLoaded(object sender, RoutedEventArgs e)
     {
-        if (_pageActive)
+        if (_pageActive || _pageReleased)
         {
             return;
         }
@@ -271,11 +275,17 @@ public sealed partial class OpenCodePage : Page
         SubscribeAppSourceChanged();
         AttachConversationEvents();
         AttachViewAcknowledgementEvents();
+        UpdateViewAcknowledgementVisibility(_hostWindowVisible);
 
         try
         {
             // App 事件仅提示重读属性：Loaded 后立即读取当前来源（null/已撤销 → 显示等待）。
+            var previousSource = _source;
             ApplyCurrentSource();
+            if (SourceReady && ReferenceEquals(previousSource, _source))
+            {
+                ResumeCachedSource();
+            }
         }
         catch (Exception)
         {
@@ -298,20 +308,28 @@ public sealed partial class OpenCodePage : Page
 
     private void OnPageUnloaded(object sender, RoutedEventArgs e)
     {
+        // XAML reparenting can deliver a late Unloaded after a newer Loaded.
+        if (IsLoaded) return;
+        PausePage();
+    }
+
+    private void PausePage()
+    {
         if (!_pageActive)
         {
             return;
         }
 
+        PauseTerminalView();
         SuspendDraftSlotForPageUnload();
         _pageActive = false;
-        _hostWindowVisible = false;
+        // Host visibility is a window fact, not page visibility. Retain it for reparent/reload
+        // (which need not trigger a new MainWindow push), but immediately revoke the view proof.
         UpdateViewAcknowledgementVisibility(false);
         DetachViewAcknowledgementEvents();
         _pageGeneration++;
         _sessionGeneration++;
         BindComposer();
-        ClearSessionReturnContext();
 
         // 卸载即失效：在途 view ACK 的 fence 立即失败（helper 保留尝试键，重进同会话绝不重发）。
         InvalidateViewAcknowledgement();
@@ -327,28 +345,79 @@ public sealed partial class OpenCodePage : Page
         CancelSessionOperations();
         TrustedEndpointIdentityChanged -= OpenCodePage_TrustedEndpointIdentityChanged;
         UnsubscribeAppSourceChanged();
-        _source = null;
-        _sourceRevision = 0;
         _recoveryOrigin = null;
-        DisposeOwnClient();
-
-        _conversationView.ClearMessages();
         DetachConversationEvents();
         ClearAgentSelector();
+        _sessionRecoveryPanel.HideConfirm();
+        _mutationEpoch++;
+        _interactionBusy = false;
+        RevokeMessageRefresh();
+        _messageChainGeneration++;
+        _isLoadingOlderMessages = false;
+        _isLoadingMoreSessions = false;
+        _statusRefreshRunning = false;
+        // The view/window/cursors and source-owned client remain intact. Old requests have
+        // cancelled tokens and old generations; Loaded installs fresh capabilities, not tabs.
+    }
+
+    private void ResumeCachedSource()
+    {
+        ResumeMessageBinding();
+        if (_selectedSessionId is not null) _sessionCts = new CancellationTokenSource();
+        _messageHistoryWorkflowOwner = null;
+        _messageHistoryNeedsState = true; // The navigation gap may contain a revert/model boundary.
+        BeginHomeSource();
+        StartEventSync();
+        BindComposer();
+        if (_newSessionDraftActive) EnsureBlankPreferences();
+        if (!_homeActive && !_newSessionDraftActive && _selectedSessionId is { } id)
+            ConfigureAgentSelectorForSession(id);
+        QueueAgentTreeRefresh();
+        RefreshRightPanelMetadata();
+        _ = RefreshSessionsAsync();
+        _ = RefreshMessagesAsync(); // Non-initial refresh retains the current reading position.
+    }
+
+    /// <summary>宿主窗口最终关闭；即使页面已离开 Frame 也必须调用。UI 线程、幂等。</summary>
+    public void ShutdownPage()
+    {
+        if (_pageReleased) return;
+        // Force pause even when Window.Closed precedes the native Unloaded notification.
+        _pageReleased = true;
+        PausePage();
+        SessionStateUi_Unloaded(this, new RoutedEventArgs());
+        ResetHomeSource();
+        _homeChromeTimer?.Stop();
+        ResetAgentTree();
+        ClearRightPanelCopyHint();
+        StopDockMotion();
+        if (_sidebarSettings is not null && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+            _sidebarSettings.AnimationsEnabledChanged -= Sidebars_AnimationsEnabledChanged;
+        _sidebarSettings = null;
+        if (_wslQuickAccessSubscribed) _homeSettings.Changed -= WslQuickAccessSettingsChanged;
+        _wslQuickAccessSubscribed = false;
+        ResetWslQuickAccessHome();
+        PageReleased?.Invoke(this, EventArgs.Empty);
+        PageReleased = null;
+        _source = null;
+        _sourceRevision = 0;
+        DisposeOwnClient();
+        ClearSessionReturnContext();
+        ClearAgentSelector();
+        _conversationView.ClearMessages();
         _interactionsView.ClearAll();
         _sessionRecoveryPanel.HideConfirm();
         _sessionRecoveryPanel.HideEntry();
-        _sessionProtectionHint = false;
-        _mutationEpoch++;
-        _interactionBusy = false;
+        _sessionItems.Clear();
         _lastIdleBySession.Clear();
         _workingSessions.Clear();
-        PermissionBar.IsOpen = false;
-        _sessionItems.Clear();
         ResetSessionPaginationState();
         ResetMessagePaginationState();
-
-        // _selectedSessionId / _pendingAckIds 保留：重新进入本页后恢复选中并继续跟踪待投递条目。
+        foreach (var slot in _draftSlots.Values.ToArray()) ReleaseDraftSlot(slot);
+        _createdDraftTransfers.Clear();
+        _activeDraftSlot = null;
+        _draftRecoverySlot = null;
+        if (_composerController is { } controller) controller.DiscardDraft(controller.Snapshot.Token);
     }
 
     // ------------------------------------------------------------------

@@ -90,8 +90,8 @@ public sealed partial class OpenCodePage
         // Selection includes Home/new tabs; pages in other sessions keep their invisible hosts.
         SessionTabs.SelectionChanged += (_, _) => DispatcherQueue.TryEnqueue(SyncBrowserSession);
         LayoutUpdated += (_, _) => { if (_browserSelectedSession != _selectedSessionId || !ReferenceEquals(_browserSource, _source is { IsRevoked: false } ? _source : null)) SyncBrowserSession(); };
-        Unloaded += (_, _) => DisposeBrowserEngineResources();
-        Unloaded += (_, _) => DisposeBrowserSelection();
+        PageReleased += (_, _) => DisposeBrowserEngineResources();
+        PageReleased += (_, _) => DisposeBrowserSelection();
         SessionRetired += (_, args) =>
         {
             if (!ReferenceEquals(args.Source, _browserSource)) return;

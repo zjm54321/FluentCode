@@ -44,7 +44,7 @@ public sealed partial class OpenCodePage
         _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
         _agentTree.ShellRequested += OpenTerminalView;
         Loaded += (_, _) => QueueAgentTreeRefresh();
-        Unloaded += (_, _) => ResetAgentTree();
+        Unloaded += (_, _) => { if (!IsLoaded) ResetAgentTree(); };
     }
 
     private TreeBinding? CaptureTreeBinding() => _pageActive && SourceReady && !_sessionMissing
@@ -210,7 +210,7 @@ public sealed partial class OpenCodePage
                 }
             }
             catch (OpenCodeException) { if (Current()) _treeHint = "后台终端列表不可用"; }
-            if (Current()) RenderAgentTree();
+            if (Current()) { RenderAgentTree(); ResumeTerminalView(); }
         }
         catch (OperationCanceledException) { }
         catch (OpenCodeException) { if (Current()) { _treeHint = "智能体或子会话读取不可用"; RenderAgentTree(); } }

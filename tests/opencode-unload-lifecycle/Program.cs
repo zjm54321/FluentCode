@@ -21,7 +21,8 @@ internal static class Program
             ("TurnChip", TurnFixture.Test), ("Shimmer", ShimmerFixture.Test),
             ("InstructionDialog", DialogFixture.Test), ("Fonts", FontFixture.Test),
             ("OwnedGroup", GroupFixture.Test), ("OwnedIndicator", IndicatorFixture.Test),
-            ("OwnedBubble", BubbleFixture.Test), ("OwnedPicker", PickerFixture.Test) })
+            ("OwnedBubble", BubbleFixture.Test), ("OwnedPicker", PickerFixture.Test),
+            ("BrowserStrip", BrowserStripFixture.Test) })
         {
             var selection = args.Length == 0 ? "All" : args[0];
             if (selection == "AuditOwned" ? !name.StartsWith("Owned", StringComparison.Ordinal)
@@ -256,5 +257,34 @@ internal static class PickerFixture
         anchor.Unload(false);
         Program.Check(completion.Task.Result == cancelled, "repeated anchor detach must remain cancelled");
         anchor.Unloaded -= Unloaded;
+    }
+}
+
+internal enum Visibility { Visible, Collapsed }
+internal sealed class BrowserStripFixture
+{
+    private readonly Element _root = new();
+    private bool IsLoaded => _root.IsLoaded;
+    private event Action<object, RoutedEventArgs> Loaded { add => _root.Loaded += value; remove => _root.Loaded -= value; }
+    private event Action<object, RoutedEventArgs> Unloaded { add => _root.Unloaded += value; remove => _root.Unloaded -= value; }
+    private double Height, Opacity;
+    private Visibility visibility;
+    private Visibility Visibility { get => visibility; set => visibility = value; }
+    private sealed class Timer { internal bool Running; internal void Start() => Running = true; internal void Stop() => Running = false; }
+    private readonly Timer _capture = new();
+    private Timer? _transition = new();
+    private readonly bool _expanded = true;
+    private int refreshes;
+    private void Refresh() => refreshes++;
+    private BrowserStripFixture() { /* BROWSER_STRIP */ }
+    internal static void Test()
+    {
+        var f = new BrowserStripFixture(); f._root.Load(); f._root.Unload(true);
+        Program.Check(f._capture.Running, "late browser strip unload cannot stop current thumbnail capture");
+        f._root.Unload(false);
+        Program.Check(!f._capture.Running && f._transition is null && f.Height == 132 && f.Opacity == 1 && f.visibility == Visibility.Visible,
+            "browser strip navigation pause stops capture/motion and retains the expanded visual target");
+        f._root.Load();
+        Program.Check(f._capture.Running && f.refreshes == 2, "browser strip reload refreshes tiles and restarts capture even when expanded was already true");
     }
 }

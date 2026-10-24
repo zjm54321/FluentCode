@@ -221,9 +221,9 @@ internal static class DraftSlotPageTests
         session.Text("session clean");await session.File("session.txt",new byte[]{7});session.Composer.Select(1,4);
         var sessionSource=session.SourceInstance;var sessionEpoch=session.SourceEpoch;var sessionToken=session.Draft.Token;
         session.LeavePage();session.ReturnPage(sessionSource);
-        Check(session.SourceEpoch==sessionEpoch&&ReferenceEquals(session.Session("same"),actor)&&session.Current=="same"&&!session.Recovery&&!session.Draft.IsActive,"existing actor/selection survive reinstall but old message-binding/PageGen does not grant directory authority");
+        Check(session.SourceEpoch==sessionEpoch&&ReferenceEquals(session.Session("same"),actor)&&session.Current=="same"&&!session.Recovery&&session.Draft.IsActive,"same-source navigation retains accepted directory and reactivates the selected session draft under fresh page capabilities");
         await session.Directory("same","/project");
-        Check(session.Draft.IsActive&&session.Draft.Text=="session clean"&&session.Draft.Attachments.Single().Name=="session.txt"&&session.Composer.SelectionStart==1&&session.Composer.SelectionLength==4,"existing real directory-confirmation switch restores same-source slot with fresh activation");
+        Check(session.Draft.IsActive&&session.Draft.Text=="session clean"&&session.Draft.Attachments.Single().Name=="session.txt"&&session.Composer.SelectionStart==1&&session.Composer.SelectionLength==4,"same accepted directory selection retains restored text/file/caret without another destructive switch");
         Check(session.Draft.Token.Scope!=sessionToken.Scope&&session.Controller.TryApplyEditorInput(sessionToken,"old page",false)is null,"existing-session old Page activation cannot become current again");
 
         session.LeavePage();sessionSource.Revoke();var replacement=session.NewSource(sessionSource.Identity,sessionSource.Revision+1);session.ReturnPage(replacement);

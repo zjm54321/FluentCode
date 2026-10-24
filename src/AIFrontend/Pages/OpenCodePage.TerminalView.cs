@@ -21,12 +21,36 @@ public sealed partial class OpenCodePage
     private bool _terminalInitialized;
     private bool _terminalReading;
     private long _terminalVersion;
+    private (TreeBinding Binding, string Directory, OpenCodeTreeShell Shell)? _pausedTerminal;
+
+    private void PauseTerminalView()
+    {
+        if (_terminalBinding is { } binding && _treeDirectory is { } directory
+            && _terminalState.ShellId is { } id && _treeShells.TryGetValue(id, out var shell))
+            _pausedTerminal = (binding, directory, shell);
+        CloseTerminalView(restoreFocus: false);
+    }
+
+    private void ResumeTerminalView()
+    {
+        if (_pausedTerminal is not { } paused) return;
+        _pausedTerminal = null;
+        if (_homeActive || _newSessionDraftActive || CaptureTreeBinding() is not { } current
+            || !ReferenceEquals(paused.Binding.Source, current.Source) || paused.Binding.Revision != current.Revision
+            || paused.Binding.SessionId != current.SessionId || paused.Directory != _treeDirectory) return;
+        // /shell lists only running commands. A command which finished while hidden still has
+        // its detail/output route, so retain its verified identity and let that route reconcile it.
+        _treeShells.TryAdd(paused.Shell.Id, paused.Shell);
+        OpenTerminalView(paused.Shell.Id);
+    }
 
     private void TerminalViewHost_Loaded(object sender, RoutedEventArgs e)
     {
         if (_terminalInitialized) return;
         _terminalInitialized = true;
-        Unloaded += (_, _) => CloseTerminalView(restoreFocus: false);
+        // Page pause captures the verified shell before the tree resets; Loaded's fresh tree
+        // reopens that shell. Only final release discards the retained terminal identity.
+        PageReleased += (_, _) => { _pausedTerminal = null; CloseTerminalView(restoreFocus: false); };
         // Also works when focus has moved to a dock while the terminal is open.
         PageRoot.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, key) =>
         {

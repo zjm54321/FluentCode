@@ -78,14 +78,14 @@ public sealed partial class OpenCodePage
     private sealed class TimerBoundary{internal void Stop(){}}private TimerBoundary? _pollTimer;
     private event EventHandler? TrustedEndpointIdentityChanged;
     private void OpenCodePage_TrustedEndpointIdentityChanged(object? sender,EventArgs e){}
-    private void UpdateViewAcknowledgementVisibility(bool visible){}private void DetachViewAcknowledgementEvents(){}
-    private void UnsubscribeAppSourceChanged(){}private void DetachConversationEvents(){}private void StopEventSync(){}
+    private void UpdateViewAcknowledgementVisibility(bool visible)=>AckVisible=visible;private void DetachViewAcknowledgementEvents(){}
+    private void UnsubscribeAppSourceChanged()=>SourceSubscriptions--;private void DetachConversationEvents()=>ConversationSubscriptions--;private void StopEventSync()=>EventRunning=false;
     private static OpenCodePageSource? _fixtureAppSource;
     private static OpenCodePageSource? ReadAppSource()=>_fixtureAppSource; // App property boundary only; actual Apply/install decision is source-linked.
     private void ShowWorkspace(){}
     private Task RefreshSessionsAsync()=>Task.CompletedTask; // No synthetic directory: tests explicitly deliver real directory confirmation through actual Switch.
     private Task TryDrainNavigationQueueAsync()=>Task.CompletedTask;
-    private void StartEventSync(){}
+    private void StartEventSync(){EventRunning=true;EventStarts++;}
     private void ResetSessionPaginationState(){}
     private void ResetHomeSource(){_homeCancellation?.Cancel();_homeCancellation?.Dispose();_homeCancellation=null;_homeRuntimeSource=Guid.NewGuid().ToString("N");_blankPickerEpoch++;_blankPickerPending=false;}
     private void BeginHomeSource(){_homeCancellation=new();}
@@ -141,10 +141,10 @@ public sealed partial class OpenCodePage
     internal Guid SourceEpoch=>_draftSourceEpoch;
     internal OpenCodePageSource SourceInstance=>_source!;
     internal OpenCodePageSource NewSource(string identity,long revision)=>new(identity,revision,CreateClient);
-    internal void LeavePage(bool childUnloadedFirst=false){if(childUnloadedFirst)_composerView!.NativeUnloaded();OnPageUnloaded(this,new());ResetHomeSource();}
+    internal void LeavePage(bool childUnloadedFirst=false){if(childUnloadedFirst)_composerView!.NativeUnloaded();IsLoaded=false;OnPageUnloaded(this,new());ResetHomeSource();}
     internal void ReturnPage(OpenCodePageSource? source)
     {
-        _fixtureAppSource=source;_pageActive=true;_pageGeneration++;_pageCts=new();_composerView!.NativeLoaded();BindComposer();ApplyCurrentSource();
+        _fixtureAppSource=source;IsLoaded=true;_composerView!.NativeLoaded();OnPageLoaded(this,new());
     }
     internal object? RecoveryTab=>_draftRecoveryTab;
     internal bool SavedData(TabViewItem item)=>TryGetRetiredDraftTab(item,out var slot)&&slot?.Data is not null;
@@ -227,7 +227,7 @@ public sealed partial class OpenCodePage
         BlankPreferencesHint.TextUpdated=OnBlankLabelsRefreshed;
         InitializePinnedHomeTab();
     }
-    internal void Load(){_pageActive=true;SessionTabs_Loaded(SessionTabs,new());}
+    internal void Load(){IsLoaded=true;OnPageLoaded(this,new());SessionTabs_Loaded(SessionTabs,new());}
     internal void ReloadGeneration(){_pageActive=false;_pageGeneration++;_pageActive=true;SessionTabs_Loaded(SessionTabs,new());}
     internal void UnloadFixture()=>_pageActive=false;
     internal void AddSession(string id)
@@ -284,7 +284,7 @@ public sealed partial class OpenCodePage
     private void ResetMessagePaginationState(){}private void RetainMessageWindow(){}private void RestoreMessageWindow(){}
     public event EventHandler<OpenCodeSessionTrackedEventArgs>? SessionTracked;
     public event EventHandler<OpenCodeSessionRetiredEventArgs>? SessionRetired;
-    private Task RefreshMessagesAsync(bool initial){MessageLoads++;return Task.CompletedTask;}
+    private Task RefreshMessagesAsync(bool initial=false){if(_selectedSessionId is not null&&_pageActive)MessageLoads++;return Task.CompletedTask;}
     private void SetBlankComposerPlacement(bool blank){}private void WireNewSessionList(){}private void RefreshNewSessionList(){}
     private void OnBlankLabelsRefreshed(){if(!_blankPickerPending){_agentIdle?.TrySetResult();_agentIdle=null;if(_activeBlankSlotId is{} id&&_defaultsReady.TryGetValue(id,out var ready))ready.TrySetResult();}}
     private void InsertSessionItemFirst(OpenCodeSessionInfo info)

@@ -71,6 +71,7 @@ public sealed partial class OpenCodePage
         Loaded += Sidebars_Loaded;
         Unloaded += (_, _) =>
         {
+            if (IsLoaded) return;
             StopDockMotion();
             if (_sidebarSettings is not null && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
                 _sidebarSettings.AnimationsEnabledChanged -= Sidebars_AnimationsEnabledChanged;
@@ -81,6 +82,7 @@ public sealed partial class OpenCodePage
 
     private void Sidebars_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_sidebarSettings is not null) return;
         _sidebarSettings = new UISettings();
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
             _sidebarSettings.AnimationsEnabledChanged += Sidebars_AnimationsEnabledChanged;

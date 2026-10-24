@@ -52,7 +52,7 @@ public sealed partial class OpenCodePage
         InitializePinnedHomeTab();
         HomePageHost.Children.Add(_homeView);
         Loaded += (_, _) => { if (_homeActive) ShowHomePage(); };
-        Unloaded += (_, _) => ResetHomeSource();
+        Unloaded += (_, _) => { if (!IsLoaded) ResetHomeSource(); };
         ActualThemeChanged += (_, _) => UpdateWordmark();
         SessionLayoutRoot.SizeChanged += (_, _) => { UpdateConversationColumns(); if (_blankComposerPlacement) QueueComposerLayout(); };
         MessageScroll.SizeChanged += (_, _) => UpdateConversationColumns();
@@ -72,7 +72,7 @@ public sealed partial class OpenCodePage
         // No refresh button: session create/delete/rename events and live status snapshots already re-project Home.
         _homeView.SetWordmark(_homeWordmark);
         Loaded += (_, _) => _homeChromeTimer?.Start();
-        Unloaded += (_, _) => _homeChromeTimer?.Stop();
+        Unloaded += (_, _) => { if (!IsLoaded) _homeChromeTimer?.Stop(); };
         _homeChromeTimer = DispatcherQueue.CreateTimer();
         _homeChromeTimer.Interval = TimeSpan.FromSeconds(1);
         // Local-state reconciliation only (connection state, already-read server version, settings); never a network poll.

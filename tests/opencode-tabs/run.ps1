@@ -7,7 +7,7 @@ $pack=Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory|Where-Obj
 if(!$sdk -or !$pack){throw '.NET 10 required.'}
 New-Item -ItemType Directory -Path $EvidenceRoot|Out-Null
 function Extract([string]$source,[string]$name){
- $starts=[regex]::Matches($source,'(?m)^    (?:private|partial|internal) (?:(?:static|async) )*[\w<>?]+ '+[regex]::Escape($name)+'(?:<[^>]+>)?\(')
+  $starts=[regex]::Matches($source,'(?m)^    (?:private|partial|internal|public) (?:(?:static|async) )*[\w<>?]+ '+[regex]::Escape($name)+'(?:<[^>]+>)?\(')
  if($starts.Count -ne 1){throw "Expected one actual member: $name"}
  $text=$source.Substring($starts[0].Index);$opening=$text.IndexOf('{');$arrow=$text.IndexOf('=>')
  $pattern=if($arrow -ge 0 -and ($opening -lt 0 -or $arrow -lt $opening)){'(?ms)\A.*?;[ \t]*\r?$'}else{'(?ms)\A.*?^    \}\r?$'}
@@ -29,13 +29,14 @@ $members+=Extract $homeSource 'OwnsHome'
 $blankChoicePath="$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs";$choices=[IO.File]::ReadAllText($blankChoicePath)
 $baseline=if($BaselineBlankFile){[IO.File]::ReadAllText($BaselineBlankFile)}else{''}
 $members+=@('EnsureBlankPreferences','HasBlankMetadata','OwnBlankMetadata','AcceptBlankAgentPresentation','HasBlankAgentPresentation','OwnsBlankMetadata','LoadBlankMetadataAsync','BlankSelectedAgent','ApplyBlankDefaults','ReadBlankAgentModel','IsBlankAgentSelectable','BlankStrengthText','CaptureBlankPreferences','OwnsBlankPreferences','SetBlankVariantAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click','BlankProjectButton_Click')|ForEach-Object{if($baseline -and $_ -in @('OwnBlankMetadata','LoadBlankMetadataAsync','ApplyBlankAgentColor','RefreshBlankPreferenceLabels','BlankAgentButton_Click')){Extract $baseline $_}else{Extract $choices $_}}
-$members+=@('SwitchToSessionAsync','CancelSessionOperations','IsCurrentBindingFields','IsCurrentBinding','SelectSessionItem','CreateOperationToken','OnPageUnloaded','ApplyCurrentSource','InvalidateForSourceChange','DisposeOwnClient')|ForEach-Object{Extract $page $_}
+$members+=@('SwitchToSessionAsync','CancelSessionOperations','IsCurrentBindingFields','IsCurrentBinding','SelectSessionItem','CreateOperationToken','OnPageLoaded','OnPageUnloaded','PausePage','ResumeCachedSource','ShutdownPage','ApplyCurrentSource','InvalidateForSourceChange','DisposeOwnClient')|ForEach-Object{Extract $page $_}
 $members+=@('RaiseSessionTracked','RaiseSessionRetired')|ForEach-Object{Extract $page $_}
 $builtinPath="$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs";$builtin=[IO.File]::ReadAllText($builtinPath)
 $members+=Extract $builtin 'CreateNativeSessionAsync'
 $ready=[regex]::Match($page,'(?m)^    private bool SourceReady =>[^;]*;');if(!$ready.Success){throw 'Missing SourceReady'};$members+=$ready.Value
 $members+=[regex]::Match($binding,'(?ms)^    private sealed record MessageBinding\(.*?;').Value
-$members+=@('KnownSessionDirectory','IsSameMessageBinding','BeginSessionMessageBinding')|ForEach-Object{Extract $binding $_}
+$members+=[regex]::Match($binding,'(?ms)^    private sealed record MessageWindow\(.*?;').Value
+$members+=@('KnownSessionDirectory','IsSameMessageBinding','BeginSessionMessageBinding','ResumeMessageBinding')|ForEach-Object{Extract $binding $_}
 $composerPath="$repo/src/AIFrontend/Pages/OpenCodePage.Composer.cs";$composer=[IO.File]::ReadAllText($composerPath)
 $members+=@('OwnsComposerBinding','BindComposer','GetComposerSnapshot','OnComposerSnapshotChanged')|ForEach-Object{Extract $composer $_}
 $members+=[regex]::Match($composer,'(?ms)^    private string\? ComposerBindingSessionId\r?\n.*?;').Value
@@ -55,6 +56,7 @@ $imageGenerated=Join-Path $EvidenceRoot 'ActualBrowserChipImage.cs'
 $sources+=@($imageGenerated,"$PSScriptRoot/BrowserChipImageHost.cs")
 $sources+="$PSScriptRoot/PageSlots.cs"
 $sources+="$PSScriptRoot/RetirementTests.cs"
+$sources+="$PSScriptRoot/NavigationLifecycle.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSidebarLayout.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentIcons.cs"

@@ -74,6 +74,7 @@ public sealed partial class OpenCodePage
 
     private void SessionStateUi_Unloaded(object sender, RoutedEventArgs e)
     {
+        if (IsLoaded && !_pageReleased) return;
         UnsubscribeSessionStateUi();
         ClearSessionStateIndicators();
     }

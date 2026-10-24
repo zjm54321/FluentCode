@@ -1,6 +1,6 @@
 # Executes verbatim production lifecycle handlers with deterministic element/service doubles.
 # No WinUI runtime or desktop: isolates Loaded -> Loaded -> late Unloaded ordering.
-# All runs all ten regressions; AuditOwned selects the four formerly delegated cases (also expected to pass).
+# All runs all eleven regressions; AuditOwned selects the four formerly delegated cases (also expected to pass).
 param([string]$EvidenceRoot, [string]$Case = 'All')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -30,6 +30,7 @@ $text = $text.Replace('/* GROUP */', (Slice 'Pages/OpenCode/OpenCodeToolGroupVie
 $text = $text.Replace('/* INDICATOR */', (Slice 'Pages/OpenCode/OpenCodeWorkingIndicator.cs' '_label.Loaded +=' "`n    }"))
 $text = $text.Replace('/* BUBBLE */', (Slice 'Pages/OpenCode/OpenCodeUserBubbleView.cs' '_bubble.Loaded +=' '        ApplyToggleText();'))
 $text = $text.Replace('/* PICKER */', (Slice 'Pages/OpenCode/OpenCodePickerFlyout.cs' 'void Unloaded(object sender' "`n        try"))
+$text = $text.Replace('/* BROWSER_STRIP */', (Slice 'Pages/OpenCode/OpenCodeBrowserStrip.cs' '        Loaded +=' "`n    }"))
 $generated = Join-Path $output 'Lifecycle.Generated.cs'
 [IO.File]::WriteAllText($generated, $text)
 $dll = Join-Path $output 'UnloadLifecycle.dll'

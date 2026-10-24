@@ -48,7 +48,18 @@ internal sealed class OpenCodeBrowserStrip : Grid
         {
             foreach (var tile in _tiles.Values.ToArray()) await tile.CaptureAsync();
         };
-        Unloaded += (_, _) => { _capture.Stop(); Bind(null); };
+        Loaded += (_, _) => { Refresh(); if (_expanded) _capture.Start(); };
+        Unloaded += (_, _) =>
+        {
+            if (IsLoaded) return;
+            _capture.Stop();
+            _transition?.Stop(); _transition = null;
+            Height = _expanded ? 132d : 0d;
+            Opacity = _expanded ? 1 : 0;
+            Visibility = _expanded ? Visibility.Visible : Visibility.Collapsed;
+            // Keep the workspace/tiles (and horizontal reading position) while the page is cached.
+            // The page's final-release path calls Bind(null) to detach and dispose them.
+        };
     }
 
     public void Bind(IOpenCodeBrowserWorkspace? workspace)

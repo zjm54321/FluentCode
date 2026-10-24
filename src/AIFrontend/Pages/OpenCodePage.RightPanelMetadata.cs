@@ -28,9 +28,11 @@ public sealed partial class OpenCodePage
         _rightPanelMetadata.CopyButton.Click += (_, _) => CopyRightPanelSessionId();
         Unloaded += (_, _) =>
         {
+            if (IsLoaded) return;
             ClearRightPanelCopyHint();
             RefreshRightPanelMetadata();
         };
+        Loaded += (_, _) => RefreshRightPanelMetadata();
         RefreshRightPanelMetadata();
     }
 

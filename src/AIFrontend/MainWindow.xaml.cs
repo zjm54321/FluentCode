@@ -40,6 +40,7 @@ public sealed partial class MainWindow : Window
     // 三个 WebView2 宿主；窗口关闭时即使 Frame 当前停在 OpenCode/Settings，也必须对它做最终释放
     // （见 ReleaseCachedNormalPageWebViews），避免缓存实例带着存活 WebView2 成为孤儿。
     private Pages.NormalPage? _cachedNormalPage;
+    private Pages.OpenCodePage? _cachedOpenCodePage;
 
     // 离开设置页的脏数据保护：拦下导航 → 页内三态确认 → 按选择保存/放弃/取消后重放导航。
     private bool _settingsLeaveConfirmed;
@@ -236,6 +237,8 @@ public sealed partial class MainWindow : Window
         // 最终释放缓存 NormalPage 的 WebView2 宿主：该页经 NavigationCacheMode.Required 跨主导航保活，
         // 当前 Frame 可能已停在 OpenCode/Settings——仍须关闭其宿主，避免孤儿 WebView2 与进程泄漏。
         ReleaseCachedNormalPageWebViews();
+        _cachedOpenCodePage?.ShutdownPage();
+        _cachedOpenCodePage = null;
 
         // 兜底解除仍在等待 Local 真正收尾的旧页面订阅（不泄漏）。
         DetachDeferredNormalPages();
@@ -790,6 +793,7 @@ public sealed partial class MainWindow : Window
                 break;
 
             case Pages.OpenCodePage openCodePage:
+                _cachedOpenCodePage = openCodePage;
                 openCodePage.SettingsRequested += Page_SettingsRequested;
                 openCodePage.SessionTracked += OpenCodePage_SessionTracked;
                 openCodePage.SessionRetired += OpenCodePage_SessionRetired;
