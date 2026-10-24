@@ -24,6 +24,11 @@ $members += [regex]::Match($layout, '(?ms)^    internal static bool HideChildCom
 $singleRow = [regex]::Match($layout, '(?m)^    internal static bool UseSingleRowComposer\([^\r\n]*;')
 if (!$singleRow.Success) { throw 'Missing composer row policy' }
 $members += $singleRow.Value
+foreach ($name in @('ComposerOverTwoLines', 'ComposerSingleRowTextWidth')) {
+    $member = [regex]::Match($layout, '(?ms)^    internal static [^\r\n]*\b' + $name + '\(.*?;')
+    if (!$member.Success) { throw "Missing composer measurement policy: $name" }
+    $members += $member.Value
+}
 foreach ($spec in @(@($blank, 'ApplyBlankAgentColor'), @($blank, 'IsBlankAgentSelectable'))) {
     $pattern = if ($spec[1] -eq 'IsBlankAgentSelectable') { '(?ms)^    private static bool IsBlankAgentSelectable\(.*?;' }
         else { '(?ms)^    (?:private|internal) [^\r\n]*\b' + $spec[1] + '\(.*?^    \}' }

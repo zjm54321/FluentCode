@@ -32,8 +32,19 @@ namespace AIFrontend.Pages
             Check(HideChildComposer("child", "child", "parent"), "child session has no composer");
             Check(!HideChildComposer("main", "main", null) && !HideChildComposer("new", "old", "parent")
                 && !HideChildComposer(null, null, "parent"), "main, missing and stale session metadata do not hide another session composer");
-            Check(UseSingleRowComposer(false, true) && !UseSingleRowComposer(false, false)
-                && !UseSingleRowComposer(true, true) && !UseSingleRowComposer(true, false), "only wide sessions use a single composer row");
+            foreach (var lines in new[] { 1, 2, 3, 5, 8 })
+            {
+                var overTwo = ComposerOverTwoLines(lines * 20, 20, false);
+                Check(UseSingleRowComposer(false, true, overTwo) == (lines <= 2), "wide session switches below editor only beyond two lines");
+                Check(!UseSingleRowComposer(false, false, overTwo) && !UseSingleRowComposer(true, true, overTwo)
+                    && !UseSingleRowComposer(true, false, overTwo), "narrow/new-session drafts always retain two rows");
+            }
+            Check(!ComposerOverTwoLines(40.4, 20, false) && ComposerOverTwoLines(40.4, 20, true)
+                && !ComposerOverTwoLines(40, 20, false) && !ComposerOverTwoLines(40, 20, true), "half-pixel hysteresis suppresses measure jitter; two real lines return to one row");
+            var compactWidth = ComposerSingleRowTextWidth(760, 32, 32, 8, 58);
+            Check(compactWidth == 622 && ComposerSingleRowTextWidth(760, 32, 70, 8, 58) == 584,
+                "single-row measurement reserves plus, send/queue actions, grid gaps and editor chrome");
+            Check(ComposerSingleRowTextWidth(50, 32, 70, 8, 58) == 1, "measurement width is positive before layout settles");
             foreach (var literal in new[] { "#123456", "#aBcDeF", "#000000", "#FFFFFF" })
             {
                 page.ApplyBlankAgentColor(literal);
@@ -135,6 +146,16 @@ namespace AIFrontend.Pages
             Check(layout.Contains("ArrangeComposerRows(singleRow)") && layout.Contains("Grid.SetRow(ComposerActions, singleRow ? 0 : 1)")
                 && layout.Contains("Grid.SetRow(ComposerToolbarLeft, singleRow ? 0 : 1)")
                 && !layout.Contains("Children.Remove") && layout.Contains("Composer.TextCompositionEnded +="), "responsive rows change attached layout only, never editor parent or identity");
+            Check(layout.Contains("ComposerSingleRowTextWidth(ComposerInputLayout.ActualWidth,")
+                && layout.Contains("ComposerOverTwoLines(measure.DesiredSize.Height, line, _composerOverTwoLines)")
+                && !layout.Contains("ComposerEditorHost.ActualWidth")
+                && layout.IndexOf("ComposerOverTwoLines(measure.DesiredSize.Height", StringComparison.Ordinal)
+                    < layout.IndexOf("ArrangeComposerRows(singleRow)", StringComparison.Ordinal),
+                "both layouts test identical compact editor width before changing attached properties, preventing wrap oscillation");
+            Check(layout.Contains("Grid.SetColumn(ComposerEditorHost, singleRow ? 1 : 0)")
+                && layout.Contains("Grid.SetColumnSpan(ComposerEditorHost, singleRow ? 1 : 3)")
+                && !layout.Contains("Composer.Focus(") && !layout.Contains("Composer.SelectionStart =")
+                && !layout.Contains("Composer.Text ="), "long drafts span the full top row without replacing text, focus or caret");
             Check(Named("ComposerEditorHost").Parent == Named("ComposerInputLayout")
                 && Named("ComposerActions").Parent == Named("ComposerInputLayout")
                 && Named("ComposerToolbarLeft").Parent == Named("ComposerInputLayout")

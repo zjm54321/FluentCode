@@ -29,8 +29,15 @@ public sealed partial class OpenCodePage
     private readonly TextBlock _composerMeasure = new() { TextWrapping = TextWrapping.Wrap };
     private bool _composerLayoutPending;
     private bool _composerOverFiveLines;
+    private bool _composerOverTwoLines;
 
-    internal static bool UseSingleRowComposer(bool newSession, bool wide) => !newSession && wide;
+    internal static bool UseSingleRowComposer(bool newSession, bool wide, bool overTwoLines) => !newSession && wide && !overTwoLines;
+
+    internal static bool ComposerOverTwoLines(double height, double line, bool wasOverTwoLines)
+        => height > 2 * line + (wasOverTwoLines ? 0 : 0.5);
+
+    internal static double ComposerSingleRowTextWidth(double layoutWidth, double leftWidth, double actionsWidth, double spacing, double chrome)
+        => Math.Max(1, layoutWidth - leftWidth - actionsWidth - 2 * spacing - chrome);
 
     private void ArrangeComposerRows(bool singleRow)
     {
@@ -39,7 +46,7 @@ public sealed partial class OpenCodePage
         Grid.SetColumnSpan(ComposerEditorHost, singleRow ? 1 : 3);
         Grid.SetRow(ComposerToolbarLeft, singleRow ? 0 : 1);
         Grid.SetRow(ComposerActions, singleRow ? 0 : 1);
-        // CP1: in one row, + and send sit on the editor's last line (40 px line, 32 px buttons) as it grows.
+        // Compact one/two-line drafts keep their actions beside the editor; longer drafts put them below.
         var lastLine = singleRow ? new Thickness(0, 0, 0, 4) : new Thickness(0);
         ComposerToolbarLeft.Margin = lastLine;
         ComposerActions.Margin = lastLine;
@@ -80,9 +87,6 @@ public sealed partial class OpenCodePage
     private void UpdateComposerLayout()
     {
         UpdateConversationColumns();
-        var singleRow = UseSingleRowComposer(_newSessionDraftActive, _sidebarLayout.IsWide);
-        ArrangeComposerRows(singleRow);
-        UpdateComposerToolbarLayout();
         var measure = _composerMeasure;
         measure.FontFamily = Composer.FontFamily;
         measure.FontSize = Composer.FontSize;
@@ -99,10 +103,20 @@ public sealed partial class OpenCodePage
         var stroke = Composer.BorderThickness;
         var chrome = padding.Top + padding.Bottom + stroke.Top + stroke.Bottom;
         var horizontalChrome = padding.Left + padding.Right + stroke.Left + stroke.Right;
-        // Measure the editor's own arranged width: wide sessions share its row with +/send.
-        var editorWidth = Math.Max(1, ComposerEditorHost.ActualWidth - horizontalChrome);
+        // Always test the hypothetical single-row width, even while the editor spans all columns.
+        // Testing the expanded editor would otherwise bounce between two and three wrapped lines.
+        var singleRowWidth = ComposerSingleRowTextWidth(ComposerInputLayout.ActualWidth,
+            ComposerToolbarLeft.ActualWidth, ComposerActions.ActualWidth, ComposerInputLayout.ColumnSpacing, horizontalChrome);
         measure.Text = Composer.Text + "\u200b"; // Preserve a trailing empty line in native text measure.
-        measure.Measure(new Size(editorWidth, double.PositiveInfinity));
+        measure.Measure(new Size(singleRowWidth, double.PositiveInfinity));
+        _composerOverTwoLines = !_newSessionDraftActive && _sidebarLayout.IsWide
+            && ComposerOverTwoLines(measure.DesiredSize.Height, line, _composerOverTwoLines);
+        var singleRow = UseSingleRowComposer(_newSessionDraftActive, _sidebarLayout.IsWide, _composerOverTwoLines);
+        ArrangeComposerRows(singleRow);
+        UpdateComposerToolbarLayout();
+        // The expand affordance still follows the editor's actual (possibly full-width) wrapping.
+        if (!singleRow)
+            measure.Measure(new Size(Math.Max(1, ComposerInputLayout.ActualWidth - horizontalChrome), double.PositiveInfinity));
         var maximum = OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
         Composer.MinHeight = line + chrome;
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
