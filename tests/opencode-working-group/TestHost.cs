@@ -16,7 +16,8 @@ namespace Microsoft.UI.Xaml
     public enum GridUnitType { Star }
     public record struct GridLength(double Value, GridUnitType Type = default) { public static GridLength Auto => new(0); }
     public record struct Thickness(double Left, double Top, double Right, double Bottom) { public Thickness(double all):this(all,all,all,all) {} }
-    public record struct CornerRadius(double Value);
+    public record struct CornerRadius(double TopLeft, double TopRight, double BottomRight, double BottomLeft)
+    { public CornerRadius(double all):this(all,all,all,all) {} }
     public class Style { public string? Key; }
     public class ResourceDictionary : Dictionary<string,object> { public Dictionary<string,object> ThemeDictionaries = new(); }
     public class RoutedEventArgs { public object? OriginalSource; }
@@ -56,7 +57,7 @@ namespace Microsoft.UI.Xaml
 }
 namespace Microsoft.UI.Xaml.Controls
 {
-    public class Control : FrameworkElement { public FocusState FocusState; public Microsoft.UI.Xaml.Media.SolidColorBrush? Background; }
+    public class Control : FrameworkElement { public FocusState FocusState; public CornerRadius CornerRadius; public Microsoft.UI.Xaml.Media.SolidColorBrush? Background; }
     public enum Orientation { Horizontal }
     public class Children(UIElement owner) : System.Collections.ObjectModel.Collection<UIElement>
     { protected override void InsertItem(int i, UIElement e) { base.InsertItem(i,e); e.Parent=owner; } }

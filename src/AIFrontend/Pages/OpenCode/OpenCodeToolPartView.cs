@@ -582,6 +582,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     private void ApplyRunningTint()
     {
+        // The tint owner grows with inline content; rounded child chrome cannot round this Grid.
+        _root.CornerRadius = new CornerRadius(_inlineExpanded ? 8 : 4);
+        _row.CornerRadius = _inlineExpanded ? new CornerRadius(8, 8, 0, 0) : new CornerRadius(4);
         // Tint the complete row, including its native action and the right-aligned status cell.
         // High contrast uses the system highlight rather than a low-alpha accent.
         if (new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast)
@@ -738,6 +741,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     private void RefreshInlineContent()
     {
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
+        ApplyRunningTint();
         _inlineRegion.Child = _inlineExpanded
             ? OpenCodeToolDetailBuiltins.BuildInline(_model)
                 ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供")

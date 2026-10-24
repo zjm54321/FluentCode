@@ -151,6 +151,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
     private void RefreshInlineContent()
     {
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
+        ApplyRowStyle(); // The one tint owner uses the large radius while the live body is expanded.
         if (!_inlineExpanded) return;
         // Keep the presenter/root attached: Render's gate skips duplicate snapshots and retains image leases.
         var body = BuildReasoningBody();
@@ -220,7 +221,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
     }
 
     private void ApplyRowStyle()
-        => OpenCodeTimelineRowStyle.Apply(_root, _row, _model.Status, _nameText, _previewText);
+        => OpenCodeTimelineRowStyle.Apply(_root, _row, _model.Status, _inlineExpanded, _nameText, _previewText);
 
     internal void Dispose()
     {

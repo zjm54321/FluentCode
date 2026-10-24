@@ -148,6 +148,7 @@ internal sealed class OpenCodeToolGroupVisual
         _itemsBorder = new Border
         {
             Child = _items,
+            CornerRadius = new CornerRadius(0, 0, 8, 8),
             Margin = new Thickness(15, 0, 0, 0),
             Padding = new Thickness(8, 0, 0, 0),
             BorderThickness = new Thickness(1, 0, 0, 0),
@@ -163,6 +164,8 @@ internal sealed class OpenCodeToolGroupVisual
             MinWidth = 0,
             Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
             BorderThickness = new Thickness(0),
+            // Native template filters this into top-only header / bottom-only content corners.
+            CornerRadius = new CornerRadius(8),
         };
         ApplyGroupChrome();
         _outline = new Border { Child = _expander, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8) };

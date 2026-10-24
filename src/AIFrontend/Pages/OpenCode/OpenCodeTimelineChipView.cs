@@ -312,7 +312,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     }
 
     private void ApplyRowStyle()
-        => OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, _label, _targetText, _summaryText);
+        => OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, false, _label, _targetText, _summaryText);
 
     internal void Dispose()
     {
@@ -359,8 +359,11 @@ internal static class OpenCodeTimelineRowMetrics
 
 internal static class OpenCodeTimelineRowStyle
 {
-    internal static void Apply(Grid root, Button row, OpenCodeToolRowStatus? status, params TextBlock[] labels)
+    internal static void Apply(Grid root, Button row, OpenCodeToolRowStatus? status, bool expanded, params TextBlock[] labels)
     {
+        // Paint the rounded root itself, once, rather than relying on an unclipped rounded child.
+        root.CornerRadius = new CornerRadius(expanded ? 8 : 4);
+        row.CornerRadius = expanded ? new CornerRadius(8, 8, 0, 0) : new CornerRadius(4);
         row.Height = OpenCodeTimelineRowMetrics.Height(status);
         var gap = OpenCodeTimelineRowMetrics.VerticalGap(status);
         // A4: each row owns its tint; its margins remain untinted even beside another active row.

@@ -177,6 +177,43 @@ internal static class Program
             && toolView.Contains("OpenCodeToolTheme.Apply(_targetText, textStyle)", StringComparison.Ordinal),
             "completed tool name/target use secondary text; failure chrome takes precedence and running defaults remain");
 
+        // PG6: check the actual background owners, not rounded children that cannot clip a parent tint.
+        string View(string name) => System.IO.File.ReadAllText(System.IO.Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/" + name + ".cs"));
+        var chipView = View("OpenCodeTimelineChipView");
+        var reasoningView = View("OpenCodeReasoningRowView");
+        var groupView = View("OpenCodeToolGroupView");
+        var tintMethod = toolView[toolView.IndexOf("private void ApplyRunningTint()", StringComparison.Ordinal)..toolView.IndexOf("private void ApplyAgentColor", StringComparison.Ordinal)];
+        Check(tintMethod.Contains("_root.CornerRadius = new CornerRadius(_inlineExpanded ? 8 : 4)", StringComparison.Ordinal)
+            && tintMethod.IndexOf("_root.CornerRadius", StringComparison.Ordinal) < tintMethod.IndexOf("HighContrast", StringComparison.Ordinal)
+            && tintMethod.Contains("_root.Background = _model.IsActive", StringComparison.Ordinal),
+            "PG6 tool tint owner has 4px row / 8px expanded corners in normal and high contrast");
+        var toolInline = toolView[toolView.IndexOf("private void RefreshInlineContent()", StringComparison.Ordinal)..toolView.IndexOf("private void CloseDetailIfShowing()", StringComparison.Ordinal)];
+        Check(toolInline.Contains("ApplyRunningTint();", StringComparison.Ordinal), "PG6 tool expansion/collapse refreshes the actual tint owner's radius");
+        var sharedStyle = chipView[chipView.IndexOf("internal static class OpenCodeTimelineRowStyle", StringComparison.Ordinal)..];
+        Check(sharedStyle.Contains("root.CornerRadius = new CornerRadius(expanded ? 8 : 4)", StringComparison.Ordinal)
+            && sharedStyle.IndexOf("root.CornerRadius", StringComparison.Ordinal) < sharedStyle.IndexOf("HighContrast", StringComparison.Ordinal)
+            && sharedStyle.Contains("root.Background = active", StringComparison.Ordinal),
+            "PG6 shared reasoning/chip tint owner is rounded before either theme/high-contrast fill path");
+        Check(chipView.Contains("OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, false,", StringComparison.Ordinal),
+            "PG6 single running timeline chips explicitly use the 4px radius policy");
+        var reasoningInline = reasoningView[reasoningView.IndexOf("private void RefreshInlineContent()", StringComparison.Ordinal)..reasoningView.IndexOf("internal void HoverEnter()", StringComparison.Ordinal)];
+        Check(reasoningView.Contains("OpenCodeTimelineRowStyle.Apply(_root, _row, _model.Status, _inlineExpanded,", StringComparison.Ordinal)
+            && reasoningInline.Contains("ApplyRowStyle();", StringComparison.Ordinal),
+            "PG6 live reasoning uses 8px while expanded and restores 4px on collapse");
+        foreach (var source in new[] { tintMethod, sharedStyle })
+            Check(source.Contains("new CornerRadius(8, 8, 0, 0) : new CornerRadius(4)", StringComparison.Ordinal),
+                "PG6 native row hover/pressed chrome matches the wrapper's top corners without another accent fill");
+        Check(!toolView.Contains("_inlineRegion.Background", StringComparison.Ordinal) && !reasoningView.Contains("_inlineRegion.Background", StringComparison.Ordinal)
+            && !toolView.Contains("Apply(_inlineRegion", StringComparison.Ordinal) && !reasoningView.Contains("Apply(_inlineRegion", StringComparison.Ordinal),
+            "PG6 expanded tool/reasoning bodies stay transparent so the outer tint is painted once");
+        Check(groupView.Contains("_outline = new Border { Child = _expander, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8) }", StringComparison.Ordinal)
+            && groupView.Contains("CornerRadius = new CornerRadius(0, 0, 8, 8)", StringComparison.Ordinal)
+            && groupView.Contains("\"ExpanderHeaderBackground\", \"ExpanderHeaderBackgroundPointerOver\", \"ExpanderHeaderBackgroundPressed\"", StringComparison.Ordinal)
+            && groupView.Contains("\"ExpanderContentBackground\"", StringComparison.Ordinal),
+            "PG6 group hover tint owns 8px corners; transparent native parts/inner border cannot stack square fills");
+        Check(!View("OpenCodeWorkingIndicator").Contains("Background", StringComparison.Ordinal),
+            "PG6 working phrase/gear indicator is transparent; it does not add an unrounded running surface");
+
         Console.WriteLine("B14 error-recovery tests passed: " + _assertions + " assertions");
         return 0;
     }
