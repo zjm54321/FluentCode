@@ -448,6 +448,7 @@ namespace Microsoft.UI.Xaml
     public class DependencyObject { }
     public class UIElement : DependencyObject
     {
+        public Microsoft.UI.Xaml.Controls.Flyout? ContextFlyout { get; set; }
         public event EventHandler<object>? PointerEntered { add { } remove { } }
         public event EventHandler<object>? PointerExited { add { } remove { } }
         public event EventHandler<object>? GotFocus { add { } remove { } }
@@ -630,6 +631,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class ContentControl : FrameworkElement
     {
+        public bool IsTabStop { get; set; }
         private object? _content;
         public object? Content
         {

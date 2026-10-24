@@ -522,12 +522,11 @@ public sealed class OpenCodeConversationView : StackPanel
     private sealed class SteerRow
     {
         internal required OpenCodeInboxItem Item;
-        internal readonly Grid Element = new() { Margin = new Thickness(0, 6, 0, 6) };
+        internal readonly ContentControl Element = new() { Margin = new Thickness(0, 6, 0, 6),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, IsTabStop = false };
         internal readonly StackPanel Content = new() { Spacing = 4 };
-        internal readonly StackPanel Actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -32, 0, 0), Opacity = 0 };
         internal readonly OpenCodeRichTextPresenter Presenter = new();
-        internal readonly List<Button> Buttons = new();
+        internal MenuFlyoutItem? DeliveryAction, WithdrawAction;
         internal string Signature = string.Empty;
         internal JsonElement? RenderedPayload;
     }
@@ -564,13 +563,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     row = new SteerRow { Item = item };
                     row.Content.Children.Add(row.Presenter.Element);
                     var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false);
-                    row.Element.Children.Add(bubble.Element);
-                    row.Element.Children.Add(row.Actions);
-                    var hoverRow = row;
-                    row.Element.PointerEntered += (_, _) => hoverRow.Actions.Opacity = 1;
-                    row.Element.PointerExited += (_, _) => hoverRow.Actions.Opacity = 0;
-                    row.Element.GotFocus += (_, _) => hoverRow.Actions.Opacity = 1;
-                    row.Element.LostFocus += (_, _) => hoverRow.Actions.Opacity = 0;
+                    row.Element.Content = bubble.Element;
                     AutomationProperties.SetAutomationId(row.Element, "OpenCodeAdmittedSteer." + id);
                     _steerRows[id] = row;
                 }
@@ -578,7 +571,12 @@ public sealed class OpenCodeConversationView : StackPanel
                 UpdateSteerRow(row);
             }
         var stale = new List<string>();
-        foreach (var pair in _steerRows) if (!retained.Contains(pair.Key)) { Children.Remove(pair.Value.Element); stale.Add(pair.Key); }
+        foreach (var pair in _steerRows) if (!retained.Contains(pair.Key))
+        {
+            Children.Remove(pair.Value.Element);
+            UpdateSteerActionState(pair.Value);
+            stale.Add(pair.Key);
+        }
         foreach (var id in stale) _steerRows.Remove(id);
         ReconcileSteerRows();
         if (stale.Count > 0 || !previousOrder.SequenceEqual(_steerOrder)) InvalidateIdleViewport();
@@ -587,7 +585,13 @@ public sealed class OpenCodeConversationView : StackPanel
     public void SetPendingSteerBusy(bool busy)
     {
         _steerBusy = busy;
-        foreach (var row in _steerRows.Values) foreach (var button in row.Buttons) button.IsEnabled = !busy;
+        foreach (var row in _steerRows.Values) UpdateSteerActionState(row);
+    }
+
+    private void UpdateSteerActionState(SteerRow row)
+    {
+        if (row.DeliveryAction is { } delivery) delivery.IsEnabled = CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true;
+        if (row.WithdrawAction is { } withdraw) withdraw.IsEnabled = CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true;
     }
 
     private bool CurrentSteer(SteerRow row) => !_steerBusy && row.Item.SessionId == _steerSession
@@ -602,7 +606,7 @@ public sealed class OpenCodeConversationView : StackPanel
         var signature = withdraw + "|" + change;
         var samePayload = row.RenderedPayload is { } previous && item.Payload is { } current
             ? JsonElement.DeepEquals(previous, current) : row.RenderedPayload is null && item.Payload is null;
-        if (signature == row.Signature && samePayload) return;
+        if (signature == row.Signature && samePayload) { UpdateSteerActionState(row); return; }
         InvalidateIdleViewport();
         row.Signature = signature;
         row.RenderedPayload = item.Payload;
@@ -624,23 +628,28 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
         if (string.IsNullOrEmpty(rawText) && row.Content.Children.Count == 1)
             row.Content.Children.Add(OpenCodeInteractionUi.StyledText("（空消息）", OpenCodeInteractionUi.CaptionStyleKey));
-        row.Actions.Children.Clear(); row.Buttons.Clear();
-        if (change)
+        row.Element.ContextFlyout = null;
+        row.Element.IsTabStop = withdraw || change;
+        row.DeliveryAction = row.WithdrawAction = null;
+        if (withdraw || change)
         {
-            var button = new Button { Content = "改为排队", IsEnabled = !_steerBusy };
-            button.Click += (_, _) => { if (CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true)
+            // Native context input includes right-click, Shift+F10/Menu key and touch-and-hold.
+            var menu = new MenuFlyout();
+            var deliveryAction = new MenuFlyoutItem { Text = "改为排队" };
+            deliveryAction.Click += (_, _) => { if (CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true)
                 PendingSteerDeliveryChangeRequested?.Invoke(this, new(row.Item.Id!, OpenCodeDeliveryModes.Queue)); };
-            AutomationProperties.SetAutomationId(button, "OpenCodeAdmittedSteerDelivery." + item.Id);
-            row.Actions.Children.Add(button); row.Buttons.Add(button);
+            AutomationProperties.SetAutomationId(deliveryAction, "OpenCodeAdmittedSteerDelivery." + item.Id);
+            var withdrawAction = new MenuFlyoutItem { Text = "撤回" };
+            withdrawAction.Click += (_, _) => { if (CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true) PendingSteerWithdrawRequested?.Invoke(this, row.Item.Id!); };
+            AutomationProperties.SetAutomationId(withdrawAction, "OpenCodeAdmittedSteerWithdraw." + item.Id);
+            menu.Items.Add(deliveryAction);
+            menu.Items.Add(withdrawAction);
+            row.DeliveryAction = deliveryAction;
+            row.WithdrawAction = withdrawAction;
+            menu.Opening += (_, _) => UpdateSteerActionState(row);
+            row.Element.ContextFlyout = menu;
+            UpdateSteerActionState(row);
         }
-        if (withdraw)
-        {
-            var button = new Button { Content = "撤回", IsEnabled = !_steerBusy };
-            button.Click += (_, _) => { if (CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true) PendingSteerWithdrawRequested?.Invoke(this, row.Item.Id!); };
-            AutomationProperties.SetAutomationId(button, "OpenCodeAdmittedSteerWithdraw." + item.Id);
-            row.Actions.Children.Add(button); row.Buttons.Add(button);
-        }
-        row.Actions.Visibility = withdraw || change ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ReconcileSteerRows()
@@ -650,7 +659,11 @@ public sealed class OpenCodeConversationView : StackPanel
         foreach (var id in _steerOrder)
         {
             if (_renderedUserMessageIds.Contains(id)) _deliveredSteerIds.Add(id);
-            if (_deliveredSteerIds.Contains(id)) Children.Remove(_steerRows[id].Element);
+            if (_deliveredSteerIds.Contains(id))
+            {
+                Children.Remove(_steerRows[id].Element);
+                UpdateSteerActionState(_steerRows[id]);
+            }
         }
         var index = 0;
         foreach (var element in Children) if (!projected.Contains(element)) index++;
@@ -664,6 +677,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 Children.Insert(Math.Min(index, Children.Count), element);
             }
             index++;
+            UpdateSteerActionState(_steerRows[id]);
         }
     }
 
