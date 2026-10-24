@@ -35,8 +35,9 @@ internal static class Program
         await Test("wrong location and connection ignored", Isolation);
         await Test("manager keeps two sessions, late factory, close isolation", Manager);
         await Test("dispose aborts attach and cancels commands", Disposal);
+        await Test("source revocation aborts all attachments before page teardown", Revocation);
         await Test("SSE envelope location and page hookup fences", () => Hookup(args[0]));
-        Console.WriteLine($"PASS {_passed}/16 browser peer tests");
+        Console.WriteLine($"PASS {_passed}/17 browser peer tests");
     }
 
     private static async Task Test(string name, Func<Task> test)
@@ -391,5 +392,21 @@ internal static class Program
         var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.BrowserPeer.cs"));
         Assert(page.Contains("foreach (var sessionId in _sessionTabs.Keys)") && page.Contains("KnownSessionDirectory(sessionId)"));
         return Task.CompletedTask;
+    }
+
+    private static async Task Revocation()
+    {
+        using var server = new Server();
+        using var source = new CancellationTokenSource();
+        await using var manager = new OpenCodeBrowserPeerManager(server.Client, server.Feed, id => new Backend(id), source.Token);
+        manager.OpenSession("ses_one", "/project"); manager.OpenSession("ses_two", "/project");
+        var first = (await server.Next("attach")).Input["connectionID"]!.GetValue<string>();
+        var second = (await server.Next("attach")).Input["connectionID"]!.GetValue<string>();
+        source.Cancel();
+        await Availability(manager.GetPeer("ses_one")!, OpenCodeBrowserAvailability.Detached);
+        await Availability(manager.GetPeer("ses_two")!, OpenCodeBrowserAvailability.Detached);
+        Assert(server.Aborted.ContainsKey(first) && server.Aborted.ContainsKey(second));
+        server.Feed.Connected(false); server.Feed.Connected(true);
+        Assert(server.AttachCount == 2);
     }
 }

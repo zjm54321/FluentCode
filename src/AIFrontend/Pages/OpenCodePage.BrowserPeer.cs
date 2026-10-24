@@ -29,12 +29,12 @@ public sealed partial class OpenCodePage
 
     private void EnsureBrowserPeers()
     {
-        if (!_pageActive || !SourceReady || _client is not { } client) return;
+        if (!_pageActive || !SourceReady || _client is not { } client || _source is not { } source) return;
         if (_browserPeerManager is null || !ReferenceEquals(_browserPeerClient, client))
         {
             OnBrowserEventSyncStopped();
             _browserPeerClient = client;
-            _browserPeerManager = new(client, _browserEventFeed, _browserBackendFactory);
+            _browserPeerManager = new(client, _browserEventFeed, _browserBackendFactory, source.RevocationToken);
             _browserPeerManager.AvailabilityChanged += OnBrowserPeerAvailabilityChanged;
         }
         foreach (var sessionId in _sessionTabs.Keys) OnBrowserSessionTabOpened(sessionId);

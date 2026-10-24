@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AIFrontend.Services.OpenCode.Browser;
@@ -10,6 +11,7 @@ public sealed class OpenCodeBrowserPeerManager : IAsyncDisposable
 {
     private readonly OpenCodeClient _client;
     private readonly IOpenCodeBrowserEventFeed _feed;
+    private readonly CancellationToken _lifetime;
     private readonly Dictionary<string, string> _open = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeBrowserPeer> _peers = new(StringComparer.Ordinal);
     private readonly List<Task> _retiring = new();
@@ -17,8 +19,8 @@ public sealed class OpenCodeBrowserPeerManager : IAsyncDisposable
     private bool _disposed;
 
     public OpenCodeBrowserPeerManager(OpenCodeClient client, IOpenCodeBrowserEventFeed feed,
-        Func<string, IOpenCodeBrowserSessionBackend>? backendFactory = null)
-    { _client = client; _feed = feed; _backendFactory = backendFactory; }
+        Func<string, IOpenCodeBrowserSessionBackend>? backendFactory = null, CancellationToken lifetime = default)
+    { _client = client; _feed = feed; _backendFactory = backendFactory; _lifetime = lifetime; }
 
     public Func<string, IOpenCodeBrowserSessionBackend>? BackendFactory
     {
@@ -54,7 +56,7 @@ public sealed class OpenCodeBrowserPeerManager : IAsyncDisposable
         if (_backendFactory is null || _peers.ContainsKey(sessionId)) return;
         var backend = _backendFactory(sessionId);
         if (backend.SessionId != sessionId) throw new ArgumentException("浏览器后端所属会话不匹配。");
-        var peer = new OpenCodeBrowserPeer(_client, directory, _feed, backend);
+        var peer = new OpenCodeBrowserPeer(_client, directory, _feed, backend, lifetime: _lifetime);
         _peers.Add(sessionId, peer);
         peer.AvailabilityChanged += OnAvailabilityChanged;
         peer.Start();

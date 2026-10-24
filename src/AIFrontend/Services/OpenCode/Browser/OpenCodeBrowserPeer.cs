@@ -36,7 +36,7 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
     private readonly IOpenCodeBrowserSessionBackend _backend;
     private readonly TimeSpan _commandTimeout;
     private readonly Func<int, TimeSpan> _backoff;
-    private readonly CancellationTokenSource _stop = new();
+    private readonly CancellationTokenSource _stop;
     private readonly Channel<Signal> _signals = Channel.CreateUnbounded<Signal>(new UnboundedChannelOptions { SingleReader = true });
     private readonly List<Task> _cleanup = new();
     private Task? _run;
@@ -48,12 +48,14 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
     private bool _attempted;
 
     public OpenCodeBrowserPeer(OpenCodeClient client, string directory, IOpenCodeBrowserEventFeed feed,
-        IOpenCodeBrowserSessionBackend backend, TimeSpan? commandTimeout = null, Func<int, TimeSpan>? backoff = null)
+        IOpenCodeBrowserSessionBackend backend, TimeSpan? commandTimeout = null, Func<int, TimeSpan>? backoff = null,
+        CancellationToken lifetime = default)
     {
         _client = client;
         _directory = directory;
         _feed = feed;
         _backend = backend;
+        _stop = CancellationTokenSource.CreateLinkedTokenSource(lifetime);
         _commandTimeout = commandTimeout ?? TimeSpan.FromSeconds(60);
         _backoff = backoff ?? (retry => TimeSpan.FromSeconds(Math.Min(1 << Math.Min(retry, 4), 15)));
     }
