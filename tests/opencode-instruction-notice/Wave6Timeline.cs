@@ -80,6 +80,21 @@ internal static class Wave6Timeline
         view.ClearMessages();
 
         ConversationViewTestProbe.Reset();
+        var runningGroup = M(new
+        {
+            id = "wg1_message", type = "assistant", time = new { created = 1700000000000d },
+            content = new object[] { Tool("wg1_first"), new { id = "wg1_current", type = "tool", name = "read", state = new { status = "running", input = new { path = "current.cs" } } } },
+        });
+        view.ApplyMessages(new[] { runningGroup });
+        var manuallyCollapsed = Made<OpenCodeToolGroupView>().Single();
+        manuallyCollapsed.ToggleForTest();
+        view.ApplyMessages(new[] { runningGroup });
+        view.SetCurrentTurnActivity(true);
+        Check(!manuallyCollapsed.IsExpanded && manuallyCollapsed.Summary!.IsActive, "WG1.timeline-manual-running-collapse-survives-live-snapshot-and-turn-refresh");
+        Check(manuallyCollapsed.CurrentStep!.Contains("current.cs", StringComparison.Ordinal), "WG1.timeline-collapsed-current-step-uses-running-leaf");
+        view.ClearMessages();
+
+        ConversationViewTestProbe.Reset();
         var requests = 0;
         view.SubagentSessionRequested += (_, e) => { Check(e.ParentMessageId == "child_done" && e.ChildSessionId == "ses_child", "wave6.child-entry-preserves-real-parent-and-child-ids"); requests++; };
         OpenCodeMessage Child(string state) => M(new { id = "child_done", type = "synthetic", text = "child body", metadata = new { source = "subagent", childID = "ses_child", state } });

@@ -170,6 +170,31 @@ internal static class Windowing
         Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "lazy-height-pan-end-adopts-live-reader-instead-of-snapping-back");
         scrolling.ClearMessages();
 
+        // WG1: a manual running-group choice belongs to the retained part key, not its realized Expander.
+        var groupHistory = history.ToList();
+        groupHistory.Add(System.Text.Json.JsonSerializer.Deserialize<OpenCodeMessage>("""
+            {"id":"wg1_message","type":"assistant","time":{"created":1700000000000},"content":[
+              {"id":"wg1_first","type":"tool","name":"read","state":{"status":"completed","input":{"path":"first.cs"}}},
+              {"id":"wg1_current","type":"tool","name":"read","state":{"status":"running","input":{"path":"current.cs"}}}
+            ]}
+            """, OpenCodeJson.Options)!);
+        scrolling.ApplyMessages(groupHistory);
+        scrolling.FollowToBottom(viewport, () => true); Settle();
+        OpenCodeToolGroupView CurrentGroup() => ConversationViewTestProbe.Records
+            .Where(r => r.Operation == "Construct").Select(r => r.Subject).OfType<OpenCodeToolGroupView>()
+            .Last(g => g.GroupId == "wg1_first");
+        var originalGroup = CurrentGroup();
+        originalGroup.ToggleForTest();
+        Check(!originalGroup.IsExpanded && originalGroup.Summary!.IsActive, "WG1.running-group-manually-collapsed");
+        viewport.ChangeView(null, 21, null, true); Settle();
+        Check(originalGroup.DisposeCount == 1, "WG1.running-group-unrealized-away-from-reader");
+        scrolling.FollowToBottom(viewport, () => true); Settle();
+        var realizedGroup = CurrentGroup();
+        Check(!ReferenceEquals(realizedGroup, originalGroup) && !realizedGroup.IsExpanded && realizedGroup.Summary!.IsActive,
+            "WG1.manual-collapse-survives-window-re-realization");
+        Check(realizedGroup.CurrentStep!.Contains("current.cs", StringComparison.Ordinal), "WG1.re-realized-collapsed-group-keeps-current-step");
+        scrolling.ClearMessages();
+
         // Observe actual child geometry after EACH transaction, not the cached height model
         // after four settling passes. Native ViewChanged also fires for extent-only changes.
         var jitterView = new OpenCodeConversationView { IsLoaded = true };

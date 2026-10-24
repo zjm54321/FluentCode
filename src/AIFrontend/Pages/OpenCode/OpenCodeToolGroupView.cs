@@ -24,7 +24,7 @@ internal sealed class OpenCodeToolGroupView
     internal OpenCodeToolGroupView(string groupId, Action<string, bool> onUserToggled)
     { GroupId = groupId; _toggled = onUserToggled; }
     internal string GroupId { get; }
-    internal bool IsExpanded => _summary?.IsActive == true || _expanded;
+    internal bool IsExpanded => _expanded;
     internal bool ShowsItems => _inline || _open is not null || IsExpanded;
     internal FrameworkElement DetailAnchor => Visual.DetailAnchor;
     internal FrameworkElement Element => Visual.Element;
@@ -58,14 +58,14 @@ internal sealed class OpenCodeToolGroupView
     internal void SetBackgroundAction(Action? action) { _background = action; _visual?.SetBackgroundAction(action); }
     internal void SetInlineLeaf(bool inline) { _inline = inline; _visual?.SetInlineLeaf(inline); }
     internal void Update(OpenCodeStepRunSummary summary, bool expanded, bool headerVisible)
-    { _summary = summary; _expanded = summary.IsActive || expanded; _headerVisible = headerVisible; _visual?.Update(summary, _expanded, headerVisible); }
+    { _summary = summary; _expanded = expanded; _headerVisible = headerVisible; _visual?.Update(summary, _expanded, headerVisible); }
     internal void Dispose()
     { _disposed = true; _visual?.Dispose(); _visual = null; _open = _enter = _exit = _background = null; }
 }
 
 /// <summary>
-/// W1/W2: a native Expander owns the complete processing group. An active turn cannot fold;
-/// completed groups follow the timeline's turn-end expansion state. A single operation is its real row,
+/// W1/W2: a native Expander owns the complete processing group. B18/WG1 manual choices override
+/// the timeline's running/terminal defaults. A single operation is its real row,
 /// not a synthetic "已处理" header. Followers retain their items without duplicating the chain header.
 /// </summary>
 internal sealed class OpenCodeToolGroupVisual
@@ -80,6 +80,7 @@ internal sealed class OpenCodeToolGroupVisual
     private readonly FontIcon _icon;
     private readonly FontIcon _chevron;
     private readonly TextBlock _headerText;
+    private readonly TextBlock _currentStepText;
     private readonly StackPanel _successTally, _errorTally;
     private readonly TextBlock _successText, _errorText;
     private readonly OpenCodeWorkingIndicator _working;
@@ -121,6 +122,15 @@ internal sealed class OpenCodeToolGroupVisual
         title.Children.Add(_working.Label);
         Grid.SetColumn(_chevron, 1);
         title.Children.Add(_chevron);
+        _currentStepText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
+        _currentStepText.FontSize = 12;
+        _currentStepText.TextTrimming = TextTrimming.CharacterEllipsis;
+        _currentStepText.Visibility = Visibility.Collapsed;
+        OpenCodeToolTheme.Apply(_currentStepText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
+        AutomationProperties.SetAutomationId(_currentStepText, "OpenCodeToolGroup.CurrentStep." + groupId);
+        var titleStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(title);
+        titleStack.Children.Add(_currentStepText);
         (_successTally, _successText) = CreateTally("\uE73E", OpenCodeToolTheme.Success, "OpenCodeToolGroup.Success." + groupId);
         (_errorTally, _errorText) = CreateTally("\uE711", OpenCodeToolTheme.Critical, "OpenCodeToolGroup.Errors." + groupId);
         var tally = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
@@ -131,8 +141,8 @@ internal sealed class OpenCodeToolGroupVisual
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(iconCell);
-        Grid.SetColumn(title, 1);
-        header.Children.Add(title);
+        Grid.SetColumn(titleStack, 1);
+        header.Children.Add(titleStack);
         Grid.SetColumn(tally, 2);
         header.Children.Add(tally);
         _itemsBorder = new Border
@@ -212,8 +222,13 @@ internal sealed class OpenCodeToolGroupVisual
     // real row moves out of its former Expander; never return the soon-to-be-detached header.
     internal FrameworkElement DetailAnchor => _items;
     internal Panel ItemsHost => _items;
-    internal bool IsExpanded => _summary.IsActive || _expanded;
-    internal void SetCurrentStep(string step) { } // The live header always shows the decorative working phrase (W1).
+    internal bool IsExpanded => _expanded;
+    internal void SetCurrentStep(string step)
+    {
+        _currentStepText.Text = step;
+        ToolTipService.SetToolTip(_currentStepText, step);
+        RefreshCurrentStep();
+    }
     internal void SetBackgroundAction(Action? action) { } // The real operation's row owns its native action.
     internal void SetInlineLeaf(bool inline)
     { if (_inline == inline) return; _inline = inline; ConfigureContainer(); RefreshWorking(); }
@@ -232,7 +247,7 @@ internal sealed class OpenCodeToolGroupVisual
         ArgumentNullException.ThrowIfNull(summary);
         _summary = summary;
         _headerVisible = headerVisible;
-        _expanded = summary.IsActive || expanded;
+        _expanded = expanded;
         _chevron.Glyph = _expanded ? "\uE70D" : "\uE76C";
         _headerText.Text = summary.HeaderText;
         var textKey = OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(summary.IsActive, summary.ErrorCount, null);
@@ -266,18 +281,16 @@ internal sealed class OpenCodeToolGroupVisual
         _itemsBorder.Padding = direct ? new Thickness(0) : new Thickness(8, 0, 0, 0);
         _itemsBorder.BorderThickness = direct ? new Thickness(0) : new Thickness(1, 0, 0, 0);
         _itemsBorder.Visibility = direct || IsExpanded ? Visibility.Visible : Visibility.Collapsed;
+        RefreshCurrentStep();
     }
+
+    private void RefreshCurrentStep()
+        => _currentStepText.Visibility = _summary.IsActive && !_expanded && _headerVisible && !_single && !_inline
+            && !string.IsNullOrWhiteSpace(_currentStepText.Text) ? Visibility.Visible : Visibility.Collapsed;
 
     private void ExpansionChanged(bool expanded)
     {
         if (_updating || _disposed) return;
-        if (_summary.IsActive && !expanded)
-        {
-            _updating = true;
-            _expander.IsExpanded = true;
-            _updating = false;
-            return;
-        }
         _expanded = expanded;
         _chevron.Glyph = expanded ? "\uE70D" : "\uE76C";
         ConfigureContainer();
@@ -288,7 +301,7 @@ internal sealed class OpenCodeToolGroupVisual
     private void UpdateAutomation()
     {
         AutomationProperties.SetName(_expander, _summary.AccessibleName + (IsExpanded ? "，已展开" : "，已折叠"));
-        AutomationProperties.SetHelpText(_expander, _summary.IsActive ? "回合结束后收起处理过程" : "展开或收起处理过程");
+        AutomationProperties.SetHelpText(_expander, "展开或收起处理过程");
     }
 
     private void RefreshWorking()
