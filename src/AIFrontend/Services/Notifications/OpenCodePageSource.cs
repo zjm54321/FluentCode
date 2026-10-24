@@ -15,6 +15,7 @@ public sealed class OpenCodePageSource
     private readonly CancellationTokenSource _revocation = new();
     private Func<OpenCodeClient>? _createClient;
     private bool _revoked;
+    private readonly OpenCodeDesktopBridge _desktopBridge = new();
 
     internal OpenCodePageSource(string identity, long revision, Func<OpenCodeClient> createClient)
     {
@@ -35,7 +36,9 @@ public sealed class OpenCodePageSource
         lock (_sync)
         {
             if (_revoked) throw new InvalidOperationException("OpenCode page source revoked.");
-            return _createClient!();
+            var client = _createClient!();
+            client.DesktopBridge = _desktopBridge;
+            return client;
         }
     }
 

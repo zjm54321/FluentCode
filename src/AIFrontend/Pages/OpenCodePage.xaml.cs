@@ -507,6 +507,7 @@ public sealed partial class OpenCodePage : Page
         if (ReferenceEquals(source, _source) && (source is null ? _draftEpochSource is null
             : !source.IsRevoked && source.Revision == _sourceRevision && _client is not null))
         {
+            if (source is not null && _client is { } currentClient) _ = InitializeDesktopBridgeAsync(source, currentClient);
             return;
         }
 
@@ -543,6 +544,7 @@ public sealed partial class OpenCodePage : Page
         _source = source;
         _sourceRevision = source.Revision;
         _client = client;
+        _ = InitializeDesktopBridgeAsync(source, client);
         EnsureDraftSourceEpoch(source);
         BeginHomeSource();
         StartEventSync();

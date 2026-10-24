@@ -5,13 +5,8 @@ using System.Text.Json;
 
 namespace AIFrontend.Services.OpenCode;
 
-internal enum OpenCodeModelFavoriteRoute { Rpc, WslFile, AppSettings }
-
 internal static class OpenCodeModelFavoritesRpc
 {
-    internal static OpenCodeModelFavoriteRoute Route(bool capability, bool wsl)
-        => capability ? OpenCodeModelFavoriteRoute.Rpc : wsl ? OpenCodeModelFavoriteRoute.WslFile : OpenCodeModelFavoriteRoute.AppSettings;
-
     internal static JsonElement Output(JsonElement envelope)
     {
         if (envelope.ValueKind != JsonValueKind.Object || !envelope.TryGetProperty("output", out var output)
@@ -23,17 +18,6 @@ internal static class OpenCodeModelFavoritesRpc
         => error.ValueKind == JsonValueKind.Object && error.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String
             ? type.GetString() switch { "rpc.method_not_found" => "rpc.method_not_found", "rpc.invalid_input" => "rpc.invalid_input",
                 "rpc.invalid_output" => "rpc.invalid_output", "rpc.internal" => "rpc.internal", "rpc.unavailable" => "rpc.unavailable", _ => null } : null;
-
-    internal static bool HasCapability(JsonElement output)
-    {
-        if (!output.TryGetProperty("protocolVersion", out var version)) throw new OpenCodeProtocolException("收藏插件 hello 缺少协议版本。");
-        if (version.ValueKind == JsonValueKind.Null) return false;
-        if (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number != 1) throw new OpenCodeProtocolException("收藏插件协议版本无效。");
-        if (!output.TryGetProperty("capabilities", out var capabilities) || capabilities.ValueKind != JsonValueKind.Array
-            || capabilities.EnumerateArray().Any(item => item.ValueKind != JsonValueKind.String))
-            throw new OpenCodeProtocolException("收藏插件能力列表无效。");
-        return capabilities.EnumerateArray().Any(item => item.GetString() == "model.favorites.v1");
-    }
 
     internal static object SetInput(IEnumerable<(string ProviderId, string ModelId)> favorites)
     {

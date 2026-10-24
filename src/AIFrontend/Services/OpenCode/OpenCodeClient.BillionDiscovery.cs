@@ -25,7 +25,9 @@ public sealed partial class OpenCodeClient
         if (string.IsNullOrWhiteSpace(directory) || directory.Length > 32768)
             return new(OpenCodeBillionDiscoveryStatus.InvalidLocation);
         foreach (var ch in directory) if (char.IsControl(ch)) return new(OpenCodeBillionDiscoveryStatus.InvalidLocation);
-        const string endpoint = "api/rpc/opencode.windows-frontend/billion.origin";
+        var bridge = await DesktopBridge.NegotiateAsync(this, directory, cancellationToken).ConfigureAwait(false);
+        if (!bridge.Supports("billion.origin.v1")) return new(OpenCodeBillionDiscoveryStatus.UnsupportedProtocol);
+        const string endpoint = "api/rpc/opencode.desktop-bridge/billion.origin";
         var query = new[] { new KeyValuePair<string, string>("location[directory]", directory) };
         using var content = CreateJsonContent(new { input = new { } });
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

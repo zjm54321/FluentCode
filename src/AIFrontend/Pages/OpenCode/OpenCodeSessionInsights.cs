@@ -1005,6 +1005,17 @@ public sealed class OpenCodeSessionInsightsController
         Publish(Snapshot);
         try
         {
+            Task<OpenCodeDesktopBridgeState>? negotiation = null;
+            if (directory is not null && binding.Client.SupportsLocalBillionDiscovery)
+            {
+                binding.Source.TryExecute(ct, () =>
+                {
+                    if (IsDiscoveryOwner(loadId, binding, expected))
+                        negotiation = binding.Client.DesktopBridge.NegotiateAsync(binding.Client, directory, ct);
+                });
+                if (negotiation is null) return;
+                await negotiation;
+            }
             Task<OpenCodeBillionDiscoveryResult>? pending = null;
             binding.Source.TryExecute(ct, () =>
             {

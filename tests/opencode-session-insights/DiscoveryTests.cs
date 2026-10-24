@@ -21,12 +21,13 @@ internal static partial class Program
         public OpenCodePageSource? Source;
         public string? Directory = "/trusted project/位置";
         public string Reply = Ready();
+        public string HelloReply = "{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"billion.origin.v1\",\"model.favorites.v1\"]}}";
         public HttpStatusCode Status = HttpStatusCode.OK;
         public Func<CancellationToken, Task<HttpResponseMessage>>? RpcReply;
         public Action? BeforeSessionInfo;
         public readonly List<(string Method, Uri Uri, string? Auth, string Body)> Requests = new();
         public CancellationToken RpcToken;
-        public int RpcCount => Requests.Count(r => r.Method == "POST");
+        public int RpcCount => Requests.Count(r => r.Method == "POST" && r.Uri.AbsolutePath.EndsWith("/billion.origin"));
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             if (Source is not null) Check(Monitor.IsEntered(SourceLock(Source)), "discovery.actual-request-under-captured-source-lock");
@@ -35,7 +36,12 @@ internal static partial class Program
             var path = request.RequestUri!.AbsolutePath;
             if (request.Method == HttpMethod.Post)
             {
-                Check(path == "/prefix/api/rpc/opencode.windows-frontend/billion.origin" && body == "{\"input\":{}}", "discovery.only-exact-metadata-POST");
+                if (path == "/prefix/api/rpc/opencode.desktop-bridge/hello")
+                {
+                    Check(body == "{\"input\":{\"protocolVersions\":[1]}}", "discovery.bridge-hello-first");
+                    return Json(HelloReply);
+                }
+                Check(path == "/prefix/api/rpc/opencode.desktop-bridge/billion.origin" && body == "{\"input\":{}}", "discovery.only-exact-metadata-POST");
                 RpcToken = ct;
                 return RpcReply is null ? new(Status) { Content = Json(Reply).Content } : await RpcReply(ct);
             }
@@ -97,8 +103,9 @@ internal static partial class Program
             && snapshot.BillionOriginNote.Contains("尚未验证健康状态或引擎归属")
             && snapshot.BillionOriginNote.Contains("请确认此地址与当前 OpenCode 来源的关联"),
             "discovery.process-declaration-provenance-remains-unverified-and-needs-confirmation");
-        var rpc = rig.Wire.Requests.Single(r => r.Method == "POST");
-        Check(rpc.Uri.Host == "127.0.0.1" && rpc.Uri.Port == 43100 && rpc.Uri.AbsolutePath == "/prefix/api/rpc/opencode.windows-frontend/billion.origin"
+        var rpc = rig.Wire.Requests.Single(r => r.Uri.AbsolutePath.EndsWith("/billion.origin"));
+        Check(rig.Wire.Requests.Count(r => r.Uri.AbsolutePath.EndsWith("/hello")) == 1, "discovery.one-source-handshake-before-origin");
+        Check(rpc.Uri.Host == "127.0.0.1" && rpc.Uri.Port == 43100 && rpc.Uri.AbsolutePath == "/prefix/api/rpc/opencode.desktop-bridge/billion.origin"
             && Uri.UnescapeDataString(rpc.Uri.Query) == "?location[directory]=/trusted project/位置", "discovery.same-source-prefix-and-authoritative-location");
         Check(rig.Wire.Requests.All(r => r.Auth == "Basic Zml4dHVyZS11c2VyOmZpeHR1cmUtc2VjcmV0")
             && rpc.Body == "{\"input\":{}}" && !rpc.Uri.ToString().Contains("fixture-secret"), "discovery.same-source-auth-never-query/body");
@@ -128,6 +135,16 @@ internal static partial class Program
 
     private static async Task DiscoveryFailures()
     {
+        foreach (var hello in new[] {
+            "{\"output\":{\"protocolVersion\":null,\"supportedVersions\":[1],\"capabilities\":[]}}",
+            "{\"output\":{\"protocolVersion\":1,\"capabilities\":[]}}",
+            "{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"model.favorites.v1\"]}}" })
+        {
+            using var rig = new DiscoveryRig(); rig.Wire.HelloReply = hello;
+            await rig.Load();
+            Check(rig.Wire.RpcCount == 0 && rig.Controller.Snapshot.BillionDiscovery?.Status == OpenCodeBillionDiscoveryStatus.UnsupportedProtocol
+                && rig.Controller.Snapshot.BillionOrigin is null && rig.EngineFactories == 0, "discovery.bridge-capability-gates-origin-metadata-request");
+        }
         foreach (var (body, expected) in new[]
         {
             ("{\"output\":{\"protocolVersion\":1,\"status\":\"unavailable\",\"reason\":\"not-ready\"}}", OpenCodeBillionDiscoveryStatus.NotReady),

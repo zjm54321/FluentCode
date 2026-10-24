@@ -415,9 +415,11 @@ internal static class PageOriginTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             lock (Paths) Paths.Add(request.RequestUri!.AbsolutePath);
+            if (Discovery && request.RequestUri!.AbsolutePath == "/prefix/api/rpc/opencode.desktop-bridge/hello")
+                return Json("{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"billion.origin.v1\",\"model.favorites.v1\"]}}");
             if (Discovery && request.Method == HttpMethod.Post)
             {
-                Check(request.RequestUri!.AbsolutePath == "/prefix/api/rpc/opencode.windows-frontend/billion.origin"
+                Check(request.RequestUri!.AbsolutePath == "/prefix/api/rpc/opencode.desktop-bridge/billion.origin"
                     && Uri.UnescapeDataString(request.RequestUri.Query) == "?location[directory]=C:/view-fixture"
                     && await request.Content!.ReadAsStringAsync(token) == "{\"input\":{}}", "fixture receives only the exact discovery RPC/location/body");
                 DiscoveryRequests++;

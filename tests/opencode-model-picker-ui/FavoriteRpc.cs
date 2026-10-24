@@ -6,9 +6,8 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Models;
 using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Configuration;
+using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
 
 internal static class FavoriteRpcChecks
@@ -16,141 +15,128 @@ internal static class FavoriteRpcChecks
     internal static async Task Run(Action<bool, string> check, string root, string evidence)
     {
         HttpResponseMessage Reply(string json, int status = 200) => new((HttpStatusCode)status) { Content = new StringContent(json) };
-        var hello = File.ReadAllText(Path.Combine(root, "plugins/opencode-windows-frontend/tests/fixtures/hello-v1.json"));
-        var get = File.ReadAllText(Path.Combine(root, "plugins/opencode-windows-frontend/tests/fixtures/favorites-get.json"));
-        var set = File.ReadAllText(Path.Combine(root, "plugins/opencode-windows-frontend/tests/fixtures/favorites-set.json"));
-        foreach (var wsl in new[] { true, false })
+        string Fixture(string name) => File.ReadAllText(Path.Combine(root, "tests/desktop-bridge/fixtures", name + ".json"));
+        var hello = Fixture("hello-v1");
+        var get = Fixture("favorites-get");
+        foreach (var kind in new[] { "WSL", "Remote" })
         {
-            SettingsService.State = new() { OpenCode = new(wsl ? OpenCodeConnectionKind.Wsl : OpenCodeConnectionKind.Remote, "synthetic"),
-                OpenCodeModelFavorites = new[] { new OpenCodeModelFavorite("other", "keep", "m") } };
-            SettingsService.Writes = 0;
-            WslQuickAccessHome.Reads = 0;
-            var hellos = 0;
-            var gets = 0;
-            var sets = 0;
+            var hellos = 0; var gets = 0; var sets = 0;
             var client = new OpenCodeClient();
             client.Send = (method, path, query, body, ct) =>
             {
-                check(method == HttpMethod.Post && query!.Single().Key == "location[directory]" && query!.Single().Value == "/verified project", "RPC uses POST and captured server location");
+                check(method == HttpMethod.Post && query!.Single().Key == "location[directory]" && query!.Single().Value == "/verified project", "same captured location for " + kind);
                 using var input = JsonDocument.Parse(body);
-                check(input.RootElement.EnumerateObject().Count() == 1 && input.RootElement.TryGetProperty("input", out _), "request has exactly input envelope");
+                check(input.RootElement.EnumerateObject().Count() == 1 && input.RootElement.TryGetProperty("input", out _), "exact input envelope");
                 if (path.EndsWith("/hello"))
                 {
                     hellos++;
-                    check(input.RootElement.GetProperty("input").GetProperty("protocolVersions")[0].GetInt32() == 1, "hello v1 request");
+                    check(path == "api/rpc/opencode.desktop-bridge/hello" && body == "{\"input\":{\"protocolVersions\":[1]}}", "new identity + hello first");
                     return Task.FromResult(Reply(hello));
                 }
                 if (path.EndsWith("/model.favorites.get"))
                 {
                     gets++;
-                    check(!input.RootElement.GetProperty("input").EnumerateObject().Any(), "get uses empty input object");
+                    check(hellos == 1 && !input.RootElement.GetProperty("input").EnumerateObject().Any(), "get is capability gated and uses empty object");
                     return Task.FromResult(Reply(get));
                 }
-                check(path == "api/rpc/opencode.windows-frontend/model.favorites.set", "set exact plugin endpoint");
+                check(path == "api/rpc/opencode.desktop-bridge/model.favorites.set", "only new plugin set endpoint");
                 sets++;
                 var entries = input.RootElement.GetProperty("input").GetProperty("favorites");
                 check(entries.GetArrayLength() == 2 && entries[0].GetProperty("providerID").GetString() == "new-provider"
-                    && entries[0].GetProperty("modelID").GetString() == "new-model", "set envelope has wire IDs and merges latest favorites");
-                return Task.FromResult(Reply(set));
+                    && entries[0].GetProperty("modelID").GetString() == "new-model", "set preserves wire identity and merges fresh favorites");
+                return Task.FromResult(Reply(Fixture("favorites-set")));
             };
-            var store = new OpenCodeModelFavoriteStore("source", client, "/verified project");
+            var store = new OpenCodeModelFavoriteStore(client, "/verified project");
             await store.LoadAsync();
-            await new OpenCodeModelFavoriteStore("source", client, "/verified project").LoadAsync();
-            var row = new OpenCodeModelPickerRow("new-provider", "new-model", "New", null, true, Array.Empty<string>(), null);
-            store.Favorites.Toggle(row);
-            await store.SaveAsync(row, true);
-            check(hellos == 1 && gets == 3 && sets == 1, "capability cached once per source/location, toggle freshly reads");
-            check(SettingsService.Writes == 0 && WslQuickAccessHome.Reads == 0, "capable WSL and Remote both avoid fallback IO");
-            check(store.Favorites.Keys.Single() == ("provider", "vendor/model:latest"), "set reply is authoritative");
-            check(store.Status.Contains("服务器插件"), "server route notice");
-            check(OpenCodeModelFavoritesRpc.Route(true, wsl) == OpenCodeModelFavoriteRoute.Rpc, "capability takes precedence for both source kinds");
+            await new OpenCodeModelFavoriteStore(client, "/verified project").LoadAsync();
+            await store.SaveAsync(new("new-provider", "new-model", "New", null, true, Array.Empty<string>(), null), true);
+            check(store.Available && hellos == 1 && gets == 3 && sets == 1, "shared handshake and fresh toggle merge for " + kind);
+            check(store.Favorites.Keys.Single() == ("provider", "vendor/model:latest"), "set reply authoritative");
         }
 
-        foreach (var unsupported in new[] { "absent-capability", "404", "unknown-method", "old-version" })
-        foreach (var wsl in new[] { true, false })
+        foreach (var variant in new[] { "present", "missing", "unknown-id", "old", "origin-only", "favorites-only", "empty" })
         {
-            SettingsService.State = new() { OpenCode = new(wsl ? OpenCodeConnectionKind.Wsl : OpenCodeConnectionKind.Remote, "synthetic"),
-                OpenCodeModelFavorites = new[] { new OpenCodeModelFavorite("source", "local", "m") } };
-            WslQuickAccessHome.Reads = 0;
-            OpenCodeWslQuickAccess.FixturePath = Path.Combine(evidence, "wsl-model-state.json");
-            await File.WriteAllTextAsync(OpenCodeWslQuickAccess.FixturePath, "{\"favorite\":[{\"providerID\":\"file\",\"modelID\":\"m\"}]}");
             var calls = 0;
-            var client = new OpenCodeClient();
-            client.Send = (_, path, _, _, _) =>
+            var source = new OpenCodePageSource("source-" + variant, 1, () => new());
+            var first = source.CreateClient(); var second = source.CreateClient();
+            check(ReferenceEquals(first.DesktopBridge, second.DesktopBridge), "one service per source, not per feature/client");
+            first.Send = (_, path, query, body, _) =>
             {
                 calls++;
-                check(path.EndsWith("/hello"), "unsupported plugin never calls favorites methods");
-                return Task.FromResult(unsupported switch
+                check(path.EndsWith("/hello") && query is null, "source connect hello uses default server location");
+                return Task.FromResult(variant switch
                 {
-                    "404" => Reply("credential-looking body never echoed", 404),
-                    "unknown-method" => Reply("{\"type\":\"rpc.method_not_found\",\"message\":\"sensitive\"}", 400),
-                    "old-version" => Reply("{\"output\":{\"protocolVersion\":null,\"supportedVersions\":[1],\"capabilities\":[]}}"),
-                    _ => Reply("{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"billion.origin.v1\"]}}"),
+                    "missing" => Reply("private", 404),
+                    "unknown-id" => Reply("{\"type\":\"rpc.method_not_found\",\"message\":\"private\"}", 400),
+                    "old" => Reply(Fixture("hello-unsupported")),
+                    "origin-only" => Reply("{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"billion.origin.v1\"]}}"),
+                    "favorites-only" => Reply("{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"model.favorites.v1\"]}}"),
+                    "empty" => Reply("{\"output\":{\"protocolVersion\":1,\"capabilities\":[]}}"),
+                    _ => Reply(hello),
                 });
             };
-            var store = new OpenCodeModelFavoriteStore("source", client, "/project");
-            await store.LoadAsync();
-            await new OpenCodeModelFavoriteStore("source", client, "/project").LoadAsync();
-            check(calls == 1, "unsupported result is cached");
-            check(WslQuickAccessHome.Reads == (wsl ? 2 : 0) && store.Favorites.Keys.Single().ProviderId == (wsl ? "file" : "local"), "absent capability uses WSL file or app settings");
-            check(store.Status.Contains(wsl ? "WSL 文件" : "此应用"), "fallback notice names actual route");
-            check(OpenCodeModelFavoritesRpc.Route(false, wsl) == (wsl ? OpenCodeModelFavoriteRoute.WslFile : OpenCodeModelFavoriteRoute.AppSettings), "legacy routing decision");
+            var state = await first.DesktopBridge.NegotiateAsync(first, null, default);
+            var cached = await second.DesktopBridge.NegotiateAsync(second, "/other", default);
+            check(calls == 1 && ReferenceEquals(state, cached), "one hello per source across clients and feature locations");
+            check(state.Supports("model.favorites.v1") == (variant is "present" or "favorites-only")
+                && state.Supports("billion.origin.v1") == (variant is "present" or "origin-only"), "capability subset gates each feature independently");
+            var notice = first.DesktopBridge.TakeNotice(state);
+            check(notice == (variant == "present" ? null : variant is "missing" or "unknown-id" ? "未安装 Desktop Bridge 插件，部分功能暂不可用" : "Desktop Bridge 插件版本过旧，部分功能暂不可用"), "exact source-scoped missing/old notice");
+            check(second.DesktopBridge.TakeNotice(state) is null, "notice shown at most once per source, including after dismissal");
+            if (!state.Supports("model.favorites.v1"))
+            {
+                var store = new OpenCodeModelFavoriteStore(second, "/project");
+                await store.LoadAsync();
+                check(!store.Available && !store.Favorites.Keys.Any() && calls == 1, "unavailable means no favorites requests or fallback");
+                try { await store.SaveAsync(new("p", "m", "M", null, true, Array.Empty<string>(), null), true); check(false, "unavailable save must fail"); }
+                catch (InvalidOperationException) { check(calls == 1, "unavailable saves never access another persistence route"); }
+            }
         }
-
         foreach (var status in new[] { 401, 403, 500 })
         {
-            var client = new OpenCodeClient { Send = (_, _, _, _, _) => Task.FromResult(Reply("{\"type\":\"rpc.internal\",\"message\":\"sensitive\"}", status)) };
-            var store = new OpenCodeModelFavoriteStore("source", client, "/project");
-            try { await store.LoadAsync(); check(false, "auth/internal error must propagate"); }
-            catch (OpenCodePluginRpcException ex) { check(ex.StatusCode == status && !ex.IsUnsupported && !ex.Message.Contains("sensitive"), "auth/internal errors are sanitized and never capability absence"); }
-            var writes = SettingsService.Writes;
-            try { await store.SaveAsync(new("p", "m", "M", null, true, Array.Empty<string>(), null), true); check(false, "failed negotiation cannot silently save locally"); }
-            catch (IOException) { check(SettingsService.Writes == writes, "load error prevents local divergence"); }
+            var client = new OpenCodeClient { Send = (_, _, _, _, _) => Task.FromResult(Reply("{\"type\":\"rpc.internal\",\"message\":\"private\"}", status)) };
+            try { await client.DesktopBridge.NegotiateAsync(client, null, default); check(false, "actual handshake error expected"); }
+            catch (OpenCodePluginRpcException ex) { check(ex.StatusCode == status && !ex.IsUnsupported && !ex.Message.Contains("private"), "auth/server errors are not missing plugin"); }
         }
-        foreach (var malformed in new[] { "[]", "{}", "{\"data\":{}}", "{\"output\":null}", "not-json" })
+        foreach (var malformed in new[] { "[]", "{}", "{\"output\":null}", "{\"output\":{\"protocolVersion\":\"1\",\"capabilities\":[]}}", "not-json" })
         {
             var client = new OpenCodeClient { Send = (_, _, _, _, _) => Task.FromResult(Reply(malformed)) };
-            try { await client.SupportsModelFavoritesAsync("/project", default); check(false, "malformed output rejected"); }
-            catch (OpenCodeProtocolException) { check(true, "malformed output maps to protocol error"); }
+            try { await client.DesktopBridge.NegotiateAsync(client, null, default); check(false, "invalid hello expected"); }
+            catch (OpenCodeProtocolException) { check(true, "malformed hello maps to protocol error"); }
         }
         foreach (var status in new[] { 401, 404, 500 })
         {
-            var writes = SettingsService.Writes;
             var calls = 0;
-            var client = new OpenCodeClient();
-            client.Send = (_, path, _, _, _) =>
+            var client = new OpenCodeClient { Send = (_, path, _, _, _) =>
             {
                 calls++;
-                return Task.FromResult(Reply(path.EndsWith("/hello") ? hello : path.EndsWith("/model.favorites.get") ? get : "{\"type\":\"rpc.internal\",\"message\":\"sensitive\"}",
+                return Task.FromResult(Reply(path.EndsWith("/hello") ? hello : path.EndsWith("/model.favorites.get") ? get : "private",
                     path.EndsWith("/model.favorites.set") ? status : 200));
-            };
-            var store = new OpenCodeModelFavoriteStore("source", client, "/project");
-            await store.LoadAsync();
-            try { await store.SaveAsync(new("p", "m", "M", null, true, Array.Empty<string>(), null), true); check(false, "failed set expected"); }
-            catch (OpenCodePluginRpcException ex)
-            {
-                check(ex.StatusCode == status && !ex.Message.Contains("sensitive") && SettingsService.Writes == writes && calls == 4,
-                    "set errors propagate without retry or switching to local persistence");
-            }
+            } };
+            var store = new OpenCodeModelFavoriteStore(client, "/project"); await store.LoadAsync();
+            try { await store.SaveAsync(new("p", "m", "M", null, true, Array.Empty<string>(), null), true); check(false, "set failure expected"); }
+            catch (OpenCodePluginRpcException ex) { check(ex.StatusCode == status && calls == 4 && !ex.Message.Contains("private"), "failed set is not retried or saved elsewhere"); }
         }
-        foreach (var error in new Exception[] { new HttpRequestException("sensitive"), new IOException("sensitive"), new OperationCanceledException("sensitive") })
+        foreach (var error in new Exception[] { new HttpRequestException("private"), new IOException("private"), new OperationCanceledException("private") })
         {
             var client = new OpenCodeClient { Send = (_, _, _, _, _) => throw error };
-            try { await client.PluginRpcAsync("hello", "/project", new { protocolVersions = new[] { 1 } }, default); check(false, "transport error expected"); }
-            catch (OpenCodeException ex) { check((error is OperationCanceledException ? ex is OpenCodeTimeoutException : ex is OpenCodeTransportException) && !ex.Message.Contains("sensitive"), "timeout/transport mapping"); }
+            try { await client.PluginRpcAsync("hello", null, new { protocolVersions = new[] { 1 } }, default); check(false, "transport failure expected"); }
+            catch (OpenCodeException ex) { check((error is OperationCanceledException ? ex is OpenCodeTimeoutException : ex is OpenCodeTransportException) && !ex.Message.Contains("private"), "sanitized timeout/transport mapping"); }
         }
-        var cancelled = new CancellationToken(true);
-        var cancellingClient = new OpenCodeClient { Send = (_, _, _, _, ct) => { ct.ThrowIfCancellationRequested(); throw new Exception("unreachable"); } };
-        try { await cancellingClient.PluginRpcAsync("hello", "/project", new { }, cancelled); check(false, "cancellation expected"); }
-        catch (OperationCanceledException ex) { check(ex.CancellationToken == cancelled, "caller cancellation preserved"); }
         foreach (var invalid in new[] { "{\"favorites\":[{}]}", "{\"favorites\":[{\"providerID\":\"p\",\"modelID\":\"bad id\"}]}", "{\"favorites\":[],\"extra\":true}" })
         {
             using var json = JsonDocument.Parse(invalid);
             try { OpenCodeModelFavoritesRpc.Read(json.RootElement); check(false, "invalid favorites rejected"); }
-            catch (OpenCodeProtocolException) { check(true, "strict favorite output validation"); }
+            catch (OpenCodeProtocolException) { check(true, "strict favorites schema"); }
         }
-        check(File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs")).Contains("favoriteClient: owner.Ticket.Binding.Client")
-            && File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs")).Contains("favoriteClient: client, favoriteDirectory: basis.Directory"),
-            "session and blank callers pass existing authenticated source client/location");
+        var storeSource = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeModelFavoriteStore.cs"));
+        check(new[] { "System.IO", "File.", "Directory.", "SettingsService", "wsl.exe", @"\\wsl.localhost", "settings.OpenCodeModelFavorites", "OpenCodeModelFavoriteJson" }.All(text => !storeSource.Contains(text)), "favorites source contract: no file/settings/UNC fallback");
+        var settingsSource = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Models/AppSettings.cs"));
+        check(!settingsSource.Contains("OpenCodeModelFavorite"), "removed app-settings favorites setting and DTO");
+        var dialog = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs"));
+        check(dialog.Contains("favoriteSection.Visibility = favoriteStore.Available ? Visibility.Visible : Visibility.Collapsed")
+            && dialog.Contains("Visibility = showFavorite ? Visibility.Visible : Visibility.Collapsed"), "unavailable favorites section and stars hidden");
+        check(File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.xaml.cs")).Contains("_ = InitializeDesktopBridgeAsync(source, client)")
+            && File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.DesktopBridge.cs")).Contains("MessageBar.Message = notice"), "source connect negotiates and uses existing notice surface");
     }
 }

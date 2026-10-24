@@ -102,34 +102,6 @@ internal static class Program
             && favorites.Filter(rows, "absent").Favorites.Length == 0 && favorites.Filter(rows, "absent").All.Length == 0,
             "MP3 ID/provider search and no matches work in both sections");
         Check(!favorites.Toggle(rows[1]) && favorites.Filter(rows, "").Favorites.Length == 0, "MP3 unfavorite removes the pinned row");
-        const string modelState = "{\"recent\":[ {\"providerID\":\"p\",\"modelID\":\"recent\"} ],\"favorite\":[{\"providerID\":\"p\",\"modelID\":\"one\"},{\"providerID\":\"q\",\"modelID\":\"one\"}],\"variant\":{ \"p/one\" : \"high\" },\"future\":{\"unknown\":[null,42]}}";
-        var merged = OpenCodeModelFavoriteJson.Set(modelState, "p", "two", true);
-        using (var original = JsonDocument.Parse(modelState))
-        using (var updated = JsonDocument.Parse(merged))
-            foreach (var key in new[] { "recent", "variant", "future" })
-                Check(original.RootElement.GetProperty(key).GetRawText() == updated.RootElement.GetProperty(key).GetRawText(),
-                    "MP4 model.json merge retains other keys verbatim: " + key);
-        Check(OpenCodeModelFavoriteJson.Read(merged).Count == 3, "MP4 merge adds favorite without removing existing favorites");
-        merged = OpenCodeModelFavoriteJson.Set(merged, "p", "one", false);
-        Check(!OpenCodeModelFavoriteJson.Read(merged).Contains(("p", "one"))
-            && OpenCodeModelFavoriteJson.Read(merged).Contains(("q", "one")), "MP4 unfavorite preserves identical model ID on other provider");
-        Check(OpenCodeModelFavoriteJson.Read(OpenCodeModelFavoriteJson.Set(merged, "p", "two", true)).Count == 2,
-            "MP4 favorite update is idempotent");
-        Check(OpenCodeModelFavoriteJson.Read(OpenCodeModelFavoriteJson.Set("{}", "p", "one", true)).Single() == ("p", "one"),
-            "MP4 absent state/favorite creates only the real favorite");
-        foreach (var invalid in new[] { "{", "[]", "{\"favorite\":{}}", "{\"favorite\":[{}]}" })
-        {
-            var rejected = false;
-            try { OpenCodeModelFavoriteJson.Set(invalid, "p", "one", true); } catch (JsonException) { rejected = true; }
-            Check(rejected, "MP4 malformed state is rejected without overwrite: " + invalid);
-        }
-        var favoriteStore = Read("src/AIFrontend/Pages/OpenCode/OpenCodeModelFavoriteStore.cs");
-        Check(favoriteStore.Contains("WslQuickAccessHome.ResolveAsync") && favoriteStore.Contains("OpenCodeWslQuickAccess.Resolve")
-            && favoriteStore.Contains("~/.local/state/opencode/model.json") && favoriteStore.Contains("\"--exec\", \"mv\", \"-f\", \"--\"")
-            && favoriteStore.Contains("OpenCodeModelFavoriteJson.Set(await ReadAsync(target.HostPath)"),
-            "MP4 selected distro/home mapping with fresh merge and atomic same-WSL rename");
-        Check(favoriteStore.Contains("_settings.UpdateAsync") && favoriteStore.Contains("item.SourceId != sourceKey")
-            && favoriteStore.Contains("_target = null"), "MP4 Remote/WSL failure persists per-source favorites through settings transform");
         Check(dialog.Contains("lists.Children.Add(favoriteSection)") && dialog.Contains("Grid.SetRow(list, 1)")
             && dialog.Contains("favoriteSection.MaxHeight = lists.Height * 0.4") && dialog.Contains("favoriteList.MaxHeight"),
             "MP3 favorites occupy a pinned Auto row above the independent all-models scroll");

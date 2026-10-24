@@ -31,10 +31,10 @@ internal static class OpenCodeModelPickerDialog
         if (owner is null || anchor is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
         var cancelled = new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null);
         var state = new OpenCodeModelPickerState(presentation);
-        var favoriteStore = new OpenCodeModelFavoriteStore(sourceKey ?? string.Empty, favoriteClient, favoriteDirectory, favoriteCancellation);
+        var favoriteStore = new OpenCodeModelFavoriteStore(favoriteClient, favoriteDirectory, favoriteCancellation);
         string? favoriteError = null;
         try { await favoriteStore.LoadAsync(); }
-        catch (Exception) { favoriteError = "收藏设置未能读取；更改收藏时将再次尝试保存。"; }
+        catch (Exception) { favoriteError = "收藏未能读取，请重新打开列表重试。"; }
         if (anchor.XamlRoot != owner || !anchor.IsLoaded) return cancelled;
         var favorites = favoriteStore.Favorites;
         var search = new AutoSuggestBox { PlaceholderText = "搜索模型或提供方", QueryIcon = new SymbolIcon(Symbol.Find) };
@@ -49,6 +49,7 @@ internal static class OpenCodeModelPickerDialog
         AutomationProperties.SetAutomationId(favoriteList, "OpenCodeModelPickerFavorites");
         AutomationProperties.SetName(favoriteList, "收藏模型");
         var favoriteSection = new Grid { RowSpacing = 4 };
+        favoriteSection.Visibility = favoriteStore.Available ? Visibility.Visible : Visibility.Collapsed;
         favoriteSection.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         favoriteSection.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         favoriteSection.Children.Add(OpenCodeInteractionUi.StyledText("收藏", OpenCodeInteractionUi.BodyStrongStyleKey));
@@ -63,7 +64,8 @@ internal static class OpenCodeModelPickerDialog
         var body = new StackPanel { Spacing = 8, Width = ModelBodyWidth(owner), Padding = new Thickness(8) };
         body.Children.Add(OpenCodeInteractionUi.StyledText("选择模型", OpenCodeInteractionUi.BodyStrongStyleKey));
         body.Children.Add(search);
-        var favoriteStatus = OpenCodeInteractionUi.Caption(favoriteError ?? favoriteStore.Status, 0.85);
+        var favoriteStatus = OpenCodeInteractionUi.Caption(favoriteError ?? string.Empty, 0.85);
+        favoriteStatus.Visibility = favoriteError is null ? Visibility.Collapsed : Visibility.Visible;
         AutomationProperties.SetLiveSetting(favoriteStatus, AutomationLiveSetting.Polite);
         body.Children.Add(favoriteStatus);
         body.Children.Add(lists);
@@ -78,7 +80,7 @@ internal static class OpenCodeModelPickerDialog
             try
             {
                 await favoriteStore.SaveAsync(row, value);
-                favoriteStatus.Text = favoriteStore.Status;
+                favoriteStatus.Text = string.Empty;
             }
             catch (Exception)
             {
@@ -116,7 +118,7 @@ internal static class OpenCodeModelPickerDialog
             var sections = favorites.Filter(OpenCodeModelPresentation.Order(presentation.Rows, sourceKey), filter);
             foreach (var row in sections.Favorites)
             {
-                var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row));
+                var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row), favoriteStore.Available);
                 favoriteList.Items.Add(item);
                 if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) favoriteList.SelectedItem = item;
             }
@@ -130,7 +132,7 @@ internal static class OpenCodeModelPickerDialog
                     Padding = new Thickness(10, 12, 10, 4), MinHeight = 28 });
                 foreach (var row in provider)
                 {
-                    var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row));
+                    var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row), favoriteStore.Available);
                     list.Items.Add(item);
                     if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) list.SelectedItem = item;
                 }
@@ -184,7 +186,7 @@ internal static class OpenCodeModelPickerDialog
     private static double ModelListMaxHeight(XamlRoot? owner) =>
         Math.Max(34, Math.Min(640, (owner?.Size.Height ?? 760) - 192));
 
-    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, bool canToggle, Action toggleFavorite)
+    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, bool canToggle, Action toggleFavorite, bool showFavorite)
     {
         var grid = OpenCodeModelLogo.Label(row.ModelId, row.Name);
         var content = new Grid { ColumnSpacing = 8 };
@@ -192,6 +194,7 @@ internal static class OpenCodeModelPickerDialog
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(grid);
         var favorite = new ToggleButton { IsChecked = isFavorite, IsEnabled = canToggle, MinWidth = 32, MinHeight = 28,
+            Visibility = showFavorite ? Visibility.Visible : Visibility.Collapsed,
             Padding = new Thickness(6), VerticalAlignment = VerticalAlignment.Center,
             Content = new FontIcon { Glyph = isFavorite ? "\uE735" : "\uE734", FontSize = 16 } };
         if (isFavorite && Application.Current.Resources.TryGetValue("SystemControlHighlightAccentBrush", out var accent)
