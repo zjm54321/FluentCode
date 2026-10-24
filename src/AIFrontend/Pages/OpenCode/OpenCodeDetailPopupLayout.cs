@@ -20,6 +20,9 @@ internal enum OpenCodeDetailPopupMode
 /// <summary>纯数据矩形（与 WinUI 无关，便于无界面测试）。</summary>
 internal readonly record struct OpenCodeDetailRect(double X, double Y, double Width, double Height);
 
+/// <summary>Native content measurement, including overflow hidden by an inner scroll/fixed viewport.</summary>
+internal readonly record struct OpenCodeDetailPreviewMeasure(double FullHeight, bool Clipped = false);
+
 /// <summary>A8：预览横向安全区（根坐标，DIP）：消息内容列内、两侧留白后的 [Left, Right]。</summary>
 internal readonly record struct OpenCodeDetailBand(double Left, double Right)
 {
@@ -29,7 +32,7 @@ internal readonly record struct OpenCodeDetailBand(double Left, double Right)
 /// <summary>
 /// 详情弹出层的纯几何与悬停判定（G7，无 WinUI 依赖，headless 测试直接编译本文件）。
 /// 大视图 = 应用窗口的 <see cref="LargeViewFraction"/>（居中，随窗口改变）；
-/// 悬停预览 = 来源行 0.6–1.2 倍宽（再受内容列安全区限制），优先最窄且无需纵向滚动的宽度，只在行上/下方，
+/// 悬停预览 = 自然宽度（最多安全区的 80%），仍被裁切时逐步扩至安全区全宽，只在行上/下方，
 /// 横向以指针为中心并夹紧在内容列两侧约 10% 留白之内（A8）。
 /// </summary>
 internal static class OpenCodeDetailPopupLayout
@@ -47,6 +50,9 @@ internal static class OpenCodeDetailPopupLayout
 
     internal const double PreviewMinRowFraction = 0.6;
     internal const double PreviewMaxRowFraction = 1.2;
+
+    internal const double PreviewWrapFraction = 0.8;
+    internal const double PreviewGrowthFraction = 0.05;
 
     internal const double PreviewGap = 8;
 
@@ -100,32 +106,36 @@ internal static class OpenCodeDetailPopupLayout
         return Math.Clamp(pointerX - previewWidth / 2, band.Left, Math.Max(band.Left, band.Right - previewWidth));
     }
 
-    /// <summary>来源行宽度范围；内容列安全区宽度优先于行比例（窄列时预览宽度随安全区收窄）。</summary>
+    /// <summary>保留原来的最小宽度，但不超过 80% 换行阈值；最大宽度为整个安全区。</summary>
     internal static (double Min, double Max) PreviewWidths(double anchorWidth, OpenCodeDetailBand band)
     {
         var available = Math.Max(0, band.Width);
         var row = Math.Max(0, anchorWidth);
-        return (Math.Min(row * PreviewMinRowFraction, available), Math.Min(row * PreviewMaxRowFraction, available));
+        return (Math.Min(row * PreviewMinRowFraction, available * PreviewWrapFraction), available);
     }
 
-    /// <summary>Measure the full wrapped height, not a ScrollViewer's constrained viewport. Search to one DIP.</summary>
+    /// <summary>HP1: natural width up to 80%; wrap there, then grow in bounded 5% steps only while clipped.</summary>
     internal static (double Width, double FullHeight, bool Clipped) FitPreview(double anchorWidth, OpenCodeDetailBand band,
-        double availableHeight, Func<double, double> measureFullHeight)
+        double naturalWidth, double availableHeight, Func<double, OpenCodeDetailPreviewMeasure> measureContent)
     {
         var (min, max) = PreviewWidths(anchorWidth, band);
-        var height = measureFullHeight(min);
-        if (height <= availableHeight) return (min, height, false);
-        height = measureFullHeight(max);
-        if (height > availableHeight) return (max, height, true);
-        var low = min;
-        var high = max;
-        for (var i = 0; i < 16 && high - low > 1; i++)
+        var wrap = max * PreviewWrapFraction;
+        var width = Math.Clamp(naturalWidth, min, wrap);
+        var measured = measureContent(width);
+        bool Clipped() => measured.Clipped || measured.FullHeight > availableHeight;
+        if (!Clipped()) return (width, measured.FullHeight, false);
+        // A narrow but tall block may first use the normal wrapping limit.
+        if (width < wrap)
         {
-            var middle = (low + high) / 2;
-            if (measureFullHeight(middle) <= availableHeight) high = middle;
-            else low = middle;
+            width = wrap;
+            measured = measureContent(width);
         }
-        return (high, measureFullHeight(high), false);
+        for (var step = 1; Clipped() && width < max && step <= 4; step++)
+        {
+            width = step == 4 ? max : Math.Min(max, max * (PreviewWrapFraction + step * PreviewGrowthFraction));
+            measured = measureContent(width);
+        }
+        return (width, measured.FullHeight, Clipped());
     }
 
     /// <summary>实际高度由来源行上/下可用空间进一步限制。</summary>

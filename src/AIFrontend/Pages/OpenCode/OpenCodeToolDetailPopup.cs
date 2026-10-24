@@ -153,6 +153,7 @@ internal sealed class OpenCodeToolDetailPopup
     private double _pointerRootX = double.NaN;
     private double _previewPointerX = double.NaN;
     private bool _previewPlaced;
+    private double _previewFullHeight;
 
     /// <summary>消息内容列（OpenCodePage.xaml 的 MessageHost）：预览横向边界的来源，而不是整个窗口。</summary>
     private const string ContentColumnName = "MessageHost";
@@ -194,7 +195,8 @@ internal sealed class OpenCodeToolDetailPopup
                 Show(source, OpenCodeDetailPopupMode.Large);
             }
         };
-        _previewPresenter.SizeChanged += (_, _) => PlacePreview();
+        // Native layout may change the rendered height, but must never start another width search.
+        _previewPresenter.SizeChanged += (_, _) => PlacePreview(remeasure: false);
 
         _previewPopup = new Popup
         {
@@ -628,7 +630,7 @@ internal sealed class OpenCodeToolDetailPopup
             _previewPopup.XamlRoot = root;
             ObserveRoot(root);
             UpdateTitle(source);
-            Rebuild(keepScroll: false); // Rebuild performs the row-based fit before opening.
+            Rebuild(keepScroll: false); // Measure natural width and fit once before opening.
             if (_mode != OpenCodeDetailPopupMode.Preview || !_previewPlaced)
             {
                 // No valid content-column bounds (unloaded / different root / non-finite): never fall back
@@ -822,6 +824,14 @@ internal sealed class OpenCodeToolDetailPopup
     private void OnPreviewContentLayoutUpdated(object? sender, object e)
     {
         if (_mode != OpenCodeDetailPopupMode.Preview || _placingPreview || _scroller is not { } scroll) return;
+        // A new viewport belongs to our own width pass, not a content change. Seed the
+        // final extent without scheduling another search (also covers first layout).
+        if (Math.Abs(scroll.ViewportWidth - _previewViewportWidth) >= 0.5)
+        {
+            _previewExtentHeight = scroll.ExtentHeight;
+            _previewViewportWidth = scroll.ViewportWidth;
+            return;
+        }
         if (Math.Abs(scroll.ExtentHeight - _previewExtentHeight) < 0.5
             && Math.Abs(scroll.ViewportWidth - _previewViewportWidth) < 0.5) return;
         _previewExtentHeight = scroll.ExtentHeight;
@@ -832,7 +842,7 @@ internal sealed class OpenCodeToolDetailPopup
             _previewRelayoutQueued = false;
     }
 
-    private void PlacePreview()
+    private void PlacePreview(bool remeasure = true)
     {
         if (_placingPreview || _mode != OpenCodeDetailPopupMode.Preview || _previewAnchor is not { XamlRoot: { } root } anchor)
         {
@@ -851,6 +861,15 @@ internal sealed class OpenCodeToolDetailPopup
         _placingPreview = true;
         try
         {
+        if (!remeasure)
+        {
+            if (!_previewPlaced) return;
+            var positioned = PlaceBelowByDefault(pointerX, origin.Y, anchor.ActualHeight,
+                _previewPresenter.Width, Math.Min(_previewFullHeight, _previewPresenter.MaxHeight), band, root.Size.Height);
+            _previewPopup.HorizontalOffset = positioned.X;
+            _previewPopup.VerticalOffset = positioned.Y;
+            return;
+        }
         // Widths are column-based; keep the existing safe band and frozen entry X.
         var columnWidth = band.Width / (1 - 2 * OpenCodeDetailPopupLayout.ContentEdgeFraction);
         var sizingAnchor = Math.Min(columnWidth, band.Width / OpenCodeDetailPopupLayout.PreviewMaxRowFraction);
@@ -858,8 +877,19 @@ internal sealed class OpenCodeToolDetailPopup
         var height = Math.Min(340, OpenCodeDetailPopupLayout.PreviewHeightLimit(root.Size.Height));
         var capacity = OpenCodeDetailPopupLayout.PreviewPlacement(
             pointerX, origin.Y, anchor.ActualHeight, maxWidth, height, band, root.Size.Height);
+        var availableHeight = Math.Min(height, capacity.Height);
         _previewHint.Visibility = Visibility.Collapsed;
-        double MeasureFullHeight(double width)
+        // Clear the previous explicit width/cap before measuring native unwrapped content.
+        _previewPresenter.Width = double.NaN;
+        _previewPresenter.Height = double.NaN;
+        _previewPresenter.MaxWidth = double.PositiveInfinity;
+        _previewPresenter.MaxHeight = double.PositiveInfinity;
+        _previewPresenter.ApplyTemplate();
+        _scroller?.ApplyTemplate();
+        _previewPresenter.InvalidateMeasure();
+        _previewPresenter.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var naturalWidth = _previewPresenter.DesiredSize.Width;
+        OpenCodeDetailPreviewMeasure MeasureContent(double width)
         {
             _previewPresenter.Width = width;
             _previewPresenter.Height = double.NaN;
@@ -867,13 +897,22 @@ internal sealed class OpenCodeToolDetailPopup
             _previewPresenter.MaxHeight = double.PositiveInfinity;
             _previewPresenter.InvalidateMeasure();
             _previewPresenter.Measure(new Size(width, double.PositiveInfinity));
-            return _previewPresenter.DesiredSize.Height;
+            var measuredHeight = _previewPresenter.DesiredSize.Height;
+            // ScrollViewer.DesiredSize stops at its MaxHeight. Measure the native body
+            // separately so the compact 260px cap cannot hide overflow from FitPreview.
+            var overflow = MeasurePreviewOverflow(_previewChrome.ContentHost.Child, Math.Max(0, width - 28));
+            return new OpenCodeDetailPreviewMeasure(measuredHeight + overflow.ExtraHeight, overflow.Clipped);
         }
-        var fit = OpenCodeDetailPopupLayout.FitPreview(sizingAnchor, band, Math.Min(height, capacity.Height), MeasureFullHeight);
+        var fit = OpenCodeDetailPopupLayout.FitPreview(sizingAnchor, band, naturalWidth, availableHeight, MeasureContent);
         _previewHint.Visibility = fit.Clipped || _previewTruncated ? Visibility.Visible : Visibility.Collapsed;
-        var fullHeight = MeasureFullHeight(fit.Width);
+        // Restore the presenter's final measure after inspecting inner scroll contents;
+        // include the hint in final height, without starting another width pass.
+        _previewPresenter.InvalidateMeasure();
+        _previewPresenter.Measure(new Size(fit.Width, double.PositiveInfinity));
+        var fullHeight = _previewPresenter.DesiredSize.Height;
+        _previewFullHeight = fullHeight;
         var rect = PlaceBelowByDefault(
-            pointerX, origin.Y, anchor.ActualHeight, fit.Width, fullHeight, band, root.Size.Height);
+            pointerX, origin.Y, anchor.ActualHeight, fit.Width, Math.Min(fullHeight, availableHeight), band, root.Size.Height);
         _previewPresenter.Width = rect.Width;
         // Keep height automatic so streamed text / decoded images can grow naturally up to this side's capacity.
         _previewPresenter.Height = double.NaN;
@@ -881,8 +920,60 @@ internal sealed class OpenCodeToolDetailPopup
         _previewPopup.HorizontalOffset = rect.X;
         _previewPopup.VerticalOffset = rect.Y;
         _previewPlaced = true;
+        _previewViewportWidth = -1; // Next native viewport/extent pair is our final layout, not new content.
         }
         finally { _placingPreview = false; }
+    }
+
+    private static (double ExtraHeight, bool Clipped) MeasurePreviewOverflow(DependencyObject? node, double width)
+    {
+        if (node is null) return (0, false);
+        var extraHeight = 0d;
+        var clipped = false;
+        if (node is FrameworkElement element)
+        {
+            width = Math.Max(0, width - element.Margin.Left - element.Margin.Right);
+            clipped = element.MinWidth > width || (double.IsFinite(element.Width) && element.Width > width);
+            width = Math.Min(width, Math.Min(element.MaxWidth, element.DesiredSize.Width));
+        }
+        if (node is TextBlock { TextWrapping: TextWrapping.NoWrap, TextTrimming: TextTrimming.None } text)
+        {
+            text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            clipped |= text.DesiredSize.Width > width + 0.5;
+            text.Measure(new Size(width, double.PositiveInfinity));
+        }
+        if (node is RichTextBlock { TextWrapping: TextWrapping.NoWrap } rich)
+        {
+            rich.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            clipped |= rich.DesiredSize.Width > width + 0.5;
+            rich.Measure(new Size(width, double.PositiveInfinity));
+        }
+        if (node is ScrollViewer { Content: FrameworkElement content } scroll)
+        {
+            var innerWidth = Math.Max(0, width - scroll.Padding.Left - scroll.Padding.Right);
+            // Horizontal scrolling gives a native unbounded layout. Its natural width
+            // must fit the candidate viewport, even when DesiredSize was constrained.
+            if (scroll.HorizontalScrollMode != ScrollMode.Disabled)
+            {
+                content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                clipped |= content.DesiredSize.Width > innerWidth + 0.5;
+            }
+            content.Measure(new Size(innerWidth, double.PositiveInfinity));
+            var fullHeight = content.DesiredSize.Height + scroll.Padding.Top + scroll.Padding.Bottom;
+            var cap = Math.Min(scroll.MaxHeight, double.IsFinite(scroll.Height) ? scroll.Height : double.PositiveInfinity);
+            clipped |= fullHeight > cap + 0.5;
+            extraHeight = Math.Max(0, fullHeight - scroll.DesiredSize.Height);
+            var inner = MeasurePreviewOverflow(content, innerWidth);
+            return (extraHeight + inner.ExtraHeight, clipped || inner.Clipped);
+        }
+        if (node is Border border) width = Math.Max(0, width - border.Padding.Left - border.Padding.Right);
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+        {
+            var child = MeasurePreviewOverflow(VisualTreeHelper.GetChild(node, i), width);
+            extraHeight = Math.Max(extraHeight, child.ExtraHeight);
+            clipped |= child.Clipped;
+        }
+        return (extraHeight, clipped);
     }
 
     /// <summary>W3: below by default; above only when the content does not fit below.</summary>

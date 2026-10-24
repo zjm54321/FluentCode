@@ -167,6 +167,14 @@ internal static class Program
             && !content.Contains("new RadioButtons", StringComparison.Ordinal), "PT1 accepts a per-file selector without a multi-file chooser");
         Check(popup.Contains("_dialogPresenter.SizeChanged +=", StringComparison.Ordinal)
             && popup.Contains("Size.Width < 900", StringComparison.Ordinal), "D2 diff responds to window-width changes");
+        Check(popup.Contains("Measure(new Size(double.PositiveInfinity, double.PositiveInfinity))", StringComparison.Ordinal)
+            && popup.Contains("var naturalWidth = _previewPresenter.DesiredSize.Width", StringComparison.Ordinal)
+            && popup.Contains("band, naturalWidth, availableHeight, MeasureContent", StringComparison.Ordinal),
+            "HP1 shared preview uses native natural width before candidate wrapping measures");
+        Check(popup.Contains("_previewPresenter.SizeChanged += (_, _) => PlacePreview(remeasure: false)", StringComparison.Ordinal)
+            && popup.Contains("MeasurePreviewOverflow(_previewChrome.ContentHost.Child", StringComparison.Ordinal)
+            && popup.Contains("content.Measure(new Size(innerWidth, double.PositiveInfinity))", StringComparison.Ordinal),
+            "HP1 all preview kinds inspect inner native content, size changes only reposition");
         Check(content.Contains("OldNumber = null, NewNumber = null", StringComparison.Ordinal)
             && content.Contains("shown + 20", StringComparison.Ordinal), "local diff line numbers stay unknown and folds expand twenty lines at a time");
         var grouped = OpenCodeToolDetailResultData.Grep("Found 3 matches\n/tmp/a.cs:\n  Line 7: alpha\n  Line 9: beta\n/tmp/b.cs:14: gamma\ntruncated by server");
@@ -222,20 +230,43 @@ internal static class Program
         Check(windowEdge.Left == 8 && windowEdge.Right == 592, "band additionally respects the 8px window margin");
         var previewWidth = OpenCodeDetailPopupLayout.PreviewWidths(1000, band).Max;
         var previewHeight = OpenCodeDetailPopupLayout.PreviewHeightLimit(1000);
-        Check(OpenCodeDetailPopupLayout.PreviewWidths(500, band) == (300, 600) && previewHeight == 984, "row bounds 0.6A/1.2A when the safe band is wider");
-        Check(OpenCodeDetailPopupLayout.PreviewWidths(1000, band) == (600, 656), "row-based max width clamps to the content safe band");
+        Check(OpenCodeDetailPopupLayout.PreviewWidths(500, band) == (300, 656) && previewHeight == 984, "HP1 keeps current minimum, maximum is full safe band");
+        Check(Math.Abs(OpenCodeDetailPopupLayout.PreviewWidths(1000, band).Min - 524.8) < 0.01, "HP1 minimum cannot exceed 80% wrapping threshold");
         var narrowBand = OpenCodeDetailPopupLayout.PreviewSafeBand(100, 400, 1600)!.Value;
         Check(narrowBand.Left == 130 && narrowBand.Right == 370 && OpenCodeDetailPopupLayout.PreviewWidths(300, narrowBand) == (180, 240)
-            && OpenCodeDetailPopupLayout.PreviewWidths(1000, narrowBand) == (240, 240), "narrow column: preview width itself shrinks to the safe band");
+            && OpenCodeDetailPopupLayout.PreviewWidths(1000, narrowBand) == (192, 240), "narrow column: minimum shrinks below wrapping threshold");
+        var hpBand = new OpenCodeDetailBand(100, 1100);
         var measurements = 0;
-        var fitsNarrow = OpenCodeDetailPopupLayout.FitPreview(500, band, 500, width => { measurements++; return 96; });
-        Check(fitsNarrow == (300, 96, false) && measurements == 1, "short wrapped content keeps minimum row width and natural height without probing wider widths");
-        var adaptive = OpenCodeDetailPopupLayout.FitPreview(500, band, 500, width => 180000 / width);
-        Check(adaptive.Width >= 360 && adaptive.Width < 361 && adaptive.FullHeight <= 500 && !adaptive.Clipped, "expand only to the narrowest fitting wrapped width within one DIP");
-        var constrained = OpenCodeDetailPopupLayout.FitPreview(500, band, 500, width => 1000000 / width);
-        Check(constrained.Width == 600 && constrained.Clipped, "only content still too tall at maximum row width requires vertical scrolling and full-detail hint");
-        var squeezed = OpenCodeDetailPopupLayout.FitPreview(1000, narrowBand, 500, width => 1000000 / width);
+        var fitsNarrow = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 420, 340, width => { measurements++; return new(96); });
+        Check(fitsNarrow == (420, 96, false) && measurements == 1, "HP1 narrow content uses native natural width, not the minimum");
+        var minimum = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 40, 340, width => new(96));
+        Check(minimum == (300, 96, false), "HP1 very short content retains sensible existing minimum");
+        var probes = new List<double>();
+        var wraps = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 1600, 340, width => { probes.Add(width); return new(200); });
+        Check(wraps == (800, 200, false) && probes.SequenceEqual(new[] { 800d }), "HP1 wide content wraps at 80% without unnecessary growth");
+        var boundary = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 800, 340, width => new(340));
+        Check(boundary == (800, 340, false), "HP1 exactly 80% and maximum height still fits");
+        probes.Clear();
+        var adaptive = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 1600, 340, width => { probes.Add(width); return new(300000 / width); });
+        Check(Math.Abs(adaptive.Width - 900) < 0.01 && adaptive.FullHeight <= 340 && !adaptive.Clipped
+            && probes.Count == 3 && Math.Abs(probes[0] - 800) < 0.01 && Math.Abs(probes[1] - 850) < 0.01,
+            "HP1 height clipped at 80% grows step by step and stops as soon as it fits");
+        var innerScroll = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 1600, 340, width => new(260, width < 950));
+        Check(Math.Abs(innerScroll.Width - 950) < 0.01 && !innerScroll.Clipped, "HP1 inner scroll/fixed viewport clipping triggers growth even with a capped height");
+        var constrained = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 1600, 340, width => new(1000000 / width));
+        Check(constrained.Width == 1000 && constrained.Clipped, "HP1 content still clipped at 100% stays there");
+        var horizontal = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 1600, 340, width => new(100, true));
+        Check(horizontal == (1000, 100, true), "HP1 persistent horizontal clipping stops at full available width");
+        var tallNarrow = OpenCodeDetailPopupLayout.FitPreview(500, hpBand, 420, 340, width => new(250000 / width));
+        Check(tallNarrow.Width == 800 && !tallNarrow.Clipped, "HP1 tall narrow content can use 80% before growing beyond it");
+        var squeezed = OpenCodeDetailPopupLayout.FitPreview(1000, narrowBand, 1600, 500, width => new(1000000 / width));
         Check(squeezed.Width == 240 && squeezed.Clipped, "narrow column fit never exceeds the safe band width");
+        var empty = OpenCodeDetailPopupLayout.FitPreview(500, new OpenCodeDetailBand(100, 100), 400, 0, width => new(0));
+        Check(empty == (0, 0, false), "HP1 empty band remains bounded without a growth loop");
+        Check(OpenCodeDetailPopupLayout.PreviewX(600, fitsNarrow.Width, hpBand) == 390
+            && OpenCodeDetailPopupLayout.PreviewX(0, wraps.Width, hpBand) == 100
+            && OpenCodeDetailPopupLayout.PreviewX(1200, adaptive.Width, hpBand) + adaptive.Width == 1100,
+            "HP1 adaptive widths retain pointer centering and both band clamps");
 
         // Pointer-centred X, clamped to the band (not the source-row centre).
         var centred = OpenCodeDetailPopupLayout.PreviewPlacement(800, 200, 32, 400, 300, band, 1000);
