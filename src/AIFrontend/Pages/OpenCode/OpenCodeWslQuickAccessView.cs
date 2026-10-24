@@ -13,9 +13,9 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     {
         // ~40px primary target plus the native dropdown segment.
         Width = 72, Height = 36, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0),
-        Content = new FontIcon { Glyph = "\uE70F", FontSize = 18 },
     };
     private WslHostEditor? _currentEditor;
+    private int _renderVersion;
     private const string ExplorerText = "在资源管理器中打开";
     private const string EditorText = "在主机文本编辑器中打开";
     private readonly TextBlock _note = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
@@ -51,14 +51,18 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _explorer.IsEnabled = state.Target is not null;
         var choices = WslEditorChoices.Resolve(editors, selectedEditor);
         _currentEditor = choices.Current;
+        var version = ++_renderVersion;
+        _editor.Content = null;
+        if (_currentEditor?.Executable is { } executable) _ = SetPrimaryIconAsync(executable, version);
         var supported = state.Target is not null && _currentEditor is not null;
         _editors.Items.Clear();
         foreach (var editor in choices.Installed)
         {
-            var item = new RadioMenuFlyoutItem { Text = editor.Name, IsEnabled = state.Target is not null,
-                GroupName = "WslHostEditor", IsChecked = editor.Name == _currentEditor?.Name };
-            item.Click += (_, _) => EditorRequested?.Invoke(this, new(editor.Name));
+            var item = new MenuFlyoutItem { Text = editor.Name, IsEnabled = state.Target is not null };
+            // MenuFlyoutItem.Click is an action, not merely a radio checked-state change.
+            item.Click += (_, _) => EditorRequested?.Invoke(this, new(editor.Name, selectDefault: true));
             _editors.Items.Add(item);
+            if (editor.Executable is { } path) _ = SetMenuIconAsync(item, path);
         }
         _editor.IsEnabled = supported;
         // The directory row already shows the path; only explain what is unavailable.
@@ -69,6 +73,15 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         ToolTipService.SetToolTip(_editor, editorText + "\n" + (state.Reason
             ?? (_currentEditor?.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : state.Target?.HostPath)));
     }
+
+    private async System.Threading.Tasks.Task SetPrimaryIconAsync(string executable, int version)
+    {
+        var icon = await OpenCodeWslQuickAccessIcons.CreateAsync(executable);
+        if (version == _renderVersion) _editor.Content = icon;
+    }
+
+    private static async System.Threading.Tasks.Task SetMenuIconAsync(MenuFlyoutItem item, string executable)
+        => item.Icon = await OpenCodeWslQuickAccessIcons.CreateAsync(executable);
 
     private void SetNote(string? text)
     {

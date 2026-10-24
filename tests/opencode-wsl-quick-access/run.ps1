@@ -33,11 +33,19 @@ $launcherSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCo
 if ($launcherSource -match 'LaunchFolderPathAsync|StorageFolder' -or $launcherSource -notmatch 'Start\(OpenCodeWslQuickAccess.ExplorerLaunch\(target,') { throw 'Explorer must use the mapped native launch command directly.' }
 Write-Output 'PASS native Explorer route source contract (no host application launched)'
 $viewSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessView.cs')
-foreach ($pattern in @('SplitButton _editor', '_editor.Click \+=', '_editor.Flyout = _editors', 'new RadioMenuFlyoutItem', 'foreach \(var editor in choices.Installed\)', 'IsChecked = editor.Name == _currentEditor\?\.Name')) {
+foreach ($pattern in @('SplitButton _editor', '_editor.Click \+=', '_editor.Flyout = _editors', 'new MenuFlyoutItem', 'foreach \(var editor in choices.Installed\)', 'new\(editor.Name, selectDefault: true\)', 'SetPrimaryIconAsync', 'SetMenuIconAsync')) {
     if ($viewSource -notmatch $pattern) { throw "Native editor SplitButton/menu contract missing: $pattern" }
 }
-if ($viewSource -match 'ToggleMenuFlyoutItem') { throw 'Editor choice must use native radio items.' }
-Write-Output 'PASS native SplitButton/menu source contract; detection/preference tested in pure projection'
+Write-Output 'PASS native SplitButton/menu action source contract; selection persists and opens in pure policy'
+$pageSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.WslQuickAccess.cs')
+foreach ($pattern in @('LaunchWslQuickAccessAsync\(e.Name, e.SelectDefault\)', 'OpenCodeWslQuickAccess.LaunchEditorAsync', 'selectDefault \? editorName : null', '_wslEditorPreference.Save\(name\)')) {
+    if ($pageSource -notmatch $pattern) { throw "Editor select/open page wiring missing: $pattern" }
+}
+$iconsSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessIcons.cs')
+foreach ($pattern in @('WslEditorIconCache<BitmapImage>', 'StorageFile.GetFileFromPathAsync\(executable\)', 'GetThumbnailAsync\(ThumbnailMode.SingleItem, 32\)', 'SetSourceAsync\(thumbnail\)', 'new ImageIcon \{ Source = image')) {
+    if ($iconsSource -notmatch $pattern) { throw "Shell editor logo extraction missing: $pattern" }
+}
+Write-Output 'PASS executable shell-thumbnail extraction + ImageIcon source contract (no shell interaction performed)'
 foreach ($pattern in @('Width = 40, Height = 36', 'Width = 72, Height = 36', 'FontSize = 18', 'VerticalAlignment = VerticalAlignment.Center')) {
     if ($viewSource -notmatch $pattern) { throw "Quick-access sizing/alignment contract missing: $pattern" }
 }

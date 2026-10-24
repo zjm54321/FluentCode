@@ -179,13 +179,52 @@ internal static class Program
             Check(new WslQuickAccessEditorPreference(preferencePath).Load() is null, "no implicit editor choice");
             foreach (var editor in editors)
             {
-                new WslQuickAccessEditorPreference(preferencePath).Save(editor.Name);
+                var selectedLauncher = new RecordingLauncher();
+                await OpenCodeWslQuickAccess.LaunchEditorAsync(special, editors, "VS Code", editor.Name,
+                    name =>
+                    {
+                        Check(selectedLauncher.Editors.Count == 0, "selection persists before immediate launch");
+                        new WslQuickAccessEditorPreference(preferencePath).Save(name);
+                    }, selectedLauncher);
+                var exact = OpenCodeWslQuickAccess.EditorLaunch(special.Target!, editor);
+                Check(selectedLauncher.Editors.Single().Executable == exact.Executable
+                    && selectedLauncher.Editors.Single().Arguments.SequenceEqual(exact.Arguments),
+                    "select item persists AND opens selected editor with exact arguments: " + editor.Name);
                 Check(new WslQuickAccessEditorPreference(preferencePath).Load() == editor.Name, "editor choice survives recreation: " + editor.Name);
                 Check(WslEditorChoices.Resolve(editors, new WslQuickAccessEditorPreference(preferencePath).Load()).Current?.Name == editor.Name,
                     "recreated menu checks persisted editor for primary action: " + editor.Name);
+                await OpenCodeWslQuickAccess.LaunchEditorAsync(special, editors,
+                    new WslQuickAccessEditorPreference(preferencePath).Load(), null,
+                    _ => throw new Exception("primary must not change preference"), selectedLauncher);
+                Check(selectedLauncher.Editors.Count == 2 && selectedLauncher.Editors.Last().Executable == exact.Executable
+                    && selectedLauncher.Editors.Last().Arguments.SequenceEqual(exact.Arguments), "primary opens persisted default: " + editor.Name);
             }
+            var unavailableChoice = new RecordingLauncher();
+            await OpenCodeWslQuickAccess.LaunchEditorAsync(special, editors, "VS Code", "Removed editor",
+                _ => throw new Exception("missing editor must not persist"), unavailableChoice);
+            await OpenCodeWslQuickAccess.LaunchEditorAsync(Resolve("~/unresolved"), editors, "VS Code", "Zed",
+                _ => throw new Exception("invalid target must not persist"), unavailableChoice);
+            Check(unavailableChoice.Editors.Count == 0, "removed choice/invalid target never launch fallback editor");
         }
         finally { if (Directory.Exists(preferenceRoot)) Directory.Delete(preferenceRoot, true); }
+
+        var extracted = new List<string>();
+        var pendingIcon = new TaskCompletionSource<string?>();
+        var icons = new WslEditorIconCache<string>(path => { extracted.Add(path); return pendingIcon.Task; });
+        var firstIcon = icons.GetAsync(@"C:\Editors\Code.exe");
+        var sameIcon = icons.GetAsync(@"c:\editors\CODE.EXE");
+        Check(ReferenceEquals(firstIcon, sameIcon) && extracted.Count == 1, "icon cache key is case-insensitive executable path; pending reads deduplicated");
+        pendingIcon.SetResult("shell logo");
+        Check(await firstIcon == "shell logo" && ReferenceEquals(firstIcon, icons.GetAsync(@"C:\Editors\Code.exe")), "completed logo cached per exe, not editor label/visual");
+        await icons.GetAsync(@"D:\Other\Code.exe");
+        Check(extracted.Count == 2, "same executable filename at different paths has distinct cache entries");
+        var failedExtractions = 0;
+        var failedIcons = new WslEditorIconCache<string>(_ => { failedExtractions++; return Task.FromResult<string?>(null); });
+        Check(await failedIcons.GetAsync("missing.exe") is null && await failedIcons.GetAsync("missing.exe") is null
+            && failedExtractions == 1, "failed shell extraction cached; view uses glyph fallback");
+        Check(new WslEditorRequestedEventArgs("Zed", true).SelectDefault
+            && !new WslEditorRequestedEventArgs("Zed").SelectDefault, "menu selection differs from primary invocation");
+        Console.WriteLine("PASS immediate select/persist/open + default primary + per-executable icon cache");
 
         var recorder = new RecordingLauncher();
         await OpenCodeWslQuickAccess.LaunchAsync(Resolve("/old"), null, recorder);
@@ -196,7 +235,7 @@ internal static class Program
         await OpenCodeWslQuickAccess.LaunchAsync(Resolve("~/unresolved"), null, recorder);
         Check(recorder.Explorers.Count == 2, "unresolved replacement cannot launch stale target");
         Console.WriteLine("PASS directory refresh + fake launch boundary");
-        Console.WriteLine($"PASS 7 groups / {_assertions} assertions; no external applications launched");
+        Console.WriteLine($"PASS 8 groups / {_assertions} assertions; no external applications launched");
     }
 
     private sealed class FakeHost : IWslHostEditorEnvironment

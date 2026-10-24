@@ -21,9 +21,21 @@ internal sealed record WslEditorChoices(IReadOnlyList<WslHostEditor> Installed, 
             ?? (installed.Count > 0 ? installed[0] : null));
     }
 }
-internal sealed class WslEditorRequestedEventArgs(string name) : EventArgs
+internal sealed class WslEditorRequestedEventArgs(string name, bool selectDefault = false) : EventArgs
 {
     public string Name { get; } = name;
+    public bool SelectDefault { get; } = selectDefault;
+}
+
+// Cache the asynchronous extraction, not UI controls (each icon needs its own visual owner).
+internal sealed class WslEditorIconCache<T>(Func<string, Task<T?>> extract) where T : class
+{
+    private readonly Dictionary<string, Task<T?>> _icons = new(StringComparer.OrdinalIgnoreCase);
+    internal Task<T?> GetAsync(string executable)
+    {
+        if (!_icons.TryGetValue(executable, out var icon)) _icons[executable] = icon = extract(executable);
+        return icon;
+    }
 }
 internal sealed record WslHostLaunch(string Executable, IReadOnlyList<string> Arguments)
 {
@@ -44,6 +56,24 @@ internal interface IWslQuickAccessLauncher
 
 internal static class OpenCodeWslQuickAccess
 {
+    // A menu choice persists and opens in the same action. Null selection is the primary/default action.
+    internal static async Task LaunchEditorAsync(WslQuickAccessState state, IReadOnlyList<WslHostEditor> detected,
+        string? preference, string? selection, Action<string> persistSelection, IWslQuickAccessLauncher launcher)
+    {
+        if (!state.Visible || state.Target is null) return;
+        var choices = WslEditorChoices.Resolve(detected, preference);
+        WslHostEditor? editor = choices.Current;
+        if (selection is not null)
+        {
+            editor = null;
+            foreach (var candidate in choices.Installed)
+                if (candidate.Name == selection) { editor = candidate; break; }
+        }
+        if (editor is null) return;
+        if (selection is not null) persistSelection(editor.Name);
+        await LaunchAsync(state, editor, launcher);
+    }
+
     public static WslHostLaunch ExplorerLaunch(WslQuickAccessTarget target, string windowsDirectory)
         => new(Path.Combine(windowsDirectory, "explorer.exe"), new[] { target.HostPath });
 

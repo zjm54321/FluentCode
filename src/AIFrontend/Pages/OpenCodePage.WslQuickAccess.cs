@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -33,7 +32,7 @@ public sealed partial class OpenCodePage
         WslQuickAccessNoteSlot.Children.Add(_wslQuickAccessView.Note);
         _selectedWslEditor = _wslEditorPreference.Load();
         _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(null);
-        _wslQuickAccessView.EditorRequested += async (_, e) => await LaunchWslQuickAccessAsync(e.Name);
+        _wslQuickAccessView.EditorRequested += async (_, e) => await LaunchWslQuickAccessAsync(e.Name, e.SelectDefault);
         _wslQuickAccessView.EditorMenuRequested += (_, _) => DetectWslEditors();
         InitializeBrowserPanel();
         Loaded += (_, _) =>
@@ -125,7 +124,7 @@ public sealed partial class OpenCodePage
         RefreshWslQuickAccess();
     }
 
-    private async Task LaunchWslQuickAccessAsync(string? editorName)
+    private async Task LaunchWslQuickAccessAsync(string? editorName, bool selectDefault = false)
     {
         // Re-read live state at invocation; a menu may outlive a directory or connection change.
         var state = CurrentWslQuickAccess();
@@ -138,11 +137,14 @@ public sealed partial class OpenCodePage
             state = state with { Target = mapped };
             if (editorName is not null)
             {
-                var editor = WslHostEditorDetection.Detect(_wslEditorHost).FirstOrDefault(e => e.Name == editorName && e.Executable is not null);
-                if (editor is null) { DetectWslEditors(); return; }
-                _wslEditorPreference.Save(editor.Name);
-                _selectedWslEditor = editor.Name;
-                await OpenCodeWslQuickAccess.LaunchAsync(state, editor, _wslQuickAccessLauncher);
+                _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost);
+                await OpenCodeWslQuickAccess.LaunchEditorAsync(state, _wslEditors, _selectedWslEditor,
+                    selectDefault ? editorName : null, name =>
+                    {
+                        _wslEditorPreference.Save(name);
+                        _selectedWslEditor = name;
+                        RefreshWslQuickAccess();
+                    }, _wslQuickAccessLauncher);
                 RefreshWslQuickAccess();
             }
             else await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher);
