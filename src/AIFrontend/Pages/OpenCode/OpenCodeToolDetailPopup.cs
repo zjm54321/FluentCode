@@ -1227,7 +1227,7 @@ internal sealed class OpenCodeToolDetailPopup
                 TitleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
             }
 
-            var statusLine = new Grid { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var statusLine = StatusLine = new Grid { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Center };
             statusLine.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             statusLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             statusLine.Children.Add(StatusCapsule);
@@ -1253,6 +1253,9 @@ internal sealed class OpenCodeToolDetailPopup
 
         internal TextBlock Status { get; }
         internal Border StatusCapsule { get; }
+
+        // FrameworkElement.Parent of a Panel child is null before the tree loads; expose the row directly.
+        internal Grid StatusLine { get; }
 
         internal TextBlock Duration { get; }
 

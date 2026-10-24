@@ -66,7 +66,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         OpenCodeToolTheme.Apply(_chrome.Target, OpenCodeToolTheme.Text("TextFillColorTertiaryBrush", OpenCodeInteractionUi.CodeStyleKey));
         _chrome.TitleBar.ColumnDefinitions[2].Width = GridLength.Auto;
         _chrome.TitleBar.ColumnDefinitions[3].Width = new(1, GridUnitType.Star);
-        (_chrome.StatusCapsule.Parent as FrameworkElement)!.HorizontalAlignment = HorizontalAlignment.Left;
+        _chrome.StatusLine.HorizontalAlignment = HorizontalAlignment.Left;
         _chrome.TitleBar.Children.Add(_favicon);
         _chrome.Icon.Glyph = "\uE774";
         _chrome.Status.Text = "智能体正在操作";
