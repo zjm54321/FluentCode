@@ -22,6 +22,7 @@ public sealed partial class OpenCodePage
     private bool _browserInitialized;
     private OpenCodeBrowserOverlay? _browserOverlay;
     private OpenCodePageSource? _browserSource;
+    private CancellationTokenRegistration _browserSourceRevocation;
     public OpenCodeBrowserOverlay? BrowserOverlay => _browserOverlay;
     public event EventHandler<OpenCodeBrowserWorkspace>? BrowserWorkspaceCreated;
     public OpenCodeBrowserSessionBackend GetBrowserBackend(string sessionId)
@@ -39,7 +40,10 @@ public sealed partial class OpenCodePage
         _browserWorkspaces.Add(sessionId, workspace);
         _browserBackends.Add(sessionId, new OpenCodeBrowserSessionBackend(workspace));
         var source = _source;
-        workspace.ReadPreviewTextAsync = (path, ct) => ReferenceEquals(_source, source) && _client is { } client && KnownSessionDirectory(sessionId) is { } directory
+        workspace.SetAvailabilityProvider(() => ReferenceEquals(_source, source) && source is { IsRevoked: false } && BrowserPeerManager is { } manager
+            ? (manager.GetAvailability(sessionId), manager.GetAvailabilityReason(sessionId))
+            : (OpenCodeBrowserAvailability.Detached, "智能体暂时不能使用浏览器：会话尚未接入"));
+        workspace.ReadPreviewTextAsync = (path, ct) => ReferenceEquals(_source, source) && source is { IsRevoked: false } && _client is { } client && KnownSessionDirectory(sessionId) is { } directory
             ? client.ReadTextFileAsync(directory, path, ct)
             : System.Threading.Tasks.Task.FromException<string>(new OpenCodeBrowserException("unavailable", "会话服务器未连接"));
         workspace.OverlayChanged += (_, _) => UpdateBrowserOverlay(workspace);
@@ -51,6 +55,14 @@ public sealed partial class OpenCodePage
     {
         if (_browserInitialized) return;
         _browserInitialized = true;
+        // The peer owns attachments only. Its factory must resolve this source's stable engine objects.
+        BrowserBackendFactory = CreateBrowserPeerBackend;
+        BrowserPeerAvailabilityChanged += (_, peer) =>
+        {
+            if (ReferenceEquals(BrowserPeerManager?.GetPeer(peer.SessionId), peer)
+                && _browserWorkspaces.TryGetValue(peer.SessionId, out var workspace)) workspace.NotifyAvailabilityChanged();
+        };
+        _conversationView.BrowserPageRequested += ShowBrowserPageFromTimeline;
         _browserOverlay = new OpenCodeBrowserOverlay(_browserShownHost);
         BrowserOverlayHost.Children.Add(_browserOverlay);
         _browserOverlay.ContentSizeChanged += (_, _) =>
@@ -72,10 +84,11 @@ public sealed partial class OpenCodePage
         PageRoot.SizeChanged += (_, _) => SizeBrowserHosts();
         // Selection includes Home/new tabs; pages in other sessions keep their invisible hosts.
         SessionTabs.SelectionChanged += (_, _) => DispatcherQueue.TryEnqueue(SyncBrowserSession);
-        LayoutUpdated += (_, _) => { if (_browserSelectedSession != _selectedSessionId || !ReferenceEquals(_browserSource, _source)) SyncBrowserSession(); };
-        Unloaded += (_, _) => { foreach (var workspace in _browserWorkspaces.Values) workspace.HideOverlay(); };
+        LayoutUpdated += (_, _) => { if (_browserSelectedSession != _selectedSessionId || !ReferenceEquals(_browserSource, _source is { IsRevoked: false } ? _source : null)) SyncBrowserSession(); };
+        Unloaded += (_, _) => DisposeBrowserEngineResources();
         SessionRetired += (_, args) =>
         {
+            if (!ReferenceEquals(args.Source, _browserSource)) return;
             if (_browserBackends.Remove(args.SessionId, out var backend)) backend.Dispose();
             if (_browserWorkspaces.Remove(args.SessionId, out var workspace)) workspace.Dispose();
         };
@@ -90,12 +103,45 @@ public sealed partial class OpenCodePage
     }
     private void SyncBrowserSource()
     {
-        if (ReferenceEquals(_browserSource, _source)) return;
-        _browserSource = _source;
+        var source = _source is { IsRevoked: false } ? _source : null;
+        if (ReferenceEquals(_browserSource, source)) return;
+        DisposeBrowserEngineResources();
+        _browserSource = source;
+        if (source is not null) _browserSourceRevocation = source.RevocationToken.Register(() =>
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                // Revocation may race a replacement source with the same session IDs.
+                if (ReferenceEquals(_browserSource, source)) DisposeBrowserEngineResources();
+            }));
+    }
+    private IOpenCodeBrowserSessionBackend CreateBrowserPeerBackend(string sessionId)
+    {
+        if (!_pageActive || !SourceReady) throw new InvalidOperationException("浏览器会话来源已失效");
+        return GetBrowserBackend(sessionId);
+    }
+    partial void OnBrowserEngineSessionTabClosed(string sessionId)
+    {
+        if (_browserBackends.Remove(sessionId, out var backend)) backend.Dispose();
+        if (_browserWorkspaces.Remove(sessionId, out var workspace)) workspace.Dispose();
+    }
+    private void DisposeBrowserEngineResources()
+    {
+        _browserSourceRevocation.Dispose(); _browserSourceRevocation = default;
+        _browserSource = null;
         foreach (var backend in _browserBackends.Values) backend.Dispose();
-        foreach (var workspace in _browserWorkspaces.Values) workspace.Dispose();
+        foreach (var workspace in _browserWorkspaces.Values.ToArray()) workspace.Dispose();
         _browserBackends.Clear(); _browserWorkspaces.Clear();
         _browserOverlay?.Bind(null); BrowserOverlayHost.Visibility = Visibility.Collapsed;
+    }
+    private void ShowBrowserPageFromTimeline(string? parentMessageId, string tabId)
+    {
+        // Never resolve a retained/late row against another selected session or replacement source.
+        if (!_pageActive || !SourceReady || !_messageWindowAccepted || _messageBinding is not { } binding
+            || !IsSameMessageBinding(binding.SessionId, binding.Directory) || string.IsNullOrEmpty(parentMessageId)
+            || !_conversationView.ContainsRenderedMessage(parentMessageId)
+            || !_browserWorkspaces.TryGetValue(binding.SessionId, out var workspace)) return;
+        if (workspace.Find(tabId) is { } page) workspace.Show(page);
+        else ShowMessage(InfoBarSeverity.Informational, "页面已关闭", "此浏览器页面已关闭，无法在浮窗中显示。");
     }
     private void UpdateBrowserOverlay(OpenCodeBrowserWorkspace? workspace)
     {

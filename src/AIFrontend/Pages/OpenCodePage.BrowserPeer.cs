@@ -46,7 +46,12 @@ public sealed partial class OpenCodePage
             manager.OpenSession(sessionId, directory);
     }
 
-    partial void OnBrowserSessionTabClosed(string sessionId) => _browserPeerManager?.CloseSession(sessionId);
+    partial void OnBrowserSessionTabClosed(string sessionId)
+    {
+        _browserPeerManager?.CloseSession(sessionId);
+        OnBrowserEngineSessionTabClosed(sessionId);
+    }
+    partial void OnBrowserEngineSessionTabClosed(string sessionId);
 
     partial void OnBrowserEventSyncStarting()
     {

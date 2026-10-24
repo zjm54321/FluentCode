@@ -90,6 +90,16 @@ internal static class Program
         var analyzed = OpenCodeBrowserProfileAnalysis.Cpu(cpu, 100); Check(analyzed["functions"]![0]!["selfMs"]!.GetValue<double>() == 3, "CPU microseconds to sampled milliseconds");
         var heap = Parse("{\"snapshot\":{\"meta\":{\"node_fields\":[\"type\",\"name\",\"id\",\"self_size\",\"edge_count\"],\"node_types\":[[\"object\"],\"string\",\"number\",\"number\",\"number\"],\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\"edge_types\":[[\"property\"],\"string_or_number\",\"node\"]}},\"strings\":[\"Thing\",\"child\"],\"nodes\":[0,0,1,16,1,0,0,3,32,0],\"edges\":[0,1,5]}");
         var h = new OpenCodeBrowserProfileAnalysis.Heap(heap); Check(h.Summary(100)["selfBytes"]!.GetValue<double>() == 48, "heap shallow bytes"); Check(h.Query("thing", 1)["truncated"]!.GetValue<bool>(), "heap literal query bound"); Check(h.Object(3, 10)["retainers"]!.AsArray().Count == 1, "heap retainers"); Check(h.Compare(h, 10)["classes"]![0]!["bytesDelta"]!.GetValue<double>() == 0, "heap compare equal");
+        var composition = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.Browser.cs"));
+        Check(composition.Contains("BrowserBackendFactory = CreateBrowserPeerBackend;"), "production engine factory supplied to peer");
+        Check(composition.Contains("return GetBrowserBackend(sessionId);") && composition.Contains("_browserBackends[sessionId]"), "factory uses cached backend");
+        Check(composition.Contains("manager.GetAvailability(sessionId)") && composition.Contains("manager.GetAvailabilityReason(sessionId)"), "workspace delegates real peer availability");
+        Check(composition.Contains("BrowserPeerAvailabilityChanged +=") && composition.Contains("workspace.NotifyAvailabilityChanged()"), "peer availability invalidates workspace");
+        Check(composition.Contains("Unloaded += (_, _) => DisposeBrowserEngineResources();"), "page unload disposes engine not just attachments");
+        Check(composition.Contains("source.RevocationToken.Register") && composition.Contains("ReferenceEquals(_browserSource, source)"), "source revocation cleanup fenced against replacement");
+        Check(composition.Contains("ReferenceEquals(args.Source, _browserSource)"), "old-source tab retirement cannot dispose replacement engine");
+        Check(composition.Contains("BrowserPageRequested += ShowBrowserPageFromTimeline;") && composition.Contains("workspace.Show(page)"), "timeline browser page route");
+        Check(composition.Contains("IsSameMessageBinding(binding.SessionId, binding.Directory)") && composition.Contains("ContainsRenderedMessage(parentMessageId)"), "timeline route keeps rendered-message/session ownership");
         Console.WriteLine("PASS " + _checks + " browser engine assertions (no WebView/runtime/desktop)");
     }
 }

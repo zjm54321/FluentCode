@@ -10,7 +10,10 @@ $assembly = Join-Path $EvidenceRoot 'OpenCodeBrowserPeerTests.dll'
 $arguments = @('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+',('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
-$arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/Browser/*.cs" | ForEach-Object { '"' + $_.FullName + '"' }
+# Compile the transport/lifecycle production sources, not the WinUI/WebView engine beside them.
+@('OpenCodeBrowserContracts.cs','OpenCodeBrowserEventFeed.cs','OpenCodeBrowserPeer.cs','OpenCodeBrowserPeerManager.cs','OpenCodeBrowserRpc.cs') | ForEach-Object {
+    $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/OpenCode/Browser" $_) + '"'
+}
 @('OpenCodeInteractionGate.cs','OpenCodeExecutionProjection.cs','OpenCodePageSource.cs','NotificationInteractions.cs','NotificationArgumentCodec.cs','NotificationActivationInfo.cs','NotificationSource.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"'
 }
