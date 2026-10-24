@@ -1,6 +1,0 @@
-/dist
-/result
-/result-*
-/build/
-/node_modules/
-*.tsbuildinfo
