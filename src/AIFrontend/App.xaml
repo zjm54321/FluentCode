@@ -18,15 +18,26 @@
                 注意 WinUI 3 中 Application.Resources.MergedDictionaries 的 XamlControlsResources 优先于 Application.Resources.ThemeDictionaries，
                 因此 OpenCodePage 同时在元素级 Resources.ThemeDictionaries 中声明同一映射，且 SessionPane 不设 Background 以免双重叠加或遮住 Mica。
             -->
+            <!-- ShellTerminal*：终端配色（Campbell）。应用级声明供 XamlReader.Load 构造的独立终端视图解析
+                 （页面级 ThemeDictionaries 在元素入树前不可见，曾导致点击后台终端闪退）。 -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerFillColorDefaultBrush" />
+                    <SolidColorBrush x:Key="ShellTerminalBackground" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="ShellTerminalForeground" Color="#CCCCCC" />
+                    <SolidColorBrush x:Key="ShellTerminalPrompt" Color="#13A10E" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="LayerFillColorDefaultBrush" />
+                    <SolidColorBrush x:Key="ShellTerminalBackground" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="ShellTerminalForeground" Color="#CCCCCC" />
+                    <SolidColorBrush x:Key="ShellTerminalPrompt" Color="#13A10E" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="TabViewItemHeaderBackgroundSelected" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ShellTerminalBackground" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ShellTerminalForeground" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ShellTerminalPrompt" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
