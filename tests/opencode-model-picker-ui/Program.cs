@@ -97,6 +97,7 @@ internal static class Program
             && !dialog.Contains("OpenCodeVariantPickerDialog.ShowAsync"), "model dialog has no duplicate reasoning-strength entry or variant dialog handoff");
         Check(dialog.Contains("bool allowStrengthSelection = true") && !dialog.Contains("Visibility = allowStrengthSelection"), "legacy caller argument retained without enabling in-dialog strength selection");
         var rowView = dialog.Substring(dialog.IndexOf("private static ListViewItem RowItem", StringComparison.Ordinal));
+        Check(!rowView.Contains("StyledText(row.ModelId") && !rowView.Contains("AppFonts.Monospace"), "MP2 model ID is identity/logo input only, never a row subtitle");
         Check(!rowView.Contains("当前") && !rowView.Contains("marker") && !rowView.Contains("SemiBold"), "model rows contain only logo and name without current status marker or special emphasis");
         Check(!dialog.Contains("new ContentDialog") && !dialog.Contains("PrimaryButtonText") && !dialog.Contains("OpenCodeModelPickerRefresh")
             && !dialog.Contains("\"当前模型\"") && dialog.Contains("new AutoSuggestBox") && dialog.Contains("\"选择模型\""),

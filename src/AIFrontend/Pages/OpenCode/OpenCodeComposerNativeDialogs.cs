@@ -116,13 +116,6 @@ internal static class OpenCodeModelPickerDialog
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(grid);
-        var id = OpenCodeInteractionUi.StyledText(row.ModelId, OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        id.FontFamily = AppFonts.Monospace;
-        id.MaxWidth = 128;
-        id.TextTrimming = TextTrimming.CharacterEllipsis;
-        id.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(id, 1);
-        content.Children.Add(id);
         var item = new ListViewItem { Content = content, Tag = row, IsEnabled = row.Available, MinHeight = 34,
             Padding = new Thickness(10, 4, 10, 4), HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(item, row.Name + (row.Available ? string.Empty : "，不可用"));
