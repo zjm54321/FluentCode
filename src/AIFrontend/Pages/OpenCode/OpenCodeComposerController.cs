@@ -656,7 +656,12 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                 {
                     var file = encoded[i][0];
                     var mime = file.Uri[5..file.Uri.IndexOf(";base64,", StringComparison.Ordinal)];
-                    _files.Add(new(Guid.NewGuid(), file.Name!, mime, staged[i].Bytes, encoded[i]));
+                    _files.Add(new(Guid.NewGuid(), file.Name!, mime, staged[i].Bytes, encoded[i])
+                    {
+                        // Reuse the chip's existing native image preview, without adding prompt context.
+                        Presentation = mime.StartsWith("image/", StringComparison.Ordinal)
+                            ? new(file.Name!, staged[i].Bytes, file.Name!, string.Empty) : null,
+                    });
                 }
                 _pickOwner = null;
                 if (staged.Count != 0) Edited();

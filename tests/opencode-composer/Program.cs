@@ -119,6 +119,7 @@ internal static partial class Program
         await Outcomes();
         await FilesAndDraft();
         await BrowserCaptures();
+        await ClipboardAttachments();
         var originalChecks = checks;
         await SyncProtocol();
         var syncChecks = checks - originalChecks;
@@ -177,6 +178,29 @@ internal static partial class Program
             await f.Core.AddFilesAsync(ticket, Array.Empty<OpenCodeComposerFileSource>());
         }
         Console.WriteLine("PASS browser captured images: atomic session-bound staging, chip removal, immutable image+ref text wire and busy/stale ownership.");
+    }
+
+    private static async Task ClipboardAttachments()
+    {
+        using var f = new Fixture();
+        f.Text("keep text");
+        var name = OpenCodeClipboardImagePolicy.PngName(new DateTime(2026, 10, 24, 13, 14, 15));
+        await f.File(name);
+        var original = f.Core.Snapshot.Attachments.Single();
+        Check(original.Mime == "image/png" && original.Presentation is { Thumbnail.Length: 3, Context.Length: 0 }
+            && original.Presentation.Name == name, "pasted image gets existing chip preview without synthetic prompt context");
+        var ticket = f.Core.BeginPick(f.Core.Snapshot.Token)!;
+        await f.Core.AddFilesAsync(ticket, new[] { FileSource(name, OpenCodeAttachment.MaxFileBytes + 1) });
+        Check(f.Core.Snapshot.Attachments.Single() == original && f.Core.Snapshot.Text == "keep text"
+            && f.Core.Snapshot.Note == "附件未添加；原附件保持不变。" && !f.Core.Snapshot.IsBusy,
+            "oversize pasted PNG preserves draft/attachments and existing error message");
+        ticket = f.Core.BeginPick(f.Core.Snapshot.Token)!;
+        var delayed = Signal<Stream>();
+        var pending = f.Core.AddFilesAsync(ticket, new[] { new OpenCodeComposerFileSource(name, "image/png", _ => delayed.Task) });
+        f.Core.DiscardDraft(f.Core.Snapshot.Token);
+        delayed.SetResult(new MemoryStream(new byte[] { 1 }));
+        await pending;
+        Check(f.Core.Snapshot.Attachments.Count == 0 && !f.Core.Snapshot.IsBusy, "discard fences late clipboard encoding completion");
     }
 
     private static async Task Ownership()

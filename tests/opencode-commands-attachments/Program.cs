@@ -19,6 +19,7 @@ internal static class Program
     private static async Task Main()
     {
         await AttachmentPreparation.RunAsync();
+        await ClipboardImages();
         await Catalog();
         await Mutations();
         await Attachments();
@@ -29,6 +30,25 @@ internal static class Program
     {
         assertions++;
         if (!condition) throw new InvalidOperationException(message);
+    }
+
+    private static async Task ClipboardImages()
+    {
+        Check(OpenCodeClipboardImagePolicy.Classify(true, Array.Empty<string>()) == OpenCodeClipboardImageKind.Bitmap, "screenshot bitmap attaches");
+        Check(OpenCodeClipboardImagePolicy.Classify(false, new[] { "photo.PNG", "photo.jpeg", "animation.webp" }) == OpenCodeClipboardImageKind.ImageFiles, "supported image file clipboard attaches case-insensitively");
+        Check(OpenCodeClipboardImagePolicy.Classify(false, Array.Empty<string>()) == OpenCodeClipboardImageKind.DefaultText, "text-only clipboard leaves native paste unchanged");
+        Check(OpenCodeClipboardImagePolicy.Classify(true, new[] { "photo.png", "notes.txt" }) == OpenCodeClipboardImageKind.Bitmap, "mixed bitmap/files/text prefers one bitmap, not duplicate attachments");
+        Check(OpenCodeClipboardImagePolicy.Classify(false, new[] { "notes.txt", "photo.gif", "document.pdf" }) == OpenCodeClipboardImageKind.ImageFiles, "mixed files attach supported images only");
+        Check(!OpenCodeClipboardImagePolicy.IsImageFile("notes.txt") && !OpenCodeClipboardImagePolicy.IsImageFile("photo.bmp")
+            && OpenCodeClipboardImagePolicy.Classify(false, new[] { "notes.txt" }) == OpenCodeClipboardImageKind.DefaultText, "unsupported files do not bypass attachment format limits");
+        var name = OpenCodeClipboardImagePolicy.PngName(new DateTime(2026, 10, 24, 3, 4, 5));
+        Check(name == "粘贴的图片 030405.png", "generated PNG name uses padded invariant 24-hour time");
+        var encoded = OpenCodeAttachment.Encode(new[] { new OpenCodeAttachmentDraft(name, "image/png", new byte[] { 1, 2, 3 }) });
+        Check(encoded[0].Name == name && encoded[0].Uri == "data:image/png;base64,AQID", "clipboard PNG reuses validated image attachment flow");
+        var error = await Reject<ArgumentException>(() => OpenCodeAttachment.Encode(new[]
+            { new OpenCodeAttachmentDraft(name, "image/png", new byte[OpenCodeAttachment.MaxFileBytes + 1]) }));
+        Check(error.Message.Contains("单个附件不得超过 10 MiB。", StringComparison.Ordinal), "clipboard size rejection reuses attachment error");
+        Console.WriteLine("PASS clipboard images: bitmap/files/text/mixed classification, PNG name, validated payload, size rejection (10 assertions).");
     }
 
     private static async Task<T> Expect<T>(Func<Task> action) where T : Exception

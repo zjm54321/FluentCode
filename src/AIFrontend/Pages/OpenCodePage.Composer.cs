@@ -27,6 +27,7 @@ public sealed partial class OpenCodePage
         => _homeActive ? null : _selectedSessionId ?? (_newSessionDraftActive ? OpenCodeComposerController.UnboundSessionId : null);
     partial void OnUnboundComposerSubmitRequested(OpenCodeComposerToken token);
     partial void InitializeShellComposer();
+    partial void InitializeComposerPaste();
     partial void UpdateShellComposerState();
     partial void TrySubmitShell(string? delivery, ref bool handled);
     partial void OnCreatedShellSubmit(string command);
@@ -76,6 +77,7 @@ public sealed partial class OpenCodePage
         _composerView.CommandRemoved += (_, e) => _composerController.RemoveCommand(e.Token);
         _composerView.AttachmentRemoved += (_, e) => _composerController.RemoveAttachment(e.Token, e.Id);
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
+        InitializeComposerPaste();
         InitializeShellComposer();
         _agentSelector.DisplayChanged += (_, _) => RefreshChildComposerVisibility();
     }
