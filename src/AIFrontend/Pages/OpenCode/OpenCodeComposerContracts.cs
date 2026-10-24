@@ -118,7 +118,11 @@ internal sealed class OpenCodeComposerClientActionTicket
     internal Guid Owner { get; }
     internal OpenCodeComposerCatalogLifetime Lifetime { get; }
 }
-public sealed record OpenCodeComposerAttachmentRow(Guid Id, string Name, string Mime, int Bytes);
+public sealed record OpenCodeComposerAttachmentPresentation(string Name, byte[] Thumbnail, string Details, string Context);
+public sealed record OpenCodeComposerAttachmentRow(Guid Id, string Name, string Mime, int Bytes)
+{
+    public OpenCodeComposerAttachmentPresentation? Presentation { get; init; }
+}
 public enum OpenCodeComposerCatalogState { Closed, Loading, Ready, Failed }
 public sealed record OpenCodeComposerSnapshot(OpenCodeComposerToken Token, string Text, string? SelectedCommand,
     OpenCodeComposerCatalogState CatalogState, IReadOnlyList<OpenCodeComposerCommandRow> Commands,

@@ -65,6 +65,7 @@ public sealed partial class OpenCodePage
         };
         _conversationView.BrowserPageRequested += ShowBrowserPageFromTimeline;
         _browserOverlay = new OpenCodeBrowserOverlay(_browserShownHost);
+        InitializeBrowserSelection(_browserOverlay);
         BrowserOverlayHost.Children.Add(_browserOverlay);
         _browserOverlay.ContentSizeChanged += (_, _) =>
         {
@@ -87,6 +88,7 @@ public sealed partial class OpenCodePage
         SessionTabs.SelectionChanged += (_, _) => DispatcherQueue.TryEnqueue(SyncBrowserSession);
         LayoutUpdated += (_, _) => { if (_browserSelectedSession != _selectedSessionId || !ReferenceEquals(_browserSource, _source is { IsRevoked: false } ? _source : null)) SyncBrowserSession(); };
         Unloaded += (_, _) => DisposeBrowserEngineResources();
+        Unloaded += (_, _) => DisposeBrowserSelection();
         SessionRetired += (_, args) =>
         {
             if (!ReferenceEquals(args.Source, _browserSource)) return;

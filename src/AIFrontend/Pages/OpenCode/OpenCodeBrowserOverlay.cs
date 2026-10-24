@@ -127,6 +127,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     }
 
     public Grid RightPanelSlot { get; }
+    public Grid PageToolSurface => _body;
     public StackPanel PageTools { get; }
     public Grid ErrorSurface { get; }
     public OpenCodeBrowserPage? Page => _page;
@@ -138,6 +139,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     public event EventHandler<OpenCodeBrowserPage>? AddPageRequested;
     public event EventHandler<OpenCodeBrowserPage>? SendErrorRequested;
     public event EventHandler<OpenCodeBrowserPage>? PageChanged;
+    public event EventHandler? SelectionBindingChanged;
     public void Bind(OpenCodeBrowserWorkspace? workspace)
     {
         if (_page is not null) { _page.PropertyChanged -= PagePropertyChanged; _page.AgentPointerMoved -= AgentPointerMoved; }
@@ -154,6 +156,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         }
         else { if (_returnFocus is Control control) control.Focus(FocusState.Programmatic); _returnFocus = null; }
         if (_page is not null) PageChanged?.Invoke(this, _page);
+        SelectionBindingChanged?.Invoke(this, EventArgs.Empty);
     }
     private void PagePropertyChanged(object? sender, PropertyChangedEventArgs args) => Render();
     private void Render()

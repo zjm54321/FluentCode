@@ -26,6 +26,7 @@ $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enabl
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
 $arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
+$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
 foreach ($name in @('OpenCodeComposerCharTriggers.cs', 'OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerSplash.cs', 'OpenCodeSessionControlCoordinator.cs')) {
     $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name"
 }

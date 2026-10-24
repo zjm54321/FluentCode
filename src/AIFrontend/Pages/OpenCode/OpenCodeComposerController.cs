@@ -34,7 +34,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private OpenCodeComposerCatalogState _catalogState;
     private IReadOnlyList<OpenCodeComposerCommandRow> _commands = Array.Empty<OpenCodeComposerCommandRow>();
     private string? _note;
-    private sealed record StoredFile(Guid Id, string Name, string Mime, byte[] Bytes, IReadOnlyList<PromptFileAttachment> Encoded);
+    private sealed record StoredFile(Guid Id, string Name, string Mime, byte[] Bytes, IReadOnlyList<PromptFileAttachment> Encoded)
+    {
+        internal OpenCodeComposerAttachmentPresentation? Presentation { get; init; }
+    }
     private sealed record CatalogRequest(OpenCodeComposerBinding Binding, long Scope, Guid Draft,
         OpenCodeComposerCatalogLifetime Lifetime, OpenCodeComposerCatalogHandle Handle);
     private static readonly IReadOnlyList<OpenCodeComposerCommandRow> NativeCommands = Array.AsReadOnly(new[]
@@ -131,7 +134,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                 else if (active && _gate.TryPeekComposerSubmissionProtection(_binding!.Source.Identity,
                     _binding.SessionId, out _, out var canSubmit)) protectedSession = !canSubmit;
                 return new(Token, _text, _command, _catalogState, _commands,
-                    Array.AsReadOnly(_files.Select(f => new OpenCodeComposerAttachmentRow(f.Id, f.Name, f.Mime, f.Bytes.Length)).ToArray()),
+                    Array.AsReadOnly(_files.Select(f => new OpenCodeComposerAttachmentRow(f.Id, f.Name, f.Mime, f.Bytes.Length) { Presentation = f.Presentation }).ToArray()),
                     HasDraft, _origin is not null, active, Busy, active && HasDraft && !Busy && !protectedSession && !HasClientAction,
                     protectedSession, !active && HasDraft
                         ? (IsUnbound(_origin) ? "草稿属于“新会话”标签；返回该标签或明确丢弃。" : "草稿属于原会话；返回原会话或明确丢弃。")
@@ -733,7 +736,8 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                 return new OpenCodeComposerSubmitOutcome.NotStarted();
             binding = _binding!;
             scopeCancellation = _scopeCancellation.Token;
-            text = _text;
+            var browserContext = string.Join("\n\n", _files.Select(f => f.Presentation?.Context).Where(s => !string.IsNullOrWhiteSpace(s)));
+            text = _text + (browserContext.Length == 0 ? "" : (_text.Length == 0 ? "" : "\n\n") + browserContext);
             command = _command;
             attachments = _files.Select(f => f.Encoded).ToArray();
             _submissionOwner = operation;

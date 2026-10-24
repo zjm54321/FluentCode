@@ -1665,9 +1665,10 @@ internal sealed class OpenCodeComposerView : StackPanel
 
     private FrameworkElement AttachmentChip(OpenCodeComposerAttachmentRow a, OpenCodeComposerToken activation)
     {
-        var name = OpenCodeComposerInputPolicy.Bound(a.Name, OpenCodeComposerInputPolicy.MaxChipNameLength);
+        var name = OpenCodeComposerInputPolicy.Bound(a.Presentation?.Name ?? a.Name, OpenCodeComposerInputPolicy.MaxChipNameLength);
         var size = OpenCodeComposerInputPolicy.FormatBytes(a.Bytes);
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        if (a.Presentation is { } preview) row.Children.Add(OpenCodeBrowserSelectedList.Image(preview.Thumbnail, 28));
         row.Children.Add(new FontIcon
         {
             Glyph = OpenCodeComposerInputPolicy.GlyphForMime(a.Mime),
@@ -1717,7 +1718,14 @@ internal sealed class OpenCodeComposerView : StackPanel
         };
         renderedChip = chip;
         AutomationProperties.SetName(chip, $"附件 {name}，{size}");
-        ToolTipService.SetToolTip(chip, $"{name} · {a.Mime} · {size}");
+        if (a.Presentation is { } details)
+        {
+            var content = new StackPanel { Spacing = 8, MaxWidth = 440 };
+            content.Children.Add(OpenCodeBrowserSelectedList.Image(details.Thumbnail, 180));
+            content.Children.Add(new TextBlock { Text = details.Details, TextWrapping = TextWrapping.Wrap, MaxLines = 20 });
+            ToolTipService.SetToolTip(chip, new ToolTip { Content = content });
+        }
+        else ToolTipService.SetToolTip(chip, $"{name} · {a.Mime} · {size}");
         return chip;
     }
 

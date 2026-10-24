@@ -6,7 +6,8 @@ $sdk=Get-ChildItem "$root/sdk" -Directory|Where-Object Name -Like '10.*'|Sort-Ob
 $pack=Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory|Where-Object Name -Like '10.*'|Sort-Object {[version]$_.Name} -Descending|Select-Object -First 1
 if(!$sdk -or !$pack){throw '.NET 10 required.'}
 New-Item -ItemType Directory -Path $EvidenceRoot|Out-Null
-$sources=@('OpenCodeBrowserContracts.cs','OpenCodeBrowserPolicy.cs','OpenCodeBrowserInput.cs','OpenCodeBrowserSnapshot.cs','OpenCodeBrowserProfileAnalysis.cs')|ForEach-Object{"$repo/src/AIFrontend/Services/OpenCode/Browser/$_"}
+$sources=@('OpenCodeBrowserContracts.cs','OpenCodeBrowserPolicy.cs','OpenCodeBrowserInput.cs','OpenCodeBrowserSnapshot.cs','OpenCodeBrowserProfileAnalysis.cs','OpenCodeBrowserSelectionPolicy.cs')|ForEach-Object{"$repo/src/AIFrontend/Services/OpenCode/Browser/$_"}
+$sources+="$PSScriptRoot/SelectionTests.cs"
 $sources+="$PSScriptRoot/Program.cs"
 $dll=Join-Path $EvidenceRoot 'BrowserEngineTests.dll';$rsp=Join-Path $EvidenceRoot 'compile.rsp'
 $refs=@(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll"|ForEach-Object FullName)

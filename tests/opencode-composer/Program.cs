@@ -118,6 +118,7 @@ internal static partial class Program
         await Ownership();
         await Outcomes();
         await FilesAndDraft();
+        await BrowserCaptures();
         var originalChecks = checks;
         await SyncProtocol();
         var syncChecks = checks - originalChecks;
@@ -133,6 +134,49 @@ internal static partial class Program
         await SideQuestions();
         await CharTriggers();
         Console.WriteLine($"PASS: original {originalChecks} + sync {syncChecks} + legacy {legacyChecks} + builtin {builtinChecks} + continuation {continuationChecks} + slots {slotChecks} + splash {checks - originalChecks - syncChecks - legacyChecks - builtinChecks - continuationChecks - slotChecks}, {checks} assertions; real Core/EditorSync/coordinator/gate/transport, fake HTTP only; ordinary Page/history/native not executed.");
+    }
+
+    private static async Task BrowserCaptures()
+    {
+        var bytes = new byte[] { 137, 80, 78, 71 };
+        var capture = new OpenCodeComposerAttachmentPresentation("1 · input#search", bytes, "selector input#search; ref e42", "user annotation selector=input#search ref=e42 note=fix");
+        using (var f = new Fixture())
+        {
+            f.Text("please fix");
+            var token = f.Core.Snapshot.Token;
+            Check(f.Core.TryAddCapturedImages(token, new[] { capture }), "browser capture stages on bound current session");
+            var row = f.Core.Snapshot.Attachments.Single();
+            Check(row.Mime == "image/png" && row.Name.EndsWith(".png") && row.Presentation?.Name == capture.Name, "browser chip uses existing image attachment and rich presentation");
+            Check(f.Core.Snapshot.Text == "please fix", "browser metadata never overwrites editor text");
+            Check(!f.Core.TryAddCapturedImages(token, new[] { capture }), "browser stale token rejected");
+            var before = f.Core.Snapshot.Token;
+            try { f.Core.TryAddCapturedImages(before, Enumerable.Repeat(capture, OpenCodeAttachment.MaxFiles).ToArray()); throw new Exception("expected quantity failure"); }
+            catch (ArgumentException) { Check(f.Core.Snapshot.Token == before && f.Core.Snapshot.Attachments.Count == 1, "browser over-limit batch leaves original attachment atomic"); }
+            bytes[0] = 0;
+            row.Presentation!.Thumbnail[0] = 0;
+            Check(await f.SubmitAsync(f.Core.Snapshot.Token, () => true) is OpenCodeComposerSubmitOutcome.PromptAccepted, "browser capture sends through existing accepted-receipt path");
+            Check(f.Handler.LastPath!.EndsWith("/ses_test/prompt", StringComparison.Ordinal), "browser image stays in original session");
+            Check(f.Handler.LastBody!.Contains("data:image/png;base64,iVBORw==") && f.Handler.LastBody.Contains("ref=e42") && f.Handler.LastBody.Contains("please fix"), "actual wire has original immutable image plus text context with ref");
+            Check(!f.Core.Snapshot.HasDraft, "accepted capture clears chip and context together");
+        }
+        using (var f = new Fixture())
+        {
+            Check(f.Core.TryAddCapturedImages(f.Core.Snapshot.Token, new[] { capture }), "second capture stages");
+            var original = f.Binding;
+            f.Switch("ses_other");
+            Check(!f.Core.TryAddCapturedImages(f.Core.Snapshot.Token, new[] { capture }) && !f.Core.Snapshot.IsActive, "inactive browser draft never attaches to another session");
+            f.Binding = original; f.Core.Bind(original);
+            var row = f.Core.Snapshot.Attachments.Single();
+            f.Core.RemoveAttachment(f.Core.Snapshot.Token, row.Id);
+            Check(!f.Core.Snapshot.HasDraft && f.Core.Snapshot.Attachments.Count == 0, "remove capture removes owned context with image");
+        }
+        using (var f = new Fixture())
+        {
+            var token = f.Core.Snapshot.Token; var ticket = f.Core.BeginPick(token)!;
+            Check(!f.Core.TryAddCapturedImages(token, new[] { capture }), "busy picker rejects capture staging");
+            await f.Core.AddFilesAsync(ticket, Array.Empty<OpenCodeComposerFileSource>());
+        }
+        Console.WriteLine("PASS browser captured images: atomic session-bound staging, chip removal, immutable image+ref text wire and busy/stale ownership.");
     }
 
     private static async Task Ownership()

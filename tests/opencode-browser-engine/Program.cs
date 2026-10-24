@@ -19,6 +19,7 @@ internal static class Program
     private static JsonObject Parse(string text) => JsonNode.Parse(text)!.AsObject();
     public static void Main(string[] args)
     {
+        SelectionTests.Run(Check);
         foreach (var pair in new[] { ("", "about:blank"), (" about:blank ", "about:blank"), ("example.com/a?q=x", "https://example.com/a?q=x"), ("LOCALHOST:5173/a", "http://localhost:5173/a"), ("localhost:5173?x=1", "http://localhost:5173/?x=1"), ("127.0.0.2:80", "http://127.0.0.2/"), ("[::1]:5173", "http://[::1]:5173/"), ("https://example.com", "https://example.com/") })
             Check(OpenCodeBrowserPolicy.NormalizeUrl(pair.Item1) == pair.Item2, "normalize " + pair.Item1);
         foreach (var url in new[] { "file:///tmp/a", "/tmp/a", "C:\\temp\\a", "javascript:alert(1)", "data:text/html,x", "about:config", "ftp://example.com", "https://user:pass@example.com", "https://", "https://@example.com" })
