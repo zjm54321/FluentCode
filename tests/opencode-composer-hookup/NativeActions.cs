@@ -131,6 +131,8 @@ internal static class NativeTests
             if (scenario == "explicit") f.Model = "{\"id\":\"unavailable\",\"providerID\":\"provider\",\"variant\":\"old\"}";
             if (scenario == "missing") f.Default = "null";
             OpenCodeModelPickerDialog.Next = p => {
+                Check(!f.Page.Snapshot.IsBusy && !f.Page.Snapshot.CanSubmit && !f.Page.SendEnabled,
+                    "MP1 native model flyout keeps composer non-busy while preserving Send protection");
                 Check(OpenCodeModelPickerDialog.LastSourceKey == f.Source.Identity, "normal picker receives captured stable source identity");
                 Check(p.Rows.Single().ModelId == "catalog-id" && p.Rows.Single().Variants.Single() == "fast", "canonical catalog key and exact variant presented");
                 Check(scenario == "explicit" ? p.Current is OpenCodeModelCurrent.Explicit { Available: false, Key.Variant: "old" }

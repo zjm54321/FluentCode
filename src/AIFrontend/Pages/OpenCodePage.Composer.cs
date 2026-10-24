@@ -117,10 +117,13 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerSnapshot GetComposerSnapshot()
     {
         var snapshot = _composerController!.Snapshot;
-        // A native dialog may outlive a binding. Keep the page busy until it returns, and do not let
-        // the view offer edits/picking during the separate legacy sender's local submission lifetime.
-        return _isSending || _composerPickerPending || _composerAgentApplyPending || IsChildComposerSession || _nativeActionOwner is not null || _nativeDialogPending
-            || _newSessionCreatePending ? snapshot with { IsBusy = true, CanSubmit = false } : snapshot;
+        // Model selection is a light-dismiss flyout, not a modal editor. Keep its action/send
+        // protection without making the input and its surrounding controls look frozen.
+        var modelPicker = _nativeActionOwner?.Ticket.Kind == OpenCodeComposerClientActionKind.ChooseModel;
+        var busy = _isSending || _composerPickerPending || _composerAgentApplyPending || IsChildComposerSession
+            || (!modelPicker && (_nativeActionOwner is not null || _nativeDialogPending)) || _newSessionCreatePending;
+        return busy ? snapshot with { IsBusy = true, CanSubmit = false }
+            : modelPicker ? snapshot with { CanSubmit = false } : snapshot;
     }
 
     private void OnComposerSnapshotChanged(object? sender, OpenCodeComposerSnapshotChangedEventArgs e)

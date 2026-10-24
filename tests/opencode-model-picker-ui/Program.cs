@@ -105,6 +105,11 @@ internal static class Program
         Check(dialog.Contains("list.ItemClick +=") && dialog.Contains("state.TryFreezeConfirmation()")
             && dialog.Contains("state.SelectVariant(current.Key.Variant)"), "model click freezes exact basis; clicking current model never resets effort");
         var flyout = Read("src/AIFrontend/Pages/OpenCode/OpenCodePickerFlyout.cs");
+        Check(flyout.Contains("LightDismissOverlayMode = LightDismissOverlayMode.Off"), "MP1 picker explicitly has no light-dismiss dimming overlay");
+        var composerPage = Read("src/AIFrontend/Pages/OpenCodePage.Composer.cs");
+        Check(composerPage.Contains("var modelPicker = _nativeActionOwner?.Ticket.Kind == OpenCodeComposerClientActionKind.ChooseModel")
+            && composerPage.Contains("!modelPicker &&") && composerPage.Contains("modelPicker ? snapshot with { CanSubmit = false }"),
+            "MP1 model picker keeps submission protection without composer busy presentation");
         Check(flyout.Contains("new Flyout") && flyout.Contains("FlyoutPlacementMode.TopEdgeAlignedLeft") && flyout.Contains("flyout.ShowAt(anchor)")
             && flyout.Contains("OpenCodeBlankModel") && flyout.Contains("anchor.Unloaded += Unloaded"), "anchored native flyout supports sidebar/composer callers and dismisses on owner unload");
         var blank = Read("src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs");
