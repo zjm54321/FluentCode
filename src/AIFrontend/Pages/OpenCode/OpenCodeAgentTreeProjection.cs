@@ -111,7 +111,7 @@ internal static class OpenCodeAgentTreeProjection
     {
         if (part.Type != "tool" || OpenCodeToolStates.Read(part.State) is not { } state
             || String(state.Metadata, "shellID") is not { Length: > 0 } id) return null;
-        var background = Boolean(state.Input, "background");
+        var background = Boolean(state.Input, "background") ?? Boolean(state.Metadata, "background");
         var status = String(state.Metadata, "status");
         var detached = state.Status == "completed" && status == "running";
         var kind = background == true || detached ? OpenCodeTreeShellKind.Background
@@ -121,7 +121,7 @@ internal static class OpenCodeAgentTreeProjection
             Boolean(state.Metadata, "timeout") == true ? OpenCodeTreeStatus.Failed
                 : ShellStatus(status == "running" ? "running" : "exited", exit),
             exit?.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            state.Content is { Count: > 0 } content && exit.HasValue
+            state.Content is { Count: > 0 } content
                 ? string.Join("\n", content.Where(c => c.Type == "text").Select(c => c.Text)) : null);
     }
 

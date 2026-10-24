@@ -243,6 +243,7 @@ internal sealed class OpenCodeToolRowModel
     public string AccessibleName { get; init; } = string.Empty;
 
     public bool IsBackground { get; init; }
+    public bool OpensTerminalView => Kind == OpenCodeToolKind.Shell && IsBackground && !string.IsNullOrEmpty(ShellId);
     public string? GlyphOverride { get; init; }
     public string? AgentName { get; init; }
     public bool CanMoveToBackground => IsActive && !IsBackground && Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent;
@@ -660,7 +661,8 @@ internal static class OpenCodeToolRowPresentation
         // Exact accepted-history association is presentation-only. Actual job metadata/outcomes win.
         var manualFallback = manualBackground && asyncCompletion is null && kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent
             && FirstString(metadata, "status") is null && status != OpenCodeToolRowStatus.Error;
-        var background = manualFallback || asyncCompletion is not null || IsBackgroundPending(metadata)
+        var background = manualBackground || asyncCompletion is not null || IsBackgroundPending(metadata)
+            || metadata is { } backgroundMetadata && backgroundMetadata.TryGetProperty("background", out var metadataBackground) && metadataBackground.ValueKind == JsonValueKind.True
             || input is { } backgroundInput && backgroundInput.TryGetProperty("background", out var backgroundValue) && backgroundValue.ValueKind == JsonValueKind.True;
         if (asyncCompletion is { } completion)
         {
@@ -691,7 +693,8 @@ internal static class OpenCodeToolRowPresentation
         {
             // A returned background invocation is not itself a completed background job.
             var recorded = FirstString(metadata, "status")?.ToLowerInvariant();
-            status = recorded is "completed" or "succeeded" or "success" or "done" ? OpenCodeToolRowStatus.Completed
+            status = recorded == "exited" && exitCode.HasValue ? exitCode == 0 ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Error
+                : recorded is "completed" or "succeeded" or "success" or "done" ? OpenCodeToolRowStatus.Completed
                 : recorded is "error" or "failed" or "killed" or "cancelled" ? OpenCodeToolRowStatus.Error : OpenCodeToolRowStatus.Unknown;
             summary = status == OpenCodeToolRowStatus.Completed ? "后台已完成" : status == OpenCodeToolRowStatus.Error ? "后台失败" : "后台状态未提供";
         }

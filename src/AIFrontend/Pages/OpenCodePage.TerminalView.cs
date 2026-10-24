@@ -111,6 +111,12 @@ public sealed partial class OpenCodePage
             } while (_terminalState.HasMore && Current());
         }
         catch (OperationCanceledException) { }
+        catch (OpenCodeApiException error) when (error.StatusCode == 404)
+        {
+            if (!Current()) return;
+            _terminalState.UseRecordedOutput();
+            _terminalView!.Render(_terminalState);
+        }
         catch (OpenCodeException)
         {
             if (!Current()) return;

@@ -38,6 +38,31 @@ internal static partial class Program
     /// <summary>TL1: built-in tool detail views read the real v2.1.1 part shapes (samples from the user's DB).</summary>
     private static void BuiltinToolViews()
     {
+        foreach (var status in new[] { "running", "completed", "failed", "exited" })
+        {
+            var state = JsonSerializer.SerializeToElement(new
+            {
+                status = "completed", input = new { command = "real shell" },
+                metadata = new { shellID = "sh_retained", background = true, status, exit = 0 },
+                content = new[] { new { type = "text", text = "recorded output" } },
+            });
+            var part = new OpenCodeContentPart { Type = "tool", Name = "shell", State = state };
+            var model = OpenCodeToolRowPresentation.Build(part);
+            Check(model.OpensTerminalView && model.OutputText == "recorded output",
+                "BT2: metadata background routes running/completed/failed/exited shell rows to terminal, independent of status: " + status);
+            var manual = OpenCodeToolRowPresentation.Build(part with { State = JsonSerializer.SerializeToElement(new
+            {
+                status = "completed", input = new { command = "manually detached" }, metadata = new { shellID = "sh_manual", status, exit = 0 },
+            }) }, manualBackground: true);
+            Check(manual.OpensTerminalView, "BT2: manually backgrounded shell identity survives completion: " + status);
+        }
+        Check(!Model("shell", """{"status":"completed","input":{"command":"foreground","background":false},"metadata":{"shellID":"sh_fg","exit":0}}""").OpensTerminalView,
+            "BT2: foreground shell detail behavior is unchanged");
+        var toolSource = System.IO.File.ReadAllText(System.IO.Path.Combine(Environment.GetEnvironmentVariable("AIF_REPO")!, "src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs"));
+        var toggle = toolSource[toolSource.IndexOf("internal void TogglePinnedDetail()", StringComparison.Ordinal)..];
+        Check(toggle.IndexOf("_model.OpensTerminalView", StringComparison.Ordinal) < toggle.IndexOf("_subagentSource", StringComparison.Ordinal)
+            && toggle.Contains("TerminalRequested?.Invoke(shellId)", StringComparison.Ordinal),
+            "BT2: completed timeline tool click takes terminal route before legacy popup");
         using var encryptedProvider = JsonDocument.Parse("""{"reasoningEncryptedContent":"provider-ciphertext"}""");
         var encryptedPart = new OpenCodeContentPart { Type = "reasoning", Text = "", State = encryptedProvider.RootElement.Clone() };
         Check(OpenCodeStepRunPresentation.IsEncryptedReasoning(encryptedPart), "D1 verified empty provider reasoning ciphertext gets explicit notice");

@@ -281,7 +281,8 @@ public sealed partial class OpenCodePage
                 if (part.Type != "tool" || OpenCodeToolStates.Read(part.State) is not { } state) continue;
                 var id = OpenCodeAgentTreeProjection.String(state.Metadata, "shellID");
                 if (id is null) continue;
-                var background = OpenCodeAgentTreeProjection.Boolean(state.Input, "background");
+                var background = OpenCodeAgentTreeProjection.Boolean(state.Input, "background")
+                    ?? OpenCodeAgentTreeProjection.Boolean(state.Metadata, "background");
                 // The verified shell tool returns metadata.status=running when detached, including
                 // manual backgrounding. A completed tool call is not a completed shell job.
                 var detached = OpenCodeAgentTreeProjection.String(state.Metadata, "status") == "running"

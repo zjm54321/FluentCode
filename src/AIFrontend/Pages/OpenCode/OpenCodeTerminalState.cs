@@ -17,6 +17,7 @@ internal sealed class OpenCodeTerminalState
     internal long Cursor { get; private set; }
     internal bool Running { get; private set; }
     internal bool HasMore { get; private set; }
+    private string? _recordedOutput;
 
     internal void Open(OpenCodeTreeShell shell)
     {
@@ -24,6 +25,7 @@ internal sealed class OpenCodeTerminalState
         Command = shell.Command;
         Cwd = shell.Cwd;
         Output = shell.Output ?? string.Empty;
+        _recordedOutput = shell.Output;
         Cursor = 0;
         HasMore = false;
         Notice = "正在读取输出…";
@@ -54,6 +56,17 @@ internal sealed class OpenCodeTerminalState
         Cursor = next;
         HasMore = next < size;
         Notice = page.Truncated == true ? "后端标记输出已截断" : null;
+    }
+
+    internal void UseRecordedOutput()
+    {
+        Output = _recordedOutput ?? Output;
+        if (Running) StatusText = "后端已清理 · 状态不可用";
+        Running = false;
+        HasMore = false;
+        Notice = _recordedOutput is not null
+            ? "后端已清理此终端；显示会话中记录的输出"
+            : "后端已清理此终端；会话中没有记录的输出，已读取的内容予以保留";
     }
 
     internal void Close() { ShellId = null; Running = false; HasMore = false; }

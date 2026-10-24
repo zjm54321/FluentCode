@@ -13,6 +13,14 @@ $sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where
 }
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeProjection.cs", "$PSScriptRoot/Program.cs"
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentIcons.cs", "$PSScriptRoot/AgentColorTests.cs"
+$sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeTerminalState.cs", "$PSScriptRoot/TerminalTests.cs"
+# Execute the production terminal read handler with a real client/fake HTTP, not native UI.
+$terminal = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.TerminalView.cs")
+$read = [regex]::Match($terminal, '(?ms)^    private async Task ReadTerminalOutputAsync\(\).*?^    \}\r?$')
+if (!$read.Success) { throw 'Missing production terminal output reader.' }
+$generated = Join-Path $EvidenceRoot 'TerminalReadMember.cs'
+"using System; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; internal sealed partial class TerminalReadHost {`n" + $read.Value + "`n}" | Set-Content -Encoding UTF8 $generated
+$sources += $generated
 $arguments = @('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+',('/out:"' + $dll + '"'))
 $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }

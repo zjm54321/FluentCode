@@ -715,7 +715,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     internal void TogglePinnedDetail()
     {
-        if (_model is { Kind: OpenCodeToolKind.Shell, IsBackground: true, ShellId: { Length: > 0 } shellId })
+        if (_model.OpensTerminalView && _model.ShellId is { } shellId)
         {
             CloseDetailIfShowing();
             if (!_disposed) TerminalRequested?.Invoke(shellId);

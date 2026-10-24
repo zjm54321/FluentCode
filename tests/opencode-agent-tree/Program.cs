@@ -48,6 +48,7 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         AgentColorTests.Run();
+        await TerminalTests.Run();
         var view = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeView.cs"));
         Check(view.Contains("<TreeView x:Name=\"Tree\"") && view.Contains("_tree.RootNodes.Add(group)") && !view.Contains("ItemsRepeater"), "NV2: native TreeView owns the hierarchy");
         Check(view.Contains("Text=\"子智能体\"") && view.Contains("_card.Style = OpenCodeInsightsTheme.DockCard()") && view.Contains("<ThemeShadow />")
@@ -208,6 +209,14 @@ internal static class Program
         Check(OpenCodeAgentTreeProjection.Shell(new OpenCodeMessage { Type = "shell", ShellId = "sh_bg", Metadata = Json("{\"background\":true}") })?.Kind == OpenCodeTreeShellKind.Background, "background native shell message remains background");
         var detachedTool = new OpenCodeContentPart { Type = "tool", State = Json("{\"status\":\"completed\",\"input\":{\"command\":\"real command\"},\"metadata\":{\"shellID\":\"sh_bg\",\"status\":\"running\"}}") };
         Check(OpenCodeAgentTreeProjection.Shell(detachedTool) is { Kind: OpenCodeTreeShellKind.Background, Status: OpenCodeTreeStatus.Running }, "completed dispatch tool does not complete real detached shell");
+        var completedTool = detachedTool with { Name = "shell", State = Json("""{"status":"completed","input":{"command":"finished command"},"metadata":{"shellID":"sh_bg","background":true,"status":"exited"},"content":[{"type":"text","text":"recorded output without exit code"}]}""") };
+        Check(OpenCodeAgentTreeProjection.Shell(completedTool) is { Kind: OpenCodeTreeShellKind.Background, Output: "recorded output without exit code" },
+            "BT2: completed background shell retains recorded part output even without an exit code");
+        var terminalPage = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.TerminalView.cs"));
+        var invoke = view[view.IndexOf("private void OnTreeItemInvoked", StringComparison.Ordinal)..view.IndexOf("internal void Reset", StringComparison.Ordinal)];
+        Check(page.Contains("_agentTree.ShellRequested += OpenTerminalView") && invoke.Contains("ShellRequested?.Invoke(shell.Id)")
+            && !invoke.Contains("Running") && terminalPage.Contains("_terminalState.Open(shell)"),
+            "BT2: completed tree terminal rows follow the same terminal-view route without a running-only guard");
         var retained = new OpenCodeMessage { Type = "synthetic", Description = "retained command", Metadata = Json("{\"source\":\"shell\",\"shellID\":\"sh_bg\",\"state\":\"completed\"}") };
         Check(OpenCodeAgentTreeProjection.Shell(retained)?.Status == OpenCodeTreeStatus.Unknown, "retained notice without real exit is unknown");
         Check(OpenCodeAgentTreeProjection.Shell(retained with { Metadata = Json("{\"source\":\"shell\",\"shellID\":\"sh_bg\",\"exit\":3}") })?.Status == OpenCodeTreeStatus.Failed, "retained structured exit is authoritative without reading prose");
