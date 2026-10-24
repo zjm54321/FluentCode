@@ -46,6 +46,7 @@ namespace Microsoft.UI.Xaml
         public event Action<object,RoutedEventArgs>? GotFocus, LostFocus;
         public void Focus(FocusState state) { if(this is Control c)c.FocusState=state; GotFocus?.Invoke(this,new(){OriginalSource=this}); }
         public void Blur() { if(this is Control c)c.FocusState=FocusState.Unfocused; LostFocus?.Invoke(this,new(){OriginalSource=this}); }
+        public void FocusFromForTest(Control source) { source.FocusState=FocusState.Keyboard; GotFocus?.Invoke(this,new(){OriginalSource=source}); }
         public event Action<object,object>? Loaded, Unloaded, PointerEntered, PointerMoved, PointerExited, PointerCanceled;
         public bool IsLoaded { get; private set; }
         public void Load() { IsLoaded=true; Loaded?.Invoke(this,new()); }

@@ -65,6 +65,7 @@ internal static class Program
         Check(DispatcherQueueTimer.All.Count(t=>t.IsRunning)==1,"current group load restarts the retained timer");
         var expander=Walk(group.Element).OfType<Expander>().Single();
         var outline=(Border)expander.Parent!;
+        var headerSurface=(Border)expander.Header!;
         Check(outline.BorderThickness==new Thickness(0)&&outline.CornerRadius==new CornerRadius(8)&&outline.Style?.Key=="SubtleFillColorTransparentBrush|","PG4 group has no outline or fill at rest; supersedes PG3 resting ring");
         foreach(var key in new[]{"ExpanderHeaderBackground","ExpanderHeaderBackgroundPointerOver","ExpanderHeaderBackgroundPressed","ExpanderContentBackground","ExpanderContentBorderBrush","ExpanderHeaderBorderBrush","ExpanderHeaderBorderPointerOverBrush","ExpanderHeaderBorderPressedBrush","ExpanderChevronBackground","ExpanderChevronPointerOverBackground","ExpanderChevronPressedBackground","ExpanderChevronBorderBrush","ExpanderChevronBorderPointerOverBrush","ExpanderChevronBorderPressedBrush","ExpanderChevronForeground","ExpanderChevronPointerOverForeground","ExpanderChevronPressedForeground"})
             Check(expander.Resources[key] is Microsoft.UI.Xaml.Media.SolidColorBrush {Color:Microsoft.UI.Colors.Transparent},"PG1 transparent native chrome: "+key);
@@ -72,7 +73,7 @@ internal static class Program
         Check(expander.CornerRadius==new CornerRadius(8),"PG6 native Expander supplies 8px corners to its top-header/bottom-content template filters");
         Check(group.ItemsHost.Parent is Border {CornerRadius:var itemCorners}&&itemCorners==new CornerRadius(0,0,8,8),"PG6 full-width inner group border closes only the bottom corners");
         Check((double)expander.Resources["ExpanderChevronButtonSize"]==0&&(double)expander.Resources["ExpanderChevronGlyphSize"]==0&&(Thickness)expander.Resources["ExpanderChevronMargin"]==new Thickness(0),"PG1 removes native boxed chevron and its trailing slot");
-        Check((Thickness)expander.Resources["ExpanderHeaderPadding"]==new Thickness(12,0,8,0)&&expander.MinHeight==32,"PG1 restores compact header and smaller old left inset");
+        Check((Thickness)expander.Resources["ExpanderHeaderPadding"]==new Thickness(0)&&headerSurface.Padding==new Thickness(12,0,8,0)&&expander.MinHeight==32,"PG1/PG7 compact inset belongs to the header-only highlight surface");
         var chevron=Walk((FrameworkElement)expander.Header!).OfType<FontIcon>().Single(icon=>icon.FontSize==10);
         Check(chevron.Opacity==0&&chevron.Margin==new Thickness(4,0,0,0)&&Grid.GetColumn(chevron)==1&&chevron.Parent is Grid {HorizontalAlignment:HorizontalAlignment.Left},"PG1 old plain 10px chevron sits directly after left-aligned title, hidden without hover");
         group.Element.Enter();Check(chevron.Opacity==1,"PG1 group hover reveals old chevron");group.Element.Exit();Check(chevron.Opacity==0,"PG1 pointer exit hides chevron without changing layout");
@@ -113,14 +114,38 @@ internal static class Program
         var caption=Walk((FrameworkElement)expander.Header!).OfType<TextBlock>().Single(text=>text.Text=="已处理 6 分 7 秒");
         Check(caption.FontSize==12&&caption.FontWeight==Microsoft.UI.Text.FontWeights.Normal&&chevron.Glyph=="\uE76C","PG1 completed caption is small regular-weight text with the old collapsed chevron");
         var tallies=Walk((FrameworkElement)expander.Header!).OfType<StackPanel>().Where(panel=>panel.Automation.ContainsKey("Id")).ToArray();
-        Check(tallies.Length==2&&tallies.All(panel=>panel.Parent is StackPanel tally&&Grid.GetColumn(tally)==2&&tally.Parent==expander.Header)&&tallies.SelectMany(panel=>panel.Children.OfType<TextBlock>()).All(text=>text.FontSize==12&&text.FontWeight==Microsoft.UI.Text.FontWeights.Normal),"PG1 success/error counts remain small at the far-right header column");
+        Check(tallies.Length==2&&tallies.All(panel=>panel.Parent is StackPanel tally&&Grid.GetColumn(tally)==2&&tally.Parent==headerSurface.Child)&&tallies.SelectMany(panel=>panel.Children.OfType<TextBlock>()).All(text=>text.FontSize==12&&text.FontWeight==Microsoft.UI.Text.FontWeights.Normal),"PG1 success/error counts remain small at the far-right header column");
         Check(tallies[0].Children.OfType<TextBlock>().Single().Text=="29"&&tallies[1].Children.OfType<TextBlock>().Single().Text=="3","PG1 retains real success and error totals");
         group.Update(summary with {IsActive=false,HeaderText="已处理 6 分 7 秒"},false,true);
         Check(caption.Style?.Key==OpenCodeProcessedSummaryStyle.LabelBrushKey,"B16 successful settled caption retains secondary theme text");
         expander.IsExpanded=true;
         Check(group.IsExpanded&&toggles==2&&group.ItemsHost.Children.Count==2&&chevron.Glyph=="\uE70D","native settled-group expansion reveals retained rows and old down chevron");
+        for(var i=0;i<8;i++) group.ItemsHost.Children.Add(new Button {Content="retained row "+i});
+        void CheckSettledHighlight(bool highlighted,string state) => Check(outline.Style?.Key=="SubtleFillColorTransparentBrush|"
+            && ((Border)group.ItemsHost.Parent!).Style?.Key=="SubtleFillColorTransparentBrush|divider"
+            && headerSurface.Style?.Key==(highlighted?"SubtleFillColorSecondaryBrush|":"SubtleFillColorTransparentBrush|")
+            && chevron.Opacity==(highlighted?1:0),"PG7 "+state+": only settled header may highlight; all expanded content stays transparent");
+        CheckSettledHighlight(false,"expanded rest with ten children");
+        group.Element.Enter();CheckSettledHighlight(false,"pointer over children/group only");
+        headerSurface.Enter();CheckSettledHighlight(true,"header hover");
+        headerSurface.Exit();CheckSettledHighlight(false,"pointer moves from header into children");
+        expander.Focus(FocusState.Keyboard);CheckSettledHighlight(true,"header keyboard focus");
+        expander.FocusFromForTest((Button)group.ItemsHost.Children[2]);CheckSettledHighlight(false,"keyboard focus enters child row");
+        expander.Blur();headerSurface.Enter();headerSurface.Cancel();CheckSettledHighlight(false,"header pointer cancelled");
+        headerSurface.Enter();group.Update(summary,true,true);
+        Check(outline.Style?.Key=="SubtleFillColorSecondaryBrush|"&&headerSurface.Style?.Key=="SubtleFillColorTransparentBrush|","PG7 running group retains full-group hover tint after settled-to-running transition");
+        group.Update(summary with {IsActive=false,HeaderText="已处理 6 分 7 秒"},true,true);
+        CheckSettledHighlight(true,"running-to-settled transition while hovered");
+        headerSurface.Exit();group.Element.Exit();CheckSettledHighlight(false,"all interaction leaves");
+        group.Update(summary,true,true);expander.FocusFromForTest((Button)group.ItemsHost.Children[2]);
+        Check(outline.Style?.Key=="SubtleFillColorSecondaryBrush|","PG7 running group retains full tint for keyboard-focused children");
+        group.Update(summary with {IsActive=false,HeaderText="已处理 6 分 7 秒"},true,true);
+        CheckSettledHighlight(false,"running-to-settled transition while a child retains keyboard focus");
+        expander.Blur();
         expander.IsExpanded=false;
         Check(!group.IsExpanded&&toggles==3,"native settled-group collapse notifies timeline");
+        headerSurface.Enter();CheckSettledHighlight(true,"collapsed header hover");
+        headerSurface.Exit();CheckSettledHighlight(false,"collapsed rest");
         group.BindSingleLeaf(()=>opened++,null,null,"读取");
         Check(group.ShowsItems&&group.DetailAnchor==group.ItemsHost&&ReferenceEquals(group.DetailAnchor,stableAnchor)&&!Walk(group.Element).OfType<Expander>().Any(),"one completed operation is direct with a stable attached preview anchor across BindSingleLeaf");
         group.Update(summary,true,true);

@@ -75,6 +75,7 @@ internal sealed class OpenCodeToolGroupVisual
     private readonly StackPanel _root = new();
     private readonly Expander _expander;
     private readonly Border _outline;
+    private readonly Border _headerSurface;
     private readonly Border _itemsBorder;
     private readonly StackPanel _items = new();
     private readonly FontIcon _icon;
@@ -91,7 +92,7 @@ internal sealed class OpenCodeToolGroupVisual
     private DispatcherQueueTimer? _timer;
     private bool _single, _inline, _headerVisible = true, _expanded, _updating, _loaded, _disposed;
     private bool? _groupContainer;
-    private bool _pointerOver, _focusVisible;
+    private bool _pointerOver, _headerPointerOver, _focusVisible, _headerFocusVisible;
 
     internal OpenCodeToolGroupVisual(string groupId, Action<string, bool> onUserToggled)
     {
@@ -145,6 +146,13 @@ internal sealed class OpenCodeToolGroupVisual
         header.Children.Add(titleStack);
         Grid.SetColumn(tally, 2);
         header.Children.Add(tally);
+        // PG7: a settled group highlights only this header, never the Expander/content container.
+        _headerSurface = new Border
+        {
+            Child = header, CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12, 0, 8, 0), HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        OpenCodeToolTheme.Apply(_headerSurface, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
         _itemsBorder = new Border
         {
             Child = _items,
@@ -156,7 +164,7 @@ internal sealed class OpenCodeToolGroupVisual
         OpenCodeToolTheme.Apply(_itemsBorder, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush", OpenCodeToolTheme.Divider));
         _expander = new Expander
         {
-            Header = header,
+            Header = _headerSurface,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(0),
@@ -176,8 +184,16 @@ internal sealed class OpenCodeToolGroupVisual
         _root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };
         _root.PointerExited += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
         _root.PointerCanceled += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
-        _expander.GotFocus += (_, e) => { _focusVisible = e.OriginalSource is Control { FocusState: FocusState.Keyboard }; UpdateChevronAffordance(); };
-        _expander.LostFocus += (_, _) => { _focusVisible = false; UpdateChevronAffordance(); };
+        _headerSurface.PointerEntered += (_, _) => { _headerPointerOver = true; UpdateChevronAffordance(); };
+        _headerSurface.PointerExited += (_, _) => { _headerPointerOver = false; UpdateChevronAffordance(); };
+        _headerSurface.PointerCanceled += (_, _) => { _headerPointerOver = false; UpdateChevronAffordance(); };
+        _expander.GotFocus += (_, e) =>
+        {
+            _focusVisible = e.OriginalSource is Control { FocusState: FocusState.Keyboard };
+            _headerFocusVisible = _focusVisible && !IsItemsSource(e.OriginalSource as DependencyObject);
+            UpdateChevronAffordance();
+        };
+        _expander.LostFocus += (_, _) => { _focusVisible = _headerFocusVisible = false; UpdateChevronAffordance(); };
         _root.Loaded += (_, _) => { _loaded = true; RefreshWorking(); };
         // Reparenting can deliver an old Unloaded after the next Loaded; trust the current tree state.
         _root.Unloaded += (_, _) => { if (_root.IsLoaded) return; _loaded = false; StopTimer(); };
@@ -197,8 +213,7 @@ internal sealed class OpenCodeToolGroupVisual
             "ExpanderChevronBorderBrush", "ExpanderChevronBorderPointerOverBrush", "ExpanderChevronBorderPressedBrush",
             "ExpanderChevronForeground", "ExpanderChevronPointerOverForeground", "ExpanderChevronPressedForeground",
         }) _expander.Resources[key] = transparent;
-        // PG4: the surrounding group owns the subtle hover/focus fill, without a resting ring.
-        // Keep the native header transparent to avoid stacking two hover fills.
+        // PG4/PG7: our group/header surfaces own the fill. Native template parts always stay clear.
         foreach (var key in new[]
         {
             "ExpanderHeaderBorderThickness", "ExpanderContentDownBorderThickness", "ExpanderContentUpBorderThickness",
@@ -208,16 +223,25 @@ internal sealed class OpenCodeToolGroupVisual
         // resources and use the old plain glyph beside the caption; the native header still toggles.
         _expander.Resources["ExpanderChevronButtonSize"] = 0d;
         _expander.Resources["ExpanderChevronGlyphSize"] = 0d;
-        _expander.Resources["ExpanderHeaderPadding"] = new Thickness(12, 0, 8, 0);
+        _expander.Resources["ExpanderHeaderPadding"] = new Thickness(0);
+    }
+
+    private bool IsItemsSource(DependencyObject? source)
+    {
+        for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+            if (ReferenceEquals(current, _itemsBorder)) return true;
+        return false;
     }
 
     private void UpdateChevronAffordance()
     {
-        var highlighted = _pointerOver || _focusVisible;
+        var highlighted = _summary.IsActive ? _pointerOver || _focusVisible : _headerPointerOver || _headerFocusVisible;
         _chevron.Opacity = highlighted ? 1 : 0;
         // Brush ThemeResource handles Light/Dark/High Contrast; no outline in any state.
         OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border(
-            highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
+            _summary.IsActive && highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
+        OpenCodeToolTheme.Apply(_headerSurface, OpenCodeToolTheme.Border(
+            !_summary.IsActive && highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
     }
 
     internal FrameworkElement Element => _root;
@@ -265,6 +289,7 @@ internal sealed class OpenCodeToolGroupVisual
         _expander.IsExpanded = _expanded;
         _updating = false;
         RefreshWorking();
+        UpdateChevronAffordance();
         UpdateAutomation();
     }
 
