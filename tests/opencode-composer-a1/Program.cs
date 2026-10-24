@@ -94,8 +94,10 @@ namespace AIFrontend.Pages
                 && Attr(shellEditor, "AutomationProperties.HelpText")!.Contains("Esc"), "terminal exit instructions remain accessible without visible copy");
             Check(Attr(shellPrompt, "FontFamily") == "{Binding FontFamily, ElementName=Composer}"
                 && Attr(shellEditor, "FontFamily") == "{Binding FontFamily, ElementName=Composer}", "terminal retains the normal editor's live typography");
-            foreach (var property in new[] { "Padding", "BorderThickness", "CornerRadius", "FontSize", "FontWeight", "FontStyle", "CharacterSpacing", "IsTextScaleFactorEnabled", "FlowDirection", "Language" })
+            foreach (var property in new[] { "Padding", "BorderThickness", "CornerRadius", "FontSize", "FontWeight", "FontStyle", "CharacterSpacing", "IsTextScaleFactorEnabled", "FlowDirection" })
                 Check(Attr(shellEditor, property) == "{Binding " + property + ", ElementName=Composer}", "terminal/editor geometry and typography stay identical: " + property);
+            // FrameworkElement.Language rejects a Binding at XAML load (XamlParseException, page fails to open).
+            Check(Attr(shellEditor, "Language") is null && Attr(shellPrompt, "Language") is null, "terminal does not bind Language (not bindable in XAML)");
             Check(Attr(terminal, "Width") == "{Binding ActualWidth, ElementName=Composer}"
                 && Attr(terminal, "Height") == "{Binding ActualHeight, ElementName=Composer}"
                 && Attr(terminal, "Padding") is null && Attr(terminal, "Margin") is null,
