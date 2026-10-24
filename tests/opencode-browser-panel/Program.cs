@@ -76,7 +76,14 @@ internal static class Program
         Check(strip.Contains("FromMilliseconds(400)") && strip.Contains("AnimationsEnabled") && strip.Contains("FromMilliseconds(200)"), "STATIC: hover delay and reduced-motion gate");
         Check(panel.Contains("workspace.OpenPage(\"about:blank\")") && panel.Contains("manager.ReclaimAsync(workspace.SessionId)"), "STATIC: real engine and peer APIs");
         Check(!panel.Contains("OpenCodeConnectionKind.Wsl"), "STATIC: browser does not depend on WSL mode");
-        Console.WriteLine($"PASS {_checks} browser-panel checks (pure policy + 6 explicitly static composition fences)");
+        var button = Source("Pages/OpenCode/OpenCodeBrowserButton.cs");
+        var wsl = Source("Pages/OpenCode/OpenCodeWslQuickAccessView.cs");
+        Check(button.Contains("Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0)") && wsl.Contains("Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0)"), "STATIC BI1: browser and WSL primary targets share size and padding");
+        Check(button.Contains("FontSize = 18") && wsl.Contains("FontSize = 18"), "STATIC BI1: browser and WSL glyph size matches");
+        Check(button.Contains("ThemeResource ButtonBorderBrush") && button.Contains("ThemeResource ButtonBorderThemeThickness") && button.Contains("ThemeResource ControlCornerRadius") && !button.Contains("_toggle.BorderThickness = new Thickness(0)"), "STATIC BI1: native button frame is retained, not stripped");
+        Check(button.Contains("ToggleButtonBackgroundChecked\"] = Brush(\"SubtleFillColorSecondaryBrush\")") && button.Contains("Height = 3, Width = 16") && button.Contains("_toggle.IsChecked == true ? Visibility.Visible"), "STATIC BI1: subtle checked fill and bottom accent bar overlay the base frame");
+        Check(!button.Contains("FromArgb") && button.Contains("SystemAccentColorLight2"), "STATIC BI1: colored globe follows theme accent instead of fixed RGB");
+        Console.WriteLine($"PASS {_checks} browser-panel checks (pure policy + explicitly static composition/style fences)");
     }
 
     private sealed class FakePage(bool agent) : IOpenCodeBrowserPage

@@ -1,6 +1,5 @@
 using System;
 using AIFrontend.Services.OpenCode.Browser;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -17,10 +16,10 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeBrowserButton : Grid
 {
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
-    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontSize = 18 };
+    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
     private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private readonly Button _unavailable = new() { Width = 16, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Content = new TextBlock { Text = "断开", FontSize = 8 } };
-    private readonly Border _bar = new() { Height = 3, Width = 20, VerticalAlignment = VerticalAlignment.Bottom, IsHitTestVisible = false };
+    private readonly Border _bar = new() { Height = 3, Width = 16, CornerRadius = new(2), Margin = new(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, IsHitTestVisible = false };
     private readonly TextBlock _new = new() { Text = "NEW", FontSize = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
     private readonly TextBlock _tipTitle = new();
     private readonly TextBlock _tipStatus = new();
@@ -37,13 +36,16 @@ internal sealed class OpenCodeBrowserButton : Grid
         ColumnDefinitions.Add(new() { Width = GridLength.Auto }); ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         var icon = new Grid { Width = 36, Height = 32, Children = { _globe, _count } };
         _toggle.Content = icon;
+        // The WSL explorer uses DefaultButtonStyle + transparent background. Keep that same
+        // native frame, padding and corner geometry on the native ToggleButton template.
+        _toggle.Style = (Style)XamlReader.Load(
+            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource ButtonBorderBrush}\"/><Setter Property=\"BorderThickness\" Value=\"{ThemeResource ButtonBorderThemeThickness}\"/><Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
         // Native ToggleButton chrome with subtle checked states, never the stock accent-filled state.
         _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
         _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
         _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Background = new SolidColorBrush(Colors.Transparent); _toggle.BorderThickness = new Thickness(0);
         _bar.Background = Brush("AccentFillColorDefaultBrush");
         Children.Add(_toggle); Children.Add(_bar); Children.Add(_unavailable); Children.Add(_new); Grid.SetColumn(_new, 1);
         AutomationProperties.SetName(_toggle, "浏览器"); AutomationProperties.SetAutomationId(_toggle, "OpenCodeBrowserButton");
@@ -72,15 +74,21 @@ internal sealed class OpenCodeBrowserButton : Grid
     {
         _globe.Foreground = OpenCodeBrowserPanelState.ColoredIcon(_pages) && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast
             ? new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1), GradientStops = {
-                new GradientStop { Color = ColorHelper.FromArgb(255, 34, 211, 238), Offset = 0 },
-                new GradientStop { Color = ColorHelper.FromArgb(255, 59, 130, 246), Offset = .5 },
-                new GradientStop { Color = ColorHelper.FromArgb(255, 168, 85, 247), Offset = 1 } } }
+                new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColorLight2"], Offset = 0 },
+                new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColor"], Offset = .5 },
+                new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColorDark2"], Offset = 1 } } }
             : Brush("TextFillColorPrimaryBrush");
         _bar.Background = Brush("AccentFillColorDefaultBrush");
         _dot.Background = Brush(_available ? "SystemFillColorSuccessBrush" : "TextFillColorDisabledBrush");
         _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
+        _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonForegroundCheckedPressed"] = Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonBorderBrushChecked"] = Brush("ButtonBorderBrush");
+        _toggle.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = Brush("ButtonBorderBrushPointerOver");
+        _toggle.Resources["ToggleButtonBorderBrushCheckedPressed"] = Brush("ButtonBorderBrushPressed");
     }
 
     public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen)
