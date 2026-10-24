@@ -12,6 +12,7 @@ public enum OpenCodeCommitStage { Succeeded, Busy, Invalid, VerifyFailed, Secret
 public sealed record OpenCodeCommitOutcome(OpenCodeCommitStage Stage, string Message)
 {
     public bool Succeeded => Stage == OpenCodeCommitStage.Succeeded;
+    public bool RefreshDiscovery { get; init; }
 }
 
 /// <summary>
@@ -70,7 +71,14 @@ public sealed class OpenCodeConnectionCommitter
 
             try { await _verify(options, cancellationToken).ConfigureAwait(false); }
             catch (OperationCanceledException) { return new(OpenCodeCommitStage.Cancelled, "连接已取消；现有连接未改动。"); }
-            catch (Exception ex) { return new(OpenCodeCommitStage.VerifyFailed, "后端验证失败：" + Describe(ex) + "（现有连接未改动）"); }
+            catch (Exception ex)
+            {
+                return new(OpenCodeCommitStage.VerifyFailed, "后端验证失败：" + Describe(ex) + "（现有连接未改动）")
+                {
+                    RefreshDiscovery = ex is OpenCodeTransportException or OpenCodeTimeoutException
+                        or OpenCodeApiException { StatusCode: 401 or 403 },
+                };
+            }
 
             string? stagedId = null;
             if (options.AuthenticationMode != OpenCodeAuthenticationMode.None)

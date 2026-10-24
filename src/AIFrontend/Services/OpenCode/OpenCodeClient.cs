@@ -495,18 +495,20 @@ public sealed partial class OpenCodeClient : IDisposable
         }
     }
 
+    // Request-scoped authorization and disabled cookies/default credentials make this pool safe
+    // across source revisions. Disposing a short-lived control client must not discard its sockets.
+    private static readonly SocketsHttpHandler SharedHandler = new()
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false,
+        Credentials = null,
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+    };
+
     private static HttpClient CreateOwnedHttpClient()
     {
-        var handler = new HttpClientHandler
-        {
-            // 不自动跟随重定向：凭据不随重定向跨主机流转（3xx 会作为非成功状态浮出）。
-            AllowAutoRedirect = false,
-            UseCookies = false,
-            UseDefaultCredentials = false,
-        };
-
         // 超时统一由逐请求的 linked CTS 强制，避免与 HttpClient.Timeout 双重语义。
-        return new HttpClient(handler, disposeHandler: true)
+        return new HttpClient(SharedHandler, disposeHandler: false)
         {
             Timeout = Timeout.InfiniteTimeSpan,
         };
@@ -561,9 +563,22 @@ public sealed partial class OpenCodeClient : IDisposable
             request.Headers.TryAddWithoutValidation("Authorization", _authorization);
         }
 
-        return await _httpClient
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
+#if DEBUG
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
+        try
+        {
+            return await _httpClient
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+#if DEBUG
+            // Templates only: never log query, session IDs, headers, body or credentials.
+            System.Diagnostics.Debug.WriteLine($"OpenCode HTTP {method.Method} {GetEndpointTemplate(relativePath)} headers {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds:F1} ms");
+#endif
+        }
     }
 
     private async Task<JsonDocument> SendForJsonAsync(

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -35,7 +37,8 @@ internal static class Program
         Console.WriteLine("PASS wsl -l -q parsing (UTF-16LE with/without BOM, CRLF, NUL, UTF-8) + NixOS recognition");
         await ServiceDiscovery();
         Console.WriteLine("PASS WSL CLI discovery: current service, login environment, URL mapping, password in memory, no configuration-file probes");
-        Console.WriteLine($"8 groups passed; {_assertions} assertions; fake CLI, isolated settings/DPAPI only.");
+        await PooledTransport();
+        Console.WriteLine($"9 groups passed; {_assertions} assertions; fake CLI, isolated settings/DPAPI + loopback HTTP only.");
         if (args.Contains("--real-wsl", StringComparer.Ordinal)) await RealWsl();
         return 0;
     }
@@ -150,6 +153,17 @@ internal static class Program
         var failed = await committer.CommitAsync(OpenCodeConnectionKind.Remote, Basic("https://new.invalid", "alice", Secret), null, default);
         Check(failed.Stage == OpenCodeCommitStage.VerifyFailed, "verify failure reported");
         Check(!failed.Message.Contains(Secret, StringComparison.Ordinal) && !failed.Message.Contains("boom", StringComparison.Ordinal), "outcome redacts exception text");
+        Check(!failed.RefreshDiscovery, "arbitrary validation failure does not evict WSL discovery");
+        foreach (var error in new Exception[] { new OpenCodeTransportException("test"), new OpenCodeTimeoutException("test"),
+            new OpenCodeApiException(401, null, null, "test"), new OpenCodeApiException(403, null, null, "test"),
+            new OpenCodeApiException(500, null, null, "test"), new OpenCodeProtocolException("test") })
+        {
+            var rejecting = new OpenCodeConnectionCommitter((_, _) => Task.FromException(error),
+                (_, _, _) => Task.CompletedTask, (transform, _) => Task.FromResult(transform(saved)), (_, _) => Task.CompletedTask);
+            var rejected = await rejecting.CommitAsync(OpenCodeConnectionKind.Wsl, Basic("http://localhost:1", "opencode", Secret), "DistroA", default);
+            Check(rejected.RefreshDiscovery == (error is OpenCodeTransportException or OpenCodeTimeoutException or OpenCodeApiException { StatusCode: 401 or 403 }),
+                "only connection/auth failure invalidates discovery: " + error.GetType().Name);
+        }
         Check(saved.OpenCode.BaseUrl == "https://old.invalid" && store[OpenCodeConnectionProfile.CredentialId] == "old-secret", "existing connection untouched on failure");
 
         failVerify = false;
@@ -251,14 +265,23 @@ internal static class Program
         runner.Output[WslOpenCodeCommand.ServiceStatus] = "http://0.0.0.0:49375\n";
         runner.Output[WslOpenCodeCommand.ServicePassword] = Secret + "\n";
         var service = await locator.DiscoverAsync(distro, default);
-        Check(service.Distribution == d && service.BaseUrl == "http://localhost:49375", "current CLI service maps wildcard listener to Windows localhost");
+        Check(service.Distribution == d && service.BaseUrl == "http://127.0.0.1:49375", "current CLI service maps wildcard listener to Windows IPv4 forwarding");
         Check(service.AuthenticationMode == OpenCodeAuthenticationMode.Basic && service.ToClientOptions().Username == "opencode" && service.ToClientOptions().Secret == Secret, "CLI password carried in memory to basic authentication");
         Check(runner.Calls.SequenceEqual(new[] { (d, WslOpenCodeCommand.ServiceStatus), (d, WslOpenCodeCommand.ServicePassword) }), "only read-only CLI status/password; no config checks, starts, restarts or file reads");
         Check(!service.ToString().Contains(Secret, StringComparison.Ordinal) && !JsonSerializer.Serialize(service).Contains(Secret, StringComparison.Ordinal), "service display and JSON omit secret");
+        var cached = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => locator.DiscoverAsync(distro, default)));
+        Check(cached.All(item => ReferenceEquals(item, service)) && runner.Calls.Count == 2, "concurrent client/source consumers reuse one endpoint and credential lookup");
+        await locator.InvalidateAsync(service); // Connection/authentication verification failed.
         runner.Output[WslOpenCodeCommand.ServicePassword] = "\n";
-        Check((await locator.DiscoverAsync(distro, default)).AuthenticationMode == OpenCodeAuthenticationMode.None, "passwordless service");
+        var refreshed = await locator.DiscoverAsync(distro, default);
+        Check(refreshed.AuthenticationMode == OpenCodeAuthenticationMode.None && runner.Calls.Count == 4, "failure invalidates once and refreshes passwordless service");
+        await locator.InvalidateAsync(service);
+        Check(ReferenceEquals(await locator.DiscoverAsync(distro, default), refreshed) && runner.Calls.Count == 4, "late old failure cannot evict refreshed discovery");
+        await locator.InvalidateAsync(refreshed);
         runner.Output[WslOpenCodeCommand.ServicePassword] = " padded password \r\n";
-        Check((await locator.DiscoverAsync(distro, default)).ToClientOptions().Secret == " padded password ", "do not strip password spaces");
+        refreshed = await locator.DiscoverAsync(distro, default);
+        Check(refreshed.ToClientOptions().Secret == " padded password ", "do not strip password spaces");
+        await locator.InvalidateAsync(refreshed);
         runner.Output[WslOpenCodeCommand.ServiceStatus] = "not running";
         await Throws<OpenCodeConfigurationException>(async () => { await locator.DiscoverAsync(distro, default); }, "unavailable service reported, no guessed port");
         using var cts = new CancellationTokenSource();
@@ -267,7 +290,49 @@ internal static class Program
         Check(WslOpenCodeServiceLocator.TryMapUrl("https://192.0.2.10:443/base", out var kept) && kept == "https://192.0.2.10/base", "non-local host kept");
         Check(!WslOpenCodeServiceLocator.TryMapUrl("http://h/?q", out _), "query rejected");
         Check(!WslOpenCodeServiceLocator.TryMapUrl("http://user:password@host", out _), "credentials in service URL rejected");
-        Check(WslOpenCodeServiceLocator.TryMapUrl("http://[::]:49375", out var ipv6) && ipv6 == "http://localhost:49375", "IPv6 wildcard mapped");
+        Check(WslOpenCodeServiceLocator.TryMapUrl("http://[::]:49375", out var ipv6) && ipv6 == "http://127.0.0.1:49375", "IPv6 wildcard mapped");
+        Check(WslOpenCodeServiceLocator.TryMapUrl("https://localhost:49375", out var tls) && tls == "https://localhost:49375", "TLS certificate hostname preserved");
+    }
+
+    private static async Task PooledTransport()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int accepts = 0;
+        var serving = Serve();
+        string url = "http://127.0.0.1:" + ((IPEndPoint)listener.LocalEndpoint).Port;
+        // These mimic the disposable preflight client and the independent page client.
+        for (int i = 0; i < 2; i++)
+        {
+            using var client = new OpenCodeClient(new() { BaseUrl = url });
+            await client.GetLocationAsync(null, timeout.Token);
+        }
+        await serving;
+        Check(accepts == 1, "separately created/disposed clients reuse the same HTTP connection");
+        Console.WriteLine("PASS pooled transport: two disposable clients, one TCP connection");
+
+        async Task Serve()
+        {
+            int requests = 0;
+            while (requests < 2)
+            {
+                using var socket = await listener.AcceptTcpClientAsync(timeout.Token);
+                accepts++;
+                using var stream = socket.GetStream();
+                using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+                while (requests < 2)
+                {
+                    var first = await reader.ReadLineAsync(timeout.Token);
+                    if (first is null) break;
+                    while (!string.IsNullOrEmpty(await reader.ReadLineAsync(timeout.Token))) { }
+                    const string body = "{\"directory\":\"/test\",\"project\":{\"id\":\"test\"}}";
+                    byte[] reply = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + body.Length + "\r\n\r\n" + body);
+                    await stream.WriteAsync(reply, timeout.Token);
+                    requests++;
+                }
+            }
+        }
     }
 
     private sealed class FakeCli : IWslOpenCodeCommandRunner

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -99,6 +100,8 @@ public sealed class WslOpenCodeService
 public sealed class WslOpenCodeServiceLocator
 {
     private readonly IWslOpenCodeCommandRunner _runner;
+    private readonly SemaphoreSlim _discoveryGate = new(1, 1);
+    private readonly Dictionary<string, WslOpenCodeService> _services = new(StringComparer.OrdinalIgnoreCase);
 
     public WslOpenCodeServiceLocator(IWslOpenCodeCommandRunner runner) =>
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
@@ -119,6 +122,31 @@ public sealed class WslOpenCodeServiceLocator
     public async Task<WslOpenCodeService> DiscoverAsync(WslDistributionInfo distribution, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(distribution);
+        await _discoveryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_services.TryGetValue(distribution.Name, out var cached)) return cached;
+            var discovered = await DiscoverCoreAsync(distribution, cancellationToken).ConfigureAwait(false);
+            _services.Add(distribution.Name, discovered);
+            return discovered;
+        }
+        finally { _discoveryGate.Release(); }
+    }
+
+    // Remove only the failed generation, not a newer discovery. No automatic mutation retry.
+    public async Task InvalidateAsync(WslOpenCodeService failed, CancellationToken cancellationToken = default)
+    {
+        await _discoveryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_services.TryGetValue(failed.Distribution, out var current) && ReferenceEquals(current, failed))
+                _services.Remove(failed.Distribution);
+        }
+        finally { _discoveryGate.Release(); }
+    }
+
+    private async Task<WslOpenCodeService> DiscoverCoreAsync(WslDistributionInfo distribution, CancellationToken cancellationToken)
+    {
         string status = await _runner.RunAsync(distribution.Name, WslOpenCodeCommand.ServiceStatus, cancellationToken).ConfigureAwait(false);
         if (!TryMapUrl(status.Trim(), out string url))
             throw new OpenCodeConfigurationException("OpenCode CLI 未返回正在运行的后台服务地址；未启动或更改后台服务。");
@@ -138,7 +166,9 @@ public sealed class WslOpenCodeServiceLocator
             return false;
         string host = uri.Host.Trim('[', ']');
         bool local = host is "0.0.0.0" or "::" or "127.0.0.1" or "::1" || host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
-        var builder = new UriBuilder(uri) { Host = local ? "localhost" : uri.Host };
+        // Windows WSL forwarding is IPv4: localhost's failed IPv6 connect costs ~2 s on
+        // this host. Keep HTTPS hostnames unchanged for certificate name validation.
+        var builder = new UriBuilder(uri) { Host = local ? (uri.Scheme == Uri.UriSchemeHttp ? "127.0.0.1" : "localhost") : uri.Host };
         mapped = builder.Uri.GetLeftPart(UriPartial.Path).TrimEnd('/');
         return true;
     }

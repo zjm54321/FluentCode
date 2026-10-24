@@ -147,7 +147,12 @@ public partial class App
             token.ThrowIfCancellationRequested();
             var clientOptions = new OpenCodeClientOptions
             {
-                BaseUrl = options.BaseUrl, AuthenticationMode = options.AuthenticationMode,
+                // Apply the IPv4 forwarding route to existing saved WSL profiles too; retain
+                // the saved endpoint identity so unknown-result tombstones stay in scope.
+                BaseUrl = options.Kind == OpenCodeConnectionKind.Wsl
+                    && Services.OpenCode.Connection.WslOpenCodeServiceLocator.TryMapUrl(options.BaseUrl, out var wslUrl)
+                        ? wslUrl : options.BaseUrl,
+                AuthenticationMode = options.AuthenticationMode,
                 Username = options.Username, Secret = secret
             };
             var client = new OpenCodeClient(clientOptions); // Validates options before publishing a page factory.

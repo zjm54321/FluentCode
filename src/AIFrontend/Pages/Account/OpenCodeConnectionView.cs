@@ -278,6 +278,7 @@ public sealed class OpenCodeConnectionView : UserControl
     private async Task ConnectAsync(CancellationToken ct)
     {
         OpenCodeClientOptions options;
+        WslOpenCodeService? discovered = null;
         string? distribution = null;
         bool pairing = _flow.SelectedIndex == 2;
         var kind = _flow.SelectedIndex == 0 ? OpenCodeConnectionKind.Wsl : OpenCodeConnectionKind.Remote;
@@ -288,6 +289,7 @@ public sealed class OpenCodeConnectionView : UserControl
             distribution = distro.Name;
             SetStatus("正在通过 WSL 中的 opencode 命令连接后台服务…");
             var selected = await _locator.DiscoverAsync(distro, ct);
+            discovered = selected;
             ct.ThrowIfCancellationRequested();
             if (_closed) return;
             options = selected.ToClientOptions();
@@ -315,6 +317,8 @@ public sealed class OpenCodeConnectionView : UserControl
 
         SetStatus("正在验证后端并安全保存（成功后替换当前唯一连接）…");
         var outcome = await _committer.CommitAsync(kind, options, distribution, ct);
+        if (discovered is not null && outcome.RefreshDiscovery)
+            await _locator.InvalidateAsync(discovered);
         if (_closed) return;
         if (!outcome.Succeeded)
         {
