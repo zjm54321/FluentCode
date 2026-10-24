@@ -105,7 +105,7 @@ internal static class Program
         Check(dialog.Contains("lists.Children.Add(favoriteSection)") && dialog.Contains("Grid.SetRow(list, 1)")
             && dialog.Contains("favoriteSection.MaxHeight = lists.Height * 0.4") && dialog.Contains("favoriteList.MaxHeight"),
             "MP3 favorites occupy a pinned Auto row above the independent all-models scroll");
-        Check(dialog.Contains("new ToggleButton") && dialog.Contains("\\uE734") && dialog.Contains("\\uE735")
+        Check(dialog.Contains("var favorite = new Button")
             && dialog.Contains("favorite.Click += (_, _) => toggleFavorite()") && dialog.Contains("e.Handled = true), true)")
             && dialog.Contains("ToolTipService.SetToolTip(favorite, favoriteName)") && dialog.Contains("AutomationProperties.SetName(favorite"),
             "MP3 accessible native star handles its gesture without selecting or dismissing");
@@ -114,6 +114,18 @@ internal static class Program
             && !dialog.Contains("OpenCodeVariantPickerDialog.ShowAsync"), "model dialog has no duplicate reasoning-strength entry or variant dialog handoff");
         Check(dialog.Contains("bool allowStrengthSelection = true") && !dialog.Contains("Visibility = allowStrengthSelection"), "legacy caller argument retained without enabling in-dialog strength selection");
         var rowView = dialog.Substring(dialog.IndexOf("private static ListViewItem RowItem", StringComparison.Ordinal));
+        Check(rowView.Contains("Style = OpenCodeInteractionUi.TryStyle(\"SubtleButtonStyle\")")
+            && rowView.Contains("Width = 24, Height = 24, MinWidth = 0, MinHeight = 0")
+            && rowView.Contains("Padding = new Thickness(0), BorderThickness = new Thickness(0)"),
+            "FV1 star uses native transparent subtle chrome with standard hover/pressed fills in a borderless 24px target");
+        Check(rowView.Contains("Glyph = isFavorite ? \"\\uE735\" : \"\\uE734\", FontSize = 14")
+            && !rowView.Contains("Foreground =") && !rowView.Contains("new ToggleButton"),
+            "FV1 favorite is a 14px filled E735 or outline E734 star inheriting primary text, never an accent checked fill");
+        Check(rowView.Contains("Visibility = showFavorite ? Visibility.Visible : Visibility.Collapsed")
+            && !rowView.Contains("PointerEntered") && !rowView.Contains("PointerExited"),
+            "FV1 both star states stay visible whenever favorites are available, including keyboard navigation");
+        Check(dialog.Contains("StyledText(\"收藏\", OpenCodeInteractionUi.CaptionSubtleStyleKey)"),
+            "FV1 favorites section uses the subtle caption style");
         Check(!rowView.Contains("StyledText(row.ModelId") && !rowView.Contains("AppFonts.Monospace"), "MP2 model ID is identity/logo input only, never a row subtitle");
         Check(!rowView.Contains("当前") && !rowView.Contains("marker") && !rowView.Contains("SemiBold"), "model rows contain only logo and name without current status marker or special emphasis");
         Check(!dialog.Contains("new ContentDialog") && !dialog.Contains("PrimaryButtonText") && !dialog.Contains("OpenCodeModelPickerRefresh")

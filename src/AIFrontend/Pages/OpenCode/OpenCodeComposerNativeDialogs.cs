@@ -52,7 +52,7 @@ internal static class OpenCodeModelPickerDialog
         favoriteSection.Visibility = favoriteStore.Available ? Visibility.Visible : Visibility.Collapsed;
         favoriteSection.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         favoriteSection.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        favoriteSection.Children.Add(OpenCodeInteractionUi.StyledText("收藏", OpenCodeInteractionUi.BodyStrongStyleKey));
+        favoriteSection.Children.Add(OpenCodeInteractionUi.StyledText("收藏", OpenCodeInteractionUi.CaptionSubtleStyleKey));
         Grid.SetRow(favoriteList, 1);
         favoriteSection.Children.Add(favoriteList);
         var lists = new Grid { Height = ModelListMaxHeight(owner), RowSpacing = 8 };
@@ -193,12 +193,14 @@ internal static class OpenCodeModelPickerDialog
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(grid);
-        var favorite = new ToggleButton { IsChecked = isFavorite, IsEnabled = canToggle, MinWidth = 32, MinHeight = 28,
+        // Keep both states discoverable; only the glyph changes, not the native subtle chrome.
+        // Inherit the style's primary text foreground instead of an accent-filled checked button.
+        var favorite = new Button { Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle"),
+            IsEnabled = canToggle, Width = 24, Height = 24, MinWidth = 0, MinHeight = 0,
             Visibility = showFavorite ? Visibility.Visible : Visibility.Collapsed,
-            Padding = new Thickness(6), VerticalAlignment = VerticalAlignment.Center,
-            Content = new FontIcon { Glyph = isFavorite ? "\uE735" : "\uE734", FontSize = 16 } };
-        if (isFavorite && Application.Current.Resources.TryGetValue("SystemControlHighlightAccentBrush", out var accent)
-            && accent is Brush brush) ((FontIcon)favorite.Content).Foreground = brush;
+            Padding = new Thickness(0), BorderThickness = new Thickness(0), VerticalAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+            Content = new FontIcon { Glyph = isFavorite ? "\uE735" : "\uE734", FontSize = 14 } };
         var favoriteName = isFavorite ? "取消收藏" : "收藏";
         ToolTipService.SetToolTip(favorite, favoriteName);
         AutomationProperties.SetAutomationId(favorite, "OpenCodeModelFavorite:" + row.ProviderId + "/" + row.ModelId);
