@@ -219,6 +219,9 @@
         <!-- ============================================================
              Row 1：内容区。不设 Background，直接透出窗口桌面亚克力（BG1）。
              ============================================================ -->
+        <!-- Browser pages remain full-sized and mounted even when the overlay is closed. -->
+        <Grid x:Name="BrowserHiddenHost" Grid.Row="1" Opacity="0" IsHitTestVisible="False"
+              HorizontalAlignment="Left" Loaded="BrowserHiddenHost_Loaded" />
         <SplitView
             x:Name="SessionPane"
             Grid.Row="1"
@@ -820,5 +823,6 @@
                 </Grid>
             </Grid>
         </SplitView>
+        <Grid x:Name="BrowserOverlayHost" Grid.Row="1" HorizontalAlignment="Left" Visibility="Collapsed" />
     </Grid>
 </Page>
