@@ -35,6 +35,7 @@ $variantPath = Join-Path $output 'VariantSelection.cs'
 $sources = @($generated, $wirePath, $variantPath, (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'VariantSelection.cs'), "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeRecentModels.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Models.cs", "$repo/src/AIFrontend/Services/OpenCode/OpenCodeDtos.Location.cs")
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeChildSessionControl.cs"
 $sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPickerFavorites.cs"
+$sources += "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelFavoriteJson.cs"
 $sources += @("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs", (Join-Path $PSScriptRoot 'NativeComboBox.TestHost.cs'))
 $card = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs")
 $childRender = [regex]::Match($card, '(?ms)^    internal void RenderReadOnly\(.*?^    \}')

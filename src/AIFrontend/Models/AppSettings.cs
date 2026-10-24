@@ -20,6 +20,9 @@ public enum AppTheme
 /// <summary>Code surfaces only; independent of application theme and font settings.</summary>
 public enum AppCodeTheme { Fluent = 0, OneDarkPro = 1 }
 
+/// <summary>应用内收藏的精确模型标识；按稳定 OpenCode Source 隔离。</summary>
+public sealed record OpenCodeModelFavorite(string SourceId, string ProviderId, string ModelId);
+
 /// <summary>OpenCode 后端设置（独立于聊天 provider）。</summary>
 public sealed record OpenCodeSettings
 {
@@ -117,6 +120,9 @@ public sealed record AppSettings
     /// <summary>每个稳定 Source/profile 的已添加目录；null 为旧版/默认，省略序列化。</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public IReadOnlyList<OpenCodeProjectBookmark>? OpenCodeProjectDirectories { get; init; }
+
+    /// <summary>Remote 或 WSL 文件不可访问时的模型收藏。</summary>
+    public IReadOnlyList<OpenCodeModelFavorite>? OpenCodeModelFavorites { get; init; }
 
     /// <summary>聊天 provider 端点列表。</summary>
     public IReadOnlyList<ProviderEndpoint> Providers { get; init; } = Array.Empty<ProviderEndpoint>();

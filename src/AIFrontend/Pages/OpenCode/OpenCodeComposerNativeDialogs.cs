@@ -13,8 +13,8 @@ using Windows.System;
 
 namespace AIFrontend.Pages.OpenCode;
 
-// Native builtin dialogs. Each requires the owning XamlRoot supplied by the page (no Window.Current), performs no IO,
-// holds no client/lease/gate/binding, and returns a typed result the page re-validates after the dialog closes.
+// Native builtin dialogs require the page's XamlRoot (no Window.Current), hold no client/lease/gate/binding,
+// and return a typed result the page re-validates. Only model favorites perform preference IO.
 
 internal static class OpenCodeModelPickerDialog
 {
@@ -28,7 +28,12 @@ internal static class OpenCodeModelPickerDialog
         if (owner is null || anchor is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
         var cancelled = new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null);
         var state = new OpenCodeModelPickerState(presentation);
-        var favorites = OpenCodeModelPickerFavorites.Shared;
+        var favoriteStore = new OpenCodeModelFavoriteStore(sourceKey ?? string.Empty);
+        string? favoriteError = null;
+        try { await favoriteStore.LoadAsync(); }
+        catch (Exception) { favoriteError = "收藏设置未能读取；更改收藏时将再次尝试保存。"; }
+        if (anchor.XamlRoot != owner || !anchor.IsLoaded) return cancelled;
+        var favorites = favoriteStore.Favorites;
         var search = new AutoSuggestBox { PlaceholderText = "搜索模型或提供方", QueryIcon = new SymbolIcon(Symbol.Find) };
         AutomationProperties.SetAutomationId(search, "OpenCodeModelPickerSearch");
         AutomationProperties.SetName(search, "搜索模型");
@@ -55,7 +60,40 @@ internal static class OpenCodeModelPickerDialog
         var body = new StackPanel { Spacing = 8, Width = ModelBodyWidth(owner), Padding = new Thickness(8) };
         body.Children.Add(OpenCodeInteractionUi.StyledText("选择模型", OpenCodeInteractionUi.BodyStrongStyleKey));
         body.Children.Add(search);
+        var favoriteStatus = OpenCodeInteractionUi.Caption(favoriteError ?? string.Empty, 0.85);
+        favoriteStatus.Visibility = favoriteError is null ? Visibility.Collapsed : Visibility.Visible;
+        AutomationProperties.SetLiveSetting(favoriteStatus, AutomationLiveSetting.Polite);
+        body.Children.Add(favoriteStatus);
         body.Children.Add(lists);
+        ToolTipService.SetToolTip(favoriteSection, favoriteStore.Status);
+        var savingFavorite = false;
+        async void ToggleFavorite(OpenCodeModelPickerRow row)
+        {
+            if (savingFavorite || state.IsClosed) return;
+            savingFavorite = true;
+            var value = favorites.Toggle(row);
+            Render();
+            try
+            {
+                await favoriteStore.SaveAsync(row, value);
+                favoriteStatus.Text = favoriteStore.Status.StartsWith("无法", StringComparison.Ordinal) ? favoriteStore.Status : string.Empty;
+            }
+            catch (Exception)
+            {
+                favorites.Toggle(row);
+                favoriteStatus.Text = "收藏未能保存，请重试。";
+            }
+            finally
+            {
+                savingFavorite = false;
+                if (!state.IsClosed)
+                {
+                    favoriteStatus.Visibility = favoriteStatus.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+                    ToolTipService.SetToolTip(favoriteSection, favoriteStore.Status);
+                    Render();
+                }
+            }
+        }
         void Refit(XamlRoot sender, XamlRootChangedEventArgs args)
         {
             body.Width = ModelBodyWidth(sender);
@@ -76,7 +114,7 @@ internal static class OpenCodeModelPickerDialog
             var sections = favorites.Filter(OpenCodeModelPresentation.Order(presentation.Rows, sourceKey), filter);
             foreach (var row in sections.Favorites)
             {
-                var item = RowItem(row, favorites.Contains(row), () => { favorites.Toggle(row); Render(); });
+                var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row));
                 favoriteList.Items.Add(item);
                 if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) favoriteList.SelectedItem = item;
             }
@@ -90,7 +128,7 @@ internal static class OpenCodeModelPickerDialog
                     Padding = new Thickness(10, 12, 10, 4), MinHeight = 28 });
                 foreach (var row in provider)
                 {
-                    var item = RowItem(row, favorites.Contains(row), () => { favorites.Toggle(row); Render(); });
+                    var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row));
                     list.Items.Add(item);
                     if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) list.SelectedItem = item;
                 }
@@ -144,14 +182,14 @@ internal static class OpenCodeModelPickerDialog
     private static double ModelListMaxHeight(XamlRoot? owner) =>
         Math.Max(34, Math.Min(640, (owner?.Size.Height ?? 760) - 192));
 
-    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, Action toggleFavorite)
+    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, bool canToggle, Action toggleFavorite)
     {
         var grid = OpenCodeModelLogo.Label(row.ModelId, row.Name);
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(grid);
-        var favorite = new ToggleButton { IsChecked = isFavorite, MinWidth = 32, MinHeight = 28,
+        var favorite = new ToggleButton { IsChecked = isFavorite, IsEnabled = canToggle, MinWidth = 32, MinHeight = 28,
             Padding = new Thickness(6), VerticalAlignment = VerticalAlignment.Center,
             Content = new FontIcon { Glyph = isFavorite ? "\uE735" : "\uE734", FontSize = 16 } };
         if (isFavorite && Application.Current.Resources.TryGetValue("SystemControlHighlightAccentBrush", out var accent)

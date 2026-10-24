@@ -6,8 +6,15 @@ namespace AIFrontend.Pages.OpenCode;
 
 internal sealed class OpenCodeModelPickerFavorites
 {
-    internal static OpenCodeModelPickerFavorites Shared { get; } = new();
     private readonly HashSet<(string ProviderId, string ModelId)> _keys = new();
+
+    internal IEnumerable<(string ProviderId, string ModelId)> Keys => _keys;
+
+    internal void Replace(IEnumerable<(string ProviderId, string ModelId)> keys)
+    {
+        _keys.Clear();
+        foreach (var key in keys) _keys.Add(key);
+    }
 
     internal bool Contains(OpenCodeModelPickerRow row) => _keys.Contains((row.ProviderId, row.ModelId));
 
