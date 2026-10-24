@@ -23,11 +23,21 @@ internal static class Program
         }
         foreach (var availability in Enum.GetValues<OpenCodeBrowserAvailability>())
         {
-            Check(OpenCodeBrowserPanelState.ShowUnavailable(availability) == (availability != OpenCodeBrowserAvailability.Available), "availability badge only when unavailable");
+            var brush = availability switch
+            {
+                OpenCodeBrowserAvailability.Available => "SystemFillColorSuccessBrush",
+                OpenCodeBrowserAvailability.Attaching or OpenCodeBrowserAvailability.Reconnecting => "SystemFillColorCautionBrush",
+                _ => "SystemFillColorCriticalBrush",
+            };
+            Check(OpenCodeBrowserPanelState.StatusBrushKey(availability) == brush, "BI2 success/caution/critical status dot " + availability);
             var text = OpenCodeBrowserPanelState.TooltipStatus(availability, "真实的原因");
             Check(text == (availability == OpenCodeBrowserAvailability.Available ? "智能体可以使用浏览器（45 个操作）" : "真实的原因"), "truthful availability tooltip");
         }
         Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Detached, null).Contains("尚未接入"), "unknown status is not a failure count");
+        Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Attaching, null).Contains("正在接入"), "BI2 attaching has full state text");
+        Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Reconnecting, null).Contains("正在重连"), "BI2 reconnecting has full state text");
+        Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Replaced, null).Contains("另一个桌面应用"), "BI2 replaced has full state text");
+        Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Unsupported, null).Contains("不支持"), "BI2 unsupported has full state text");
         Check(OpenCodeBrowserPanelState.ReclaimLabel(OpenCodeBrowserAvailability.Replaced) == "改为在这里提供", "replace offers reclaim");
         Check(OpenCodeBrowserPanelState.ReclaimLabel(OpenCodeBrowserAvailability.Reconnecting) == "立即重连", "disconnect offers reconnect");
         Check(OpenCodeBrowserPanelState.ReclaimLabel(OpenCodeBrowserAvailability.Unsupported) is null, "unsupported does not invent reconnect");
@@ -83,6 +93,11 @@ internal static class Program
         Check(button.Contains("ThemeResource ButtonBorderBrush") && button.Contains("ThemeResource ButtonBorderThemeThickness") && button.Contains("ThemeResource ControlCornerRadius") && !button.Contains("_toggle.BorderThickness = new Thickness(0)"), "STATIC BI1: native button frame is retained, not stripped");
         Check(button.Contains("ToggleButtonBackgroundChecked\"] = Brush(\"SubtleFillColorSecondaryBrush\")") && button.Contains("Height = 3, Width = 16") && button.Contains("_toggle.IsChecked == true ? Visibility.Visible"), "STATIC BI1: subtle checked fill and bottom accent bar overlay the base frame");
         Check(!button.Contains("FromArgb") && button.Contains("SystemAccentColorLight2"), "STATIC BI1: colored globe follows theme accent instead of fixed RGB");
+        Check(button.Contains("_statusButton = new()") && button.Contains("VerticalAlignment = VerticalAlignment.Top") && button.Contains("_statusDot = new() { Width = 6, Height = 6") && !button.Contains("Text = \"断开\""), "STATIC BI2: small top-right dot replaces disconnected text");
+        Check(button.Contains("_statusButton.Visibility = workspace is not null ? Visibility.Visible : Visibility.Collapsed"), "STATIC BI2: attached and unavailable sessions both show status on button");
+        Check(button.Contains("AutomationProperties.SetName(_statusButton, \"浏览器连接状态 · \" + _tipStatus.Text)") && button.Contains("ToolTipService.SetToolTip(_statusButton, _tipStatus.Text)") && button.Contains("AutomationProperties.SetName(_toggle, _tipTitle.Text + \" · \" + _tipStatus.Text)"), "STATIC BI2: dot tooltip and automation names carry full state");
+        Check(button.Contains("_statusButton.Flyout = _availabilityFlyout") && button.Contains("_statusDot.Background = Brush(OpenCodeBrowserPanelState.StatusBrushKey(_availability))"), "STATIC BI2: themed dot retains real reconnect/reclaim flyout");
+        Check(button.Contains("_count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top"), "STATIC BI2: page count stays separate from top-right status and bottom accent");
         Console.WriteLine($"PASS {_checks} browser-panel checks (pure policy + explicitly static composition/style fences)");
     }
 

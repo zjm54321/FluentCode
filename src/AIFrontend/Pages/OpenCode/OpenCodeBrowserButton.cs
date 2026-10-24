@@ -17,8 +17,9 @@ internal sealed class OpenCodeBrowserButton : Grid
 {
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
     private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
-    private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
-    private readonly Button _unavailable = new() { Width = 16, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Content = new TextBlock { Text = "断开", FontSize = 8 } };
+    private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
+    private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new(3), IsHitTestVisible = false };
+    private readonly Button _statusButton = new() { Width = 12, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new(0), Margin = new(0, 2, 2, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
     private readonly Border _bar = new() { Height = 3, Width = 16, CornerRadius = new(2), Margin = new(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, IsHitTestVisible = false };
     private readonly TextBlock _new = new() { Text = "NEW", FontSize = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
     private readonly TextBlock _tipTitle = new();
@@ -47,9 +48,10 @@ internal sealed class OpenCodeBrowserButton : Grid
         _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
         _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
         _bar.Background = Brush("AccentFillColorDefaultBrush");
-        Children.Add(_toggle); Children.Add(_bar); Children.Add(_unavailable); Children.Add(_new); Grid.SetColumn(_new, 1);
+        _statusButton.Content = _statusDot;
+        if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) _statusButton.Style = quiet;
+        Children.Add(_toggle); Children.Add(_bar); Children.Add(_statusButton); Children.Add(_new); Grid.SetColumn(_new, 1);
         AutomationProperties.SetName(_toggle, "浏览器"); AutomationProperties.SetAutomationId(_toggle, "OpenCodeBrowserButton");
-        AutomationProperties.SetName(_unavailable, "浏览器连接状态");
         _toggle.Click += (_, _) =>
         {
             if ((Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) != 0) NewPageRequested?.Invoke(this, EventArgs.Empty);
@@ -63,13 +65,13 @@ internal sealed class OpenCodeBrowserButton : Grid
         ToolTipService.SetToolTip(_toggle, new ToolTip { Content = new StackPanel { Spacing = 4, Children = { _tipTitle,
             new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _tipStatus } } } } });
         _availabilityFlyout = new Flyout { Content = new StackPanel { Spacing = 8, Children = { _reason, _reclaim } } };
-        _unavailable.Flyout = _availabilityFlyout;
+        _statusButton.Flyout = _availabilityFlyout;
         _reclaim.Click += (_, _) => { _availabilityFlyout.Hide(); ReclaimRequested?.Invoke(this, EventArgs.Empty); };
         ActualThemeChanged += (_, _) => RefreshTheme();
     }
 
     private int _pages;
-    private bool _available;
+    private OpenCodeBrowserAvailability _availability;
     private void RefreshTheme()
     {
         _globe.Foreground = OpenCodeBrowserPanelState.ColoredIcon(_pages) && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast
@@ -79,7 +81,7 @@ internal sealed class OpenCodeBrowserButton : Grid
                 new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColorDark2"], Offset = 1 } } }
             : Brush("TextFillColorPrimaryBrush");
         _bar.Background = Brush("AccentFillColorDefaultBrush");
-        _dot.Background = Brush(_available ? "SystemFillColorSuccessBrush" : "TextFillColorDisabledBrush");
+        _dot.Background = _statusDot.Background = Brush(OpenCodeBrowserPanelState.StatusBrushKey(_availability));
         _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
@@ -93,19 +95,21 @@ internal sealed class OpenCodeBrowserButton : Grid
 
     public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen)
     {
-        _pages = workspace?.Pages.Count ?? 0; _available = workspace?.Availability == OpenCodeBrowserAvailability.Available;
+        _pages = workspace?.Pages.Count ?? 0; _availability = workspace?.Availability ?? OpenCodeBrowserAvailability.Detached;
         _toggle.IsEnabled = workspace is not null;
         _toggle.IsChecked = state?.ShowCommands(_pages) == true;
         _bar.Visibility = _toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         _count.Value = _pages; _count.Visibility = OpenCodeBrowserPanelState.ShowCount(_pages) ? Visibility.Visible : Visibility.Collapsed;
         _new.Visibility = seen ? Visibility.Collapsed : Visibility.Visible;
-        _unavailable.Visibility = workspace is not null && OpenCodeBrowserPanelState.ShowUnavailable(workspace.Availability) ? Visibility.Visible : Visibility.Collapsed;
+        _statusButton.Visibility = workspace is not null ? Visibility.Visible : Visibility.Collapsed;
         _tipTitle.Text = OpenCodeBrowserPanelState.TooltipTitle(_pages);
         _tipStatus.Text = OpenCodeBrowserPanelState.TooltipStatus(workspace?.Availability ?? OpenCodeBrowserAvailability.Detached, workspace?.AvailabilityReason);
         _reason.Text = _tipStatus.Text;
+        AutomationProperties.SetName(_toggle, _tipTitle.Text + " · " + _tipStatus.Text);
+        AutomationProperties.SetName(_statusButton, "浏览器连接状态 · " + _tipStatus.Text);
         var reclaim = OpenCodeBrowserPanelState.ReclaimLabel(workspace?.Availability ?? OpenCodeBrowserAvailability.Detached);
         _reclaim.Content = reclaim; _reclaim.Visibility = reclaim is null ? Visibility.Collapsed : Visibility.Visible;
-        ToolTipService.SetToolTip(_unavailable, _tipStatus.Text);
+        ToolTipService.SetToolTip(_statusButton, _tipStatus.Text);
         RefreshTheme();
     }
 

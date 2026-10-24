@@ -16,10 +16,22 @@ internal sealed class OpenCodeBrowserPanelState
     public bool ShowCommands(int count) => Expanded && count > 0;
     public static bool ColoredIcon(int count) => count > 0;
     public static bool ShowCount(int count) => count >= 2;
-    public static bool ShowUnavailable(OpenCodeBrowserAvailability availability) => availability != OpenCodeBrowserAvailability.Available;
+    public static string StatusBrushKey(OpenCodeBrowserAvailability availability) => availability switch
+    {
+        OpenCodeBrowserAvailability.Available => "SystemFillColorSuccessBrush",
+        OpenCodeBrowserAvailability.Attaching or OpenCodeBrowserAvailability.Reconnecting => "SystemFillColorCautionBrush",
+        _ => "SystemFillColorCriticalBrush",
+    };
     public static string TooltipTitle(int count) => count == 0 ? "浏览器 · 打开浏览器页面" : $"浏览器 · {count} 个页面 · 点击展开缩略图";
     public static string TooltipStatus(OpenCodeBrowserAvailability availability, string? reason) => availability == OpenCodeBrowserAvailability.Available
-        ? "智能体可以使用浏览器（45 个操作）" : reason ?? "智能体暂时不能使用浏览器：会话尚未接入";
+        ? "智能体可以使用浏览器（45 个操作）" : reason ?? (availability switch
+        {
+            OpenCodeBrowserAvailability.Attaching => "正在接入浏览器…",
+            OpenCodeBrowserAvailability.Reconnecting => "与 OpenCode 的连接断开，正在重连…",
+            OpenCodeBrowserAvailability.Replaced => "这个会话的浏览器现在由另一个桌面应用提供",
+            OpenCodeBrowserAvailability.Unsupported => "这个 OpenCode 版本不支持让智能体使用浏览器",
+            _ => "智能体暂时不能使用浏览器：会话尚未接入",
+        });
     public static string? ReclaimLabel(OpenCodeBrowserAvailability availability) => availability switch
     {
         OpenCodeBrowserAvailability.Replaced => "改为在这里提供",
