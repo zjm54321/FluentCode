@@ -16,7 +16,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
         int? root = a["ref"] is null ? null : c.Snapshot.Resolve(S(a, "ref"));
         var parameters = new JsonObject(); if (a["frameID"] is not null) parameters["frameId"] = S(a, "frameID");
         var tree = await Call(c, "Accessibility.getFullAXTree", parameters, ct);
-        var formatted = c.Snapshot.Format(tree["nodes"]!.AsArray(), I(a, "depth", 20), S(a, "type") == "find" ? S(a, "text") : null, root);
+        var formatted = c.Snapshot.Format(tree["nodes"]!.AsArray(), I(a, "depth", 20), S(a, "type") == "find" ? S(a, "text") : null, root, c.ActiveSession + "/" + S(a, "frameID"));
         c.RefSessions.Clear(); foreach (var reference in c.Snapshot.Refs.Keys) c.RefSessions[reference] = c.ActiveSession;
         var text = formatted.Content; var truncated = formatted.Truncated;
         if (B(a, "boxes"))

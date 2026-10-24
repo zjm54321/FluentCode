@@ -20,19 +20,34 @@ public sealed class OpenCodeBrowserSnapshot
     public void Clear() => _refs.Clear();
     public int Resolve(string reference) => _refs.TryGetValue(reference.TrimStart('@'), out var node) ? node
         : throw new OpenCodeBrowserException("stale_ref", "元素引用已失效，请重新读取页面结构");
-    public (string Content, bool Truncated) Format(JsonArray nodes, int depth = 20, string? find = null, int? rootBackendNodeId = null)
+    public (string Content, bool Truncated) Format(JsonArray nodes, int depth = 20, string? find = null, int? rootBackendNodeId = null, string scope = "")
     {
         _refs.Clear();
         // Monotonic refs prevent an expired e1 from silently selecting a different node after a new snapshot.
-        var byId = nodes.OfType<JsonObject>().Where(n => n["nodeId"] is not null).ToDictionary(n => n["nodeId"]!.GetValue<string>());
-        var children = nodes.OfType<JsonObject>().SelectMany(n => n["childIds"]?.AsArray().Select(c => c!.GetValue<string>()) ?? Array.Empty<string>()).ToHashSet();
-        var roots = rootBackendNodeId is { } target ? nodes.OfType<JsonObject>().Where(n => n["backendDOMNodeId"]?.GetValue<int>() == target)
-            : nodes.OfType<JsonObject>().Where(n => !children.Contains(n["nodeId"]!.GetValue<string>()));
-        var builder = new StringBuilder(); var truncated = false; var visited = new HashSet<string>();
+        (string Scope, string Id) Key(JsonObject node) => (node["frameId"]?.ToString() ?? scope, node["nodeId"]!.GetValue<string>());
+        var byId = new Dictionary<(string Scope, string Id), JsonObject>();
+        var links = new Dictionary<(string Scope, string Id), HashSet<string>>();
+        foreach (var node in nodes.OfType<JsonObject>().Where(n => n["nodeId"] is not null))
+        {
+            var key = Key(node);
+            if (!links.TryGetValue(key, out var ids)) links[key] = ids = new(StringComparer.Ordinal);
+            if (node["childIds"] is JsonArray childIds) foreach (var id in childIds) if (id is not null) ids.Add(id.GetValue<string>());
+            // Chromium can repeat synthetic/ignored IDs, including within a frame. Prefer an exposed node.
+            if (!byId.TryAdd(key, node) && byId[key]["ignored"]?.GetValue<bool>() == true && node["ignored"]?.GetValue<bool>() != true)
+                byId[key] = node;
+        }
+        JsonObject? Child(JsonObject parent, string id) => byId.GetValueOrDefault((Key(parent).Scope, id)) ?? byId.GetValueOrDefault((scope, id));
+        var children = new HashSet<(string Scope, string Id)>();
+        foreach (var node in byId.Values)
+            foreach (var id in links[Key(node)])
+                if (Child(node, id) is { } child) children.Add(Key(child));
+        var roots = rootBackendNodeId is { } target ? byId.Values.Where(n => n["backendDOMNodeId"]?.GetValue<int>() == target)
+            : byId.Values.Where(n => !children.Contains(Key(n)));
+        var builder = new StringBuilder(); var truncated = false; var visited = new HashSet<(string Scope, string Id)>();
         void Visit(JsonObject node, int level)
         {
             if (visited.Count >= 10000) { truncated = true; return; }
-            if (level >= depth || !visited.Add(node["nodeId"]!.GetValue<string>())) return;
+            if (level >= depth || !visited.Add(Key(node))) return;
             var ignored = node["ignored"]?.GetValue<bool>() == true;
             if (!ignored)
             {
@@ -51,7 +66,7 @@ public sealed class OpenCodeBrowserSnapshot
                     else truncated = true;
                 }
             }
-            if (node["childIds"] is JsonArray childIds) foreach (var id in childIds) if (byId.TryGetValue(id!.GetValue<string>(), out var child)) Visit(child, ignored ? level : level + 1);
+            foreach (var id in links[Key(node)]) if (Child(node, id) is { } child) Visit(child, ignored ? level : level + 1);
         }
         foreach (var root in roots) Visit(root, 0);
         return (builder.ToString(), truncated);

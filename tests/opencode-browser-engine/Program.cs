@@ -81,6 +81,16 @@ internal static class Program
         var found = snapshot.Format(nodes, find: "sUbMiT"); Check(found.Content.Contains("[e2]") && !found.Content.Contains("RootWebArea"), "find refreshes refs case insensitive"); Error(() => snapshot.Resolve("e1"), "stale_ref", "new snapshot invalidates refs");
         snapshot.Clear(); Error(() => snapshot.Resolve("e2"), "stale_ref", "navigation invalidates refs");
         snapshot.Format(nodes, 1); Check(snapshot.Refs.Count == 0, "depth bound");
+        var duplicateNodes = JsonNode.Parse("""[{"nodeId":"-1000000210","ignored":true},{"nodeId":"-1000000210","ignored":true},{"nodeId":"1","frameId":"a","role":{"value":"button"},"name":{"value":"First"},"backendDOMNodeId":8},{"nodeId":"1","frameId":"b","role":{"value":"button"},"name":{"value":"Second"},"backendDOMNodeId":9}]""")!.AsArray();
+        var deduped = snapshot.Format(duplicateNodes, scope: "session-1");
+        Check(deduped.Content.Contains("First") && deduped.Content.Contains("Second") && snapshot.Refs.Count == 2, "AX IDs scoped to frame and synthetic duplicates tolerated");
+        duplicateNodes.Add(Parse("""{"nodeId":"1","frameId":"a","role":{"value":"button"},"name":{"value":"Duplicate"},"backendDOMNodeId":8}"""));
+        Check(!snapshot.Format(duplicateNodes).Content.Contains("Duplicate"), "duplicate meaningful AX node emitted once");
+        var preferred = JsonNode.Parse("""[{"nodeId":"2","ignored":true},{"nodeId":"2","role":{"value":"button"},"name":{"value":"Exposed"},"backendDOMNodeId":10}]""")!.AsArray();
+        Check(snapshot.Format(preferred).Content.Contains("Exposed"), "exposed duplicate preferred over ignored node");
+        var repeatedWrapper = JsonNode.Parse("""[{"nodeId":"-1","ignored":true,"childIds":["2"]},{"nodeId":"-1","ignored":true,"childIds":["3"]},{"nodeId":"2","role":{"value":"button"},"name":{"value":"First child"}},{"nodeId":"3","role":{"value":"button"},"name":{"value":"Second child"}}]""")!.AsArray();
+        var mergedText = snapshot.Format(repeatedWrapper).Content;
+        Check(mergedText.Contains("First child") && mergedText.Contains("Second child"), "duplicate ignored wrappers preserve both sets of descendants");
         var browserTab = new OpenCodeBrowserTab(tab, "about:blank", "Title", false, null, false, false, 2);
         var state = OpenCodeBrowserPolicy.State(new(new[] { browserTab }, tab)); Check(state["focusedTabID"]!.ToString() == tab && state["tabs"]![0]!["generation"]!.GetValue<long>() == 2, "state exact casing"); Check(!state["tabs"]![0]!.AsObject().ContainsKey("loadError"), "optional loadError omitted");
         var success = OpenCodeBrowserPolicy.Outcome(new OpenCodeBrowserOutcome.Success(null, new[] { fileBytes })); Check(success["result"]!.AsObject().ContainsKey("value") && success["result"]!["value"] is null, "success requires JSON null value"); Check(success["result"]!["files"]![0]!["data"]!.ToString() == "AQ==", "wire file bytes base64");
