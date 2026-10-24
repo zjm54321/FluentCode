@@ -8,6 +8,7 @@ if(!$sdk -or !$pack){throw '.NET 10 required.'}
 New-Item -ItemType Directory -Path $EvidenceRoot|Out-Null
 $sources=@('OpenCodeBrowserContracts.cs','OpenCodeBrowserPolicy.cs','OpenCodeBrowserInput.cs','OpenCodeBrowserSnapshot.cs','OpenCodeBrowserText.cs','OpenCodeBrowserGeometry.cs','OpenCodeBrowserProfileAnalysis.cs','OpenCodeBrowserSelectionPolicy.cs')|ForEach-Object{"$repo/src/AIFrontend/Services/OpenCode/Browser/$_"}
 $sources+="$PSScriptRoot/SelectionTests.cs"
+$sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlayLayout.cs"
 $sources+="$PSScriptRoot/Program.cs"
 $dll=Join-Path $EvidenceRoot 'BrowserEngineTests.dll';$rsp=Join-Path $EvidenceRoot 'compile.rsp'
 $refs=@(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll"|ForEach-Object FullName)

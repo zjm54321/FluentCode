@@ -81,9 +81,12 @@ public sealed partial class OpenCodePage
         _browserOverlay.StopRequested += async (_, page) => await InterruptBrowserTurnAsync(page);
         _browserOverlay.SendErrorRequested += (_, page) =>
         {
-            Composer.Text += (Composer.Text.Length == 0 ? "" : "\n") + page.Url + "\n" + OpenCodeBrowserOverlay.ErrorReason(page.LoadError) + "\n" + page.LoadError;
+            Composer.Text += (Composer.Text.Length == 0 ? "" : "\n") + page.Url + "\n" + OpenCodeBrowserOverlay.ErrorReason(page.LoadError, page.Url) + "\n" + page.LoadError;
         };
         PageRoot.SizeChanged += (_, _) => SizeBrowserHosts();
+        InsightsPane.RegisterPropertyChangedCallback(SplitView.IsPaneOpenProperty, (_, _) => SizeBrowserHosts());
+        InsightsPane.RegisterPropertyChangedCallback(SplitView.DisplayModeProperty, (_, _) => SizeBrowserHosts());
+        InsightsPane.RegisterPropertyChangedCallback(SplitView.OpenPaneLengthProperty, (_, _) => SizeBrowserHosts());
         // Selection includes Home/new tabs; pages in other sessions keep their invisible hosts.
         SessionTabs.SelectionChanged += (_, _) => DispatcherQueue.TryEnqueue(SyncBrowserSession);
         LayoutUpdated += (_, _) => { if (_browserSelectedSession != _selectedSessionId || !ReferenceEquals(_browserSource, _source is { IsRevoked: false } ? _source : null)) SyncBrowserSession(); };
@@ -157,15 +160,17 @@ public sealed partial class OpenCodePage
     }
     private void SizeBrowserHosts()
     {
-        // Overlay does not cover the right dock; shared LargeView caps are used by the surface.
-        var width = Math.Max(1, PageRoot.ActualWidth - (InsightsPane.IsPaneOpen && InsightsPane.DisplayMode == SplitViewDisplayMode.Inline
-            ? InsightsPane.OpenPaneLength + 12 : PageRoot.ActualWidth * .22));
-        BrowserOverlayHost.Width = width;
-        var caps = OpenCodeDetailPopupLayout.LargeView(width / OpenCodeDetailPopupLayout.LargeViewFraction, PageRoot.ActualHeight - SessionTabs.ActualHeight);
-        if (_browserOverlay is not null) _browserOverlay.MaxHeight = caps.Height;
-        if (_browserOverlay?.ContentWidth is not > 0) BrowserHiddenHost.Width = Math.Max(1, width - 32);
-        if (_browserOverlay?.ContentHeight is not > 0) BrowserHiddenHost.Height = Math.Max(1, caps.Height - 130);
-        BrowserHiddenHost.Margin = new Thickness(16, 114, 16, 16);
+        var height = Math.Max(0, PageRoot.ActualHeight - SessionTabs.ActualHeight);
+        var dock = InsightsPane.IsPaneOpen && InsightsPane.DisplayMode == SplitViewDisplayMode.Inline ? InsightsPane.OpenPaneLength : 0;
+        var caps = OpenCodeDetailPopupLayout.LargeView(PageRoot.ActualWidth, height);
+        var placement = OpenCodeBrowserOverlayLayout.Place(PageRoot.ActualWidth, height, dock, caps.Width, caps.Height);
+        BrowserOverlayHost.Width = placement.HostWidth;
+        _browserOverlay?.SetSurfaceSize(placement.Width, placement.Height);
+        var content = OpenCodeBrowserOverlayLayout.Content(placement.Width, placement.Height);
+        BrowserHiddenHost.Width = Math.Max(1, _browserOverlay?.ContentWidth is > 0 ? _browserOverlay.ContentWidth : content.Width);
+        BrowserHiddenHost.Height = Math.Max(1, _browserOverlay?.ContentHeight is > 0 ? _browserOverlay.ContentHeight : content.Height);
+        BrowserHiddenHost.Margin = new Thickness(placement.X + OpenCodeBrowserOverlayLayout.BorderWidth,
+            placement.Y + OpenCodeBrowserOverlayLayout.BorderWidth + OpenCodeBrowserOverlayLayout.HeaderHeight + OpenCodeBrowserOverlayLayout.ToolbarHeight, 0, 0);
     }
 
     // Explicit browser Stop uses the same guarded interrupt transport/protection as composer Stop,

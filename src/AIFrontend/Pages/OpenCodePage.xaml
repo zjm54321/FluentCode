@@ -221,7 +221,7 @@
              ============================================================ -->
         <!-- Browser pages remain full-sized and mounted even when the overlay is closed. -->
         <Grid x:Name="BrowserHiddenHost" Grid.Row="1" Opacity="0" IsHitTestVisible="False"
-              HorizontalAlignment="Left" Loaded="BrowserHiddenHost_Loaded" />
+              HorizontalAlignment="Left" VerticalAlignment="Top" Loaded="BrowserHiddenHost_Loaded" />
         <SplitView
             x:Name="SessionPane"
             Grid.Row="1"

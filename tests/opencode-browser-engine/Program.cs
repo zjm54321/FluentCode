@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using AIFrontend.Services.OpenCode.Browser;
+using AIFrontend.Pages.OpenCode;
 
 internal static class Program
 {
@@ -20,6 +21,18 @@ internal static class Program
     public static void Main(string[] args)
     {
         SelectionTests.Run(Check);
+        foreach (var (width, height, dock) in new[] { (1600d, 1000d, 0d), (1600d, 1000d, 320d), (1200d, 800d, 300d), (640d, 480d, 0d), (300d, 200d, 0d) })
+        {
+            var place = OpenCodeBrowserOverlayLayout.Place(width, height, dock, width * .8, height * .8);
+            Check(place.HostWidth == width - dock, "overlay smoke excludes only the resident dock");
+            Check(place.X == (width - dock - place.Width) / 2, "overlay horizontally centered with/without dock");
+            Check(place.Y == (height - place.Height) / 2, "overlay vertically centered like detail large view");
+            Check(place.X >= 12 && width - dock - place.X - place.Width >= 12, "overlay keeps 12px minimum gap before resident dock");
+            var content = OpenCodeBrowserOverlayLayout.Content(place.Width, place.Height);
+            Check(content.Width + 2 == place.Width && content.Height + 52 + 46 + 2 == place.Height, "WebView fills complete interior with no spare strip");
+            var selected = OpenCodeBrowserOverlayLayout.Content(place.Width, place.Height, 340);
+            Check(selected.Width == Math.Max(0, content.Width - 340) && selected.Height == content.Height, "selection tray consumes exactly its own width");
+        }
         foreach (var pair in new[] { ("", "about:blank"), (" about:blank ", "about:blank"), ("example.com/a?q=x", "https://example.com/a?q=x"), ("LOCALHOST:5173/a", "http://localhost:5173/a"), ("localhost:5173?x=1", "http://localhost:5173/?x=1"), ("127.0.0.2:80", "http://127.0.0.2/"), ("[::1]:5173", "http://[::1]:5173/"), ("https://example.com", "https://example.com/") })
             Check(OpenCodeBrowserPolicy.NormalizeUrl(pair.Item1) == pair.Item2, "normalize " + pair.Item1);
         foreach (var url in new[] { "file:///tmp/a", "/tmp/a", "C:\\temp\\a", "javascript:alert(1)", "data:text/html,x", "about:config", "ftp://example.com", "https://user:pass@example.com", "https://", "https://@example.com" })
@@ -140,6 +153,12 @@ internal static class Program
         var heap = Parse("{\"snapshot\":{\"meta\":{\"node_fields\":[\"type\",\"name\",\"id\",\"self_size\",\"edge_count\"],\"node_types\":[[\"object\"],\"string\",\"number\",\"number\",\"number\"],\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\"edge_types\":[[\"property\"],\"string_or_number\",\"node\"]}},\"strings\":[\"Thing\",\"child\"],\"nodes\":[0,0,1,16,1,0,0,3,32,0],\"edges\":[0,1,5]}");
         var h = new OpenCodeBrowserProfileAnalysis.Heap(heap); Check(h.Summary(100)["selfBytes"]!.GetValue<double>() == 48, "heap shallow bytes"); Check(h.Query("thing", 1)["truncated"]!.GetValue<bool>(), "heap literal query bound"); Check(h.Object(3, 10)["retainers"]!.AsArray().Count == 1, "heap retainers"); Check(h.Compare(h, 10)["classes"]![0]!["bytesDelta"]!.GetValue<double>() == 0, "heap compare equal");
         var composition = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.Browser.cs"));
+        var overlay = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs"));
+        Check(composition.Contains("OpenCodeDetailPopupLayout.LargeView(PageRoot.ActualWidth, height)") && composition.Contains("OpenCodeBrowserOverlayLayout.Place("), "production uses shared large-view caps and tested placement");
+        Check(overlay.Contains("_presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch") && overlay.Contains("_presenter.VerticalContentAlignment = VerticalAlignment.Stretch"), "native presenter stretches WebView content on both axes");
+        Check(overlay.Contains("TargetType=\\\"ScrollViewer\\\"") && overlay.Contains("Property=\\\"HorizontalContentAlignment\\\" Value=\\\"Stretch\\\"") && overlay.Contains("Property=\\\"VerticalContentAlignment\\\" Value=\\\"Stretch\\\""), "native presenter inner viewport also stretches instead of Left/Top");
+        Check(overlay.Contains("OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128)") && !overlay.Contains("_presenter.Margin ="), "shared native shadow and border without nested content margins");
+        Check(composition.Contains("RegisterPropertyChangedCallback(SplitView.IsPaneOpenProperty") && composition.Contains("RegisterPropertyChangedCallback(SplitView.DisplayModeProperty"), "resident dock changes recenter open overlay");
         Check(composition.Contains("BrowserBackendFactory = CreateBrowserPeerBackend;"), "production engine factory supplied to peer");
         Check(composition.Contains("return GetBrowserBackend(sessionId);") && composition.Contains("_browserBackends[sessionId]"), "factory uses cached backend");
         Check(composition.Contains("manager.GetAvailability(sessionId)") && composition.Contains("manager.GetAvailabilityReason(sessionId)"), "workspace delegates real peer availability");

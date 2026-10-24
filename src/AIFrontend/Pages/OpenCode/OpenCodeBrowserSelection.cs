@@ -50,12 +50,12 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选", "\uE7EF"), (OpenCodeBrowserSelectionTool.Lasso, "圈选", "\uED5C"), (OpenCodeBrowserSelectionTool.Annotate, "标注", "\uE70F") })
         {
             var tool = entry.Item1;
-            var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontSize = 16 }, Width = 32, MinWidth = 0, Padding = new(0) };
+            var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, MinWidth = 0 };
             AutomationProperties.SetName(button, entry.Item2); ToolTipService.SetToolTip(button, entry.Item2);
             button.Click += (_, _) => Run(() => ActivateAsync(button.IsChecked == true ? tool : OpenCodeBrowserSelectionTool.None));
             _buttons.Add(tool, button); overlay.PageTools.Children.Add(button);
         }
-        var screenshot = new SplitButton { Content = new FontIcon { Glyph = "\uE722", FontSize = 16 }, Padding = new(6, 0, 6, 0) };
+        var screenshot = new SplitButton { Content = new FontIcon { Glyph = "\uE722", FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, Padding = new(6, 0, 6, 0) };
         AutomationProperties.SetName(screenshot, "截图"); ToolTipService.SetToolTip(screenshot, "截图 · 可见区域");
         screenshot.Click += (_, _) => Run(() => CaptureStandaloneAsync(false));
         var menu = new MenuFlyout();
