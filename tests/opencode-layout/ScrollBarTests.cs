@@ -49,6 +49,10 @@ internal static class ScrollBarTests
         Check(OpenCodeScrollBarProjection.ContentOffset(115, 12, 360) == 487, "label follows conversation content-top changes");
         Check(OpenCodeScrollBarProjection.ScrollTarget(327, 400) == 327, "reachable label stays in viewport-offset coordinates");
         Check(OpenCodeScrollBarProjection.ScrollTarget(487, 400) == 400, "last-viewport label maps to bottom, not beyond track");
+        var userDetail = OpenCodeScrollBarProjection.DetailText(true, "User message\nsecond line");
+        Check(!string.IsNullOrWhiteSpace(userDetail) && userDetail == "你\nUser message\nsecond line", "SB3b: user detail is non-empty role plus full source text");
+        var assistantDetail = OpenCodeScrollBarProjection.DetailText(false, "Assistant message");
+        Check(!string.IsNullOrWhiteSpace(assistantDetail) && assistantDetail == "AI 回复\nAssistant message", "SB3b: assistant detail is non-empty role plus full source text");
         Console.WriteLine($"Scroll bar computations passed: {_passed}");
     }
 }

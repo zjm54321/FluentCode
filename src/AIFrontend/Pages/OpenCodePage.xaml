@@ -444,6 +444,14 @@
                                                 </Border>
                                             </DataTemplate>
                                         </AnnotatedScrollBar.LabelTemplate>
+                                        <AnnotatedScrollBar.DetailLabelTemplate>
+                                            <DataTemplate>
+                                                <!-- Text content: one role line, then at most two excerpt lines. -->
+                                                <TextBlock Text="{Binding}" MaxWidth="260" MaxLines="3"
+                                                           TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                            </DataTemplate>
+                                        </AnnotatedScrollBar.DetailLabelTemplate>
                                     </AnnotatedScrollBar>
 
                                     <!-- F3 消息历史分页：滚动到顶部附近自动加载更早消息（单飞、预插保持阅读位置；

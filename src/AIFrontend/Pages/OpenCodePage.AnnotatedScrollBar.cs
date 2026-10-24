@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Text;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml.Hosting;
 using AIFrontend.Pages.OpenCode;
@@ -77,10 +76,7 @@ public sealed partial class OpenCodePage
     {
         if (_scrollAnnotations.Count == 0) return;
         var item = _scrollAnnotations.OrderBy(a => Math.Abs(a.Offset - args.ScrollOffset)).First();
-        var body = new StackPanel { Spacing = 4, MaxWidth = 260 };
-        body.Children.Add(new TextBlock { Text = item.User ? "你" : "AI 回复", FontSize = 12 });
-        body.Children.Add(new TextBlock { Text = item.Text, FontWeight = FontWeights.SemiBold,
-            TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2 });
-        args.Content = body;
+        // Native DetailLabelTemplate binds Content as text, not as a child UIElement.
+        args.Content = OpenCodeScrollBarProjection.DetailText(item.User, item.Text);
     }
 }

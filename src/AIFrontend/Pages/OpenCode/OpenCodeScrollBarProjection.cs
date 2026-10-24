@@ -22,4 +22,7 @@ internal static class OpenCodeScrollBarProjection
     // handling decide which coincident dashes to draw.
     internal static double ScrollTarget(double contentOffset, double maximum) =>
         Math.Clamp(contentOffset, 0, maximum);
+
+    internal static string DetailText(bool user, string text) =>
+        $"{(user ? "你" : "AI 回复")}\n{text}";
 }
