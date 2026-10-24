@@ -45,6 +45,9 @@ namespace AIFrontend.Pages
             Check(compactWidth == 622 && ComposerSingleRowTextWidth(760, 32, 70, 8, 58) == 584,
                 "single-row measurement reserves plus, send/queue actions, grid gaps and editor chrome");
             Check(ComposerSingleRowTextWidth(50, 32, 70, 8, 58) == 1, "measurement width is positive before layout settles");
+            foreach (var (padding, border) in new[] { (9d, 1d), (12d, 2d), (0d, 0d), (9.5, 1.5) })
+                Check(ShellPromptTextTop(padding, border) == padding + border,
+                    "terminal prompt top equals the editor text top for native/custom/scaled chrome");
             foreach (var literal in new[] { "#123456", "#aBcDeF", "#000000", "#FFFFFF" })
             {
                 page.ApplyBlankAgentColor(literal);
@@ -84,9 +87,9 @@ namespace AIFrontend.Pages
             Check(terminal.Elements().SequenceEqual(new[] { shellEditor, shellPrompt })
                 && Attr(terminal, "RowDefinitions") is null && Attr(terminal, "ColumnDefinitions") is null,
                 "terminal overlays the same editor bounds; prompt does not take width away from command text");
-            Check(Attr(shellPrompt, "Text") == "$ " && Attr(shellEditor, "Grid.Column") is null
+            Check(Attr(shellPrompt, "Text") == "$" && Attr(shellEditor, "Grid.Column") is null
                 && Attr(shellEditor, "AcceptsReturn") == "False" && Attr(shellEditor, "TextWrapping") == "NoWrap"
-                && Attr(shellEditor, "PlaceholderText") is null, "terminal command starts after dollar-space, without placeholder or extra lines");
+                && Attr(shellEditor, "PlaceholderText") is null, "terminal command follows the inset dollar prompt, without placeholder or extra lines");
             Check(Attr(shellEditor, "AutomationProperties.Name") == "Shell 命令"
                 && Attr(shellEditor, "AutomationProperties.HelpText")!.Contains("Esc"), "terminal exit instructions remain accessible without visible copy");
             Check(Attr(shellPrompt, "FontFamily") == "{Binding FontFamily, ElementName=Composer}"
@@ -128,6 +131,20 @@ namespace AIFrontend.Pages
                 && shellEditor.Descendants().Any(n => n.Name.LocalName == "Border" && Attr(n, "BorderThickness") == "{TemplateBinding BorderThickness}")
                 && !shellEditor.Descendants().Any(n => n.Name.LocalName == "Button"), "terminal preserves native editor chrome dimensions without adding a focus underline or clear button");
             var shell = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCodePage.ShellComposer.cs"));
+            Check(Attr(shellPrompt, "VerticalAlignment") == "Top"
+                && Attr(shellPrompt, "LineStackingStrategy") == "BlockLineHeight"
+                && Attr(shellPrompt, "FontSize") == Attr(shellEditor, "FontSize")
+                && Attr(shellPrompt, "FontWeight") == Attr(shellEditor, "FontWeight")
+                && Attr(shellPrompt, "FontStyle") == Attr(shellEditor, "FontStyle")
+                && Attr(shellPrompt, "CharacterSpacing") == Attr(shellEditor, "CharacterSpacing")
+                && Attr(shellPrompt, "IsTextScaleFactorEnabled") == Attr(shellEditor, "IsTextScaleFactorEnabled"),
+                "prompt shares editor typography and follows first-line top instead of box centering");
+            Check(shell.Contains("ShellPromptTextTop(padding.Top, border.Top)")
+                && shell.Contains("measure.FontFamily = ShellComposer.FontFamily")
+                && shell.Contains("measure.FontSize = ShellComposer.FontSize")
+                && shell.Contains("measure.DesiredSize.Height") && shell.Contains("ShellPromptGlyph.LineHeight = line")
+                && shell.Contains("UpdateShellPromptBaseline();"),
+                "prompt offset uses native text padding/border and line height is measured from the same live font");
             Check(shell.Contains("ComposerNormalSurface.Opacity = 0;") && shell.Contains("ComposerNormalSurface.IsEnabled = false;")
                 && shell.Contains("ComposerNormalSurface.IsHitTestVisible = false;")
                 && !shell.Contains("ComposerInputLayout.Visibility =") && !shell.Contains("FadeInComposerSurface")

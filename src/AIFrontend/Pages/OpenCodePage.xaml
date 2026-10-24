@@ -651,10 +651,17 @@
                                                         </ControlTemplate>
                                                     </TextBox.Template>
                                                 </TextBox>
-                                                <TextBlock x:Name="ShellPromptGlyph" Text="$&#x20;"
+                                                <TextBlock x:Name="ShellPromptGlyph" Text="$"
                                                            FontFamily="{Binding FontFamily, ElementName=Composer}"
                                                            FontSize="{Binding FontSize, ElementName=Composer}"
-                                                           VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"
+                                                           FontWeight="{Binding FontWeight, ElementName=Composer}"
+                                                           FontStyle="{Binding FontStyle, ElementName=Composer}"
+                                                           CharacterSpacing="{Binding CharacterSpacing, ElementName=Composer}"
+                                                           IsTextScaleFactorEnabled="{Binding IsTextScaleFactorEnabled, ElementName=Composer}"
+                                                           FlowDirection="{Binding FlowDirection, ElementName=Composer}"
+                                                           Language="{Binding Language, ElementName=Composer}"
+                                                           LineStackingStrategy="BlockLineHeight" TextWrapping="NoWrap" TextAlignment="Right"
+                                                           VerticalAlignment="Top" HorizontalAlignment="Left" IsHitTestVisible="False"
                                                            Foreground="{ThemeResource ShellTerminalPrompt}"
                                                            AutomationProperties.AccessibilityView="Raw" />
                                              </Grid>

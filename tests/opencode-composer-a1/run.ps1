@@ -24,6 +24,10 @@ $members += [regex]::Match($layout, '(?ms)^    internal static bool HideChildCom
 $singleRow = [regex]::Match($layout, '(?m)^    internal static bool UseSingleRowComposer\([^\r\n]*;')
 if (!$singleRow.Success) { throw 'Missing composer row policy' }
 $members += $singleRow.Value
+$shell = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.ShellComposer.cs")
+$promptTop = [regex]::Match($shell, '(?m)^    internal static double ShellPromptTextTop\([^\r\n]*;')
+if (!$promptTop.Success) { throw 'Missing terminal prompt text-top policy' }
+$members += $promptTop.Value
 foreach ($name in @('ComposerOverTwoLines', 'ComposerSingleRowTextWidth')) {
     $member = [regex]::Match($layout, '(?ms)^    internal static [^\r\n]*\b' + $name + '\(.*?;')
     if (!$member.Success) { throw "Missing composer measurement policy: $name" }

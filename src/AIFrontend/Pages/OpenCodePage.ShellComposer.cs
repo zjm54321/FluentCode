@@ -17,6 +17,9 @@ public sealed partial class OpenCodePage
     private readonly OpenCodeComposerShellState _shellComposer = new();
     private OpenCodeComposerBinding? _shellBinding;
     private int _shellDraftStart, _shellDraftLength;
+    private readonly TextBlock _shellPromptMeasure = new() { Text = "Mg" };
+
+    internal static double ShellPromptTextTop(double paddingTop, double borderTop) => paddingTop + borderTop;
 
     partial void InitializeShellComposer()
     {
@@ -118,6 +121,30 @@ public sealed partial class OpenCodePage
         var origin = Composer.TransformToVisual(ComposerSurfaceRoot).TransformPoint(new Point(0, 0));
         var offset = new Thickness(origin.X, origin.Y, 0, 0);
         if (ComposerShellHost.Margin != offset) ComposerShellHost.Margin = offset;
+        UpdateShellPromptBaseline();
+    }
+
+    private void UpdateShellPromptBaseline()
+    {
+        var padding = ShellComposer.Padding;
+        var border = ShellComposer.BorderThickness;
+        var offset = new Thickness(border.Left, ShellPromptTextTop(padding.Top, border.Top), 0, 0);
+        if (ShellPromptGlyph.Margin != offset) ShellPromptGlyph.Margin = offset;
+        // Keep the prompt inside the existing left padding; the command starts at the normal text x.
+        var width = Math.Max(1, padding.Left - 2);
+        if (ShellPromptGlyph.Width != width) ShellPromptGlyph.Width = width;
+        var measure = _shellPromptMeasure;
+        measure.FontFamily = ShellComposer.FontFamily;
+        measure.FontSize = ShellComposer.FontSize;
+        measure.FontWeight = ShellComposer.FontWeight;
+        measure.FontStyle = ShellComposer.FontStyle;
+        measure.CharacterSpacing = ShellComposer.CharacterSpacing;
+        measure.IsTextScaleFactorEnabled = ShellComposer.IsTextScaleFactorEnabled;
+        measure.FlowDirection = ShellComposer.FlowDirection;
+        measure.Language = ShellComposer.Language;
+        measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var line = Math.Max(1, measure.DesiredSize.Height);
+        if (ShellPromptGlyph.LineHeight != line) ShellPromptGlyph.LineHeight = line;
     }
 
     partial void UpdateShellComposerState()
