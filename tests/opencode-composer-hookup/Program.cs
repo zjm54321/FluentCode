@@ -696,11 +696,35 @@ internal static class Program
         // Structural lifecycle supplement, explicitly not execution of the full WinUI page. Production
         // methods above are compiled verbatim. These guards ensure actual mutation paths call binding.
         var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml.cs"));
-        foreach (var method in new[] { "OnPageLoaded", "OnPageUnloaded", "ApplyCurrentSource", "InvalidateForSourceChange", "SwitchToSessionAsync", "NavigateToSessionAsync", "HandleApiException", "DisposeOwnClient" })
+        foreach (var method in new[] { "OnPageLoaded", "PausePage", "ResumeCachedSource", "ApplyCurrentSource", "InvalidateForSourceChange", "SwitchToSessionAsync", "NavigateToSessionAsync", "HandleApiException", "DisposeOwnClient" })
         {
             var body = Member(page, method);
             Check(body.Contains("BindComposer();", StringComparison.Ordinal), "actual lifecycle hook binds: " + method);
         }
+        var unload = Member(page, "OnPageUnloaded");
+        Check(unload.Contains("if (IsLoaded) return;", StringComparison.Ordinal)
+            && unload.Contains("PausePage();", StringComparison.Ordinal), "temporary unload ignores late events and delegates to pause");
+        var pause = Member(page, "PausePage");
+        var suspend = pause.IndexOf("SuspendDraftSlotForPageUnload();", StringComparison.Ordinal);
+        Check(suspend >= 0 && suspend < pause.IndexOf("_pageActive = false;", StringComparison.Ordinal)
+            && pause.IndexOf("_sessionGeneration++;", StringComparison.Ordinal) < pause.IndexOf("BindComposer();", StringComparison.Ordinal),
+            "pause captures the draft before deactivation and rebinds after advancing the session fence");
+        Check(new[] { "_pageGeneration++;", "UpdateViewAcknowledgementVisibility(false);", "InvalidateViewAcknowledgement();",
+            "StopEventSync();", "pageCts?.Cancel();", "CancelSessionOperations();", "DetachConversationEvents();" }
+            .All(call => pause.Contains(call, StringComparison.Ordinal)), "pause revokes view proof, requests and subscriptions");
+        var pausedLifecycle = unload + pause;
+        Check(new[] { "DiscardDraft", "ReleaseDraftSlot(", "DisposeOwnClient();", "ClearSessionReturnContext();", "ShutdownPage();", "PageReleased?.Invoke" }
+            .All(call => !pausedLifecycle.Contains(call, StringComparison.Ordinal)),
+            "temporary pause retains cached draft actors, client and return context instead of final cleanup");
+        var shutdown = Member(page, "ShutdownPage");
+        var released = shutdown.IndexOf("_pageReleased = true;", StringComparison.Ordinal);
+        Check(shutdown.Contains("if (_pageReleased) return;", StringComparison.Ordinal)
+            && released >= 0 && released < shutdown.IndexOf("PausePage();", StringComparison.Ordinal)
+            && shutdown.Contains("PageReleased?.Invoke(this, EventArgs.Empty);", StringComparison.Ordinal)
+            && shutdown.Contains("PageReleased = null;", StringComparison.Ordinal), "final release pauses even before native unload and releases callbacks once");
+        Check(new[] { "_source = null;", "DisposeOwnClient();", "ClearSessionReturnContext();", "_conversationView.ClearMessages();",
+            "ReleaseDraftSlot(slot)", "_activeDraftSlot = null;", "_draftRecoverySlot = null;", "controller.DiscardDraft(controller.Snapshot.Token)" }
+            .All(call => shutdown.Contains(call, StringComparison.Ordinal)), "final release disposes client, return context, conversation and retained composer payloads");
         var reset = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs"));
         Check(reset.Contains("partial void OnMessageHistoryReset() => ResetSessionInsights();", StringComparison.Ordinal)
             && !Member(reset, "ResetSessionInsights").Contains("DiscardDraft", StringComparison.Ordinal), "history reset does not discard composer");
@@ -773,7 +797,7 @@ internal static class Program
     }
     private static string Member(string text, string name)
     {
-        var match = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^    private [^\r\n]*\b" + name + @"\(");
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^    (?:private|public) [^\r\n]*\b" + name + @"\(");
         if (!match.Success) throw new InvalidOperationException("Missing production method " + name);
         var end = text.IndexOf("\n    }", match.Index, StringComparison.Ordinal);
         return text.Substring(match.Index, end + 6 - match.Index);

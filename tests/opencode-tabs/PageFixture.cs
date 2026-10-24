@@ -41,7 +41,10 @@ public sealed partial class OpenCodePage
     private OpenCodeComposerView? _composerView;
     private OpenCodeComposerBinding? _composerBinding;
     private bool _isComposing,_isSending,_composerPickerPending,_nativeDialogPending;
-    private object? _nativeActionOwner,_expandedComposerSelection;
+    // Native dialogs are inert here; the composer renderer still reads the real ticket kind.
+    private sealed record NativeActionOwner(OpenCodeComposerClientActionTicket Ticket);
+    private NativeActionOwner? _nativeActionOwner;
+    private object? _expandedComposerSelection;
     private OpenCodeComposerToken? _newSessionHandoffToken,_newSessionCreatedToken;
     private string? _newSessionCreatedId; private OpenCodeComposerBinding? _newSessionCreatedBinding;
     private Guid? _newSessionOperation; private long _newSessionCreateEpoch,_blankPickerEpoch;

@@ -163,11 +163,44 @@ internal static class Program
         Check(composition.Contains("return GetBrowserBackend(sessionId);") && composition.Contains("_browserBackends[sessionId]"), "factory uses cached backend");
         Check(composition.Contains("manager.GetAvailability(sessionId)") && composition.Contains("manager.GetAvailabilityReason(sessionId)"), "workspace delegates real peer availability");
         Check(composition.Contains("BrowserPeerAvailabilityChanged +=") && composition.Contains("workspace.NotifyAvailabilityChanged()"), "peer availability invalidates workspace");
-        Check(composition.Contains("Unloaded += (_, _) => DisposeBrowserEngineResources();"), "page unload disposes engine not just attachments");
+        // Structural lifecycle fences only; no native page/WebView or window is executed here.
+        Check(!composition.Contains("Unloaded +="), "temporary unload has no destructive browser lifecycle handler");
+        var pageLifecycle = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.xaml.cs"));
+        var unload = Member(pageLifecycle, "OnPageUnloaded");
+        var pause = Member(pageLifecycle, "PausePage");
+        Check(unload.Contains("if (IsLoaded) return;") && unload.Contains("PausePage();")
+            && pause.Contains("StopEventSync();") && pause.Contains("CancelSessionOperations();")
+            && !unload.Contains("DisposeBrowserEngineResources") && !pause.Contains("DisposeBrowserEngineResources")
+            && !(unload + pause).Contains("ShutdownPage();") && !(unload + pause).Contains("PageReleased?.Invoke"),
+            "temporary navigation pauses capabilities without disposing browser engines or firing final release");
+        Check(composition.Contains("PageReleased += (_, _) => DisposeBrowserEngineResources();")
+            && composition.Contains("PageReleased += (_, _) => DisposeBrowserSelection();"), "final page release disposes browser engines and selection");
+        var shutdown = Member(pageLifecycle, "ShutdownPage");
+        Check(shutdown.Contains("if (_pageReleased) return;") && shutdown.Contains("PausePage();")
+            && shutdown.Contains("PageReleased?.Invoke(this, EventArgs.Empty);") && shutdown.Contains("PageReleased = null;"),
+            "shutdown pauses the active page and invokes final-release subscribers once even while cached");
+        var window = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/MainWindow.xaml.cs"));
+        Check(window.Contains("Closed += MainWindow_Closed;")
+            && Member(window, "MainWindow_Closed").Contains("_cachedOpenCodePage?.ShutdownPage();"), "window close releases the cached page even when main navigation is elsewhere");
+        var dispose = Member(composition, "DisposeBrowserEngineResources");
+        Check(new[] { "_browserSourceRevocation.Dispose();", "ReleaseBrowserPanelWorkspaces();", "backend.Dispose();", "workspace.Dispose();",
+            "_browserBackends.Clear();", "_browserWorkspaces.Clear();", "_browserOverlay?.Bind(null);" }.All(dispose.Contains),
+            "final engine cleanup releases source subscription, panel workspaces, backends, pages and overlay binding");
+        var workspaceSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserWorkspace.cs"));
+        var hide = Member(workspaceSource, "HideOverlay");
+        Check(hide.Contains("Move(page.Surface, _hiddenHost);") && hide.Contains("Shown = null;")
+            && !hide.Contains("Dispose") && !hide.Contains("Remove("), "BQ5 overlay close hides the surface without removing or disposing browser pages");
         Check(composition.Contains("source.RevocationToken.Register") && composition.Contains("ReferenceEquals(_browserSource, source)"), "source revocation cleanup fenced against replacement");
         Check(composition.Contains("ReferenceEquals(args.Source, _browserSource)"), "old-source tab retirement cannot dispose replacement engine");
         Check(composition.Contains("BrowserPageRequested += ShowBrowserPageFromTimeline;") && composition.Contains("workspace.Show(page)"), "timeline browser page route");
         Check(composition.Contains("IsSameMessageBinding(binding.SessionId, binding.Directory)") && composition.Contains("ContainsRenderedMessage(parentMessageId)"), "timeline route keeps rendered-message/session ownership");
         Console.WriteLine("PASS " + _checks + " browser engine assertions (no WebView/runtime/desktop)");
+    }
+    private static string Member(string text, string name)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"(?m)^    (?:private|public) [^\r\n]*\b" + name + @"\(");
+        if (!match.Success) throw new InvalidOperationException("Missing production method " + name);
+        var end = text.IndexOf("\n    }", match.Index, StringComparison.Ordinal);
+        return text.Substring(match.Index, end + 6 - match.Index);
     }
 }
