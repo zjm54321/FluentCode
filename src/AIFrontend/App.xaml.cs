@@ -29,6 +29,10 @@ public partial class App : Application
                     $"XAML: {e.Message}\r\n{e.Exception}\r\n");
             }
             catch { }
+            // 任何界面操作出错都不应让整个程序闪退：记录后标记已处理，并在顶部提示条告知用户。
+            e.Handled = true;
+            Exception error = e.Exception;
+            (_window as MainWindow)?.DispatcherQueue.TryEnqueue(() => (_window as MainWindow)?.ShowUnexpectedError(error));
         };
     }
 

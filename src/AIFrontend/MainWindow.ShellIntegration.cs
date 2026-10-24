@@ -217,6 +217,18 @@ public sealed partial class MainWindow
         ShellNoticeBar.IsOpen = true;
     }
 
+    /// <summary>未处理异常已被 App 标记为已处理时的可见提示：只给类型与简短原因，详情在 artifacts/logs/crash.log。</summary>
+    internal void ShowUnexpectedError(Exception error)
+    {
+        if (_shellClosing) return;
+        string reason = error.Message.Split('\n', 2)[0].Trim();
+        if (reason.Length > 160) reason = reason[..160] + "…";
+        ShellNoticeBar.Severity = InfoBarSeverity.Error;
+        ShellNoticeBar.Title = "操作出错";
+        ShellNoticeBar.Message = $"{error.GetType().Name}：{reason}（详情已记录到 crash.log）";
+        ShellNoticeBar.IsOpen = true;
+    }
+
     /// <summary>读取订阅前的诊断初始快照：仅取最近一条 Gap/ReadFailed 观察作为可见提示（不重放其他历史）。</summary>
     private void ShowLatestShellObservationFromSnapshot()
     {
