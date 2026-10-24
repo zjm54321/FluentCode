@@ -32,7 +32,8 @@ public static class OpenCodeBrowserPolicy
                 || host.StartsWith("[::1]:", StringComparison.OrdinalIgnoreCase);
             text = (local ? "http://" : "https://") + text;
         }
-        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || (uri.Scheme != "http" && uri.Scheme != "https")
+        if (text[(text.IndexOf("://", StringComparison.Ordinal) + 3)..].Split('/', '?', '#')[0].Contains('@')
+            || !Uri.TryCreate(text, UriKind.Absolute, out var uri) || (uri.Scheme != "http" && uri.Scheme != "https")
             || string.IsNullOrEmpty(uri.Host) || uri.UserInfo.Length != 0)
             throw new OpenCodeBrowserException("invalid_input", "网址无效：仅支持不含用户名和密码的 HTTP / HTTPS 网址");
         return uri.AbsoluteUri;
