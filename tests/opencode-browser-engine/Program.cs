@@ -110,6 +110,17 @@ internal static class Program
         Check(JsonNode.Parse(OpenCodeBrowserText.Quote(unicode))!.GetValue<string>() == unicode, "human text still escapes quotes newlines and backslashes");
         Check(OpenCodeBrowserText.Json(new JsonObject { ["消息"] = "控制台中文" }).Contains("控制台中文"), "console objects and exception JSON use raw Unicode");
         Check(snapshot.Format(unicodeNodes, find: "输入值").Content.Contains("该域名"), "Unicode find matches display text");
+        var borderBox = OpenCodeBrowserGeometry.Bounds(new JsonArray(10.25, 20.75, 80.9, 20.25, 81.1, 40.1, 10.1, 40.8));
+        Check(borderBox.X == 10.1 && borderBox.Y == 20.25 && Math.Abs(borderBox.Width - 71) < 0.000001 && Math.Abs(borderBox.Height - 20.55) < 0.000001, "border quad includes all transformed corners");
+        var clipMetrics = Parse("""{"cssVisualViewport":{"pageX":3.25,"pageY":200.5,"scale":1.5},"contentSize":{"width":1600},"cssContentSize":{"width":800}}""");
+        var clip = OpenCodeBrowserGeometry.ScreenshotClip(borderBox, clipMetrics);
+        Check(clip["x"]!.GetValue<double>() == 13 && clip["y"]!.GetValue<double>() == 220 && clip["width"]!.GetValue<double>() == 72 && clip["height"]!.GetValue<double>() == 22, "clip rounds outward after fractional document offset");
+        Check(clip["scale"]!.GetValue<int>() == 1, "CSS document clip not scaled twice by pinch zoom or device density");
+        var legacyClip = OpenCodeBrowserGeometry.ScreenshotClip(borderBox, Parse("""{"visualViewport":{"pageX":6.5,"pageY":401,"scale":1.5},"contentSize":{"width":1600},"cssContentSize":{"width":800}}"""));
+        Check(legacyClip.ToJsonString() == clip.ToJsonString(), "legacy device-pixel offsets normalized to CSS pixels");
+        var negativeClip = OpenCodeBrowserGeometry.ScreenshotClip(new(-0.25, -0.5, 1.5, 2.25), Parse("""{"cssVisualViewport":{"pageX":0,"pageY":0,"scale":1}}"""));
+        Check(negativeClip["x"]!.GetValue<double>() == -1 && negativeClip["width"]!.GetValue<double>() == 3, "outward rounding handles negative fractional origin");
+        Error(() => OpenCodeBrowserGeometry.Bounds(new JsonArray(1, 1, 1, 1, 1, 1, 1, 1)), "not_interactable", "empty border quad rejected");
         var browserTab = new OpenCodeBrowserTab(tab, "about:blank", "Title", false, null, false, false, 2);
         var state = OpenCodeBrowserPolicy.State(new(new[] { browserTab }, tab)); Check(state["focusedTabID"]!.ToString() == tab && state["tabs"]![0]!["generation"]!.GetValue<long>() == 2, "state exact casing"); Check(!state["tabs"]![0]!.AsObject().ContainsKey("loadError"), "optional loadError omitted");
         var success = OpenCodeBrowserPolicy.Outcome(new OpenCodeBrowserOutcome.Success(null, new[] { fileBytes })); Check(success["result"]!.AsObject().ContainsKey("value") && success["result"]!["value"] is null, "success requires JSON null value"); Check(success["result"]!["files"]![0]!["data"]!.ToString() == "AQ==", "wire file bytes base64");

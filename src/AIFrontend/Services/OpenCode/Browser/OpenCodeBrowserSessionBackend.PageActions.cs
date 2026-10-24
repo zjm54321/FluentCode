@@ -82,23 +82,14 @@ public sealed partial class OpenCodeBrowserSessionBackend
         else value = await ElementFunctionAsync(c, S(a, "ref"), "function(script){ const element=this; const value=eval(script); return typeof value==='function' ? value.call(this,element) : value; }", new JsonArray(new JsonObject { ["value"] = S(a, "script") }), ct, await FrameContextAsync(c, a, ct));
         var result = WithTab(c.Page); result["value"] = value; return Ok(result);
     }
-    private readonly record struct ElementBox(double X, double Y, double Width, double Height)
-    {
-        public double CenterX => X + Width / 2;
-        public double CenterY => Y + Height / 2;
-    }
-    private static async Task<ElementBox> BoxAsync(PageContext c, string reference, CancellationToken ct, bool scroll = false)
+    private static async Task<OpenCodeBrowserBox> BoxAsync(PageContext c, string reference, CancellationToken ct, bool scroll = false, bool border = false)
     {
         c.ActiveSession = c.RefSessions.GetValueOrDefault(reference.TrimStart('@'));
         if (c.ActiveSession is { } session) await c.EnsureFrameSessionAsync(session);
         var node = c.Snapshot.Resolve(reference);
         if (scroll) await Call(c, "DOM.scrollIntoViewIfNeeded", new() { ["backendNodeId"] = node }, ct);
         var result = await Call(c, "DOM.getBoxModel", new() { ["backendNodeId"] = node }, ct);
-        var quad = result["model"]!["content"]!.AsArray().Select(n => n!.GetValue<double>()).ToArray();
-        var xs = new[] { quad[0], quad[2], quad[4], quad[6] }; var ys = new[] { quad[1], quad[3], quad[5], quad[7] };
-        var box = new ElementBox(xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min());
-        if (box.Width <= 0 || box.Height <= 0) throw new OpenCodeBrowserException("not_interactable", "元素当前没有可点击的布局区域");
-        return box;
+        return OpenCodeBrowserGeometry.Bounds(result["model"]![border ? "border" : "content"]!.AsArray());
     }
     private static int Modifiers(JsonArray? keys) => keys?.Sum(key => key?.ToString() switch { "Alt" => 1, "Control" => 2, "Meta" => 4, "Shift" => 8, _ => 0 }) ?? 0;
     private static async Task MouseAsync(PageContext c, string type, double x, double y, CancellationToken ct, string button = "none", int count = 0, int modifiers = 0, int buttons = 0)
@@ -205,9 +196,9 @@ public sealed partial class OpenCodeBrowserSessionBackend
         JsonObject? clip = null;
         if (a["ref"] is not null)
         {
-            var box = await BoxAsync(c, S(a, "ref"), ct, true);
-            var metrics = await Call(c, "Page.getLayoutMetrics", null, ct); var viewport = metrics["cssLayoutViewport"] ?? metrics["layoutViewport"]!;
-            clip = new() { ["x"] = box.X + viewport["pageX"]!.GetValue<double>(), ["y"] = box.Y + viewport["pageY"]!.GetValue<double>(), ["width"] = box.Width, ["height"] = box.Height, ["scale"] = 1 };
+            var box = await BoxAsync(c, S(a, "ref"), ct, true, border: true);
+            var metrics = await Call(c, "Page.getLayoutMetrics", null, ct);
+            clip = OpenCodeBrowserGeometry.ScreenshotClip(box, metrics);
             options["captureBeyondViewport"] = true;
         }
         else if (B(a, "fullPage") || a["maxWidth"] is not null)
