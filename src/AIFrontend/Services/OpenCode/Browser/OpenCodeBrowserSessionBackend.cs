@@ -106,9 +106,12 @@ public sealed partial class OpenCodeBrowserSessionBackend : IOpenCodeBrowserSess
         if (type == "tabs.list") return Ok(OpenCodeBrowserPolicy.State(_workspace.GetState()));
         if (type == "tabs.open")
         {
-            var opened = _workspace.CreatePage(S(a, "url", "about:blank"), true);
+            var url = OpenCodeBrowserPolicy.NormalizeUrl(S(a, "url", "about:blank"));
+            var opened = _workspace.CreatePage(url, true, startNavigation: false);
             // BQ4: even focus:true never opens the overlay; focus:false also preserves protocol focus.
             if (B(a, "focus", true)) _workspace.ActivateByAgent(opened, switchShown: false);
+            using var opening = CancellationTokenSource.CreateLinkedTokenSource(ct, opened.Lifetime);
+            await opened.NavigateAsync(url, opening.Token, waitForCommit: true);
             return Ok(OpenCodeBrowserPolicy.Tab(opened.ToTab()));
         }
         if (type == "preview")

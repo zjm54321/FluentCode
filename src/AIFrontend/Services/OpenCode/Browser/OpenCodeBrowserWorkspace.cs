@@ -38,7 +38,7 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
     {
         var page = CreatePage(url); Show(page); return page;
     }
-    public OpenCodeBrowserPage CreatePage(string url, bool agent = false, string? previewPath = null)
+    public OpenCodeBrowserPage CreatePage(string url, bool agent = false, string? previewPath = null, bool startNavigation = true)
     {
         // Validate before adding a tab; failed input must not leave a ghost page.
         var normalized = OpenCodeBrowserPolicy.NormalizeUrl(url);
@@ -50,7 +50,7 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
         page.PropertyChanged += (_, _) => PagesChanged?.Invoke(this, EventArgs.Empty);
         PagesChanged?.Invoke(this, EventArgs.Empty);
         if (agent) PageActivatedByAgent?.Invoke(this, page);
-        if (previewPath is null) page.Navigate(normalized);
+        if (previewPath is null && startNavigation) page.Navigate(normalized);
         return page;
     }
     public OpenCodeBrowserPage? Find(string id) => _pages.Find(p => p.Id == id);

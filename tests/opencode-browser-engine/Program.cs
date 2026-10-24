@@ -33,6 +33,9 @@ internal static class Program
         const string file = "file_00000000-0000-0000-0000-000000000000";
         var fileBytes = new OpenCodeBrowserFile(file, "a.txt", "text/plain", new byte[] { 1 });
         var dispatch = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserSessionBackend.cs"));
+        Check(dispatch.Contains("startNavigation: false") && dispatch.Contains("await opened.NavigateAsync(url, opening.Token, waitForCommit: true)"), "tabs.open owns and awaits exactly one navigation (source fence)");
+        var pageSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserPage.cs"));
+        Check(pageSource.Contains("commit.Task.WaitAsync(TimeSpan.FromSeconds(15), ct)") && pageSource.Contains("_navigationCommit?.TrySetResult(e.IsSuccess)"), "tab-open commit wait bounded and load errors complete it (source fence)");
         foreach (var type in OpenCodeBrowserInput.Actions)
         {
             var action = new JsonObject { ["type"] = type };

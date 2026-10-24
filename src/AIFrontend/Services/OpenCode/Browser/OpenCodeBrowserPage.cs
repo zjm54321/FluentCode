@@ -29,6 +29,8 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     private string? _error, _activity;
     private long _activityVersion;
     private TaskCompletionSource<bool>? _navigation;
+    private TaskCompletionSource<bool>? _navigationCommit;
+    private string? _pendingUrl;
     private byte[]? _previewBytes;
     private DateTimeOffset _previewAt;
     private bool _capturingPreview;
@@ -81,10 +83,15 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
             await View.EnsureCoreWebView2Async(await EnvironmentAsync());
             if (_closed) return;
             Core.Settings.IsBuiltInErrorPageEnabled = false;
-            Core.NavigationStarting += (_, _) => { Navigating?.Invoke(this, EventArgs.Empty); Set(ref _loading, true, nameof(Loading)); Set(ref _error, null, nameof(LoadError)); };
+            Core.NavigationStarting += (_, e) =>
+            {
+                _pendingUrl = e.Uri; Set(ref _url, OpenCodeBrowserPolicy.Bound(e.Uri, 16384), nameof(Url));
+                Navigating?.Invoke(this, EventArgs.Empty); Set(ref _loading, true, nameof(Loading)); Set(ref _error, null, nameof(LoadError));
+            };
             Core.ContentLoading += (_, _) =>
             {
-                _contentLoaded = true; Generation++; Refresh(); Changed(nameof(Generation)); Committed?.Invoke(this, EventArgs.Empty);
+                _contentLoaded = true; _pendingUrl = null; Generation++; Refresh(); Changed(nameof(Generation)); Committed?.Invoke(this, EventArgs.Empty);
+                _navigationCommit?.TrySetResult(true);
             };
             Core.SourceChanged += (_, _) => Refresh();
             Core.DocumentTitleChanged += (_, _) => Refresh();
@@ -93,7 +100,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
             {
                 Set(ref _loading, false, nameof(Loading));
                 Set(ref _error, e.IsSuccess ? null : e.WebErrorStatus.ToString(), nameof(LoadError));
-                Refresh(); _navigation?.TrySetResult(e.IsSuccess);
+                Refresh(); _pendingUrl = null; _navigation?.TrySetResult(e.IsSuccess); _navigationCommit?.TrySetResult(e.IsSuccess);
             };
             Core.NewWindowRequested += (_, e) => { e.Handled = true; if (PreviewPath is null) _newWindow(e.Uri); };
             Ready?.Invoke(this, EventArgs.Empty);
@@ -102,25 +109,37 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     }
     private void Refresh()
     {
-        Set(ref _url, OpenCodeBrowserPolicy.Bound(Core.Source, 16384), nameof(Url));
+        Set(ref _url, OpenCodeBrowserPolicy.Bound(_pendingUrl ?? Core.Source, 16384), nameof(Url));
         Set(ref _title, OpenCodeBrowserPolicy.Bound(Core.DocumentTitle), nameof(Title));
         Set(ref _back, Core.CanGoBack, nameof(CanGoBack)); Set(ref _forward, Core.CanGoForward, nameof(CanGoForward));
     }
     public OpenCodeBrowserTab ToTab() => new(Id, Url, Title, Loading, LoadError, CanGoBack, CanGoForward, Generation);
     public void Navigate(string url) => Observe(NavigateAsync(url, Lifetime));
-    public async Task NavigateAsync(string url, CancellationToken ct)
+    public async Task NavigateAsync(string url, CancellationToken ct, bool waitForCommit = false)
     {
         var normalized = OpenCodeBrowserPolicy.NormalizeUrl(url);
         await EnsureReadyAsync();
         if (PrepareNavigationAsync is not null) await PrepareNavigationAsync();
-        await NavigateOperationAsync(() => Core.Navigate(normalized), ct);
+        await NavigateOperationAsync(() =>
+        {
+            _pendingUrl = normalized; Set(ref _url, normalized, nameof(Url));
+            Core.Navigate(normalized);
+        }, ct, waitForCommit);
     }
-    public async Task NavigateOperationAsync(Action operation, CancellationToken ct)
+    public async Task NavigateOperationAsync(Action operation, CancellationToken ct, bool waitForCommit = false)
     {
         _navigation?.TrySetCanceled();
+        _navigationCommit?.TrySetCanceled();
         var completion = _navigation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var commit = _navigationCommit = new(TaskCreationOptions.RunContinuationsAsynchronously);
         operation();
-        await completion.Task.WaitAsync(ct);
+        if (!waitForCommit) await completion.Task.WaitAsync(ct);
+        else
+        {
+            // A stalled server still yields the real requested URL/loading state, never a fake commit.
+            try { await commit.Task.WaitAsync(TimeSpan.FromSeconds(15), ct); }
+            catch (TimeoutException) { }
+        }
     }
     public void GoBack() { if (CanGoBack) Core.GoBack(); }
     public void GoForward() { if (CanGoForward) Core.GoForward(); }
@@ -130,7 +149,7 @@ public sealed class OpenCodeBrowserPage : IOpenCodeBrowserPage
     internal void DisposePage()
     {
         if (_closed) return;
-        _closed = true; _lifetime.Cancel(); _navigation?.TrySetCanceled(); Closing?.Invoke(this, EventArgs.Empty);
+        _closed = true; _lifetime.Cancel(); _navigation?.TrySetCanceled(); _navigationCommit?.TrySetCanceled(); Closing?.Invoke(this, EventArgs.Empty);
         View.Close(); _lifetime.Dispose();
     }
     public async Task<JsonObject> CdpAsync(string method, JsonObject? parameters = null, string? sessionId = null)
