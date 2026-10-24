@@ -47,6 +47,12 @@ $removedArgs=[regex]::Match($view,'(?ms)^public sealed class OpenCodeComposerAtt
 $viewGenerated=Join-Path $EvidenceRoot 'ActualViewBridge.cs'
 "using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages.OpenCode;`n"+$removedArgs+"`ninternal sealed partial class OpenCodeComposerView {`n"+($viewMembers -join "`n")+"`n}"|Set-Content -Encoding UTF8 $viewGenerated
 $sources=@($generated,$viewGenerated,"$PSScriptRoot/Tab.TestHost.cs","$PSScriptRoot/PageFixture.cs","$PSScriptRoot/ViewFixture.cs","$PSScriptRoot/Program.cs","$PSScriptRoot/WorkingClockTests.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingClock.cs","$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs","$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs")
+# Keep the actual chip image helper source-linked, with only native imaging/stream boundaries doubled.
+$selectionList=[IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectedList.cs")
+$imageMembers=@('Image','LoadImageAsync')|ForEach-Object{Extract $selectionList $_}
+$imageGenerated=Join-Path $EvidenceRoot 'ActualBrowserChipImage.cs'
+"using System; using System.Threading.Tasks; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Media; using Microsoft.UI.Xaml.Media.Imaging; using Windows.Storage.Streams; namespace AIFrontend.Pages.OpenCode; internal static class OpenCodeBrowserSelectedList {`n"+($imageMembers -join "`n")+"`n}"|Set-Content -Encoding UTF8 $imageGenerated
+$sources+=@($imageGenerated,"$PSScriptRoot/BrowserChipImageHost.cs")
 $sources+="$PSScriptRoot/PageSlots.cs"
 $sources+="$PSScriptRoot/RetirementTests.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSidebarLayout.cs"
