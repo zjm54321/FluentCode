@@ -16,6 +16,8 @@ public sealed partial class OpenCodePage
     partial void OnAgentTreeEvent(OpenCodeEvent item);
     partial void OnSessionInsightsEvent(OpenCodeEvent item);
     partial void OnAgentTreeReset();
+    partial void OnBrowserControlEvent(OpenCodeEvent item);
+    partial void OnBrowserEventSyncStopped();
     private CancellationTokenSource? _eventCts;
     #pragma warning disable CS0414 // StopEventSync clears this; subscription startup is outside this publication fixture.
     private TaskCompletionSource? _eventReady;
