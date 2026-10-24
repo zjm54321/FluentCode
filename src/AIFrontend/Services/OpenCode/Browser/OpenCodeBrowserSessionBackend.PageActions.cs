@@ -207,6 +207,10 @@ public sealed partial class OpenCodeBrowserSessionBackend
         if (a["ref"] is not null)
         {
             var box = await BoxAsync(c, S(a, "ref"), ct, true, border: true);
+            // Inline elements may have several text runs that extend past DOM.getBoxModel's box.
+            // Measure the complete contents after scrolling, including nested text descendants.
+            var contents = (await ElementFunctionAsync(c, S(a, "ref"), "function(){ const range=this.ownerDocument.createRange(); range.selectNodeContents(this); const r=range.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; }", null, ct))!;
+            box = OpenCodeBrowserGeometry.Union(new[] { box, new OpenCodeBrowserBox(contents["x"]!.GetValue<double>(), contents["y"]!.GetValue<double>(), contents["width"]!.GetValue<double>(), contents["height"]!.GetValue<double>()) });
             var metrics = await Call(c, "Page.getLayoutMetrics", null, ct);
             clip = OpenCodeBrowserGeometry.ScreenshotClip(box, metrics);
             options["captureBeyondViewport"] = true;

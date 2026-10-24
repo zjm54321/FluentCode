@@ -43,6 +43,14 @@ public static class OpenCodeBrowserGeometry
         return box;
     }
 
+    public static OpenCodeBrowserBox Union(IEnumerable<OpenCodeBrowserBox> boxes)
+    {
+        var visible = boxes.Where(b => b.Width > 0 && b.Height > 0).ToArray();
+        if (visible.Length == 0) throw new OpenCodeBrowserException("not_interactable", "元素当前没有可见的布局区域");
+        var x = visible.Min(b => b.X); var y = visible.Min(b => b.Y);
+        return new(x, y, visible.Max(b => b.X + b.Width) - x, visible.Max(b => b.Y + b.Height) - y);
+    }
+
     public static JsonObject ScreenshotClip(OpenCodeBrowserBox border, JsonObject metrics)
     {
         var cssViewport = metrics["cssVisualViewport"];
@@ -51,10 +59,15 @@ public static class OpenCodeBrowserGeometry
         var deviceScale = cssViewport is null && metrics["contentSize"]?["width"] is { } physical && metrics["cssContentSize"]?["width"] is { } css
             ? physical.GetValue<double>() / css.GetValue<double>() : 1;
         if (!double.IsFinite(deviceScale) || deviceScale <= 0) throw new OpenCodeBrowserException("browser_error", "页面缩放指标无效");
-        var x = border.X + viewport["pageX"]!.GetValue<double>() / deviceScale;
-        var y = border.Y + viewport["pageY"]!.GetValue<double>() / deviceScale;
-        var left = Math.Floor(x); var top = Math.Floor(y);
-        var right = Math.Ceiling(x + border.Width); var bottom = Math.Ceiling(y + border.Height);
+        var pageX = viewport["pageX"]!.GetValue<double>() / deviceScale; var pageY = viewport["pageY"]!.GetValue<double>() / deviceScale;
+        var width = viewport["clientWidth"]!.GetValue<double>() / deviceScale; var height = viewport["clientHeight"]!.GetValue<double>() / deviceScale;
+        var x = border.X + pageX; var y = border.Y + pageY;
+        // Inline text ink can overhang its layout box; reserve two CSS pixels, including at 125% DPI.
+        // Round in CSS space, not device pixels, and keep the extra margin within the visual viewport.
+        const double margin = 2;
+        var left = Math.Max(pageX, Math.Floor(x - margin)); var top = Math.Max(pageY, Math.Floor(y - margin));
+        var right = Math.Min(pageX + width, Math.Ceiling(x + border.Width + margin)); var bottom = Math.Min(pageY + height, Math.Ceiling(y + border.Height + margin));
+        if (right <= left || bottom <= top) throw new OpenCodeBrowserException("not_interactable", "元素当前不在可见视口内");
         // A document-space clip ignores visualViewport.scale (pinch zoom). Chromium applies device
         // scale to the output bitmap itself; applying it to the CSS bounds again crops the element.
         return new() { ["x"] = left, ["y"] = top, ["width"] = right - left, ["height"] = bottom - top, ["scale"] = 1 };
