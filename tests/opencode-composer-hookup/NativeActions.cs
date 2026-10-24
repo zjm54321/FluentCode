@@ -41,6 +41,8 @@ internal static class NativeTests
         internal readonly OpenCodeClient Client;
         internal readonly OpenCodePage Page;
         internal string? Model, Stage;
+        internal string Agent = "old_agent";
+        internal bool Running;
         internal string? LastMutationBody;
         internal string? LastMutationPath;
         internal readonly List<string> MutationPaths = new();
@@ -72,6 +74,8 @@ internal static class NativeTests
                 if (path.EndsWith("/revert/stage")) { using var body = JsonDocument.Parse(Http.Body!); Stage = "{\"messageID\":" + body.RootElement.GetProperty("messageID").GetRawText() + "}"; return Task.FromResult(Program.Json("{\"data\":" + Stage + "}")); }
                 if (path.EndsWith("/revert")) Stage = null;
                 if (path.EndsWith("/model")) { using var body = JsonDocument.Parse(Http.Body!); Model = body.RootElement.GetProperty("model").GetRawText(); }
+                if (path.EndsWith("/agent")) { using var body = JsonDocument.Parse(Http.Body!); Agent = body.RootElement.GetProperty("agent").GetString()!; }
+                if (path.EndsWith("/prompt")) return Task.FromResult(Program.Receipt());
                 if (path == "/api/session") return Task.FromResult(Program.Json("{\"data\":{\"id\":\"ses_created\"}}"));
                 if (path.EndsWith("/interrupt")) return Task.FromResult(Program.Json("{\"interrupted\":true}"));
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
@@ -80,8 +84,9 @@ internal static class NativeTests
                 "/api/command" => "{\"data\":[{\"name\":\"models\",\"description\":\"collision\"}]}",
                 "/api/model" => "{\"location\":{\"directory\":\"/synthetic\"},\"data\":[" + Catalog + "]}",
                 "/api/model/default" => "{\"location\":{\"directory\":\"/synthetic\"},\"data\":" + Default + "}",
-                "/api/session/active" => "{\"data\":{}}",
-                "/api/session/ses_test" => "{\"data\":{\"id\":\"ses_test\",\"projectID\":\"p\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/synthetic\"}" + (Model is null ? "" : ",\"model\":" + Model) + (Stage is null ? "" : ",\"revert\":" + Stage) + "}}",
+                "/api/session/active" => Running ? "{\"data\":{\"ses_test\":{\"type\":\"running\"}}}" : "{\"data\":{}}",
+                "/api/agent" => "{\"location\":{\"directory\":\"/synthetic\"},\"data\":[{\"id\":\"next_agent\",\"name\":\"Next\",\"mode\":\"primary\",\"hidden\":false,\"request\":{},\"permissions\":{}}]}",
+                "/api/session/ses_test" => "{\"data\":{\"id\":\"ses_test\",\"agent\":\"" + Agent + "\",\"projectID\":\"p\",\"cost\":0,\"tokens\":{},\"time\":{\"created\":1,\"updated\":3},\"location\":{\"directory\":\"/synthetic\"}" + (Model is null ? "" : ",\"model\":" + Model) + (Stage is null ? "" : ",\"revert\":" + Stage) + "}}",
                 _ when path.EndsWith("/message") => History,
                 _ when path.EndsWith("/inbox") || path.EndsWith("/permission") || path.EndsWith("/form") => "{\"data\":[]}",
                 _ => throw new Exception("Unexpected offline route " + path),

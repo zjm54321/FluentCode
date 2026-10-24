@@ -45,13 +45,14 @@ internal sealed class OpenCodeSessionControlCard : Grid
     }
 
     internal void Render(string agent, string? color, string? modelId, string modelName, string variant,
-        string scope, bool agentEnabled, bool modelEnabled, bool variantEnabled, string? agentDescription, bool pendingAgent = false)
+        string scope, bool agentEnabled, bool modelEnabled, bool variantEnabled, string? agentDescription, bool pendingAgent = false,
+        bool pendingModel = false)
     {
         if (_chrome.Child != _editableRows) _chrome.Child = _editableRows;
         _chrome.Visibility = Visibility.Visible;
         Describe(AgentButton, "智能体：" + agent, scope, (agentDescription ?? "智能体说明不可用") + (pendingAgent ? " · 下一条消息生效" : string.Empty));
-        Describe(ModelButton, "模型：" + modelName, scope);
-        Describe(VariantButton, "推理强度：" + variant, scope);
+        Describe(ModelButton, "模型：" + modelName, scope + (pendingModel ? " · 下次发送生效" : string.Empty));
+        Describe(VariantButton, "推理强度：" + variant, scope + (pendingModel ? " · 下次发送生效" : string.Empty));
         AgentButton.IsEnabled = agentEnabled;
         ModelButton.IsEnabled = modelEnabled;
         VariantButton.IsEnabled = variantEnabled;

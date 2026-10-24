@@ -25,7 +25,9 @@ internal static class AgentPresentationTests
     }
     internal static async Task Run(string xaml)
     {
-        var p=new OpenCodePage(xaml);p.Load();p.AgentData();p.New();await p.WaitDefaults();var a=p.BlankTab!;IsA(p,"after initial actual defaults");
+        var p=new OpenCodePage(xaml);p.Load();p.AgentData();
+        AIFrontend.Pages.OpenCode.OpenCodeAgentSelector.CheckActual(p);
+        p.New();await p.WaitDefaults();var a=p.BlankTab!;IsA(p,"after initial actual defaults");
         var menu=await p.AgentMenu();
         Check(menu.Items.Count==2,"real agent menu omits hidden/subagent-only entries");
         var colored=Item(menu,LongName);
@@ -56,7 +58,6 @@ internal static class AgentPresentationTests
         p.ChangeBlankDirectory("/different");await p.WaitAgentIdle();
         Check(p.AgentColor is null&&p.AgentName!=LongName,"different directory never reuses old accepted agent presentation");
         Check(p.HttpMutations==0,"all presentation/selection checks create no config/send mutation");
-        AIFrontend.Pages.OpenCode.OpenCodeAgentSelector.CheckActual(p);
         Console.WriteLine($"PASS R1 actual blank agent click/labels/color: {checks} assertions; native brush/template layout remains Gate");
     }
 }

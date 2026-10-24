@@ -23,7 +23,8 @@ public sealed partial class OpenCodePage
     private bool _applyingNativeText;
     private Guid? _newSessionOperation;
     private sealed record ModelPickerBasis(NativeActionOwner Owner, SessionControlState State,
-        SessionControlModels Catalog, SessionControlDefaultModel? Inherited);
+        SessionControlModels Catalog, SessionControlDefaultModel? Inherited, bool DeferSelection = false);
+    private sealed record DeferredModelPickerBasis(NativeActionOwner Owner);
 
     // These callbacks execute inside Source/controller guards. Field comparisons only: no XAML/App.
     private bool OwnsNativeOperation(NativeActionOwner owner, SessionControlOrigin origin)
@@ -158,6 +159,18 @@ public sealed partial class OpenCodePage
 
     private async Task<OpenCodeModelPickerPresentation?> ReadNativeModelsAsync(NativeActionOwner owner, CancellationToken ct)
     {
+        if (IsComposerSessionWorking(owner.Origin.SessionId) || _agentSelector.HasPendingModel)
+        {
+            // The selector already owns the directory's real catalog. Busy selection is UI-only:
+            // no HTTP reads or writes here. Membership is freshly checked at next-send application.
+            var rows = _agentSelector.ModelChoices.Where(m => m.Id is not null && m.ProviderId is not null && m.Name is not null)
+                .Select(m => new OpenCodeModelPickerRow(m.ProviderId!, m.Id!, m.Name!, null, m.Enabled == true,
+                    m.Variants?.Where(v => v.Id is not null).Select(v => v.Id!).ToArray() ?? Array.Empty<string>(), null)).ToImmutableArray();
+            OpenCodeModelCurrent current = _agentSelector.CurrentModel is { Id: { } id, ProviderId: { } provider } model
+                ? new OpenCodeModelCurrent.Explicit(new(provider, id, model.Variant), rows.Any(r => r.ModelId == id && r.ProviderId == provider && r.Available))
+                : new OpenCodeModelCurrent.Unknown();
+            return new(owner.Origin.SessionId, rows, current, "下次发送生效", new DeferredModelPickerBasis(owner));
+        }
         var client = owner.Ticket.Binding.Client;
         var state = await ReadNativeAsync(owner, () => client.GetSessionControlStateAsync(owner.Origin.SessionId, ct), ct);
         var catalog = await ReadNativeAsync(owner, () => client.GetSelectableModelsAsync(state.Directory, ct), ct);
@@ -166,7 +179,8 @@ public sealed partial class OpenCodePage
             inherited = await ReadNativeAsync(owner, () => client.GetDefaultModelAsync(state.Directory, ct), ct);
         if (catalog.Directory != state.Directory || inherited is not null && inherited.Directory != state.Directory)
             return null;
-        return PresentNativeModels(new(owner, state, catalog, inherited));
+        return PresentNativeModels(new(owner, state, catalog, inherited,
+            IsComposerSessionWorking(owner.Origin.SessionId)));
     }
 
     private static OpenCodeModelPickerPresentation PresentNativeModels(ModelPickerBasis basis)
@@ -216,9 +230,23 @@ public sealed partial class OpenCodePage
     private async Task CommitNativeModelAsync(NativeActionOwner owner, OpenCodeModelPickerResult choice, CancellationToken ct)
     {
         if (!CanStartNativeAction(owner, owner.Origin) || choice.Outcome != OpenCodeModelPickerOutcome.Confirmed
-            || choice.Choice is not { } key || choice.Presentation?.Basis is not ModelPickerBasis basis
-            || !ReferenceEquals(basis.Owner, owner)) return;
+            || choice.Choice is not { } key) return;
+        if (choice.Presentation?.Basis is DeferredModelPickerBasis deferred && ReferenceEquals(deferred.Owner, owner))
+        {
+            var state = new OpenCodeModelPickerState(choice.Presentation);
+            if (state.SelectModel(key.ProviderId, key.ModelId) && state.SelectVariant(key.Variant))
+                _agentSelector.SelectPendingModel(new() { Id = key.ModelId, ProviderId = key.ProviderId, Variant = key.Variant });
+            return;
+        }
+        if (choice.Presentation?.Basis is not ModelPickerBasis basis || !ReferenceEquals(basis.Owner, owner)) return;
         var model = new SessionControlModelRef(key.ModelId, key.ProviderId, key.Variant);
+        if (basis.DeferSelection || IsComposerSessionWorking(owner.Origin.SessionId) || _agentSelector.HasPendingModel)
+        {
+            // Same AS3 owner as deferred agent selection. No mutation at selection time, even if
+            // execution finished while the flyout was open; the next send applies this exact choice.
+            _agentSelector.SelectPendingModel(new() { Id = key.ModelId, ProviderId = key.ProviderId, Variant = key.Variant });
+            return;
+        }
         var fresh = await _sessionControls.PreviewAsync(owner.Origin, new(SessionControlKind.SwitchModel, model), owner.Draft,
             o => CanStartNativeAction(owner, o), ct);
         if (!CanStartNativeAction(owner, owner.Origin)) return;

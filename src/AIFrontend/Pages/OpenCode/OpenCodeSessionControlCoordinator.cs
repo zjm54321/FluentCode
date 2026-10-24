@@ -15,6 +15,7 @@ public sealed record SessionControlOrigin(OpenCodePageSource Source, long Revisi
     /// The Page owner must supply its retained immutable execution evidence at invocation.</summary>
     public ImmutableArray<string> PreviouslyKnownUnresolvedChildSessionIds { get; init; } = ImmutableArray<string>.Empty;
     public bool LocalSubmissionInProgress { get; init; }
+    public bool ApplyingSendSelection { get; init; }
 }
 /// <summary>Caller-owned exact authoritative draft token/fingerprint, including command/files/IME state.
 /// Empty must mean empty text, command AND files. It is not permission to borrow a newer editor token.</summary>
@@ -261,6 +262,15 @@ public sealed class OpenCodeSessionControlCoordinator
             {
                 inherited = await Get(() => client.GetDefaultModelAsync(state.Directory, ct)).ConfigureAwait(false);
                 if (inherited.Directory != state.Directory) return new(SessionControlStatus.Blocked, null);
+            }
+            if (origin.ApplyingSendSelection)
+            {
+                if (state.ParentId is not null) return new(SessionControlStatus.Blocked, null);
+                // A subsequent-turn choice is valid during execution. Do not fingerprint streaming
+                // history: it would invalidate every send while a provider is producing output.
+                var selectionFingerprint = SessionControlJson.Hash(new { state.SessionId, state.Directory,
+                    state.Model, request, draft, selected = catalog.Models.Single(m => m.Offers(request.Model)).Fingerprint });
+                return new(SessionControlStatus.Ready, new(origin, request, draft, state, catalog, inherited, null, selectionFingerprint));
             }
         }
         else if (request.Kind == SessionControlKind.StageRevert && !draft.Empty) return new(SessionControlStatus.Blocked, null);

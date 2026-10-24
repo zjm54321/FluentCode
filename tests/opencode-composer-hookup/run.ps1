@@ -48,6 +48,17 @@ $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'Program.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'NativeActions.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
+$sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs"
+$sources += Get-Item (Join-Path $PSScriptRoot 'DeferredSelections.cs')
+$selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
+$pendingMembers = foreach ($name in @('SelectPendingAgent', 'SelectPendingModel', 'SavePendingSelection', 'ApplyPendingSelectionAsync', 'CompletePendingSelection')) {
+    $m = [regex]::Match($selector, ('(?ms)^    (?:private|internal) [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))
+    if (!$m.Success) { throw "Missing production pending selection member: $name" }
+    $m.Value
+}
+$pendingGenerated = Join-Path $output 'ActualPendingSelections.cs'
+"using System; using System.Threading; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Services.Notifications; namespace AIFrontend.Pages.OpenCode; internal sealed partial class DeferredSelectionHost {`n" + ($pendingMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $pendingGenerated
+$sources += Get-Item $pendingGenerated
 
 # Extract complete production members, never a copied implementation. The fixed four-space class
 # indentation makes the end of a block/arrow member explicit; fail if any member is missing/ambiguous.

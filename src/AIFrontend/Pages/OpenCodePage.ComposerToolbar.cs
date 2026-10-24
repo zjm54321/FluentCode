@@ -83,6 +83,16 @@ public sealed partial class OpenCodePage
         DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? "不可用"));
         BlankStrengthButton.Visibility = Visibility.Visible;
         DescribeComposerIcon(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));
+        if (!_newSessionDraftActive)
+        {
+            if (_agentSelector.HasPendingAgent)
+                ToolTipService.SetToolTip(BlankAgentButton, (description ?? "智能体说明不可用") + " · 下次发送生效");
+            if (_agentSelector.HasPendingModel)
+            {
+                ToolTipService.SetToolTip(BlankModelButton, "选择模型：" + model?.Name + " · 下次发送生效");
+                ToolTipService.SetToolTip(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant) + " · 下次发送生效");
+            }
+        }
         RefreshFullScreenComposerChoices(agent, color, model, selected, enabled);
     }
 

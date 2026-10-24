@@ -286,7 +286,7 @@ public sealed partial class OpenCodePage
             {
                 UpdateComposerButtons();
                 RefreshComposerView();
-                if (!await _agentSelector.ApplyPendingSelectionAsync()) return;
+                if (!await _agentSelector.ApplyPendingSelectionAsync(IsComposerSessionWorking(capturedBinding.SessionId))) return;
             }
             finally
             {
@@ -330,6 +330,9 @@ public sealed partial class OpenCodePage
                         model => _ = OpenCodeRecentModels.Shared.RecordSuccessfulUseAsync(recentSource, model?.ProviderId, model?.Id))
                     : await SendLegacyAttemptAsync(context, transportCancellation,
                         model => _ = OpenCodeRecentModels.Shared.RecordSuccessfulUseAsync(recentSource, model?.ProviderId, model?.Id));
+                if (outcome is OpenCodeComposerSubmitOutcome.PromptAccepted or OpenCodeComposerSubmitOutcome.CommandAcknowledged
+                    && ReferenceEquals(capturedBinding, _composerBinding) && OwnsComposerBinding(capturedBinding))
+                    _agentSelector.CompletePendingSelection();
                 if (!HasLiveComposerSendOrigin(context)) return;
                 if (outcome is not OpenCodeComposerSubmitOutcome.ConfirmationRequired required) break;
                 var question = required.Question;

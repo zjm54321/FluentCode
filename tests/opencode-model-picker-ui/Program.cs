@@ -169,12 +169,17 @@ internal static class Program
         var pickerRoute = selector.Substring(selector.IndexOf("private async Task ShowPickerAsync"),
             selector.IndexOf("private void SelectPendingAgent") - selector.IndexOf("private async Task ShowPickerAsync"));
         Check(pickerRoute.Contains("SelectPendingAgent(origin, target)") && !pickerRoute.Contains("RunSwitchAsync"), "AS3 picker choice is UI-only, never a server switch");
-        Check(selector.Contains("internal async Task<bool> ApplyPendingSelectionAsync()") && selector.Contains("await RunSwitchAsync(origin, target)")
+        Check(selector.Contains("internal async Task<bool> ApplyPendingSelectionAsync(bool forNextSend = false)") && selector.Contains("await RunSwitchAsync(origin, target, forNextSend)")
             && selector.Contains("_coordinator.SwitchAsync(origin, operationId, target, IsOriginCurrent"), "next-send seam preserves existing server coordinator/re-check");
         AIFrontend.Pages.OpenCodePage.RunVariantSelectionChecks(Check).GetAwaiter().GetResult();
         var cardBinding = Read("src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs");
         Check(selector.Contains("anchor?.XamlRoot ?? XamlRoot"), "PK2 invoking picker owner survives an unrooted selector/closed overview");
         var actions = Read("src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs");
+        var busyModels = actions.Substring(actions.IndexOf("if (IsComposerSessionWorking(owner.Origin.SessionId)"),
+            actions.IndexOf("var client = owner.Ticket.Binding.Client;", actions.IndexOf("private async Task<OpenCodeModelPickerPresentation?> ReadNativeModelsAsync"))
+                - actions.IndexOf("if (IsComposerSessionWorking(owner.Origin.SessionId)"));
+        Check(busyModels.Contains("_agentSelector.ModelChoices") && busyModels.Contains("DeferredModelPickerBasis")
+            && !busyModels.Contains("await ") && !busyModels.Contains("client."), "ED1 busy picker selection uses the existing catalog with zero server calls");
         Check(cardBinding.Contains("RunClientActionAsync(ticket, variantOnly, anchor)")
             && actions.Contains("variantOnly, anchor, selectedChoice)") && actions.Contains("sourceKey, anchor: anchor)"),
             "PK2 model/effort keep the invoking anchor across catalog awaits and disabling the button");
@@ -198,6 +203,8 @@ internal static class Program
             "P2 sidebar uses catalog display Name, never model ID as display name");
         RunChildSessionChecks();
         var card = Read("src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCard.cs");
+        Check(card.Contains("bool pendingModel = false") && card.Contains("下次发送生效") && toolbar.Contains("_agentSelector.HasPendingModel"),
+            "ED1 card and narrow composer expose quiet native tooltips for pending model/effort");
         var readOnly = card.Substring(card.IndexOf("internal void RenderReadOnly"), card.IndexOf("private static OpenCodeNativeComboBox Entry") - card.IndexOf("internal void RenderReadOnly"));
         Check(readOnly.Contains("_chrome.Child = _editableRows") && readOnly.Contains("AgentButton.Render(")
             && readOnly.Contains("RenderModelButton(ModelButton, model, false)") && readOnly.Contains("VariantButton.Render(")

@@ -23,10 +23,10 @@ public sealed class AgentSwitchCoordinator
     public AgentSwitchCoordinator(OpenCodeInteractionGate gate) => _gate = gate ?? throw new ArgumentNullException(nameof(gate));
 
     public Task<AgentSwitchResult> SwitchAsync(AgentSwitchOrigin origin, Guid operationId, string targetAgentId,
-        Func<AgentSwitchOrigin, bool> isOriginCurrent, CancellationToken cancellationToken = default)
+        Func<AgentSwitchOrigin, bool> isOriginCurrent, CancellationToken cancellationToken = default, bool forNextSend = false)
     {
         if (!NotificationArgumentCodec.IsValidRequestId(targetAgentId)) throw new ArgumentException("Invalid agent ID.", nameof(targetAgentId));
-        return RunAsync(origin, operationId, targetAgentId, false, isOriginCurrent, cancellationToken);
+        return RunAsync(origin, operationId, targetAgentId, false, isOriginCurrent, cancellationToken, forNextSend);
     }
 
     /// <summary>Explicit user confirmation for this exact unknown operation, not a causal inference from
@@ -37,7 +37,7 @@ public sealed class AgentSwitchCoordinator
         => RunAsync(origin, operationId, null, true, isOriginCurrent, cancellationToken);
 
     private async Task<AgentSwitchResult> RunAsync(AgentSwitchOrigin origin, Guid operationId, string? target,
-        bool reconcile, Func<AgentSwitchOrigin, bool> current, CancellationToken cancellationToken)
+        bool reconcile, Func<AgentSwitchOrigin, bool> current, CancellationToken cancellationToken, bool forNextSend = false)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(origin.Source);
@@ -85,43 +85,49 @@ public sealed class AgentSwitchCoordinator
                 || session.Time is null || !double.IsFinite(session.Time.Created) || !double.IsFinite(session.Time.Updated)
                 || session.Tokens is null || string.IsNullOrWhiteSpace(session.ProjectId)) return Result(AgentSwitchStatus.Blocked);
             observed = session.Agent;
+            if (session.ParentId is not null) return Result(AgentSwitchStatus.Blocked);
             var agents = await Read(() => client!.ListAgentsAsync(session.Location.Directory, token)).ConfigureAwait(false);
             if (agents.Location?.Directory != session.Location.Directory) return Result(AgentSwitchStatus.Blocked);
             var agentData = agents.Data!;
             if (!reconcile && (agentData.Count(a => a.Id == target) != 1 || agentData.Single(a => a.Id == target).Hidden))
                 return Result(AgentSwitchStatus.Blocked);
 
-            var messages = new List<OpenCodeMessage>();
-            string? cursor = null;
-            var cursors = new HashSet<string>(StringComparer.Ordinal);
-            bool complete = false;
-            for (int pageIndex = 0; pageIndex < PageBudget; pageIndex++)
+            // Explicit next-send application changes subsequent turns, not the running provider turn.
+            // Keep shared protection/origin/catalog checks; ordinary switching and recovery retain idle policy.
+            if (!forNextSend)
             {
-                var page = await Read(() => client!.GetMessagesAsync(origin.SessionId, new() { Limit = PageSize,
-                    Order = cursor is null ? OpenCodeSessionOrders.Desc : null, Cursor = cursor }, token)).ConfigureAwait(false);
-                var pageData = page.Data!;
-                if (pageData.Count > PageSize) return Result(AgentSwitchStatus.Blocked);
-                messages.AddRange(pageData);
-                cursor = page.Cursor?.Next;
-                if (cursor is not null && (cursor.Length is 0 or > 4096 || cursor.Any(char.IsControl))) break;
-                if (pageData.Count == 0 || cursor is null) { complete = true; break; }
-                if (!cursors.Add(cursor!)) break;
+                var messages = new List<OpenCodeMessage>();
+                string? cursor = null;
+                var cursors = new HashSet<string>(StringComparer.Ordinal);
+                bool complete = false;
+                for (int pageIndex = 0; pageIndex < PageBudget; pageIndex++)
+                {
+                    var page = await Read(() => client!.GetMessagesAsync(origin.SessionId, new() { Limit = PageSize,
+                        Order = cursor is null ? OpenCodeSessionOrders.Desc : null, Cursor = cursor }, token)).ConfigureAwait(false);
+                    var pageData = page.Data!;
+                    if (pageData.Count > PageSize) return Result(AgentSwitchStatus.Blocked);
+                    messages.AddRange(pageData);
+                    cursor = page.Cursor?.Next;
+                    if (cursor is not null && (cursor.Length is 0 or > 4096 || cursor.Any(char.IsControl))) break;
+                    if (pageData.Count == 0 || cursor is null) { complete = true; break; }
+                    if (!cursors.Add(cursor!)) break;
+                }
+                if (!complete) return Result(AgentSwitchStatus.Blocked);
+                messages.Reverse();
+                var permissions = await Read(() => client!.GetPendingPermissionsAsync(origin.SessionId, token)).ConfigureAwait(false);
+                var forms = await Read(() => client!.GetPendingFormsAsync(origin.SessionId, token)).ConfigureAwait(false);
+                var inbox = await Read(() => client!.GetInboxAsync(origin.SessionId, token)).ConfigureAwait(false);
+                var active = await Read(() => client!.GetActiveSessionsAsync(token)).ConfigureAwait(false);
+                if (permissions.Count > PendingBudget || forms.Count > PendingBudget || inbox.Count > PendingBudget
+                    || inbox.Any(i => i?.SessionId != origin.SessionId)) return Result(AgentSwitchStatus.Blocked);
+                var activeData = active.Data!;
+                bool activeKnown = !activeData.TryGetValue(origin.SessionId, out var drain) || drain.Type == "running";
+                var projection = OpenCodeExecutionProjection.Evaluate(new(origin.SessionId,
+                    OpenCodeExecutionProjection.CreateWindow(origin.SessionId, messages, true, true, true),
+                    activeKnown, drain?.Type == "running", true, permissions.Count != 0 || forms.Count != 0,
+                    true, inbox.Count != 0, false, !reconcile && !lease.CanSwitchAgent()));
+                if (!projection.CanSwitchAgent) return Result(reconcile ? AgentSwitchStatus.ReconciliationRequired : AgentSwitchStatus.Blocked);
             }
-            if (!complete) return Result(AgentSwitchStatus.Blocked);
-            messages.Reverse();
-            var permissions = await Read(() => client!.GetPendingPermissionsAsync(origin.SessionId, token)).ConfigureAwait(false);
-            var forms = await Read(() => client!.GetPendingFormsAsync(origin.SessionId, token)).ConfigureAwait(false);
-            var inbox = await Read(() => client!.GetInboxAsync(origin.SessionId, token)).ConfigureAwait(false);
-            var active = await Read(() => client!.GetActiveSessionsAsync(token)).ConfigureAwait(false);
-            if (permissions.Count > PendingBudget || forms.Count > PendingBudget || inbox.Count > PendingBudget
-                || inbox.Any(i => i?.SessionId != origin.SessionId)) return Result(AgentSwitchStatus.Blocked);
-            var activeData = active.Data!;
-            bool activeKnown = !activeData.TryGetValue(origin.SessionId, out var drain) || drain.Type == "running";
-            var projection = OpenCodeExecutionProjection.Evaluate(new(origin.SessionId,
-                OpenCodeExecutionProjection.CreateWindow(origin.SessionId, messages, true, true, true),
-                activeKnown, drain?.Type == "running", true, permissions.Count != 0 || forms.Count != 0,
-                true, inbox.Count != 0, false, !reconcile && !lease.CanSwitchAgent()));
-            if (!projection.CanSwitchAgent) return Result(reconcile ? AgentSwitchStatus.ReconciliationRequired : AgentSwitchStatus.Blocked);
 
             if (reconcile)
             {

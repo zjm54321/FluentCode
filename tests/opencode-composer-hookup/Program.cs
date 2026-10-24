@@ -107,6 +107,7 @@ internal static class Program
         typeof(OpenCodeRecentModels).GetField("_loaded",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,true);
         await ComposerActivityTests.Run();
         await SideQuestionTests.Run();
+        await DeferredSelectionTests.Run();
         if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }
         await RoutingAndProtection();
         await DeferredAgentSubmission();
@@ -918,6 +919,10 @@ namespace AIFrontend.Pages
         internal OpenCodeComposerSnapshot Snapshot => GetComposerSnapshot();
         internal bool Pending => _agentSelector.Pending;
         internal void PendingAgent(Func<Task<bool>> apply) { _agentSelector.HasPendingSelection = true; _agentSelector.ApplySelection = apply; }
+        internal void SelectionCompletion(Action complete) => _agentSelector.SelectionCompleted = complete;
+        internal bool SelectionPending => _agentSelector.HasPendingSelection;
+        internal void CachedModels(OpenCodeModelInfo model) => _agentSelector.ModelChoices = new[] { model };
+        internal OpenCodeModelRef? PendingModel => _agentSelector.CurrentModel;
         internal int AgentApplyCalls => _agentSelector.ApplyCalls;
         internal bool Sending => _isSending;
         internal bool SendEnabled => SendStopButton.IsEnabled;
@@ -1098,7 +1103,6 @@ namespace WinRT.Interop
 }
 namespace AIFrontend.Pages.OpenCode
 {
-    public enum AgentSwitchStatus { Applied, Blocked, OriginLost, OutcomeUnknown, DefinitivelyRejected, ReconciliationRequired, Reconciled }
     public sealed class OpenCodeConversationView {
         public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
         public event EventHandler? SubagentSessionRequested;
@@ -1116,7 +1120,13 @@ namespace AIFrontend.Pages.OpenCode
         public bool HasPendingSelection { get; set; }
         internal Func<Task<bool>> ApplySelection = () => Task.FromResult(true);
         internal int ApplyCalls;
-        public async Task<bool> ApplyPendingSelectionAsync() { ApplyCalls++; var applied = await ApplySelection(); if (applied) HasPendingSelection = false; return applied; }
+        public bool HasPendingModel { get; private set; }
+        public OpenCodeModelRef? CurrentModel { get; private set; }
+        public IReadOnlyList<OpenCodeModelInfo> ModelChoices { get; set; } = Array.Empty<OpenCodeModelInfo>();
+        public void SelectPendingModel(OpenCodeModelRef model) { CurrentModel = model; HasPendingModel = true; HasPendingSelection = true; }
+        public async Task<bool> ApplyPendingSelectionAsync(bool forNextSend = false) { ApplyCalls++; return await ApplySelection(); }
+        internal Action? SelectionCompleted;
+        public void CompletePendingSelection() { HasPendingSelection = false; HasPendingModel = false; SelectionCompleted?.Invoke(); }
         internal bool Pending;
         public void Clear() => Pending = false;
         public void Configure(OpenCodePageSource source, long revision, string session, long generation) { }

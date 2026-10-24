@@ -19,11 +19,14 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
     private Guid? _retainedUnknownOperationId;private bool _busy,_localSubmissionPending;private string? _currentAgentId,CurrentModelDisplay,_pendingAgentId;
     private string? CurrentAgentId=>_pendingAgentId??_currentAgentId;
     private string? CurrentAgentDisplay=>CurrentAgentId is null?null:DisplayName(CurrentAgentId);
-    private bool HasPendingSelection=>_pendingAgentId is not null;
-    private OpenCodeModelRef? CurrentModel;
+    private bool HasPendingSelection=>_pendingAgentId is not null || _pendingModel is not null;
+    private OpenCodeModelRef? _pendingModel, _observedModel;
+    private readonly Dictionary<(string Source, string Session), (string? Agent, OpenCodeModelRef? Model)> _pendingSelections = new();
+    private OpenCodeModelRef? CurrentModel { get => _pendingModel ?? _observedModel; set => _observedModel = value; }
     private IReadOnlyList<OpenCodeModelInfo> ModelChoices = Array.Empty<OpenCodeModelInfo>();
     private OpenCodeSessionInfo? CurrentSessionInfo;
     private const string UnknownAgentText="未知智能体";
+    private const string UnknownModelText="未知模型";
     private void UpdateControls(){}private void SetStatus(string s){}private Task ReloadAsync(AgentSwitchOrigin o,bool surfaceProtection)=>Task.CompletedTask;
     private void HideRecoveryConfirm(){}private void SyncRecoveryBar(){}private void UpdateStatusVisibility(){}
 
@@ -54,10 +57,24 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
         Check(selector.CurrentAgentId=="B"&&selector.HasPendingSelection&&selector._currentText.Text=="B full name","same-session generation retains pending next-message agent");
         selector.SelectPendingAgent(origin,"A");Check(selector.CurrentAgentId=="B","stale picker origin cannot replace pending choice");
         selector.ApplyAgents(data,"B");Check(selector._currentText.Text=="B full name"&&selector._currentText.Foreground is null,"normal B removes old A RGB");
-        Check(!selector.HasPendingSelection,"only observing selected agent on server consumes pending choice");
+        Check(selector.HasPendingSelection,"observing the selected agent before prompt admission retains pending choice");
+        selector.SelectPendingModel(new() { Id="next-model", ProviderId="provider", Variant="high" });
+        Check(selector.CurrentModel is {Id:"next-model",Variant:"high"} && p.HttpMutations==mutations,"ED1 model/effort selection updates presentation with no HTTP mutation");
+        selector.Clear();
+        selector.Configure(p.SourceInstance,p.SourceInstance.Revision,"ses_other",3);
+        Check(!selector.HasPendingSelection && selector.CurrentModel is null,"ED1 other session never borrows pending choices");
+        selector.Configure(p.SourceInstance,p.SourceInstance.Revision,"ses_test",4);
+        Check(selector.CurrentAgentId=="B" && selector.CurrentModel is {Id:"next-model",Variant:"high"},"ED1 agent/model/effort survive tab switches");
+        selector.ApplyModel(new() {Id="old-model", ProviderId="provider"});
+        Check(selector.CurrentModel is {Id:"next-model",Variant:"high"},"ED1 background session reload cannot revert pending model/effort");
+        selector.CompletePendingSelection();
+        Check(!selector.HasPendingSelection && selector.CurrentModel is {Id:"old-model"},"ED1 successful send consumes all pending choices together");
+        selector.ApplyAgents(data,"B");
         selector.CurrentSessionInfo = new() {Id="ses_test",ParentId="ses_parent",Agent="B"};
         selector.SelectPendingAgent(selector._currentOrigin!,"A");
         Check(!selector.HasPendingSelection&&selector.CurrentAgentId=="B"&&selector.SwitchBlockedReason()=="子智能体会话仅供查看。","SA2 child session blocks picker selection, not merely button visuals");
+        selector.SelectPendingModel(new() {Id="forbidden",ProviderId="provider",Variant="high"});
+        Check(!selector.HasPendingSelection,"ED1 child session rejects model/effort changes as well as agent");
         selector.ApplyAgents(data,"A");Check(selector._currentText.Foreground is SolidColorBrush{Color:{B:0xef}},"normal A-B-A reapplies custom RGB");
         selector.ResetUi();Check(selector._currentText.Text==""&&selector._currentText.Foreground is null&&Equals(selector._currentText.Attached["Help"],""),"real ResetUi clears previous identity/color/description together");
         Check(selector.CurrentModel is null, "reset clears observed sidebar/status model, never carries it into another session");

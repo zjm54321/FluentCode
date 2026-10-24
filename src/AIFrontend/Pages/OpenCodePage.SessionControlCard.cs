@@ -93,7 +93,8 @@ public sealed partial class OpenCodePage
             selected?.Id is null ? "强度不可用" : OpenCodeModelPresentation.VariantLabel(selected.Variant),
             "仅修改当前会话；模型与强度选择仅影响之后的回合。", enabled && ownsSelection,
             enabled, enabled && selected?.Id is not null, ownsSelection ? _agentSelector.CurrentAgentDescription : null,
-            pendingAgent: ownsSelection && _agentSelector.HasPendingSelection);
+            pendingAgent: ownsSelection && _agentSelector.HasPendingAgent,
+            pendingModel: ownsSelection && _agentSelector.HasPendingModel);
     }
 
     private void OpenSessionControlModelPicker(bool variantOnly, FrameworkElement? anchor = null)
