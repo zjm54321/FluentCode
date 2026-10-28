@@ -2,7 +2,7 @@
 
 原生 C# / WinUI 3 桌面端框架（Windows 11 x64），提供 Fluent 风格桌面外壳，整合网页端大模型、本地/直接协议模型（Local）、OpenCode 编程助手协作与任务看板。
 
-> **当前阶段与状态说明**：本项目处于功能整合与真机验证阶段，全工程全量 Debug 构建 exit 0。设置页既定导航崩溃路径已修复（本轮实测未再崩溃），设置页 5 个分类正常加载；已实测验证 OpenCode 本机测试服务 Basic 凭据安全保存、只读位置查询与单轮 Prompt 往返接收（idle=succeeded）；原生工具卡片已改为组合原生 Expander 并通过隔离渲染测试（38 检查点 0 失败），最新主程序经 UIA 观测 OpenCode 界面正常加载运行。当前版本尚未完成全链路验收，最新 UI 修正尚未提交 Git，不作为最终交付版本。详细测试事实与已知范围请参阅 [当前验证与验收状态文档](docs/current-validation-status.md)。
+> **当前验证状态（2026-10-28）**：OpenCode 遗留需求恢复已覆盖 68 个测试入口，失败项修复后定向复验通过；Debug/x64 构建与发布均为 0 警告、0 错误。受控真实浏览器验证覆盖代理、嵌套跨域框架、Lighthouse 与下载隔离。功能及证据见 [当前验证记录](docs/current-validation-status.md)。
 
 ---
 
@@ -39,6 +39,7 @@
 ### 先决条件
 1. **操作系统**：Windows 11 (x64)（已实际验证，其他版本未声称测试）。
 2. **运行时环境**：依赖 .NET 10 Runtime (x64) 与 WebView2 Runtime。Windows App SDK 原生核心组件已随完整输出目录打包自带（`WindowsAppSDKSelfContained=true`），无需单独安装 App SDK。
+   - OpenCode 会话浏览器的代理与 Lighthouse 使用随输出目录提供的独立 Node 运行组件，不依赖系统 Node/npm。选择外部 Chrome 时，需另有已安装的 Chrome；应用不会安装浏览器。
 3. **外部服务依赖**：**本程序不会自动拉起外部服务**。使用前请确保自备的后端服务已启动：
    - OpenCode 协作：需自行启动 OpenCode 兼容后端服务（如本机测试服务）；
    - Local 模型：需自备并运行兼容 OpenAI / Anthropic 协议的本地网关或第三方 API 服务。
@@ -58,7 +59,12 @@
    - 返回主界面，在 Normal / AI 页面顶部的 SelectorBar 中切换至 **Local** 即可使用对话（窄窗测量溢出已完成源码修正，真机运行待验）。
 
 3. **使用网页端 AI**：
-   - 在主界面普通模式下，通过顶部 SelectorBar 自由切换 ChatGPT、Gemini 或 Claude 视图浏览（登录受服务商内嵌策略限制）。
+    - 在主界面普通模式下，通过顶部 SelectorBar 自由切换 ChatGPT、Gemini 或 Claude 视图浏览（登录受服务商内嵌策略限制）。
+
+4. **选择 OpenCode 会话浏览器**：
+   - 在设置的浏览器区域选择内嵌 WebView2 或外部 Chrome。外部 Chrome 使用独立窗口，应用内显示实际截图预览；文件和 Mermaid 仍在应用内预览。
+   - 保存仅影响新建的浏览器工作区。已有会话需关闭会话标签后重新打开；只关闭网页不会重建工作区。
+   - 会话网页经当前 OpenCode 来源的网络隧道访问，网页中的 `localhost` 指服务端。连接中断时停止转发，不切回桌面本地网络。高级附加模式的本机调试端点与必需启动参数见设置页。
 
 ---
 
@@ -66,6 +72,9 @@
 
 ### 常用命令（PowerShell，工程根目录下执行）
 ```powershell
+# 首次构建或更新运行组件后显式准备依赖（下载固定版本并校验；不修改系统 Node/npm）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\browser-runtime\prepare.ps1
+
 # 编译 Debug 配置
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Debug
 
@@ -77,6 +86,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Confi
 > 本项目为依赖部署模式（`SelfContained=false`），构建输出位于：
 > `src\AIFrontend\bin\x64\<Configuration>\net10.0-windows10.0.26100.0\win-x64\`
 > **必须在完整输出目录中启动**，或完整拷贝整个 `win-x64` 目录，严禁单独拷贝单个 `AIFrontend.exe` 运行。
+> `BrowserRuntime` 子目录也必须完整保留。构建与发布在缺少已准备组件时会报错，不会自动下载；应用启动时也不会安装依赖。准备脚本的输出位于忽略跟踪的 `artifacts\browser-runtime`。
 
 ---
 
