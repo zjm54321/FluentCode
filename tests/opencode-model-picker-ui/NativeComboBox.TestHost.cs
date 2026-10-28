@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Microsoft.UI.Xaml
 {
     public class Application { public static Application Current { get; } = new(); public Dictionary<string, object> Resources { get; } = new() { ["DefaultComboBoxStyle"] = new Style(), ["DefaultComboBoxItemStyle"] = new Style() }; }
-    public class FrameworkElement { public Dictionary<string, object> Resources { get; } = new(); public Style? Style { get; set; } public double MinWidth { get; set; } public double MinHeight { get; set; } public HorizontalAlignment HorizontalAlignment { get; set; } public VerticalAlignment VerticalAlignment { get; set; } }
+    public class FrameworkElement { public Dictionary<string, object> Resources { get; } = new(); public Visibility Visibility { get; set; } public Style? Style { get; set; } public double MinWidth { get; set; } public double MinHeight { get; set; } public HorizontalAlignment HorizontalAlignment { get; set; } public VerticalAlignment VerticalAlignment { get; set; } }
     public class Style { }
     public class DataTemplate { }
     public enum HorizontalAlignment { Stretch }
@@ -30,13 +30,15 @@ namespace Microsoft.UI.Xaml.Controls
         public event EventHandler? DropDownClosed;
         public ContentPresenter SelectionPresenter { get; } = new();
         protected virtual void OnApplyTemplate() { }
-        protected object GetTemplateChild(string name) => SelectionPresenter;
+        public Microsoft.UI.Xaml.FrameworkElement DropDownGlyph { get; } = new();
+        protected object GetTemplateChild(string name) => name == "DropDownGlyph" ? DropDownGlyph : SelectionPresenter;
         public void ApplyTemplate() => OnApplyTemplate();
         public void CloseDropDown() => DropDownClosed?.Invoke(this, EventArgs.Empty);
         public object? SelectedItem { get => _selected; set { if (Equals(_selected, value)) return; _selected = value; SelectionChanged?.Invoke(this, EventArgs.Empty); } }
     }
     public class ComboBoxItem : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } }
     public class ContentPresenter : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } }
+    public class Grid { public static void SetColumnSpan(object element, int span) { _ = element; _ = span; } }
     public class Button : Microsoft.UI.Xaml.FrameworkElement { public object? Content { get; set; } public object? Tag { get; set; } public bool IsEnabled { get; set; } }
     public enum Orientation { Horizontal }
     public class StackPanel : Microsoft.UI.Xaml.FrameworkElement { public Orientation Orientation { get; set; } public double Spacing { get; set; } public List<Microsoft.UI.Xaml.FrameworkElement> Children { get; } = new(); }

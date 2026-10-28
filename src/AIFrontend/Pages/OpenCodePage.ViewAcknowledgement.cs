@@ -64,7 +64,7 @@ public sealed partial class OpenCodePage
 
     private void ViewAcknowledgementLayoutUpdated(object? sender, object e) => RequestViewAcknowledgementReview();
     private void ViewAcknowledgementSizeChanged(object sender, SizeChangedEventArgs e) => RequestViewAcknowledgementReview();
-    private void ViewAcknowledgementViewChanged(object? sender, ScrollViewerViewChangedEventArgs e) => RequestViewAcknowledgementReview();
+    private void ViewAcknowledgementViewChanged(ScrollView sender, object e) => RequestViewAcknowledgementReview();
 
     // Compatibility apply entry: DTOs do NOT choose a watermark or prove visibility.
     internal void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> appliedWindow, bool windowVisible)

@@ -299,18 +299,21 @@ internal static class NativeTests
             await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo", "keep"); await f.Page.RunNative();
             Check(f.Http.Posts == 1 && f.Stage is null && f.Page.Snapshot.Text == "keep", "redo clears entire stage without draft write");
         }
-        foreach (var stale in new[] { false, true })
+        foreach (var scenario in new[] { "current", "edited", "binding-aba", "source-generation" })
         {
             using var f = new Fixture();
-            OpenCodeDraftEditorDialog.Next = (dialog, apply) => {
-                if (stale) { f.Page.DrainView(); f.Page.Text("later"); }
-                var outcome = apply("detached"); f.Page.DrainDispatcher();
-                Check(outcome == (stale ? OpenCodeDraftEditorApplyOutcome.Stale : OpenCodeDraftEditorApplyOutcome.Applied), "atomic editor exact ticket");
-                Check(stale || !dialog.Stale, "own successful application does not self-invalidate");
-                return Task.FromResult(new OpenCodeDraftEditorResult(stale ? OpenCodeDraftEditorOutcome.ClosedStale : OpenCodeDraftEditorOutcome.Applied, stale ? "detached" : null));
-            };
             await f.Page.StageNative(OpenCodeComposerClientActionKind.EditDraft, "editor", "initial"); await f.Page.RunNative();
-            Check(f.Page.Snapshot.Text == (stale ? "later" : "detached") && f.Http.Posts == 0, "editor not external process or send");
+            Check(f.Page.FullScreenOpens == 0 && f.Page.Snapshot.Text == "initial" && f.Http.Posts == 0,
+                "editor relinquishes command ownership before the queued live-editor handoff");
+            if (scenario == "edited") { f.Page.DrainView(); f.Page.Text("later"); }
+            if (scenario == "binding-aba") { f.Page.Switch("ses_other"); f.Page.Switch("ses_test"); }
+            if (scenario == "source-generation") f.Page.AdvanceSourceGeneration();
+            f.Page.DrainDispatcher();
+            Check(f.Page.FullScreenOpens == (scenario == "current" ? 1 : 0) && f.Http.Posts == 0,
+                "actual queued full-screen editor handoff fences draft/binding/source and never sends: " + scenario);
+            if (scenario is "current" or "edited")
+                Check(f.Page.Snapshot.Text == (scenario == "edited" ? "later" : "initial"),
+                    "live editor handoff does not replace or detach the draft text");
         }
     }
     private static async Task GuardsAndEpoch()

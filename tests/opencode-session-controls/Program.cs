@@ -32,6 +32,9 @@ internal static class Program
         await GateAndContinuation(); Console.WriteLine("PASS group 3: exact lease and paired continuation, existing request isolation, one prompt/zero explicit commit.");
         await Background(); Console.WriteLine("PASS group 4: session background wire, rejection/unknown gate and guarded origin.");
         await RootManagement(); Console.WriteLine("PASS group 5: real V2 root delete/rename, exact guard, rejection/unknown and stale metadata.");
+        await PersistentSelections(); Console.WriteLine("PASS group 6: persistent subsequent-turn model/variant selection, authoritative accepted state and typed model rejection.");
+        await RootSettlementAfterNavigation(); Console.WriteLine("PASS group 7: root mutation transport/settlement outlive canceled Home ownership without replay.");
+        await OpenCodeAgentSelector.VerifyStateAsync();
         Console.WriteLine($"PASS {_checks} assertions; headless fake HTTP only, not Page/native/live proof.");
     }
 
@@ -105,11 +108,73 @@ internal static class Program
             Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current)).Status == SessionControlStatus.ConfirmationRequired
                 && server.Mutations == 0, "fresh server metadata must still match confirmed actual root title");
             server.Title = "actual title"; server.HasInbox = true;
-            Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status == SessionControlStatus.Blocked, "root queued input preflight stays protected");
+            Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status == SessionControlStatus.Ready && server.HistoryReads == 0,
+                "installed remove handles pending execution; root management does not depend on idle or full message history");
             server.HasInbox = false; server.ParentId = "ses_parent";
             Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status == SessionControlStatus.ConfirmationRequired, "root cannot become child while confirmation is open");
             server.ParentId = null; origin.Source.Revoke();
             Check((await coordinator.PreviewAsync(origin, request, Empty, Current)).Status != SessionControlStatus.Ready && server.Mutations == 0, "revoked root origin never starts a mutation");
+        }
+        using (var server = new Server { Title = "actual title" })
+        {
+            var coordinator = new OpenCodeSessionControlCoordinator(new()); var origin = server.Origin();
+            var preview = await Preview(server, coordinator, origin, new(SessionControlKind.DeleteRoot, Directory: "/work space", ExpectedTitle: "actual title"));
+            server.Model = "{\"id\":\"streaming-choice\",\"providerID\":\"provider\"}";
+            server.Stage = "{\"messageID\":\"msg_changed\"}"; server.HasInbox = true; server.History = "streaming history not relevant";
+            Check((await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current)).AcceptanceKnown && server.Mutations == 1 && server.HistoryReads == 0,
+                "execution/selection changes do not endlessly invalidate root delete's confirmed target identity/title/directory");
+        }
+    }
+
+    private static async Task PersistentSelections()
+    {
+        foreach (var running in new[] { false, true })
+        foreach (var variant in new string?[] { null, "fast" })
+        {
+            using var server = new Server { HasInbox = running, History = running ? "malformed streaming history" : Server.Page("") };
+            var coordinator = new OpenCodeSessionControlCoordinator(new()); var origin = server.Origin();
+            var request = new SessionControlRequest(SessionControlKind.SwitchModel, new("alias", "provider", variant));
+            var preview = await Preview(server, coordinator, origin, request);
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
+            Check(result.AcceptanceKnown && result.Observed?.Model == request.Model && server.Mutations == 1,
+                "selection accepted by backend and authoritative Session.Info contains selected model/variant, running=" + running);
+            Check(server.HistoryReads == 0 && !server.Requests.Any(r => r.Path.EndsWith("/inbox") || r.Path.EndsWith("/active")),
+                "subsequent-turn selection never requires execution-idle/history preconditions");
+        }
+        foreach (var rejection in new[] { (400, "InvalidRequestError"), (401, "UnauthorizedError"), (404, "SessionNotFoundError") })
+        {
+            using var server = new Server(); var gate = new OpenCodeInteractionGate(); var origin = server.Origin();
+            var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var preview = await Preview(server, coordinator, origin, ModelRequest);
+            server.OnMutation = _ => Task.FromResult(Server.Json(rejection.Item1, Error(rejection.Item2)));
+            var result = await coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, Current, Current);
+            using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            Check(result.Status == SessionControlStatus.DefinitivelyRejected && !result.ProtectionRetained && lease.CanControlSession(),
+                "documented pre-effect model rejection does not become permanent unknown " + rejection.Item1);
+        }
+    }
+
+    private static async Task RootSettlementAfterNavigation()
+    {
+        foreach (var outcome in new[] { "accepted", "rejected", "unknown" })
+        {
+            using var server = new Server { Title = "actual title" }; var gate = new OpenCodeInteractionGate();
+            var coordinator = new OpenCodeSessionControlCoordinator(gate); var origin = server.Origin();
+            var preview = await Preview(server, coordinator, origin, new(SessionControlKind.DeleteRoot, Directory: "/work space", ExpectedTitle: "actual title"));
+            var response = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+            server.OnMutation = _ => response.Task;
+            using var pageLifetime = new CancellationTokenSource(); bool owner = true;
+            var operation = coordinator.ConfirmAsync(preview, Guid.NewGuid(), Empty, _ => owner, _ => owner, pageLifetime.Token);
+            Check(server.Mutations == 1, "delete started under current Home owner");
+            owner = false; pageLifetime.Cancel();
+            Check(!server.MutationToken.IsCancellationRequested, "navigation retires UI authority but does not abort a started DELETE transport");
+            if (outcome == "unknown") response.SetException(new HttpRequestException("connection lost"));
+            else response.SetResult(Server.Json(outcome == "accepted" ? 204 : 400, outcome == "accepted" ? "" : Error("InvalidRequestError")));
+            var result = await operation;
+            using var lease = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            Check(result.Status == (outcome == "accepted" ? SessionControlStatus.Accepted : outcome == "rejected" ? SessionControlStatus.DefinitivelyRejected : SessionControlStatus.OutcomeUnknown)
+                && lease.CanControlSession() == (outcome != "unknown") && server.Mutations == 1,
+                "exact started operation settles after Home owner loss; only true ambiguity retains protection, " + outcome);
         }
     }
 
@@ -532,6 +597,7 @@ internal sealed class Server : HttpMessageHandler
     internal int Mutations, HistoryReads;
     internal string LastBody = "";
     internal Func<HttpRequestMessage, Task<HttpResponseMessage>>? OnMutation;
+    internal CancellationToken MutationToken;
     internal readonly List<(string Method, string Path, string Query, string Host)> Requests = new();
     internal string History = Page("{\"id\":\"msg_i\",\"type\":\"idle\",\"time\":{\"created\":3},\"outcome\":\"succeeded\"},"
         + User("msg_a", 2, "newer") + "," + User("msg_z", 1, "older", true));
@@ -547,6 +613,7 @@ internal sealed class Server : HttpMessageHandler
         var uri = request.RequestUri!; Requests.Add((request.Method.Method, uri.AbsolutePath, uri.Query, uri.Host));
         if (request.Method != HttpMethod.Get)
         {
+            MutationToken = cancellationToken;
             Mutations++; LastBody = request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
             if (OnMutation is not null) return await OnMutation(request);
             if (uri.AbsolutePath.EndsWith("/revert/stage"))

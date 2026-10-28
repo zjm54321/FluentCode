@@ -203,9 +203,20 @@ internal static class Program
         var selector = Read("src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs");
         var pickerRoute = selector.Substring(selector.IndexOf("private async Task ShowPickerAsync"),
             selector.IndexOf("private void SelectPendingAgent") - selector.IndexOf("private async Task ShowPickerAsync"));
-        Check(pickerRoute.Contains("SelectPendingAgent(origin, target)") && !pickerRoute.Contains("RunSwitchAsync"), "AS3 picker choice is UI-only, never a server switch");
-        Check(selector.Contains("internal async Task<bool> ApplyPendingSelectionAsync(bool forNextSend = false)") && selector.Contains("await RunSwitchAsync(origin, target, forNextSend)")
-            && selector.Contains("_coordinator.SwitchAsync(origin, operationId, target, IsOriginCurrent"), "next-send seam preserves existing server coordinator/re-check");
+        Check(pickerRoute.Contains("SelectPendingAgent(origin, target)") && !pickerRoute.Contains("RunSwitchAsync"), "picker routes its choice through the shared guarded application entry");
+        var agentChoice = selector.Substring(selector.IndexOf("private void SelectPendingAgent"),
+            selector.IndexOf("internal IReadOnlyList<OpenCodeAgentPickerRow>") - selector.IndexOf("private void SelectPendingAgent"));
+        var modelChoice = selector.Substring(selector.IndexOf("internal void SelectPendingModel"),
+            selector.IndexOf("// Called by the page BEFORE") - selector.IndexOf("internal void SelectPendingModel"));
+        Check(agentChoice.Contains("_ = ApplyPendingSelectionAsync(forNextSend: true)")
+            && modelChoice.Contains("_ = ApplyPendingSelectionAsync(forNextSend: true)")
+            && selector.Contains("if (_pendingApplication is { IsCompleted: false } pending) return pending;")
+            && selector.Contains("return _pendingApplication = ApplyPendingSelectionCoreAsync(forNextSend);")
+            && selector.Contains("await RunSwitchAsync(origin, target, forNextSend)")
+            && selector.Contains("_coordinator.SwitchAsync(origin, operationId, target, IsOriginCurrent")
+            && selector.Contains("controls.ApplySendModelAsync(controlOrigin")
+            && selector.Contains("await ReloadAsync(origin, surfaceProtection: false)"),
+            "choices apply immediately; send joins the same in-flight guarded operation and authoritative recheck (behavior exercised by composer-hookup)");
         AIFrontend.Pages.OpenCodePage.RunVariantSelectionChecks(Check).GetAwaiter().GetResult();
         var cardBinding = Read("src/AIFrontend/Pages/OpenCodePage.SessionControlCard.cs");
         Check(selector.Contains("anchor?.XamlRoot ?? XamlRoot"), "PK2 invoking picker owner survives an unrooted selector/closed overview");
@@ -258,7 +269,11 @@ internal static class Program
             && combo.Contains("new OpenCodeEffortChoice(id)"), "PK2 flat models are provider-sorted; effort starts with true null and preserves opaque IDs");
         Check(!combo.Contains("{Binding Visual}") && combo.Contains("Content = choice.CreateVisual()"), "PK3a native item content has real visuals, not runtime binding to an internal record");
         var effortVisual = (Microsoft.UI.Xaml.Controls.StackPanel)OpenCodeNativeComboBox.Effort("high").CreateVisual();
-        Check(effortVisual.Children[0] is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uEC4A" }, "PK3a effort choices carry the Fluent gauge icon");
+        Check(effortVisual.Children[0] is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uE907" }, "effort choices carry the selected high-tier Fluent icon");
+        var tiers = new string?[] { null, "minimal", "low", "medium", "high", "xhigh", "max" };
+        Check(tiers.Select(OpenCodeModelPresentation.VariantGlyph).Distinct().Count() == tiers.Length,
+            "default and known effort tiers have distinct icons");
+        Check(OpenCodeModelPresentation.VariantGlyph("extra_high") == OpenCodeModelPresentation.VariantGlyph("xhigh"), "equivalent extra-high labels share their tier icon");
         RunComboBoxChecks();
         FavoriteRpcChecks.Run(Check, root, args[1]).GetAwaiter().GetResult();
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
@@ -289,10 +304,12 @@ internal static class Program
         effort.ApplyTemplate();
         effort.Render(new[] { OpenCodeNativeComboBox.Effort("high") }, new OpenCodeEffortChoice("high"), true);
         effort.SetLabelExpanded(false);
-        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uEC4A" }
+        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uE907" }
             && ((Microsoft.UI.Xaml.Controls.ComboBoxItem)effort.Items[0]).Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 },
             "PK3d compact selection keeps the gauge while popup items retain icon and full text");
         effort.CloseDropDown();
+        Check(effort.DropDownGlyph.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed && effort.IsTextSearchEnabled,
+            "closed native selection hides only its arrow and retains native text search");
         Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon, "PK3d compact selection survives native popup close");
         effort.SetLabelExpanded(true);
         Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 }, "PK3d expanded selection restores the full label");

@@ -933,6 +933,7 @@ namespace AIFrontend.Pages
         private void RefreshChildComposerVisibility() { }
         private void OpenFullScreenComposer() { FullScreenOpens++; }
         internal int FullScreenOpens;
+        internal void AdvanceSourceGeneration() => _sourceGeneration++;
         private void QueueComposerLayout() { }
         private void RefreshWslQuickAccess() { } // B12 quick access is outside this hookup host.
         private void OpenTerminalView(string shellId) { } // AT6 terminal page is outside this hookup host.

@@ -121,7 +121,7 @@ public sealed partial class OpenCodePage
                     await RunNativeRollbackAsync(owner, cancellation.Token);
                     break;
                 case OpenCodeComposerClientActionKind.EditDraft:
-                    await EditNativeDraftAsync(owner, snapshot.Text);
+                    QueueFullScreenComposer(ticket);
                     break;
                 case OpenCodeComposerClientActionKind.SideQuestion:
                     // A9: only asks for the question; the generate request then runs detached from this action.
@@ -161,15 +161,15 @@ public sealed partial class OpenCodePage
     {
         if (IsComposerSessionWorking(owner.Origin.SessionId) || _agentSelector.HasPendingModel)
         {
-            // The selector already owns the directory's real catalog. Busy selection is UI-only:
-            // no HTTP reads or writes here. Membership is freshly checked at next-send application.
+            // The selector owns the directory's catalog; committing a choice performs a fresh
+            // membership check and guarded subsequent-provider-turn mutation, even while running.
             var rows = _agentSelector.ModelChoices.Where(m => m.Id is not null && m.ProviderId is not null && m.Name is not null)
                 .Select(m => new OpenCodeModelPickerRow(m.ProviderId!, m.Id!, m.Name!, null, m.Enabled == true,
                     m.Variants?.Where(v => v.Id is not null).Select(v => v.Id!).ToArray() ?? Array.Empty<string>(), null)).ToImmutableArray();
             OpenCodeModelCurrent current = _agentSelector.CurrentModel is { Id: { } id, ProviderId: { } provider } model
                 ? new OpenCodeModelCurrent.Explicit(new(provider, id, model.Variant), rows.Any(r => r.ModelId == id && r.ProviderId == provider && r.Available))
                 : new OpenCodeModelCurrent.Unknown();
-            return new(owner.Origin.SessionId, rows, current, "下次发送生效", new DeferredModelPickerBasis(owner));
+            return new(owner.Origin.SessionId, rows, current, "接纳后影响后续模型回合；不会改动正在进行的模型请求。", new DeferredModelPickerBasis(owner));
         }
         var client = owner.Ticket.Binding.Client;
         var state = await ReadNativeAsync(owner, () => client.GetSessionControlStateAsync(owner.Origin.SessionId, ct), ct);
@@ -213,7 +213,7 @@ public sealed partial class OpenCodePage
             var state = new OpenCodeModelPickerState(presentation);
             if (!state.SelectModel(requested.ProviderId, requested.ModelId) || !state.SelectVariant(requested.Variant)) return;
             var confirmation = state.TryFreezeConfirmation();
-            if (confirmation is not null) await CommitNativeModelAsync(owner, confirmation, ct);
+            if (confirmation is not null) await CommitNativeModelAsync(owner, confirmation, ct, variantOnly);
             return;
         }
         await OpenCodeRecentModels.Shared.LoadAsync();
@@ -227,10 +227,10 @@ public sealed partial class OpenCodePage
                 favoriteDirectory: presentation.Basis is ModelPickerBasis modelBasis ? modelBasis.Catalog.Directory : owner.Ticket.Binding.Slot?.Directory,
                 favoriteCancellation: ct); }
         finally { _nativeDialogPending = false; }
-        await CommitNativeModelAsync(owner, choice, ct);
+        await CommitNativeModelAsync(owner, choice, ct, variantOnly);
     }
 
-    private async Task CommitNativeModelAsync(NativeActionOwner owner, OpenCodeModelPickerResult choice, CancellationToken ct)
+    private async Task CommitNativeModelAsync(NativeActionOwner owner, OpenCodeModelPickerResult choice, CancellationToken ct, bool variantOnly = false)
     {
         if (!CanStartNativeAction(owner, owner.Origin) || choice.Outcome != OpenCodeModelPickerOutcome.Confirmed
             || choice.Choice is not { } key) return;
@@ -245,8 +245,7 @@ public sealed partial class OpenCodePage
         var model = new SessionControlModelRef(key.ModelId, key.ProviderId, key.Variant);
         if (basis.DeferSelection || IsComposerSessionWorking(owner.Origin.SessionId) || _agentSelector.HasPendingModel)
         {
-            // Same AS3 owner as deferred agent selection. No mutation at selection time, even if
-            // execution finished while the flyout was open; the next send applies this exact choice.
+            // The selector persists this choice now using the same guarded subsequent-turn route.
             _agentSelector.SelectPendingModel(new() { Id = key.ModelId, ProviderId = key.ProviderId, Variant = key.Variant });
             return;
         }
@@ -260,7 +259,8 @@ public sealed partial class OpenCodePage
         if (!CanPublishNativeOperation(owner)) return;
         if (result.AcceptanceKnown)
         {
-            ShowMessage(InfoBarSeverity.Success, "模型选择已接纳", "仅影响之后的回合，不代表模型正在执行。" +
+            ShowMessage(InfoBarSeverity.Success, variantOnly ? "推理强度选择已接纳" : "模型选择已接纳",
+                (variantOnly ? "仅影响之后的回合。" : "仅影响之后的回合，不代表模型正在执行。") +
                 (result.Observed is null ? "当前显示状态未能重新读取。" : string.Empty));
             _agentSelector.RefreshDisplay(); // Read-only status line re-reads the real session state.
         }

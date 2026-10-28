@@ -12,10 +12,10 @@ using Microsoft.UI.Xaml.Controls;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// Agent/model presentation, UI-only agent selection and guarded application on the next send.
+/// Agent/model presentation and guarded, persistent subsequent-turn selection.
 /// </summary>
 /// <remarks>
-/// OpenSelection opens an anchored ListView flyout and stores only a pending UI choice. The next send calls
+/// OpenSelection opens an anchored ListView flyout and immediately applies its pending choice. Sending joins
 /// ApplyPendingSelectionAsync before beginning local submission. Real mutations retain AgentSwitchCoordinator's
 /// shared lease, server re-check, origin fence and explicit unknown recovery. Same-session generation changes keep
 /// the pending choice; per-source/session choices survive tab changes. UI methods run on the UI thread; origin callbacks read only
@@ -61,9 +61,12 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     private bool _busy;
     private bool _localSubmissionPending;
     private bool _dialogOpen;
+    private Task<bool>? _pendingApplication;
+    private long _displayReadVersion;
+    private bool _displayRefreshPending;
 
     /// <summary>
-    /// Open the picker (UI selection only); false when unavailable or already open.
+    /// Open the picker; false when unavailable or already open.
     /// </summary>
     internal bool OpenSelection(FrameworkElement? anchor = null)
     {
@@ -118,8 +121,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         SavePendingSelection();
         _currentText.Text = CurrentAgentDisplay ?? UnknownAgentText;
         ApplyCurrentAgentPresentation();
-        SetStatus(HasPendingSelection ? "下一条消息生效" : string.Empty);
+        SetStatus(HasPendingSelection ? "正在应用后续回合选择…" : string.Empty);
         UpdateControls();
+        _ = ApplyPendingSelectionAsync(forNextSend: true);
     }
 
     internal IReadOnlyList<OpenCodeAgentPickerRow> AgentChoices => _rows;
@@ -127,7 +131,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
 
     internal void SelectUserAgent(string target)
     {
-        if (target == CurrentAgentId || Volatile.Read(ref _currentOrigin) is not { } origin) return;
+        if (target == CurrentAgentId && _pendingAgentId is null || Volatile.Read(ref _currentOrigin) is not { } origin) return;
         SelectPendingAgent(origin, target);
     }
 
@@ -135,17 +139,24 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     {
         if (Volatile.Read(ref _currentOrigin) is not { } origin || !IsOriginCurrent(origin)
             || SwitchBlockedReason() is not null) return;
-        _pendingModel = model == _observedModel ? null : model;
+        _pendingModel = ModelsMatch(model, _observedModel) ? null : model;
         SavePendingSelection();
         ApplyModel(_observedModel);
-        SetStatus(HasPendingSelection ? "下次发送生效" : string.Empty);
+        SetStatus(HasPendingSelection ? "正在应用后续回合选择…" : string.Empty);
         UpdateControls();
+        _ = ApplyPendingSelectionAsync(forNextSend: true);
     }
 
     // Called by the page BEFORE BeginLocalAgentSubmission. PromptBody carries only text/files/contexts,
     // not execution choices: use the existing switch APIs and their leases, never invent wire fields.
     // False means the page must keep the draft and abort this send. No retry is performed here.
-    internal async Task<bool> ApplyPendingSelectionAsync(bool forNextSend = false)
+    internal Task<bool> ApplyPendingSelectionAsync(bool forNextSend = false)
+    {
+        if (_pendingApplication is { IsCompleted: false } pending) return pending;
+        return _pendingApplication = ApplyPendingSelectionCoreAsync(forNextSend);
+    }
+
+    private async Task<bool> ApplyPendingSelectionCoreAsync(bool forNextSend)
     {
         if (!HasPendingSelection) return true;
         var origin = Volatile.Read(ref _currentOrigin);
@@ -153,9 +164,10 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         if (_pendingAgentId is { } target && target != _currentAgentId)
         {
             await RunSwitchAsync(origin, target, forNextSend).ConfigureAwait(true);
-            if (!IsOriginCurrent(origin) || _currentAgentId != target || HasUnresolvedUnknown) return false;
+            if (!IsOriginCurrent(origin) || _pendingAgentId == target || HasUnresolvedUnknown) return false;
+            SavePendingSelection();
         }
-        if (_pendingModel is { } model && model != _observedModel)
+        if (_pendingModel is { } model && !ModelsMatch(model, _observedModel))
         {
             var controls = new OpenCodeSessionControlCoordinator(OpenCodeInteractionGate.Shared);
             var controlOrigin = new SessionControlOrigin(origin.Source, origin.Revision, origin.SessionId, origin.SelectionGeneration)
@@ -164,23 +176,54 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             var draft = new SessionControlDraft("pending-send-selection", false);
             var ct = _contextCts?.Token ?? CancellationToken.None;
             SessionControlResult result;
-            if (forNextSend)
-                result = await controls.ApplySendModelAsync(controlOrigin, Guid.NewGuid(),
-                    new(model.Id!, model.ProviderId!, model.Variant), draft, Current, ct).ConfigureAwait(true);
-            else
+            _busy = true;
+            UpdateControls();
+            try
             {
-                var preview = await controls.PreviewAsync(controlOrigin, new(SessionControlKind.SwitchModel,
-                    new(model.Id!, model.ProviderId!, model.Variant)), draft, Current, ct).ConfigureAwait(true);
-                if (preview.Preview is null || !IsOriginCurrent(origin)) return false;
-                result = await controls.ConfirmAsync(preview.Preview, Guid.NewGuid(), draft, Current, Current, ct).ConfigureAwait(true);
+                if (forNextSend)
+                    result = await controls.ApplySendModelAsync(controlOrigin, Guid.NewGuid(),
+                        new(model.Id!, model.ProviderId!, model.Variant), draft, Current, ct).ConfigureAwait(true);
+                else
+                {
+                    var preview = await controls.PreviewAsync(controlOrigin, new(SessionControlKind.SwitchModel,
+                        new(model.Id!, model.ProviderId!, model.Variant)), draft, Current, ct).ConfigureAwait(true);
+                    if (preview.Preview is null || !IsOriginCurrent(origin)) return false;
+                    result = await controls.ConfirmAsync(preview.Preview, Guid.NewGuid(), draft, Current, Current, ct).ConfigureAwait(true);
+                }
+                if (!IsOriginCurrent(origin)) return false;
+                if (!result.AcceptanceKnown)
+                {
+                    SetStatus(result.ProtectionRetained ? "选择结果未知；保护已保留，未自动重试。"
+                        : "选择尚未接纳；请检查连接、模型与会话状态。未自动重试。");
+                    return false;
+                }
+                if (_pendingModel == model) _pendingModel = null;
+                SavePendingSelection();
+                await ReloadAsync(origin, surfaceProtection: false).ConfigureAwait(true);
             }
-            if (!result.AcceptanceKnown || !IsOriginCurrent(origin)) return false;
-            ApplyModel(model);
+            finally
+            {
+                if (IsOriginCurrent(origin)) { _busy = false; UpdateControls(); }
+            }
+        }
+        if (IsOriginCurrent(origin))
+        {
+            if (_pendingAgentId == _currentAgentId) _pendingAgentId = null;
+            if (ModelsMatch(_pendingModel, _observedModel)) _pendingModel = null;
+            SavePendingSelection();
+            SetStatus(HasPendingSelection ? "选择尚未接纳" : string.Empty);
+            UpdateControls();
         }
         return IsOriginCurrent(origin);
     }
 
-    // Only durable prompt admission (or acknowledged command) consumes UI preferences; failure keeps them.
+    // Installed V2 (2.1.4) switchModel, Session.Info.fromRow and ModelResolver.withVariant
+    // explicitly normalize omitted/default to the base variant. Every other ID remains opaque.
+    private static bool ModelsMatch(OpenCodeModelRef? left, OpenCodeModelRef? right)
+        => left is not null && right is not null && left.Id == right.Id && left.ProviderId == right.ProviderId
+        && (left.Variant ?? "default") == (right.Variant ?? "default");
+
+    // Legacy send completion clears any remaining already-applied presentation preference.
     internal void CompletePendingSelection()
     {
         _pendingAgentId = null;
@@ -208,14 +251,17 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         return null;
     }
 
-    /// <summary>重新读取并刷新只读显示（例如 /models 已被接纳后）；忙碌或未就绪时不做任何事。</summary>
+    /// <summary>重新读取只读显示；切换期间合并刷新，避免丢失外部客户端事件。</summary>
     internal void RefreshDisplay()
     {
-        if (_busy || _client is null || Volatile.Read(ref _currentOrigin) is not { } origin)
+        if (_client is null || Volatile.Read(ref _currentOrigin) is not { } origin)
         {
             return;
         }
 
+        _displayRefreshPending = true;
+        if (_busy) return;
+        _displayRefreshPending = false;
         _ = ReloadAsync(origin, surfaceProtection: false);
     }
 
@@ -455,10 +501,12 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         }
 
         var token = _contextCts?.Token ?? CancellationToken.None;
+        var readVersion = ++_displayReadVersion;
+        bool Current() => IsOriginCurrent(origin) && readVersion == _displayReadVersion;
         try
         {
             var session = await client.GetSessionInfoAsync(origin.SessionId, token).ConfigureAwait(true);
-            if (!IsOriginCurrent(origin))
+            if (!Current())
             {
                 return;
             }
@@ -475,7 +523,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             }
 
             var agents = await client.ListAgentsAsync(directory, token).ConfigureAwait(true);
-            if (!IsOriginCurrent(origin))
+            if (!Current())
             {
                 return;
             }
@@ -485,19 +533,20 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             ApplyModel(session.Model);
             UpdateControls();
             var models = await client.ListModelsAsync(directory, token).ConfigureAwait(true);
-            if (!IsOriginCurrent(origin)) return;
+            if (!Current()) return;
             if (models.Location?.Directory == directory) ModelChoices = models.Data ?? new List<OpenCodeModelInfo>();
 
             if (surfaceProtection)
             {
                 await SurfaceProtectionAsync(origin).ConfigureAwait(true);
-                if (!IsOriginCurrent(origin))
+                if (!Current())
                 {
                     return;
                 }
             }
 
-            SetStatus(HasPendingSelection ? "下一条消息生效" : data.Count == 0 ? "该目录没有可切换的智能体。" : string.Empty);
+            SetStatus(HasPendingSelection ? "选择尚未接纳" : data.Count == 0 ? "该目录没有可切换的智能体。" : string.Empty);
+            UpdateControls();
         }
         catch (OperationCanceledException)
         {
@@ -506,7 +555,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         catch (OpenCodeApiException api) when (api.StatusCode == 404)
         {
             // 会话不存在/不可读：与旧列表扫描“未找到”路径同文案，不显示 agent。
-            if (IsOriginCurrent(origin))
+            if (Current())
             {
                 SetStatus("无法读取该会话状态；未显示 agent。");
             }
@@ -514,21 +563,21 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         catch (ArgumentException)
         {
             // sessionId 未通过客户端前置校验（Configure 仅校验 ses 前缀）：同样视为不可读取。
-            if (IsOriginCurrent(origin))
+            if (Current())
             {
                 SetStatus("无法读取该会话状态；未显示 agent。");
             }
         }
         catch (OpenCodeException)
         {
-            if (IsOriginCurrent(origin))
+            if (Current())
             {
                 SetStatus("读取 agent 失败（协议或服务错误）。");
             }
         }
         catch (HttpRequestException)
         {
-            if (IsOriginCurrent(origin))
+            if (Current())
             {
                 SetStatus("读取 agent 失败（网络不可用）。");
             }
@@ -542,7 +591,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             // 来源在读取期间被撤销或参数非法：丢弃。
         }
 
-        if (IsOriginCurrent(origin))
+        if (Current())
         {
             // 读取失败：只读显示如实为“未知”（不保留占位，也不猜测）。
             if (_currentText.Text.Length == 0 || _currentText.Text == "智能体：读取中…")
@@ -695,7 +744,11 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             return;
         }
 
-        _busy = false;
+        if (result.Status == AgentSwitchStatus.Applied && _pendingAgentId == target)
+        {
+            _pendingAgentId = null;
+            SavePendingSelection();
+        }
         await ApplySwitchResultAsync(origin, result).ConfigureAwait(true);
         if (!IsOriginCurrent(origin))
         {
@@ -704,6 +757,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         }
 
         RaiseReport(result);
+        _busy = false;
         UpdateControls();
     }
 
@@ -724,7 +778,14 @@ internal sealed class OpenCodeAgentSelector : StackPanel
                 break;
 
             case AgentSwitchStatus.Blocked:
-                SetStatus("当前会话状态不允许切换（可能有待处理请求、未决后台任务或正在执行）；未切换。");
+                SetStatus(result.Rejection switch
+                {
+                    SessionControlErrorKind.Unauthorized => "服务器拒绝认证；请检查连接凭据。智能体选择未接纳。",
+                    SessionControlErrorKind.SessionNotFound => "会话已不存在；智能体选择未接纳。",
+                    SessionControlErrorKind.LocationNotFound => "服务端会话目录不可用；请恢复目录后重新选择。",
+                    SessionControlErrorKind.InvalidRequest => "服务器拒绝了智能体参数；请重新选择可用智能体。",
+                    _ => "会话受保护、选择不可用或本地输入待提交；未切换。",
+                });
                 break;
 
             case AgentSwitchStatus.OriginLost:
@@ -917,6 +978,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         _currentAgentId = null;
         _pendingAgentId = null;
         _pendingModel = null;
+        _pendingApplication = null;
+        _displayReadVersion++;
+        _displayRefreshPending = false;
         _busy = false;
         ResetUi();
         UpdateControls();
@@ -1027,6 +1091,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
 
         SyncRecoveryBar();
         DisplayChanged?.Invoke(this, EventArgs.Empty);
+        if (!_busy && _displayRefreshPending) RefreshDisplay();
     }
 
     private void RaiseReport(AgentSwitchResult result)

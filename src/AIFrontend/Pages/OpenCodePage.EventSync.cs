@@ -30,6 +30,7 @@ public sealed partial class OpenCodePage
     partial void OnBrowserEventSyncStopped();
     partial void OnBrowserEventStreamHealthChanged(bool connected);
     partial void OnBrowserControlEvent(OpenCodeEvent item);
+    partial void RefreshAgentSelectorDisplay();
 
     // Capture connection identity as well as readiness: a disconnect/reconnect during an action
     // cannot retroactively cover its missed interval. Boundary/gap repair is never suppressed.
@@ -112,6 +113,7 @@ public sealed partial class OpenCodePage
         _eventSnapshotBeforeReady = false;
         if (repair)
         {
+            RefreshAgentSelectorDisplay(); // A missed interval can contain selection changes from another client.
             _eventReconciliationPending = true;
             // Preserve the existing reconnect boundary fence. First readiness must NOT hide the initial paint.
             if (reconnect)
@@ -217,6 +219,7 @@ public sealed partial class OpenCodePage
         var refetch = false;
         var refreshSessionList = false;
         var statusesChanged = false;
+        var selectionChanged = false;
         var first = DateTimeOffset.MaxValue;
         var count = 0;
         bool Next(out (CancellationTokenSource Owner, OpenCodeEvent Event) queued)
@@ -240,6 +243,7 @@ public sealed partial class OpenCodePage
             count++;
             if (item.ReceivedAt < first) first = item.ReceivedAt;
             var id = item.SessionId;
+            selectionChanged |= id == _selectedSessionId && item.Type is "session.agent.selected" or "session.model.selected" or "session.location.selected";
             if (id == _selectedSessionId && item.Type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted"
                 && _eventReducer?.IsCurrentAssistantEvent(item) == false) continue;
             OnSessionInsightsEvent(item);
@@ -289,6 +293,7 @@ public sealed partial class OpenCodePage
             RefreshConversationSessionActivity();
         }
         if (refreshSessionList) _ = RefreshSessionsAsync();
+        if (selectionChanged) RefreshAgentSelectorDisplay();
         if (changed && _eventReducer is not null && _selectedSessionId is { } selected
             && _messageHistoryWorkflowOwner is null && !_messageHistoryNeedsState && !_sessionMissing)
         {

@@ -323,7 +323,7 @@ public sealed partial class OpenCodePage
 
     private static OpenCodeHomeStatus? CreateHomeStatus(OpenCodeSessionUiState? state, OpenCodeSessionInfo info)
         => state is null ? null : new OpenCodeHomeStatus(state.Working, state.PendingAction, state.IsUnread,
-            state.Completion?.Outcome ?? info.Outcome) { QuestionPending = state.QuestionPending };
+            state.Completion?.Outcome ?? info.Outcome) { QuestionPending = state.QuestionPending, MutationProtected = state.MutationProtected };
 
     private void RefreshHomeProjection()
     {

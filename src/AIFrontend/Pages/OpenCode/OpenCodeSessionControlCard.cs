@@ -87,7 +87,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
 
     private static Button ModelEntry()
     {
-        var button = new DropDownButton { HorizontalAlignment = HorizontalAlignment.Stretch,
+        var button = new Button { HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 6, 4), MinWidth = 0, MinHeight = 32 };
         AutomationProperties.SetAutomationId(button, "OpenCodeSidebarModel");
         AutomationProperties.SetName(button, "选择模型");

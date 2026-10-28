@@ -15,7 +15,7 @@ using Windows.Foundation;
 namespace AIFrontend.Pages.OpenCode;
 
 // UI-thread snapshots only. The Page must bind these to its captured source/session/view owner;
-// message DTOs do not contain a session ID. Rectangles are in the supplied ScrollViewer's coordinates.
+// message DTOs do not contain a session ID. Rectangles are in the supplied ScrollView's coordinates.
 internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Rect LabelBounds, Rect EffectiveViewport, Rect ScrollBounds);
 internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
 
@@ -69,7 +69,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private readonly Border _emptyHistoryMarker = new() { Height = 0 };
     private readonly Dictionary<string, bool> _rowExpansion = new(StringComparer.Ordinal);
     private readonly OpenCodeReasoningExpansionState _reasoningExpansion = new();
-    private ScrollViewer? _viewport;
+    private ScrollView? _viewport;
     private OpenCodeConversationWindow.Anchor? _readAnchor;
     private bool _followingBottom;
     private bool _animateNextScroll;
@@ -86,7 +86,7 @@ public sealed class OpenCodeConversationView : StackPanel
     // Publish classification from the single scroll owner, independent of native event
     // subscription order. Pagination observes corrections but never treats them as input.
     internal event Action<bool>? HistoryViewportChanged;
-    internal void RefreshViewport(ScrollViewer viewport) { ConnectViewport(viewport); UpdateWindow(); }
+    internal void RefreshViewport(ScrollView viewport) { ConnectViewport(viewport); UpdateWindow(); }
 
     // Full retained history, not only realized rows. Estimated offsets converge as rows are measured.
     internal IReadOnlyList<(string Text, bool User, double Offset)> ScrollAnnotations()
@@ -122,16 +122,17 @@ public sealed class OpenCodeConversationView : StackPanel
     private void ConnectViewport()
     {
         for (DependencyObject? node = VisualTreeHelper.GetParent(this); node is not null; node = VisualTreeHelper.GetParent(node))
-            if (node is ScrollViewer scroll) { ConnectViewport(scroll); break; }
+            if (node is ScrollView scroll) { ConnectViewport(scroll); break; }
     }
 
-    private void ConnectViewport(ScrollViewer viewport)
+    private void ConnectViewport(ScrollView viewport)
     {
         if (ReferenceEquals(_viewport, viewport)) return;
         DisconnectViewport();
         _viewport = viewport;
         _observedViewportOffset = viewport.VerticalOffset;
         viewport.ViewChanged += WindowViewChanged;
+        viewport.StateChanged += WindowStateChanged;
         viewport.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler(WindowPointerInput), handledEventsToo: true);
         viewport.AddHandler(UIElement.PointerWheelChangedEvent, new PointerEventHandler(WindowPointerInput), handledEventsToo: true);
         viewport.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(WindowKeyInput), handledEventsToo: true);
@@ -143,6 +144,7 @@ public sealed class OpenCodeConversationView : StackPanel
         if (_viewport is not null)
         {
             _viewport.ViewChanged -= WindowViewChanged;
+            _viewport.StateChanged -= WindowStateChanged;
             _viewport.RemoveHandler(UIElement.PointerPressedEvent, new PointerEventHandler(WindowPointerInput));
             _viewport.RemoveHandler(UIElement.PointerWheelChangedEvent, new PointerEventHandler(WindowPointerInput));
             _viewport.RemoveHandler(UIElement.KeyDownEvent, new KeyEventHandler(WindowKeyInput));
@@ -169,32 +171,51 @@ public sealed class OpenCodeConversationView : StackPanel
         if (stopAnimation)
         {
             _requestedOffset = _viewport.VerticalOffset;
-            _viewport.ChangeView(null, _requestedOffset, null, disableAnimation: true);
+            ScrollViewport(_viewport, _requestedOffset.Value, animated: false);
         }
     }
 
-    private void WindowViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    private static void ScrollViewport(ScrollView viewport, double offset, bool animated)
+        => viewport.ScrollTo(viewport.HorizontalOffset, offset, new ScrollingScrollOptions(
+            animated ? ScrollingAnimationMode.Enabled : ScrollingAnimationMode.Disabled, ScrollingSnapPointsMode.Ignore));
+
+    private void WindowViewChanged(ScrollView sender, object e) => WindowViewportChanged();
+
+    private void WindowStateChanged(ScrollView sender, object e)
+    {
+        // ScrollView separates offset notifications from the final idle transition.
+        // Native controller drags do not route pointer input through the viewport.
+        if (sender.State is ScrollingInteractionState.Interaction or ScrollingInteractionState.Inertia)
+        {
+            if (!_userScrolling) CaptureInteractionAnchor();
+            _userScrolling = true;
+        }
+        WindowViewportChanged();
+    }
+
+    private void WindowViewportChanged()
     {
         if (_viewport is not { } viewport) return;
+        var intermediate = viewport.State != ScrollingInteractionState.Idle;
         var moved = double.IsNaN(_observedViewportOffset) || Math.Abs(viewport.VerticalOffset - _observedViewportOffset) > 0.5;
         _observedViewportOffset = viewport.VerticalOffset;
         var restoring = IsRestoringViewport || !moved;
         if (_animatingScroll)
         {
-            if (!e.IsIntermediate) { _animatingScroll = false; _requestedOffset = null; }
+            if (!intermediate) { _animatingScroll = false; _requestedOffset = null; }
             HistoryViewportChanged?.Invoke(true);
             QueueWindowUpdate();
             return;
         }
         if (_requestedOffset is { } requested)
         {
-            // ChangeView is asynchronous. Extent/intermediate notifications before its ACK
+            // ScrollTo is asynchronous. Extent/intermediate notifications before its ACK
             // are not user scrolling and must not replace the retained key or realization range.
             if (Math.Abs(viewport.VerticalOffset - requested) <= 0.5) _requestedOffset = null;
         }
         else if (moved && !_updatingWindow && !_idleContentChanging)
         {
-            _userScrolling = e.IsIntermediate;
+            _userScrolling = intermediate;
             _requestedOffset = null;
             _scrollOwnerCurrent = null; // A new user viewport supersedes any queued page scroll intent.
             _windowGeneration++;
@@ -202,12 +223,12 @@ public sealed class OpenCodeConversationView : StackPanel
             _followingBottom = viewport.ScrollableHeight - viewport.VerticalOffset <= 0.5;
             _readAnchor = _window.Capture(WindowOffset());
         }
-        if (!e.IsIntermediate) _userScrolling = false;
+        if (!intermediate) _userScrolling = false;
         HistoryViewportChanged?.Invoke(restoring);
         QueueWindowUpdate();
     }
 
-    internal void PreserveReadingAnchor(ScrollViewer viewport, Func<bool> ownerCurrent)
+    internal void PreserveReadingAnchor(ScrollView viewport, Func<bool> ownerCurrent)
     {
         ConnectViewport(viewport);
         CaptureInteractionAnchor();
@@ -218,7 +239,7 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     // The page supplies its page/session fences; ClearMessages also invalidates queued callbacks.
-    internal void FollowToBottom(ScrollViewer viewport, Func<bool> ownerCurrent, bool animated = false)
+    internal void FollowToBottom(ScrollView viewport, Func<bool> ownerCurrent, bool animated = false)
     {
         ConnectViewport(viewport);
         if (_animatingScroll && !animated) CaptureInteractionAnchor();
@@ -313,7 +334,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 var animated = _followingBottom && _animateNextScroll;
                 _animateNextScroll = false;
                 _animatingScroll = animated;
-                viewport.ChangeView(null, _requestedOffset, null, disableAnimation: !animated);
+                ScrollViewport(viewport, _requestedOffset.Value, animated);
             }
         }
         finally { _updatingWindow = false; }
@@ -418,7 +439,7 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>Conservative actual-label proof, not message-list membership. No layout/visibility fallback.
     /// Call on the UI thread after layout, then recheck the immutable snapshot at the Page's one-shot frame.
     /// No candidate is returned during mutation or before this version's LayoutUpdated.</summary>
-    internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(ScrollViewer viewport)
+    internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(ScrollView viewport)
     {
         OpenCodeVisibleIdle? best = null;
         if (!_idleContentChanging && _idleSnapshotComplete && _idleLayoutVersion == RenderVersion)
@@ -436,7 +457,7 @@ public sealed class OpenCodeConversationView : StackPanel
         return new(RenderVersion, best);
     }
 
-    private bool TryIdleBounds(TextBlock label, ScrollViewer viewport, out Rect bounds, out Rect clip)
+    private bool TryIdleBounds(TextBlock label, ScrollView viewport, out Rect bounds, out Rect clip)
     {
         bounds = clip = default;
         try
@@ -1598,8 +1619,6 @@ public sealed class OpenCodeConversationView : StackPanel
             case OpenCodeMessageTypes.Compaction:
                 return CreateCompactionEntry(key, message);
             case OpenCodeMessageTypes.AgentSwitched:
-                return CreateCaptionEntry(key, message,
-                    m => "已切换 agent：" + (m.Agent ?? "（未提供）"));
             case OpenCodeMessageTypes.ModelSwitched:
                 return CreateModelSwitchEntry(key, message);
             case OpenCodeMessageTypes.LocationSwitched:

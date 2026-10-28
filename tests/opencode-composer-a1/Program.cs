@@ -227,7 +227,15 @@ namespace AIFrontend.Pages
             Check(!binding.Contains("SendStopButton.IsEnabled") && !binding.Contains("ComposerQueueButton.IsEnabled"), "toolbar presentation never changes send/queue availability policy");
             foreach (var name in new[] { "BlankAgentButton", "BlankStrengthButton" })
                 Check(Named(name).Name.LocalName == "OpenCodeNativeComboBox" && Attr(Named(name), "Click") is null, "native ComboBox control, not click-opened flyout: " + name);
-            Check(Named("BlankModelButton").Name.LocalName == "DropDownButton", "PK3c model restores anchored searchable native flyout");
+            var modelDialog = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs"));
+            var pickerFlyout = File.ReadAllText(Path.Combine(root, "src/AIFrontend/Pages/OpenCode/OpenCodePickerFlyout.cs"));
+            Check(Named("BlankModelButton").Name.LocalName == "Button"
+                && cardBinding.Contains("model.Click += ComposerModelButton_Click")
+                && binding.Contains("OpenSessionControlModelPicker(variantOnly: false, anchor: sender as FrameworkElement)")
+                && blank.Contains("ChooseBlankModelAsync(basis, token, anchor: sender as FrameworkElement)")
+                && modelDialog.Contains("new AutoSuggestBox") && modelDialog.Contains("search.TextChanged +=")
+                && pickerFlyout.Contains("flyout.ShowAt(anchor)") && pickerFlyout.Contains("FlyoutPlacementMode.TopEdgeAlignedLeft"),
+                "model trigger removes the redundant dropdown arrow but retains both anchored searchable native picker routes");
             Check(Named("BlankProjectButton").Name.LocalName == "DropDownButton", "directory retains native dropdown");
             Check(Named("BlankProjectButton").Ancestors().Contains(Named("NewSessionHeader"))
                 && Named("BlankPreferencesHost").Descendants().Any(n => Attr(n, "Text") == "中开始新会话"), "directory sentence is under the wordmark, above composer");

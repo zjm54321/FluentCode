@@ -49,6 +49,15 @@ $winui += foreach ($name in @('OpenCodeModelFavoriteStore.cs', 'OpenCodeModelPic
 $appearance = @(Get-ChildItem "$repo/src/AIFrontend/Services/Appearance/*.cs") + @(Get-ChildItem "$repo/src/AIFrontend/Services/Configuration/*.cs" | Where-Object Name -NE 'DpapiSecretStore.cs') + @(Get-ChildItem "$repo/src/AIFrontend/Models/*.cs")
 $viewSources = @($services) + @($notifications) + @($headless) + @($winui) + @($appearance)
 $testSources = @($services) + @($notifications) + @($headless) + @(Get-Item (Join-Path "$repo/tests/opencode-builtin-view" 'Program.cs'))
+$editorSource = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.FullScreenComposer.cs")
+$editorMethods = foreach ($name in @('QueueFullScreenComposer', 'ApplyFullScreenText')) {
+    $method = [regex]::Match($editorSource, '(?ms)^    private (?:void|bool) ' + $name + '\(.*?^    \}')
+    if (!$method.Success) { throw "Missing full-page editor entry method: $name" }
+    $method.Value
+}
+$editorGenerated = Join-Path $output 'FullPageEditor.Methods.cs'
+"using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($editorMethods -join "`n") + "`n}" | Set-Content -Encoding UTF8 $editorGenerated
+$testSources += Get-Item $editorGenerated, (Join-Path $PSScriptRoot 'FullPageEditor.TestHost.cs')
 $logoSources = @($services) + @($notifications) + @($headless) + @(Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs", "$repo/tests/opencode-builtin-view/LogoLifecycle.cs")
 
 function Write-Rsp($path, $kind, $out, $refs, $srcs, $extra) {

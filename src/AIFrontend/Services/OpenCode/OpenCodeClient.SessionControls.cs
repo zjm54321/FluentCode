@@ -131,7 +131,7 @@ public sealed partial class OpenCodeClient
 
     private async Task<JsonDocument?> SendSessionControlAsync(HttpMethod method, string path,
         IReadOnlyList<KeyValuePair<string, string>>? query, HttpContent? content, int expectedStatus,
-        SessionControlKind? mutation, string? sessionId, string? messageId, CancellationToken ct, string? directory = null)
+        SessionControlKind? mutation, string? sessionId, string? messageId, CancellationToken ct, string? directory = null, bool agentSelection = false)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(_timeout);
@@ -142,15 +142,15 @@ public sealed partial class OpenCodeClient
             if (!response.IsSuccessStatusCode)
             {
                 // The documented Basic-auth middleware can reject before the route with a plain-text
-                // 401 challenge rather than an API JSON error. This is a pre-effect interrupt rejection.
-                if (mutation is SessionControlKind.Interrupt or SessionControlKind.Background or SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot && status == 401)
+                // 401 challenge rather than an API JSON error. Authentication precedes mutation.
+                if ((agentSelection || mutation is SessionControlKind.SwitchModel or SessionControlKind.Interrupt or SessionControlKind.Background or SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot) && status == 401)
                     foreach (var challenge in response.Headers.WwwAuthenticate)
                         if (string.Equals(challenge.Scheme, "Basic", StringComparison.OrdinalIgnoreCase))
                             throw new OpenCodeSessionControlException(status, SessionControlErrorKind.Unauthorized, true);
                 // Only this dedicated path projects a bounded allowlist of error identity fields.
                 // Existing clients' no-error-body policy is unchanged. No server message is retained.
                 using var error = await ReadControlBodyAsync(response.Content, 16 * 1024, timeout.Token).ConfigureAwait(false);
-                throw ControlError(status, error.RootElement, mutation, sessionId, messageId, directory);
+                throw ControlError(status, error.RootElement, mutation, sessionId, messageId, directory, agentSelection);
             }
             if (status != expectedStatus) throw SessionControlJson.Invalid();
             if (status == 204) return null; // Acceptance is independent of any later display GET.
@@ -179,7 +179,7 @@ public sealed partial class OpenCodeClient
     }
 
     private static OpenCodeSessionControlException ControlError(int status, JsonElement value,
-        SessionControlKind? mutation, string? sessionId, string? messageId, string? directory = null)
+        SessionControlKind? mutation, string? sessionId, string? messageId, string? directory = null, bool agentSelection = false)
     {
         var kind = SessionControlErrorKind.Unclassified;
         bool verified = false;
@@ -194,9 +194,9 @@ public sealed partial class OpenCodeClient
                 if (property.Name is not ("_tag" or "message" or "sessionID") && !(messageField && property.Name == "messageID")) return false;
             return true;
         }
-        if (mutation is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot)
+        if (agentSelection || mutation is SessionControlKind.SwitchModel or SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot)
         {
-            // Exact 2.0.32 management error schemas. No arbitrary fields or backend messages escape.
+            // Installed V2 selection/management error schemas. No arbitrary fields or backend messages escape.
             bool Keys(params string[] optional)
             {
                 foreach (var property in value.EnumerateObject())
@@ -209,7 +209,7 @@ public sealed partial class OpenCodeClient
             if (status == 401 && tag == "UnauthorizedError" && Keys()) return new(status, SessionControlErrorKind.Unauthorized, true);
             if (status == 404 && tag == "SessionNotFoundError" && Keys("sessionID") && Matches("sessionID", sessionId))
                 return new(status, SessionControlErrorKind.SessionNotFound, true);
-            if (mutation is SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot && status == 404 && tag == "LocationNotFoundError" && Keys("location")
+            if ((agentSelection || mutation is SessionControlKind.SwitchModel or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot) && status == 404 && tag == "LocationNotFoundError" && Keys("location")
                 && value.TryGetProperty("location", out var location) && location.ValueKind == JsonValueKind.Object)
             {
                 SessionControlJson.Object(location);

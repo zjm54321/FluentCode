@@ -63,7 +63,7 @@ internal static class Windowing
         // Exercise the real view's realization/measurement/scroll owner with deterministic native
         // boundary stimuli. This is not a claim about native WinUI layout or input dispatch.
         var scrolling = new OpenCodeConversationView { IsLoaded = true };
-        var viewport = new ScrollViewer { ViewportHeight = 800 };
+        var viewport = new ScrollView { ViewportHeight = 800 };
         scrolling.TestTransform = _ => new GeneralTransform(-viewport.VerticalOffset);
         var heights = new Dictionary<string, double>();
         var entriesField = typeof(OpenCodeConversationView).GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -152,7 +152,7 @@ internal static class Windowing
             Check(viewport.VerticalOffset == nativeOffset && viewport.ProgrammaticOffsetsForTest.Count == 0,
                 "inertial-frame-" + frame + "-never-counter-scrolls-to-compositor-transform");
         }
-        viewport.ScrollForTest(viewport.VerticalOffset, intermediate: false);
+        viewport.SetStateForTest(ScrollingInteractionState.Idle);
         compositorLead = 19;
         Settle();
         Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "inertia-final-layout-does-not-replay-stale-pan-anchor");
@@ -165,9 +165,16 @@ internal static class Windowing
         viewport.ScrollForTest(viewport.VerticalOffset - 7, intermediate: true);
         scrolling.RefreshViewport(viewport);
         Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "lazy-height-during-inertia-never-issues-ChangeView");
-        viewport.ScrollForTest(viewport.VerticalOffset, intermediate: false);
+        viewport.SetStateForTest(ScrollingInteractionState.Idle);
         Settle();
         Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "lazy-height-pan-end-adopts-live-reader-instead-of-snapping-back");
+        viewport.SetStateForTest(ScrollingInteractionState.Interaction);
+        heights[precedingKey] = 151;
+        Settle();
+        Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "native-controller-interaction-without-viewport-pointer-never-counter-scrolls");
+        viewport.SetStateForTest(ScrollingInteractionState.Idle);
+        Settle();
+        Check(viewport.ProgrammaticOffsetsForTest.Count == 0, "native-controller-idle-without-final-offset-event-retains-live-reader");
         scrolling.ClearMessages();
 
         // WG1: a manual running-group choice belongs to the retained part key, not its realized Expander.
@@ -198,7 +205,7 @@ internal static class Windowing
         // Observe actual child geometry after EACH transaction, not the cached height model
         // after four settling passes. Native ViewChanged also fires for extent-only changes.
         var jitterView = new OpenCodeConversationView { IsLoaded = true };
-        var jitterViewport = new ScrollViewer { ViewportHeight = 800 };
+        var jitterViewport = new ScrollView { ViewportHeight = 800 };
         jitterView.TestTransform = _ => new GeneralTransform(-jitterViewport.VerticalOffset);
         var jitterRows = Enumerable.Range(1000, 2000).Select(i => new OpenCodeMessage
         { Id = "jitter_" + i, Type = OpenCodeMessageTypes.User, Text = "row " + i }).ToList();

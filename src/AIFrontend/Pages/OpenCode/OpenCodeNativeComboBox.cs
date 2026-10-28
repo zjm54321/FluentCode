@@ -61,7 +61,13 @@ public sealed class OpenCodeNativeComboBox : ComboBox
     protected override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
+        // Keep the platform popup, automation peer and keyboard behavior; only remove
+        // the redundant closed-control arrow from these compact agent/effort choices.
+        if (GetTemplateChild("DropDownGlyph") is FrameworkElement glyph) glyph.Visibility = Visibility.Collapsed;
         _selectionPresenter = GetTemplateChild("ContentPresenter") as ContentPresenter;
+        // Stock WinUI reserves a 38px second column for the arrow. Span it rather
+        // than replacing the native template or clipping compact selection icons.
+        if (_selectionPresenter is not null) Grid.SetColumnSpan(_selectionPresenter, 2);
         UpdateSelectionVisual(force: true);
     }
 
@@ -137,12 +143,12 @@ public sealed class OpenCodeNativeComboBox : ComboBox
     internal static Choice Effort(string? id, string? label = null) => new(new OpenCodeEffortChoice(id), label ?? OpenCodeModelPresentation.VariantLabel(id), () =>
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        panel.Children.Add(new FontIcon { Glyph = "\uEC4A", FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+        panel.Children.Add(new FontIcon { Glyph = OpenCodeModelPresentation.VariantGlyph(id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
         panel.Children.Add(new TextBlock { Text = label ?? OpenCodeModelPresentation.VariantLabel(id),
             TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
         return panel;
     }, "effort:" + (id ?? "<null>") + "\t" + label,
-        () => new FontIcon { Glyph = "\uEC4A", FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+        () => new FontIcon { Glyph = OpenCodeModelPresentation.VariantGlyph(id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
 
     internal static IReadOnlyList<Choice> Efforts(OpenCodeModelInfo? model) => model is null ? Array.Empty<Choice>()
         : new string?[] { null }.Concat((model.Variants ?? new()).Select(v => v.Id).Where(id => id is not null)).Distinct()

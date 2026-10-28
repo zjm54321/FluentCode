@@ -67,13 +67,12 @@ public sealed partial class OpenCodePage
         RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled, labels.Model);
         BlankAgentButton.SetLabelExpanded(labels.Agent);
         BlankStrengthButton.SetLabelExpanded(labels.Effort);
-        // Native ComboBoxes retain their own chevron (38epx template column); the
-        // icon-only width accommodates it instead of clipping a hand-drawn replacement.
+        // The native popup remains, but closed controls have no redundant chevron.
         BlankAgentButton.MinWidth = labels.Agent ? 96 : 0;
-        BlankAgentButton.Width = labels.Agent ? double.NaN : 60;
+        BlankAgentButton.Width = labels.Agent ? double.NaN : 36;
         BlankAgentButton.Padding = labels.Agent ? new Thickness(8, 0, 6, 0) : new Thickness(6, 0, 0, 0);
         BlankStrengthButton.MinWidth = labels.Effort ? 64 : 0;
-        BlankStrengthButton.Width = labels.Effort ? double.NaN : 60;
+        BlankStrengthButton.Width = labels.Effort ? double.NaN : 36;
         BlankStrengthButton.Padding = labels.Effort ? new Thickness(8, 0, 6, 0) : new Thickness(6, 0, 0, 0);
         BlankModelButton.MinWidth = labels.Model ? 96 : 0;
         BlankModelButton.Width = labels.Model ? double.NaN : 52;

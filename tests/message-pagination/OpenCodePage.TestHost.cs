@@ -44,7 +44,7 @@ namespace Microsoft.UI.Xaml.Controls
         public Visibility Visibility { get; set; }
     }
 
-    public partial class ScrollViewer
+    public partial class ScrollView
     {
         public double VerticalOffset { get; set; }
 
@@ -84,7 +84,7 @@ namespace AIFrontend.Pages
     /// <summary>记录每次 ApplyMessages 的应用快照（不渲染）：测试据此断言应用顺序、去重与内容更新。</summary>
     public sealed partial class OpenCodeConversationView
     {
-        public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
+        public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollView viewport, Func<bool> ownerCurrent) { }
         public IReadOnlyList<OpenCodeMessage> Children { get; private set; } = Array.Empty<OpenCodeMessage>();
         public List<IReadOnlyList<OpenCodeMessage>> Applied { get; } = new();
         public bool? TurnActivity { get; private set; }
@@ -106,7 +106,7 @@ namespace AIFrontend.Pages
         internal int OlderUiUpdates;
         partial void OnOlderMessagesUiChanged(bool hasMore, bool canLoad, bool loading)
         { _testMoreAvailable = hasMore; _testCanAutoLoad = canLoad; _testLoadingShown = hasMore && loading; OlderUiUpdates++; }
-        private readonly ScrollViewer MessageScroll = new();
+        private readonly ScrollView MessageScroll = new();
 
         private Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; } = new();
 
@@ -211,8 +211,19 @@ namespace AIFrontend.Pages
         internal void TestHomeSelected(string id) { _selectedSessionId = id; _sessionCts = new(); _sessionTabs[id] = new(); }
         internal string? TestHomeRootTitle(string id) => _sessionItems.TryGetValue(id, out var info) ? info.Title : null;
         internal bool TestHomeBusy => _homeActionOwner is not null;
+        internal bool TestHomeProtectedProjection()
+        {
+            var state = new OpenCodeSessionUiState("ses_root", false, false, true, new("succeeded", 3), 3, OpenCodeStateUnknownReason.None);
+            var info = new OpenCodeSessionInfo { Id = "ses_root", Outcome = "succeeded" };
+            var status = CreateHomeStatus(state, info);
+            var session = new AIFrontend.Pages.OpenCode.OpenCodeHomeSession(new("runtime-a", "/work"), info, status);
+            return status?.MutationProtected == true && status.PendingAction == false
+                && AIFrontend.Pages.OpenCode.OpenCodeHomeProjection.Classify(session) == AIFrontend.Pages.OpenCode.OpenCodeHomeTone.NeedsAction
+                && new AIFrontend.Pages.OpenCode.OpenCodeHomeSessionRow(session, "title", "project", AIFrontend.Pages.OpenCode.OpenCodeHomeTone.NeedsAction,
+                    AIFrontend.Pages.OpenCode.OpenCodeHomeDateGroup.Today, null).NeedsAttention;
+        }
         internal string? TestHomeStatus => _homeSessionsMessage ?? _homeMessage;
-        internal void TestHomeResetActionScope() { _homeActionOwner = null; TestReplaceHomeSource(); }
+        internal void TestHomeResetActionScope() { _homeActionOwner = null; _homeCancellation?.Cancel(); _homeCancellation = new(); TestReplaceHomeSource(); }
         internal async Task<bool> TestHomeComposerProtected(string id)
         { using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(_source!.Identity, id); return !lease.CanSubmitComposer(); }
         private void MirrorSessionSelection(string sessionId, bool userInitiated) { HomeMirrors++; _homeActive = false; }

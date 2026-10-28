@@ -21,6 +21,11 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
     private string? CurrentAgentDisplay=>CurrentAgentId is null?null:DisplayName(CurrentAgentId);
     private bool HasPendingSelection=>_pendingAgentId is not null || _pendingModel is not null;
     private OpenCodeModelRef? _pendingModel, _observedModel;
+    private Task<bool>? _pendingApplication; private long _displayReadVersion; private bool _displayRefreshPending;
+    private int _selectionApplications;
+    // This presentation-only fixture stops at the async transport boundary. Actual selector
+    // persistence/read-back is source-linked and exercised by opencode-session-controls.
+    private Task<bool> ApplyPendingSelectionAsync(bool forNextSend = false) { _selectionApplications++; return Task.FromResult(false); }
     private readonly Dictionary<(string Source, string Session), (string? Agent, OpenCodeModelRef? Model)> _pendingSelections = new();
     private OpenCodeModelRef? CurrentModel { get => _pendingModel ?? _observedModel; set => _observedModel = value; }
     private IReadOnlyList<OpenCodeModelInfo> ModelChoices = Array.Empty<OpenCodeModelInfo>();
@@ -47,7 +52,7 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
             && grid.Children[0] is FontIcon{Glyph:OpenCodeAgentIcons.DefaultGlyph},"compact native agent row has only icon/name; unknown agents use default glyph");
         var origin=selector._currentOrigin!;var mutations=p.HttpMutations;
         selector.SelectPendingAgent(origin,"B");
-        Check(selector.CurrentAgentId=="B"&&selector._currentAgentId=="A"&&selector.HasPendingSelection&&p.HttpMutations==mutations,"AS3 selecting changes UI only, with no server mutation");
+        Check(selector.CurrentAgentId=="B"&&selector._currentAgentId=="A"&&selector.HasPendingSelection&&p.HttpMutations==mutations&&selector._selectionApplications==1,"pending agent presents requested identity and immediately starts guarded application (transport boundary)");
         selector.ApplyAgents(data,"A");
         Check(selector.CurrentAgentId=="B"&&selector._currentText.Text=="B full name","server display reload does not erase pending next-message choice");
         selector.SelectPendingAgent(origin,"S");Check(selector.CurrentAgentId=="B","subagent-only rows cannot become pending choices");
@@ -59,7 +64,7 @@ internal sealed partial class OpenCodeAgentSelector : StackPanel
         selector.ApplyAgents(data,"B");Check(selector._currentText.Text=="B full name"&&selector._currentText.Foreground is null,"normal B removes old A RGB");
         Check(selector.HasPendingSelection,"observing the selected agent before prompt admission retains pending choice");
         selector.SelectPendingModel(new() { Id="next-model", ProviderId="provider", Variant="high" });
-        Check(selector.CurrentModel is {Id:"next-model",Variant:"high"} && p.HttpMutations==mutations,"ED1 model/effort selection updates presentation with no HTTP mutation");
+        Check(selector.CurrentModel is {Id:"next-model",Variant:"high"} && p.HttpMutations==mutations&&selector._selectionApplications==2,"model/effort presents pending choice and starts guarded application (transport boundary)");
         selector.Clear();
         selector.Configure(p.SourceInstance,p.SourceInstance.Revision,"ses_other",3);
         Check(!selector.HasPendingSelection && selector.CurrentModel is null,"ED1 other session never borrows pending choices");

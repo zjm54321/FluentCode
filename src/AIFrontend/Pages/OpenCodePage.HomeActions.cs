@@ -102,7 +102,7 @@ public sealed partial class OpenCodePage
             if (!OwnsHomeAction(owner, origin) || source.IsRevoked) return;
             if (result.AcceptanceKnown && kind == SessionControlKind.DeleteRoot) InvalidateDeletedHomeSession(owner);
             if (result.AcceptanceKnown && kind == SessionControlKind.ArchiveRoot) _homeArchivedSessions.Add(owner.SessionId);
-            SetHomeActionStatus(owner, result.Status);
+            SetHomeActionStatus(owner, result.Status, result.Error);
             if (result.AcceptanceKnown || result.MutationStarted && result.Status == SessionControlStatus.OutcomeUnknown)
                 await RefreshHomeActionMetadataAsync(owner, ct); // Read-only; never replay or release unknown protection.
         }
@@ -153,14 +153,21 @@ public sealed partial class OpenCodePage
         finally { if (ReferenceEquals(_homeDialog, dialog)) _homeDialog = null; }
     }
 
-    private void SetHomeActionStatus(HomeActionOwner owner, SessionControlStatus status)
+    private void SetHomeActionStatus(HomeActionOwner owner, SessionControlStatus status, SessionControlErrorKind? error = null)
     {
         if (!OwnsHomeAction(owner, owner.Origin) || owner.Origin.Source.IsRevoked) return;
         _homeMessage = status switch
         {
             SessionControlStatus.Accepted => "服务器已接纳操作；正在重新读取会话列表。",
             SessionControlStatus.OutcomeUnknown => "操作结果未知，保护已保留；不会自动重试。仅刷新会话元数据，请先核对服务端状态。",
-            SessionControlStatus.DefinitivelyRejected => "服务器明确拒绝了操作；未更改草稿。",
+            SessionControlStatus.DefinitivelyRejected => error switch
+            {
+                SessionControlErrorKind.Unauthorized => "服务器拒绝认证；请检查 OpenCode 连接凭据后重新操作。",
+                SessionControlErrorKind.SessionNotFound => "会话已不存在；请重新打开主页以刷新列表。",
+                SessionControlErrorKind.LocationNotFound => "服务端会话目录不可用；请恢复该目录后重新操作。",
+                SessionControlErrorKind.InvalidRequest => "服务器拒绝了请求参数；请检查会话目标或新名称后重新确认。",
+                _ => "服务器明确拒绝了操作；未更改草稿。",
+            },
             SessionControlStatus.ConfirmationRequired => "会话目标或状态已变化；未执行，请重新打开菜单并确认。",
             _ => "当前执行、排队、权限或保护状态不允许操作；未执行。",
         };

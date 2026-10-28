@@ -2,7 +2,6 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Windows.ApplicationModel.DataTransfer;
@@ -17,13 +16,13 @@ internal sealed class OpenCodeTerminalView : UserControl
     private readonly TextBlock _command;
     private readonly TextBlock _status;
     private readonly TextBlock _metadata;
-    private readonly TextBlock _prompt;
     private readonly TextBlock _notice;
-    private readonly RichTextBlock _output;
-    private readonly Run _outputRun = new();
+    private readonly ContentControl _body;
     private readonly ScrollViewer _scroll;
     private readonly Button _copy;
     private string _text = string.Empty;
+    private string? _renderedCommand;
+    private bool? _renderedRunning;
     private bool _follow = true;
     private bool _scrollQueued;
     internal event Action? CloseRequested;
@@ -33,7 +32,7 @@ internal sealed class OpenCodeTerminalView : UserControl
         Content = (FrameworkElement)XamlReader.Load("""
             <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" RowDefinitions="Auto,*"
-                  Background="{ThemeResource ShellTerminalBackground}">
+                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
               <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" Padding="12,8"
                     Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
                 <Button x:Name="Back" Width="36" Height="36" Padding="0" MinWidth="0"
@@ -50,14 +49,11 @@ internal sealed class OpenCodeTerminalView : UserControl
                             AutomationProperties.AutomationId="OpenCodeTerminalScroll">
                 <StackPanel Spacing="12">
                   <TextBlock x:Name="Metadata" IsTextSelectionEnabled="True" FontFamily="Cascadia Mono, Consolas"
-                             Foreground="{ThemeResource ShellTerminalForeground}" TextWrapping="Wrap" />
-                  <TextBlock x:Name="Prompt" IsTextSelectionEnabled="True" FontFamily="Cascadia Mono, Consolas"
-                             Foreground="{ThemeResource ShellTerminalPrompt}" />
-                  <RichTextBlock x:Name="Output" IsTextSelectionEnabled="True" FontFamily="Cascadia Mono, Consolas"
-                                 FontSize="13" TextWrapping="NoWrap" Foreground="{ThemeResource ShellTerminalForeground}"
-                                 AutomationProperties.AutomationId="OpenCodeTerminalOutput" />
+                              TextWrapping="Wrap" />
+                  <ContentControl x:Name="TerminalBody" HorizontalContentAlignment="Stretch"
+                                  AutomationProperties.AutomationId="OpenCodeTerminalOutput" />
                   <TextBlock x:Name="Notice" IsTextSelectionEnabled="True" TextWrapping="Wrap"
-                             Foreground="{ThemeResource ShellTerminalForeground}" />
+                              />
                 </StackPanel>
               </ScrollViewer>
             </Grid>
@@ -67,14 +63,10 @@ internal sealed class OpenCodeTerminalView : UserControl
         _command = (TextBlock)root.FindName("Command");
         _status = (TextBlock)root.FindName("Status");
         _metadata = (TextBlock)root.FindName("Metadata");
-        _prompt = (TextBlock)root.FindName("Prompt");
         _notice = (TextBlock)root.FindName("Notice");
-        _output = (RichTextBlock)root.FindName("Output");
+        _body = (ContentControl)root.FindName("TerminalBody");
         _scroll = (ScrollViewer)root.FindName("Scroll");
         _copy = (Button)root.FindName("Copy");
-        var paragraph = new Paragraph();
-        paragraph.Inlines.Add(_outputRun);
-        _output.Blocks.Add(paragraph);
         _back.Click += (_, _) => CloseRequested?.Invoke();
         PreviewKeyDown += (_, e) =>
         {
@@ -91,7 +83,7 @@ internal sealed class OpenCodeTerminalView : UserControl
         // ViewChanging exposes the user's next offset, before growing content changes the extent.
         _scroll.ViewChanging += (_, e) => _follow = e.FinalView.VerticalOffset >= _scroll.ScrollableHeight - 2;
         _scroll.SizeChanged += (_, _) => QueueFollow();
-        _output.SizeChanged += (_, _) => QueueFollow();
+        _body.SizeChanged += (_, _) => QueueFollow();
         AutomationProperties.SetName(this, "终端输出（只读）");
     }
 
@@ -110,14 +102,19 @@ internal sealed class OpenCodeTerminalView : UserControl
         _status.Text = state.StatusText;
         _metadata.Text = (state.Cwd is { Length: > 0 } cwd ? "目录：" + cwd : "目录不可用")
             + (state.TimeText.Length > 0 ? "\n" + state.TimeText : string.Empty);
-        _prompt.Text = "$ " + state.Command;
         _notice.Text = state.Notice ?? string.Empty;
         _notice.Visibility = string.IsNullOrEmpty(state.Notice) ? Visibility.Collapsed : Visibility.Visible;
         _copy.IsEnabled = state.Output.Length > 0;
-        if (_text == state.Output) return; // Do not destroy selection or move the viewport on status-only polls.
+        // A status-only poll must not rebuild selected output. Running state only
+        // changes the body when it owns the empty-output placeholder.
+        if (_text == state.Output && _renderedCommand == state.Command
+            && (_text.Length > 0 || _renderedRunning == state.Running)) return;
         _follow = OpenCodeTerminalState.ShouldFollow(_follow, _scroll.VerticalOffset, _scroll.ScrollableHeight);
         _text = state.Output;
-        _outputRun.Text = _text;
+        _renderedCommand = state.Command;
+        _renderedRunning = state.Running;
+        _body.Content = OpenCodeToolDetailContent.TerminalBody(state.Command,
+            _text.Length > 0 ? _text : state.Running ? "命令运行中，暂无输出…" : "（没有输出）");
         QueueFollow();
     }
 

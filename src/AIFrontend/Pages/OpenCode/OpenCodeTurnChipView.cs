@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
@@ -13,13 +14,14 @@ namespace AIFrontend.Pages.OpenCode;
 /// <summary>Native compact turn metadata buttons; catalog enrichment never changes row height.</summary>
 internal sealed class OpenCodeTurnChipView
 {
-    private readonly Button _button = CreateButton("OpenCodeModelSwitch");
+    private readonly Button _button;
     private OpenCodeMessage _message = null!;
     private CancellationTokenSource? _read;
     private bool _disposed;
 
     internal OpenCodeTurnChipView(OpenCodeMessage message)
     {
+        _button = CreateButton(message.Type == OpenCodeMessageTypes.AgentSwitched ? "OpenCodeAgentSwitch" : "OpenCodeModelSwitch");
         _button.Loaded += (_, _) => Enrich();
         // A late unload of the old message container must not cancel its new enrichment.
         _button.Unloaded += (_, _) => { if (!_button.IsLoaded) _read?.Cancel(); };
@@ -50,18 +52,46 @@ internal sealed class OpenCodeTurnChipView
     private void Render(OpenCodeModelInfo? model)
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        panel.Children.Add(new TextBlock { Text = "已切换模型", FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
+        if (_message.Type == OpenCodeMessageTypes.AgentSwitched)
+        {
+            var agent = _message.Agent ?? "（未提供）";
+            panel.Children.Add(new TextBlock { Text = "已切换智能体", FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
+            panel.Children.Add(OpenCodeAgentIconTheme.Create(agent, null));
+            panel.Children.Add(new TextBlock { Text = OpenCodeAgentIcons.DisplayName(agent), FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
+            _button.Content = panel;
+            AutomationProperties.SetName(_button, "已切换智能体 " + OpenCodeAgentIcons.DisplayName(agent));
+            return;
+        }
+        var effortOnly = IsEffortOnly(_message);
+        var caption = effortOnly ? "已切换推理强度" : "已切换模型";
+        panel.Children.Add(new TextBlock { Text = caption, FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
         var name = string.IsNullOrWhiteSpace(model?.Name) ? _message.Model?.Id ?? "（未提供）" : model.Name;
-        if (model is not null && !string.IsNullOrWhiteSpace(model.Name)
+        if (effortOnly)
+        {
+            name = OpenCodeModelPresentation.VariantLabel(_message.Model?.Variant);
+            panel.Children.Add(new FontIcon { Glyph = OpenCodeModelPresentation.VariantGlyph(_message.Model?.Variant), FontSize = 12 });
+        }
+        else if (model is not null && !string.IsNullOrWhiteSpace(model.Name)
             && OpenCodeModelPresentation.Brand(model.Id, model.Name) != OpenCodeModelBrand.Neutral)
             panel.Children.Add(OpenCodeModelLogo.Create(model.Id, model.Name));
         panel.Children.Add(new TextBlock { Text = name, FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
         _button.Content = panel;
-        AutomationProperties.SetName(_button, "已切换模型 " + name);
+        AutomationProperties.SetName(_button, caption + " " + name);
+    }
+
+    internal static bool IsEffortOnly(OpenCodeMessage message)
+    {
+        if (message.Model is not { Id: { } id, ProviderId: { } provider }
+            || message.Previous is not { ValueKind: JsonValueKind.Object } previous) return false;
+        var oldVariant = previous.TryGetProperty("variant", out var variant) && variant.ValueKind == JsonValueKind.String ? variant.GetString() : null;
+        return previous.TryGetProperty("id", out var oldId) && oldId.ValueKind == JsonValueKind.String && oldId.GetString() == id
+            && previous.TryGetProperty("providerID", out var oldProvider) && oldProvider.ValueKind == JsonValueKind.String && oldProvider.GetString() == provider
+            && oldVariant != message.Model.Variant;
     }
 
     private async void Enrich()
     {
+        if (_message.Type == OpenCodeMessageTypes.AgentSwitched || IsEffortOnly(_message)) return;
         _read?.Cancel();
         _read?.Dispose();
         var read = _read = new CancellationTokenSource();

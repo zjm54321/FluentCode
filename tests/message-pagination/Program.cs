@@ -19,6 +19,7 @@ internal static partial class Program
 
     private static async Task HomeRootActions()
     {
+        Check(new OpenCodePage().TestHomeProtectedProjection(), "protected Home status reaches attention projection without fabricating PendingAction or displaying success");
         foreach (var action in new[] { OpenCodeHomeSessionAction.Delete, OpenCodeHomeSessionAction.Rename, OpenCodeHomeSessionAction.Archive })
         {
             var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
@@ -73,6 +74,21 @@ internal static partial class Program
         {
             var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
             page.TestActivate("ses_other", client, backend.CreateClient); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
+            page.HomeConfirmation = () => Task.FromResult<string?>("ses_root");
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            backend.HeldMutation = completion.Task;
+            var started = page.TestRunHomeAction(7, "/remote/worktree", "ses_root", OpenCodeHomeSessionAction.Delete);
+            Check(backend.Mutations == 1, "actual Home consumer starts DELETE before scope navigation");
+            page.TestHomeResetActionScope();
+            Check(!backend.MutationToken.IsCancellationRequested, "Home reset cannot cancel already-started DELETE transport");
+            completion.SetResult(true); await started;
+            Check(!await page.TestHomeComposerProtected("ses_root") && backend.Mutations == 1 && backend.ListReads == 0
+                && page.MetadataApplications == 0 && page.TestHomeRootTitle("ses_root") == "actual root title",
+                "started Home delete settles exact protection after reset without replay or stale row publication");
+        }
+        {
+            var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
+            page.TestActivate("ses_other", client, backend.CreateClient); page.TestAcceptHomeRoot("ses_root", "/remote/worktree", "actual root title");
             var first = new TaskCompletionSource<string?>(); var second = new TaskCompletionSource<string?>();
             page.HomeConfirmation = () => first.Task;
             var old = page.TestRunHomeAction(7, "/remote/worktree", "ses_root", OpenCodeHomeSessionAction.Delete);
@@ -91,6 +107,8 @@ internal static partial class Program
         internal int Mutations, ListReads;
         internal bool Unknown;
         internal Action? BeforeMutation;
+        internal Task? HeldMutation;
+        internal CancellationToken MutationToken;
         private bool _deleted;
         internal bool Archived;
         private string _title = "actual root title";
@@ -102,7 +120,8 @@ internal static partial class Program
             var path = request.RequestUri!.AbsolutePath; Requests.Add(request.Method + " " + path);
             if (request.Method != HttpMethod.Get)
             {
-                Mutations++; BeforeMutation?.Invoke();
+                Mutations++; MutationToken = ct; BeforeMutation?.Invoke();
+                if (HeldMutation is { } held) await held;
                 Check(path == "/api/session/ses_root", "consumer mutates actual context root, not selected/hidden session");
                 if (Unknown) throw new HttpRequestException("offline");
                 if (request.Method == HttpMethod.Delete) _deleted = true;

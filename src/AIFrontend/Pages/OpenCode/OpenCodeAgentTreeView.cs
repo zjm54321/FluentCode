@@ -80,7 +80,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                           <!-- Native TreeViewItem named parts and template settings retain native keyboard,
                                 ExpandCollapse automation and keyboard input. Row invocation owns pointer toggling. -->
                           <ControlTemplate TargetType="TreeViewItem">
-                            <Grid x:Name="ContentPresenterGrid" Background="{TemplateBinding Background}"
+                            <Grid x:Name="ContentPresenterGrid" Background="Transparent"
                                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                                   CornerRadius="{ThemeResource ControlCornerRadius}" Margin="2,0" Padding="4,3">
                               <VisualStateManager.VisualStateGroups>
@@ -334,7 +334,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
 
     private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag, OpenCodeTreeAgent? agent = null)
     {
-        var row = new Grid { Tag = tag, ColumnSpacing = 8 };
+        // A transparent surface makes command text and the empty trailing area invoke
+        // the native TreeViewItem just like the status icon; null backgrounds do not hit-test.
+        var row = new Grid { Tag = tag, ColumnSpacing = 8, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

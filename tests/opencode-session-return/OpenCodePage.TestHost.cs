@@ -96,7 +96,7 @@ namespace AIFrontend.Pages
     // These add only UI members absent from the reused inert ConversationView test host.
     public sealed class ReturnHostTextBlock : TextBlock { }
     internal sealed class ReturnHostTimer { internal void Stop() { } }
-    internal sealed class ReturnHostScroll : ScrollViewer
+    internal sealed class ReturnHostScroll : ScrollView
     {
     }
     internal sealed class ReturnHostRecovery

@@ -10,7 +10,10 @@ namespace AIFrontend.Services.Notifications;
 public sealed record AgentSwitchOrigin(OpenCodePageSource Source, long Revision, string SessionId, long SelectionGeneration);
 public enum AgentSwitchStatus { Applied, Blocked, OriginLost, OutcomeUnknown, ReconciliationRequired, Reconciled }
 public sealed record AgentSwitchResult(Guid OperationId, AgentSwitchStatus Status, string? ObservedAgentId,
-    bool MutationStarted, bool UnknownProtectionRetained);
+    bool MutationStarted, bool UnknownProtectionRetained)
+{
+    public SessionControlErrorKind? Rejection { get; init; }
+}
 
 /// <summary>Headless, single-shot switch. All local submission/mutation writers MUST hold the same gate
 /// through recheck, initiation and settlement. Callbacks only read an atomically published immutable
@@ -51,8 +54,9 @@ public sealed class AgentSwitchCoordinator
         OpenCodeClient? client = null;
         bool started = false;
         string? observed = null;
+        SessionControlErrorKind? rejection = null;
         AgentSwitchResult Result(AgentSwitchStatus status) => new(operationId, status, observed, started,
-            lease?.GetAgentSwitchProtection() is not null || started && status == AgentSwitchStatus.OutcomeUnknown);
+            lease?.GetAgentSwitchProtection() is not null || started && status == AgentSwitchStatus.OutcomeUnknown) { Rejection = rejection };
         bool Fence(Action action)
         {
             bool executed = false;
@@ -92,9 +96,9 @@ public sealed class AgentSwitchCoordinator
             if (!reconcile && (agentData.Count(a => a.Id == target) != 1 || agentData.Single(a => a.Id == target).Hidden))
                 return Result(AgentSwitchStatus.Blocked);
 
-            // Explicit next-send application changes subsequent turns, not the running provider turn.
-            // Keep shared protection/origin/catalog checks; ordinary switching and recovery retain idle policy.
-            if (!forNextSend)
+            // Installed V2 switchAgent publishes a subsequent-turn selection without an idle
+            // requirement. Recovery still requires the original conservative idle checks.
+            if (reconcile)
             {
                 async Task<(List<OpenCodeMessage> Messages, bool Complete)> HistoryAsync()
                 {
@@ -150,7 +154,7 @@ public sealed class AgentSwitchCoordinator
             if (!Fence(() => {
                 lease.BeginAgentSwitch(operationId, target!);
                 started = true; // Set before initiating: synchronous failures may not prove the request was unsent.
-                mutation = client!.SwitchAgentAsync(origin.SessionId, target!, token);
+                mutation = client!.SwitchAgentInDirectoryAsync(origin.SessionId, target!, session.Location.Directory, token);
             })) return Result(AgentSwitchStatus.OriginLost);
             await mutation!.ConfigureAwait(false);
             if (!Fence(() => lease.CompleteAgentSwitch(operationId, NotificationInteractionStatus.Succeeded)))
@@ -158,10 +162,17 @@ public sealed class AgentSwitchCoordinator
             observed = target;
             return Result(AgentSwitchStatus.Applied);
         }
+        catch (OpenCodeSessionControlException error) when (started && error.VerifiedPreEffect)
+        {
+            if (!Fence(() => lease!.CompleteAgentSwitch(operationId, NotificationInteractionStatus.Failed)))
+                return Result(AgentSwitchStatus.OutcomeUnknown);
+            rejection = error.Kind;
+            return Result(AgentSwitchStatus.Blocked);
+        }
         catch (Exception ex) when (ex is OriginLostException or OperationCanceledException or OpenCodeException
             or System.Net.Http.HttpRequestException or InvalidOperationException)
         {
-            // No documented HTTP rejection proves this POST had no effect, including 400/404. Keep unknown.
+            // Only the exact documented pre-effect errors above release a started operation.
             if (started) return Result(AgentSwitchStatus.OutcomeUnknown);
             return Result(!Fence(() => { }) ? AgentSwitchStatus.OriginLost : AgentSwitchStatus.Blocked);
         }

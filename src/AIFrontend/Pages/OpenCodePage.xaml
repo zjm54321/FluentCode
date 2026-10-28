@@ -47,7 +47,7 @@
             <Style x:Key="FullScreenComposerSurfaceStyle" TargetType="Grid">
                 <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
             </Style>
-            <Style x:Key="ComposerAgentDropdownStyle" TargetType="DropDownButton">
+            <Style x:Key="ComposerAgentDropdownStyle" TargetType="Button">
                 <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                 <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
@@ -417,14 +417,15 @@
                                      the reserved space immediately beside the symmetric reading column. -->
                                 <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*"
                                       SizeChanged="TimelineColumn_SizeChanged">
-                                    <ScrollViewer
+                                    <ScrollView
                                         x:Name="MessageScroll"
                                         VerticalAnchorRatio="NaN"
                                         Grid.Row="1"
                                         HorizontalContentAlignment="Center"
                                         HorizontalScrollMode="Disabled"
-                                        HorizontalScrollBarVisibility="Disabled"
+                                        HorizontalScrollBarVisibility="Hidden"
                                         VerticalScrollBarVisibility="Hidden"
+                                        ContentOrientation="Vertical"
                                         ViewChanged="MessageScroll_ViewChanged"
                                         AutomationProperties.AutomationId="OpenCodeMessageScroll">
                                         <Grid
@@ -433,12 +434,11 @@
                                              HorizontalAlignment="Center"
                                              SizeChanged="TimelineColumn_SizeChanged"
                                              Padding="6,0,6,0" />
-                                    </ScrollViewer>
+                                    </ScrollView>
                                     <AnnotatedScrollBar x:Name="ConversationScrollBar" Grid.Row="1"
                                                         HorizontalAlignment="Left" Width="56" SmallChange="40"
                                                         Loaded="ConversationScrollBar_Loaded" Unloaded="ConversationScrollBar_Unloaded"
                                                         DetailLabelRequested="ConversationScrollBar_DetailLabelRequested"
-                                                        Scrolling="ConversationScrollBar_Scrolling"
                                                         AutomationProperties.AutomationId="OpenCodeAnnotatedScrollBar"
                                                         AutomationProperties.Name="会话消息导航">
                                         <AnnotatedScrollBar.LabelTemplate>
@@ -727,7 +727,7 @@
                                                             <Grid x:Name="ComposerLeadingHost" VerticalAlignment="Center" />
                                                         </StackPanel>
                                                             <Grid x:Name="BlankToolbarChoices" Grid.Row="1" Grid.Column="1"
-                                                                  ColumnSpacing="2" VerticalAlignment="Center">
+                                                                  ColumnSpacing="6" VerticalAlignment="Center">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="Auto" />
                                                                     <ColumnDefinition x:Name="ComposerChoiceSpacer" Width="*" />
@@ -740,7 +740,7 @@
                                                                         AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankAgent">
                                                                 </openCode:OpenCodeNativeComboBox>
-                                                                <DropDownButton x:Name="BlankModelButton" Grid.Column="2"
+                                                                <Button x:Name="BlankModelButton" Grid.Column="2"
                                                                          Height="32" MinWidth="96" MaxWidth="260" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankModel" />

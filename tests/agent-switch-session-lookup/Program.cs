@@ -29,7 +29,7 @@ internal static class Program
         await MissingSessionIsBlockedWithoutMutation();
         await MismatchedSessionIsBlockedWithoutMutation();
         await CancellationDuringReadNeverBecomesSuccess();
-        await OpaqueMessageCursorRemainsUsable();
+        await OpaqueRecoveryCursorRemainsUsable();
         await ExplicitReconciliationDoesNotReplayMutation();
         Console.WriteLine($"PASS: 6 agent-switch session-lookup scenarios, {assertions} assertions; fake HTTP only; no live server.");
     }
@@ -203,7 +203,7 @@ internal static class Program
         Check(reconciled.CanSwitchAgent() && reconciled.GetAgentSwitchProtection() is null, "later explicit switches may start after reconciliation");
     }
 
-    private static async Task OpaqueMessageCursorRemainsUsable()
+    private static async Task OpaqueRecoveryCursorRemainsUsable()
     {
         string cursor = new string('x', 180) + "+/=&? 游标";
         int pages = 0;
@@ -223,9 +223,11 @@ internal static class Program
         }));
         using var client = new OpenCodeClient(http, new OpenCodeClientOptions { BaseUrl = "https://offline.invalid", Secret = "tok" }, true);
         var source = new OpenCodePageSource("ep_cursor", 7L, () => client);
-        var result = await new AgentSwitchCoordinator(new OpenCodeInteractionGate()).SwitchAsync(
-            new(source, 7L, SessionId, 1L), Guid.NewGuid(), TargetAgent, _ => true);
-        Check(result.Status == AgentSwitchStatus.Applied && pages == 2, "opaque cursor permits full history and exactly one switch");
-        Check(recorder.Count("POST /api/session/" + SessionId + "/agent") == 1, "cursor continuation does not repeat mutations");
+        var gate = new OpenCodeInteractionGate(); var operation = Guid.NewGuid();
+        using (var lease = await gate.EnterAsync(source.Identity, SessionId))
+        { lease.BeginAgentSwitch(operation, TargetAgent); lease.CompleteAgentSwitch(NotificationInteractionStatus.OutcomeUnknown); }
+        var result = await new AgentSwitchCoordinator(gate).ReconcileAsync(new(source, 7L, SessionId, 1L), operation, _ => true);
+        Check(result.Status == AgentSwitchStatus.Reconciled && pages == 2, "explicit recovery still reads full history using opaque cursor");
+        Check(recorder.Count("POST /api/session/" + SessionId + "/agent") == 0, "recovery cursor continuation never replays a mutation");
     }
 }

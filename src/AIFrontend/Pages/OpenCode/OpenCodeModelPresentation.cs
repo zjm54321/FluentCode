@@ -24,6 +24,18 @@ internal static class OpenCodeModelPresentation
     internal static bool VariantAvailable(OpenCodeModelInfo? model, string? id)
         => model is not null && model.Enabled != false && (id is null || (model.Variants?.Any(v => v.Id == id) ?? false));
 
+    // The same tier glyph is used by the closed control, its native menu and full-screen composer.
+    internal static string VariantGlyph(string? id) => id?.ToLowerInvariant() switch
+    {
+        "none" or "minimal" => "\uE904",
+        "low" => "\uE905",
+        "medium" => "\uE906",
+        "high" => "\uE907",
+        "extra high" or "extra_high" or "extra-high" or "xhigh" => "\uE908",
+        "max" => "\uE945",
+        _ => "\uEC4A",
+    };
+
     internal static OpenCodeModelBrand Brand(string? modelId, string? name)
     {
         // Match explicit family tokens even behind gateways; never infer every model's brand from provider ID.

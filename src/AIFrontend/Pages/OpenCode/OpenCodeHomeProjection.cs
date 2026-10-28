@@ -40,6 +40,7 @@ public sealed record OpenCodeHomeStatus(bool? Working = null, bool? PendingActio
     bool IsUnread = false, string? Outcome = null)
 {
     public bool? QuestionPending { get; init; }
+    public bool MutationProtected { get; init; }
 }
 
 public sealed record OpenCodeHomeSession(OpenCodeHomeProjectKey Project, OpenCodeSessionInfo Info,
@@ -62,7 +63,7 @@ public sealed record OpenCodeHomeSessionRow(OpenCodeHomeSession Session, string 
     public bool IsUnread => Session.Status?.IsUnread == true;
 
     /// <summary>需要你处理：被提问阻塞，或已结束但尚未查看。仍在运行的旧完成未读不算“已结束”。</summary>
-    public bool NeedsAttention => Tone == OpenCodeHomeTone.QuestionBlocked
+    public bool NeedsAttention => Session.Status?.MutationProtected == true || Tone == OpenCodeHomeTone.QuestionBlocked
         || IsUnread && Tone is not (OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction);
 }
 
@@ -73,6 +74,7 @@ public static class OpenCodeHomeProjection
     {
         var status = session.Status;
         if (status?.QuestionPending == true) return OpenCodeHomeTone.QuestionBlocked;
+        if (status?.MutationProtected == true) return OpenCodeHomeTone.NeedsAction;
         if (status?.Working == true)
             return status.PendingAction == true ? OpenCodeHomeTone.WorkingNeedsAction : OpenCodeHomeTone.Working;
         if (status?.PendingAction == true) return OpenCodeHomeTone.NeedsAction;

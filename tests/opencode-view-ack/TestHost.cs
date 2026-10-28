@@ -41,14 +41,14 @@ namespace Microsoft.UI.Dispatching
 namespace Microsoft.UI.Xaml.Controls
 {
     public class Page : Microsoft.UI.Xaml.Element { public Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; } = new(); }
-    public class ScrollViewerViewChangedEventArgs : EventArgs { }
-    public class ScrollViewer : Microsoft.UI.Xaml.Element
+    public class ScrollViewChangedEventArgs : EventArgs { }
+    public class ScrollView : Microsoft.UI.Xaml.Element
     {
         public double VerticalOffset { get; private set; }
         public double ScrollableHeight => 0;
         public void UpdateLayout() { }
         public void ChangeView(double? x, double? y, double? z, bool disableAnimation) { if (y is { } v) VerticalOffset = v; }
-        public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged;
+        public event Action<ScrollView, object>? ViewChanged;
         internal void Scroll() => ViewChanged?.Invoke(this, new());
     }
     public enum InfoBarSeverity { Informational, Warning, Error, Success }
@@ -70,7 +70,7 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
     internal sealed class OpenCodeConversationView : Microsoft.UI.Xaml.Element
     {
-        internal void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
+        internal void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollView viewport, Func<bool> ownerCurrent) { }
         internal long RenderVersion { get; private set; }
         private OpenCodeVisibleIdle? _candidate;
         internal event EventHandler? IdleViewportInvalidated;
@@ -78,7 +78,7 @@ namespace AIFrontend.Pages.OpenCode
         internal void ApplyMessages(IReadOnlyList<OpenCodeMessage> rows)
         { RenderVersion++; _candidate = null; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
         internal void ClearMessages() => ApplyMessages(Array.Empty<OpenCodeMessage>());
-        internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollViewer viewport) => new(RenderVersion, _candidate);
+        internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) => new(RenderVersion, _candidate);
         internal void SupplyGeometry(double? watermark, double x = 0)
         {
             _candidate = watermark is { } value ? new("msg_visible_" + value, value,
@@ -118,7 +118,7 @@ namespace AIFrontend.Pages
         private bool _pageActive, _sessionMissing, _homeActive, _newSessionDraftActive;
         private CancellationTokenSource? _pageCts, _sessionCts;
         private OpenCodeConversationView _conversationView = new();
-        private readonly Microsoft.UI.Xaml.Controls.ScrollViewer MessageScroll = new();
+        private readonly Microsoft.UI.Xaml.Controls.ScrollView MessageScroll = new();
         private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new();
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
         private readonly Dictionary<string, string> _lastIdleBySession = new();

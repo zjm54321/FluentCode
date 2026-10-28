@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using AIFrontend.Pages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 
 // Linked production page bridge, inert native template/controller probes. No app or desktop interaction.
@@ -20,6 +21,9 @@ internal static class AnnotatedScrollBarBridgeTests
         var page = new OpenCodePage();
         page.LoadBridge();
         var bar = page.Bar;
+        Check(ReferenceEquals(page.Presenter.VerticalScrollController, bar.ScrollController), "native ScrollPresenter owns the actual annotated controller");
+        Check(bar.ScrollController.Values == 0, "page does not manually supply controller range or offset");
+        page.LoadBridge();
         Check(bar.HandledEventsToo == 4, "enter/move/exit/capture loss observed even when a native child handles the event");
         Check(!page.Tip.IsHitTestVisible, "native detail pill cannot intercept pointer input over the left side of the rail");
         bar.RaiseEntered();
@@ -72,10 +76,12 @@ internal static class AnnotatedScrollBarBridgeTests
         Check(!page.Tip.IsOpen && bar.ScrollController.Values == values && bar.Labels.Mutations == labels,
             "capture loss closes native tooltip without controller or label refresh");
         page.ScrollTo(200);
-        Check(bar.ScrollController.Values == values + 1 && bar.ScrollController.Offset == 200,
-            "real viewport change still updates controller offset");
+        Check(bar.ScrollController.Values == values && ReferenceEquals(page.Presenter.VerticalScrollController, bar.ScrollController),
+            "viewport changes do not invoke a second manual scrolling owner");
+        page.LateUnload();
+        Check(bar.HandlerCount == 4 && ReferenceEquals(page.Presenter.VerticalScrollController, bar.ScrollController), "late unload after remount preserves active native integration");
         page.UnloadBridge();
-        Check(bar.HandlerCount == 0 && !page.Tip.IsOpen, "unload closes detail and removes routed handlers");
+        Check(bar.HandlerCount == 0 && !page.Tip.IsOpen && page.Presenter.VerticalScrollController is null, "unload closes detail, removes routed handlers and releases native controller");
         page.Tip.IsOpen = true;
         Check(page.Tip.IsOpen, "unload removes tooltip opened subscription");
         page.Tip.IsOpen = false;
@@ -91,7 +97,7 @@ namespace AIFrontend.Pages
     public sealed partial class OpenCodePage
     {
         private readonly AnnotatedScrollBar ConversationScrollBar = new() { ActualWidth = 56, ActualHeight = 500 };
-        private readonly ScrollViewer MessageScroll = new() { ScrollableHeight = 400 };
+        private readonly ScrollView MessageScroll = new() { ExtentHeight = 1000 };
         private readonly ConversationProbe _conversationView = new();
         internal readonly ToolTip Tip = new();
         public OpenCodePage()
@@ -101,10 +107,12 @@ namespace AIFrontend.Pages
             ConversationScrollBar.Children.Add(grid);
         }
         internal AnnotatedScrollBar Bar => ConversationScrollBar;
-        internal void LoadBridge() => ConversationScrollBar_Loaded(this, new());
-        internal void UnloadBridge() => ConversationScrollBar_Unloaded(this, new());
+        internal ScrollPresenter Presenter => MessageScroll.ScrollPresenter;
+        internal void LoadBridge() { ConversationScrollBar.IsLoaded = true; ConversationScrollBar_Loaded(this, new()); }
+        internal void LateUnload() => ConversationScrollBar_Unloaded(this, new());
+        internal void UnloadBridge() { ConversationScrollBar.IsLoaded = false; ConversationScrollBar_Unloaded(this, new()); }
         internal void Layout() => MessageScroll.RaiseLayout();
-        internal void ScrollTo(double offset) { MessageScroll.VerticalOffset = offset; MessageScroll.RaiseView(); }
+        internal void ScrollTo(double offset) { MessageScroll.VerticalOffset = offset; MessageScroll.RaiseLayout(); }
         internal object? Detail()
         {
             var args = new AnnotatedScrollBarDetailLabelRequestedEventArgs();
@@ -146,6 +154,7 @@ namespace Microsoft.UI.Xaml
     }
     public class FrameworkElement : UIElement
     {
+        public bool IsLoaded { get; set; }
         public string Name { get; set; } = "";
         public double ActualWidth { get; set; }
         public double ActualHeight { get; set; }
@@ -212,16 +221,21 @@ namespace Microsoft.UI.Xaml.Controls
         public void SetPanningElementExpressionAnimationSources(Microsoft.UI.Composition.CompositionPropertySet sources,
             string min, string max, string offset, string multiplier) { }
     }
-    public sealed class ScrollViewerViewChangedEventArgs : EventArgs { }
-    public sealed class ScrollViewer
+    public sealed class ScrollView
     {
-        public double ScrollableHeight { get; set; }
+        public ScrollPresenter ScrollPresenter { get; } = new();
+        public bool ApplyTemplate() => true;
+        public double ExtentHeight { get; set; }
         public double VerticalOffset { get; set; }
-        public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged;
         public event EventHandler<object>? LayoutUpdated;
-        public void RaiseView() => ViewChanged?.Invoke(this, new());
         public void RaiseLayout() => LayoutUpdated?.Invoke(this, new());
-        public void ChangeView(object? horizontal, double offset, object? zoom, bool disableAnimation) => VerticalOffset = offset;
+    }
+}
+namespace Microsoft.UI.Xaml.Controls.Primitives
+{
+    public sealed class ScrollPresenter
+    {
+        public Microsoft.UI.Xaml.Controls.ScrollControllerProbe? VerticalScrollController { get; set; }
     }
 }
 namespace Microsoft.UI.Composition

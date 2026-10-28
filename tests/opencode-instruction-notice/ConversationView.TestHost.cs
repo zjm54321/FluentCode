@@ -726,6 +726,36 @@ namespace Microsoft.UI.Xaml.Controls
         public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }
     }
     public class ScrollContentPresenter : ContentControl { }
+    public enum ScrollingInteractionState { Idle, Interaction, Inertia, Animation }
+    public enum ScrollingAnimationMode { Enabled, Disabled }
+    public enum ScrollingSnapPointsMode { Ignore }
+    public sealed record ScrollingScrollOptions(ScrollingAnimationMode AnimationMode, ScrollingSnapPointsMode SnapPointsMode);
+    public class ScrollView : ScrollViewer
+    {
+        public ScrollView()
+        {
+            base.ViewChanged += (_, e) =>
+            {
+                State = e.IsIntermediate ? ScrollingInteractionState.Inertia : ScrollingInteractionState.Idle;
+                ViewChanged?.Invoke(this, new());
+            };
+        }
+        public double HorizontalOffset { get; set; }
+        public ScrollingInteractionState State { get; private set; }
+        public new event Action<ScrollView, object>? ViewChanged;
+        public event Action<ScrollView, object>? StateChanged;
+        public void SetStateForTest(ScrollingInteractionState state)
+        {
+            State = state;
+            StateChanged?.Invoke(this, new());
+        }
+        public int ScrollTo(double horizontal, double vertical, ScrollingScrollOptions options)
+        {
+            _ = horizontal;
+            ChangeView(null, vertical, null, options.AnimationMode == ScrollingAnimationMode.Disabled);
+            return 1;
+        }
+    }
     public class Flyout
     {
         public Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode Placement { get; set; }

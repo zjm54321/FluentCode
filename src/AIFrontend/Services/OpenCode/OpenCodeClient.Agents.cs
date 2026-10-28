@@ -42,15 +42,19 @@ public sealed partial class OpenCodeClient
 
     /// <summary>
     /// 单次 POST {agent:id}，仅 204 成功；影响后续 provider turns，不是 per-prompt 或全局默认。
-    /// 不承诺 busy 安全；取消/超时后结果可能不确定，绝不自动重发。
+    /// 不改变进行中的 provider 请求；取消/超时后结果可能不确定，绝不自动重发。
     /// </summary>
-    public async Task SwitchAgentAsync(string sessionId, string agentId, CancellationToken cancellationToken = default)
+    public Task SwitchAgentAsync(string sessionId, string agentId, CancellationToken cancellationToken = default)
+        => SwitchAgentInDirectoryAsync(sessionId, agentId, null, cancellationToken);
+
+    internal async Task SwitchAgentInDirectoryAsync(string sessionId, string agentId, string? directory, CancellationToken cancellationToken)
     {
         ValidateInteractionId(sessionId, "ses", nameof(sessionId));
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
         var path = "api/session/" + Uri.EscapeDataString(sessionId) + "/agent";
         using var content = CreateJsonContent(new SwitchAgentBody(agentId));
-        await SendForNoContentAsync(HttpMethod.Post, path, null, content, cancellationToken).ConfigureAwait(false);
+        using var ignored = await SendSessionControlAsync(HttpMethod.Post, path, null, content, 204,
+            null, sessionId, null, cancellationToken, directory, agentSelection: true).ConfigureAwait(false);
     }
 
     /// <summary>当前 server 的 foreground drains；缺席只表示 foreground inactive，不证明后台 Job 完成。</summary>

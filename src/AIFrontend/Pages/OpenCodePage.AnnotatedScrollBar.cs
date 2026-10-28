@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Composition;
-using Microsoft.UI.Xaml.Hosting;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using AIFrontend.Pages.OpenCode;
@@ -14,18 +13,24 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
     private IReadOnlyList<(string Text, bool User, double Offset)> _scrollAnnotations = Array.Empty<(string, bool, double)>();
-    private CompositionPropertySet? _annotatedSources;
-    private (double Maximum, double Offset, double ViewportLength)? _annotatedPosition;
+    private ScrollPresenter? _annotatedPresenter;
     private ToolTip? _annotatedDetailToolTip;
     private FrameworkElement? _annotatedHitArea;
     private (double X, double Y, ulong Timestamp)? _annotatedPointerPosition;
     private bool _annotatedPointerInside;
+    private bool _annotatedAttached;
 
-    // Native AnnotatedScrollBar controller, bridged to the existing single ScrollViewer owner.
-    // Keeping that owner preserves pagination ACKs, idle visibility proof and virtual-window anchors.
+    // ScrollPresenter owns range, composition panning, inertia and request completion.
+    // The conversation retains its existing pagination, visibility proofs and reading anchors.
     private void ConversationScrollBar_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_annotatedAttached) return;
+        _annotatedAttached = true;
         ConversationScrollBar.ApplyTemplate();
+        MessageScroll.ApplyTemplate();
+        _annotatedPresenter = MessageScroll.ScrollPresenter;
+        if (_annotatedPresenter is not null)
+            _annotatedPresenter.VerticalScrollController = ConversationScrollBar.ScrollController;
         _annotatedHitArea = FindAnnotatedPart(ConversationScrollBar, "PART_VerticalGrid");
         if (FindAnnotatedPart(ConversationScrollBar, "PART_ToolTipRail") is { } rail)
             _annotatedDetailToolTip = ToolTipService.GetToolTip(rail) as ToolTip;
@@ -40,21 +45,14 @@ public sealed partial class OpenCodePage
         ConversationScrollBar.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(AnnotatedPointerMoved), true);
         ConversationScrollBar.AddHandler(UIElement.PointerExitedEvent, new PointerEventHandler(AnnotatedPointerExited), true);
         ConversationScrollBar.AddHandler(UIElement.PointerCaptureLostEvent, new PointerEventHandler(AnnotatedPointerCaptureLost), true);
-        _annotatedSources = ElementCompositionPreview.GetElementVisual(ConversationScrollBar).Compositor.CreatePropertySet();
-        _annotatedSources.InsertScalar("MinOffset", 0);
-        _annotatedSources.InsertScalar("MaxOffset", 0);
-        _annotatedSources.InsertScalar("Offset", 0);
-        // WinUI writes Multiplier itself from its measured rail and our SetValues range.
-        // Never replace it with a fixed ratio or a second thumb-position expression.
-        ConversationScrollBar.ScrollController.PanningInfo?.SetPanningElementExpressionAnimationSources(
-            _annotatedSources, "MinOffset", "MaxOffset", "Offset", "Multiplier");
-        MessageScroll.ViewChanged += AnnotatedViewportChanged;
         MessageScroll.LayoutUpdated += AnnotatedLayoutUpdated;
         UpdateAnnotatedScrollBar();
     }
 
     private void ConversationScrollBar_Unloaded(object sender, RoutedEventArgs e)
     {
+        if (ConversationScrollBar.IsLoaded || !_annotatedAttached) return;
+        _annotatedAttached = false;
         CloseAnnotatedDetail();
         ConversationScrollBar.RemoveHandler(UIElement.PointerEnteredEvent, new PointerEventHandler(AnnotatedPointerMoved));
         ConversationScrollBar.RemoveHandler(UIElement.PointerMovedEvent, new PointerEventHandler(AnnotatedPointerMoved));
@@ -64,34 +62,22 @@ public sealed partial class OpenCodePage
         _annotatedDetailToolTip = null;
         _annotatedHitArea = null;
         _annotatedPointerPosition = null;
-        MessageScroll.ViewChanged -= AnnotatedViewportChanged;
         MessageScroll.LayoutUpdated -= AnnotatedLayoutUpdated;
-        ConversationScrollBar.ScrollController.PanningInfo?.SetPanningElementExpressionAnimationSources(null!, "", "", "", "");
-        _annotatedSources?.Dispose();
-        _annotatedSources = null;
-        _annotatedPosition = null;
+        if (_annotatedPresenter is { } presenter
+            && ReferenceEquals(presenter.VerticalScrollController, ConversationScrollBar.ScrollController))
+            presenter.VerticalScrollController = null!;
+        _annotatedPresenter = null;
         _scrollAnnotations = Array.Empty<(string, bool, double)>();
     }
 
-    private void AnnotatedViewportChanged(object? sender, ScrollViewerViewChangedEventArgs e) => UpdateAnnotatedScrollBar();
     private void AnnotatedLayoutUpdated(object? sender, object e) => UpdateAnnotatedScrollBar();
 
     private void UpdateAnnotatedScrollBar()
     {
-        var controller = ConversationScrollBar.ScrollController;
-        var position = OpenCodeScrollBarProjection.Position(MessageScroll.ScrollableHeight, MessageScroll.VerticalOffset);
-        if (_annotatedPosition != position)
-        {
-            _annotatedPosition = position;
-            controller.SetIsScrollable(position.Maximum > 0);
-            controller.SetValues(0, position.Maximum, position.Offset, position.ViewportLength);
-            _annotatedSources?.InsertScalar("MaxOffset", (float)position.Maximum);
-            _annotatedSources?.InsertScalar("Offset", (float)position.Offset);
-        }
-        // SetValues updates native state, but only the panning expression moves the blue thumb.
-        // Feed both paths the same live offset after every view/layout/window-height change.
+        // Native controllers locate labels in document coordinates (maximum + viewport).
+        // Do not clamp last-viewport messages to one scroll target or override SetValues.
         var annotations = _conversationView.ScrollAnnotations()
-            .Select(item => (item.Text, item.User, Offset: OpenCodeScrollBarProjection.ScrollTarget(item.Offset, position.Maximum)))
+            .Select(item => (item.Text, item.User, Offset: OpenCodeScrollBarProjection.LabelOffset(item.Offset, MessageScroll.ExtentHeight)))
             .ToArray();
         if (annotations.SequenceEqual(_scrollAnnotations)) return;
         _scrollAnnotations = annotations;
@@ -99,13 +85,6 @@ public sealed partial class OpenCodePage
         foreach (var item in annotations)
             // The template draws only a dash; retain role + full text for its accessible name.
             ConversationScrollBar.Labels.Add(new AnnotatedScrollBarLabel($"{(item.User ? "你" : "AI 回复")}：{item.Text}", item.Offset));
-    }
-
-    private void ConversationScrollBar_Scrolling(AnnotatedScrollBar sender, AnnotatedScrollBarScrollingEventArgs args)
-    {
-        // Native track/buttons/drag compute the requested offset; no custom rail or hit-testing.
-        args.Cancel = true;
-        MessageScroll.ChangeView(null, Math.Clamp(args.ScrollOffset, 0, MessageScroll.ScrollableHeight), null, disableAnimation: true);
     }
 
     private void ConversationScrollBar_DetailLabelRequested(AnnotatedScrollBar sender, AnnotatedScrollBarDetailLabelRequestedEventArgs args)

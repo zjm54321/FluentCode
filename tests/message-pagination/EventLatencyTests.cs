@@ -68,6 +68,21 @@ internal static partial class Program
         backend.ReadMessages = () => Task.FromResult(Snapshot("reconnected"));
         page.TestReady(stream, reconnect: true);
         Check(backend.Messages == 3 && backend.States == 3 && LiveText(page) == "reconnected", "reconnect still repairs missed events/boundary with one refresh");
+        Check(page.SelectionRefreshes == 2, "first uncovered readiness and reconnect repair authoritative root-selector state");
+        foreach (var type in new[] { "session.agent.selected", "session.model.selected", "session.location.selected" })
+        {
+            var before = page.SelectionRefreshes;
+            page.TestReceive(stream, Wire(type, """{"sessionID":"ses_foreign"}"""));
+            Check(page.SelectionRefreshes == before, "foreign selection events cannot reload selected root");
+            page.TestReceive(stream, Wire(type, """{"sessionID":"ses_test"}"""));
+            Check(page.SelectionRefreshes == before + 1, "external " + type + " requests an authoritative root selector reload");
+        }
+        var retired = page.SelectionRefreshes;
+        var fresh = page.TestBeginEvents();
+        page.TestReceive(stream, Wire("session.model.selected", """{"sessionID":"ses_test"}"""));
+        Check(page.SelectionRefreshes == retired, "retired stream cannot refresh a new owner selector");
+        page.TestReceive(fresh, Wire("session.model.selected", """{"sessionID":"ses_test"}"""));
+        Check(page.SelectionRefreshes == retired + 1, "current stream owns authoritative selector refresh");
     }
     private static async Task SnapshotAndReadinessFences()
     {

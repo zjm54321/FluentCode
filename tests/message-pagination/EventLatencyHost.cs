@@ -27,6 +27,8 @@ public sealed partial class OpenCodePage
     private long _liveStatusVersion;
     private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new();
     internal int ActivityRefreshes;
+    internal int SelectionRefreshes;
+    private void RefreshAgentSelectorDisplay() => SelectionRefreshes++;
     private void RefreshComposerSessionActivity() => ActivityRefreshes++;
     private void RefreshSessionStateUi() { }
     private Task RefreshSessionsAsync() => Task.CompletedTask;

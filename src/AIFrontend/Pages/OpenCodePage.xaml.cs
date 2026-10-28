@@ -3642,7 +3642,7 @@ public sealed partial class OpenCodePage : Page
             && string.Equals(sessionId, _selectedSessionId, StringComparison.Ordinal);
     }
 
-    private void MessageScroll_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+    private void MessageScroll_ViewChanged(ScrollView sender, object e)
     {
         UpdateScrollToBottomButton();
     }

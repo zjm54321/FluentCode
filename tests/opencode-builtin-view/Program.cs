@@ -138,6 +138,7 @@ internal static class Program
             ("A typed menu / ACK watermark / Enter evidence / episodes / zero selection HTTP", GroupA),
             ("B native dialog selection + confirmation constraints", GroupB),
             ("C expanded editor Apply/stale buffer/IME, never Send", GroupC),
+            ("Unified full-page editor entry and live draft ownership", GroupFullPageEditor),
         };
         var failed = 0;
         foreach (var (name, run) in groups)
@@ -577,6 +578,44 @@ internal static class Program
         Check(invoked == OpenCodeComposerMenuKeyOutcome.Invoked && r.Ticket is not null && !ReferenceEquals(r.Ticket, before)
             && r.Core.Snapshot.ClientIntent is null, "one Enter on EditDraft invokes immediately; page holds a new ticket");
         return r.Ticket!;
+    }
+
+    private static async Task GroupFullPageEditor()
+    {
+        using var r = new Rig();
+        r.Type("/rev"); await r.Settle(); r.Key(OpenCodeComposerKey.Enter);
+        var pick = r.Core.BeginPick(r.Core.Snapshot.Token)!;
+        await r.Core.AddFilesAsync(pick, new[] { new OpenCodeComposerFileSource("notes.txt", null,
+            _ => Task.FromResult<Stream>(new MemoryStream(new byte[3]))) });
+        r.Render(); r.Type("/editor keep this");
+        var ticket = await InvokeEditor(r);
+        var page = new AIFrontend.Pages.OpenCodePage(r.Core, r.Binding);
+        var before = r.Core.Snapshot;
+        page.Request(ticket);
+        Check(page.Opens == 0, "/editor waits for the command action to settle before opening");
+        r.Core.CompleteClientAction(ticket); r.Render(); page.Drain();
+        Check(page.Opens == 1 && !page.OpenedWhileActionOwned, "/editor opens the shared editor after releasing command ownership");
+        Check(r.Core.Snapshot.Token == before.Token && r.Core.Snapshot.Attachments.Count == 1
+            && r.Core.Snapshot.SelectedCommand == "review", "entry keeps exact draft token, attachment and selected server command");
+        Check(page.Edit("edited in full page") && r.Core.Snapshot.Text == "edited in full page"
+            && r.Core.Snapshot.Attachments.Count == 1 && r.Core.Snapshot.SelectedCommand == "review",
+            "production full-page text application edits only text, retaining attachment and command");
+        Check(r.Submits == 0, "opening and editing never sends a prompt");
+        page.LoseBinding();
+        Check(!page.Edit("foreign") && r.Core.Snapshot.Text == "edited in full page", "old editor cannot overwrite a different binding");
+
+        foreach (var stale in new[] { "edit", "binding", "page" })
+        {
+            using var other = new Rig("draft");
+            var pending = await InvokeEditor(other);
+            var delayed = new AIFrontend.Pages.OpenCodePage(other.Core, other.Binding);
+            delayed.Request(pending); other.Core.CompleteClientAction(pending);
+            if (stale == "edit") other.Core.TryApplyEditorInput(other.Core.Snapshot.Token, "newer draft", false);
+            else if (stale == "binding") delayed.LoseBinding();
+            else delayed.Deactivate();
+            delayed.Drain();
+            Check(delayed.Opens == 0, "queued /editor rejects changed " + stale);
+        }
     }
 
     private static async Task GroupC()

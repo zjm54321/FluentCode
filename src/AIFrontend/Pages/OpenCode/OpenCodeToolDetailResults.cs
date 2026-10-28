@@ -21,10 +21,23 @@ internal static partial class OpenCodeToolDetailContent
 
     private static FrameworkElement BuildTerminal(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options, Action rebuild, out int hidden)
     {
+        var lines = (model.OutputText ?? string.Empty).TrimEnd('\r', '\n').Split('\n');
+        var limit = options.Compact ? model.IsActive ? 6 : 8 : options.ShowAll ? lines.Length : MaxRows;
+        hidden = Math.Max(0, lines.Length - limit);
+        var shown = options.Compact ? lines.Skip(Math.Max(0, lines.Length - limit)) : lines.Take(limit);
+        return TerminalBody(model.Command ?? model.Target,
+            string.IsNullOrEmpty(model.OutputText) ? model.IsActive ? "命令运行中，暂无输出…" : "（没有输出）" : string.Join('\n', shown),
+            !options.Compact, hidden > 0 && !options.Compact ? ShowAllButton(hidden, options, rebuild) : null);
+    }
+
+    // Single terminal presentation for tool details and the full-center sidebar terminal.
+    // Hosts own paging/navigation; neither host duplicates fonts, command, divider or output styling.
+    internal static FrameworkElement TerminalBody(string? command, string output, bool selectable = true, FrameworkElement? footer = null)
+    {
         var panel = new StackPanel { Spacing = 12 };
         RichTextBlock TerminalText(string source)
         {
-            var text = new RichTextBlock { IsTextSelectionEnabled = !options.Compact, TextWrapping = TextWrapping.Wrap,
+            var text = new RichTextBlock { IsTextSelectionEnabled = selectable, TextWrapping = TextWrapping.Wrap,
                 FontSize = 13, Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 204, 204, 204)) };
             AppFonts.Apply(text, AppFontSlot.Monospace);
             foreach (var chunk in OpenCodeDetailTextPolicy.ChunkLines(source))
@@ -35,14 +48,10 @@ internal static partial class OpenCodeToolDetailContent
             }
             return text;
         }
-        panel.Children.Add(TerminalText("$ " + (model.Command ?? model.Target)));
+        panel.Children.Add(TerminalText("$ " + command));
         panel.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 64, 64, 64)) });
-        var lines = (model.OutputText ?? string.Empty).TrimEnd('\r', '\n').Split('\n');
-        var limit = options.Compact ? model.IsActive ? 6 : 8 : options.ShowAll ? lines.Length : MaxRows;
-        hidden = Math.Max(0, lines.Length - limit);
-        var shown = options.Compact ? lines.Skip(Math.Max(0, lines.Length - limit)) : lines.Take(limit);
-        panel.Children.Add(TerminalText(string.IsNullOrEmpty(model.OutputText) ? model.IsActive ? "命令运行中，暂无输出…" : "（没有输出）" : string.Join('\n', shown)));
-        if (hidden > 0 && !options.Compact) panel.Children.Add(ShowAllButton(hidden, options, rebuild));
+        panel.Children.Add(TerminalText(output));
+        if (footer is not null) panel.Children.Add(footer);
         return new Border { Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 12, 12, 12)),
             Padding = new Thickness(16), CornerRadius = new CornerRadius(8), Child = panel };
     }

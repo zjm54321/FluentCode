@@ -14,12 +14,12 @@ namespace Microsoft.UI.Xaml
 }
 namespace Microsoft.UI.Xaml.Controls
 {
-    public class ScrollViewerViewChangedEventArgs : EventArgs { }
-    public partial class ScrollViewer
+    public class ScrollViewChangedEventArgs : EventArgs { }
+    public partial class ScrollView
     {
         public event EventHandler<object>? LayoutUpdated;
         public event Action<object, Microsoft.UI.Xaml.SizeChangedEventArgs>? SizeChanged;
-        public event EventHandler<ScrollViewerViewChangedEventArgs>? ViewChanged;
+        public event Action<ScrollView, object>? ViewChanged;
         internal void TestLayout() => LayoutUpdated?.Invoke(this, new());
         internal void TestResize() => SizeChanged?.Invoke(this, new());
         internal void TestScroll() => ViewChanged?.Invoke(this, new());
@@ -64,7 +64,7 @@ namespace AIFrontend.Pages
         public event EventHandler<object>? LayoutUpdated;
         public event Action<object, Microsoft.UI.Xaml.SizeChangedEventArgs>? SizeChanged;
         private void InvalidateGeometry() { RenderVersion++; _testIdle = null; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
-        internal OpenCode.OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollViewer viewport) => new(RenderVersion, _testIdle);
+        internal OpenCode.OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) => new(RenderVersion, _testIdle);
         internal void TestGeometry(double? watermark)
         {
             _testIdle = watermark is { } value ? new("msg_idle_" + value, value, new(0, 0, 10, 10), new(0, 0, 100, 100), new(0, 0, 100, 100)) : null;

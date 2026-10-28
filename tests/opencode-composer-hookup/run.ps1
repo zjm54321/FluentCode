@@ -61,13 +61,16 @@ $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'DeferredSelections.cs')
 $selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
-$pendingMembers = foreach ($name in @('SelectPendingAgent', 'SelectPendingModel', 'SavePendingSelection', 'ApplyPendingSelectionAsync', 'CompletePendingSelection')) {
+$pendingMembers = foreach ($name in @('SelectPendingAgent', 'SelectPendingModel', 'SavePendingSelection', 'ApplyPendingSelectionAsync', 'ApplyPendingSelectionCoreAsync', 'CompletePendingSelection', 'RunSwitchAsync', 'ReloadAsync')) {
     $m = [regex]::Match($selector, ('(?ms)^    (?:private|internal) [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))
     if (!$m.Success) { throw "Missing production pending selection member: $name" }
     $m.Value
 }
+$modelsMatch = [regex]::Match($selector, '(?ms)^    private static bool ModelsMatch\(.*?;')
+if (!$modelsMatch.Success) { throw 'Missing production model-selection equivalence member.' }
+$pendingMembers += $modelsMatch.Value
 $pendingGenerated = Join-Path $output 'ActualPendingSelections.cs'
-"using System; using System.Threading; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Services.Notifications; namespace AIFrontend.Pages.OpenCode; internal sealed partial class DeferredSelectionHost {`n" + ($pendingMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $pendingGenerated
+"using System; using System.Collections.Generic; using System.Net.Http; using System.Threading; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Services.Notifications; namespace AIFrontend.Pages.OpenCode; internal sealed partial class DeferredSelectionHost {`n" + ($pendingMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $pendingGenerated
 $sources += Get-Item $pendingGenerated
 
 # Extract complete production members, never a copied implementation. The fixed four-space class
@@ -111,6 +114,13 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $sources += Get-Item $generated
+# AgentIntegration implements this EventSync partial; only the declaration belongs in the page shell.
+$eventSync = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.EventSync.cs")
+$refreshDeclaration = [regex]::Match($eventSync, '(?m)^    partial void RefreshAgentSelectorDisplay\(\);')
+if (!$refreshDeclaration.Success) { throw 'Missing production selector refresh partial declaration.' }
+$refreshGenerated = Join-Path $output 'SelectorRefreshDeclaration.cs'
+"namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + $refreshDeclaration.Value + "`n}" | Set-Content -Encoding UTF8 $refreshGenerated
+$sources += Get-Item $refreshGenerated
 # Actual blank-tab creation/handoff methods; UI list/layout members remain boundaries.
 $blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
@@ -158,7 +168,10 @@ $deliveryMembers = @([regex]::Match($delivery, '(?m)^    private bool _composerD
     [regex]::Match($delivery, '(?ms)^    internal void ConfigureComposerDelivery\(bool supported\).*?^    \}\r?$').Value)
 if ($deliveryMembers | Where-Object { !$_ }) { throw 'Missing actual composer delivery configuration member.' }
 $layoutGenerated = Join-Path $output 'ComposerLayoutActions.cs'
-"using AIFrontend.Pages.OpenCode; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + (($layoutMembers + $deliveryMembers) -join "`n") + "`n}" | Set-Content -Encoding UTF8 $layoutGenerated
+$fullScreenPath = "$repo/src/AIFrontend/Pages/OpenCodePage.FullScreenComposer.cs"
+$queueFullScreen = [regex]::Match([IO.File]::ReadAllText($fullScreenPath), '(?ms)^    private void QueueFullScreenComposer\(.*?^    \}\r?$')
+if (!$queueFullScreen.Success) { throw 'Missing production full-screen editor dispatcher handoff.' }
+"using AIFrontend.Pages.OpenCode; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + (($layoutMembers + $deliveryMembers + @($queueFullScreen.Value)) -join "`n") + "`n}" | Set-Content -Encoding UTF8 $layoutGenerated
 $sources += Get-Item $layoutGenerated
 $focusMember = [regex]::Match($overlay, '(?ms)^    private int SyncPermissionOverlay\(\).*?^    \}\r?$')
 if (!$focusMember.Success) { throw 'Missing production SyncPermissionOverlay member.' }

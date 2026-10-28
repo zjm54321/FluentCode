@@ -32,6 +32,14 @@ public sealed partial class OpenCodePage
 {
     private readonly OpenCodeAgentSelector _agentSelector = new();
 
+    partial void RefreshAgentSelectorDisplay()
+    {
+        if (_pageActive && SourceReady && ReferenceEquals(_agentSelectorSource, _source)
+            && _agentSelectorRevision == _sourceRevision && _agentSelectorSessionId == _selectedSessionId
+            && _agentSelectorGeneration == _agentSelectionGeneration)
+            _agentSelector.RefreshDisplay();
+    }
+
     /// <summary>本页发布的 agent 选择代际：每次选择上下文变化 / 本地提交开始递增，作废控件内在途 origin。</summary>
     private long _agentSelectionGeneration;
 

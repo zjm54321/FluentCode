@@ -45,6 +45,9 @@ internal static class Program
         var tree = Read("OpenCode/OpenCodeAgentTreeView.cs");
         var page = Read("OpenCodePage.TerminalView.cs");
         var view = Read("OpenCode/OpenCodeTerminalView.cs");
+        var detail = Read("OpenCode/OpenCodeToolDetailResults.cs");
+        var turnChip = Read("OpenCode/OpenCodeTurnChipView.cs");
+        var conversation = Read("OpenCode/OpenCodeConversationView.cs");
         var xaml = Read("OpenCodePage.xaml");
         var treePage = Read("OpenCodePage.AgentTree.cs");
         Check(tree.Contains("ShellRequested?.Invoke(shell.Id)") && !tree.Contains("TerminalInvoked")
@@ -56,12 +59,17 @@ internal static class Program
             && xaml.Contains("Loaded=\"TerminalViewHost_Loaded\""), "terminal host is center-only sibling, not a dock child");
         Check(view.Contains("<Button x:Name=\"Back\"") && view.Contains("&#xE72B;") && page.Contains("VirtualKey.Escape")
             && page.Contains("CloseTerminalView()"), "native back button plus page-wide Escape return navigation");
-        Check(view.Contains("<RichTextBlock x:Name=\"Output\" IsTextSelectionEnabled=\"True\"") && view.Contains("<ScrollViewer x:Name=\"Scroll\"")
-            && view.Contains("ShellTerminalBackground") && view.Contains("ShellTerminalForeground") && view.Contains("ShellTerminalPrompt")
-            && view.Contains("Cascadia Mono, Consolas"), "native selectable read-only output, scroll viewer and existing Campbell/high contrast palette");
-        Check(view.Contains("_scroll.ViewChanging +=") && view.Contains("if (_follow) _scroll.ChangeView") && view.Contains("if (_text == state.Output) return"), "user scroll-up suspends auto-follow; unchanged polls preserve selection");
+        Check(view.Contains("OpenCodeToolDetailContent.TerminalBody(state.Command") && detail.Contains("return TerminalBody(model.Command ?? model.Target")
+            && detail.Contains("IsTextSelectionEnabled = selectable") && detail.Contains("AppFonts.Apply(text, AppFontSlot.Monospace)")
+            && view.Contains("<ScrollViewer x:Name=\"Scroll\""), "sidebar and working-tool terminal share the exact selectable terminal body and font presentation");
+        Check(tree.Contains("ContentPresenterGrid\" Background=\"Transparent\"") && tree.Contains("Colors.Transparent"), "complete terminal row, text and trailing whitespace participate in native hit testing");
+        Check(conversation.Contains("case OpenCodeMessageTypes.AgentSwitched:\n            case OpenCodeMessageTypes.ModelSwitched:")
+            && turnChip.Contains("已切换智能体") && turnChip.Contains("已切换推理强度")
+            && turnChip.Contains("oldVariant != message.Model.Variant") && turnChip.Contains("oldProvider.GetString() == provider"),
+            "agent and model notices share pill presenter; same-model variant changes use effort wording");
+        Check(view.Contains("_scroll.ViewChanging +=") && view.Contains("if (_follow) _scroll.ChangeView") && view.Contains("if (_text == state.Output &&"), "user scroll-up suspends auto-follow; unchanged polls preserve selection");
         Check(page.Contains("IsTreeCurrent(binding)") && page.Contains("version == _terminalVersion") && page.Contains("CreateLinkedTokenSource")
-            && page.Contains("Unloaded +=") && page.Contains("_terminalCts?.Cancel()"), "session/source/unload/close invalidate pending reads");
+            && page.Contains("PageReleased +=") && page.Contains("_terminalCts?.Cancel()"), "session/source/page release/close invalidate pending reads");
         Check(page.Contains("while (_terminalState.HasMore && Current())") && page.Contains("ReadTreeShellOutputAsync")
             && !page.Contains("CreateShell") && !page.Contains("/pty"), "verified output paging only; no terminal/session mutations or unrelated PTY API");
         Console.WriteLine($"PASS {_checks} focused terminal checks");

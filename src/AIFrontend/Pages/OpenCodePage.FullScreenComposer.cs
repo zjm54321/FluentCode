@@ -16,13 +16,26 @@ public sealed partial class OpenCodePage
     private Grid? _fullScreenComposer;
     private TextBox? _fullScreenEditor;
     private TextBlock? _fullScreenCount;
-    private DropDownButton? _fullScreenAgent, _fullScreenModel, _fullScreenEffort;
+    private Button? _fullScreenAgent, _fullScreenModel, _fullScreenEffort;
     private Button? _fullScreenSend;
     private OpenCodeComposerBinding? _fullScreenBinding;
     private OpenCodeComposerToken _fullScreenToken;
     private bool _fullScreenComposing, _fullScreenApplying;
     private DateTimeOffset _fullScreenLastCompositionEndedAt = DateTimeOffset.MinValue;
     private bool FullScreenComposerActive => _fullScreenComposer?.Visibility == Visibility.Visible;
+
+    // /editor relinquishes its short-lived command capability before opening the
+    // same live-draft editor as the expand button. Never reopen against another tab
+    // or a draft edited while the dispatcher callback was waiting.
+    private void QueueFullScreenComposer(OpenCodeComposerClientActionTicket ticket)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (ticket.Kind != OpenCodeComposerClientActionKind.EditDraft || !_pageActive
+                || !OwnsComposerBinding(ticket.Binding) || _composerController?.Snapshot.Token != ticket.Token) return;
+            OpenFullScreenComposer();
+        });
+    }
 
     private void OpenFullScreenComposer()
     {
@@ -91,9 +104,9 @@ public sealed partial class OpenCodePage
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var choices = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        _fullScreenAgent = new DropDownButton { Style = (Style)Resources["ComposerAgentDropdownStyle"] };
-        _fullScreenModel = new DropDownButton(); _fullScreenEffort = new DropDownButton();
+        var choices = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        _fullScreenAgent = new Button { Style = (Style)Resources["ComposerAgentDropdownStyle"] };
+        _fullScreenModel = new Button(); _fullScreenEffort = new Button();
         _fullScreenAgent.Click += ComposerAgentButton_Click;
         _fullScreenModel.Click += ComposerModelButton_Click;
         _fullScreenEffort.Click += ComposerEffortButton_Click;
@@ -146,7 +159,7 @@ public sealed partial class OpenCodePage
         _fullScreenAgent!.Content = ComposerChoiceLabel(OpenCodeAgentIcons.Glyph(agent), OpenCodeAgentIcons.DisplayName(agent ?? "不可用"), labels.Agent);
         OpenCodeAgentPresentation.Apply(_fullScreenAgent, color);
         _fullScreenModel!.Content = labels.Model ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? "模型不可用") : OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
-        _fullScreenEffort!.Content = ComposerChoiceLabel("\uEC4A", OpenCodeModelPresentation.VariantLabel(selected?.Variant), labels.Effort);
+        _fullScreenEffort!.Content = ComposerChoiceLabel(OpenCodeModelPresentation.VariantGlyph(selected?.Variant), OpenCodeModelPresentation.VariantLabel(selected?.Variant), labels.Effort);
         var buttons = new[] { _fullScreenAgent, _fullScreenModel, _fullScreenEffort };
         var expanded = new[] { labels.Agent, labels.Model, labels.Effort };
         for (var i = 0; i < buttons.Length; i++)

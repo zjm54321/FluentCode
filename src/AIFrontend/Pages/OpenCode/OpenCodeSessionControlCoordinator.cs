@@ -45,7 +45,7 @@ public sealed class SessionControlPreview
     public bool RequiresTextOnlyConsent => Target?.HasNonTextReferences == true;
     public bool PriorStageMayHaveFileEffects => State.Revert?.MayHaveFileEffects == true;
     public string Warning => Request.Kind == SessionControlKind.SwitchModel
-        ? "Applies to subsequent turns. Busy restriction is native client policy, not a documented model-switch 409 guarantee."
+        ? "Applies to subsequent provider turns, including when the current turn is running."
         : "Best-effort rollback; no cross-client CAS. Snapshots may overwrite current edits, exclude external effects, or be unavailable. "
           + "Moving a stage can restore its prior files even with files:false. Redo clears the entire stage and may wake queued execution. "
           + "Restoration is text-only; file/agent/skill references are not restored or fetched.";
@@ -138,7 +138,13 @@ public sealed class OpenCodeSessionControlCoordinator
         Validate(origin, request, draft, canStart);
         ArgumentNullException.ThrowIfNull(ownsOperation);
         bool StartAuthority(SessionControlOrigin candidate) => ownsOperation(candidate) && canStart(candidate);
+        bool rootAction = request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot;
+        // Home/page cancellation retires initiation and publication, not an already-started server
+        // management request. Its bounded transport and exact gate settlement remain source-owned.
+        var mutationToken = rootAction ? origin.Source.RevocationToken : ct;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, origin.Source.RevocationToken);
+        using var mutationLifetime = CancellationTokenSource.CreateLinkedTokenSource(mutationToken, origin.Source.RevocationToken);
+        bool SettlementOwner(SessionControlOrigin candidate) => rootAction || ownsOperation(candidate);
         OpenCodeInteractionGate.Lease? lease = null;
         bool started = false, accepted = false;
         SessionControlResult Result(SessionControlStatus status, SessionControlState? observed = null,
@@ -172,16 +178,16 @@ public sealed class OpenCodeSessionControlCoordinator
                 case SessionControlKind.ClearRevert:
                     await client.ClearRevertGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
                 case SessionControlKind.DeleteRoot:
-                    await client.DeleteSessionGuardedAsync(origin.SessionId, Start, linked.Token).ConfigureAwait(false); break;
+                    await client.DeleteSessionGuardedAsync(origin.SessionId, Start, mutationLifetime.Token).ConfigureAwait(false); break;
                 case SessionControlKind.RenameRoot:
-                    await client.RenameSessionGuardedAsync(origin.SessionId, request.NewTitle!, request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
+                    await client.RenameSessionGuardedAsync(origin.SessionId, request.NewTitle!, request.Directory!, Start, mutationLifetime.Token).ConfigureAwait(false); break;
                 case SessionControlKind.ArchiveRoot:
-                    await client.ArchiveSessionGuardedAsync(origin.SessionId, request.Directory!, Start, linked.Token).ConfigureAwait(false); break;
+                    await client.ArchiveSessionGuardedAsync(origin.SessionId, request.Directory!, Start, mutationLifetime.Token).ConfigureAwait(false); break;
                 default: throw new InvalidOperationException("Continuation uses the already-held-lease seam.");
             }
             accepted = true;
             // Settlement is exact and source-owned. Caller cancellation after a known acceptance is not rejection.
-            if (!Fence(origin, ownsOperation, CancellationToken.None,
+            if (!Fence(origin, SettlementOwner, CancellationToken.None,
                 () => lease.CompleteSessionControl(operationId, NotificationInteractionStatus.Succeeded)))
                 return Result(SessionControlStatus.OutcomeUnknown);
             SessionControlState? observed = null;
@@ -194,7 +200,7 @@ public sealed class OpenCodeSessionControlCoordinator
         }
         catch (OpenCodeSessionControlException error) when (started)
         {
-            if (error.VerifiedPreEffect && Fence(origin, ownsOperation, CancellationToken.None,
+            if (error.VerifiedPreEffect && Fence(origin, SettlementOwner, CancellationToken.None,
                 () => lease!.CompleteSessionControl(operationId, NotificationInteractionStatus.Failed)))
                 return Result(SessionControlStatus.DefinitivelyRejected, error: error.Kind);
             return Result(SessionControlStatus.OutcomeUnknown, error: error.Kind);
@@ -273,7 +279,14 @@ public sealed class OpenCodeSessionControlCoordinator
         bool RootMatches(SessionControlState candidate) => candidate.ParentId is null && candidate.Directory == request.Directory
             && candidate.Title == request.ExpectedTitle;
         var rootAction = request.Kind is SessionControlKind.DeleteRoot or SessionControlKind.RenameRoot or SessionControlKind.ArchiveRoot;
-        if (rootAction && !RootMatches(state)) return new(SessionControlStatus.ConfirmationRequired, null);
+        if (rootAction)
+        {
+            if (!RootMatches(state)) return new(SessionControlStatus.ConfirmationRequired, null);
+            // Installed V2 remove interrupts and awaits execution itself; update has no idle/history
+            // precondition. Full delivered history is needed for rollback, not root management.
+            return new(SessionControlStatus.Ready, new(origin, request, draft, state, null, null, null,
+                SessionControlJson.Hash(new { state.SessionId, state.Directory, state.Title, state.ParentId, request, draft })));
+        }
         SessionControlModels? catalog = null; SessionControlDefaultModel? inherited = null;
         if (request.Kind == SessionControlKind.SwitchModel)
         {
@@ -285,15 +298,13 @@ public sealed class OpenCodeSessionControlCoordinator
                 inherited = await Get(() => client.GetDefaultModelAsync(state.Directory, ct)).ConfigureAwait(false);
                 if (inherited.Directory != state.Directory) return new(SessionControlStatus.Blocked, null);
             }
-            if (origin.ApplyingSendSelection)
-            {
-                if (state.ParentId is not null) return new(SessionControlStatus.Blocked, null);
-                // A subsequent-turn choice is valid during execution. Do not fingerprint streaming
-                // history: it would invalidate every send while a provider is producing output.
-                var selectionFingerprint = SessionControlJson.Hash(new { state.SessionId, state.Directory,
-                    state.Model, request, draft, selected = catalog.Models.Single(m => m.Offers(request.Model)).Fingerprint });
-                return new(SessionControlStatus.Ready, new(origin, request, draft, state, catalog, inherited, null, selectionFingerprint));
-            }
+            if (state.ParentId is not null || origin.LocalSubmissionInProgress) return new(SessionControlStatus.Blocked, null);
+            // switchModel changes subsequent provider turns. Streaming/inbox/history completeness
+            // cannot invalidate a configuration choice; the shared lease and fresh catalog still do.
+            var selectionFingerprint = SessionControlJson.Hash(new { state.SessionId, state.Directory,
+                state.Model, request, draft, selected = catalog.Models.Single(m => m.Offers(request.Model)).Fingerprint,
+                inherited = inherited?.Model?.Fingerprint });
+            return new(SessionControlStatus.Ready, new(origin, request, draft, state, catalog, inherited, null, selectionFingerprint));
         }
         else if (request.Kind == SessionControlKind.StageRevert && !draft.Empty) return new(SessionControlStatus.Blocked, null);
         else if (request.Kind == SessionControlKind.ClearRevert && state.Revert is null) return new(SessionControlStatus.NoStage, null);
@@ -357,7 +368,7 @@ public sealed class OpenCodeSessionControlCoordinator
         if (!execution.CanSwitchAgent) return new(SessionControlStatus.Blocked, null);
         // Reads aren't atomic. Detect changes noticed during this preflight, but never claim cross-client CAS.
         var last = await Get(() => client.GetSessionControlStateAsync(origin.SessionId, ct)).ConfigureAwait(false);
-        if (last.Fingerprint != state.Fingerprint || rootAction && !RootMatches(last)) return new(SessionControlStatus.ConfirmationRequired, null);
+        if (last.Fingerprint != state.Fingerprint) return new(SessionControlStatus.ConfirmationRequired, null);
         var fingerprint = SessionControlJson.Hash(new { state.Fingerprint, request, draft,
             target = target?.Fingerprint, history = history.Select(m => m.Fingerprint).ToArray(),
             selected = catalog?.Models.Single(m => m.Offers(request.Model!)).Fingerprint,

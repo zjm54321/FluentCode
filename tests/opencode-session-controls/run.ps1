@@ -27,6 +27,25 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Open
     $sources += Join-Path $repo "src/AIFrontend/Services/Notifications/$name"
 }
 $sources += Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'
+$sources += Join-Path $repo 'src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs'
+# Source-link the selector's actual state/transport methods; native layout and picker UI are boundaries.
+function Extract([string]$text, [string]$name) {
+    $match = [regex]::Match($text, '(?m)^    (?:private|internal) (?:static |async )*[\w<>?]+ ' + $name + '\(')
+    if (!$match.Success) { throw "Missing selector method $name" }
+    $start = $match.Index; $brace = $text.IndexOf('{', $start); $arrow = $text.IndexOf('=>', $start)
+    if ($arrow -ge 0 -and $arrow -lt $brace) { return $text.Substring($start, $text.IndexOf(';', $arrow) - $start + 1) }
+    $depth = 0
+    for ($i = $brace; $i -lt $text.Length; $i++) {
+        if ($text[$i] -eq '{') { $depth++ }; if ($text[$i] -eq '}') { $depth--; if ($depth -eq 0) { return $text.Substring($start, $i - $start + 1) } }
+    }
+    throw "Unclosed selector method $name"
+}
+$selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
+$members = @('SelectPendingAgent','SelectUserAgent','SelectPendingModel','ApplyPendingSelectionAsync','ApplyPendingSelectionCoreAsync','ModelsMatch','CompletePendingSelection','SavePendingSelection','SwitchBlockedReason','RefreshDisplay','ReloadAsync','ApplyAgents','ApplyCurrentAgentPresentation','ApplyModel','RunSwitchAsync','ApplySwitchResultAsync','IsOriginCurrent','UpdateControls','DisplayName') | ForEach-Object { Extract $selector $_ }
+$selectorSource = Join-Path $EvidenceRoot 'ActualSelectorState.cs'
+"using System;using System.Collections.Generic;using System.Net.Http;using System.Threading;using System.Threading.Tasks;using AIFrontend.Services.Notifications;using AIFrontend.Services.OpenCode;namespace AIFrontend.Pages.OpenCode;internal sealed partial class OpenCodeAgentSelector {`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $selectorSource
+$sources += $selectorSource
+$sources += Join-Path $PSScriptRoot 'SelectorState.cs'
 $sources += Join-Path $PSScriptRoot 'Program.cs'
 $assembly = Join-Path $EvidenceRoot 'SessionControlTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))

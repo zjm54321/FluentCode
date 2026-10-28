@@ -15,7 +15,7 @@ internal static class VisibleIdle
     private sealed class Fixture
     {
         internal readonly Border Root = new();
-        internal readonly ScrollViewer Scroll = new();
+        internal readonly ScrollView Scroll = new();
         internal readonly ScrollContentPresenter Presenter = new();
         internal readonly OpenCodeConversationView View = new();
         internal readonly XamlRoot Xaml = new();
@@ -84,7 +84,7 @@ internal static class VisibleIdle
         f.Place(1,100); f.Presenter.Content = null;
         Check(f.Capture().Candidate is null, "current entry outside specified scroll tree is not owned"); f.Presenter.Content=f.View;
         Check(f.Capture().Candidate is not null, "same actual owner tree can restore proof");
-        var foreign = new ScrollViewer { XamlRoot=f.Xaml, IsLoaded=true };
+        var foreign = new ScrollView { XamlRoot=f.Xaml, IsLoaded=true };
         Check(f.View.CaptureIdleViewport(foreign).Candidate is null, "same-root unrelated scroll cannot prove another view's anchor");
         f.Presenter.Content=null; f.Scroll.Content=f.View;
         Check(f.Capture().Candidate is null, "missing actual ScrollContentPresenter template fails closed");
