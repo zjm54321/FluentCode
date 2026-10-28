@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using AIFrontend.Models;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -36,7 +39,15 @@ public sealed partial class OpenCodePage
     {
         SyncBrowserSource();
         if (_browserWorkspaces.TryGetValue(sessionId, out var existing)) return existing;
-        var workspace = new OpenCodeBrowserWorkspace(sessionId, BrowserHiddenHost, _browserShownHost);
+        // Running workspaces retain their original factory/settings snapshot above.
+        var browser = _homeSettings?.Current?.Browser ?? new BrowserSettings();
+        var workspaceId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes((_source?.Identity ?? "detached") + "\0" + sessionId))).ToLowerInvariant();
+        IOpenCodeBrowserPageDriverFactory? driverFactory = browser.Engine == BrowserEngine.Chrome
+            ? new OpenCodeBrowserChromeDriverFactory(new OpenCodeBrowserChromeOptions(browser.ChromeExecutablePath,
+                browser.ChromeConnection == BrowserChromeConnection.Attach,
+                browser.ChromeConnection == BrowserChromeConnection.Attach ? browser.ChromeEndpoint : null)) : null;
+        var workspace = new OpenCodeBrowserWorkspace(sessionId, BrowserHiddenHost, _browserShownHost,
+            new OpenCodeBrowserWorkspaceOptions(WorkspaceId: workspaceId, ProfileDirectory: null, DriverFactory: driverFactory));
         _browserWorkspaces.Add(sessionId, workspace);
         _browserBackends.Add(sessionId, new OpenCodeBrowserSessionBackend(workspace));
         var source = _source;
@@ -65,6 +76,7 @@ public sealed partial class OpenCodePage
         };
         _conversationView.BrowserPageRequested += ShowBrowserPageFromTimeline;
         _browserOverlay = new OpenCodeBrowserOverlay(_browserShownHost);
+        _browserOverlay.SettingsRequested += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
         InitializeBrowserSelection(_browserOverlay);
         BrowserOverlayHost.Children.Add(_browserOverlay);
         _browserOverlay.ContentSizeChanged += (_, _) =>
@@ -161,16 +173,14 @@ public sealed partial class OpenCodePage
     private void SizeBrowserHosts()
     {
         var height = Math.Max(0, PageRoot.ActualHeight - SessionTabs.ActualHeight);
-        var dock = InsightsPane.IsPaneOpen && InsightsPane.DisplayMode == SplitViewDisplayMode.Inline ? InsightsPane.OpenPaneLength : 0;
-        var caps = OpenCodeDetailPopupLayout.LargeView(PageRoot.ActualWidth, height);
-        var placement = OpenCodeBrowserOverlayLayout.Place(PageRoot.ActualWidth, height, dock, caps.Width, caps.Height);
+        var placement = OpenCodeBrowserOverlayLayout.Place(PageRoot.ActualWidth, height);
         BrowserOverlayHost.Width = placement.HostWidth;
         _browserOverlay?.SetSurfaceSize(placement.Width, placement.Height);
         var content = OpenCodeBrowserOverlayLayout.Content(placement.Width, placement.Height);
         BrowserHiddenHost.Width = Math.Max(1, _browserOverlay?.ContentWidth is > 0 ? _browserOverlay.ContentWidth : content.Width);
         BrowserHiddenHost.Height = Math.Max(1, _browserOverlay?.ContentHeight is > 0 ? _browserOverlay.ContentHeight : content.Height);
         BrowserHiddenHost.Margin = new Thickness(placement.X + OpenCodeBrowserOverlayLayout.BorderWidth,
-            placement.Y + OpenCodeBrowserOverlayLayout.BorderWidth + OpenCodeBrowserOverlayLayout.HeaderHeight + OpenCodeBrowserOverlayLayout.ToolbarHeight, 0, 0);
+            placement.Y + OpenCodeBrowserOverlayLayout.BorderWidth + OpenCodeBrowserOverlayLayout.ToolbarHeight, 0, 0);
     }
 
     // Explicit browser Stop uses the same guarded interrupt transport/protection as composer Stop,

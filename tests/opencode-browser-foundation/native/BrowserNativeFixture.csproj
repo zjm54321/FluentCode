@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>false</SelfContained>
+    <WindowsSdkPackageVersion>10.0.26100.57</WindowsSdkPackageVersion>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Exact versions from src/AIFrontend/packages.lock.json; run.ps1 checks them before building. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="[1.8.260921001]" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="[10.0.26100.9169]" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="[1.0.3179.45]" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Real production adapter and shared dependencies, no platform or transport stand-ins. -->
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserWebView2Driver.cs" Link="Production\OpenCodeBrowserWebView2Driver.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserUiContext.cs" Link="Production\OpenCodeBrowserUiContext.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserDriverPolicy.cs" Link="Production\OpenCodeBrowserDriverPolicy.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserContracts.cs" Link="Production\OpenCodeBrowserContracts.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserPolicy.cs" Link="Production\OpenCodeBrowserPolicy.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserExecutionContracts.cs" Link="Production\OpenCodeBrowserExecutionContracts.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserDriverContracts.cs" Link="Production\OpenCodeBrowserDriverContracts.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserAttachmentLease.cs" Link="Production\OpenCodeBrowserAttachmentLease.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserRpc.cs" Link="Production\OpenCodeBrowserRpc.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserRuntimeFactory.cs" Link="Production\OpenCodeBrowserRuntimeFactory.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserRuntime.cs" Link="Production\OpenCodeBrowserRuntime.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserRuntimeProtocol.cs" Link="Production\OpenCodeBrowserRuntimeProtocol.cs" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\Browser\OpenCodeBrowserTunnelTransport.cs" Link="Production\OpenCodeBrowserTunnelTransport.cs" />
+    <!-- RPC's DTOs share a file with its real client extensions. Include their production dependencies too. -->
+    <Compile Include="..\..\..\src\AIFrontend\Services\OpenCode\*.cs" Exclude="..\..\..\src\AIFrontend\Services\OpenCode\OpenCodePairingService.cs" Link="Production\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\src\AIFrontend\Services\Notifications\OpenCodeInteractionGate.cs;..\..\..\src\AIFrontend\Services\Notifications\OpenCodeExecutionProjection.cs;..\..\..\src\AIFrontend\Services\Notifications\OpenCodePageSource.cs;..\..\..\src\AIFrontend\Services\Notifications\NotificationInteractions.cs;..\..\..\src\AIFrontend\Services\Notifications\NotificationArgumentCodec.cs;..\..\..\src\AIFrontend\Services\Notifications\NotificationActivationInfo.cs;..\..\..\src\AIFrontend\Services\Notifications\NotificationSource.cs" Link="Production\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

@@ -33,6 +33,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     private InMemoryRandomAccessStream? _mediaStream;
     private int _version;
     private int _presentationVersion;
+    private OpenCodeBrowserPreviewWebContent? _webContent;
     internal OpenCodeBrowserPreviewView()
     {
         RowDefinitions.Add(new() { Height = new(48) }); RowDefinitions.Add(new() { Height = new(1, GridUnitType.Star) });
@@ -51,11 +52,10 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     internal void Bind(OpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPage? page)
     {
         _version++; _presentationVersion++; _read?.Cancel(); _read?.Dispose(); _read = null; ReleaseMedia();
-        if (_page is not null) { _page.View.Margin = new(0); _page.View.Opacity = 1; _page.View.IsHitTestVisible = true; }
+        if (_webContent is not null) { Children.Remove(_webContent.View); _webContent = null; }
         _workspace = workspace; _page = page?.PreviewPath is null ? null : page; _content = null; _text = null;
         Visibility = _page is null ? Visibility.Collapsed : Visibility.Visible;
         if (_page is null) { _native.Child = null; return; }
-        _page.View.Margin = new(0, 48, 0, 0); _page.View.Opacity = 0; _page.View.IsHitTestVisible = false;
         _selector.SelectedItem = _render; _selector.IsEnabled = false;
         UpdateActions(); _ = ReadAsync();
     }
@@ -122,8 +122,6 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
             case OpenCodeBrowserPreviewKind.Mermaid:
                 var stack = new StackPanel { Spacing = 12, Margin = new(24) };
                 var markdown = new OpenCodeRichTextPresenter();
-                if (_kind == OpenCodeBrowserPreviewKind.Mermaid || (_text?.Contains("```mermaid", StringComparison.OrdinalIgnoreCase) == true))
-                    stack.Children.Add(Note("应用未附带 Mermaid 脚本；图表按代码块显示，不从网络加载脚本。"));
                 var source = _kind == OpenCodeBrowserPreviewKind.Mermaid ? "```mermaid\n" + _text + "\n```" : _text;
                 using (OpenCodeToolDetailContent.DetailBuildScope(true)) markdown.Render(source, OpenCodeRichTextStyle.Body);
                 stack.Children.Add(markdown.Element); _native.Child = Scroll(stack); break;
@@ -158,13 +156,13 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
             case OpenCodeBrowserPreviewKind.Html:
                 // NavigateToString has a documented 2 MiB HTML limit; never silently truncate.
                 if (System.Text.Encoding.UTF8.GetByteCount(_text ?? "") > 1900000) throw new IOException("HTML 超过 WebView2 本地字符串渲染上限；请切换源码查看");
-                await OpenCodeBrowserPreviewWebContent.For(page).ShowAsync(_text);
+                await WebContent(page).ShowAsync(_text);
                 if (version == _presentationVersion) Native(false); break;
             case OpenCodeBrowserPreviewKind.Pdf:
-                await OpenCodeBrowserPreviewWebContent.For(page).ShowAsync(null, content.Bytes);
+                await WebContent(page).ShowAsync(null, content.Bytes);
                 if (version == _presentationVersion) Native(false); break;
             case OpenCodeBrowserPreviewKind.Font:
-                await OpenCodeBrowserPreviewWebContent.For(page).ShowAsync("<style>@font-face{font-family:preview;src:url('https://preview.invalid/font')}section{font-family:preview;padding:24px}p{overflow-wrap:anywhere}</style><section><h1>字体预览</h1>" +
+                await WebContent(page).ShowAsync("<style>@font-face{font-family:preview;src:url('https://preview.invalid/font')}section{font-family:preview;padding:24px}p{overflow-wrap:anywhere}</style><section><h1>字体预览</h1>" +
                     string.Concat(new[] { 12, 16, 24, 36, 48, 72 }.Select(size => "<p style='font-size:" + size + "px'>" + size + " · 天地玄黄 ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz 0123456789</p>")) + "</section>", font: content.Bytes);
                 if (version == _presentationVersion) Native(false); break;
         }
@@ -172,7 +170,14 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     private void Native(bool visible)
     {
         _native.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        if (_page is not null) { _page.View.Opacity = visible ? 0 : 1; _page.View.IsHitTestVisible = !visible; }
+        if (_webContent is not null) _webContent.View.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+    }
+    private OpenCodeBrowserPreviewWebContent WebContent(OpenCodeBrowserPage page)
+    {
+        _webContent = OpenCodeBrowserPreviewWebContent.For(page);
+        if (!Children.Contains(_webContent.View)) { Grid.SetRow(_webContent.View, 1); Children.Add(_webContent.View); }
+        _webContent.View.Visibility = Visibility.Visible;
+        return _webContent;
     }
     private void Status(string title, string reason)
     {

@@ -263,6 +263,7 @@ internal static class PickerFixture
 internal enum Visibility { Visible, Collapsed }
 internal sealed class BrowserStripFixture
 {
+    /* BROWSER_STRIP_HEIGHT */
     private readonly Element _root = new();
     private bool IsLoaded => _root.IsLoaded;
     private event Action<object, RoutedEventArgs> Loaded { add => _root.Loaded += value; remove => _root.Loaded -= value; }
@@ -282,7 +283,7 @@ internal sealed class BrowserStripFixture
         var f = new BrowserStripFixture(); f._root.Load(); f._root.Unload(true);
         Program.Check(f._capture.Running, "late browser strip unload cannot stop current thumbnail capture");
         f._root.Unload(false);
-        Program.Check(!f._capture.Running && f._transition is null && f.Height == 132 && f.Opacity == 1 && f.visibility == Visibility.Visible,
+        Program.Check(!f._capture.Running && f._transition is null && f.Height == ExpandedHeight && f.Opacity == 1 && f.visibility == Visibility.Visible,
             "browser strip navigation pause stops capture/motion and retains the expanded visual target");
         f._root.Load();
         Program.Check(f._capture.Running && f.refreshes == 2, "browser strip reload refreshes tiles and restarts capture even when expanded was already true");

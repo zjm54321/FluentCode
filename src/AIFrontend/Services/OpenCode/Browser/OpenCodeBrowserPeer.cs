@@ -48,6 +48,32 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
     private bool _paused;
     private int _retry;
     private bool _attempted;
+    private OpenCodeBrowserAttachmentLease? _attachment;
+
+    private sealed class AttachmentRpc(OpenCodeClient client, string directory, string sessionId,
+        string connectionId, CancellationToken lifetime) : IOpenCodeBrowserTunnelRpc
+    {
+        public async Task<string> OpenAsync(OpenCodeBrowserTunnelTarget target, CancellationToken cancellationToken = default)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime, cancellationToken);
+            linked.Token.ThrowIfCancellationRequested();
+            return await client.OpenBrowserTunnelAsync(directory, sessionId, connectionId, target, linked.Token).ConfigureAwait(false);
+        }
+        public async Task<OpenCodeBrowserTunnelRead> ReadAsync(string tunnelId, CancellationToken cancellationToken = default)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime, cancellationToken);
+            linked.Token.ThrowIfCancellationRequested();
+            return await client.ReadBrowserTunnelAsync(directory, sessionId, connectionId, tunnelId, linked.Token).ConfigureAwait(false);
+        }
+        public async Task WriteAsync(string tunnelId, byte[] data, bool? end = null, CancellationToken cancellationToken = default)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime, cancellationToken);
+            linked.Token.ThrowIfCancellationRequested();
+            await client.WriteBrowserTunnelAsync(directory, sessionId, connectionId, tunnelId, data, end, linked.Token).ConfigureAwait(false);
+        }
+        public Task CloseAsync(string tunnelId, CancellationToken cancellationToken = default)
+            => client.CloseBrowserTunnelAsync(directory, sessionId, connectionId, tunnelId, cancellationToken);
+    }
 
     public OpenCodeBrowserPeer(OpenCodeClient client, string directory, IOpenCodeBrowserEventFeed feed,
         IOpenCodeBrowserSessionBackend backend, TimeSpan? commandTimeout = null, Func<int, TimeSpan>? backoff = null,
@@ -67,11 +93,14 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
     public string AvailabilityReason { get; private set; } = "智能体暂时不能使用浏览器：会话尚未接入";
     public Exception? LastError { get; private set; }
     public event EventHandler? AvailabilityChanged;
+    public OpenCodeBrowserAttachmentLease? Attachment => Volatile.Read(ref _attachment);
+    public event EventHandler? AttachmentChanged;
 
     public void Start()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_run is not null) return;
+        if (_backend is IOpenCodeBrowserPeerBinding binding) binding.BindPeer(this);
         // These subscriptions MUST precede even the synchronous initiation of attach.
         _feed.Control += OnControl;
         _feed.ConnectionChanged += OnConnectionChanged;
@@ -198,6 +227,9 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
                 return;
             }
             owner.Attached = true;
+            Volatile.Write(ref _attachment, new OpenCodeBrowserAttachmentLease(SessionId, owner.ConnectionId,
+                new AttachmentRpc(_client, _directory, SessionId, owner.ConnectionId, owner.Stop.Token), owner.Stop.Token));
+            AttachmentChanged?.Invoke(this, EventArgs.Empty);
             _retry = 0;
             LastError = null;
             SetAvailability(OpenCodeBrowserAvailability.Available);
@@ -317,6 +349,8 @@ public sealed class OpenCodeBrowserPeer : IAsyncDisposable
         if (owner is null) return;
         var requests = new List<CancellationTokenSource>(owner.Requests.Values);
         owner.Dispose();
+        // Invalidate in-flight sockets before any observer sees detach or a replacement attachment.
+        if (Interlocked.Exchange(ref _attachment, null) is not null) AttachmentChanged?.Invoke(this, EventArgs.Empty);
         _cleanup.RemoveAll(task => task.IsCompletedSuccessfully);
         _cleanup.Add(CleanupAsync(owner, requests));
     }

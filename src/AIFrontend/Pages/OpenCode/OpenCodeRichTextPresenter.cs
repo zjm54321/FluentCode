@@ -42,7 +42,7 @@ public enum OpenCodeRichTextStyle
 /// <para>
 /// 普通 sealed 业务类（<strong>不是</strong>控件子类）：构造时创建同一实例的根
 /// <see cref="StackPanel"/> 并经 <see cref="Element"/> 暴露；不派生控件、不自定义模板、不重写测量、不自绘、
-/// 不创建 WebView，因此可安全用于最近 100 条消息（无“每条消息一个浏览器”）。
+/// 普通 Markdown 不创建 WebView；Mermaid 块通过串行、临时的隔离渲染器生成原生图像。
 /// </para>
 /// <para>
 /// 安全边界（<strong>唯一</strong>复用共享 <see cref="SafeContentRenderer"/>，未削弱其策略）：
@@ -304,7 +304,8 @@ public sealed class OpenCodeRichTextPresenter
                     foreach (var name in (originalCode?.GetAttribute("class") ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries))
                         if (name.StartsWith("language-", StringComparison.OrdinalIgnoreCase))
                         {
-                            CodeLanguages.Add(pre, new CodeLanguage(OpenCodeFileDetailPolicy.NormalizeLanguage(name[9..])));
+                            CodeLanguages.Add(pre, new CodeLanguage(name[9..].Equals("mermaid", StringComparison.OrdinalIgnoreCase)
+                                ? "mermaid" : OpenCodeFileDetailPolicy.NormalizeLanguage(name[9..])));
                             break;
                         }
                 }
@@ -579,7 +580,8 @@ public sealed class OpenCodeRichTextPresenter
         OpenCodeCodePalette.BindText(code, OpenCodeDetailTextPolicy.CodeDisplayText(source), language);
 
         // No inner viewport: wheel gestures and vertical extent belong to the conversation/popup body.
-        return OpenCodeToolDetailContent.CodeBlockFrame(code, source, language);
+        var frame = OpenCodeToolDetailContent.CodeBlockFrame(code, source, language);
+        return language == "mermaid" ? new OpenCodeMermaidView(source, frame) : frame;
     }
 
     private static UIElement? CreateTable(IElement table, OpenCodeRichTextStyle style, int depth)

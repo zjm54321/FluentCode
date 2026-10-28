@@ -23,6 +23,9 @@ internal static class Program
         await Test("RPC envelope, location, auth, exact state and nullable focus", WireState);
         await Test("command optional fields, base64 and exact success/failure outcomes", WireResults);
         await Test("typed tunnel RPC shapes", Tunnels);
+        await Test("idle tunnel read has attachment cancellation, not ordinary RPC timeout", IdleTunnelRead);
+        await Test("immutable lease publication, cancellation-before-detach and original-identity cleanup", AttachmentLeases);
+        await Test("unsupported protocol never publishes an attachment lease", UnsupportedLease);
         await Test("subscribe before attach, held request, attached posts state", Handshake);
         await Test("state changes coalesced and posted in order", StateOrder);
         await Test("initial navigation state acknowledged before open result and next load wait", NavigationResultOrder);
@@ -38,7 +41,7 @@ internal static class Program
         await Test("dispose aborts attach and cancels commands", Disposal);
         await Test("source revocation aborts all attachments before page teardown", Revocation);
         await Test("SSE envelope location and page hookup fences", () => Hookup(args[0]));
-        Console.WriteLine($"PASS {_passed}/18 browser peer tests");
+        Console.WriteLine($"PASS {_passed}/21 browser peer tests");
     }
 
     private static async Task Test(string name, Func<Task> test)
@@ -62,17 +65,19 @@ internal static class Program
         }
         public event EventHandler? ConnectionChanged;
         public void Connected(bool value) { IsConnected = value; ConnectionChanged?.Invoke(this, EventArgs.Empty); }
-        public void Emit(string connection, string kind, string? request = null, string directory = "/project")
+        public void Emit(string connection, string kind, string? request = null, string directory = "/project", int version = 4)
         {
             var data = new JsonObject { ["type"] = kind, ["connectionID"] = connection };
-            if (kind == "attached") data["version"] = 4;
+            if (kind == "attached") data["version"] = version;
             if (request is not null) data["requestID"] = request;
             var element = JsonSerializer.SerializeToElement(data);
             _control?.Invoke(this, new("rpc.experimental.browser.control", element, DateTimeOffset.UtcNow) { LocationDirectory = directory });
         }
     }
-    private sealed class Backend(string sessionId = "ses_one") : IOpenCodeBrowserSessionBackend
+    private sealed class Backend(string sessionId = "ses_one") : IOpenCodeBrowserSessionBackend, IOpenCodeBrowserPeerBinding
     {
+        public OpenCodeBrowserPeer? BoundPeer;
+        public void BindPeer(OpenCodeBrowserPeer peer) { BoundPeer = peer; }
         public string SessionId { get; } = sessionId;
         public OpenCodeBrowserState State { get; private set; } = OpenCodeBrowserState.Empty;
         public event EventHandler? StateChanged;
@@ -95,15 +100,16 @@ internal static class Program
         public readonly ConcurrentDictionary<string, bool> Aborted = new();
         public readonly List<Call> History = new();
         public Func<Call, Task<HttpResponseMessage>>? Reply;
+        public Func<Call, CancellationToken, Task<HttpResponseMessage>>? ReplyWithCancellation;
         public bool AttachSubscribed;
         public int AttachCount;
         public OpenCodeClient Client { get; }
         private readonly HttpClient _http;
-        public Server()
+        public Server(TimeSpan? timeout = null)
         {
             _http = new(this) { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
             Client = new(_http, new() { BaseUrl = "https://fake.invalid/prefix", AuthenticationMode = OpenCodeAuthenticationMode.Basic,
-                Username = "opencode", Secret = "fake-secret", Timeout = TimeSpan.FromSeconds(2) }, transportSafetyConfirmed: true);
+                Username = "opencode", Secret = "fake-secret", Timeout = timeout ?? TimeSpan.FromSeconds(2) }, transportSafetyConfirmed: true);
         }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -123,6 +129,7 @@ internal static class Program
                 return Json(new JsonObject { ["output"] = await end.Task });
             }
             Calls.Writer.TryWrite(call);
+            if (ReplyWithCancellation is not null) return await ReplyWithCancellation(call, ct);
             if (Reply is not null) return await Reply(call);
             return Json(call.Method == "command" ? JsonNode.Parse("{\"output\":{\"action\":{\"type\":\"tabs.list\"},\"files\":[]}}")! : new JsonObject());
         }
@@ -206,12 +213,81 @@ internal static class Program
     private static async Task Handshake()
     {
         using var server = new Server();
-        await using var peer = Peer(server, new());
+        var backend = new Backend();
+        await using var peer = Peer(server, backend);
         var attach = await Attach(server, peer);
+        Assert(ReferenceEquals(backend.BoundPeer, peer));
         Assert(server.AttachSubscribed && peer.Availability == OpenCodeBrowserAvailability.Available);
         Assert(attach.Input["version"]!.GetValue<int>() == 4);
         Assert(!server.Attachments[attach.Input["connectionID"]!.GetValue<string>()].Task.IsCompleted);
         Assert(peer.AvailabilityReason == "智能体可以使用浏览器（45 个操作）");
+    }
+    private static async Task IdleTunnelRead()
+    {
+        using var server = new Server(TimeSpan.FromMilliseconds(40));
+        server.ReplyWithCancellation = async (call, ct) =>
+        {
+            await Task.Delay(150, ct);
+            return Server.Json(JsonNode.Parse("{\"output\":{\"data\":\"AQI=\",\"eof\":true}}")!);
+        };
+        var read = await server.Client.ReadBrowserTunnelAsync("/project", "ses_one", "conn", "idle");
+        Assert(read.Eof && read.Data.Length == 2);
+        try
+        {
+            await server.Client.PostBrowserStateAsync("/project", "ses_one", "conn", OpenCodeBrowserState.Empty);
+            throw new Exception("Finite state RPC lost its ordinary timeout");
+        }
+        catch (OpenCodeTimeoutException) { }
+        server.ReplyWithCancellation = async (call, ct) =>
+        { await Task.Delay(System.Threading.Timeout.Infinite, ct); return Server.Json(new JsonObject()); };
+        using var stop = new CancellationTokenSource();
+        var pending = server.Client.ReadBrowserTunnelAsync("/project", "ses_one", "conn", "cancelled", stop.Token);
+        stop.Cancel();
+        try { await pending; throw new Exception("Tunnel read ignored cancellation"); }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+    }
+    private static async Task AttachmentLeases()
+    {
+        using var server = new Server();
+        await using var peer = Peer(server, new());
+        Assert(peer.Attachment is null);
+        OpenCodeBrowserAttachmentLease? old = null;
+        var changes = 0; var cancelledBeforeDetach = false;
+        peer.AttachmentChanged += (_, _) =>
+        {
+            changes++;
+            if (peer.Attachment is null && old is not null) cancelledBeforeDetach = old.Lifetime.IsCancellationRequested;
+        };
+        var first = await Attach(server, peer);
+        old = peer.Attachment ?? throw new Exception("Missing protocol-4 lease");
+        Assert(old.ConnectionId == first.Input["connectionID"]!.GetValue<string>() && old.SessionId == "ses_one");
+        server.Feed.Connected(false);
+        await Availability(peer, OpenCodeBrowserAvailability.Reconnecting);
+        Assert(peer.Attachment is null && old.Lifetime.IsCancellationRequested && cancelledBeforeDetach);
+        server.Feed.Connected(true);
+        var next = await server.Next("attach");
+        server.Feed.Emit(next.Input["connectionID"]!.GetValue<string>(), "attached");
+        await server.Next("state");
+        Assert(peer.Attachment is { } fresh && fresh.ConnectionId != old.ConnectionId && changes == 3);
+        var opens = server.Count("tunnel.open");
+        try { await old.Rpc.OpenAsync(new("localhost", 5173)); throw new Exception("Retired lease opened a new tunnel"); }
+        catch (OperationCanceledException) { }
+        Assert(server.Count("tunnel.open") == opens);
+        using var cleanup = new CancellationTokenSource(Limit);
+        await old.Rpc.CloseAsync("old-tunnel", cleanup.Token);
+        var close = await server.Next("tunnel.close");
+        Assert(close.Input["connectionID"]!.GetValue<string>() == old.ConnectionId);
+        Assert(close.Input["tunnelID"]!.GetValue<string>() == "old-tunnel");
+    }
+    private static async Task UnsupportedLease()
+    {
+        using var server = new Server();
+        await using var peer = Peer(server, new());
+        var changes = 0; peer.AttachmentChanged += (_, _) => changes++;
+        peer.Start(); var attach = await server.Next("attach");
+        server.Feed.Emit(attach.Input["connectionID"]!.GetValue<string>(), "attached", version: 3);
+        await Availability(peer, OpenCodeBrowserAvailability.Unsupported);
+        Assert(peer.Attachment is null && changes == 0);
     }
     private static async Task StateOrder()
     {

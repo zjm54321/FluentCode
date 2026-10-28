@@ -183,7 +183,7 @@ public sealed partial class SettingsView : UserControl
     /// </summary>
     public bool HasUnsavedChanges =>
         !_unloaded &&
-        (IsProviderFormDirty() || IsModelFormDirty() || IsCapabilityEditorOpen());
+        (IsProviderFormDirty() || IsModelFormDirty() || IsCapabilityEditorOpen() || _browserDirty);
 
     /// <summary>
     /// 由外层宿主（应用内设置页 <c>SettingsPage</c>）在离开承载本控件的页面后调用：
@@ -200,7 +200,7 @@ public sealed partial class SettingsView : UserControl
     {
         ConfirmChoice choice = await ConfirmCoreAsync(
             "有未保存的修改",
-            "当前设置中存在尚未提交的输入（provider 或模型表单、模型能力编辑）。" +
+             "当前设置中存在尚未提交的输入（provider、模型或浏览器设置）。" +
             "请选择如何处理后再离开；选择“取消”将留在设置页。",
             "保存并离开",
             "放弃并离开");
@@ -241,6 +241,7 @@ public sealed partial class SettingsView : UserControl
             return false;
         }
 
+        if (_browserDirty && !await SaveBrowserAsync()) return false;
         return true;
     }
 
@@ -255,6 +256,7 @@ public sealed partial class SettingsView : UserControl
         ResetProviderForm();
         ResetModelForm();
         CloseCapabilityEditor();
+        _browserDirty = false; ApplyBrowserToUi();
     }
 
     /// <summary>
@@ -387,6 +389,7 @@ public sealed partial class SettingsView : UserControl
             ApplyFontsToUi();
             ApplyProvidersToUi();
             ApplyModelsToUi();
+            ApplyBrowserToUi();
         }
         finally
         {
@@ -451,6 +454,7 @@ public sealed partial class SettingsView : UserControl
             "模型",
             "模型的选中、手动添加/删除、/models 发现加入与能力设置。能力未知时不会默认发送可选思考参数。",
             BuildModelsSection()));
+        _categories.Add(new CategoryEntry("会话浏览器", "选择内嵌 WebView2 或独立 Chrome。更改只用于新建或重新打开的会话浏览器工作区。", BuildBrowserSection()));
         _categories.Add(new CategoryEntry(
             "浏览器 Cookies",
             "清除各官网环境（独立 WebView2 用户数据目录）的浏览器 cookie；只清 cookie，不删除用户数据目录。",

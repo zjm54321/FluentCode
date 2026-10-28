@@ -10,6 +10,8 @@ namespace AIFrontend.Services.OpenCode.Browser;
 public sealed class OpenCodeBrowserSnapshot
 {
     private readonly Dictionary<string, int> _refs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeBrowserElementIdentity> _identities = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeBrowserElementIdentity> _picked = new(StringComparer.Ordinal);
     private int _nextRef;
     public IReadOnlyDictionary<string, int> Refs => _refs;
     public string Register(int backendNodeId)
@@ -17,12 +19,20 @@ public sealed class OpenCodeBrowserSnapshot
         if (backendNodeId <= 0) throw new OpenCodeBrowserException("invalid_input", "backendNodeId 必须为正整数");
         var reference = "e" + ++_nextRef; _refs.Add(reference, backendNodeId); return reference;
     }
-    public void Clear() => _refs.Clear();
-    public int Resolve(string reference) => _refs.TryGetValue(reference.TrimStart('@'), out var node) ? node
-        : throw new OpenCodeBrowserException("stale_ref", "元素引用已失效，请重新读取页面结构");
-    public (string Content, bool Truncated) Format(JsonArray nodes, int depth = 20, string? find = null, int? rootBackendNodeId = null, string scope = "")
+    public string RegisterPicked(OpenCodeBrowserElementIdentity element)
     {
-        _refs.Clear();
+        if (element.BackendNodeId <= 0) throw new OpenCodeBrowserException("invalid_input", "backendNodeId 必须为正整数");
+        var reference = "e" + ++_nextRef; _picked.Add(reference, element); return reference;
+    }
+    public OpenCodeBrowserElementIdentity Identity(string reference)
+        => _identities.GetValueOrDefault(reference.TrimStart('@')) ?? _picked.GetValueOrDefault(reference.TrimStart('@'))
+            ?? throw new OpenCodeBrowserException("stale_ref", "元素引用已失效，请重新读取页面结构");
+    public void Clear() { _refs.Clear(); _identities.Clear(); _picked.Clear(); }
+    public int Resolve(string reference) => _picked.TryGetValue(reference.TrimStart('@'), out var picked) ? picked.BackendNodeId : _refs.TryGetValue(reference.TrimStart('@'), out var node) ? node
+        : throw new OpenCodeBrowserException("stale_ref", "元素引用已失效，请重新读取页面结构");
+    public (string Content, bool Truncated) Format(JsonArray nodes, int depth = 20, string? find = null, int? rootBackendNodeId = null, string scope = "", Func<JsonObject, OpenCodeBrowserElementIdentity>? identify = null)
+    {
+        _refs.Clear(); _identities.Clear();
         // Monotonic refs prevent an expired e1 from silently selecting a different node after a new snapshot.
         (string Scope, string Id) Key(JsonObject node) => (node["frameId"]?.ToString() ?? scope, node["nodeId"]!.GetValue<string>());
         var byId = new Dictionary<(string Scope, string Id), JsonObject>();
@@ -69,7 +79,12 @@ public sealed class OpenCodeBrowserSnapshot
                     if (builder.Length + level * 2 + prefixLength + text.Length + 1 <= 100000)
                     {
                         builder.Append(' ', level * 2);
-                        if (hasRef) builder.Append('[').Append(Register(node["backendDOMNodeId"]!.GetValue<int>())).Append("] ");
+                        if (hasRef)
+                        {
+                            var reference = Register(node["backendDOMNodeId"]!.GetValue<int>());
+                            if (identify is not null) _identities.Add(reference, identify(node));
+                            builder.Append('[').Append(reference).Append("] ");
+                        }
                         builder.Append(text).Append('\n');
                     }
                     else truncated = true;
@@ -83,12 +98,14 @@ public sealed class OpenCodeBrowserSnapshot
     }
 
     public (string Content, bool Truncated) AddBoxes(string content, IReadOnlyDictionary<int, OpenCodeBrowserBox> boxes)
+        => AddBoxes(content, reference => _refs.TryGetValue(reference, out var node) && boxes.TryGetValue(node, out var box) ? box : null);
+    public (string Content, bool Truncated) AddBoxes(string content, Func<string, OpenCodeBrowserBox?> lookup)
     {
         var builder = new StringBuilder(); var truncated = false;
         foreach (var line in content.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var output = line; var start = line.IndexOf('['); var end = start < 0 ? -1 : line.IndexOf(']', start);
-            if (end > start && _refs.TryGetValue(line[(start + 1)..end], out var node) && boxes.TryGetValue(node, out var box))
+            if (end > start && lookup(line[(start + 1)..end]) is { } box)
                 output = line.Insert(end + 1, " box=" + System.Text.Json.JsonSerializer.Serialize(new { x = box.X, y = box.Y, width = box.Width, height = box.Height }));
             if (builder.Length + output.Length + 1 > 100000) { truncated = true; break; }
             builder.Append(output).Append('\n');

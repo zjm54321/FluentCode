@@ -63,7 +63,8 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
             var element = item.Elements.FirstOrDefault();
             row.Children.Add(new TextBlock { Text = $"{element?.Value ?? element?.Text ?? item.AnnotationText} · {item.Box.Width:0} × {item.Box.Height:0} · {element?.Ref}", MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .7 });
             row.Children.Add(Image(item.Image, 72));
-            var note = new TextBox { PlaceholderText = "可选说明", Text = item.Note, MaxLength = 4000 };
+            var note = new TextBox { PlaceholderText = "添加批注（可选）", Text = item.Note, MaxLength = 4000 };
+            AutomationProperties.SetName(note, $"第 {item.Number} 项批注");
             note.TextChanged += (_, _) => NoteChanged?.Invoke(item.Id, note.Text); row.Children.Add(note);
             var menu = new MenuFlyout();
             var copy = new MenuFlyoutItem { Text = "复制图片" }; copy.Click += (_, _) => CopyRequested?.Invoke(item.Image); menu.Items.Add(copy);

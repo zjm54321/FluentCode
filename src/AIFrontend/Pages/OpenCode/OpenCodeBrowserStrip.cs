@@ -23,6 +23,8 @@ internal sealed class OpenCodeBrowserStrip : Grid
     private readonly Dictionary<IOpenCodeBrowserPage, Tile> _tiles = new();
     private readonly ItemsRepeater _repeater;
     private readonly ScrollView _scroll;
+    private readonly Button _previous, _next;
+    private const double ExpandedHeight = 72;
     private readonly DispatcherTimer _capture = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private IOpenCodeBrowserWorkspace? _workspace;
     private Storyboard? _transition;
@@ -32,12 +34,20 @@ internal sealed class OpenCodeBrowserStrip : Grid
     {
         Height = 0; Opacity = 0; Visibility = Visibility.Collapsed;
         Margin = new Thickness(-8, 0, -8, 0);
+        ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+        ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         _repeater = new ItemsRepeater { ItemsSource = _items, ItemTemplate = new TileFactory(), Layout = new StackLayout { Orientation = Orientation.Horizontal, Spacing = 8 } };
-        _scroll = new ScrollView { Content = _repeater, HorizontalScrollBarVisibility = ScrollingScrollBarVisibility.Auto,
+        _scroll = new ScrollView { Content = _repeater, HorizontalScrollBarVisibility = ScrollingScrollBarVisibility.Hidden,
             VerticalScrollBarVisibility = ScrollingScrollBarVisibility.Hidden, HorizontalScrollMode = ScrollingScrollMode.Enabled,
             VerticalScrollMode = ScrollingScrollMode.Disabled, ContentOrientation = ScrollingContentOrientation.Horizontal,
             Padding = new Thickness(8, 4, 8, 4) };
-        Children.Add(_scroll);
+        _previous = ScrollButton("\uE76B", "向左滚动浏览器页面", -1);
+        _next = ScrollButton("\uE76C", "向右滚动浏览器页面", 1);
+        Children.Add(_previous); Grid.SetColumn(_scroll, 1); Children.Add(_scroll); Grid.SetColumn(_next, 2); Children.Add(_next);
+        _scroll.ExtentChanged += (_, _) => UpdateScrollButtons();
+        _scroll.ViewChanged += (_, _) => UpdateScrollButtons();
+        _scroll.SizeChanged += (_, _) => UpdateScrollButtons();
         _scroll.AddHandler(PointerWheelChangedEvent, new PointerEventHandler((_, e) =>
         {
             var point = e.GetCurrentPoint(_scroll);
@@ -46,7 +56,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
         }), true);
         _capture.Tick += async (_, _) =>
         {
-            foreach (var tile in _tiles.Values.ToArray()) await tile.CaptureAsync();
+            foreach (var tile in _tiles.Values.Where(tile => !tile.IsExternal).ToArray()) await tile.CaptureAsync();
         };
         Loaded += (_, _) => { Refresh(); if (_expanded) _capture.Start(); };
         Unloaded += (_, _) =>
@@ -54,12 +64,30 @@ internal sealed class OpenCodeBrowserStrip : Grid
             if (IsLoaded) return;
             _capture.Stop();
             _transition?.Stop(); _transition = null;
-            Height = _expanded ? 132d : 0d;
+            Height = _expanded ? ExpandedHeight : 0d;
             Opacity = _expanded ? 1 : 0;
             Visibility = _expanded ? Visibility.Visible : Visibility.Collapsed;
             // Keep the workspace/tiles (and horizontal reading position) while the page is cached.
             // The page's final-release path calls Bind(null) to detach and dispose them.
         };
+    }
+
+    private Button ScrollButton(string glyph, string name, int direction)
+    {
+        var button = new Button { Width = 24, Height = 32, MinWidth = 0, Padding = new(0), VerticalAlignment = VerticalAlignment.Center,
+            Content = new FontIcon { Glyph = glyph, FontSize = 12 }, Visibility = Visibility.Collapsed };
+        if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } style) button.Style = style;
+        AutomationProperties.SetName(button, name); ToolTipService.SetToolTip(button, name);
+        button.Click += (_, _) => _scroll.ScrollBy(direction * Math.Max(104, _scroll.ViewportWidth * .75), 0);
+        return button;
+    }
+
+    private void UpdateScrollButtons()
+    {
+        var overflow = _scroll.ScrollableWidth > 1;
+        _previous.Visibility = _next.Visibility = overflow ? Visibility.Visible : Visibility.Collapsed;
+        _previous.IsEnabled = _scroll.HorizontalOffset > 1;
+        _next.IsEnabled = _scroll.HorizontalOffset < _scroll.ScrollableWidth - 1;
     }
 
     public void Bind(IOpenCodeBrowserWorkspace? workspace)
@@ -104,7 +132,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
         _transition?.Stop(); _transition = null;
         if (expanded) { Visibility = Visibility.Visible; _capture.Start(); }
         else _capture.Stop();
-        var height = expanded ? 132d : 0d;
+        var height = expanded ? ExpandedHeight : 0d;
         if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
         {
             Height = height; Opacity = expanded ? 1 : 0; Visibility = expanded ? Visibility.Visible : Visibility.Collapsed; return;
@@ -132,6 +160,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
 
     private sealed class Tile : Grid, IDisposable
     {
+        internal bool IsExternal => _page is OpenCodeBrowserPage { Presentation: OpenCodeBrowserPresentation.ExternalWindow };
         private readonly IOpenCodeBrowserPage _page;
         private readonly Image _image = new() { Stretch = Stretch.UniformToFill };
         private readonly Image _large = new() { Width = 254, Height = 159, Stretch = Stretch.Uniform };
@@ -154,7 +183,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
 
         public Tile(IOpenCodeBrowserPage page, Action show)
         {
-            _page = page; Width = 184; Height = 115; VerticalAlignment = VerticalAlignment.Top;
+            _page = page; Width = 96; Height = 60; VerticalAlignment = VerticalAlignment.Top;
             _show = new Button { Padding = new Thickness(0), BorderThickness = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch,
                 Content = _image, CornerRadius = new CornerRadius(5) };
@@ -178,6 +207,8 @@ internal sealed class OpenCodeBrowserStrip : Grid
             _tooltip.PointerExited += (_, _) => _leave.Start();
             PointerEntered += (_, _) => { _leave.Stop(); _close.Visibility = Visibility.Visible; Translation = new System.Numerics.Vector3(0, -2, 0); _hover.Start(); };
             PointerExited += (_, _) => { _hover.Stop(); _leave.Start(); _close.Visibility = Visibility.Collapsed; Translation = default; };
+            GotFocus += (_, _) => { _close.Visibility = Visibility.Visible; _hover.Start(); };
+            LostFocus += (_, _) => { _hover.Stop(); _leave.Start(); _close.Visibility = Visibility.Collapsed; };
             AddHandler(PointerPressedEvent, new PointerEventHandler((_, e) =>
             {
                 if (!e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed) return;
@@ -198,6 +229,8 @@ internal sealed class OpenCodeBrowserStrip : Grid
         {
             if (e.PropertyName == nameof(OpenCodeBrowserPage.PreviewBytes)) _ = LoadImageAsync();
             else _throttle.Invalidate();
+            if (IsExternal && e.PropertyName is nameof(OpenCodeBrowserPage.Loading) or nameof(OpenCodeBrowserPage.IsReady)
+                && _page is OpenCodeBrowserPage { IsReady: true, Loading: false }) _ = CaptureAsync();
             Render();
         }
         private void Render()
@@ -214,7 +247,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
             else _badge.Visibility = Visibility.Collapsed;
             var host = Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) ? uri.Host : _page.Url;
             _label.Text = (string.IsNullOrEmpty(_page.Title) ? _page.PreviewPath ?? _page.Url : _page.Title) + " · " + host;
-            _status.Text = OpenCodeBrowserPanelState.PageState(_page, _shown);
+            _status.Text = (IsExternal ? "外部 Chrome · 独立窗口 · " : "") + OpenCodeBrowserPanelState.PageState(_page, _shown);
             AutomationProperties.SetName(_show, _label.Text + " · " + _status.Text);
         }
         public void Flash()

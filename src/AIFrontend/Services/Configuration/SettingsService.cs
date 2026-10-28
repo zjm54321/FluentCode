@@ -231,6 +231,9 @@ public sealed class SettingsService
             }
         }
 
+        if (settings.Browser is null) errors.Add("browser 不能为空。");
+        else if (settings.Browser.ValidationError() is { } browserError) errors.Add(browserError);
+
         if (settings.OpenCode is null)
         {
             errors.Add("openCode 不能为 null");

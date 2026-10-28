@@ -7,7 +7,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -17,10 +17,11 @@ internal sealed class OpenCodeBrowserButton : Grid
 {
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
     private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
+    private readonly Image _coloredBrowser = new() { Width = 18, Height = 18, Visibility = Visibility.Collapsed,
+        Source = new SvgImageSource(new Uri("ms-appx:///Assets/OpenCode/browser.svg")) };
     private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new(3), IsHitTestVisible = false };
     private readonly Button _statusButton = new() { Width = 12, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new(0), Margin = new(0, 2, 2, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
-    private readonly Border _bar = new() { Height = 3, Width = 16, CornerRadius = new(2), Margin = new(0, 0, 0, 2), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, IsHitTestVisible = false };
     private readonly TextBlock _new = new() { Text = "NEW", FontSize = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
     private readonly TextBlock _tipTitle = new();
     private readonly TextBlock _tipStatus = new();
@@ -35,7 +36,7 @@ internal sealed class OpenCodeBrowserButton : Grid
     public OpenCodeBrowserButton()
     {
         ColumnDefinitions.Add(new() { Width = GridLength.Auto }); ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        var icon = new Grid { Width = 36, Height = 32, Children = { _globe, _count } };
+        var icon = new Grid { Width = 36, Height = 32, Children = { _globe, _coloredBrowser, _count } };
         _toggle.Content = icon;
         // The WSL explorer uses DefaultButtonStyle + transparent background. Keep that same
         // native frame, padding and corner geometry on the native ToggleButton template.
@@ -47,10 +48,9 @@ internal sealed class OpenCodeBrowserButton : Grid
         _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
         _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
         _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
-        _bar.Background = Brush("AccentFillColorDefaultBrush");
         _statusButton.Content = _statusDot;
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) _statusButton.Style = quiet;
-        Children.Add(_toggle); Children.Add(_bar); Children.Add(_statusButton); Children.Add(_new); Grid.SetColumn(_new, 1);
+        Children.Add(_toggle); Children.Add(_statusButton); Children.Add(_new); Grid.SetColumn(_new, 1);
         AutomationProperties.SetName(_toggle, "浏览器"); AutomationProperties.SetAutomationId(_toggle, "OpenCodeBrowserButton");
         _toggle.Click += (_, _) =>
         {
@@ -74,13 +74,11 @@ internal sealed class OpenCodeBrowserButton : Grid
     private OpenCodeBrowserAvailability _availability;
     private void RefreshTheme()
     {
-        _globe.Foreground = OpenCodeBrowserPanelState.ColoredIcon(_pages) && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast
-            ? new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1), GradientStops = {
-                new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColorLight2"], Offset = 0 },
-                new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColor"], Offset = .5 },
-                new GradientStop { Color = (Windows.UI.Color)Application.Current.Resources["SystemAccentColorDark2"], Offset = 1 } } }
-            : Brush("TextFillColorPrimaryBrush");
-        _bar.Background = Brush("AccentFillColorDefaultBrush");
+        var colored = _toggle.IsChecked == true && OpenCodeBrowserPanelState.ColoredIcon(_pages)
+            && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast;
+        _coloredBrowser.Visibility = colored ? Visibility.Visible : Visibility.Collapsed;
+        _globe.Visibility = colored ? Visibility.Collapsed : Visibility.Visible;
+        _globe.Foreground = Brush("TextFillColorPrimaryBrush");
         _dot.Background = _statusDot.Background = Brush(OpenCodeBrowserPanelState.StatusBrushKey(_availability));
         _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
@@ -98,7 +96,6 @@ internal sealed class OpenCodeBrowserButton : Grid
         _pages = workspace?.Pages.Count ?? 0; _availability = workspace?.Availability ?? OpenCodeBrowserAvailability.Detached;
         _toggle.IsEnabled = workspace is not null;
         _toggle.IsChecked = state?.ShowCommands(_pages) == true;
-        _bar.Visibility = _toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         _count.Value = _pages; _count.Visibility = OpenCodeBrowserPanelState.ShowCount(_pages) ? Visibility.Visible : Visibility.Collapsed;
         _new.Visibility = seen ? Visibility.Collapsed : Visibility.Visible;
         _statusButton.Visibility = workspace is not null ? Visibility.Visible : Visibility.Collapsed;

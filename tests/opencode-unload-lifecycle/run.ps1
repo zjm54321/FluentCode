@@ -31,6 +31,10 @@ $text = $text.Replace('/* INDICATOR */', (Slice 'Pages/OpenCode/OpenCodeWorkingI
 $text = $text.Replace('/* BUBBLE */', (Slice 'Pages/OpenCode/OpenCodeUserBubbleView.cs' '_bubble.Loaded +=' '        ApplyToggleText();'))
 $text = $text.Replace('/* PICKER */', (Slice 'Pages/OpenCode/OpenCodePickerFlyout.cs' 'void Unloaded(object sender' "`n        try"))
 $text = $text.Replace('/* BROWSER_STRIP */', (Slice 'Pages/OpenCode/OpenCodeBrowserStrip.cs' '        Loaded +=' "`n    }"))
+$browserStrip = [IO.File]::ReadAllText((Join-Path "$repo/src/AIFrontend" 'Pages/OpenCode/OpenCodeBrowserStrip.cs'))
+$expandedHeight = [regex]::Match($browserStrip, '(?m)^    private const double ExpandedHeight = [^;]+;')
+if (!$expandedHeight.Success) { throw 'Missing production browser strip expanded-height constant.' }
+$text = $text.Replace('/* BROWSER_STRIP_HEIGHT */', $expandedHeight.Value)
 $generated = Join-Path $output 'Lifecycle.Generated.cs'
 [IO.File]::WriteAllText($generated, $text)
 $dll = Join-Path $output 'UnloadLifecycle.dll'

@@ -18,8 +18,9 @@ public sealed partial class OpenCodeClient
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         using var content = CreateJsonContent(new { input });
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        // attach is a scoped, held-open request, NOT a finite REST operation.
-        if (!attachment) timeout.CancelAfter(_timeout);
+        // Attach and tunnel.read are scoped, held-open requests, not finite REST operations.
+        // An idle tunnel remains readable until data/EOF or the immutable attachment lifetime ends.
+        if (!attachment && method != "tunnel.read") timeout.CancelAfter(_timeout);
         try
         {
             using var response = await SendAsync(HttpMethod.Post, "api/rpc/experimental.browser/" + method,

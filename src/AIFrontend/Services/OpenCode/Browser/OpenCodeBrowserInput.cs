@@ -87,7 +87,11 @@ public static class OpenCodeBrowserInput
             if (!Regex.IsMatch(file.Id, @"^file_[a-f0-9-]{36}$") || file.Name.Length > 2048 || file.Mime.Length > 2048 || file.Data.Length > OpenCodeBrowserPolicy.MaxFileBytes) Invalid("files");
         if (command.Target is { } target) ValidateFields(target, new[] { String("key", 100000), Array("resources", String("resource", 100000)) }, false);
         if (name == "wait" && Text(action, "condition") != "load" && action["text"] is null) Invalid("text");
-        if (name is "files.upload" or "files.drop" && (action["paths"]!.AsArray().Count is < 1 or > 8 || command.Files.Count != action["paths"]!.AsArray().Count)) Invalid("paths/files");
+        if (name is "files.upload" or "files.drop")
+        {
+            var paths = action["paths"]!.AsArray().Count;
+            if (paths is < 1 or > 8 || !command.Inspect && command.Files.Count != paths) Invalid("paths/files");
+        }
     }
     private static void ValidateFields(JsonObject value, Field[] fields, bool action)
     {

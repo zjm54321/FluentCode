@@ -13,6 +13,33 @@ public readonly record struct OpenCodeBrowserBox(double X, double Y, double Widt
 
 public static class OpenCodeBrowserGeometry
 {
+    /// <summary>Maps child viewport CSS pixels through the frame owner's content quad (border excluded).</summary>
+    public static JsonArray ProjectQuad(JsonArray quad, JsonArray content, double width, double height)
+    {
+        if (quad.Count != 8 || content.Count != 8 || width <= 0 || height <= 0) throw new OpenCodeBrowserException("not_interactable", "框架布局坐标无效");
+        var p = content.Select(n => n!.GetValue<double>()).ToArray();
+        var dx1 = p[2] - p[4]; var dx2 = p[6] - p[4]; var dx3 = p[0] - p[2] + p[4] - p[6];
+        var dy1 = p[3] - p[5]; var dy2 = p[7] - p[5]; var dy3 = p[1] - p[3] + p[5] - p[7];
+        double g = 0, h = 0;
+        if (Math.Abs(dx3) + Math.Abs(dy3) > 1e-10)
+        {
+            var denominator = dx1 * dy2 - dx2 * dy1;
+            if (Math.Abs(denominator) < 1e-10) throw new OpenCodeBrowserException("not_interactable", "框架变换不可逆");
+            g = (dx3 * dy2 - dx2 * dy3) / denominator; h = (dx1 * dy3 - dx3 * dy1) / denominator;
+        }
+        var a = p[2] - p[0] + g * p[2]; var b = p[6] - p[0] + h * p[6];
+        var d = p[3] - p[1] + g * p[3]; var e = p[7] - p[1] + h * p[7];
+        var result = new JsonArray();
+        for (var i = 0; i < 8; i += 2)
+        {
+            var x = quad[i]!.GetValue<double>() / width; var y = quad[i + 1]!.GetValue<double>() / height; var w = g * x + h * y + 1;
+            var px = (a * x + b * y + p[0]) / w; var py = (d * x + e * y + p[1]) / w;
+            if (!double.IsFinite(px) || !double.IsFinite(py)) throw new OpenCodeBrowserException("not_interactable", "框架布局坐标无效");
+            result.Add(px); result.Add(py);
+        }
+        return result;
+    }
+    public static JsonArray Quad(OpenCodeBrowserBox box) => new(box.X, box.Y, box.X + box.Width, box.Y, box.X + box.Width, box.Y + box.Height, box.X, box.Y + box.Height);
     public static IReadOnlyDictionary<int, OpenCodeBrowserBox> SnapshotBoxes(JsonObject snapshot)
     {
         var boxes = new Dictionary<int, OpenCodeBrowserBox>();

@@ -1,0 +1,14 @@
+{
+  "name": "aifrontend-browser-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Workspace-local dependencies for the AIFrontend browser sidecar.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "24.22.1"
+  },
+  "dependencies": {
+    "lighthouse": "13.4.1"
+  }
+}

@@ -27,10 +27,10 @@ public sealed partial class OpenCodeBrowserSessionBackend
         public MemoryStream? HeapChunks;
         public bool HeapOverflow;
         public CancellationTokenSource? TraceTimer, CpuTimer;
-        private void SubscribeProfileEvents()
+        private async Task SubscribeProfileEventsAsync()
         {
-            Subscribe("Tracing.tracingComplete", value => TraceComplete?.TrySetResult(value));
-            Subscribe("HeapProfiler.addHeapSnapshotChunk", value =>
+            await SubscribeAsync("Tracing.tracingComplete", value => TraceComplete?.TrySetResult(value));
+            await SubscribeAsync("HeapProfiler.addHeapSnapshotChunk", value =>
             {
                 if (HeapChunks is null) return;
                 var chunk = Encoding.UTF8.GetBytes(S(value, "chunk"));
@@ -53,6 +53,8 @@ public sealed partial class OpenCodeBrowserSessionBackend
     private static async Task<OpenCodeBrowserOutcome> ProfileAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
         var type = S(a, "type"); var p = c.Page; var result = WithTab(p); var limit = I(a, "limit", 100);
+        if (type is "trace.start" or "cpu.start" or "heap.snapshot") await c.RefreshFramesAsync(ct);
+        var resources = c.SourceUrls();
         switch (type)
         {
             case "trace.start":
@@ -61,6 +63,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                 try
                 {
                     var tree = await Call(c, "Page.getFrameTree", null, ct); c.TraceFrame = tree["frameTree"]!["frame"]!["id"]!.ToString(); c.TraceGeneration = p.Generation;
+                    c.TraceResources = c.SourceUrls(); c.TraceIdentity = Guid.NewGuid().ToString("N");
                     c.TraceComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
                     await Call(c, "Tracing.start", new() { ["transferMode"] = "ReturnAsStream", ["streamFormat"] = "json", ["traceConfig"] = new JsonObject { ["recordMode"] = "recordContinuously", ["traceBufferSizeInKb"] = 16384, ["includedCategories"] = new JsonArray("devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "blink.user_timing", "__metadata") } }, ct);
                     c.TraceClock = Stopwatch.StartNew(); c.TraceTimer = CancellationTokenSource.CreateLinkedTokenSource(p.Lifetime);
@@ -75,6 +78,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                 if (c.CpuClock is not null) throw new OpenCodeBrowserException("recording_in_progress", "此页面的 CPU 采样已经开始");
                 await Call(c, "Profiler.enable", null, ct); await Call(c, "Profiler.start", null, ct);
                 c.CpuGeneration = p.Generation; c.CpuClock = Stopwatch.StartNew(); c.CpuFile = null; c.CpuFailure = null;
+                c.CpuResources = c.SourceUrls(); c.CpuIdentity = Guid.NewGuid().ToString("N");
                 c.CpuTimer = CancellationTokenSource.CreateLinkedTokenSource(p.Lifetime); _ = AutoStopAsync(c, 30000, false, c.CpuTimer.Token);
                 result["recording"] = true; return Ok(result);
             case "cpu.stop":
@@ -86,7 +90,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                 {
                     await Call(c, "HeapProfiler.takeHeapSnapshot", new() { ["reportProgress"] = false }, ct);
                     if (c.HeapOverflow) throw new OpenCodeBrowserException("file_too_large", "堆快照超过 32 MiB 本地捕获上限");
-                    var file = c.Save("capture.heapsnapshot.gz", "application/gzip", Compress(c.HeapChunks.ToArray()), new() { ["kind"] = "heap" }); return Export(c, file);
+                    var file = c.Save("capture.heapsnapshot.gz", "application/gzip", Compress(c.HeapChunks.ToArray()), new() { ["kind"] = "heap" }, resources); return Export(c, file);
                 }
                 finally { c.HeapChunks.Dispose(); c.HeapChunks = null; }
             case "heap.summary": case "heap.query": case "heap.object":
@@ -147,7 +151,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
             if (processes.Count == 0) throw new OpenCodeBrowserException("unsupported", "跟踪中没有此页面的渲染进程标识，不能导出应用级全局跟踪冒充页面跟踪");
             c.TraceIncomplete |= processes.Count > 1;
             trace["traceEvents"] = new JsonArray(events.Where(e => processes.Contains(e["pid"]?.ToJsonString() ?? "")).Select(e => e.DeepClone()).ToArray());
-            c.TraceFile = c.Save("capture.trace.json.gz", "application/gzip", Compress(Encoding.UTF8.GetBytes(trace.ToJsonString())), new() { ["kind"] = "trace" });
+            c.TraceFile = c.Save("capture.trace.json.gz", "application/gzip", Compress(Encoding.UTF8.GetBytes(trace.ToJsonString())), new() { ["kind"] = "trace" }, c.TraceResources);
         }
         catch (Exception ex) { c.TraceFailure = ex; throw; }
         finally
@@ -166,8 +170,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
         {
             ct.ThrowIfCancellationRequested(); var profile = (await c.Page.CdpAsync("Profiler.stop"))["profile"]!.AsObject();
             c.CpuClock.Stop(); c.CpuDuration = c.CpuClock.Elapsed.TotalMilliseconds;
-            if (c.CpuGeneration != c.Page.Generation) throw new OpenCodeBrowserException("stale_generation", "录制期间页面已导航，CPU 采样已失效");
-            c.CpuFile = c.Save("capture.cpuprofile", "application/json", Encoding.UTF8.GetBytes(profile.ToJsonString()), new() { ["kind"] = "cpu" });
+            c.CpuFile = c.Save("capture.cpuprofile", "application/json", Encoding.UTF8.GetBytes(profile.ToJsonString()), new() { ["kind"] = "cpu" }, c.CpuResources);
         }
         catch (Exception ex) { c.CpuFailure = ex; throw; }
         finally { c.CpuClock = null; }

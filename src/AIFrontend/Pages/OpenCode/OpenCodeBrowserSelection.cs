@@ -11,7 +11,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Web.WebView2.Core;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -35,7 +34,10 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     private long _activation;
     private sealed class PageState
     {
-        internal string? ScriptId;
+        internal readonly Dictionary<string, string> Scripts = new(StringComparer.Ordinal);
+        internal readonly List<IAsyncDisposable> Subscriptions = new();
+        internal readonly Dictionary<string, Task> Sessions = new(StringComparer.Ordinal);
+        internal bool Subscribed, Multi;
         internal readonly OpenCodeBrowserSelectionList List = new();
         internal long Generation;
         internal string? DraftKey;
@@ -47,7 +49,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     {
         _overlay = overlay; _register = register; _attach = attach;
         overlay.PageTools.Children.Clear();
-        foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选", "\uE7EF"), (OpenCodeBrowserSelectionTool.Annotate, "标注", "\uE70F") })
+        foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素并批注", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选并批注", "\uE7EF") })
         {
             var tool = entry.Item1;
             var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, MinWidth = 0 };
@@ -55,13 +57,6 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
             button.Click += (_, _) => Run(() => ActivateAsync(button.IsChecked == true ? tool : OpenCodeBrowserSelectionTool.None));
             _buttons.Add(tool, button); overlay.PageTools.Children.Add(button);
         }
-        var screenshot = new SplitButton { Content = new FontIcon { Glyph = "\uE722", FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, Padding = new(6, 0, 6, 0) };
-        AutomationProperties.SetName(screenshot, "截图"); ToolTipService.SetToolTip(screenshot, "截图 · 可见区域");
-        screenshot.Click += (_, _) => Run(() => CaptureStandaloneAsync(false));
-        var menu = new MenuFlyout();
-        void Item(string text, Func<Task> action) { var item = new MenuFlyoutItem { Text = text }; item.Click += (_, _) => Run(action); menu.Items.Add(item); }
-        Item("整个页面", () => CaptureStandaloneAsync(true)); Item("选择区域", () => ActivateAsync(OpenCodeBrowserSelectionTool.Screenshot));
-        Item("选中的元素", CaptureSelectedElementsAsync); screenshot.Flyout = menu; overlay.PageTools.Children.Add(screenshot);
         overlay.RightPanelSlot.Children.Add(_list);
         _list.Removed += id => { State?.List.Remove(id); Render(); Run(SyncSelectedAsync); };
         _list.NoteChanged += (id, text) => State?.List.SetNote(id, text);
@@ -77,6 +72,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         overlay.PageToolSurface.Children.Add(_pill);
         overlay.SelectionBindingChanged += BindingChanged; overlay.AddPageRequested += AddPage;
         overlay.ExitPageTool = Exit;
+        overlay.PickExternalElementAsync = () => ActivateAsync(OpenCodeBrowserSelectionTool.Element);
     }
     private PageState? State => _page is not null && _states.TryGetValue(_page, out var state) ? state : null;
     private void BuildAnnotationTools()
@@ -96,7 +92,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     {
         if (_page == _overlay.Page) return;
         var previous = _page; _activation++; _tool = OpenCodeBrowserSelectionTool.None;
-        if (previous is not null && !previous.Closed) Run(async () => { await previous.ActionGate.WaitAsync(previous.Lifetime); try { await previous.ExecuteScriptAsync("window.__aifSelection?.activate('None','')"); } finally { previous.ActionGate.Release(); } });
+        if (previous is not null && !previous.Closed) Run(async () => { await previous.ActionGate.WaitAsync(previous.Lifetime); try { await SetInspectModeAsync(previous, false); await previous.ExecuteScriptAsync("window.__aifSelection?.activate('None','')"); } finally { previous.ActionGate.Release(); } });
         _page = _overlay.Page;
         if (_page is not null && !_states.ContainsKey(_page))
         {
@@ -106,13 +102,81 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         }
         Render();
     }
-    private async Task InstallAsync(OpenCodeBrowserPage? page)
+    private Task InstallAsync(OpenCodeBrowserPage? page)
+        => page is null ? Task.CompletedTask : WithPageGateAsync(page, () => InstallCoreAsync(page));
+    private static async Task WithPageGateAsync(OpenCodeBrowserPage page, Func<Task> action)
     {
-        if (page is null || page.Closed || !_states.TryGetValue(page, out var state)) return;
+        await page.ActionGate.WaitAsync(page.Lifetime);
+        try { if (!page.Closed) await action(); }
+        finally { page.ActionGate.Release(); }
+    }
+    private async Task InstallCoreAsync(OpenCodeBrowserPage page)
+    {
+        if (page.Closed || !_states.TryGetValue(page, out var state)) return;
         await page.EnsureReadyAsync();
         if (_disposed || page.Closed || !_states.ContainsKey(page)) return;
-        page.Core.WebMessageReceived -= MessageReceived; page.Core.WebMessageReceived += MessageReceived;
-        if (state.ScriptId is null) state.ScriptId = await page.Core.AddScriptToExecuteOnDocumentCreatedAsync(OpenCodeBrowserSelectionScript.Source);
+        var context = await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime);
+        if (!state.Subscribed)
+        {
+            state.Subscribed = true;
+            state.Subscriptions.Add(await page.SubscribeCdpAsync("Runtime.bindingCalled", message =>
+            {
+                if (message.Parameters["name"]?.ToString() != "__aifSelectionSend") return;
+                Run(() => MessageReceivedAsync(page, message));
+            }, page.Lifetime));
+            state.Subscriptions.Add(await page.SubscribeCdpAsync("Overlay.inspectNodeRequested", message => Run(() => InspectNodeAsync(page, message)), page.Lifetime));
+            state.Subscriptions.Add(await page.SubscribeCdpAsync("Overlay.inspectModeCanceled", _ => { if (page == _page && _tool == OpenCodeBrowserSelectionTool.Element) Exit(); }, page.Lifetime));
+            state.Subscriptions.Add(await page.SubscribeCdpAsync("Target.attachedToTarget", message =>
+            {
+                if (message.Parameters["targetInfo"]?["type"]?.ToString() == "iframe") Run(() => InstallAsync(page));
+            }, page.Lifetime));
+            state.Subscriptions.Add(await page.SubscribeCdpAsync("Target.detachedFromTarget", message =>
+            {
+                var session = message.Parameters["sessionId"]!.ToString(); state.Sessions.Remove(session); state.Scripts.Remove(session);
+            }, page.Lifetime));
+            state.Subscriptions.Add(await page.SubscribeCdpAsync("Runtime.executionContextCreated", message =>
+            {
+                var created = message.Parameters["context"]!;
+                if (created["auxData"]?["isDefault"]?.GetValue<bool>() == true)
+                    Run(() => WithPageGateAsync(page, () => InstallContextAsync(page, message.SessionId, created["id"]!.GetValue<int>())));
+            }, page.Lifetime));
+        }
+        foreach (var session in context.Frames.Items.Select(f => f.RendererSessionId).Distinct()) await InstallSessionAsync(page, state, session);
+        foreach (var frame in context.Frames.Items.ToArray())
+            if (context.Frames.Context(frame.Id) is { } id) await InstallContextAsync(page, frame.RendererSessionId, id);
+    }
+    private Task InstallSessionAsync(OpenCodeBrowserPage page, PageState state, string? session)
+        => state.Sessions.TryGetValue(session ?? "", out var task) ? task : state.Sessions[session ?? ""] = InstallSessionCoreAsync(page, state, session);
+    private async Task InstallSessionCoreAsync(OpenCodeBrowserPage page, PageState state, string? session)
+    {
+        await page.CdpAsync("Runtime.addBinding", new() { ["name"] = "__aifSelectionSend" }, session);
+        var script = await page.CdpAsync("Page.addScriptToEvaluateOnNewDocument", new() { ["source"] = OpenCodeBrowserSelectionScript.Source }, session);
+        state.Scripts[session ?? ""] = script["identifier"]!.ToString();
+        await page.CdpAsync("DOM.enable", null, session); await page.CdpAsync("Overlay.enable", null, session);
+        await InspectModeAsync(page, session, page == _page && _tool == OpenCodeBrowserSelectionTool.Element);
+    }
+    private async Task InstallContextAsync(OpenCodeBrowserPage page, string? session, int id)
+    {
+        if (_disposed || page.Closed || !_states.TryGetValue(page, out var state)) return;
+        await InstallSessionAsync(page, state, session);
+        await page.CdpAsync("Runtime.evaluate", new() { ["expression"] = OpenCodeBrowserSelectionScript.Source, ["contextId"] = id }, session);
+        if (page != _page || _tool == OpenCodeBrowserSelectionTool.None) return;
+        var frames = (await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime)).Frames;
+        var frame = frames.ContextFrame(session, id);
+        var mode = _tool == OpenCodeBrowserSelectionTool.Element || frame == frames.RootId ? _tool.ToString() : "None";
+        await page.CdpAsync("Runtime.evaluate", new() { ["expression"] = $"window.__aifSelection.activate({JsonSerializer.Serialize(mode)},{JsonSerializer.Serialize(_nonce)})", ["contextId"] = id }, session);
+        await InspectModeAsync(page, session, _tool == OpenCodeBrowserSelectionTool.Element);
+    }
+    private static Task<JsonObject> InspectModeAsync(OpenCodeBrowserPage page, string? session, bool enabled)
+        => page.CdpAsync("Overlay.setInspectMode", new()
+        {
+            ["mode"] = enabled ? "searchForNode" : "none",
+            ["highlightConfig"] = new JsonObject { ["showInfo"] = true, ["contentColor"] = new JsonObject { ["r"] = 56, ["g"] = 189, ["b"] = 248, ["a"] = .25 }, ["borderColor"] = new JsonObject { ["r"] = 56, ["g"] = 189, ["b"] = 248, ["a"] = 1 } }
+        }, session);
+    private async Task SetInspectModeAsync(OpenCodeBrowserPage page, bool enabled)
+    {
+        if (!_states.TryGetValue(page, out var state)) return;
+        foreach (var session in state.Sessions.Keys.ToArray()) await InspectModeAsync(page, session.Length == 0 ? null : session, enabled);
     }
     private void Committed(object? sender, EventArgs args)
     {
@@ -124,7 +188,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     {
         if (sender is not OpenCodeBrowserPage page) return;
         page.Committed -= Committed; page.Closing -= PageClosing;
-        if (page.View.CoreWebView2 is not null) page.Core.WebMessageReceived -= MessageReceived;
+        if (_states.TryGetValue(page, out var state)) _ = DisposePageAsync(page, state);
         _states.Remove(page); if (_page == page) { _page = null; _tool = OpenCodeBrowserSelectionTool.None; Render(); }
     }
     private bool Exit()
@@ -136,12 +200,17 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     {
         var page = _page; if (page is null || !OpenCodeBrowserSelectionPolicy.Offers(tool, page.PreviewPath is not null)) return;
         var activation = ++_activation; _tool = tool; _nonce = Guid.NewGuid().ToString("N"); Render();
-        await InstallAsync(page); await page.ActionGate.WaitAsync(page.Lifetime);
+        if (_states.TryGetValue(page, out var state)) state.Multi = false;
+        await page.ActionGate.WaitAsync(page.Lifetime);
         try
         {
             if (_page != page || activation != _activation) return;
-            await page.ExecuteScriptAsync(OpenCodeBrowserSelectionScript.Source);
-            await page.ExecuteScriptAsync($"window.__aifSelection.activate({JsonSerializer.Serialize(tool.ToString())},{JsonSerializer.Serialize(_nonce)})");
+            await InstallCoreAsync(page);
+            var frames = (await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime)).Frames;
+            foreach (var frame in frames.Items.ToArray())
+                if (frames.Context(frame.Id) is { } id) await InstallContextAsync(page, frame.RendererSessionId, id);
+            await SetInspectModeAsync(page, tool == OpenCodeBrowserSelectionTool.Element);
+            if (tool == OpenCodeBrowserSelectionTool.None) await page.ExecuteScriptAsync("window.__aifSelection?.activate('None','')");
             await SyncSelectedCoreAsync(page); await SettingsCoreAsync(page);
         }
         finally { page.ActionGate.Release(); }
@@ -154,64 +223,131 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         _modeLabel.Text = _tool switch { OpenCodeBrowserSelectionTool.Element => "选择元素 · Shift + 单击多选 · Esc 退出", OpenCodeBrowserSelectionTool.Region => "框选 · Shift 正方形 · Esc 退出", OpenCodeBrowserSelectionTool.Annotate => "标注 · Esc 退出", _ => "截图 · 拖动选择区域 · Esc 退出" };
         if (State is { } state) _list.Render(state.List); else _list.Visibility = Visibility.Collapsed;
     }
-    private async void MessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    private async Task MessageReceivedAsync(OpenCodeBrowserPage page, OpenCodeBrowserCdpEvent args)
     {
-        var page = _page;
-        if (_disposed || page is null || page.Closed || page.View.CoreWebView2 != sender || _tool == OpenCodeBrowserSelectionTool.None) return;
+        if (_disposed || page != _page || page.Closed || _tool == OpenCodeBrowserSelectionTool.None) return;
         try
         {
-            var message = JsonNode.Parse(args.WebMessageAsJson) as JsonObject;
+            var message = JsonNode.Parse(args.Parameters["payload"]!.GetValue<string>()) as JsonObject;
             if (message?["aifSelection"]?.GetValue<string>() != _nonce) return;
+            var frame = OpenCodeBrowserSessionBackend.PickerFrame(page, args.SessionId, args.Parameters["executionContextId"]!.GetValue<int>());
+            if (frame is null) return;
             var type = message["type"]?.GetValue<string>();
             if (type == "escape") { Exit(); return; }
-            if (type == "scrolled") return; // Captured items survive scrolling; their images and metadata are snapshots.
+            if (type == "modifier") { _states[page].Multi = message["multi"]?.GetValue<bool>() == true; return; }
+            if (type == "scrolled") { Run(SyncSelectedAsync); return; } // Only outlines move; captured metadata stays a snapshot.
             if (_working) return;
             _working = true; var activation = _activation; var generation = page.Generation;
             await page.ActionGate.WaitAsync(page.Lifetime);
             try
             {
                 if (_page != page || activation != _activation || page.Generation != generation) return;
-                if (type == "element" && _tool == OpenCodeBrowserSelectionTool.Element) await SelectElementAsync(page, message!, generation);
-                if (type == "region" && _tool is OpenCodeBrowserSelectionTool.Region or OpenCodeBrowserSelectionTool.Screenshot) await SelectRegionAsync(page, message!, generation);
+                var context = await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime);
+                if (_page != page || activation != _activation || page.Generation != generation) return;
+                if (type == "region" && frame == context.Frames.RootId && _tool is OpenCodeBrowserSelectionTool.Region or OpenCodeBrowserSelectionTool.Screenshot) await SelectRegionAsync(page, message!, generation, activation);
             }
             finally { page.ActionGate.Release(); _working = false; }
             if (_page == page) { Render(); await SyncSelectedAsync(); }
         }
         catch (Exception ex) { _working = false; Error(ex); }
     }
-    private async Task SelectElementAsync(OpenCodeBrowserPage page, JsonObject message, long generation)
+    private async Task InspectNodeAsync(OpenCodeBrowserPage page, OpenCodeBrowserCdpEvent message)
     {
-        var node = await page.CdpAsync("DOM.getNodeForLocation", new() { ["x"] = (int)message["x"]!.GetValue<double>(), ["y"] = (int)message["y"]!.GetValue<double>(), ["includeUserAgentShadowDOM"] = true, ["ignorePointerEventsNone"] = false });
-        var backendId = node["backendNodeId"]!.GetValue<int>(); var frame = node["frameId"]?.GetValue<string>();
+        if (_disposed || page != _page || page.Closed || _tool != OpenCodeBrowserSelectionTool.Element || _working) return;
+        var activation = _activation; var generation = page.Generation; var multi = _states[page].Multi; _working = true;
+        try { await page.ActionGate.WaitAsync(page.Lifetime); }
+        catch { _working = false; throw; }
+        try
+        {
+            if (page != _page || activation != _activation || page.Generation != generation) return;
+            var backendId = message.Parameters["backendNodeId"]!.GetValue<int>();
+            backendId = await ElementBackendAsync(page, backendId, message.SessionId);
+            var context = await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime);
+            string? frameId = null;
+            foreach (var frame in context.Frames.Items.Where(f => f.RendererSessionId == message.SessionId).ToArray())
+            {
+                if (context.Frames.Context(frame.Id) is not { } id) continue;
+                var resolved = await page.CdpAsync("DOM.resolveNode", new() { ["backendNodeId"] = backendId, ["executionContextId"] = id }, message.SessionId);
+                var objectId = resolved["object"]!["objectId"]!.ToString();
+                try
+                {
+                    var owns = await page.CdpAsync("Runtime.callFunctionOn", new() { ["objectId"] = objectId, ["returnByValue"] = true, ["functionDeclaration"] = "function(){return this.ownerDocument===document}" }, message.SessionId);
+                    if (owns["result"]?["value"]?.GetValue<bool>() == true) { frameId = frame.Id; break; }
+                }
+                finally { await page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = objectId }, message.SessionId); }
+            }
+            if (frameId is null) throw new InvalidOperationException("所选元素的框架已导航，请重新选择。");
+            if (_page != page || activation != _activation || page.Generation != generation) return;
+            await SelectElementAsync(page, backendId, frameId, multi, generation, activation);
+        }
+        finally { page.ActionGate.Release(); _working = false; }
+        if (page == _page && activation == _activation) { Render(); await SyncSelectedAsync(); await SetInspectModeAsync(page, _tool == OpenCodeBrowserSelectionTool.Element); }
+    }
+    private static async Task<int> ElementBackendAsync(OpenCodeBrowserPage page, int backendId, string? session)
+    {
+        var node = await page.CdpAsync("DOM.describeNode", new() { ["backendNodeId"] = backendId }, session);
+        if (node["node"]!["nodeType"]!.GetValue<int>() == 1) return backendId;
+        var resolved = await page.CdpAsync("DOM.resolveNode", new() { ["backendNodeId"] = backendId }, session);
+        var objectId = resolved["object"]!["objectId"]!.ToString();
+        try
+        {
+            var element = await page.CdpAsync("Runtime.callFunctionOn", new() { ["objectId"] = objectId, ["functionDeclaration"] = "function(){return this.parentElement}" }, session);
+            var parentId = element["result"]?["objectId"]?.ToString() ?? throw new InvalidOperationException("此节点不是可选择的页面元素。");
+            try { return (await page.CdpAsync("DOM.describeNode", new() { ["objectId"] = parentId }, session))["node"]!["backendNodeId"]!.GetValue<int>(); }
+            finally { await page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = parentId }, session); }
+        }
+        finally { await page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = objectId }, session); }
+    }
+    private async Task SelectElementAsync(OpenCodeBrowserPage page, int backendId, string frame, bool multi, long generation, long activation)
+    {
         var list = _states[page].List;
-        var old = list.Items.FirstOrDefault(i => i.Kind == OpenCodeBrowserSelectionKind.Element && i.Elements.Any(e => e.BackendNodeId == backendId));
+        var old = list.Items.FirstOrDefault(i => i.Kind == OpenCodeBrowserSelectionKind.Element && i.Elements.Any(e => e.BackendNodeId == backendId && e.FrameId == frame));
         if (old is not null) { list.Remove(old.Id); return; }
         var element = await ReadElementAsync(page, backendId, generation, frame);
         var image = await CaptureAsync(page, element.Box);
+        OpenCodeBrowserSessionBackend.CheckPickedRef(page, element.Ref);
         if (page.Generation != generation) throw new InvalidOperationException("页面已跳转，请重新选择元素。");
-        if (message["multi"]?.GetValue<bool>() != true)
+        if (_page != page || activation != _activation) return;
+        if (!multi)
             foreach (var item in list.Items.Where(i => i.Kind == OpenCodeBrowserSelectionKind.Element).ToArray()) list.Remove(item.Id);
         list.Add(OpenCodeBrowserSelectionKind.Element, element.Selector, element.Box, image, new[] { element });
     }
-    private async Task SelectRegionAsync(OpenCodeBrowserPage page, JsonObject message, long generation)
+    private async Task SelectRegionAsync(OpenCodeBrowserPage page, JsonObject message, long generation, long activation)
     {
         var kind = _tool == OpenCodeBrowserSelectionTool.Screenshot ? OpenCodeBrowserSelectionKind.Screenshot : OpenCodeBrowserSelectionKind.Region;
         var b = message["box"]!; var box = new BrowserRect(N(b, "x"), N(b, "y"), N(b, "width"), N(b, "height"));
-        var selectors = message["selectors"]!.AsArray();
-        if (selectors.Count > 200) throw new InvalidOperationException("此区域包含超过 200 个元素，请缩小选择范围。");
         var elements = new List<BrowserSelectedElement>();
-        var root = await page.CdpAsync("DOM.getDocument", new() { ["depth"] = 0 });
-        foreach (var selector in selectors)
+        var context = await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime);
+        foreach (var frame in context.Frames.Items.ToArray())
         {
-            var found = await page.CdpAsync("DOM.querySelector", new() { ["nodeId"] = root["root"]!["nodeId"]!.GetValue<int>(), ["selector"] = selector!.GetValue<string>() });
-            var id = found["nodeId"]!.GetValue<int>(); if (id == 0) continue;
-            var described = await page.CdpAsync("DOM.describeNode", new() { ["nodeId"] = id });
-            var element = await ReadElementAsync(page, described["node"]!["backendNodeId"]!.GetValue<int>(), generation, null);
-            if (!OpenCodeBrowserSelectionPolicy.ContainsElement(box, element.Box)) continue;
-            elements.Add(element);
+            if (context.Frames.Context(frame.Id) is not { } executionContext) throw new InvalidOperationException("区域中的框架尚未就绪，请稍后重试。");
+            var candidates = await page.CdpAsync("Runtime.evaluate", new() { ["expression"] = OpenCodeBrowserSelectionScript.Candidates, ["contextId"] = executionContext, ["returnByValue"] = true }, frame.RendererSessionId);
+            context.Frames.Check(new(1, frame.Id, frame.RendererSessionId, frame.DocumentEpoch));
+            var values = candidates["result"]?["value"]?.AsArray() ?? throw new InvalidOperationException("无法枚举区域中的元素。");
+            var viewport = await context.Geometry.ViewportAsync(frame.Id, page.Lifetime);
+            var document = await page.CdpAsync("Runtime.evaluate", new() { ["expression"] = "document", ["contextId"] = executionContext }, frame.RendererSessionId);
+            var objectId = document["result"]!["objectId"]!.ToString();
+            try
+            {
+                var root = await page.CdpAsync("DOM.requestNode", new() { ["objectId"] = objectId }, frame.RendererSessionId);
+                foreach (var candidate in values.OfType<JsonObject>())
+                {
+                    var local = new OpenCodeBrowserBox(N(candidate, "x"), N(candidate, "y"), N(candidate, "width"), N(candidate, "height"));
+                    var projected = OpenCodeBrowserGeometry.Bounds(OpenCodeBrowserGeometry.ProjectQuad(OpenCodeBrowserGeometry.Quad(local), viewport.Quad, viewport.Width, viewport.Height));
+                    if (!OpenCodeBrowserSelectionPolicy.ContainsElement(box, new(projected.X, projected.Y, projected.Width, projected.Height))) continue;
+                    if (elements.Count >= 200) throw new InvalidOperationException("此区域包含超过 200 个元素，请缩小选择范围。");
+                    var found = await page.CdpAsync("DOM.querySelector", new() { ["nodeId"] = root["nodeId"]!.GetValue<int>(), ["selector"] = candidate["selector"]!.ToString() }, frame.RendererSessionId);
+                    var id = found["nodeId"]!.GetValue<int>(); if (id == 0) continue;
+                    var described = await page.CdpAsync("DOM.describeNode", new() { ["nodeId"] = id }, frame.RendererSessionId);
+                    elements.Add(await ReadElementAsync(page, described["node"]!["backendNodeId"]!.GetValue<int>(), generation, frame.Id));
+                }
+            }
+            finally { await page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = objectId }, frame.RendererSessionId); }
         }
         var image = await CaptureAsync(page, box);
+        foreach (var element in elements) OpenCodeBrowserSessionBackend.CheckPickedRef(page, element.Ref);
         if (page.Generation != generation) throw new InvalidOperationException("页面已跳转，请重新选择区域。");
+        if (_page != page || activation != _activation) return;
         var state = _states[page]; var key = message["key"]?.GetValue<string>();
         var description = $"{box.Width:0} × {box.Height:0} · 包含 {elements.Count} 个元素";
         if (key is not null && key == state.DraftKey && state.List.Items.Any(i => i.Id == state.DraftItem))
@@ -220,22 +356,26 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     }
     private async Task<BrowserSelectedElement> ReadElementAsync(OpenCodeBrowserPage page, int backendId, long generation, string? frame)
     {
-        var model = await page.CdpAsync("DOM.getBoxModel", new() { ["backendNodeId"] = backendId });
-        var quad = model["model"]!["border"]!.AsArray().Select(n => n!.GetValue<double>()).ToArray();
-        var xs = new[] { quad[0], quad[2], quad[4], quad[6] }; var ys = new[] { quad[1], quad[3], quad[5], quad[7] };
-        var box = new BrowserRect(xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min());
-        var resolved = await page.CdpAsync("DOM.resolveNode", new() { ["backendNodeId"] = backendId }); var objectId = resolved["object"]!["objectId"]!.GetValue<string>();
+        var context = await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime);
+        var identity = context.Frames.Element(backendId, frame);
+        var projected = await context.Geometry.BoxAsync(identity, true, page.Lifetime);
+        var box = new BrowserRect(projected.X, projected.Y, projected.Width, projected.Height);
+        var parameters = new JsonObject { ["backendNodeId"] = backendId };
+        if (context.Frames.Context(identity.FrameId) is { } id) parameters["executionContextId"] = id;
+        var resolved = await page.CdpAsync("DOM.resolveNode", parameters, identity.RendererSessionId); var objectId = resolved["object"]!["objectId"]!.GetValue<string>();
         try
         {
-            var result = await page.CdpAsync("Runtime.callFunctionOn", new() { ["objectId"] = objectId, ["returnByValue"] = true, ["functionDeclaration"] = "function(){let s=getComputedStyle(this);let parts=[],e=this;while(e&&e!==e.ownerDocument.documentElement){let n=e.localName;if(e.id){parts.unshift('#'+CSS.escape(e.id));break}let p=e.parentElement;if(p){let peers=[...p.children].filter(x=>x.localName===n);if(peers.length>1)n+=':nth-of-type('+(peers.indexOf(e)+1)+')'}parts.unshift(n);e=p;}return {selector:parts.join(' > '),text:(this.innerText||this.textContent||'').slice(0,4000),value:this.type==='password'?'[密码已隐藏]':typeof this.value==='string'?this.value.slice(0,4000):null,styles:['font','color','background-color','padding','margin','border-radius','display','position'].map(k=>k+': '+s.getPropertyValue(k)).join('; ')}}" });
+            var result = await page.CdpAsync("Runtime.callFunctionOn", new() { ["objectId"] = objectId, ["returnByValue"] = true, ["functionDeclaration"] = "function(){let s=getComputedStyle(this);let parts=[],e=this;while(e&&e!==e.ownerDocument.documentElement){let n=e.localName;if(e.id){parts.unshift('#'+CSS.escape(e.id));break}let p=e.parentElement;if(p){let peers=[...p.children].filter(x=>x.localName===n);if(peers.length>1)n+=':nth-of-type('+(peers.indexOf(e)+1)+')'}parts.unshift(n);e=p;}return {selector:parts.join(' > '),text:(this.innerText||this.textContent||'').slice(0,4000),value:this.type==='password'?'[密码已隐藏]':typeof this.value==='string'?this.value.slice(0,4000):null,styles:['font','color','background-color','padding','margin','border-radius','display','position'].map(k=>k+': '+s.getPropertyValue(k)).join('; ')}}" }, identity.RendererSessionId);
             var value = result["result"]?["value"] ?? throw new InvalidOperationException("无法读取此元素的信息。");
+            context.Frames.Check(identity);
             var reference = _register(page, backendId, generation, frame);
             return new(value["selector"]?.GetValue<string>() ?? "element", value["text"]?.GetValue<string>() ?? "", value["value"]?.GetValue<string>(), box, value["styles"]?.GetValue<string>() ?? "", reference, frame, backendId);
         }
-        finally { await page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = objectId }); }
+        finally { await page.CdpAsync("Runtime.releaseObject", new() { ["objectId"] = objectId }, identity.RendererSessionId); }
     }
     private async Task<byte[]> CaptureAsync(OpenCodeBrowserPage page, BrowserRect? region = null, bool fullPage = false, bool annotations = false)
     {
+        await SetInspectModeAsync(page, false);
         await page.ExecuteScriptAsync($"window.__aifSelection?.capture({(annotations ? "true" : "false")})");
         try
         {
@@ -245,7 +385,15 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
             var result = await page.CdpAsync("Page.captureScreenshot", new() { ["format"] = "png", ["captureBeyondViewport"] = true, ["clip"] = new JsonObject { ["x"] = clip.X + (fullPage ? 0 : N(viewport, "pageX")), ["y"] = clip.Y + (fullPage ? 0 : N(viewport, "pageY")), ["width"] = clip.Width, ["height"] = clip.Height, ["scale"] = 1 } });
             return Convert.FromBase64String(result["data"]!.GetValue<string>());
         }
-        finally { if (!page.Closed) await page.ExecuteScriptAsync("window.__aifSelection?.restore()"); }
+        finally
+        {
+            if (!page.Closed)
+            {
+                await page.ExecuteScriptAsync("window.__aifSelection?.restore()");
+                await page.CdpAsync("Runtime.evaluate", new() { ["expression"] = "document.hidden ? null : new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))", ["awaitPromise"] = true });
+                if (page == _page) await SetInspectModeAsync(page, _tool == OpenCodeBrowserSelectionTool.Element);
+            }
+        }
     }
     private async Task CaptureStandaloneAsync(bool fullPage)
     {
@@ -266,7 +414,11 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         {
             // Resolve current boxes after scrolling/reflow rather than clipping at old snapshot coordinates.
             var fresh = new List<BrowserSelectedElement>();
-            foreach (var element in elements) fresh.Add(await ReadElementAsync(page, element.BackendNodeId, generation, element.FrameId));
+            foreach (var element in elements)
+            {
+                OpenCodeBrowserSessionBackend.CheckPickedRef(page, element.Ref);
+                fresh.Add(await ReadElementAsync(page, element.BackendNodeId, generation, element.FrameId));
+            }
             var x = fresh.Min(e => e.Box.X); var y = fresh.Min(e => e.Box.Y);
             var box = new BrowserRect(x, y, fresh.Max(e => e.Box.X + e.Box.Width) - x, fresh.Max(e => e.Box.Y + e.Box.Height) - y);
             var image = await CaptureAsync(page, box);
@@ -318,15 +470,43 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
             finally { page.ActionGate.Release(); }
         }
         if (_page != page || page.Generation != generation) return;
+        foreach (var element in items.SelectMany(item => item.Elements)) OpenCodeBrowserSessionBackend.CheckPickedRef(page, element.Ref);
         attachments.AddRange(items.Select(item => OpenCodeBrowserSelectionPolicy.Attachment(page.Url, page.Id, generation, item, _list.ElementInfo.IsChecked == true)));
         if (await _attach(page, attachments)) { state.List.Clear(); Render(); }
         else _list.Status("未添加：当前会话草稿暂不可编辑，请稍后重试。");
     }
     private Task SettingsAsync() => ScriptAsync($"settings({JsonSerializer.Serialize(_pen)},{JsonSerializer.Serialize(_color)},{JsonSerializer.Serialize(_note.Text)})");
     private Task SettingsCoreAsync(OpenCodeBrowserPage page) => page.ExecuteScriptAsync($"window.__aifSelection?.settings({JsonSerializer.Serialize(_pen)},{JsonSerializer.Serialize(_color)},{JsonSerializer.Serialize(_note.Text)})");
-    private Task SyncSelectedAsync() => ScriptAsync("selected(" + SelectedJson() + ")");
-    private Task SyncSelectedCoreAsync(OpenCodeBrowserPage page) => page.ExecuteScriptAsync("window.__aifSelection?.selected(" + SelectedJson() + ")");
-    private string SelectedJson() => JsonSerializer.Serialize(State?.List.Items.Select(i => new { number = i.Number, selector = i.Kind == OpenCodeBrowserSelectionKind.Element ? i.Selector : null, color = OpenCodeBrowserSelectionPolicy.Color(i.Kind), box = new { x = i.Box.X, y = i.Box.Y, width = i.Box.Width, height = i.Box.Height } }));
+    private async Task SyncSelectedAsync()
+    {
+        var page = _page; if (page is null || page.Closed) return;
+        await page.ActionGate.WaitAsync(page.Lifetime);
+        try { if (page == _page) await SyncSelectedCoreAsync(page); }
+        finally { page.ActionGate.Release(); }
+    }
+    private async Task SyncSelectedCoreAsync(OpenCodeBrowserPage page)
+    {
+        if (!_states.TryGetValue(page, out var state)) return;
+        var context = await OpenCodeBrowserSessionBackend.PickerContextAsync(page, page.Lifetime);
+        var selected = new List<object>();
+        foreach (var item in state.List.Items)
+        {
+            var box = item.Box;
+            if (item.Kind == OpenCodeBrowserSelectionKind.Element)
+            {
+                var element = item.Elements.Single();
+                try
+                {
+                    OpenCodeBrowserSessionBackend.CheckPickedRef(page, element.Ref);
+                    var fresh = await context.Geometry.BoxAsync(context.Frames.Element(element.BackendNodeId, element.FrameId), true, page.Lifetime);
+                    box = new(fresh.X, fresh.Y, fresh.Width, fresh.Height);
+                }
+                catch (OpenCodeBrowserException ex) when (ex.Code is "stale_ref" or "not_interactable") { continue; }
+            }
+            selected.Add(new { number = item.Number, selector = (string?)null, color = OpenCodeBrowserSelectionPolicy.Color(item.Kind), box = new { x = box.X, y = box.Y, width = box.Width, height = box.Height } });
+        }
+        await page.ExecuteScriptAsync("window.__aifSelection?.selected(" + JsonSerializer.Serialize(selected) + ")");
+    }
     private async Task ScriptAsync(string expression)
     {
         var page = _page; if (page is null || page.Closed) return;
@@ -345,11 +525,25 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     public void Dispose()
     {
         _disposed = true; _activation++; _overlay.SelectionBindingChanged -= BindingChanged; _overlay.AddPageRequested -= AddPage; _overlay.ExitPageTool = null;
+        _overlay.PickExternalElementAsync = null;
         foreach (var page in _states.Keys.ToArray())
         {
             page.Committed -= Committed; page.Closing -= PageClosing;
-            if (!page.Closed && page.View.CoreWebView2 is not null) { page.Core.WebMessageReceived -= MessageReceived; if (_states[page].ScriptId is { } id) page.Core.RemoveScriptToExecuteOnDocumentCreated(id); }
+            _ = DisposePageAsync(page, _states[page]);
         }
         _states.Clear(); _page = null;
+    }
+    private static async Task DisposePageAsync(OpenCodeBrowserPage page, PageState state)
+    {
+        foreach (var subscription in state.Subscriptions) await subscription.DisposeAsync();
+        state.Subscriptions.Clear();
+        if (page.Closed) return;
+        foreach (var script in state.Scripts)
+        {
+            var session = script.Key.Length == 0 ? null : script.Key;
+            await InspectModeAsync(page, session, false);
+            await page.CdpAsync("Page.removeScriptToEvaluateOnNewDocument", new() { ["identifier"] = script.Value }, session);
+            await page.CdpAsync("Runtime.removeBinding", new() { ["name"] = "__aifSelectionSend" }, session);
+        }
     }
 }

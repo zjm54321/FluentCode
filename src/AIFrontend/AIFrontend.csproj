@@ -36,10 +36,34 @@
     <Content Include="..\..\licenses\fluentui-system-icons-LICENSE.txt" Link="licenses\fluentui-system-icons-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\OneDarkPro.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\OpenCode\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\OpenCode\Mermaid\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\OpenCode.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\AppIcon\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\Taskbar\**\*.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <Target Name="ValidateOpenCodeBrowserRuntime" BeforeTargets="PrepareForBuild;ComputeFilesToPublish" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_BrowserRuntimeBundleDirectory>$(MSBuildProjectDirectory)\..\..\artifacts\browser-runtime</_BrowserRuntimeBundleDirectory>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_BrowserRuntimeBundleDirectory)\node.exe') Or !Exists('$(_BrowserRuntimeBundleDirectory)\runtime-manifest.json') Or !Exists('$(_BrowserRuntimeBundleDirectory)\node_modules\lighthouse\package.json')"
+           Text="Browser runtime bundle is missing or incomplete. Run tools/browser-runtime/prepare.ps1 explicitly before building or publishing. Build/publish never downloads or installs the runtime." />
+    <Error Condition="!Exists('$(_BrowserRuntimeBundleDirectory)\sidecar.mjs')"
+           Text="Browser runtime sidecar entry is missing: artifacts/browser-runtime/sidecar.mjs. Ensure tools/browser-runtime/runtime/sidecar.mjs exists, then run tools/browser-runtime/prepare.ps1 explicitly. Build/publish never generates or installs the sidecar." />
+  </Target>
+  <!-- The complete npm tree exceeds the .NET Framework Copy task's Windows path limit.
+       Keep it out of Content/FileWrites and copy it with the already prepared Node. -->
+  <Target Name="CopyOpenCodeBrowserRuntimeToOutput" AfterTargets="Build" DependsOnTargets="ValidateOpenCodeBrowserRuntime" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_BrowserRuntimeOutputDirectory>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(TargetDir)', 'BrowserRuntime'))</_BrowserRuntimeOutputDirectory>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_BrowserRuntimeBundleDirectory)\node.exe&quot; &quot;$(MSBuildProjectDirectory)\..\..\tools\browser-runtime\copy-runtime.mjs&quot; &quot;$(_BrowserRuntimeBundleDirectory)&quot; &quot;$(_BrowserRuntimeOutputDirectory)&quot;" />
+  </Target>
+  <Target Name="CopyOpenCodeBrowserRuntimeToPublish" AfterTargets="Publish" DependsOnTargets="ValidateOpenCodeBrowserRuntime" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_BrowserRuntimePublishDirectory>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(PublishDir)', 'BrowserRuntime'))</_BrowserRuntimePublishDirectory>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_BrowserRuntimeBundleDirectory)\node.exe&quot; &quot;$(MSBuildProjectDirectory)\..\..\tools\browser-runtime\copy-runtime.mjs&quot; &quot;$(_BrowserRuntimeBundleDirectory)&quot; &quot;$(_BrowserRuntimePublishDirectory)&quot;" />
+  </Target>
 </Project>

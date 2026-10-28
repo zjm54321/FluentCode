@@ -16,10 +16,11 @@ using Windows.System;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>BQ5 uses exactly the tool large-view presenter/chrome, bounded before the right dock.</summary>
+/// <summary>One-row native browser chrome in a whole-content overlay.</summary>
 public sealed class OpenCodeBrowserOverlay : Grid
 {
-    private readonly OpenCodeToolDetailPopup.Chrome _chrome = new(true);
+    private readonly FontIcon _siteIcon = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
+    private readonly StackPanel _actions = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
     private readonly FlyoutPresenter _presenter;
     private readonly TextBox _address = new() { CornerRadius = new(16), MinWidth = 0, Height = 32, FontSize = 13, Padding = new(32, 4, 12, 4), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _displayAddress = new() { VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false, Margin = new(36, 0, 36, 0), TextTrimming = TextTrimming.CharacterEllipsis };
@@ -36,6 +37,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly TextBlock _errorReason = new() { TextWrapping = TextWrapping.Wrap, MaxWidth = 620 };
     private readonly TextBlock _errorCode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly OpenCodeBrowserPreviewView _preview = new();
+    private readonly OpenCodeBrowserExternalView _external = new();
     private readonly TextBlock _serverFile = new() { Text = "服务器文件", VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 0, 12, 0), Visibility = Visibility.Collapsed };
     private readonly Grid _body = new();
     private readonly Canvas _pointerLayer = new() { IsHitTestVisible = false };
@@ -54,79 +56,66 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var smoke = new Border(); Theme(smoke, Border.BackgroundProperty, "SmokeFillColorDefaultBrush");
         smoke.Tapped += (_, _) => _workspace?.HideOverlay(); Children.Add(smoke);
         var layout = new Grid();
-        layout.RowDefinitions.Add(new() { Height = new(OpenCodeBrowserOverlayLayout.HeaderHeight) });
         layout.RowDefinitions.Add(new() { Height = new(OpenCodeBrowserOverlayLayout.ToolbarHeight) });
         layout.RowDefinitions.Add(new() { Height = new(1, GridUnitType.Star) });
-        _chrome.TitleBar.Height = 52; _chrome.TitleBar.Padding = new(16, 0, 12, 0);
-        _chrome.Name.FontSize = 16; _chrome.Name.MaxWidth = 420; _chrome.Name.TextWrapping = TextWrapping.NoWrap;
-        _chrome.Name.TextTrimming = TextTrimming.CharacterEllipsis;
-        _chrome.Name.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
-        _chrome.Icon.FontFamily = new("Segoe Fluent Icons"); _chrome.Icon.FontSize = 18;
-        _chrome.Target.FontSize = 12;
-        OpenCodeToolTheme.Apply(_chrome.Target, OpenCodeToolTheme.Text("TextFillColorTertiaryBrush", OpenCodeInteractionUi.CodeStyleKey));
-        _chrome.TitleBar.ColumnDefinitions[2].Width = GridLength.Auto;
-        _chrome.TitleBar.ColumnDefinitions[3].Width = new(1, GridUnitType.Star);
-        _chrome.StatusLine.HorizontalAlignment = HorizontalAlignment.Left;
-        _chrome.TitleBar.Children.Add(_favicon);
-        _chrome.Icon.Glyph = "\uE774";
-        _chrome.Status.Text = "智能体正在操作";
-        _chrome.Status.FontSize = 12;
-        OpenCodeToolTheme.Apply(_chrome.Status, OpenCodeToolTheme.Text("AccentTextFillColorPrimaryBrush"));
-        Theme(_chrome.StatusCapsule, Border.BackgroundProperty, "SubtleFillColorSecondaryBrush");
-        _chrome.StatusCapsule.Padding = new(8, 2, 8, 2);
-        _chrome.StatusCapsule.Visibility = Visibility.Collapsed;
-        layout.Children.Add(_chrome.TitleBar);
-        _chrome.Actions.Children.Add(Button("\uE8A7", "在外部浏览器打开", async () =>
+        _actions.Children.Add(Button("\uE8A7", "在外部浏览器打开", async () =>
         {
-            if (_page?.PreviewPath is null && Uri.TryCreate(_page?.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") await Launcher.LaunchUriAsync(uri);
+            if (_page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow) await RunPageActionAsync(page => page.FocusAsync(page.Lifetime));
+            else if (_page?.PreviewPath is null && Uri.TryCreate(_page?.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") await Launcher.LaunchUriAsync(uri);
         }));
-        _chrome.Actions.Children.Add(Button("\uEC7A", "开发者工具", () => _page?.Core.OpenDevToolsWindow()));
-        var more = Button("\uE712", "更多", () => { }); more.Flyout = MoreMenu(); _chrome.Actions.Children.Add(more);
+        var more = Button("\uE712", "更多", () => { }); more.Flyout = MoreMenu(); _actions.Children.Add(more);
         var divider = new Border { Width = 1, Height = 20, Margin = new(8, 0, 8, 0) };
-        Theme(divider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _chrome.Actions.Children.Add(divider);
+        Theme(divider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _actions.Children.Add(divider);
         var close = Button("\uE8BB", "关闭浏览器浮窗", () => _workspace?.HideOverlay());
-        ((FontIcon)close.Content).FontSize = 20; _chrome.Actions.Children.Add(close);
+        ((FontIcon)close.Content).FontSize = 20; _actions.Children.Add(close);
 
-        var toolbar = new Grid { Padding = new(8, 0, 8, 0), ColumnSpacing = 6, BorderThickness = new(0, 1, 0, 1) };
+        var toolbar = new Grid { Padding = new(8, 0, 8, 0), ColumnSpacing = 6, BorderThickness = new(0, 0, 0, 1) };
         Theme(toolbar, Grid.BorderBrushProperty, "DividerStrokeColorDefaultBrush");
+        toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         toolbar.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        var siteIcon = new Grid { Width = 24, VerticalAlignment = VerticalAlignment.Center };
+        siteIcon.Children.Add(_siteIcon); siteIcon.Children.Add(_favicon); toolbar.Children.Add(siteIcon);
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         _back = Button("\uE72B", "后退", () => _page?.GoBack()); _forward = Button("\uE72A", "前进", () => _page?.GoForward());
         _refresh = Button("\uE72C", "刷新", () => { if (_page?.PreviewPath is not null) _ = _preview.ReadAsync(); else if (_page?.Loading == true) _page.Stop(); else _page?.Reload(); });
-        nav.Children.Add(_back); nav.Children.Add(_forward); nav.Children.Add(_refresh); toolbar.Children.Add(nav);
+        nav.Children.Add(_back); nav.Children.Add(_forward); nav.Children.Add(_refresh); Grid.SetColumn(nav, 1); toolbar.Children.Add(nav);
         var addressHost = new Grid { VerticalAlignment = VerticalAlignment.Center };
         addressHost.Children.Add(_address); addressHost.Children.Add(_displayAddress); addressHost.Children.Add(_security);
         var networkRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { new FontIcon { Glyph = "\uE968", FontFamily = new("Segoe Fluent Icons"), FontSize = 10 }, new TextBlock { Text = "WSL 网络", FontSize = 11 } } };
         _network = new Border { Child = networkRow, Height = 22, Padding = new(8, 0, 8, 0), CornerRadius = new(11), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 6, 0), IsHitTestVisible = false, Visibility = Visibility.Collapsed };
         Theme(_network, Border.BackgroundProperty, "SubtleFillColorSecondaryBrush"); addressHost.Children.Add(_network);
         addressHost.Children.Add(_serverFile);
-        Grid.SetColumn(addressHost, 1); toolbar.Children.Add(addressHost);
+        Grid.SetColumn(addressHost, 2); toolbar.Children.Add(addressHost);
         AutomationProperties.SetName(_address, "页面地址");
         _address.GotFocus += (_, _) => { _editing = true; _displayAddress.Visibility = Visibility.Collapsed; _network.Visibility = Visibility.Collapsed; _address.Text = _page?.PreviewPath ?? _page?.Url ?? ""; _address.SelectAll(); };
         _address.LostFocus += (_, _) => { _editing = false; Render(); };
         _address.KeyDown += (_, key) =>
         {
             if (key.Key != VirtualKey.Enter || _page is null || _page.PreviewPath is not null) return;
-            try { _page.Navigate(OpenCodeBrowserPolicy.NormalizeUrl(_address.Text)); key.Handled = true; _page.View.Focus(FocusState.Programmatic); }
+            try { _page.Navigate(OpenCodeBrowserPolicy.NormalizeUrl(_address.Text)); key.Handled = true; if (_page.EmbeddedView is Control view) view.Focus(FocusState.Programmatic); }
             catch (OpenCodeBrowserException ex) { ToolTipService.SetToolTip(_address, ex.Message); }
         };
-        // Selection lane replaces these disabled native tools and fills the right-side slot.
+        // The selection owner adds exactly the element and region tools here.
         PageTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         PageTools.Resources = (ResourceDictionary)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Width\" Value=\"34\"/><Setter Property=\"Height\" Value=\"32\"/><Setter Property=\"Padding\" Value=\"0\"/></Style><Style TargetType=\"SplitButton\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Height\" Value=\"32\"/></Style></ResourceDictionary>");
-        foreach (var item in new[] { ("\uE8B0", "选择元素"), ("\uE7EF", "框选"), ("\uE70F", "标注"), ("\uE722", "截图") })
-        {
-            var toggle = new ToggleButton { Content = new FontIcon { Glyph = item.Item1, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, IsEnabled = false, MinWidth = 0 };
-            ToolTipService.SetToolTip(toggle, item.Item2); AutomationProperties.SetName(toggle, item.Item2); PageTools.Children.Add(toggle);
-        }
         var toolGroup = new Border { Child = PageTools, Padding = new(4, 2, 4, 2), CornerRadius = new(6), VerticalAlignment = VerticalAlignment.Center };
         Theme(toolGroup, Border.BackgroundProperty, "SubtleFillColorSecondaryBrush");
-        Grid.SetColumn(toolGroup, 2); toolbar.Children.Add(toolGroup); Grid.SetRow(toolbar, 1); layout.Children.Add(toolbar);
+        Grid.SetColumn(toolGroup, 3); toolbar.Children.Add(toolGroup);
+        Grid.SetColumn(_actions, 4); toolbar.Children.Add(_actions); layout.Children.Add(toolbar);
+        toolbar.SizeChanged += (_, _) =>
+        {
+            var compact = toolbar.ActualWidth < 560;
+            _back.Visibility = _forward.Visibility = siteIcon.Visibility = divider.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+            _actions.Children[0].Visibility = compact || _page?.PreviewPath is not null ? Visibility.Collapsed : Visibility.Visible;
+        };
         var content = new Grid(); content.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); content.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         _body.Children.Add(shownHost);
         _preview.Visibility = Visibility.Collapsed; _body.Children.Add(_preview);
+        _external.Visibility = Visibility.Collapsed; _body.Children.Add(_external);
         _error = new StackPanel { Spacing = 16, MaxWidth = 620, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new(32) };
         var errorIcon = new FontIcon { Glyph = "\uEB55", FontFamily = new("Segoe Fluent Icons"), FontSize = 52, HorizontalAlignment = HorizontalAlignment.Left };
         OpenCodeToolTheme.Apply(errorIcon, OpenCodeToolTheme.Icon("TextFillColorTertiaryBrush")); _error.Children.Add(errorIcon);
@@ -171,7 +160,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         Theme(_agentPill, Border.BackgroundProperty, "AcrylicInAppFillColorDefaultBrush"); _body.Children.Add(_agentPill);
         _agentPill.BorderBrush = Brush("FlyoutBorderThemeBrush");
         content.Children.Add(_body); RightPanelSlot = new Grid(); Grid.SetColumn(RightPanelSlot, 1); content.Children.Add(RightPanelSlot);
-        Grid.SetRow(content, 2); layout.Children.Add(content);
+        Grid.SetRow(content, 1); layout.Children.Add(content);
         _presenter = OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128);
         _presenter.HorizontalAlignment = HorizontalAlignment.Center; _presenter.VerticalAlignment = VerticalAlignment.Center;
         _presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch; _presenter.VerticalContentAlignment = VerticalAlignment.Stretch;
@@ -205,6 +194,8 @@ public sealed class OpenCodeBrowserOverlay : Grid
     public double ContentWidth => _body.ActualWidth;
     public double ContentHeight => _body.ActualHeight;
     public Func<bool>? ExitPageTool { get; set; }
+    public Func<Task>? PickExternalElementAsync { get; set; }
+    public event EventHandler? SettingsRequested;
     public event EventHandler? ContentSizeChanged;
     public event EventHandler<OpenCodeBrowserPage>? StopRequested;
     public event EventHandler<OpenCodeBrowserPage>? AddPageRequested;
@@ -232,23 +223,26 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private void PagePropertyChanged(object? sender, PropertyChangedEventArgs args) => Render();
     private void Render()
     {
-        var page = _page; if (page is null) return;
-        _chrome.Name.Text = page.LoadError is null ? page.Title : "无法访问此页面"; _chrome.Target.Text = Uri.TryCreate(page.Url, UriKind.Absolute, out var uri) ? uri.Authority : "";
+        var page = _page; if (page is null) { _external.Bind(null); return; }
+        Uri.TryCreate(page.Url, UriKind.Absolute, out var uri);
         var preview = page.PreviewPath is not null;
-        _chrome.Icon.Glyph = preview ? "\uE8A5" : "\uE774";
-        var favicon = page.View.CoreWebView2?.FaviconUri;
+        _siteIcon.Glyph = preview ? "\uE8A5" : "\uE774";
+        var external = !preview && page.Presentation == OpenCodeBrowserPresentation.ExternalWindow;
+        _external.PickElementAsync = PickExternalElementAsync;
+        _external.Bind(external ? page : null);
+        var favicon = (page.EmbeddedView as WebView2)?.CoreWebView2?.FaviconUri;
         var hasFavicon = !preview && page.LoadError is null && Uri.TryCreate(favicon, UriKind.Absolute, out _);
         _favicon.Source = hasFavicon ? new BitmapImage(new Uri(favicon!)) : null;
         _favicon.Visibility = hasFavicon ? Visibility.Visible : Visibility.Collapsed;
-        _chrome.Icon.Visibility = hasFavicon ? Visibility.Collapsed : Visibility.Visible;
-        _chrome.Target.Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
-        for (var i = 0; i < 3; i++) _chrome.Actions.Children[i].Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
+        _siteIcon.Visibility = hasFavicon ? Visibility.Collapsed : Visibility.Visible;
+        _actions.Children[0].Visibility = preview || _presenter.ActualWidth is > 0 and < 560 ? Visibility.Collapsed : Visibility.Visible;
+        AutomationProperties.SetName(_actions.Children[0], external ? "在 Chrome 中显示" : "在外部浏览器打开");
+        ToolTipService.SetToolTip(_actions.Children[0], external ? "在 Chrome 中显示（独立窗口）" : "在外部浏览器打开");
         _serverFile.Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
         var local = !preview && uri is { IsLoopback: true };
         _network.Visibility = local && !_editing ? Visibility.Visible : Visibility.Collapsed;
         _displayAddress.Margin = new(32, 0, preview ? 110 : local ? 100 : 12, 0);
         _preview.UpdateActions();
-        if (PageTools.Children.Count == 4) PageTools.Children[1].Visibility = preview ? Visibility.Collapsed : Visibility.Visible;
         ToolTipService.SetToolTip(_refresh, preview ? "重新读取服务器文件（仅手动刷新）" : page.Loading ? "停止加载" : "刷新");
         _back.IsEnabled = page.CanGoBack; _forward.IsEnabled = page.CanGoForward;
         (_refresh.Content as FontIcon)!.Glyph = !preview && page.Loading ? "\uE711" : "\uE72C";
@@ -258,16 +252,13 @@ public sealed class OpenCodeBrowserOverlay : Grid
             _address.Text = ""; _security.Visibility = Visibility.Visible; _security.Glyph = uri?.Scheme == "https" ? "\uE72E" : "\uE946";
             _displayAddress.Inlines.Clear();
             if (page.PreviewPath is not null) { _displayAddress.Text = page.PreviewPath; _security.Glyph = "\uE8A5"; }
-            else if (uri?.Scheme is "http" or "https")
-            {
-                _displayAddress.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = uri.Authority, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-                _displayAddress.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = uri.PathAndQuery + uri.Fragment, Foreground = Brush("TextFillColorSecondaryBrush") });
-            }
-            else _displayAddress.Text = page.Url;
+            else _displayAddress.Text = page.LoadError is not null ? "无法访问此页面" : string.IsNullOrWhiteSpace(page.Title) ? page.Url : page.Title;
+            ToolTipService.SetToolTip(_address, page.PreviewPath ?? page.Url);
             _displayAddress.Visibility = Visibility.Visible;
         }
         ErrorSurface.Visibility = page.LoadError is null || page.PreviewPath is not null ? Visibility.Collapsed : Visibility.Visible;
-        _errorReason.Text = ErrorReason(page.LoadError, page.Url); _errorCode.Text = (page.LoadError ?? "") + " · GET " + page.Url;
+        _errorReason.Text = page.LoadError is "CannotConnect" or "HostNameNotResolved" or "Timeout" ? ErrorReason(page.LoadError, page.Url) : page.LoadError ?? "";
+        _errorCode.Text = (page.LoadError ?? "") + " · GET " + page.Url;
         _preview.Visibility = page.PreviewPath is null ? Visibility.Collapsed : Visibility.Visible;
         _activity.Inlines.Clear();
         if (page.UserTakeover) _activity.Text = "用户已接管此页面";
@@ -280,8 +271,6 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _agentIcon.Glyph = OpenCodeAgentIcons.Glyph(page.AgentName);
         ((TextBlock)((StackPanel)_takeover.Content).Children[1]).Text = page.UserTakeover ? "交还" : "接管";
         var active = page.AgentActivity is not null || page.UserTakeover;
-        _chrome.StatusCapsule.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        _chrome.Status.Text = page.UserTakeover ? "用户已接管" : "智能体正在操作";
         _agentPill.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
         if (!active) _pointer.Visibility = Visibility.Collapsed;
         if (active) { _outlineFade?.Stop(); _agentOutline.Opacity = 1; }
@@ -296,6 +285,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     }
     private async void AgentPointerMoved(object? sender, OpenCodeBrowserPointer pointer)
     {
+        if (_page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow) return;
         _pointerName.Text = _page?.AgentName ?? "智能体"; _pointer.Visibility = Visibility.Visible;
         Canvas.SetLeft(_pointer, pointer.X); Canvas.SetTop(_pointer, pointer.Y);
         if (!pointer.Click) return;
@@ -315,20 +305,48 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private MenuFlyout MoreMenu()
     {
         var menu = new MenuFlyout();
-        void Item(string text, Action action) { var item = new MenuFlyoutItem { Text = text }; item.Click += (_, _) => action(); menu.Items.Add(item); }
+        MenuFlyoutItem Item(string text, Action action) { var item = new MenuFlyoutItem { Text = text }; item.Click += (_, _) => action(); menu.Items.Add(item); return item; }
+        var back = Item("后退", () => _page?.GoBack()); var forward = Item("前进", () => _page?.GoForward());
+        Item("在 Chrome 中显示 / 在外部浏览器打开", () => _ = RunPageActionAsync(async page =>
+        {
+            if (page.Presentation == OpenCodeBrowserPresentation.ExternalWindow) await page.FocusAsync(page.Lifetime);
+            else if (Uri.TryCreate(page.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") await Launcher.LaunchUriAsync(uri);
+        }));
         Item("复制链接", () => Copy(_page?.Url ?? ""));
+        var devtools = Item("开发者工具", () => _ = RunPageActionAsync(async page =>
+        {
+            if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.OpenDevToolsWindow();
+            else { await page.FocusAsync(page.Lifetime); ToolTipService.SetToolTip(_address, "请在 Chrome 窗口按 F12 打开开发者工具。"); }
+        }));
         var zoom = new MenuFlyoutSubItem { Text = "缩放" };
         foreach (var factor in new[] { .5, .75, 1, 1.25, 1.5, 2.0 }) { var item = new MenuFlyoutItem { Text = factor.ToString("P0") }; item.Click += async (_, _) => { if (_page is not null) await _page.CdpAsync("Emulation.setPageScaleFactor", new() { ["pageScaleFactor"] = factor }); }; zoom.Items.Add(item); }
         menu.Items.Add(zoom);
-        Item("打印", () => _page?.Core.ShowPrintUI(Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser));
+        var print = Item("打印", () => _ = RunPageActionAsync(async page =>
+        {
+            if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.ShowPrintUI(Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
+            else { await page.FocusAsync(page.Lifetime); await page.ExecuteScriptAsync("window.print()"); }
+        }));
         Item("把此页面加到对话", () => { if (_page is not null) AddPageRequested?.Invoke(this, _page); });
         Item("清除此站点的数据", async () =>
         {
             if (_page is not null && Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
                 await _page.CdpAsync("Storage.clearDataForOrigin", new() { ["origin"] = uri.GetLeftPart(UriPartial.Authority), ["storageTypes"] = "all" });
         });
-        var settings = new MenuFlyoutItem { Text = "浏览器设置", IsEnabled = false };
-        ToolTipService.SetToolTip(settings, "浏览器设置尚未提供"); menu.Items.Add(settings); return menu;
+        menu.Opening += (_, _) =>
+        {
+            var external = _page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow;
+            back.IsEnabled = _page?.CanGoBack == true; forward.IsEnabled = _page?.CanGoForward == true;
+            devtools.Text = external ? "开发者工具 · 在 Chrome 中按 F12" : "开发者工具";
+            print.Text = external ? "在 Chrome 中打印" : "打印";
+            devtools.IsEnabled = print.IsEnabled = _page is { IsReady: true, PreviewPath: null };
+        };
+        Item("浏览器设置", () => SettingsRequested?.Invoke(this, EventArgs.Empty)); return menu;
+    }
+    private async Task RunPageActionAsync(Func<OpenCodeBrowserPage, Task> action)
+    {
+        var page = _page; if (page is null || page.PreviewPath is not null) return;
+        try { await page.EnsureReadyAsync(page.Lifetime); await action(page); }
+        catch (Exception ex) { ToolTipService.SetToolTip(_address, ex.Message); }
     }
     private static Button Button(string glyph, string name, Action click)
     {

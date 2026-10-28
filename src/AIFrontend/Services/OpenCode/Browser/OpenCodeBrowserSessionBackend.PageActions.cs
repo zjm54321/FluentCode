@@ -15,32 +15,60 @@ public sealed partial class OpenCodeBrowserSessionBackend
     private static async Task<OpenCodeBrowserOutcome> SnapshotAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
         var timer = Stopwatch.StartNew();
-        int? root = a["ref"] is null ? null : c.Snapshot.Resolve(S(a, "ref"));
-        var parameters = new JsonObject(); if (a["frameID"] is not null) parameters["frameId"] = S(a, "frameID");
-        var tree = await Call(c, "Accessibility.getFullAXTree", parameters, ct);
+        await c.RefreshFramesAsync(ct);
+        var root = a["ref"] is null ? null : c.Resolve(S(a, "ref"));
+        var selectedFrames = root is not null ? new[] { c.Frames.Get(root.FrameId) } : a["frameID"] is not null ? new[] { c.Frames.Get(S(a, "frameID")) } : c.Frames.Items.ToArray();
+        var nodes = new JsonArray();
+        foreach (var frame in selectedFrames)
+        {
+            c.ActiveSession = frame.RendererSessionId;
+            var tree = await Call(c, "Accessibility.getFullAXTree", new() { ["frameId"] = frame.Id }, ct);
+            foreach (var node in tree["nodes"]!.AsArray().OfType<JsonObject>())
+            {
+                var copy = (JsonObject)node.DeepClone(); copy["frameId"] = frame.Id; nodes.Add(copy);
+            }
+        }
+        foreach (var frame in selectedFrames) c.Frames.Check(new(1, frame.Id, frame.RendererSessionId, frame.DocumentEpoch));
         var axTime = timer.Elapsed.TotalMilliseconds;
-        var formatted = c.Snapshot.Format(tree["nodes"]!.AsArray(), I(a, "depth", 20), S(a, "type") == "find" ? S(a, "text") : null, root, c.ActiveSession + "/" + S(a, "frameID"));
-        c.RefSessions.Clear(); foreach (var reference in c.Snapshot.Refs.Keys) c.RefSessions[reference] = c.ActiveSession;
+        var formatted = c.Snapshot.Format(nodes, I(a, "depth", 20), S(a, "type") == "find" ? S(a, "text") : null, root?.BackendNodeId,
+            identify: node => c.Frames.Element(node["backendDOMNodeId"]!.GetValue<int>(), S(node, "frameId")));
         var formatTime = timer.Elapsed.TotalMilliseconds - axTime;
         var text = formatted.Content; var truncated = formatted.Truncated;
         if (B(a, "boxes") && c.Snapshot.Refs.Count > 0)
         {
-            // One renderer-wide read replaces N sequential DOM.getBoxModel/resolveNode calls.
-            var boxes = OpenCodeBrowserGeometry.SnapshotBoxes(await Call(c, "DOMSnapshot.captureSnapshot", new() { ["computedStyles"] = new JsonArray(), ["includeDOMRects"] = true }, ct));
-            var annotated = c.Snapshot.AddBoxes(text, boxes);
+            var boxes = new Dictionary<string, OpenCodeBrowserBox>(StringComparer.Ordinal);
+            // One capture per renderer plus one transform per document; no per-element CDP round trips.
+            foreach (var group in selectedFrames.GroupBy(f => f.RendererSessionId))
+            {
+                c.ActiveSession = group.Key;
+                var capture = await Call(c, "DOMSnapshot.captureSnapshot", new() { ["computedStyles"] = new JsonArray(), ["includeDOMRects"] = true }, ct);
+                foreach (var document in capture["documents"]!.AsArray().OfType<JsonObject>())
+                {
+                    var frameId = capture["strings"]![document["frameId"]!.GetValue<int>()]!.GetValue<string>();
+                    if (!group.Any(f => f.Id == frameId)) continue;
+                    var viewport = await c.Geometry.ViewportAsync(frameId, ct);
+                    var local = OpenCodeBrowserGeometry.SnapshotBoxes(new() { ["documents"] = new JsonArray(document.DeepClone()) });
+                    foreach (var reference in c.Snapshot.Refs.Keys)
+                    {
+                        var element = c.Resolve(reference);
+                        if (element.FrameId == frameId && local.TryGetValue(element.BackendNodeId, out var box))
+                            boxes[reference] = OpenCodeBrowserGeometry.Bounds(OpenCodeBrowserGeometry.ProjectQuad(OpenCodeBrowserGeometry.Quad(box), viewport.Quad, viewport.Width, viewport.Height));
+                    }
+                }
+            }
+            var annotated = c.Snapshot.AddBoxes(text, reference => boxes.TryGetValue(reference, out var box) ? box : null);
             text = annotated.Content; truncated |= annotated.Truncated;
         }
-        Debug.WriteLine($"Browser snapshot: ax={axTime:F1}ms format={formatTime:F1}ms boxes={timer.Elapsed.TotalMilliseconds - axTime - formatTime:F1}ms total={timer.Elapsed.TotalMilliseconds:F1}ms nodes={tree["nodes"]!.AsArray().Count} refs={c.Snapshot.Refs.Count}");
+        Debug.WriteLine($"Browser snapshot: ax={axTime:F1}ms format={formatTime:F1}ms boxes={timer.Elapsed.TotalMilliseconds - axTime - formatTime:F1}ms total={timer.Elapsed.TotalMilliseconds:F1}ms nodes={nodes.Count} refs={c.Snapshot.Refs.Count}");
         var value = WithTab(c.Page); value["content"] = text; value["truncated"] = truncated; return Ok(value);
     }
     private static async Task<int?> FrameContextAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
         if (a["frameID"] is null) return null;
         var frame = S(a, "frameID");
-        if (c.Contexts.TryGetValue(frame, out var id)) return id;
-        var tree = await Call(c, "Page.getFrameTree", null, ct);
-        if (!tree.ToJsonString().Contains(JsonSerializer.Serialize(frame), StringComparison.Ordinal)) throw new OpenCodeBrowserException("not_found", "找不到此 frameID");
-        throw new OpenCodeBrowserException("unsupported", "此跨进程 frame 的默认执行上下文尚未由 WebView2 暴露");
+        await c.RefreshFramesAsync(ct);
+        c.ActiveSession = c.Frames.Get(frame).RendererSessionId;
+        return c.Frames.Context(frame) ?? throw new OpenCodeBrowserException("not_ready", "框架默认执行上下文尚未就绪");
     }
     private static async Task<JsonNode?> ScriptAsync(PageContext c, string expression, JsonObject a, CancellationToken ct)
     {
@@ -58,9 +86,10 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static async Task<string> ResolveObjectAsync(PageContext c, string reference, CancellationToken ct, int? context = null)
     {
-        c.ActiveSession = c.RefSessions.GetValueOrDefault(reference.TrimStart('@'));
+        var element = c.Resolve(reference); c.ActiveSession = element.RendererSessionId;
         if (c.ActiveSession is { } session) await c.EnsureFrameSessionAsync(session);
-        var parameters = new JsonObject { ["backendNodeId"] = c.Snapshot.Resolve(reference), ["objectGroup"] = "aif-browser" };
+        var parameters = new JsonObject { ["backendNodeId"] = element.BackendNodeId, ["objectGroup"] = "aif-browser" };
+        context ??= c.Frames.Context(element.FrameId);
         if (context is { } id) parameters["executionContextId"] = id;
         var result = await Call(c, "DOM.resolveNode", parameters, ct);
         return S(result["object"]!.AsObject(), "objectId");
@@ -83,18 +112,19 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static async Task<OpenCodeBrowserBox> BoxAsync(PageContext c, string reference, CancellationToken ct, bool scroll = false, bool border = false)
     {
-        c.ActiveSession = c.RefSessions.GetValueOrDefault(reference.TrimStart('@'));
+        var element = c.Resolve(reference); c.ActiveSession = element.RendererSessionId;
         if (c.ActiveSession is { } session) await c.EnsureFrameSessionAsync(session);
-        var node = c.Snapshot.Resolve(reference);
+        var node = element.BackendNodeId;
         if (scroll) await Call(c, "DOM.scrollIntoViewIfNeeded", new() { ["backendNodeId"] = node }, ct);
-        var result = await Call(c, "DOM.getBoxModel", new() { ["backendNodeId"] = node }, ct);
-        return OpenCodeBrowserGeometry.Bounds(result["model"]![border ? "border" : "content"]!.AsArray());
+        return await c.Geometry.BoxAsync(element, border, ct);
     }
     private static int Modifiers(JsonArray? keys) => keys?.Sum(key => key?.ToString() switch { "Alt" => 1, "Control" => 2, "Meta" => 4, "Shift" => 8, _ => 0 }) ?? 0;
     private static async Task MouseAsync(PageContext c, string type, double x, double y, CancellationToken ct, string button = "none", int count = 0, int modifiers = 0, int buttons = 0)
     {
         c.Page.ReportPointer(x, y, type == "mousePressed");
-        await Call(c, "Input.dispatchMouseEvent", new() { ["type"] = type, ["x"] = x, ["y"] = y, ["button"] = button, ["clickCount"] = count, ["modifiers"] = modifiers, ["buttons"] = buttons }, ct);
+        var session = c.ActiveSession; c.ActiveSession = null;
+        try { await Call(c, "Input.dispatchMouseEvent", new() { ["type"] = type, ["x"] = x, ["y"] = y, ["button"] = button, ["clickCount"] = count, ["modifiers"] = modifiers, ["buttons"] = buttons }, ct); }
+        finally { c.ActiveSession = session; }
     }
     private static async Task ClickAsync(PageContext c, string reference, JsonObject a, CancellationToken ct)
     {
@@ -114,8 +144,6 @@ public sealed partial class OpenCodeBrowserSessionBackend
             case "click": await ClickAsync(c, S(a, "ref"), a, ct); break;
             case "hover": var box = await BoxAsync(c, S(a, "ref"), ct, true); await MouseAsync(c, "mouseMoved", box.CenterX, box.CenterY, ct); break;
             case "drag":
-                if (c.RefSessions.GetValueOrDefault(S(a, "from").TrimStart('@')) != c.RefSessions.GetValueOrDefault(S(a, "to").TrimStart('@')))
-                    throw new OpenCodeBrowserException("unsupported", "不能跨渲染进程拖动两个 frame 中的元素");
                 var start = await BoxAsync(c, S(a, "from"), ct, true); var end = await BoxAsync(c, S(a, "to"), ct);
                 await MouseAsync(c, "mouseMoved", start.CenterX, start.CenterY, ct);
                 await MouseAsync(c, "mousePressed", start.CenterX, start.CenterY, ct, "left", 1, buttons: 1);
@@ -201,6 +229,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
     }
     private static async Task<OpenCodeBrowserOutcome> ScreenshotAsync(PageContext c, JsonObject a, CancellationToken ct)
     {
+        await c.RefreshFramesAsync(ct); var resources = c.SourceUrls();
         var format = S(a, "format", "png"); var options = new JsonObject { ["format"] = format, ["captureBeyondViewport"] = B(a, "fullPage"), ["fromSurface"] = true };
         if (format != "png" && a["quality"] is not null) options["quality"] = I(a, "quality");
         JsonObject? clip = null;
@@ -210,7 +239,9 @@ public sealed partial class OpenCodeBrowserSessionBackend
             // Inline elements may have several text runs that extend past DOM.getBoxModel's box.
             // Measure the complete contents after scrolling, including nested text descendants.
             var contents = (await ElementFunctionAsync(c, S(a, "ref"), "function(){ const range=this.ownerDocument.createRange(); range.selectNodeContents(this); const r=range.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; }", null, ct))!;
-            box = OpenCodeBrowserGeometry.Union(new[] { box, new OpenCodeBrowserBox(contents["x"]!.GetValue<double>(), contents["y"]!.GetValue<double>(), contents["width"]!.GetValue<double>(), contents["height"]!.GetValue<double>()) });
+            var contentsBox = new OpenCodeBrowserBox(contents["x"]!.GetValue<double>(), contents["y"]!.GetValue<double>(), contents["width"]!.GetValue<double>(), contents["height"]!.GetValue<double>());
+            if (contentsBox.Width > 0 && contentsBox.Height > 0) box = OpenCodeBrowserGeometry.Union(new[] { box, await c.Geometry.LocalBoxAsync(contentsBox, c.Resolve(S(a, "ref")).FrameId, ct) });
+            c.ActiveSession = null;
             var metrics = await Call(c, "Page.getLayoutMetrics", null, ct);
             clip = OpenCodeBrowserGeometry.ScreenshotClip(box, metrics);
             options["captureBeyondViewport"] = true;
@@ -225,8 +256,12 @@ public sealed partial class OpenCodeBrowserSessionBackend
             if (a["maxWidth"] is not null) clip["scale"] = Math.Min(1, I(a, "maxWidth") / clip["width"]!.GetValue<double>());
             options["clip"] = clip;
         }
+        c.ActiveSession = null;
         var result = await Call(c, "Page.captureScreenshot", options, ct); var data = Convert.FromBase64String(S(result, "data"));
-        var file = c.Save("screenshot." + (format == "jpeg" ? "jpg" : format), "image/" + format, data); return Export(c, file);
+        // Capture temporarily overrides the surface viewport. Wait for restored compositor transforms
+        // before a following root input event is routed into a scaled OOPIF.
+        await Call(c, "Runtime.evaluate", new() { ["expression"] = "document.hidden ? null : new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))", ["awaitPromise"] = true }, ct);
+        var file = c.Save("screenshot." + (format == "jpeg" ? "jpg" : format), "image/" + format, data, resources: resources); return Export(c, file);
     }
     private static async Task UploadAsync(PageContext c, OpenCodeBrowserCommand command, CancellationToken ct)
     {
@@ -243,7 +278,7 @@ public sealed partial class OpenCodeBrowserSessionBackend
                 await File.WriteAllBytesAsync(path, file.Data, ct); local.Add(path); created.Add(folder);
             }
             if (command.ActionType == "files.upload")
-                await Call(c, "DOM.setFileInputFiles", new() { ["backendNodeId"] = c.Snapshot.Resolve(S(a, "ref")), ["files"] = local }, ct);
+                await Call(c, "DOM.setFileInputFiles", new() { ["backendNodeId"] = c.Resolve(S(a, "ref")).BackendNodeId, ["files"] = local }, ct);
             else
             {
                 var box = await BoxAsync(c, S(a, "ref"), ct, true);

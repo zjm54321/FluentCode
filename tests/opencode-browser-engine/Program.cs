@@ -21,17 +21,29 @@ internal static class Program
     public static void Main(string[] args)
     {
         SelectionTests.Run(Check);
-        foreach (var (width, height, dock) in new[] { (1600d, 1000d, 0d), (1600d, 1000d, 320d), (1200d, 800d, 300d), (640d, 480d, 0d), (300d, 200d, 0d) })
+        FrameTests.Run(Check);
+        if (args.Length > 1)
         {
-            var place = OpenCodeBrowserOverlayLayout.Place(width, height, dock, width * .8, height * .8);
-            Check(place.HostWidth == width - dock, "overlay smoke excludes only the resident dock");
-            Check(place.X == (width - dock - place.Width) / 2, "overlay horizontally centered with/without dock");
+            if (args[1] != "--frames") FrameTests.LiveAsync(args[1], Check).GetAwaiter().GetResult();
+            Console.WriteLine("PASS " + _checks + " focused frame/selection assertions"); return;
+        }
+        foreach (var (width, height) in new[] { (1600d, 1000d), (1200d, 800d), (640d, 480d), (300d, 200d) })
+        {
+            var place = OpenCodeBrowserOverlayLayout.Place(width, height);
+            Check(place.HostWidth == width, "overlay smoke covers both resident docks");
+            Check(place.X == (width - place.Width) / 2, "overlay horizontally centered across the full page");
             Check(place.Y == (height - place.Height) / 2, "overlay vertically centered like detail large view");
-            Check(place.X >= 12 && width - dock - place.X - place.Width >= 12, "overlay keeps 12px minimum gap before resident dock");
+            Check(place.Width == width - 24 && place.Height == height - 24, "browser surface fills content band with only a 12px edge gap");
+            Check(place.X >= 12 && width - place.X - place.Width >= 12, "overlay keeps 12px minimum gap to page edges");
             var content = OpenCodeBrowserOverlayLayout.Content(place.Width, place.Height);
-            Check(content.Width + 2 == place.Width && content.Height + 52 + 46 + 2 == place.Height, "WebView fills complete interior with no spare strip");
+            Check(content.Width + 2 == place.Width && content.Height + 46 + 2 == place.Height, "WebView fills interior below one toolbar row");
             var selected = OpenCodeBrowserOverlayLayout.Content(place.Width, place.Height, 340);
             Check(selected.Width == Math.Max(0, content.Width - 340) && selected.Height == content.Height, "selection tray consumes exactly its own width");
+        }
+        foreach (var (width, height) in new[] { (0d, 0d), (10d, 10d), (-1d, -1d) })
+        {
+            var place = OpenCodeBrowserOverlayLayout.Place(width, height);
+            Check(place.HostWidth >= 0 && place.Width == 0 && place.Height == 0 && place.X >= 0 && place.Y >= 0, "unmeasured or tiny content band has nonnegative geometry");
         }
         foreach (var pair in new[] { ("", "about:blank"), (" about:blank ", "about:blank"), ("example.com/a?q=x", "https://example.com/a?q=x"), ("LOCALHOST:5173/a", "http://localhost:5173/a"), ("localhost:5173?x=1", "http://localhost:5173/?x=1"), ("127.0.0.2:80", "http://127.0.0.2/"), ("[::1]:5173", "http://[::1]:5173/"), ("https://example.com", "https://example.com/") })
             Check(OpenCodeBrowserPolicy.NormalizeUrl(pair.Item1) == pair.Item2, "normalize " + pair.Item1);
@@ -185,10 +197,18 @@ internal static class Program
         var h = new OpenCodeBrowserProfileAnalysis.Heap(heap); Check(h.Summary(100)["selfBytes"]!.GetValue<double>() == 48, "heap shallow bytes"); Check(h.Query("thing", 1)["truncated"]!.GetValue<bool>(), "heap literal query bound"); Check(h.Object(3, 10)["retainers"]!.AsArray().Count == 1, "heap retainers"); Check(h.Compare(h, 10)["classes"]![0]!["bytesDelta"]!.GetValue<double>() == 0, "heap compare equal");
         var composition = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.Browser.cs"));
         var overlay = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs"));
-        Check(composition.Contains("OpenCodeDetailPopupLayout.LargeView(PageRoot.ActualWidth, height)") && composition.Contains("OpenCodeBrowserOverlayLayout.Place("), "production uses shared large-view caps and tested placement");
+        Check(!composition.Contains("OpenCodeDetailPopupLayout.LargeView") && composition.Contains("OpenCodeBrowserOverlayLayout.Place(PageRoot.ActualWidth, height)"), "production browser fills full content band without tool-detail percentage caps");
         Check(overlay.Contains("_presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch") && overlay.Contains("_presenter.VerticalContentAlignment = VerticalAlignment.Stretch"), "native presenter stretches WebView content on both axes");
         Check(overlay.Contains("TargetType=\\\"ScrollViewer\\\"") && overlay.Contains("Property=\\\"HorizontalContentAlignment\\\" Value=\\\"Stretch\\\"") && overlay.Contains("Property=\\\"VerticalContentAlignment\\\" Value=\\\"Stretch\\\""), "native presenter inner viewport also stretches instead of Left/Top");
         Check(overlay.Contains("OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128)") && !overlay.Contains("_presenter.Margin ="), "shared native shadow and border without nested content margins");
+        Check(!overlay.Contains("layout.Children.Add(_chrome.TitleBar)") && overlay.Contains("Grid.SetRow(content, 1)"), "single browser row without redundant title bar");
+        Check(overlay.Contains("_displayAddress.Text = page.LoadError") && overlay.Contains("string.IsNullOrWhiteSpace(page.Title)") && overlay.Contains("_address.Text = _page?.PreviewPath ?? _page?.Url"), "unfocused address shows title; focused address shows URL");
+        var selection = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelection.cs"));
+        var selectionButtons = selection.Split("overlay.PageTools.Children.Clear();")[1].Split("overlay.RightPanelSlot.Children.Add(_list);")[0];
+        Check(selectionButtons.Contains("选择元素并批注") && selectionButtons.Contains("框选并批注") && !selectionButtons.Contains("OpenCodeBrowserSelectionTool.Annotate") && !selectionButtons.Contains("SplitButton"), "selection toolbar exposes only element and region with comments, without screenshot or drawing controls");
+        Check(!overlay.Contains("PageTools.Children.Add(toggle)"), "overlay has no stale placeholder tools");
+        var selectedList = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectedList.cs"));
+        Check(selectedList.Contains("添加批注（可选）") && selectedList.Contains("第 {item.Number} 项批注") && selectedList.Contains("NoteChanged?.Invoke(item.Id, note.Text)") && selection.Contains("_list.NoteChanged += (id, text) => State?.List.SetNote(id, text)"), "each captured selection keeps its own accessible comment field and existing note persistence");
         Check(composition.Contains("RegisterPropertyChangedCallback(SplitView.IsPaneOpenProperty") && composition.Contains("RegisterPropertyChangedCallback(SplitView.DisplayModeProperty"), "resident dock changes recenter open overlay");
         Check(composition.Contains("BrowserBackendFactory = CreateBrowserPeerBackend;"), "production engine factory supplied to peer");
         Check(composition.Contains("return GetBrowserBackend(sessionId);") && composition.Contains("_browserBackends[sessionId]"), "factory uses cached backend");

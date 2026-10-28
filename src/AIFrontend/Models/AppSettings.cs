@@ -114,6 +114,9 @@ public sealed record AppSettings
     /// <summary>OpenCode 后端设置。</summary>
     public OpenCodeSettings OpenCode { get; init; } = new();
 
+    /// <summary>Session browser preferences, independent of OpenCode connection credentials.</summary>
+    public BrowserSettings Browser { get; init; } = new();
+
     /// <summary>每个稳定 Source/profile 的已添加目录；null 为旧版/默认，省略序列化。</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public IReadOnlyList<OpenCodeProjectBookmark>? OpenCodeProjectDirectories { get; init; }

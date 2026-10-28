@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Web.WebView2.Core;
 
 namespace AIFrontend.Services.OpenCode.Browser;
 
@@ -21,15 +20,23 @@ public sealed partial class OpenCodeBrowserSessionBackend
         public byte[]? Data { get; set; }
         public string? LocalPath { get; set; }
         public JsonObject? Analysis { get; set; }
+        public string[] Resources { get; init; } = Array.Empty<string>();
     }
     private sealed partial class PageContext : IDisposable
     {
         private Task? _initialization;
         private readonly List<Action> _unsubscribe = new();
+        private readonly List<IAsyncDisposable> _subscriptions = new();
         private bool _disposed;
         public PageContext(OpenCodeBrowserPage page)
         {
             Page = page;
+            PickerPages.Add(page, this);
+            Geometry = new(Frames, async (method, parameters, session, ct) =>
+            {
+                ct.ThrowIfCancellationRequested(); var value = await Page.CdpAsync(method, parameters, session, ct);
+                ct.ThrowIfCancellationRequested(); return value;
+            });
             Page.Committed += Committed; Page.Navigating += Navigating;
         }
         public OpenCodeBrowserPage Page { get; }
@@ -38,89 +45,121 @@ public sealed partial class OpenCodeBrowserSessionBackend
         public OpenCodeBrowserRing<JsonObject> Network { get; } = new(500);
         public Dictionary<string, JsonObject> NetworkDetails { get; } = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _networkIds = new(StringComparer.Ordinal);
-        public Dictionary<string, int> Contexts { get; } = new(StringComparer.Ordinal);
-        public Dictionary<string, string?> FrameSessions { get; } = new(StringComparer.Ordinal);
-        public Dictionary<string, string?> RefSessions { get; } = new(StringComparer.Ordinal);
-        private readonly HashSet<string> _initializedSessions = new(StringComparer.Ordinal);
+        public OpenCodeBrowserFrames Frames { get; } = new();
+        public OpenCodeBrowserFrameGeometry Geometry { get; }
+        private readonly Dictionary<string, Task> _sessionInitialization = new(StringComparer.Ordinal);
         public string? ActiveSession;
         public Dictionary<string, RetainedFile> Files { get; } = new(StringComparer.Ordinal);
         public JsonObject? Dialog { get; private set; }
+        public long DialogRevision { get; private set; }
+        public string DialogUrl { get; private set; } = "";
+        public string? DialogSession { get; private set; }
         public string TempDirectory { get; } = Path.Combine(Path.GetTempPath(), "AIFrontend-browser", Guid.NewGuid().ToString("N"));
         public string? InitializationError { get; private set; }
         public long UploadBytes;
-        private void Committed(object? sender, EventArgs args) { Snapshot.Clear(); RefSessions.Clear(); }
-        private void Navigating(object? sender, EventArgs args) { Console.Clear(); Network.Clear(); NetworkDetails.Clear(); _networkIds.Clear(); Snapshot.Clear(); RefSessions.Clear(); }
+        private void Committed(object? sender, EventArgs args) { Snapshot.Clear(); }
+        private void Navigating(object? sender, EventArgs args) { Console.Clear(); }
         public void ObserveInitialization() => _ = ObserveAsync(InitializeAsync());
-        public Task InitializeAsync() => _initialization ??= InitializeCoreAsync();
+        public Task InitializeAsync()
+        {
+            if (_initialization is not null) return _initialization;
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _initialization = completion.Task; _ = CompleteInitializationAsync(completion); return _initialization;
+        }
+        private async Task CompleteInitializationAsync(TaskCompletionSource completion)
+        {
+            try { await InitializeCoreAsync(); completion.TrySetResult(); }
+            catch (Exception ex) { completion.TrySetException(ex); }
+        }
         private async Task InitializeCoreAsync()
         {
             try
             {
                 await Page.EnsureReadyAsync();
-                Subscribe("Target.attachedToTarget", value =>
+                await SubscribeAsync("Target.attachedToTarget", (value, parentSession) =>
                 {
-                    if (S(value["targetInfo"]!.AsObject(), "type") == "iframe") FrameSessions[S(value["targetInfo"]!.AsObject(), "targetId")] = S(value, "sessionId");
+                    if (S(value["targetInfo"]!.AsObject(), "type") != "iframe") return;
+                    var session = S(value, "sessionId");
+                    Frames.Attach(S(value["targetInfo"]!.AsObject(), "targetId"), session, value["targetInfo"]?["parentFrameId"]?.ToString());
+                    _ = ObserveAsync(EnsureFrameSessionAsync(session));
                 });
-                Subscribe("Target.detachedFromTarget", value =>
+                await SubscribeAsync("Target.detachedFromTarget", value =>
                 {
-                    var session = S(value, "sessionId"); _initializedSessions.Remove(session);
-                    foreach (var frame in FrameSessions.Where(pair => pair.Value == session).Select(pair => pair.Key).ToArray()) { FrameSessions.Remove(frame); Contexts.Remove(frame); }
+                    var session = S(value, "sessionId"); _sessionInitialization.Remove(session);
+                    Frames.DetachSession(session);
                 });
-                Subscribe("Runtime.consoleAPICalled", ConsoleEvent);
-                Subscribe("Runtime.exceptionThrown", value =>
+                await SubscribeAsync("Page.frameNavigated", (value, session) =>
+                {
+                    Frames.Update(value["frame"]!.AsObject(), session, committed: true);
+                    if (TraceClock is not null) TraceResources = TraceResources.Concat(SourceUrls()).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
+                    if (CpuClock is not null) CpuResources = CpuResources.Concat(SourceUrls()).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
+                });
+                await SubscribeAsync("Page.frameDetached", value => { if (S(value, "reason") != "swap") Frames.Remove(S(value, "frameId")); });
+                await SubscribeAsync("Runtime.consoleAPICalled", ConsoleEvent);
+                await SubscribeAsync("Runtime.exceptionThrown", value =>
                 {
                     var details = value["exceptionDetails"]!.AsObject();
                     AddConsole("error", details["exception"]?["description"]?.ToString() ?? S(details, "text"), value["timestamp"]?.GetValue<double>() ?? Now(), details);
                 });
-                Subscribe("Log.entryAdded", value =>
+                await SubscribeAsync("Log.entryAdded", value =>
                 {
                     var entry = value["entry"]!.AsObject();
                     AddConsole(S(entry, "level", "info"), S(entry, "text"), entry["timestamp"]?.GetValue<double>() ?? Now(), entry);
                 });
-                Subscribe("Runtime.executionContextCreated", value =>
-                {
-                    var context = value["context"]!.AsObject(); var aux = context["auxData"] as JsonObject;
-                    if (aux is not null && B(aux, "isDefault")) Contexts[S(aux, "frameId")] = I(context, "id");
-                });
-                Subscribe("Runtime.executionContextDestroyed", value =>
-                {
-                    var id = I(value, "executionContextId"); foreach (var key in Contexts.Where(pair => pair.Value == id).Select(pair => pair.Key).ToArray()) Contexts.Remove(key);
-                });
-                Subscribe("Runtime.executionContextsCleared", _ => Contexts.Clear());
-                Subscribe("Page.javascriptDialogOpening", value => Dialog = new() { ["type"] = OpenCodeBrowserPolicy.Bound(S(value, "type")), ["message"] = OpenCodeBrowserPolicy.Bound(S(value, "message"), 100000), ["defaultValue"] = OpenCodeBrowserPolicy.Bound(S(value, "defaultPrompt")) });
-                Subscribe("Page.javascriptDialogClosed", _ => Dialog = null);
-                Subscribe("Network.requestWillBeSent", RequestStarted);
-                Subscribe("Network.responseReceived", ResponseReceived);
-                Subscribe("Network.loadingFinished", value => RequestFinished(value, false));
-                Subscribe("Network.loadingFailed", value => RequestFinished(value, true));
-                SubscribeProfileEvents();
-                Page.Core.DownloadStarting += DownloadStarting;
-                _unsubscribe.Add(() => Page.Core.DownloadStarting -= DownloadStarting);
+                await SubscribeAsync("Runtime.executionContextCreated", (value, session) => Frames.ContextCreated(session, value["context"]!.AsObject()));
+                await SubscribeAsync("Runtime.executionContextDestroyed", (value, session) => Frames.ContextDestroyed(session, I(value, "executionContextId")));
+                await SubscribeAsync("Runtime.executionContextsCleared", (_, session) => Frames.ClearContexts(session));
+                await SubscribeAsync("Page.javascriptDialogOpening", (value, session) => { DialogRevision++; DialogSession = session; DialogUrl = S(value, "url", Page.Url); Dialog = new() { ["type"] = OpenCodeBrowserPolicy.Bound(S(value, "type")), ["message"] = OpenCodeBrowserPolicy.Bound(S(value, "message"), 100000), ["defaultValue"] = OpenCodeBrowserPolicy.Bound(S(value, "defaultPrompt")) }; });
+                await SubscribeAsync("Page.javascriptDialogClosed", _ => { DialogRevision++; DialogSession = null; Dialog = null; });
+                await SubscribeAsync("Network.requestWillBeSent", RequestStarted);
+                await SubscribeAsync("Network.responseReceived", ResponseReceived);
+                await SubscribeAsync("Network.loadingFinished", (value, session) => RequestFinished(value, session, false));
+                await SubscribeAsync("Network.loadingFailed", (value, session) => RequestFinished(value, session, true));
+                await SubscribeProfileEventsAsync();
+                Page.DownloadStarting += DownloadStarting;
+                _unsubscribe.Add(() => Page.DownloadStarting -= DownloadStarting);
                 await Page.CdpAsync("Page.enable"); await Page.CdpAsync("DOM.enable"); await Page.CdpAsync("Accessibility.enable");
                 await Page.CdpAsync("Runtime.enable"); await Page.CdpAsync("Log.enable");
                 await Page.CdpAsync("Network.enable", new() { ["maxTotalBufferSize"] = 5 * 1024 * 1024, ["maxResourceBufferSize"] = 1024 * 1024, ["maxPostDataSize"] = 100000 });
                 await Page.CdpAsync("Target.setAutoAttach", new() { ["autoAttach"] = true, ["waitForDebuggerOnStart"] = false, ["flatten"] = true });
+                await RefreshFramesAsync(CancellationToken.None);
             }
             catch (Exception ex) { InitializationError = ex.Message; throw; }
         }
-        private void Subscribe(string name, Action<JsonObject> receive)
+        private Task SubscribeAsync(string name, Action<JsonObject> receive)
+            => SubscribeAsync(name, (value, _) => receive(value));
+        private async Task SubscribeAsync(string name, Action<JsonObject, string?> receive)
         {
-            var receiver = Page.Core.GetDevToolsProtocolEventReceiver(name);
-            void Handler(CoreWebView2 _, CoreWebView2DevToolsProtocolEventReceivedEventArgs args)
+            var subscription = await Page.SubscribeCdpAsync(name, args =>
             {
-                if (_disposed || JsonNode.Parse(args.ParameterObjectAsJson) is not JsonObject value) return;
-                if (name == "Runtime.executionContextCreated" && value["context"]?["auxData"] is JsonObject aux && B(aux, "isDefault"))
-                    FrameSessions[S(aux, "frameId")] = string.IsNullOrEmpty(args.SessionId) ? null : args.SessionId;
-                receive(value);
-            }
-            receiver.DevToolsProtocolEventReceived += Handler;
-            _unsubscribe.Add(() => receiver.DevToolsProtocolEventReceived -= Handler);
+                if (!_disposed) receive((JsonObject)args.Parameters.DeepClone(), args.SessionId);
+            }, Page.Lifetime);
+            if (_disposed) await subscription.DisposeAsync(); else _subscriptions.Add(subscription);
         }
-        public async Task EnsureFrameSessionAsync(string session)
+        public Task EnsureFrameSessionAsync(string session)
+            => _sessionInitialization.TryGetValue(session, out var task) ? task : _sessionInitialization[session] = InitializeFrameSessionAsync(session);
+        private async Task InitializeFrameSessionAsync(string session)
         {
-            if (_initializedSessions.Contains(session)) return;
             foreach (var domain in new[] { "Page.enable", "DOM.enable", "Accessibility.enable", "Runtime.enable" }) await Page.CdpAsync(domain, null, session);
-            _initializedSessions.Add(session);
+            await Page.CdpAsync("Network.enable", new() { ["maxTotalBufferSize"] = 5 * 1024 * 1024, ["maxResourceBufferSize"] = 1024 * 1024, ["maxPostDataSize"] = 100000 }, session);
+            await Page.CdpAsync("Target.setAutoAttach", new() { ["autoAttach"] = true, ["waitForDebuggerOnStart"] = false, ["flatten"] = true }, session);
+        }
+        public async Task RefreshFramesAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            Frames.Tree((await Page.CdpAsync("Page.getFrameTree"))["frameTree"]!.AsObject(), null);
+            var refreshed = new HashSet<string>(StringComparer.Ordinal);
+            while (Frames.Items.Select(f => f.RendererSessionId).OfType<string>().FirstOrDefault(session => !refreshed.Contains(session)) is { } session)
+            {
+                refreshed.Add(session);
+                await EnsureFrameSessionAsync(session);
+                var tree = await Page.CdpAsync("Page.getFrameTree", null, session);
+                ct.ThrowIfCancellationRequested(); Frames.Tree(tree["frameTree"]!.AsObject(), session);
+            }
+        }
+        public OpenCodeBrowserElementIdentity Resolve(string reference)
+        {
+            var element = Snapshot.Identity(reference); Frames.Check(element); return element;
         }
         private static double Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private void ConsoleEvent(JsonObject value)
@@ -135,11 +174,12 @@ public sealed partial class OpenCodeBrowserSessionBackend
             if (source is not null && source["url"] is not null) entry["source"] = new JsonObject { ["url"] = OpenCodeBrowserPolicy.Bound(S(source, "url"), 100000), ["line"] = Math.Max(0, I(source, "lineNumber")), ["column"] = Math.Max(0, I(source, "columnNumber")) };
             Console.Add(entry);
         }
-        private void RequestStarted(JsonObject value)
+        private static string NetworkKey(string? session, string id) => (session ?? "") + "/" + id;
+        private void RequestStarted(JsonObject value, string? session)
         {
             var cdpId = S(value, "requestId"); var id = "request_" + Guid.NewGuid().ToString("N");
             // Chromium reuses requestId on redirects. Public IDs remain unique and never inspect the final body's bytes as an earlier redirect's body.
-            var previous = _networkIds.GetValueOrDefault(cdpId);
+            var key = NetworkKey(session, cdpId); var previous = _networkIds.GetValueOrDefault(key);
             var existing = Network.Items.FirstOrDefault(item => S(item, "id") == previous);
             if (existing is not null && value["redirectResponse"] is JsonObject redirect)
             {
@@ -154,48 +194,48 @@ public sealed partial class OpenCodeBrowserSessionBackend
             if (Network.Items.Count == 500)
             {
                 var evicted = S(Network.Items[0], "id");
-                if (NetworkDetails.Remove(evicted, out var old) && _networkIds.GetValueOrDefault(S(old, "cdpId")) == evicted) _networkIds.Remove(S(old, "cdpId"));
+                if (NetworkDetails.Remove(evicted, out var old) && _networkIds.GetValueOrDefault(NetworkKey(old["session"]?.ToString(), S(old, "cdpId"))) == evicted) _networkIds.Remove(NetworkKey(old["session"]?.ToString(), S(old, "cdpId")));
             }
             Network.Add(item);
             var requestBody = request["postData"] is JsonValue body ? BodyText(body.ToString(), 20000) : new JsonObject { ["state"] = B(request, "hasPostData") ? "unavailable" : "empty" };
             if (S(requestBody, "state") == "unavailable") requestBody["reason"] = "notCaptured";
-            NetworkDetails[id] = new JsonObject { ["cdpId"] = cdpId, ["bodyAvailable"] = true, ["requestHeaders"] = request["headers"]?.DeepClone() ?? new JsonObject(), ["responseHeaders"] = new JsonObject(), ["requestBody"] = requestBody };
-            _networkIds[cdpId] = id;
+            NetworkDetails[id] = new JsonObject { ["cdpId"] = cdpId, ["session"] = session, ["bodyAvailable"] = true, ["requestHeaders"] = request["headers"]?.DeepClone() ?? new JsonObject(), ["responseHeaders"] = new JsonObject(), ["requestBody"] = requestBody };
+            _networkIds[key] = id;
         }
-        private void ResponseReceived(JsonObject value)
+        private void ResponseReceived(JsonObject value, string? session)
         {
-            var id = _networkIds.GetValueOrDefault(S(value, "requestId"), ""); var item = Network.Items.LastOrDefault(item => S(item, "id") == id);
+            var id = _networkIds.GetValueOrDefault(NetworkKey(session, S(value, "requestId")), ""); var item = Network.Items.LastOrDefault(item => S(item, "id") == id);
             if (item is null || !NetworkDetails.TryGetValue(id, out var detail)) return;
             var response = value["response"]!.AsObject(); item["statusCode"] = Math.Max(0, I(response, "status"));
             detail["responseHeaders"] = response["headers"]?.DeepClone() ?? new JsonObject(); detail["mime"] = S(response, "mimeType");
         }
-        private void RequestFinished(JsonObject value, bool failed)
+        private void RequestFinished(JsonObject value, string? session, bool failed)
         {
-            var id = _networkIds.GetValueOrDefault(S(value, "requestId"), ""); var item = Network.Items.LastOrDefault(item => S(item, "id") == id); if (item is null) return;
+            var id = _networkIds.GetValueOrDefault(NetworkKey(session, S(value, "requestId")), ""); var item = Network.Items.LastOrDefault(item => S(item, "id") == id); if (item is null) return;
             item["state"] = failed ? "failed" : "completed"; item["durationMs"] = Math.Max(0, value["timestamp"]!.GetValue<double>() * 1000 - item["timestampMs"]!.GetValue<double>());
             if (failed) item["failure"] = OpenCodeBrowserPolicy.Bound(S(value, "errorText"));
         }
-        private void DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
+        private void DownloadStarting(object? sender, OpenCodeBrowserDownloadStartingEventArgs args)
         {
-            var download = args.DownloadOperation;
-            if (download.TotalBytesToReceive > OpenCodeBrowserPolicy.MaxFileBytes) { args.Cancel = true; return; }
+            var download = args.Download;
+            if (download.TotalBytes > OpenCodeBrowserPolicy.MaxFileBytes) { args.Cancel = true; return; }
             Directory.CreateDirectory(TempDirectory);
-            var file = new RetainedFile("file_" + Guid.NewGuid().ToString("D"), Path.GetFileName(args.ResultFilePath), download.MimeType) { LocalPath = Path.Combine(TempDirectory, Guid.NewGuid().ToString("N")) };
+            var file = new RetainedFile("file_" + Guid.NewGuid().ToString("D"), download.Name, download.Mime) { LocalPath = Path.Combine(TempDirectory, Guid.NewGuid().ToString("N")), Resources = new[] { download.Url } };
             if (Files.Count >= 32 && Files.Values.All(f => f.State == "pending")) { args.Cancel = true; return; }
             Retain(file); args.ResultFilePath = file.LocalPath; args.Handled = true;
-            void Progress(CoreWebView2DownloadOperation _, object e)
+            void Progress()
             {
                 file.Bytes = Math.Max(0, download.BytesReceived);
                 if (file.Bytes > OpenCodeBrowserPolicy.MaxFileBytes) { download.Cancel(); file.State = "failed"; }
             }
-            void State(CoreWebView2DownloadOperation _, object e)
+            void State(object? _, EventArgs e)
             {
-                Progress(download, e);
-                if (download.State == CoreWebView2DownloadState.Completed) file.State = file.Bytes <= OpenCodeBrowserPolicy.MaxFileBytes ? "completed" : "failed";
-                else if (download.State == CoreWebView2DownloadState.Interrupted) file.State = "failed";
+                Progress();
+                if (download.State == OpenCodeBrowserDownloadState.Completed) file.State = file.Bytes <= OpenCodeBrowserPolicy.MaxFileBytes ? "completed" : "failed";
+                else if (download.State == OpenCodeBrowserDownloadState.Interrupted) file.State = "failed";
             }
-            download.BytesReceivedChanged += Progress; download.StateChanged += State;
-            _unsubscribe.Add(() => { download.BytesReceivedChanged -= Progress; download.StateChanged -= State; if (download.State == CoreWebView2DownloadState.InProgress) download.Cancel(); });
+            download.Changed += State;
+            _unsubscribe.Add(() => { download.Changed -= State; if (download.State == OpenCodeBrowserDownloadState.InProgress) download.Cancel(); });
         }
         public RetainedFile Retain(RetainedFile file)
         {
@@ -206,10 +246,10 @@ public sealed partial class OpenCodeBrowserSessionBackend
             }
             Files.Add(file.Id, file); return file;
         }
-        public OpenCodeBrowserFile Save(string name, string mime, byte[] data, JsonObject? analysis = null)
+        public OpenCodeBrowserFile Save(string name, string mime, byte[] data, JsonObject? analysis = null, string[]? resources = null)
         {
             if (data.Length > OpenCodeBrowserPolicy.MaxFileBytes) throw new OpenCodeBrowserException("file_too_large", "捕获文件超过 5 MiB");
-            var file = Retain(new RetainedFile("file_" + Guid.NewGuid().ToString("D"), name, mime) { Data = data, Bytes = data.Length, State = "completed", Analysis = analysis });
+            var file = Retain(new RetainedFile("file_" + Guid.NewGuid().ToString("D"), name, mime) { Data = data, Bytes = data.Length, State = "completed", Analysis = analysis, Resources = resources ?? SourceUrls() });
             return new(file.Id, file.Name, file.Mime, data);
         }
         public RetainedFile FindFile(string id) => Files.TryGetValue(id, out var file) ? file : throw new OpenCodeBrowserException("not_found", "文件不属于此页面，或已被有界缓存移除");
@@ -224,10 +264,17 @@ public sealed partial class OpenCodeBrowserSessionBackend
         public void Dispose()
         {
             if (_disposed) return; _disposed = true; Page.Committed -= Committed; Page.Navigating -= Navigating;
+            PickerPages.Remove(Page);
             foreach (var unsubscribe in _unsubscribe) unsubscribe(); _unsubscribe.Clear();
+            _ = ObserveAsync(DisposeSubscriptionsAsync());
             ReleaseTraceOwner();
             if (Directory.Exists(TempDirectory)) { try { Directory.Delete(TempDirectory, true); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
             Files.Clear(); NetworkDetails.Clear(); Console.Clear(); Network.Clear();
+        }
+        private async Task DisposeSubscriptionsAsync()
+        {
+            foreach (var subscription in _subscriptions) await subscription.DisposeAsync();
+            _subscriptions.Clear();
         }
     }
     private static JsonObject BodyText(string text, int max) => text.Length == 0 ? new() { ["state"] = "empty" }
@@ -267,7 +314,9 @@ public sealed partial class OpenCodeBrowserSessionBackend
         {
             try
             {
-                var response = await Call(c, "Network.getResponseBody", new() { ["requestId"] = S(detail, "cdpId") }, ct);
+                ct.ThrowIfCancellationRequested();
+                var response = await c.Page.CdpAsync("Network.getResponseBody", new() { ["requestId"] = S(detail, "cdpId") }, detail["session"]?.ToString());
+                ct.ThrowIfCancellationRequested();
                 result["responseBody"] = B(response, "base64Encoded") ? new JsonObject { ["state"] = "unavailable", ["reason"] = "binary" } : BodyText(S(response, "body"), max);
             }
             catch (Exception ex) when (ex is not OperationCanceledException && ex is not OpenCodeBrowserException)

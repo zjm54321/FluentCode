@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode.Browser;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Streams;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -17,13 +18,16 @@ internal sealed class OpenCodeBrowserPreviewWebContent
     private byte[]? _pdf;
     private byte[]? _font;
     private bool _attached;
+    private static Task<CoreWebView2Environment>? _environment;
+    internal WebView2 View { get; } = new();
     private OpenCodeBrowserPreviewWebContent(OpenCodeBrowserPage page) => _page = page;
     internal static OpenCodeBrowserPreviewWebContent For(OpenCodeBrowserPage page) => Owners.GetValue(page, p => new(p));
     internal async Task ShowAsync(string? html, byte[]? pdf = null, byte[]? font = null)
     {
-        await _page.EnsureReadyAsync();
+        _environment ??= CreateEnvironmentAsync();
+        await View.EnsureCoreWebView2Async(await _environment);
         if (_page.Closed) return;
-        var core = _page.Core;
+        var core = View.CoreWebView2;
         if (!_attached)
         {
             _attached = true;
@@ -45,7 +49,7 @@ internal sealed class OpenCodeBrowserPreviewWebContent
             core.PermissionRequested += (_, e) => { e.State = CoreWebView2PermissionState.Deny; };
             core.Settings.AreHostObjectsAllowed = false;
             core.Settings.IsWebMessageEnabled = false;
-            _page.Closing += (_, _) => { _pdf = null; _font = null; };
+            _page.Closing += (_, _) => { _pdf = null; _font = null; View.Close(); };
         }
         _pdf = pdf; _font = font;
         if (pdf is not null) core.Navigate(_pdfUrl);
@@ -53,4 +57,6 @@ internal sealed class OpenCodeBrowserPreviewWebContent
             "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' data: blob:; style-src 'unsafe-inline' data:; img-src data: blob:; font-src data: https://preview.invalid; media-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'\">" +
             "<meta name='color-scheme' content='light dark'></head><body>" + html + "</body></html>");
     }
+    private static async Task<CoreWebView2Environment> CreateEnvironmentAsync() => await CoreWebView2Environment.CreateWithOptionsAsync(null,
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AIFrontend", "Browser", "LocalPreview"), null);
 }
