@@ -27,9 +27,11 @@ $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $references = @(Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | Sort-Object FullName)
 $openCode = @(
     'OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
+    'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeClient.View.cs', 'OpenCodeClient.Usage.cs', 'OpenCodeClient.Capabilities.cs',
     'OpenCodeClient.BillionDiscovery.cs', 'OpenCodeDtos.BillionDiscovery.cs',
     'OpenCodeDesktopBridge.cs', 'OpenCodeClient.PluginRpc.cs', 'OpenCodeModelFavoritesRpc.cs',
+    'OpenCodeClient.SessionPreset.cs', 'OpenCodeSessionPresetState.cs',
     'OpenCodeInstructionSource.cs',
     'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
@@ -40,6 +42,11 @@ $openCode = @(
     'OpenCodeCapabilityStatus.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeSubagentStatus.cs'
 ) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
 $sources = $openCode + @(
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeInteractionGate.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationArgumentCodec.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationInteractions.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationSource.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeExecutionProjection.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodePageSource.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Billion/BillionContextClient.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Billion/BillionContextDtos.cs'),
@@ -73,5 +80,5 @@ if ($BaselineDirectory) {
     })
     Invoke-InsightsCheck 'baseline' $baseline
 }
-Invoke-InsightsCheck 'current' ($sources + @((Join-Path $PSScriptRoot 'OriginTests.cs'), (Join-Path $PSScriptRoot 'DiscoveryTests.cs'), (Join-Path $PSScriptRoot 'ContextRefreshTests.cs')))
+Invoke-InsightsCheck 'current' ($sources + @((Join-Path $PSScriptRoot 'OriginTests.cs'), (Join-Path $PSScriptRoot 'DiscoveryTests.cs'), (Join-Path $PSScriptRoot 'ContextRefreshTests.cs'), (Join-Path $PSScriptRoot 'PresetTests.cs')))
 Write-Output "Evidence directory: $EvidenceRoot"

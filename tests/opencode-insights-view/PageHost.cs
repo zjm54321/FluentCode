@@ -68,6 +68,7 @@ namespace AIFrontend.Pages
         private void DisposeOwnClient() => _client = null; // shared fake client is owned by the test
         private void ResetSessionPaginationState() { }
         private void ClearAgentSelector() { }
+        private void RefreshAgentSelectorDisplay() { }
         private void SetConnectionState(ConnectionState state) { }
         private void UpdateWaitingText() { }
         private void UpdateEmptyState() { }

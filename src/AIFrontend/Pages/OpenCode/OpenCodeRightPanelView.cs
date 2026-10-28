@@ -1,4 +1,5 @@
 using System;
+using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -20,6 +21,10 @@ internal sealed class OpenCodeRightPanelView
     public FrameworkElement Directory { get; }
     public Button Footer { get; }
     public Button CopyButton { get; }
+    public Button PresetRefreshButton { get; }
+    private readonly TextBlock _preset = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxLines = 2,
+        TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Grid _presetRow;
     private readonly TextBlock _title = new() { FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _id = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _directory = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
@@ -53,7 +58,19 @@ internal sealed class OpenCodeRightPanelView
         // Native inset copy row: monospace ID and a copy glyph, with the full value in its tooltip.
         CopyButton.Padding = new Thickness(8, 4, 8, 4);
         // The containing card supplies padding; only the separate To Do viewport scrolls.
-        Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton, _hint } };
+        _preset.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
+        PresetRefreshButton = new Button { Width = 28, Height = 28, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0),
+            Content = new FontIcon { Glyph = "\uE72C", FontSize = 12 },
+            Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle") };
+        AutomationProperties.SetName(PresetRefreshButton, "刷新会话预设");
+        AutomationProperties.SetAutomationId(PresetRefreshButton, "OpenCodeSessionPresetRefresh");
+        ToolTipService.SetToolTip(PresetRefreshButton, "重新读取当前会话绑定的预设");
+        _presetRow = new Grid { ColumnSpacing = 8, Visibility = Visibility.Collapsed,
+            ColumnDefinitions = { new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }, new ColumnDefinition { Width = GridLength.Auto } },
+            Children = { _preset, PresetRefreshButton } };
+        Grid.SetColumn(PresetRefreshButton, 1);
+        AutomationProperties.SetAutomationId(_presetRow, "OpenCodeSessionPreset");
+        Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton, _hint, _presetRow } };
         // Read-only directory in a quiet inset box: folder glyph + one-line path (full path in the tooltip; selectable).
         var folder = new FontIcon { Glyph = "\uE8B7", FontSize = 14, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
         var directoryRow = new Grid
@@ -117,6 +134,16 @@ internal sealed class OpenCodeRightPanelView
     {
         _hint.Text = text ?? string.Empty;
         _hint.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public void RenderPreset(OpenCodeInsightSection<OpenCodeSessionPresetState>? section, bool canRefresh)
+    {
+        _presetRow.Visibility = section is null ? Visibility.Collapsed : Visibility.Visible;
+        _preset.Text = section is null ? string.Empty : OpenCodeSessionInsightsController.SessionPresetLabel(section);
+        var help = section is null ? null : _preset.Text + "\n" + section.Note;
+        ToolTipService.SetToolTip(_preset, help);
+        AutomationProperties.SetName(_preset, _preset.Text);
+        PresetRefreshButton.IsEnabled = canRefresh && section?.State != OpenCodeInsightState.Loading;
     }
 
     public void RenderConnection(string? version, bool connected)

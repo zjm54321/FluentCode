@@ -43,8 +43,10 @@ $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dl
 # Same production dependency set as tests/opencode-session-insights/run.ps1 (snapshot records live in OpenCodeSessionInsights.cs).
 $openCode = @(
     'OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.SessionInfo.cs',
+    'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeClient.View.cs', 'OpenCodeClient.Usage.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.BillionDiscovery.cs',
     'OpenCodeDesktopBridge.cs', 'OpenCodeClient.PluginRpc.cs', 'OpenCodeModelFavoritesRpc.cs',
+    'OpenCodeClient.SessionPreset.cs', 'OpenCodeSessionPresetState.cs',
     'OpenCodeInstructionSource.cs',
     'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
@@ -55,6 +57,11 @@ $openCode = @(
     'OpenCodeCapabilityStatus.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeSubagentStatus.cs'
 ) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
 $sources = $openCode + @(
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeInteractionGate.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationArgumentCodec.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationInteractions.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationSource.cs'),
+    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeExecutionProjection.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodePageSource.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Billion/BillionContextClient.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Billion/BillionContextDtos.cs'),

@@ -136,6 +136,8 @@ public sealed record OpenCodeSessionInsightsSnapshot(
     public bool BillionDiscoveryLoading { get; init; }
     /// <summary>所选会话撤回点之前的 user 消息数；历史或撤回边界未确认时不伪造 0。</summary>
     public int? Turns { get; init; }
+    public OpenCodeInsightSection<OpenCodeSessionPresetState> Preset { get; init; }
+        = OpenCodeInsightSection<OpenCodeSessionPresetState>.NotLoaded;
 
     public static OpenCodeSessionInsightsSnapshot Empty(string? sessionId, string? unavailableReason) => new(
         sessionId, unavailableReason, false, null, false,
@@ -157,6 +159,7 @@ public sealed record OpenCodeSessionInsightsSnapshot(
 /// 整树费用、模型目录、MCP/插件目录；子会话与 active 仅在 OMO 服务器插件已核实时读取。
 /// 同次显式加载在已核实的会话目录发起一次 Billion 地址元数据 RPC；手动覆盖优先，不自动重试。
 /// Billion 只在 <see cref="ReadBillionAsync"/>（单独点击且已确认当前来源的地址）时读取 health + 单会话 detail。
+/// 会话预设独立按绑定/目录读取一次，只允许显式刷新重读；不随消息事件或常规概况加载轮询。
     /// 上下文另由已接纳消息本地更新；每个绑定最多自动读取一次模型目录，不读取费用/能力/Billion。
     /// 本类没有计时器或后台轮询；to do 优先本地派生，缺少最新记录时独立分页并缓存结果，配置在加载时读取。
 /// </para>
@@ -529,6 +532,96 @@ public sealed class OpenCodeSessionInsightsController
         _contextLatestModelCreated = 0;
     }
 
+    private long _presetId;
+    private string? _presetDirectory;
+    private bool _presetAttempted;
+    private CancellationTokenSource? _presetCts;
+    private Task? _presetTask;
+
+    internal static string SessionPresetLabel(OpenCodeInsightSection<OpenCodeSessionPresetState> section) => section switch
+    {
+        { State: OpenCodeInsightState.Loaded, Value.Status: OpenCodeSessionPresetStatus.Unbound } => "预设：未绑定",
+        { State: OpenCodeInsightState.Loaded, Value.Status: OpenCodeSessionPresetStatus.Bound, Value.PresetName: { } name }
+            when !string.IsNullOrWhiteSpace(name) => "预设：" + name,
+        { State: OpenCodeInsightState.Loaded, Value.Status: OpenCodeSessionPresetStatus.Bound } => "预设：已绑定（名称不可用）",
+        { State: OpenCodeInsightState.Loading } => "预设：读取中…",
+        { State: OpenCodeInsightState.Unavailable } => "预设：不可用",
+        { State: OpenCodeInsightState.Failed } => "预设：读取失败",
+        _ => "预设：尚未读取",
+    };
+
+    internal OpenCodeInsightSection<OpenCodeSessionPresetState> SessionPresetFor(OpenCodeInsightsBinding binding, string? directory)
+        => _binding is { } owned && SameScope(owned, binding) && IsCurrent(binding)
+            && _presetAttempted && _presetDirectory == directory ? Snapshot.Preset
+            : OpenCodeInsightSection<OpenCodeSessionPresetState>.NotLoaded;
+
+    /// <summary>No events exist for this RPC. Read once per exact binding/directory, or on explicit refresh only.</summary>
+    internal Task LoadSessionPresetAsync(OpenCodeInsightsBinding binding, string directory, CancellationToken outer, bool refresh = false)
+    {
+        if (!IsCurrent(binding) || string.IsNullOrWhiteSpace(directory)) return Task.CompletedTask;
+        AdoptBinding(binding);
+        if (!refresh && _presetAttempted && _presetDirectory == directory) return _presetTask ?? Task.CompletedTask;
+        ResetSessionPreset();
+        _presetDirectory = directory;
+        _presetAttempted = true;
+        var id = _presetId;
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(outer, binding.Source.RevocationToken);
+        _presetCts = cts;
+        return _presetTask = ReadSessionPresetAsync(id, binding, directory, cts);
+    }
+
+    private bool IsPresetOwner(long id, OpenCodeInsightsBinding binding, string directory)
+        => id == _presetId && _presetDirectory == directory && _binding is { } owned
+            && SameScope(owned, binding) && IsCurrent(binding);
+
+    private async Task ReadSessionPresetAsync(long id, OpenCodeInsightsBinding binding, string directory, CancellationTokenSource cts)
+    {
+        Publish(Snapshot with { Preset = OpenCodeInsightSection<OpenCodeSessionPresetState>.Loading });
+        OpenCodeInsightSection<OpenCodeSessionPresetState> result;
+        try
+        {
+            Task<OpenCodeSessionPresetState>? read = null;
+            if (!binding.Source.TryExecute(cts.Token, () =>
+                {
+                    if (IsPresetOwner(id, binding, directory))
+                        read = binding.Client.GetSessionPresetAsync(binding.SessionId, directory, cts.Token);
+                }) || read is null) return;
+            var state = await read;
+            cts.Token.ThrowIfCancellationRequested();
+            result = state.IsFor(binding.Client, binding.SessionId, directory)
+                ? new(OpenCodeInsightState.Loaded, state, "仅影响之后新建的子会话。")
+                : new(OpenCodeInsightState.Failed, null, "预设结果不属于当前会话或目录。");
+        }
+        catch (OpenCodeSessionPresetRpcException error) when (error.IsUnavailable)
+        {
+            result = new(OpenCodeInsightState.Unavailable, null,
+                error.IsUnsupported ? "当前服务不支持会话预设读取。" : "当前服务暂时无法读取会话预设。");
+        }
+        catch (OperationCanceledException)
+        {
+            result = new(OpenCodeInsightState.Failed, null, "读取已取消，点击刷新重试。");
+        }
+        catch (OpenCodeException)
+        {
+            result = new(OpenCodeInsightState.Failed, null, "会话预设读取失败，点击刷新重试。");
+        }
+        finally
+        {
+            if (ReferenceEquals(_presetCts, cts)) _presetCts = null;
+            cts.Dispose();
+        }
+        if (IsPresetOwner(id, binding, directory)) Publish(Snapshot with { Preset = result });
+    }
+
+    private void ResetSessionPreset()
+    {
+        _presetId++;
+        CancelAndForget(ref _presetCts);
+        _presetDirectory = null;
+        _presetAttempted = false;
+        _presetTask = null;
+    }
+
     /// <summary>当前快照是否已属于该 binding 且已有采样结果或正在读取（打开概况时据此决定是否读取）。</summary>
     public bool HasResultFor(OpenCodeInsightsBinding binding)
         => _binding is { } owned && SameScope(owned, binding) && (Snapshot.Loading || Snapshot.SampledAt is not null);
@@ -540,6 +633,7 @@ public sealed class OpenCodeSessionInsightsController
     /// </param>
     public void Reset(string? sessionId = null, string? unavailableReason = null, bool clearBillionOrigin = false)
     {
+        ResetSessionPreset();
         if (_binding is not null && !clearBillionOrigin)
         {
             _retainedContextCatalogBinding = _binding;
@@ -1382,6 +1476,7 @@ public sealed class OpenCodeSessionInsightsController
         }
 
         // 新范围：旧会话/来源的任何结果与在途读取都不得残留。
+        ResetSessionPreset();
         _loadId++;
         _billionId++;
         ClearContext();

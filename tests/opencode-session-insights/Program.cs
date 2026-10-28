@@ -44,6 +44,10 @@ internal static partial class Program
         await LiveContextRefresh();
         await LiveContextRaces();
         Console.WriteLine($"PASS: 2 live-context groups, {_assertions - beforeContext} assertions; total {_assertions}; real controller, fake HTTP, bounded catalog/no full automatic reads.");
+        var beforePreset = _assertions;
+        await SessionPresetMetadata();
+        await SessionPresetOwnership();
+        Console.WriteLine($"PASS: 2 session-preset metadata groups, {_assertions - beforePreset} assertions; total {_assertions}; real controller/client, fake typed RPC, no global-config fallback or automatic refresh.");
     }
 
     private static void Check(bool condition, string label)
