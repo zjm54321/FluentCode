@@ -80,6 +80,21 @@ public sealed class OpenCodeConversationView : StackPanel
     private double? _requestedOffset;
     private double _observedViewportOffset = double.NaN;
     private long _windowGeneration;
+    private long _readerIntentVersion;
+    internal sealed record ReadingPosition(OpenCodeConversationWindow.Anchor? Anchor, bool AtBottom, long IntentVersion);
+    internal ReadingPosition CaptureReadingPosition() => new(_window.Capture(WindowOffset()),
+        _viewport is { } viewport && viewport.ScrollableHeight - viewport.VerticalOffset <= 0.5, _readerIntentVersion);
+    internal bool RestoreReadingPosition(ReadingPosition position, Func<bool> ownerCurrent)
+    {
+        if (!ownerCurrent() || position.IntentVersion != _readerIntentVersion || _viewport is null || _viewport.State != ScrollingInteractionState.Idle
+            || (!position.AtBottom && (position.Anchor is not { } anchor || !_byKey.ContainsKey(anchor.Key)))) return false;
+        _windowGeneration++; _windowQueued = false;
+        _scrollOwnerCurrent = ownerCurrent; _followingBottom = position.AtBottom;
+        _readAnchor = position.Anchor; _requestedOffset = null;
+        _animateNextScroll = _animatingScroll = _userScrolling = false;
+        QueueWindowUpdate();
+        return true;
+    }
     private Func<bool>? _scrollOwnerCurrent;
     internal int RealizedRowCount => _entries.Count(entry => entry.Realized);
     internal bool IsRestoringViewport => _updatingWindow || _idleContentChanging || _requestedOffset is not null || _animatingScroll;
@@ -155,8 +170,8 @@ public sealed class OpenCodeConversationView : StackPanel
         _windowQueued = false;
     }
 
-    private void WindowPointerInput(object sender, PointerRoutedEventArgs e) => CaptureInteractionAnchor();
-    private void WindowKeyInput(object sender, KeyRoutedEventArgs e) => CaptureInteractionAnchor();
+    private void WindowPointerInput(object sender, PointerRoutedEventArgs e) { _readerIntentVersion++; CaptureInteractionAnchor(); }
+    private void WindowKeyInput(object sender, KeyRoutedEventArgs e) { _readerIntentVersion++; CaptureInteractionAnchor(); }
     private void CaptureInteractionAnchor()
     {
         if (_viewport is null || !IsLoaded) return;
@@ -187,7 +202,7 @@ public sealed class OpenCodeConversationView : StackPanel
         // Native controller drags do not route pointer input through the viewport.
         if (sender.State is ScrollingInteractionState.Interaction or ScrollingInteractionState.Inertia)
         {
-            if (!_userScrolling) CaptureInteractionAnchor();
+            if (!_userScrolling) { _readerIntentVersion++; CaptureInteractionAnchor(); }
             _userScrolling = true;
         }
         WindowViewportChanged();

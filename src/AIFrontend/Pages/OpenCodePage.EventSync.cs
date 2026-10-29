@@ -23,6 +23,8 @@ public sealed partial class OpenCodePage
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new(StringComparer.Ordinal);
     private long _liveStatusVersion;
     private bool _statusRefreshRunning;
+    private long _statusRefreshEpoch;
+    private bool _statusRefreshAgain;
     private bool _eventSnapshotBeforeReady;
     private bool _eventReconciliationPending;
 
@@ -231,6 +233,11 @@ public sealed partial class OpenCodePage
         {
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
+            if (item.Type is "persistent-pty.added" or "persistent-pty.removed")
+            {
+                OnPersistentPtyEvent(item); // Separate server-scoped inventory, including during message workflows.
+                continue;
+            }
             if (_messageHistoryWorkflowOwner is not null && (item.SessionId is null || item.SessionId == _selectedSessionId))
             {
                 // These events used to be discarded, forcing a post-action snapshot. Keep FIFO
@@ -352,6 +359,7 @@ public sealed partial class OpenCodePage
         _statusRefreshRunning = true;
         var generation = _pageGeneration;
         var version = _liveStatusVersion;
+        var epoch = _statusRefreshEpoch;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(_pageCts.Token, source.RevocationToken);
         var ct = linked.Token;
         try
@@ -361,7 +369,7 @@ public sealed partial class OpenCodePage
             source.TryExecute(ct, () => pending = client.GetActiveSessionsAsync(ct));
             if (pending is null) return;
             var response = await pending;
-            if (ct.IsCancellationRequested || generation != _pageGeneration || !ReferenceEquals(client, _client)
+            if (ct.IsCancellationRequested || epoch != _statusRefreshEpoch || generation != _pageGeneration || !ReferenceEquals(client, _client)
                 || !ReferenceEquals(source, _source) || source.Revision != _sourceRevision || !_pageActive) return;
             foreach (var id in _sessionItems.Keys.Concat(response.Data!.Keys)
                 .Concat(_selectedSessionId is { } selected ? new[] { selected } : Array.Empty<string>()).Distinct(StringComparer.Ordinal))
@@ -377,6 +385,10 @@ public sealed partial class OpenCodePage
         }
         catch (OperationCanceledException) { }
         catch (OpenCodeException) { /* Keep last successful foreground observation; retry at fallback. */ }
-        finally { _statusRefreshRunning = false; }
+        finally
+        {
+            _statusRefreshRunning = false;
+            if (_statusRefreshAgain) { _statusRefreshAgain = false; _ = RefreshListedSessionStatusesAsync(); }
+        }
     }
 }

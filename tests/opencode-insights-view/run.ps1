@@ -72,6 +72,7 @@ $sources = $openCode + @(
     (Resolve-Path $ViewSource).ProviderPath,
      (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeContextRing.cs'),
      (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeContextHeader.cs'),
+     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeBillionPresentation.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeConnectionFlyout.cs'),
     (Resolve-Path $SessionInsightsSource).ProviderPath,
     (Join-Path $PSScriptRoot 'WinUiOwnershipShim.cs'),

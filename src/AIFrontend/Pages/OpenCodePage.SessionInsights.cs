@@ -59,6 +59,7 @@ public sealed partial class OpenCodePage
         _insights = new OpenCodeSessionInsightsController(IsCurrentInsightsBinding);
         _insights.Changed += (_, _) => RenderSessionInsights();
         _insightsView.BillionReadRequested += (_, context) => _ = ReadBillionInsightsAsync(context);
+        _insightsView.BillionDashboardRequested += (_, context) => _ = OpenBillionDashboardAsync(context);
         _insightsView.BillionOriginEdited += (_, edit) =>
         {
             // 在 TextChanging 内同步执行：只转发、不渲染（控制器发布的快照由视图排队显示）。
@@ -137,6 +138,7 @@ public sealed partial class OpenCodePage
 
     private void ResetSessionInsights()
     {
+        InvalidateBillionDashboardConfirmation();
         _contextDetailsVisible = false;
         _insightsView.ContextRing.Flyout.Hide();
         CancelScheduledInsightsRefresh();

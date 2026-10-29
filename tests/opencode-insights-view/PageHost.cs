@@ -37,6 +37,11 @@ namespace AIFrontend.Pages
         private readonly SplitView InsightsPane = new();
         private readonly Button SessionInsightsButton = new();
         private void OpenBillionSettingsPane() { }
+        // Native confirmation/platform-launch boundaries only. Dashboard origin/confirmation
+        // authority is exercised by the dedicated production Page fixtures, not this view shell.
+        private System.Threading.Tasks.Task OpenBillionDashboardAsync(OpenCodeBillionContext context)
+            => System.Threading.Tasks.Task.CompletedTask;
+        private void InvalidateBillionDashboardConfirmation() { }
 
         // ---- doubles for unrelated services referenced by the extracted InvalidateForSourceChange ----
         private enum ConnectionState { Unknown }

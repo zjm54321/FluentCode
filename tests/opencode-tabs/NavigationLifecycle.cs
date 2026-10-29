@@ -35,6 +35,9 @@ public sealed partial class OpenCodePage
     // Bridge negotiation/notice IO is outside this lifecycle fixture; compile its real service in the feature runners.
     private Task InitializeDesktopBridgeAsync(OpenCodePageSource source, OpenCodeClient client) => Task.CompletedTask;
     private void PauseTerminalView() { }
+    // Persistent PTY inventory/native UI boundary only; dedicated production Page fixtures
+    // in tests/opencode-persistent-pty exercise scope reset and server lifecycle behavior.
+    private void ResetPersistentPtyScope() { }
     private void ResetAgentTree() { }
     private void SessionStateUi_Unloaded(object sender, RoutedEventArgs e) { }
     private void ClearRightPanelCopyHint() { }

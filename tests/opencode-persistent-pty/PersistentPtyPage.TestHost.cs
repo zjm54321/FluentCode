@@ -1,0 +1,115 @@
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using AIFrontend.Pages.OpenCode;
+using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+
+namespace AIFrontend.Pages
+{
+    public sealed partial class OpenCodePage
+    {
+        private readonly Grid TerminalViewHost = new(), ConversationSurface = new();
+        private readonly Control Composer = new Button();
+        private readonly Control MessageScroll = new Button();
+        private Control? _terminalView = null;
+        private object? _pausedTerminal = null;
+        internal bool HasPausedCoreShell => _pausedTerminal is not null;
+        private void CloseTerminalView(bool restoreFocus = true) { }
+        private void DismissSidebarDrawers() { }
+        internal OpenCodePersistentPtyInventory? PtyInventory => _persistentInventoryOwner?.Inventory;
+        internal bool PtyOpen => _persistentAttachmentOwner is not null;
+        internal PersistentPtyController? PtyController => _persistentAttachmentOwner?.Controller;
+        internal Task? PtyRun => _persistentAttachmentOwner?.Run;
+        internal OpenCodePersistentPtyView? PtyView => _persistentAttachmentOwner?.View;
+        internal void OpenPty(string id) { if (_persistentInventoryOwner is { } owner) OpenPersistentPty(owner, id); }
+        internal void ClosePty() => ClosePersistentPtyView(restoreFocus: false);
+        internal void PausePty() => ResetPersistentPtyScope();
+        internal void ChangePtyDirectory(string directory)
+        { if (_messageBinding is { } binding) _messageBinding = binding with { Directory = directory }; RefreshRightPanelMetadata(); }
+        internal void PtyEvent(string json) => OnPersistentPtyEvent(OpenCodeEvent.Parse(json));
+        internal bool PtyGuard() => _persistentAttachmentOwner is { } owner && IsPersistentAttachmentCurrent(owner.Origin);
+        internal bool PtyInputGate(OpenCodePersistentPtyViewContext context) => _persistentAttachmentOwner is { } owner && CurrentPersistentInput(owner, context);
+        internal Task PaintPty() => _persistentAttachmentOwner is { } owner ? PaintPersistentPtyAsync(owner) : Task.CompletedTask;
+        internal void SupplyPtyState(PersistentPtyState state)
+        {
+            if (_persistentAttachmentOwner is not { } owner) throw new Exception("no fixture attachment");
+            typeof(PersistentPtyController).GetField("_state", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(owner.Controller, state);
+            PersistentPtyStateChanged(owner, state);
+        }
+#if !NATIVE_UI
+        internal void HoldPtyPaint() => DispatcherQueue.Hold = true;
+        internal void FlushPtyPaint() => DispatcherQueue.Flush();
+#endif
+    }
+}
+
+#if !NATIVE_UI
+namespace Microsoft.UI.Xaml
+{
+    public enum Visibility { Visible, Collapsed }
+    public enum FocusState { Programmatic }
+}
+namespace Microsoft.UI.Xaml.Input
+{
+    public static class FocusManager { public static object? GetFocusedElement(object root) => null; }
+}
+namespace Microsoft.UI.Xaml.Controls
+{
+    public class Control
+    {
+        public Microsoft.UI.Xaml.Visibility Visibility { get; set; }
+        public bool Focus(Microsoft.UI.Xaml.FocusState state) => true;
+    }
+    public sealed class Grid : Control { public List<object> Children { get; } = new(); }
+    public sealed class Button : Control { }
+}
+namespace Windows.ApplicationModel.DataTransfer
+{
+    public sealed class DataPackage { public void SetText(string text) { } }
+    public static class Clipboard { public static void SetContent(DataPackage data) { } }
+}
+namespace AIFrontend.Pages.OpenCode
+{
+    internal sealed class OpenCodePersistentPtyInventoryView
+    {
+        internal event Action<OpenCodePersistentPtyInventoryContext>? RefreshRequested;
+        internal event Action<OpenCodePersistentPtyInventoryRequest>? TerminalRequested;
+        internal void Render(OpenCodePersistentPtyInventoryContext? context, OpenCodePersistentPtyInventoryState? state) { }
+        internal void TouchEvents() { RefreshRequested?.Invoke(null!); TerminalRequested?.Invoke(null!); }
+    }
+    internal sealed class OpenCodePersistentPtyView
+    {
+        internal OpenCodePersistentPtyRenderer Renderer { get; } = new();
+        internal OpenCodePersistentPtyPresentation? Model;
+        internal event Action<OpenCodePersistentPtyViewContext>? DetachRequested, TakeControlRequested, ReleaseControlRequested, ReconnectRequested;
+        internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
+        internal void Render(OpenCodePersistentPtyPresentation? model) => Model = model;
+        internal void TouchEvents() { DetachRequested?.Invoke(null!); TakeControlRequested?.Invoke(null!); ReleaseControlRequested?.Invoke(null!); ReconnectRequested?.Invoke(null!); CopySelectionRequested?.Invoke(null!); }
+    }
+    internal sealed class OpenCodePersistentPtyRenderer : IOpenCodePersistentPtySurface
+    {
+        internal OpenCodePersistentPtyViewContext? Context;
+        internal readonly TaskCompletionSource<bool> ResetEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal readonly TaskCompletionSource<bool> ResetHold = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal byte[] Checkpoint = Array.Empty<byte>();
+        internal bool Writable, Disposed;
+        internal event Action<OpenCodePersistentPtyInput>? InputRequested;
+        internal event Action<OpenCodePersistentPtyResize>? ResizeRequested;
+        public Task<bool> InitializeAsync(OpenCodePersistentPtyViewContext context, int columns, int rows, CancellationToken ct)
+        { Context = context; return Task.FromResult(true); }
+        public async Task ResetAsync(OpenCodePersistentPtyViewContext context, ReadOnlyMemory<byte> checkpoint, int columns, int rows, CancellationToken ct)
+        { Checkpoint = checkpoint.ToArray(); ResetEntered.TrySetResult(true); await ResetHold.Task.WaitAsync(ct); }
+        public Task WriteAsync(OpenCodePersistentPtyViewContext context, ReadOnlyMemory<byte> bytes, CancellationToken ct) => Task.CompletedTask;
+        internal Task SetWritableAsync(OpenCodePersistentPtyViewContext context, bool writable)
+        { if (Context != context) throw new OperationCanceledException(); Writable = writable; return Task.CompletedTask; }
+        internal void SuspendInput() => Writable = false;
+        public void Dispose() { Writable = false; Disposed = true; }
+        internal void EmitInput(OpenCodePersistentPtyInput input) => InputRequested?.Invoke(input);
+        internal void EmitResize(OpenCodePersistentPtyResize resize) => ResizeRequested?.Invoke(resize);
+    }
+}
+#endif

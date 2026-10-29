@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 
 internal static partial class Program
@@ -11,6 +12,8 @@ internal static partial class Program
     private static void ToolImages()
     {
         UserImages();
+        QolImageResults();
+        QolSessionAndPtyResults();
         const string data = "data:image/png;base64,AQID";
         var decoded = OpenCodeToolImageResolver.DecodeDataUrl(data);
         Check(decoded.Bytes.SequenceEqual(new byte[] { 1, 2, 3 }) && decoded.MediaType == "image/png", "IM1 bounded inline data bytes");
@@ -88,6 +91,157 @@ internal static partial class Program
         Check(Source("OpenCodeToolDetailContent.cs").Contains("top.Children.Add(BuildToolImages(model, options))") && Source("OpenCodeToolDetailBrowser.cs").Contains("return BuildToolImages(model, options"), "IM1 read/write/execute/browser detail builders include image section");
         Check(Source("OpenCodeToolPartView.cs").Contains("BuildToolImages(_model, options, thumbnail: true") && Source("OpenCodeToolPartView.cs").Contains("OpenCodeToolDetailPopup.Shared.TogglePinned(this)"), "IM1 expanded thumbnail opens existing large detail");
         Check(builder.Contains("thumbnail ? 240") && builder.Contains("CornerRadius(4)") && builder.Contains("DecodePixelWidth") && builder.Contains("DecodePixelHeight"), "IM1 thumbnail and decoded dimensions are bounded");
+    }
+
+    private static void QolImageResults()
+    {
+        // QOL image/src/images.ts:23-29,49-70; openai.ts:87-92; nanobanana.ts:97-109.
+        // Literal tool history fixtures preserve the host's text-content wrapper and the plugin's metadata separately.
+        var fixtures = new[]
+        {
+            (Part: """
+                {"id":"prt_qol_openai","type":"tool","name":"image_gen","state":{"status":"completed",
+                  "input":{"prompt":"A blue bird","model":"gpt-image-2.5-flare","aspect_ratio":"16:9","quality":"high"},
+                  "content":[{"type":"text","text":"![Generated image](.opencode/generated-images/openai/img-11111111-1111-4111-8111-111111111111.png)\n\n`.opencode/generated-images/openai/img-11111111-1111-4111-8111-111111111111.png`\n\n![Generated image](.opencode/generated-images/openai/img-22222222-2222-4222-8222-222222222222.png)\n\n`.opencode/generated-images/openai/img-22222222-2222-4222-8222-222222222222.png`"}],
+                  "metadata":{"count":2,"model":"gpt-image-2.5-flare","aspect_ratio":"16:9","edited":false,"files":[".opencode/generated-images/openai/img-11111111-1111-4111-8111-111111111111.png",".opencode/generated-images/openai/img-22222222-2222-4222-8222-222222222222.png"]}}}
+                """, Model: "gpt-image-2.5-flare", Ratio: "16:9", Edited: false, Mime: "image/png", Paths: new[]
+                {
+                    ".opencode/generated-images/openai/img-11111111-1111-4111-8111-111111111111.png",
+                    ".opencode/generated-images/openai/img-22222222-2222-4222-8222-222222222222.png",
+                }),
+            (Part: """
+                {"id":"prt_qol_nano","type":"tool","name":"image_gen_nano","state":{"status":"completed",
+                  "input":{"prompt":"Edit the bird","model":"gemini-3.1-flash-image","aspect_ratio":"4:5","referenced_image_paths":["references/input-only.png"],"resolution":"2K"},
+                  "content":[{"type":"text","text":"![Generated image](.opencode/generated-images/nano/img-33333333-3333-4333-8333-333333333333.webp)\n\n`.opencode/generated-images/nano/img-33333333-3333-4333-8333-333333333333.webp`"}],
+                  "metadata":{"count":1,"model":"gemini-3.1-flash-image","aspect_ratio":"4:5","edited":true,"files":[".opencode/generated-images/nano/img-33333333-3333-4333-8333-333333333333.webp"]}}}
+                """, Model: "gemini-3.1-flash-image", Ratio: "4:5", Edited: true, Mime: "image/webp", Paths: new[]
+                {
+                    ".opencode/generated-images/nano/img-33333333-3333-4333-8333-333333333333.webp",
+                }),
+        };
+        var reads = new System.Collections.Generic.List<string>();
+        var hostReads = 0;
+        Task<OpenCodeImageFile> Session(string path, CancellationToken token)
+        {
+            reads.Add(path);
+            return Task.FromResult(new OpenCodeImageFile(new byte[] { 1, 2, 3 }, OpenCodeToolImageResolver.PathMime(path)!));
+        }
+        Task<OpenCodeImageFile> Host(string path, CancellationToken token)
+        {
+            hostReads++;
+            throw new InvalidOperationException("QOL workspace output must not use host I/O");
+        }
+        foreach (var fixture in fixtures)
+        {
+            var part = JsonSerializer.Deserialize<OpenCodeContentPart>(fixture.Part, OpenCodeJson.Options)!;
+            var row = OpenCodeToolRowPresentation.Build(part);
+            var state = OpenCodeToolStates.Read(part.State)!;
+            var metadata = state.Metadata!.Value;
+            Check(row.PartId == part.Id && row.ToolName == part.Name && row.Kind == OpenCodeToolKind.Other
+                && row.Status == OpenCodeToolRowStatus.Completed && row.RawState is null
+                && OpenCodeToolDetailBuiltinData.Resolve(row) == OpenCodeBuiltinToolView.None,
+                "QOL image uses the production generic row/detail, not a plugin pane: " + part.Name);
+            Check(metadata.GetProperty("count").GetInt32() == fixture.Paths.Length
+                && metadata.GetProperty("model").GetString() == fixture.Model
+                && metadata.GetProperty("aspect_ratio").GetString() == fixture.Ratio
+                && metadata.GetProperty("edited").GetBoolean() == fixture.Edited
+                && metadata.GetProperty("files").EnumerateArray().Select(path => path.GetString()).SequenceEqual(fixture.Paths),
+                "QOL image count/model/aspect_ratio/edited/files survive the real tool-state reader: " + part.Name);
+            var properties = OpenCodeToolRowPresentation.BuildProperties(metadata);
+            Check(new[] { "count", "model", "aspect_ratio", "edited", "files" }.All(key => properties.Any(property => property.Depth == 0 && property.Key == key)),
+                "QOL image metadata remains readable through the existing generic property projection: " + part.Name);
+            Check(row.OutputText == state.Content!.Single().Text && fixture.Paths.All(path => row.OutputText!.Contains("![Generated image](" + path + ")", StringComparison.Ordinal)
+                && row.OutputText.Contains("`" + path + "`", StringComparison.Ordinal)),
+                "QOL image Markdown previews and copyable paths are retained verbatim: " + part.Name);
+            var sources = OpenCodeToolImageResolver.Sources(row.State, row.ToolName, row.Target);
+            Check(sources.Select(source => source.Reference).SequenceEqual(fixture.Paths)
+                && sources.All(source => source.Mime == fixture.Mime && source.Name == Path.GetFileName(source.Reference)),
+                "QOL result sources are deduplicated in order with MIME/basename; reference inputs are not artifacts: " + part.Name);
+            foreach (var source in sources)
+            {
+                Check(OpenCodeToolImageResolver.Plan(source.Reference, "/work", false) is { Route: OpenCodeToolImageRoute.SessionFile } plan
+                    && plan.Path == source.Reference, "QOL relative generated path keeps workspace provenance");
+                _ = OpenCodeToolImageResolver.ReadAsync(source, "/work", false, Session, Host, CancellationToken.None).GetAwaiter().GetResult();
+            }
+            // A recognized generator/tool id does not grant arbitrary remote or outside-workspace file access.
+            var outside = sources[0] with { Reference = "/other/.opencode/generated-images/" + sources[0].Name };
+            var before = reads.Count;
+            try
+            {
+                _ = OpenCodeToolImageResolver.ReadAsync(outside, "/work", false, Session, Host, CancellationToken.None).GetAwaiter().GetResult();
+                throw new Exception("QOL generator escaped workspace policy");
+            }
+            catch (InvalidOperationException error)
+            {
+                Check(error.Message == OpenCodeToolImageResolver.RemoteOutside && reads.Count == before && hostReads == 0,
+                    "QOL outside-workspace remote artifact is denied before any reader: " + part.Name);
+            }
+        }
+        Check(reads.SequenceEqual(fixtures.SelectMany(fixture => fixture.Paths)) && hostReads == 0,
+            "QOL generated artifacts invoke only the session reader with their original workspace-relative paths");
+
+        // QOL image/src/index.ts:65-98: models are providerID/id entries, not artifacts or an RPC response.
+        var models = Model("image_models", """
+            {"status":"completed","input":{"provider":"all"},"content":[{"type":"text","text":"google/gemini-3.1-flash-image\nopenai/gpt-image-2.5-flare"}],
+             "metadata":{"count":2,"models":[{"providerID":"openai","id":"gpt-image-2.5-flare"},{"providerID":"google","id":"gemini-3.1-flash-image"}]}}
+            """);
+        var catalog = OpenCodeToolStates.Read(models.State)!.Metadata!.Value;
+        Check(models.Kind == OpenCodeToolKind.Other && models.Status == OpenCodeToolRowStatus.Completed
+            && models.OutputText == "google/gemini-3.1-flash-image\nopenai/gpt-image-2.5-flare"
+            && Row(models.InputProperties, "provider").Value == "all" && catalog.GetProperty("count").GetInt32() == 2,
+            "QOL image_models standard tool input/output and metadata count retained");
+        Check(catalog.GetProperty("models").EnumerateArray().Select(model => model.GetProperty("providerID").GetString() + "/" + model.GetProperty("id").GetString())
+            .SequenceEqual(new[] { "openai/gpt-image-2.5-flare", "google/gemini-3.1-flash-image" })
+            && OpenCodeToolImageResolver.Sources(models.State, models.ToolName, models.Target).Count == 0
+            && OpenCodeToolDetailBuiltinData.Resolve(models) == OpenCodeBuiltinToolView.None,
+            "QOL image_models providerID/id metadata survives without inventing an image or dedicated view");
+        var empty = Model("image_models", """{"status":"completed","input":{"provider":"google"},"content":[{"type":"text","text":"No image models available."}],"metadata":{"count":0,"models":[]}}""");
+        Check(empty.OutputText == "No image models available." && empty.Status == OpenCodeToolRowStatus.Completed
+            && OpenCodeToolImageResolver.Sources(empty.State, empty.ToolName, empty.Target).Count == 0,
+            "QOL empty image model catalog remains a successful tool result without fabricated previews");
+        Console.WriteLine("PASS QOL image tools: image_gen/image_gen_nano literal Markdown + full metadata + workspace reads/remote denial; image_models catalog/empty result.");
+    }
+
+    private static void QolSessionAndPtyResults()
+    {
+        // QOL session-reader/src/index.ts:13-36,89-231; native-pty.ts:154-219 and native-pty/transcript.ts:54.
+        // Completed TOOL calls do not claim the persistent PTY process exited; no PTY id becomes a coreShell id.
+        var fixtures = new[]
+        {
+            (Name: "session_list", State: """{"status":"completed","input":{"search":"QOL","limit":1},"content":[{"type":"text","text":"[\n  {\n    \"id\": \"ses_qol\",\n    \"title\": \"QOL fixture\",\n    \"directory\": \"/work\",\n    \"updated\": 1\n  }\n]\n\nPagination: {}"}],"metadata":{"count":1,"search":"QOL","cursor":{}}}""",
+                Output: "[\n  {\n    \"id\": \"ses_qol\",\n    \"title\": \"QOL fixture\",\n    \"directory\": \"/work\",\n    \"updated\": 1\n  }\n]\n\nPagination: {}"),
+            (Name: "session_read", State: """{"status":"completed","input":{"sessionID":"ses_qol","mode":"summary"},"content":[{"type":"text","text":"# QOL fixture\n\nSession: ses_qol\nDirectory: /work\n\nNo conversation messages in this session."}],"metadata":{"sessionID":"ses_qol","title":"QOL fixture","mode":"summary","count":0}}""",
+                Output: "# QOL fixture\n\nSession: ses_qol\nDirectory: /work\n\nNo conversation messages in this session."),
+            (Name: "session_diff", State: """{"status":"completed","input":{"sessionID":"ses_qol","file":"notes.txt"},"content":[{"type":"text","text":"## notes.txt (+1/-1)\n\n```text\n--- before\nold\n+++ after\nnew\n```"}],"metadata":{"sessionID":"ses_qol","files":1,"additions":1,"deletions":1}}""",
+                Output: "## notes.txt (+1/-1)\n\n```text\n--- before\nold\n+++ after\nnew\n```"),
+            (Name: "pty_spawn", State: """{"status":"completed","input":{"command":"bash","description":"QOL fixture","workdir":"/work"},"content":[{"type":"text","text":"{\"id\":\"pty_qol\",\"title\":\"bash\",\"command\":\"bash\",\"args\":[],\"cwd\":\"/work\",\"status\":\"running\",\"pid\":42,\"createdAt\":1,\"sessionID\":\"ses_qol\",\"foregroundProcess\":null,\"size\":{\"cols\":80,\"rows\":24},\"output\":{\"head\":0,\"tail\":0}}"}]}""",
+                Output: "{\"id\":\"pty_qol\",\"title\":\"bash\",\"command\":\"bash\",\"args\":[],\"cwd\":\"/work\",\"status\":\"running\",\"pid\":42,\"createdAt\":1,\"sessionID\":\"ses_qol\",\"foregroundProcess\":null,\"size\":{\"cols\":80,\"rows\":24},\"output\":{\"head\":0,\"tail\":0}}"),
+            (Name: "pty_write", State: """{"status":"completed","input":{"id":"pty_qol","data":"pwd\\n"},"content":[{"type":"text","text":"Wrote input to pty_qol"}]}""",
+                Output: "Wrote input to pty_qol"),
+            (Name: "pty_read", State: """{"status":"completed","input":{"id":"pty_qol","offset":0,"limit":1},"content":[{"type":"text","text":"Status: running\n1: /work"}]}""",
+                Output: "Status: running\n1: /work"),
+            (Name: "pty_list", State: """{"status":"completed","input":{},"content":[{"type":"text","text":"No PTY sessions."}]}""",
+                Output: "No PTY sessions."),
+            (Name: "pty_kill", State: """{"status":"completed","input":{"id":"pty_qol","cleanup":false},"content":[{"type":"text","text":"Stopped pty_qol; record and output retained"}]}""",
+                Output: "Stopped pty_qol; record and output retained"),
+            (Name: "pty_resize", State: """{"status":"completed","input":{"id":"pty_qol","cols":120,"rows":40},"content":[{"type":"text","text":"Resized pty_qol to 120x40"}]}""",
+                Output: "Resized pty_qol to 120x40"),
+        };
+        foreach (var fixture in fixtures)
+        {
+            var row = Model(fixture.Name, fixture.State);
+            Check(row.ToolName == fixture.Name && row.Status == OpenCodeToolRowStatus.Completed && row.RawState is null
+                && row.OutputText == fixture.Output, "QOL history keeps exact tool identity/status/output: " + fixture.Name);
+            var input = OpenCodeToolStates.Read(row.State)!.Input!.Value;
+            Check(input.EnumerateObject().All(property => row.InputProperties.Any(projected => projected.Depth == 0 && projected.Key == property.Name))
+                && row.DiffFiles.Count == 0 && row.ShellId is null && !row.OpensTerminalView
+                && OpenCodeToolDetailBuiltinData.Resolve(row) == OpenCodeBuiltinToolView.None,
+                "QOL tool inputs remain readable without fabricated diff/coreShell identity/plugin view: " + fixture.Name);
+            Check(!string.IsNullOrWhiteSpace(row.Name) && row.AccessibleName.Contains(row.Name, StringComparison.Ordinal),
+                "QOL generic timeline label remains accessible: " + fixture.Name);
+            Console.WriteLine($"QOL tool label: {fixture.Name} => {row.Name}; kind={row.Kind}; exact output retained; coreShell link=none.");
+        }
+        Console.WriteLine("PASS QOL session-reader/native-PTY generic history fixtures: 3 session tools, 6 PTY tools; no tool execution or private-state reads.");
     }
 
     private static void UserImages()

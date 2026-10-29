@@ -20,6 +20,7 @@ public sealed partial class OpenCodePage
     {
         _rightPanelMetadata = new();
         RightPanelHeaderSlot.Children.Add(_rightPanelMetadata.Header);
+        InitializePluginActions();
         RightPanelDirectorySlot.Children.Add(_rightPanelMetadata.Directory);
         RightPanelFooterSlot.Children.Add(_rightPanelMetadata.Footer);
         // B1 still moves/restores the original button for narrow layouts. In wide
@@ -83,6 +84,8 @@ public sealed partial class OpenCodePage
             preset = preset with { Note = "会话目录尚未确认，未读取预设。" };
         var canReadPreset = owner is not null && !string.IsNullOrWhiteSpace(directory);
         view.RenderPreset(preset, canReadPreset);
+        RefreshPluginActions(owner, directory, preset);
+        RefreshPersistentPtyScope(owner, directory);
         if (canReadPreset && (refreshPreset || preset?.State == OpenCodeInsightState.NotLoaded))
             _ = ReadRightPanelPresetAsync(owner!, directory!, refreshPreset);
         RightPanelHeaderSlot.Visibility = session is null ? Visibility.Collapsed : Visibility.Visible;

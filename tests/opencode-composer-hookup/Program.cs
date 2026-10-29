@@ -111,6 +111,7 @@ internal static class Program
         ComposerStatusHost.Run();
         await SideQuestionTests.Run();
         await DeferredSelectionTests.Run();
+        await PluginPendingGuardTests.Run();
         if (args.Length > 1 && args[1] == "True") { await TerminalButtons(); await NativeTests.Run(); await ContinuationTests.Run(); return; }
         await RoutingAndProtection();
         await DeferredAgentSubmission();

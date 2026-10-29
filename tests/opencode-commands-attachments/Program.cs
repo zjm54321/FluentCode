@@ -21,9 +21,10 @@ internal static class Program
         await AttachmentPreparation.RunAsync();
         await ClipboardImages();
         await Catalog();
+        await QolClearServerCommand();
         await Mutations();
         await Attachments();
-        Console.WriteLine($"PASS: 3 command/attachment groups, {assertions} assertions; fake HTTP only; no UI or live server.");
+        Console.WriteLine($"PASS: 4 command/attachment groups, {assertions} assertions; fake HTTP only; no UI or live server.");
     }
 
     private static void Check(bool condition, string message)
@@ -131,6 +132,42 @@ internal static class Program
             && !error.ToString().Contains("DO_NOT_ECHO_SECRET"), "catalog HTTP error sanitized");
         Check(errorHandler.Calls == 1, "catalog errors not retried");
         Console.WriteLine("PASS group 1: command catalog, malformed rows/envelopes, HTTP errors.");
+    }
+
+    private static async Task QolClearServerCommand()
+    {
+        // QOL plugins/clear-encrypted/src/index.ts:219-228; core/src/command.ts:65-69.
+        // The server slash command has no hints or structured success result; clear RPC counts are a separate contract.
+        var requests = new List<string>();
+        using var handler = new Handler(async (request, token) =>
+        {
+            requests.Add(request.Method + " " + request.RequestUri!.AbsolutePath);
+            Check(request.RequestUri.Query.Length == 0 && request.Headers.Authorization?.ToString() == "Bearer synthetic-secret",
+                "QOL clear command reuses normal command authorization without query");
+            if (request.Method == HttpMethod.Get && request.RequestUri.AbsolutePath == "/prefix/api/command")
+            {
+                Check(request.Content is null, "QOL clear discovery is a body-free catalog GET");
+                return Json("""
+                    {"data":[{"name":"clear-encrypted-contents","description":"Clear encrypted reasoning content from the current session while preserving chat history"}]}
+                    """);
+            }
+            Check(request.Method == HttpMethod.Post && request.RequestUri.AbsolutePath == "/prefix/api/session/ses_test/command",
+                "QOL clear executes through the generic server-command endpoint, not prompt/plugin RPC");
+            var body = await request.Content!.ReadAsStringAsync(token);
+            Check(body == "{\"name\":\"clear-encrypted-contents\",\"text\":\"\"}",
+                "QOL clear exact argument-free command payload; no files/agents/skills or RPC-count fields");
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        });
+        using var http = new HttpClient(handler);
+        using var client = Client(http);
+        var command = (await client.GetCommandsAsync()).Single();
+        Check(command.Name == "clear-encrypted-contents"
+            && command.Description == "Clear encrypted reasoning content from the current session while preserving chat history"
+            && command.Hints is null, "QOL clear discovered literally; missing hints remain unknown, not inferred argument support");
+        await client.ExecuteCommandAsync("ses_test", command.Name);
+        Check(requests.SequenceEqual(new[] { "GET /prefix/api/command", "POST /prefix/api/session/ses_test/command" }),
+            "QOL clear catalog plus one 204 command callback only; no retries/RPC/result-count invention");
+        Console.WriteLine("PASS QOL clear server command: literal catalog, empty text/no attachments, generic execution/204; fake HTTP only.");
     }
 
     private static async Task Mutations()

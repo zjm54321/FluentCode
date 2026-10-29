@@ -21,11 +21,12 @@ internal static class Program
     {
         await ResponseBounds.RunAsync();
         await TransportAndConnectionStates();
+        await QolBuiltinOmoProjection();
         TodoReplay();
         PluginGatesAndCoreChildren();
         await ServerInfo();
         await McpControl();
-        Console.WriteLine($"PASS: 5 capability groups, {assertions} assertions; fake HTTP only; Billion/LSP/private storage/RPC requests: 0.");
+        Console.WriteLine($"PASS: 6 capability groups, {assertions} assertions; fake HTTP only; Billion/LSP/private storage/RPC requests: 0.");
     }
 
     private static void Check(bool condition, string label)
@@ -161,6 +162,55 @@ internal static class Program
     {
         if (endpoint == "mcp") await client.GetMcpServersAsync(cancellationToken: token);
         else await client.GetPluginsAsync(cancellationToken: token);
+    }
+
+    private static async Task QolBuiltinOmoProjection()
+    {
+        // QOL builtin.ts:16-21; OMO src/index.ts:3673-3684; schema/src/plugin.ts:10-43.
+        // Literal /api/plugin rows: the static builtin has an id, no package target and no rpc feature.
+        var cases = new[]
+        {
+            ("active builtin", """[{"id":"oh-my-opencode-slim","source":{"type":"builtin"},"features":{"server":true},"state":{"status":"active"}}]""", OpenCodeCapabilityAvailability.Available),
+            ("failed builtin", """[{"id":"oh-my-opencode-slim","source":{"type":"builtin"},"features":{"server":true},"state":{"status":"failed","error":"synthetic load failure"}}]""", OpenCodeCapabilityAvailability.Unavailable),
+            ("unknown runtime", """[{"id":"oh-my-opencode-slim","source":{"type":"builtin"},"features":{"server":true},"state":{"status":"future"}}]""", OpenCodeCapabilityAvailability.Unknown),
+            ("rpc without server", """[{"id":"oh-my-opencode-slim","source":{"type":"builtin"},"features":{"rpc":true},"state":{"status":"active"}}]""", OpenCodeCapabilityAvailability.Unavailable),
+            ("duplicate exact identity", """[{"id":"oh-my-opencode-slim","source":{"type":"builtin"},"features":{"server":true},"state":{"status":"active"}},{"source":{"type":"package","target":"oh-my-opencode-slim@3.0.6"},"features":{"server":true},"state":{"status":"failed","error":"synthetic duplicate"}}]""", OpenCodeCapabilityAvailability.Unknown),
+            ("similar builtin id", """[{"id":"not-oh-my-opencode-slim","source":{"type":"builtin"},"features":{"server":true},"state":{"status":"active"}}]""", OpenCodeCapabilityAvailability.Unavailable),
+            ("anonymous builtin", """[{"source":{"type":"builtin"},"features":{"server":true},"state":{"status":"active"}}]""", OpenCodeCapabilityAvailability.Unavailable),
+            ("unidentified local path", """[{"source":{"type":"local","path":"/not-read/oh-my-opencode-slim"},"features":{"server":true},"state":{"status":"active"}}]""", OpenCodeCapabilityAvailability.Unknown),
+        };
+        var requests = 0;
+        foreach (var (label, rows, expected) in cases)
+        {
+            using var http = new HttpClient(new Handler((request, _) =>
+            {
+                requests++;
+                Check(request.Method == HttpMethod.Get && request.Content is null
+                    && request.RequestUri!.AbsolutePath == "/prefix/api/plugin"
+                    && Uri.UnescapeDataString(request.RequestUri.Query) == "?location[directory]=/work",
+                    "QOL OMO catalog only; no RPC/config/TUI-state probe: " + label);
+                return Task.FromResult(Json("{\"location\":{\"directory\":\"/work\"},\"data\":" + rows + "}"));
+            }));
+            using var client = Client(http);
+            var plugins = await client.GetPluginsAsync("/work");
+            var snapshot = Capabilities(plugins.ToArray());
+            Check(snapshot.Complete && snapshot.Omo.Availability == expected, "QOL OMO conservative gate: " + label);
+            if (label != "active builtin") continue;
+
+            var plugin = plugins.Single();
+            Check(plugin.Id == "oh-my-opencode-slim" && OpenCodeCapabilityStatus.IsBuiltIn(plugin)
+                && plugin.Source?.Target is null && plugin.Features is { Server: true, Rpc: null },
+                "QOL embedded OMO identity survives transport without invented package/RPC metadata");
+            Check(snapshot.PluginEntries.Single().Running == true && snapshot.Omo.Reason.Contains("仅使用 core 公开数据", StringComparison.Ordinal),
+                "QOL active server evidence authorizes core projection, not preset RPC readiness");
+            var children = OpenCodeSubagentStatus.ProjectChildren("ses_parent",
+                [new() { Id = "ses_qol_child", ParentId = "ses_parent", Agent = "fixer", Title = "QOL child" }],
+                true, ["ses_qol_child"], true, snapshot);
+            Check(children.Complete && children.Children.Single() is { SessionId: "ses_qol_child", Agent: "fixer", Active: true },
+                "QOL builtin enables existing native session/foreground child projection");
+        }
+        Check(requests == cases.Length, "QOL OMO one catalog read per fixture, zero RPC/private-state requests");
+        Console.WriteLine("PASS QOL embedded OMO: active builtin/no target/no rpc, failed/unknown/duplicate/identity/server guards; core children only.");
     }
 
     private static OpenCodeContentPart Tool(string status, object input, string name = "todowrite") => new()

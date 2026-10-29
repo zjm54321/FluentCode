@@ -39,7 +39,13 @@ public sealed partial class OpenCodePage
 
     private void InitializeAgentTree()
     {
-        LeftAgentTreeSlot.Children.Add(_agentTree);
+        var treeAndPersistent = new Grid();
+        treeAndPersistent.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        treeAndPersistent.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        treeAndPersistent.Children.Add(_agentTree);
+        Grid.SetRow(_persistentPtyInventoryView, 1); treeAndPersistent.Children.Add(_persistentPtyInventoryView);
+        LeftAgentTreeSlot.Children.Add(treeAndPersistent);
+        InitializePersistentPty();
         _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
         _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
         _agentTree.ShellRequested += OpenTerminalView;
@@ -55,6 +61,7 @@ public sealed partial class OpenCodePage
 
     private void ResetAgentTree()
     {
+        ResetPersistentPtyScope();
         CloseTerminalView(restoreFocus: false);
         _treeCts?.Cancel();
         _treeCts?.Dispose();
@@ -88,6 +95,7 @@ public sealed partial class OpenCodePage
 
     partial void OnAgentTreeConnected()
     {
+        QueuePersistentPtyInventoryRefresh(recheckCapability: true);
         // The stream is volatile. Reconnect discards pre-gap overrides so REST can repair them;
         // events received during the new read will populate fresh overrides and win again.
         _treeStatuses.Clear();
@@ -122,6 +130,7 @@ public sealed partial class OpenCodePage
         {
             ResetAgentTree();
             _treeBinding = binding;
+            DispatcherQueue.TryEnqueue(() => RefreshRightPanelMetadata()); // Restore current PTY scope after the tree's generation reset.
             _treeCts = CancellationTokenSource.CreateLinkedTokenSource(_pageCts!.Token, binding.Source.RevocationToken);
         }
         if (_treeLoading) { _treeReload = true; return; }

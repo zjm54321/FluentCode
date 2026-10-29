@@ -257,6 +257,7 @@ internal static partial class Program
                 ("held SSE readiness does not block REST paint; bounded first-ready/reconnect repair", FirstPaintAndRepair),
                 ("inflight deltas beat snapshot; stale readiness ignored; workflow reconciliation deferred", SnapshotAndReadinessFences),
                 ("authoritative SSE/active REST publish composer activity without stale overwrite", ActivityPublication),
+                ("invalidated active-status read rejects stale publication and starts one fresh replacement", InvalidatedStatusReadIsReplaced),
                 ("healthy SSE skips periodic messages/status HTTP; reconnect and session switch restore fallback", HealthyStreamSkipsPolling),
                 ("SSE execution window excludes retained older history across rollback boundaries", StreamExecutionWindowExcludesOlderHistory),
                 ("Home metadata-only source/directory/date/outcome projection", HomeMetadataProjection),

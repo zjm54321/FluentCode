@@ -60,6 +60,7 @@ $sources += Get-Item (Join-Path $PSScriptRoot 'NativeActions.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'DeferredSelections.cs')
+$sources += Get-Item (Join-Path $PSScriptRoot 'PluginPendingGuard.cs')
 $selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
 $pendingMembers = foreach ($name in @('SelectPendingAgent', 'SelectPendingModel', 'SavePendingSelection', 'ApplyPendingSelectionAsync', 'ApplyPendingSelectionCoreAsync', 'CompletePendingSelection', 'RunSwitchAsync', 'ReloadAsync')) {
     $m = [regex]::Match($selector, ('(?ms)^    (?:private|internal) [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))

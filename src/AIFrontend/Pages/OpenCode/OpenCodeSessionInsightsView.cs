@@ -57,6 +57,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     private readonly ProgressRing _refreshRing;
     private readonly CheckBox _billionConfirm;
     private readonly Button _billionButton;
+    private readonly Button _billionDashboard = new() { Content = "在系统浏览器打开 Billion…" };
     private readonly StackPanel _billionOriginPanel;
     private readonly TextBox _billionOriginBox;
     private readonly TextBlock _billionOriginStatus;
@@ -155,6 +156,13 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         AutomationProperties.SetName(_billionButton, "读取本机 Billion 记录");
         ToolTipService.SetToolTip(_billionButton, "向所填地址读取一次 Billion 健康状态和这个会话的记录；不会自动刷新");
         _billionButton.Click += (_, _) => RaiseRead();
+        AutomationProperties.SetAutomationId(_billionDashboard, "OpenCodeBillionDashboard");
+        ToolTipService.SetToolTip(_billionDashboard, "打开已确认的本机 Billion 会话页面；该页面也可浏览此实例其他历史，打开前需要确认。");
+        _billionDashboard.Click += (_, _) =>
+        {
+            if (DisplayedContext() is { } context && _visual is { } shown && OpenCodeBillionPresentation.DashboardUri(shown, context) is not null)
+                BillionDashboardRequested?.Invoke(this, context);
+        };
 
         _overviewPage = new Grid { Visibility = Visibility.Collapsed };
         AutomationProperties.SetAutomationId(_overviewPage, "OpenCodeInsightsSection.Overview");
@@ -227,6 +235,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
     /// <summary>显式读取：携带当前界面显示的渲染上下文（页面不得替换为新上下文）。</summary>
     internal event EventHandler<OpenCodeBillionContext>? BillionReadRequested;
+    internal event EventHandler<OpenCodeBillionContext>? BillionDashboardRequested;
 
     /// <summary>用户勾选/取消关联确认：携带当前界面显示的渲染上下文。</summary>
     internal event EventHandler<OpenCodeBillionConfirmRequest>? BillionConfirmationChanged;
@@ -730,6 +739,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         content.Children.Add(_billionOriginPanel);
         content.Children.Add(_billionConfirm);
         content.Children.Add(_billionButton);
+        content.Children.Add(_billionDashboard);
 
         var result = new StackPanel { Spacing = 4 };
         FillBillionResult(result, snapshot.Billion);
@@ -795,6 +805,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         _billionConfirm.IsEnabled = context is not null && originUsable;
         _billionButton.IsEnabled = context is not null && snapshot.BillionConfirmed
             && snapshot.Billion.Phase != OpenCodeBillionPhase.Loading;
+        _billionDashboard.IsEnabled = context is not null && OpenCodeBillionPresentation.DashboardUri(snapshot, context) is not null;
     }
 
     internal static string DescribeOriginStatus(OpenCodeSessionInsightsSnapshot snapshot)
@@ -827,7 +838,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         {
             content.Children.Add(Table(new List<(string, string)>
             {
-                ("最近上下文参考", Count(stats.ContextTokens) + DescribeContextSource(stats.ContextTokensSource)),
+                ("最佳上下文参考", OpenCodeBillionPresentation.BestContext(stats)),
+                ("原始上下文参考", Count(stats.ContextTokens) + DescribeContextSource(stats.ContextTokensSource)),
                 ("上下文窗口", Count(stats.ContextWindow)),
                 ("系统提示", Count(stats.SystemPromptTokens)),
                 ("输入", Count(stats.InputTokens)),
@@ -843,6 +855,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
                 ("Billion 版本", billion.Health?.Version ?? stats.BiliVersion ?? "未知"),
                 ("读取时间", Time(stats.FetchedAt)),
             }));
+            if (stats.Ledger is { } ledger)
+            {
+                content.Children.Add(OpenCodeInteractionUi.StyledText("缓存账本", OpenCodeInteractionUi.BodyStrongStyleKey));
+                content.Children.Add(Table(OpenCodeBillionPresentation.LedgerRows(ledger)));
+                content.Children.Add(Caption(OpenCodeBillionPresentation.LedgerNote, 0.65));
+            }
             content.Children.Add(Caption(BillionStatsNote, 0.65));
         }
     }
@@ -1027,6 +1045,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             host.Children.Remove(_billionOriginPanel);
             host.Children.Remove(_billionConfirm);
             host.Children.Remove(_billionButton);
+            host.Children.Remove(_billionDashboard);
             _billionHost = null;
         }
 

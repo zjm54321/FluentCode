@@ -258,6 +258,9 @@ namespace AIFrontend.Pages
         private void ConfigureAgentSelectorForSession(string id) { }
         private void ClearAgentSelector() { }
         private void PauseTerminalView() { }
+        // Persistent PTY inventory/native UI is outside return navigation; its actual scope
+        // reset and server transport are covered by tests/opencode-persistent-pty.
+        private void ResetPersistentPtyScope() { }
         private bool _isLoadingMoreSessions, _statusRefreshRunning;
         internal bool PausedLoadingFlags => _isLoadingMoreSessions || _statusRefreshRunning;
         private void DetachConversationEvents() { }

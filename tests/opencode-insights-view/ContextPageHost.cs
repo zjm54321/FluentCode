@@ -73,6 +73,9 @@ public sealed partial class OpenCodePage
     private void ResetRuntimeFeedback() { }
     private Task RefreshSessionsAsync() => Task.CompletedTask;
     private Task RefreshMessagesAsync() => Task.CompletedTask;
+    // Unrelated server-scoped PTY inventory boundary; real event/lifecycle behavior is tested
+    // by tests/opencode-persistent-pty, not fabricated by this context-publication fixture.
+    private void OnPersistentPtyEvent(OpenCodeEvent item) { }
     private void ObserveExecutionState(string session, IReadOnlyList<OpenCodeMessage> messages) => ExecutionWindow = messages;
     private void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> messages, bool visible) => AcknowledgementWindow = messages;
     private bool _hostWindowVisible => true;

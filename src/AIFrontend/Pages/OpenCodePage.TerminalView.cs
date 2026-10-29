@@ -64,6 +64,7 @@ public sealed partial class OpenCodePage
     {
         var binding = CaptureTreeBinding();
         if (binding is null || _treeDirectory is null || !_treeShells.TryGetValue(shellId, out var shell)) return;
+        ClosePersistentPtyView(restoreFocus: false);
         var returnFocus = _terminalState.ShellId is null ? FocusManager.GetFocusedElement(XamlRoot) as Control : _terminalReturnFocus;
         CloseTerminalView(restoreFocus: false);
         _terminalReturnFocus = returnFocus;
@@ -78,6 +79,7 @@ public sealed partial class OpenCodePage
         }
         ConversationSurface.Visibility = Visibility.Collapsed;
         TerminalViewHost.Visibility = Visibility.Visible;
+        _terminalView.Visibility = Visibility.Visible;
         _terminalView.Render(_terminalState);
         _terminalView.Begin();
         DismissSidebarDrawers();

@@ -321,6 +321,7 @@ public sealed partial class OpenCodePage : Page
         }
 
         PauseTerminalView();
+        ResetPersistentPtyScope();
         SuspendDraftSlotForPageUnload();
         _pageActive = false;
         // Host visibility is a window fact, not page visibility. Retain it for reparent/reload
