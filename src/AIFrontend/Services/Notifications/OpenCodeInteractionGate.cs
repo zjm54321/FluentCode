@@ -8,7 +8,7 @@ namespace AIFrontend.Services.Notifications;
 public sealed record AgentSwitchProtection(Guid OperationId, string TargetAgentId);
 public enum ComposerSubmissionKind { Prompt, Command }
 public sealed record ComposerSubmissionProtection(Guid OperationId, ComposerSubmissionKind Kind);
-public enum SessionControlKind { SwitchModel, StageRevert, ClearRevert, RevertContinuation, Interrupt, Background, DeleteRoot, RenameRoot, ArchiveRoot }
+public enum SessionControlKind { SwitchModel, StageRevert, ClearRevert, RevertContinuation, Interrupt, Background, DeleteRoot, RenameRoot, ArchiveRoot, ApplySessionPreset, ClearEncryptedContents }
 public sealed record SessionControlProtection(Guid OperationId, SessionControlKind Kind, string TargetFingerprint);
 
 /// <summary>Process-local shared page/toast arbitration. Hold a lease across recheck, mutation AND result.
@@ -135,7 +135,9 @@ public sealed class OpenCodeInteractionGate
 
         public NotificationInteractionStatus? GetProtectionStatus(string requestId, NotificationNavigationKind kind)
         {
-            if (State.SessionUnknown is not null || State.AgentSwitchUnknown is not null) return NotificationInteractionStatus.OutcomeUnknown;
+            if (State.SessionUnknown is not null || State.AgentSwitchUnknown is not null
+                || State.ControlUnknown?.Kind is SessionControlKind.ApplySessionPreset or SessionControlKind.ClearEncryptedContents)
+                return NotificationInteractionStatus.OutcomeUnknown;
             if (State.Results.TryGetValue((requestId, kind), out var status))
                 return status == NotificationInteractionStatus.Succeeded ? NotificationInteractionStatus.Duplicate : status;
             return State.Results.Count >= 256 ? NotificationInteractionStatus.NeedsApp : null;
@@ -216,6 +218,18 @@ public sealed class OpenCodeInteractionGate
             ValidateSettlement(status);
             if (status != NotificationInteractionStatus.OutcomeUnknown) State.ControlUnknown = null;
             _sessionControl = null;
+        }
+
+        /// <summary>Explicit local acknowledgement of exactly one plugin operation. Not success/retry proof.</summary>
+        public bool TryAcknowledgePluginMutation(Guid operationId, SessionControlKind kind, string targetFingerprint)
+        {
+            if (kind is not (SessionControlKind.ApplySessionPreset or SessionControlKind.ClearEncryptedContents)
+                || operationId == Guid.Empty || _mutation is not null || _agentSwitch is not null
+                || _composerSubmission is not null || _sessionControl is not null
+                || State.ControlUnknown is not { } protection || protection.OperationId != operationId
+                || protection.Kind != kind || protection.TargetFingerprint != targetFingerprint) return false;
+            State.ControlUnknown = null;
+            return true;
         }
 
         /// <summary>Atomic same-operation protection for enhanced prompt/command plus implicit revert effects.
