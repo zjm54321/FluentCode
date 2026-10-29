@@ -21,8 +21,10 @@ internal static class Program
         await Health();
         Console.WriteLine("PASS 1/3 health: success, non-200, malformed, unknown fields, transport failures");
         await Detail();
+        await VendorContract();
+        await LedgerBoundaries();
         await Identity();
-        Console.WriteLine("PASS 2/3 detail: exact root identity, rejected telemetry empty, multi-MB content skipped, whitelist only, unknown values, 404, byte limit");
+        Console.WriteLine("PASS 2/3 detail: vendor 0.1.206 fixtures, numeric-only ledger, exact root identity, rejected telemetry empty, multi-MB content skipped, whitelist only, unknown values, 404, byte limit");
         await Boundaries();
         Console.WriteLine("PASS 3/3 boundaries: loopback origins, IDs, no redirect/auth/proxy/cookies, only two GET routes, cancellation");
         Console.WriteLine($"PASS: {_checks} assertions; fake transports only; no live Billion or OpenCode requests.");
@@ -178,6 +180,135 @@ internal static class Program
         };
         Equal(BillionSessionStatus.Malformed, (await client.GetSessionDetailAsync("ses_A")).Status, "declared size cap");
         Check(unread.BytesRead == 0 && unread.Disposed, "oversize header never read");
+    }
+
+    private static string Fixture(string name)
+    {
+        using var stream = typeof(Program).Assembly.GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException("Missing embedded fixture: " + name);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return reader.ReadToEnd();
+    }
+
+    private static async Task VendorContract()
+    {
+        // Synthetic values; shape checked against current read-only QOL vendor 0.1.206:
+        // src/server/admin.ts:242-256,1318-1334; src/web/sessions-data.ts:29-112,157-215,644-777,1147-1224;
+        // src/cache-ledger.ts:1841-2025; kernel/src/cache-report.ts:130-203.
+        var fake = new FakeHandler { Reply = _ => Json(Fixture("vendor-health.json")) };
+        using var client = new BillionContextClient(handler: fake);
+        var health = await client.GetHealthAsync();
+        Equal(new BillionHealth(true, "0.1.206", "fixture-instance-206", null), health, "current vendor health allowlist");
+        Check(!JsonSerializer.Serialize(health).Contains(Sentinel) && !health.ToString().Contains(Sentinel), "health upstream/watchdog/future strings not retained");
+
+        string detail = Fixture("vendor-detail.json");
+        var stream = new ChunkStream(Encoding.UTF8.GetBytes(detail), 1);
+        fake.Reply = _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) };
+        var stats = await client.GetSessionDetailAsync("ses_vendor_206");
+        Equal(BillionSessionStatus.Available, stats.Status, "vendor detail available, single-byte stream");
+        Check(stats.ContextTokens == 30000 && stats.ContextBestTokens == 18500 && stats.ContextBestKind == "estimate" &&
+            stats.ContextTokensSource == BillionContextTokensSource.Estimate, "vendor raw context and preferred calibrated estimate remain distinct");
+        Check(stats.ContextUpperTokens == 33000 && stats.ContextMeasuredAt == 1793203199000 && stats.ContextWindow == 200000,
+            "vendor context bound and measurement timestamp");
+        Equal(new BillionCacheLedger
+        {
+            Requests = 8, Input = 120000, Cached = 90000, Output = 5000, HitPct = 75,
+            NewContent = 10000, CompRepay = 2000, TtlRepay = 18000,
+            Folds = 1, GrossSaved = 1600, RepayCost = 2000, SummaryCost = 200, NetTokens = -600,
+            PaidBackCount = 0, NotPaidBackCount = 1, UnobservedCount = 0
+        }, stats.Ledger!.Value, "vendor CacheTotals and EconomicsSummary numeric allowlist");
+        Equal(30000L, stats.Ledger.Value.Input - stats.Ledger.Value.Cached, "uncached total derivable only from known input/cached");
+        Check(stats.Requests == 9 && stats.InputTokens == 125000 && stats.CachedTokens == 97000 && stats.OutputTokens == 6000 &&
+            stats.CacheHitPct == 77.6 && stats.NetSaved == -600, "root summary stats not overwritten by overlapping ledger samples");
+        Check(stats.BlockDetails.Length == 1 && stats.BlockDetails[0] == new BillionBlockInfo("block_fixture", 1, 1000, true),
+            "current vendor block shape still projects only four fields");
+        Check(!JsonSerializer.Serialize(stats).Contains(Sentinel) && !stats.ToString().Contains(Sentinel) &&
+            !JsonSerializer.Serialize(stats.Ledger).Contains(Sentinel) && !stats.Ledger.ToString()!.Contains(Sentinel),
+            "no title/prompt/summary/line/fingerprint/other-session content in scalar projection");
+        Check(stream.Disposed && stream.BytesRead == Encoding.UTF8.GetByteCount(detail), "vendor fragmented stream consumed and disposed");
+        Check(fake.Paths.SequenceEqual(new[] { "/__bili/health", "/__bili/sessions/ses_vendor_206/detail" }),
+            "vendor fixture uses same two allowlisted routes only");
+
+        var properties = typeof(BillionCacheLedger).GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        Check(properties.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(new[]
+        {
+            "Cached", "CompRepay", "Folds", "GrossSaved", "HitPct", "Input", "NetTokens", "NewContent",
+            "NotPaidBackCount", "Output", "PaidBackCount", "RepayCost", "Requests", "SummaryCost", "TtlRepay", "UnobservedCount"
+        }), "ledger exposes exactly sixteen contract-backed aggregate fields, no per-request/per-fold history");
+        Check(properties.All(p => Nullable.GetUnderlyingType(p.PropertyType) is { } t && (t == typeof(long) || t == typeof(double))) &&
+            typeof(BillionCacheLedger).IsValueType && typeof(BillionCacheLedger).IsDefined(typeof(System.Runtime.CompilerServices.IsReadOnlyAttribute), false),
+            "ledger is a readonly numeric-only value record, no strings/collections/raw JSON");
+
+        // A fully projected ledger preceding a wrong root ID must be discarded, not returned as partial telemetry.
+        fake.Reply = _ => Json(detail.Replace("\"id\": \"ses_vendor_206\"", "\"id\": \"ses_B\""));
+        Rejected(await client.GetSessionDetailAsync("ses_vendor_206"), DateTimeOffset.UtcNow.AddSeconds(-1), "vendor ledger wrong source identity");
+    }
+
+    private static async Task LedgerBoundaries()
+    {
+        var fake = new FakeHandler();
+        using var client = new BillionContextClient(handler: fake);
+        async Task<BillionSessionStats> Read(string fields)
+        {
+            string json = "{\"id\":\"ses_A\"," + fields + "}";
+            fake.Reply = _ => new HttpResponseMessage(HttpStatusCode.OK)
+                { Content = new StreamContent(new ChunkStream(Encoding.UTF8.GetBytes(json), 7)) };
+            var stats = await client.GetSessionDetailAsync("ses_A");
+            Equal(BillionSessionStatus.Available, stats.Status, "ledger drift stays available");
+            Check(!JsonSerializer.Serialize(stats).Contains(Sentinel) && !stats.ToString().Contains(Sentinel), "ledger drift no sensitive scalar retained");
+            return stats;
+        }
+
+        foreach (string value in new[] { "null", "true", "42", "[]", "\"" + Sentinel + "\"" })
+            Check((await Read("\"ledger\":" + value)).Ledger is null, "non-object ledger stays Unknown");
+        foreach (string value in new[] { "null", "true", "42", "[]", "\"" + Sentinel + "\"", "{}", "[{\"input\":999,\"netTokens\":999}]" })
+            Equal(default(BillionCacheLedger), (await Read("\"ledger\":{\"totals\":" + value + ",\"economics\":" + value + "}")).Ledger!.Value,
+                "non-object or empty aggregate section has all nullable values Unknown");
+
+        string[] totalFields = { "requests", "input", "cached", "output", "hitPct", "newContent", "compRepay", "ttlRepay" };
+        string[] economicFields = { "folds", "grossSaved", "repayCost", "summaryCost", "netTokens", "paidBackCount", "notPaidBackCount", "unobservedCount" };
+        foreach (string value in new[] { "null", "true", "\"" + Sentinel + "\"", "[]", "{}", "1e999" })
+        {
+            string totals = string.Join(",", totalFields.Select(f => "\"" + f + "\":" + value));
+            string economics = string.Join(",", economicFields.Select(f => "\"" + f + "\":" + value));
+            Equal(default(BillionCacheLedger), (await Read("\"ledger\":{\"totals\":{" + totals + "},\"economics\":{" + economics + "}}")).Ledger!.Value,
+                "invalid numeric scalars are Unknown, never zero or decoded content");
+        }
+        var invalid = await Read("""
+            "ledger":{"totals":{"requests":-1,"input":1.5,"cached":9223372036854775808,"output":1e99,"hitPct":101,"newContent":-1,"compRepay":2.2,"ttlRepay":-5},
+            "economics":{"folds":1.5,"grossSaved":-1,"repayCost":-1,"summaryCost":-1,"netTokens":-12.75,"paidBackCount":-1,"notPaidBackCount":1.5,"unobservedCount":1e99}}
+            """);
+        Equal(new BillionCacheLedger { NetTokens = -12.75 }, invalid.Ledger!.Value, "negative/fractional/overflow counts and out-of-range rate Unknown; signed net retained");
+        var fractions = await Read("""
+            "ledger":{"totals":{"hitPct":0},"economics":{"grossSaved":1.5,"repayCost":0.25,"summaryCost":0,"netTokens":1.25}}
+            """);
+        Equal(new BillionCacheLedger { HitPct = 0, GrossSaved = 1.5, RepayCost = 0.25, SummaryCost = 0, NetTokens = 1.25 }, fractions.Ledger!.Value,
+            "finite economics retain precision and explicit zero remains distinct from Unknown");
+
+        var nested = await Read("""
+            "totals":{"input":999},"economics":{"netTokens":999},"unknown":{"ledger":{"totals":{"input":999}}},
+            "ledger":{"input":999,"totals":{"netTokens":999,"nested":{"input":999},"requests":[{"input":999}]},
+            "economics":{"input":999,"nested":{"netTokens":999}},"lines":[{"input":999,"totals":{"input":999}}],
+            "folds":[{"economics":{"netTokens":999}}],"stability":{"totals":{"input":999}},"invalidation":{"netTokens":999}},
+            "after":{"totals":{"input":999},"economics":{"netTokens":999}}
+            """);
+        Equal(default(BillionCacheLedger), nested.Ledger!.Value, "only exact root ledger.totals/economics paths accepted, no nested or sibling look-alikes");
+        var duplicates = await Read("""
+            "ledger":{"totals":{"input":123,"cached":100},"totals":{"output":4},"economics":{"netTokens":7},"economics":{"folds":2}}
+            """);
+        Equal(new BillionCacheLedger { Output = 4, Folds = 2 }, duplicates.Ledger!.Value, "last duplicate aggregate resets only its own previous fields");
+        var duplicateInvalid = await Read("""
+            "ledger":{"totals":{"input":123},"totals":[],"economics":{"netTokens":7},"economics":null}
+            """);
+        Equal(default(BillionCacheLedger), duplicateInvalid.Ledger!.Value, "invalid last aggregate clears earlier numbers");
+        var duplicateLedger = await Read("""
+            "ledger":{"totals":{"input":123},"economics":{"netTokens":7}},"ledger":{"totals":{"cached":4}}
+            """);
+        Equal(new BillionCacheLedger { Cached = 4 }, duplicateLedger.Ledger!.Value, "last root ledger resets both sections");
+        Check((await Read("\"ledger\":{\"totals\":{\"input\":123}},\"ledger\":null")).Ledger is null, "invalid last root ledger clears all aggregates");
+
+        fake.Reply = _ => Json("{\"id\":\"ses_A\",\"ledger\":{\"totals\":{\"input\":123}},\"tail\":");
+        Rejected(await client.GetSessionDetailAsync("ses_A"), DateTimeOffset.UtcNow.AddSeconds(-1), "malformed body discards projected ledger");
     }
 
     private static async Task Identity()

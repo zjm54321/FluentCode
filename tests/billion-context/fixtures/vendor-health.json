@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "upstream": "https://PRIVATE_CONTENT_MUST_NOT_ESCAPE_71d63f.invalid",
+  "version": "0.1.206",
+  "commit": "synthetic-contract-fixture",
+  "instanceId": "fixture-instance-206",
+  "pid": 12345,
+  "startedAt": 1793203200000,
+  "blindTunnels": { "future": "PRIVATE_CONTENT_MUST_NOT_ESCAPE_71d63f" },
+  "watchdog": { "armed": true, "parentPid": 12344, "watchers": [12344] },
+  "unknown": { "version": "PRIVATE_CONTENT_MUST_NOT_ESCAPE_71d63f", "ok": false }
+}

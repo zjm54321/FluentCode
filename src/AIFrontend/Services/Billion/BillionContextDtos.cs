@@ -36,6 +36,8 @@ public sealed record BillionSessionStats
     public long? Blocks { get; internal set; }
     public long? TokensSaved { get; internal set; }
     public double? NetSaved { get; internal set; }
+    /// <summary>Current detail.ledger aggregates only; absent/invalid values stay Unknown. No request or fold history.</summary>
+    public BillionCacheLedger? Ledger { get; internal set; }
     public bool? Live { get; internal set; }
     public DateTimeOffset? LastSeen { get; internal set; }
     public string? BiliVersion { get; internal set; }
@@ -56,3 +58,28 @@ public sealed record BillionSessionStats
 
 /// <summary>单个压缩块的白名单元数据（null = 未知）；不含主题或摘要正文。</summary>
 public sealed record BillionBlockInfo(string? Id, long? Tier, long? CompressedTokens, bool? Active);
+
+/// <summary>
+/// Numeric allowlist from detail.ledger.totals and detail.ledger.economics (vendor CacheTotals / EconomicsSummary).
+/// Input minus Cached is uncached input when both are known. TtlRepay is the vendor's stable-prefix miss bucket,
+/// not proof of TTL expiry. NetTokens may be negative. No absent value is synthesized as zero.
+/// </summary>
+public readonly record struct BillionCacheLedger
+{
+    public long? Requests { get; init; }
+    public long? Input { get; init; }
+    public long? Cached { get; init; }
+    public long? Output { get; init; }
+    public double? HitPct { get; init; }
+    public long? NewContent { get; init; }
+    public long? CompRepay { get; init; }
+    public long? TtlRepay { get; init; }
+    public long? Folds { get; init; }
+    public double? GrossSaved { get; init; }
+    public double? RepayCost { get; init; }
+    public double? SummaryCost { get; init; }
+    public double? NetTokens { get; init; }
+    public long? PaidBackCount { get; init; }
+    public long? NotPaidBackCount { get; init; }
+    public long? UnobservedCount { get; init; }
+}

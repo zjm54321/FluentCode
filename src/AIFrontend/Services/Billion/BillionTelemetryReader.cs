@@ -23,6 +23,8 @@ internal sealed class BillionTelemetryReader
     private bool _rootStarted;
     private bool _rootFinished;
     private bool _inContextBest;
+    private bool _inLedger;
+    private LedgerSection _ledgerSection;
     // detail.blockDetails（数组，深度 1）→ 每个元素对象（深度 2）→ 白名单属性（深度 3）。
     private bool _inBlocks;
     private bool _blockOpen;
@@ -105,13 +107,23 @@ internal sealed class BillionTelemetryReader
                     !_health && _inContextBest && reader.CurrentDepth == 2 ?
                         reader.ValueTextEquals("tokens"u8) ? Field.BestTokens :
                         reader.ValueTextEquals("kind"u8) ? Field.BestKind : Field.None :
+                    !_health && _inLedger && reader.CurrentDepth == 2 ?
+                        reader.ValueTextEquals("totals"u8) ? Field.LedgerTotals :
+                        reader.ValueTextEquals("economics"u8) ? Field.LedgerEconomics : Field.None :
+                    !_health && _inLedger && reader.CurrentDepth == 3 ? SelectLedgerField(ref reader) :
                     !_health && _inBlocks && _blockOpen && reader.CurrentDepth == 3 ? SelectBlockField(ref reader) : Field.None;
                 continue;
             }
             if (reader.TokenType == JsonTokenType.EndObject)
             {
                 if (reader.CurrentDepth == 0) _rootFinished = true;
-                if (reader.CurrentDepth == 1) _inContextBest = false;
+                if (reader.CurrentDepth == 1)
+                {
+                    _inContextBest = false;
+                    _inLedger = false;
+                    _ledgerSection = LedgerSection.None;
+                }
+                if (reader.CurrentDepth == 2 && _inLedger) _ledgerSection = LedgerSection.None;
                 if (reader.CurrentDepth == 2 && _inBlocks && _blockOpen) CommitBlock();
             }
             else if (reader.TokenType == JsonTokenType.StartObject && _inBlocks && reader.CurrentDepth == 2)
@@ -165,6 +177,7 @@ internal sealed class BillionTelemetryReader
         if (r.ValueTextEquals("blocks"u8)) return Field.Blocks;
         if (r.ValueTextEquals("tokensSaved"u8)) return Field.TokensSaved;
         if (r.ValueTextEquals("netSaved"u8)) return Field.NetSaved;
+        if (r.ValueTextEquals("ledger"u8)) return Field.Ledger;
         if (r.ValueTextEquals("live"u8)) return Field.Live;
         if (r.ValueTextEquals("lastSeen"u8)) return Field.LastSeen;
         if (r.ValueTextEquals("biliVersion"u8)) return Field.BiliVersion;
@@ -179,6 +192,33 @@ internal sealed class BillionTelemetryReader
         if (r.ValueTextEquals("compressedTokens"u8)) return Field.BlockTokens;
         if (r.ValueTextEquals("active"u8)) return Field.BlockActive;
         return Field.None; // topic / summary / createdAt / refs 等正文：从不解码（Billion 标题/摘要不进入本应用）。
+    }
+
+    private Field SelectLedgerField(ref Utf8JsonReader r)
+    {
+        if (_ledgerSection == LedgerSection.Totals)
+        {
+            if (r.ValueTextEquals("requests"u8)) return Field.LedgerRequests;
+            if (r.ValueTextEquals("input"u8)) return Field.LedgerInput;
+            if (r.ValueTextEquals("cached"u8)) return Field.LedgerCached;
+            if (r.ValueTextEquals("output"u8)) return Field.LedgerOutput;
+            if (r.ValueTextEquals("hitPct"u8)) return Field.LedgerHitPct;
+            if (r.ValueTextEquals("newContent"u8)) return Field.LedgerNewContent;
+            if (r.ValueTextEquals("compRepay"u8)) return Field.LedgerCompRepay;
+            if (r.ValueTextEquals("ttlRepay"u8)) return Field.LedgerTtlRepay;
+        }
+        else if (_ledgerSection == LedgerSection.Economics)
+        {
+            if (r.ValueTextEquals("folds"u8)) return Field.LedgerFolds;
+            if (r.ValueTextEquals("grossSaved"u8)) return Field.LedgerGrossSaved;
+            if (r.ValueTextEquals("repayCost"u8)) return Field.LedgerRepayCost;
+            if (r.ValueTextEquals("summaryCost"u8)) return Field.LedgerSummaryCost;
+            if (r.ValueTextEquals("netTokens"u8)) return Field.LedgerNetTokens;
+            if (r.ValueTextEquals("paidBackCount"u8)) return Field.LedgerPaidBackCount;
+            if (r.ValueTextEquals("notPaidBackCount"u8)) return Field.LedgerNotPaidBackCount;
+            if (r.ValueTextEquals("unobservedCount"u8)) return Field.LedgerUnobservedCount;
+        }
+        return Field.None; // No lines/folds/events, fingerprints, arbitrary text, or nested look-alikes.
     }
 
     private void CommitBlock()
@@ -239,6 +279,47 @@ internal sealed class BillionTelemetryReader
             case Field.Blocks: Stats.Blocks = Count(ref r); break;
             case Field.TokensSaved: Stats.TokensSaved = Count(ref r); break;
             case Field.NetSaved: Stats.NetSaved = Number(ref r); break;
+            case Field.Ledger:
+                _inLedger = r.TokenType == JsonTokenType.StartObject;
+                _ledgerSection = LedgerSection.None;
+                Stats.Ledger = _inLedger ? new BillionCacheLedger() : null;
+                break;
+            case Field.LedgerTotals:
+                // Last duplicate wins, including malformed containers; do not retain stale subfields.
+                Stats.Ledger = Stats.Ledger.GetValueOrDefault() with
+                {
+                    Requests = null, Input = null, Cached = null, Output = null, HitPct = null,
+                    NewContent = null, CompRepay = null, TtlRepay = null
+                };
+                _ledgerSection = r.TokenType == JsonTokenType.StartObject ? LedgerSection.Totals : LedgerSection.None;
+                break;
+            case Field.LedgerEconomics:
+                Stats.Ledger = Stats.Ledger.GetValueOrDefault() with
+                {
+                    Folds = null, GrossSaved = null, RepayCost = null, SummaryCost = null, NetTokens = null,
+                    PaidBackCount = null, NotPaidBackCount = null, UnobservedCount = null
+                };
+                _ledgerSection = r.TokenType == JsonTokenType.StartObject ? LedgerSection.Economics : LedgerSection.None;
+                break;
+            case Field.LedgerRequests: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { Requests = Count(ref r) }; break;
+            case Field.LedgerInput: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { Input = Count(ref r) }; break;
+            case Field.LedgerCached: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { Cached = Count(ref r) }; break;
+            case Field.LedgerOutput: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { Output = Count(ref r) }; break;
+            case Field.LedgerHitPct:
+                double? hit = Number(ref r);
+                Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { HitPct = hit is >= 0 and <= 100 ? hit : null };
+                break;
+            case Field.LedgerNewContent: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { NewContent = Count(ref r) }; break;
+            case Field.LedgerCompRepay: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { CompRepay = Count(ref r) }; break;
+            case Field.LedgerTtlRepay: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { TtlRepay = Count(ref r) }; break;
+            case Field.LedgerFolds: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { Folds = Count(ref r) }; break;
+            case Field.LedgerGrossSaved: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { GrossSaved = NonnegativeNumber(ref r) }; break;
+            case Field.LedgerRepayCost: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { RepayCost = NonnegativeNumber(ref r) }; break;
+            case Field.LedgerSummaryCost: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { SummaryCost = NonnegativeNumber(ref r) }; break;
+            case Field.LedgerNetTokens: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { NetTokens = Number(ref r) }; break;
+            case Field.LedgerPaidBackCount: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { PaidBackCount = Count(ref r) }; break;
+            case Field.LedgerNotPaidBackCount: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { NotPaidBackCount = Count(ref r) }; break;
+            case Field.LedgerUnobservedCount: Stats.Ledger = Stats.Ledger.GetValueOrDefault() with { UnobservedCount = Count(ref r) }; break;
             case Field.Live: Stats.Live = Boolean(ref r); break;
             case Field.LastSeen:
                 Stats.LastSeen = r.TokenType == JsonTokenType.String && r.ValueSpan.Length <= 128 &&
@@ -264,6 +345,7 @@ internal sealed class BillionTelemetryReader
         r.TryGetInt64(out long value) && value >= 0 ? value : null;
     private static double? Number(ref Utf8JsonReader r) => r.TokenType == JsonTokenType.Number &&
         r.TryGetDouble(out double value) && double.IsFinite(value) ? value : null;
+    private static double? NonnegativeNumber(ref Utf8JsonReader r) => Number(ref r) is double value && value >= 0 ? value : null;
     private static bool? Boolean(ref Utf8JsonReader r) => r.TokenType == JsonTokenType.True ? true :
         r.TokenType == JsonTokenType.False ? false : null;
     private static string? ShortString(ref Utf8JsonReader r) =>
@@ -275,6 +357,11 @@ internal sealed class BillionTelemetryReader
         ContextWindow, ContextUpperTokens, ContextMeasuredAt, SystemPromptTokens, LastInputTokens,
         InputTokens, CachedTokens, OutputTokens, CacheHitPct, Requests, Blocks, TokensSaved,
         NetSaved, Live, LastSeen, BiliVersion,
-        BlockDetails, BlockId, BlockTier, BlockTokens, BlockActive
+        BlockDetails, BlockId, BlockTier, BlockTokens, BlockActive,
+        Ledger, LedgerTotals, LedgerEconomics, LedgerRequests, LedgerInput, LedgerCached, LedgerOutput, LedgerHitPct,
+        LedgerNewContent, LedgerCompRepay, LedgerTtlRepay, LedgerFolds, LedgerGrossSaved, LedgerRepayCost,
+        LedgerSummaryCost, LedgerNetTokens, LedgerPaidBackCount, LedgerNotPaidBackCount, LedgerUnobservedCount
     }
+
+    private enum LedgerSection { None, Totals, Economics }
 }
