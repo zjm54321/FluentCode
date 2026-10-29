@@ -6,13 +6,21 @@ using System.Threading.Tasks;
 namespace AIFrontend.Services.OpenCode;
 
 /// <summary>
-/// GET api/info 的 ServerInfo 白名单投影：只保留版本号。OpenAPI 还声明 pid / urls / paths.tmp / capabilities，
-/// 这些是服务端本机进程与路径信息，本客户端不解析、不显示。
+/// GET api/info 白名单投影：版本与可空 persistentPty 能力，不解析进程、URL 或路径。
 /// </summary>
 public sealed record OpenCodeServerInfo
 {
     [JsonPropertyName("version")]
     public string? Version { get; init; }
+
+    [JsonPropertyName("capabilities")]
+    public OpenCodeServerCapabilities? Capabilities { get; init; }
+}
+
+public sealed record OpenCodeServerCapabilities
+{
+    [JsonPropertyName("persistentPty")]
+    public bool? PersistentPty { get; init; }
 }
 
 public sealed partial class OpenCodeClient
