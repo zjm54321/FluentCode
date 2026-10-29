@@ -2,7 +2,7 @@
 
 原生 C# / WinUI 3 桌面端框架（Windows 11 x64），提供 Fluent 风格桌面外壳，整合网页端大模型、本地/直接协议模型（Local）、OpenCode 编程助手协作与任务看板。
 
-> **当前验证状态（2026-10-28）**：OpenCode 遗留需求恢复已覆盖 68 个测试入口，失败项修复后定向复验通过；Debug/x64 构建与发布均为 0 警告、0 错误。受控真实浏览器验证覆盖代理、嵌套跨域框架、Lighthouse 与下载隔离。功能及证据见 [当前验证记录](docs/current-validation-status.md)。
+> **当前验证状态（2026-10-29）**：OpenCode 遗留需求及 QOL 插件前端整合已完成，72 个测试入口经失败项定向修复后全部通过；Debug/x64 构建与发布均为 0 警告、0 错误。真实验证覆盖会话浏览器、离线终端渲染及原生持久 PTY 协议。功能及证据见 [当前验证记录](docs/current-validation-status.md)。
 
 ---
 
@@ -17,6 +17,7 @@
 ### 2. OpenCode 客户端
 - **V2 后端配置与凭据安全**：支持配置后端根地址及 Basic 认证，凭据由 Windows DPAPI 加密持久化；同页支持一次性 V2 配对链接兑换（须显式保存）。
 - **交互与连通**：源码接入 native chat、原生权限审批与 Form 表单交互；已验证只读位置查询、会话列表读取及单轮 Prompt 往返完成（idle=succeeded）；工具卡片采用组合原生 Expander 架构，隔离渲染验证通过，原生端到端全量交互待验。
+- **QOL 插件整合**：会话预设应用、确认后的加密内容清理、Billion 上下文与缓存账本、独立持久终端已接入。终端默认只读，输入和接管须显式启用；关闭查看不会结束进程。[专项验证](docs/validation/2026-10-29-qol-plugin-frontend.md)列明协议、页面接线和渲染的实际证据。
 
 ### 3. Local 本地与直连协议
 - **协议适配**：支持 OpenAI Responses、ChatCompletions 及 Anthropic Messages 协议（离线通过 281 项协议断言）；严格按能力声明控制推理参数。
@@ -103,8 +104,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Confi
 
 - 会话 detail 的 HTTP 200 响应必须含唯一的根级字符串 `id`，与请求的会话 ID 按 Ordinal 精确匹配；缺失、null、非字符串、非法、不匹配或重复 ID 均返回 `Malformed`，所有遥测清空为 Unknown，不回显错误 ID。请求 ID 仍支持 `ses` 前缀、4–256 个 ASCII 字母/数字/`_`/`-`；JSON 转义不改变身份比较结果。
 - 匹配 ID 但无遥测字段仍为 `Available` + Unknown；404 仍为 `NoRecord`，其他非 200、取消、超时与体积限制语义不变。只投影允许的遥测字段，不将忽略的 handoff/title/summary 内容解码成字符串，也不公开响应 ID。
-- 运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\billion-context\run.ps1`：Windows .NET 10 离线编译（nullable、warnings as errors）及 **680 项断言通过**，覆盖单字节分块、最大长度/转义 ID、重复/错误身份零遥测、数 MB 忽略内容及原有传输边界；仅假传输，无真实 Billion/OpenCode 请求。本次未做全应用构建或 UI/端到端验收。
-- 本次证据：`C:\Users\Zhang\AppData\Local\Temp\billion-context-a5c3a1d9487745078d633f21dae11347\results.txt`；WSL 日志及修改前限定文件副本：`/tmp/opencode/billion-identity-repair-h0kIEO/`。
+- 运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\billion-context\run.ps1`：Windows .NET 10 离线编译（nullable、warnings as errors）及 **944 项断言通过**，覆盖身份、流式读取、白名单投影和缓存账本边界；使用假传输。原生界面分别保留最佳上下文、原始参考及未知值，官方本机控制台须显式确认后打开。
+- 本次证据：`artifacts/phase2-billion-20261029T014205Z-7ed612a7a4b54f1cb81cf07d5dbfcbfa/results.txt`；页面接线、构建发布与其余验证见 [QOL 专项记录](docs/validation/2026-10-29-qol-plugin-frontend.md)。
 
 关于自动化断言数据、真机实测结果、已知待修事项与待验收范围，请查看完整记录：  
 👉 [当前验证与验收状态文档](docs/current-validation-status.md)
