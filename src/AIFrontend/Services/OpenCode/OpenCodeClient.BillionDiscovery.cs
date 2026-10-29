@@ -27,7 +27,7 @@ public sealed partial class OpenCodeClient
         foreach (var ch in directory) if (char.IsControl(ch)) return new(OpenCodeBillionDiscoveryStatus.InvalidLocation);
         var bridge = await DesktopBridge.NegotiateAsync(this, directory, cancellationToken).ConfigureAwait(false);
         if (!bridge.Supports("billion.origin.v1")) return new(OpenCodeBillionDiscoveryStatus.UnsupportedProtocol);
-        const string endpoint = "api/rpc/opencode.desktop-bridge/billion.origin";
+        const string endpoint = "api/rpc/" + OpenCodeDesktopBridge.PluginId + "/billion.origin";
         var query = new[] { new KeyValuePair<string, string>("location[directory]", directory) };
         using var content = CreateJsonContent(new { input = new { } });
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

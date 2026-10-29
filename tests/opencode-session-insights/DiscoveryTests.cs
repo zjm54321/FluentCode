@@ -36,12 +36,12 @@ internal static partial class Program
             var path = request.RequestUri!.AbsolutePath;
             if (request.Method == HttpMethod.Post)
             {
-                if (path == "/prefix/api/rpc/opencode.desktop-bridge/hello")
+                if (path == "/prefix/api/rpc/opencode.qol.desktop-bridge/hello")
                 {
                     Check(body == "{\"input\":{\"protocolVersions\":[1]}}", "discovery.bridge-hello-first");
                     return Json(HelloReply);
                 }
-                Check(path == "/prefix/api/rpc/opencode.desktop-bridge/billion.origin" && body == "{\"input\":{}}", "discovery.only-exact-metadata-POST");
+                Check(path == "/prefix/api/rpc/opencode.qol.desktop-bridge/billion.origin" && body == "{\"input\":{}}", "discovery.only-exact-metadata-POST");
                 RpcToken = ct;
                 return RpcReply is null ? new(Status) { Content = Json(Reply).Content } : await RpcReply(ct);
             }
@@ -105,7 +105,7 @@ internal static partial class Program
             "discovery.process-declaration-provenance-remains-unverified-and-needs-confirmation");
         var rpc = rig.Wire.Requests.Single(r => r.Uri.AbsolutePath.EndsWith("/billion.origin"));
         Check(rig.Wire.Requests.Count(r => r.Uri.AbsolutePath.EndsWith("/hello")) == 1, "discovery.one-source-handshake-before-origin");
-        Check(rpc.Uri.Host == "127.0.0.1" && rpc.Uri.Port == 43100 && rpc.Uri.AbsolutePath == "/prefix/api/rpc/opencode.desktop-bridge/billion.origin"
+        Check(rpc.Uri.Host == "127.0.0.1" && rpc.Uri.Port == 43100 && rpc.Uri.AbsolutePath == "/prefix/api/rpc/opencode.qol.desktop-bridge/billion.origin"
             && Uri.UnescapeDataString(rpc.Uri.Query) == "?location[directory]=/trusted project/位置", "discovery.same-source-prefix-and-authoritative-location");
         Check(rig.Wire.Requests.All(r => r.Auth == "Basic Zml4dHVyZS11c2VyOmZpeHR1cmUtc2VjcmV0")
             && rpc.Body == "{\"input\":{}}" && !rpc.Uri.ToString().Contains("fixture-secret"), "discovery.same-source-auth-never-query/body");

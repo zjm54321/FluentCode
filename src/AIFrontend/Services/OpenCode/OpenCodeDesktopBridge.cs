@@ -18,6 +18,8 @@ internal sealed record OpenCodeDesktopBridgeState(bool Installed, int? ProtocolV
 // Negotiation is source-wide; the first call uses the source's default or verified location.
 internal sealed class OpenCodeDesktopBridge
 {
+    internal const string PluginId = "opencode.qol.desktop-bridge";
+
     private readonly object _sync = new();
     private Task<OpenCodeDesktopBridgeState>? _negotiation;
     private bool _noticeTaken;

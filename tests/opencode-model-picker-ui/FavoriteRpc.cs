@@ -30,16 +30,17 @@ internal static class FavoriteRpcChecks
                 if (path.EndsWith("/hello"))
                 {
                     hellos++;
-                    check(path == "api/rpc/opencode.desktop-bridge/hello" && body == "{\"input\":{\"protocolVersions\":[1]}}", "new identity + hello first");
+                    check(path == "api/rpc/opencode.qol.desktop-bridge/hello" && body == "{\"input\":{\"protocolVersions\":[1]}}", "canonical QOL identity + hello first");
                     return Task.FromResult(Reply(hello));
                 }
                 if (path.EndsWith("/model.favorites.get"))
                 {
                     gets++;
-                    check(hellos == 1 && !input.RootElement.GetProperty("input").EnumerateObject().Any(), "get is capability gated and uses empty object");
+                    check(path == "api/rpc/opencode.qol.desktop-bridge/model.favorites.get" && hellos == 1
+                        && !input.RootElement.GetProperty("input").EnumerateObject().Any(), "canonical get is capability gated and uses empty object");
                     return Task.FromResult(Reply(get));
                 }
-                check(path == "api/rpc/opencode.desktop-bridge/model.favorites.set", "only new plugin set endpoint");
+                check(path == "api/rpc/opencode.qol.desktop-bridge/model.favorites.set", "only canonical QOL plugin set endpoint");
                 sets++;
                 var entries = input.RootElement.GetProperty("input").GetProperty("favorites");
                 check(entries.GetArrayLength() == 2 && entries[0].GetProperty("providerID").GetString() == "new-provider"

@@ -21,7 +21,7 @@ public sealed partial class OpenCodeClient
         timeout.CancelAfter(_timeout);
         try
         {
-            using var response = await SendAsync(HttpMethod.Post, "api/rpc/opencode.desktop-bridge/" + method,
+            using var response = await SendAsync(HttpMethod.Post, "api/rpc/" + OpenCodeDesktopBridge.PluginId + "/" + method,
                 directory is null ? null : new[] { new KeyValuePair<string, string>("location[directory]", directory) }, content, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {

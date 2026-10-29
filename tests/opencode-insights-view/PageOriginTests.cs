@@ -415,11 +415,18 @@ internal static class PageOriginTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             lock (Paths) Paths.Add(request.RequestUri!.AbsolutePath);
-            if (Discovery && request.RequestUri!.AbsolutePath == "/prefix/api/rpc/opencode.desktop-bridge/hello")
+            var bridgePath = "/prefix/api/rpc/" + OpenCodeDesktopBridge.PluginId + "/";
+            if (Discovery && request.RequestUri!.AbsolutePath == bridgePath + "hello")
+            {
+                Check(request.Method == HttpMethod.Post
+                    && Uri.UnescapeDataString(request.RequestUri.Query) == "?location[directory]=C:/view-fixture"
+                    && await request.Content!.ReadAsStringAsync(token) == "{\"input\":{\"protocolVersions\":[1]}}",
+                    "fixture negotiates the installed production bridge ID with exact location/protocol input");
                 return Json("{\"output\":{\"protocolVersion\":1,\"capabilities\":[\"billion.origin.v1\",\"model.favorites.v1\"]}}");
+            }
             if (Discovery && request.Method == HttpMethod.Post)
             {
-                Check(request.RequestUri!.AbsolutePath == "/prefix/api/rpc/opencode.desktop-bridge/billion.origin"
+                Check(request.RequestUri!.AbsolutePath == bridgePath + "billion.origin"
                     && Uri.UnescapeDataString(request.RequestUri.Query) == "?location[directory]=C:/view-fixture"
                     && await request.Content!.ReadAsStringAsync(token) == "{\"input\":{}}", "fixture receives only the exact discovery RPC/location/body");
                 DiscoveryRequests++;
