@@ -41,7 +41,6 @@ public sealed partial class OpenCodePage
 
     private bool HasPendingNativeAction()
         => _nativeActionOwner is not null || _nativeDialogPending || _newSessionCreatePending
-        || (_pluginActionOwner is { } pluginOwner && ReferenceEquals(_pluginPendingOwner, pluginOwner))
         || _composerController?.Snapshot.ClientIntent is not null;
 
     // Non-blocking display probe only. The actual sender/Stop rechecks the exact slots under its lease.

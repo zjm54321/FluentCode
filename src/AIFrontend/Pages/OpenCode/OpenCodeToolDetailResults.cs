@@ -145,7 +145,7 @@ internal static partial class OpenCodeToolDetailContent
         Populate(string.Empty);
         hidden = Math.Max(0, total - shownCount);
         if (options.Compact && hidden > 0)
-            options.PreviewHint = $"还有 {hidden} 处（含 {parsed.Files.Skip(2).Count() + parsed.Files.Take(2).Count(file => file.Matches.Count > 2)} 个文件）· 点击行打开完整内容";
+            options.PreviewHint = $"还有 {hidden} 处（含 {parsed.Files.Skip(2).Count() + parsed.Files.Take(2).Count(file => file.Matches.Count > 2)} 个文件）";
         panel.Children.Add(results);
         if (!options.Compact && hidden > 0) panel.Children.Add(ShowAllButton(hidden, options, rebuild));
         if (!string.IsNullOrEmpty(parsed.Unparsed) && !options.Compact) panel.Children.Add(CodeBlock(parsed.Unparsed));
@@ -260,7 +260,7 @@ internal static partial class OpenCodeToolDetailContent
         if (data.Results.Count == 0) { hidden = 0; return CodeBlock(model.OutputText ?? "（没有结果）"); }
         var limit = options.Compact ? 3 : options.ShowAll ? data.Results.Count : MaxRows;
         hidden = Math.Max(0, data.Results.Count - limit);
-        if (options.Compact && hidden > 0) options.PreviewHint = $"还有 {hidden} 条结果 · 点击行打开完整内容";
+        if (options.Compact && hidden > 0) options.PreviewHint = $"还有 {hidden} 条结果";
         var panel = new StackPanel { Spacing = 12 };
         var firstHeading = Regex.Match(model.OutputText ?? string.Empty, @"(?m)^#{1,6}\s*\[");
         var partial = model.Truncated || data.Results.Any(result => result.Url is null)

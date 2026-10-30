@@ -12,6 +12,8 @@ internal sealed record OpenCodeComposerBinding(OpenCodePageSource Source, long R
     int SourceGeneration, OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId)
 {
     internal OpenCodeDraftSlotKey? Slot { get; init; }
+    // Confirmed session metadata for legacy/no-slot hosts. Never infer from endpoint/default server cwd.
+    internal string? ConfirmedDirectory { get; init; }
 }
 
 internal readonly record struct OpenCodeDraftSlotKey(Guid SourceEpoch, string SourceIdentity, string Directory,

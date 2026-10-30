@@ -37,12 +37,10 @@ internal static class Program
             && !view.Contains("已连接") && view.Contains("IsTextSelectionEnabled = true"), "D: read-only directory row separate from the logo/version/dot row");
         Check(metadata.IndexOf("RightPanelDirectorySlot.Children.Add", System.StringComparison.Ordinal) >= 0
             && metadata.Contains("ConnectionFlyout.ShowAt(_rightPanelMetadata.Footer)"), "D: directory docks in the bottom-right card; version row opens version/MCP/LSP details");
-        Check(view.Contains("Children = { _title, CopyButton, _hint, _presetRow } }"), "right card opens with title and copyable ID, then current-session preset metadata");
-        Check(view.Contains("OpenCodeSessionPresetRefresh") && view.Contains("SessionPresetLabel(section)")
-            && view.Contains("section is null ? Visibility.Collapsed"), "preset row renders actual controller state and hides outside current session");
-        Check(metadata.Contains("SessionPresetFor(owner, directory)") && metadata.Contains("preset?.State == OpenCodeInsightState.NotLoaded")
-            && metadata.Contains("refreshPreset: true") && !metadata.Contains("GetSessionPresetAsync("),
-            "page delegates binding/directory ownership and one-shot refresh to existing insights controller");
+        Check(view.Contains("Children = { _title, CopyButton, _hint } }"), "original sidebar header contains only title, copyable ID and transient copy hint");
+        Check(!view.Contains("OpenCodeSessionPresetRefresh") && !view.Contains("SessionPresetLabel") && !view.Contains("RenderPreset"), "preset text/error/refresh is absent, not moved or hidden behind a menu");
+        Check(!metadata.Contains("SessionPresetFor") && !metadata.Contains("LoadSessionPreset") && !metadata.Contains("InitializePluginActions") && !metadata.Contains("RefreshPluginActions"),
+            "sidebar no longer mounts plugin actions or starts preset reads");
         Check(OpenCodeContextHeader.TitleRow == 0 && OpenCodeContextHeader.ContextRow == 1, "CX1 title first, context label/percentage second, no leading empty row");
         foreach (var turns in new[] { 1, 2, 3, 100 })
         {

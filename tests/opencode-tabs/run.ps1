@@ -60,6 +60,7 @@ $sources+="$PSScriptRoot/NavigationLifecycle.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSidebarLayout.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentPresentation.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentIcons.cs"
+$sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeNativeListChoice.cs"
 $sources+=@("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeDirectoryPresentation.cs","$PSScriptRoot/DirectorySelectorTests.cs")
 $sources+="$PSScriptRoot/AgentPresentation.cs"
 $sources+="$PSScriptRoot/PickerFlyoutHost.cs"

@@ -161,7 +161,7 @@ internal static class OpenCodeModelPickerDialog
             {
                 void Select(object sender, ItemClickEventArgs e)
                 {
-                    if (e.ClickedItem is not ListViewItem { Tag: OpenCodeModelPickerRow row }
+                    if (sender is not ListView clickedList || OpenCodeNativeListChoice.Resolve<OpenCodeModelPickerRow>(clickedList, e.ClickedItem) is not { } row
                         || !state.SelectModel(row.ProviderId, row.ModelId)) return;
                     // Re-selecting the current model must not silently reset its effort to default.
                     if (presentation.Current is OpenCodeModelCurrent.Explicit current
@@ -372,8 +372,6 @@ internal sealed class OpenCodeDraftEditorDialog
         staleText.Visibility = Visibility.Collapsed;
         AutomationProperties.SetLiveSetting(staleText, AutomationLiveSetting.Assertive);
         var body = new StackPanel { Spacing = 8 };
-        body.Children.Add(OpenCodeInteractionUi.Caption("这是 AIFrontend 内置的编辑框，不会打开外部编辑器。只修改输入框中的文字；已选命令和附件保持不变。"
-            + "“应用到输入框”不会发送。Ctrl+Enter 应用，Enter 换行。", 0.75));
         body.Children.Add(box);
         body.Children.Add(staleText);
         var dialog = _dialog = new ContentDialog

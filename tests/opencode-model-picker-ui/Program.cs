@@ -269,11 +269,11 @@ internal static class Program
             && combo.Contains("new OpenCodeEffortChoice(id)"), "PK2 flat models are provider-sorted; effort starts with true null and preserves opaque IDs");
         Check(!combo.Contains("{Binding Visual}") && combo.Contains("Content = choice.CreateVisual()"), "PK3a native item content has real visuals, not runtime binding to an internal record");
         var effortVisual = (Microsoft.UI.Xaml.Controls.StackPanel)OpenCodeNativeComboBox.Effort("high").CreateVisual();
-        Check(effortVisual.Children[0] is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uE907" }, "effort choices carry the selected high-tier Fluent icon");
+        Check(effortVisual.Children[0] is OpenCodeComposerEffortGauge gauge && gauge.Ticks.Single(tick => tick.Selected).Id == "high", "effort choices carry an actual dial presentation for the selected tier, not signal bars");
         var tiers = new string?[] { null, "minimal", "low", "medium", "high", "xhigh", "max" };
-        Check(tiers.Select(OpenCodeModelPresentation.VariantGlyph).Distinct().Count() == tiers.Length,
-            "default and known effort tiers have distinct icons");
-        Check(OpenCodeModelPresentation.VariantGlyph("extra_high") == OpenCodeModelPresentation.VariantGlyph("xhigh"), "equivalent extra-high labels share their tier icon");
+        Check(tiers.Skip(1).Select(id => OpenCodeComposerEffort.SemanticTicks(id).Single(tick => tick.Selected).Angle).Distinct().Count() == tiers.Length - 1
+            && OpenCodeComposerEffort.SemanticTicks(null).All(tick => !tick.Selected), "dial needle varies by effort; default remains unselected");
+        Check(OpenCodeComposerEffort.SemanticTicks("extra_high").Single(tick => tick.Selected).Angle == OpenCodeComposerEffort.SemanticTicks("xhigh").Single(tick => tick.Selected).Angle, "equivalent extra-high labels share their dial position");
         RunComboBoxChecks();
         FavoriteRpcChecks.Run(Check, root, args[1]).GetAwaiter().GetResult();
         Console.WriteLine($"PASS A2 picker UI: {checks} checks; production display/state/selection + structural native UI/resource checks (no native rendering)");
@@ -304,13 +304,13 @@ internal static class Program
         effort.ApplyTemplate();
         effort.Render(new[] { OpenCodeNativeComboBox.Effort("high") }, new OpenCodeEffortChoice("high"), true);
         effort.SetLabelExpanded(false);
-        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon { Glyph: "\uE907" }
+        Check(effort.SelectionPresenter.Content is OpenCodeComposerEffortGauge
             && ((Microsoft.UI.Xaml.Controls.ComboBoxItem)effort.Items[0]).Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 },
             "PK3d compact selection keeps the gauge while popup items retain icon and full text");
         effort.CloseDropDown();
         Check(effort.DropDownGlyph.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed && effort.IsTextSearchEnabled,
             "closed native selection hides only its arrow and retains native text search");
-        Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.FontIcon, "PK3d compact selection survives native popup close");
+        Check(effort.SelectionPresenter.Content is OpenCodeComposerEffortGauge, "PK3d compact dial selection survives native popup close");
         effort.SetLabelExpanded(true);
         Check(effort.SelectionPresenter.Content is Microsoft.UI.Xaml.Controls.StackPanel { Children.Count: 2 }, "PK3d expanded selection restores the full label");
         var agent = new OpenCodeNativeComboBox();

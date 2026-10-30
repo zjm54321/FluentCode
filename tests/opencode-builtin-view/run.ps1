@@ -40,7 +40,7 @@ $notifications = foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePage
 $headless = foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeSessionControlCoordinator.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs',
         'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerSplash.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
 $headless += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs"
-$winui = foreach ($name in @('OpenCodeComposerView.cs', 'OpenCodeComposerNativeDialogs.cs', 'OpenCodeVariantPickerDialog.cs', 'OpenCodePickerFlyout.cs', 'OpenCodeModelLogo.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeInteractionUi.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
+$winui = foreach ($name in @('OpenCodeComposerView.cs', 'OpenCodeComposerNativeDialogs.cs', 'OpenCodeVariantPickerDialog.cs', 'OpenCodeNativeListChoice.cs', 'OpenCodePickerFlyout.cs', 'OpenCodeModelLogo.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeInteractionUi.cs')) { Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name" }
 # Browser attachment chips use the real selection-list image helper and its pure policy types.
 $winui += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectedList.cs", "$repo/src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserSelectionPolicy.cs"
 # Native model dialogs use the real RPC-only favorites store; its shared Bridge service is in $services.

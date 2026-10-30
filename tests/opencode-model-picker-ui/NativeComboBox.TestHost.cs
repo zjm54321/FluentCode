@@ -48,6 +48,12 @@ namespace Microsoft.UI.Xaml.Controls
 }
 namespace AIFrontend.Pages.OpenCode
 {
+    // Headless geometry state only; real Canvas rendering is covered by opencode-sidebar-visual.
+    internal sealed class OpenCodeComposerEffortGauge : Microsoft.UI.Xaml.FrameworkElement
+    {
+        internal System.Collections.Generic.IReadOnlyList<OpenCodeEffortTick> Ticks = System.Array.Empty<OpenCodeEffortTick>();
+        internal void Render(System.Collections.Generic.IReadOnlyList<OpenCodeEffortTick> ticks) => Ticks = ticks;
+    }
     internal sealed record OpenCodeAgentPickerRow(string Id, string Name, string? Description, bool Selectable, string? Reason, string? Color = null);
     internal static class OpenCodeAgentIcons { internal static string Glyph(string id) => id; internal static string DisplayName(string name) => name; }
     internal static class OpenCodeAgentPresentation { internal static object? Color(string? color) => color; }

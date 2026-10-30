@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Dispatching;
@@ -20,7 +19,6 @@ public sealed partial class OpenCodePage
     {
         _rightPanelMetadata = new();
         RightPanelHeaderSlot.Children.Add(_rightPanelMetadata.Header);
-        InitializePluginActions();
         RightPanelDirectorySlot.Children.Add(_rightPanelMetadata.Directory);
         RightPanelFooterSlot.Children.Add(_rightPanelMetadata.Footer);
         // B1 still moves/restores the original button for narrow layouts. In wide
@@ -28,7 +26,6 @@ public sealed partial class OpenCodePage
         RightConnectionStatusHost.Visibility = Visibility.Collapsed;
         _rightPanelMetadata.Footer.Click += (_, _) => ConnectionFlyout.ShowAt(_rightPanelMetadata.Footer);
         _rightPanelMetadata.CopyButton.Click += (_, _) => CopyRightPanelSessionId();
-        _rightPanelMetadata.PresetRefreshButton.Click += (_, _) => RefreshRightPanelMetadata(refreshPreset: true);
         // Reset may publish before the navigation turn installs its next binding.
         // Reconcile after that turn, never start an old-session read inside Reset.
         if (_insights is { } insights) insights.Changed += (_, _) => DispatcherQueue.TryEnqueue(() => RefreshRightPanelMetadata());
@@ -52,7 +49,7 @@ public sealed partial class OpenCodePage
         RefreshRightPanelMetadata();
     }
 
-    private void RefreshRightPanelMetadata(bool refreshPreset = false)
+    private void RefreshRightPanelMetadata()
     {
         if (_rightPanelMetadata is not { } view) return;
         var hasSession = _pageActive && SourceReady && !_homeActive && !_newSessionDraftActive && !_sessionMissing
@@ -78,27 +75,11 @@ public sealed partial class OpenCodePage
         var session = OpenCodeRightPanelPresentation.Create(hasSession, owner?.SessionId,
             _rightPanelSessionState?.Title ?? known?.Title, directory);
         view.RenderSession(session);
-        var preset = owner is not null && _insights is { } controller
-            ? controller.SessionPresetFor(owner, directory) : null;
-        if (preset is { State: OpenCodeInsightState.NotLoaded } && string.IsNullOrWhiteSpace(directory))
-            preset = preset with { Note = "会话目录尚未确认，未读取预设。" };
-        var canReadPreset = owner is not null && !string.IsNullOrWhiteSpace(directory);
-        view.RenderPreset(preset, canReadPreset);
-        RefreshPluginActions(owner, directory, preset);
         RefreshPersistentPtyScope(owner, directory);
-        if (canReadPreset && (refreshPreset || preset?.State == OpenCodeInsightState.NotLoaded))
-            _ = ReadRightPanelPresetAsync(owner!, directory!, refreshPreset);
         RightPanelHeaderSlot.Visibility = session is null ? Visibility.Collapsed : Visibility.Visible;
         // Bottom-right card: read-only current directory above the OpenCode version row.
         RightPanelDirectorySlot.Visibility = session is null ? Visibility.Collapsed : Visibility.Visible;
         RefreshRightPanelFooter();
-    }
-
-    private async Task ReadRightPanelPresetAsync(OpenCodeInsightsBinding owner, string directory, bool refresh)
-    {
-        if (_insights is not { } insights || !IsCurrentInsightsBinding(owner)) return;
-        using var operation = CreateOperationToken(owner.Source);
-        await insights.LoadSessionPresetAsync(owner, directory, operation.Token, refresh);
     }
 
     partial void SetComposerConnectedDot(bool connected);

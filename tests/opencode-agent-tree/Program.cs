@@ -147,8 +147,8 @@ internal static class Program
             "AT2: configured librarian follows the same all/working-only rule as every other subagent");
         Check(groups.All(g => g.Id != "librarian"), "AT2: absent runtime agent never produces a fabricated librarian row");
         var workingCount = OpenCodeAgentTreeProjection.VisibleAgents(groups, false).Count;
-        Check(OpenCodeAgentTreeProjection.EmptyHint(workingCount, false) == "暂无运行中的子智能体或终端；点击“全部”查看历史会话。",
-            "completed-only session explains the empty working filter and how to reveal history");
+        Check(OpenCodeAgentTreeProjection.EmptyHint(workingCount, false) == "暂无运行中的子智能体或终端",
+            "completed-only session keeps actual empty status without a persistent instructional sentence");
         Check(OpenCodeAgentTreeProjection.EmptyHint(OpenCodeAgentTreeProjection.VisibleAgents(groups, true).Count, true) is null
             && OpenCodeAgentTreeProjection.EmptyHint(0, true) == "暂无子智能体或终端",
             "all filter clears working-only hint when rows exist and reports genuine emptiness");

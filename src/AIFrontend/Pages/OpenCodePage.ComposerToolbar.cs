@@ -67,16 +67,17 @@ public sealed partial class OpenCodePage
         RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled, labels.Model);
         BlankAgentButton.SetLabelExpanded(labels.Agent);
         BlankStrengthButton.SetLabelExpanded(labels.Effort);
-        // The native popup remains, but closed controls have no redundant chevron.
+        // The native popup remains, but closed controls have no redundant chevron. Icon-only
+        // pickers share one 36-DIP square-ish footprint with zero padding so every glyph is centred.
         BlankAgentButton.MinWidth = labels.Agent ? 96 : 0;
         BlankAgentButton.Width = labels.Agent ? double.NaN : 36;
-        BlankAgentButton.Padding = labels.Agent ? new Thickness(8, 0, 6, 0) : new Thickness(6, 0, 0, 0);
+        BlankAgentButton.Padding = labels.Agent ? new Thickness(8, 0, 6, 0) : new Thickness(0);
         BlankStrengthButton.MinWidth = labels.Effort ? 64 : 0;
         BlankStrengthButton.Width = labels.Effort ? double.NaN : 36;
-        BlankStrengthButton.Padding = labels.Effort ? new Thickness(8, 0, 6, 0) : new Thickness(6, 0, 0, 0);
+        BlankStrengthButton.Padding = labels.Effort ? new Thickness(8, 0, 6, 0) : new Thickness(0);
         BlankModelButton.MinWidth = labels.Model ? 96 : 0;
-        BlankModelButton.Width = labels.Model ? double.NaN : 52;
-        BlankModelButton.Padding = labels.Model ? new Thickness(8, 0, 8, 0) : new Thickness(4, 0, 4, 0);
+        BlankModelButton.Width = labels.Model ? double.NaN : 36;
+        BlankModelButton.Padding = labels.Model ? new Thickness(8, 0, 8, 0) : new Thickness(0);
         DescribeComposerIcon(BlankAgentButton, "选择智能体：" + (agent ?? "不可用"));
         ToolTipService.SetToolTip(BlankAgentButton, description ?? "智能体说明不可用");
         DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? "不可用"));

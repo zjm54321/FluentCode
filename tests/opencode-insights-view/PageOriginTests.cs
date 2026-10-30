@@ -201,7 +201,7 @@ internal static class PageOriginTests
         var body = Field<StackPanel>(view, "_billionPage");
         var section = body.Children[0];
         var content = (StackPanel)((StackPanel)section).Children[1];
-        Check(ReferenceEquals(panel.Owner, content) && content.Children.IndexOf(panel) == 1, "origin panel hosted once in Billion content");
+        Check(ReferenceEquals(panel.Owner, content) && content.Children.IndexOf(panel) == 0, "origin panel hosted once at the start of caption-free Billion content");
 
         box.Focus(FocusState.Keyboard);
         foreach (var text in new[] { "h", "ht", "htt", "http://[::1]:8" })

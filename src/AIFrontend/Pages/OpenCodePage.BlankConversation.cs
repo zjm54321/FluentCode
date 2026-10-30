@@ -247,7 +247,7 @@ public sealed partial class OpenCodePage
         var available = Math.Max(anchorY, XamlRoot.Size.Height - anchorY - BlankProjectButton.ActualHeight);
         var panel = new Grid { RowSpacing = 10, Width = Math.Max(1, Math.Min(440, XamlRoot.Size.Width - 64)),
             Height = Math.Max(180, Math.Min(420, available - 40)) };
-        foreach (var height in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
+        foreach (var height in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
             panel.RowDefinitions.Add(new RowDefinition { Height = height });
         panel.Children.Add(new TextBlock { Text = "工作目录", Style = OpenCodeInteractionUi.TryStyle("BodyStrongTextBlockStyle") });
         var search = new AutoSuggestBox { PlaceholderText = "搜索项目或路径", QueryIcon = new SymbolIcon(Symbol.Find) };
@@ -291,9 +291,6 @@ public sealed partial class OpenCodePage
         Grid.SetRow(add, 3);
         add.Click += async (_, _) => { if (!Current()) return; flyout.Hide(); await AddHomeDirectoryAsync(); };
         panel.Children.Add(add);
-        var caption = new TextBlock { Text = "选择当前连接的项目目录；首次发送时创建会话。", TextWrapping = TextWrapping.Wrap,
-            Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle") };
-        Grid.SetRow(caption, 4); panel.Children.Add(caption);
         flyout.Content = panel;
         flyout.ShowAt(BlankProjectButton);
     }

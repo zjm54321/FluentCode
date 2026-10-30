@@ -339,7 +339,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                         _commands = NativeCommands;
                         _catalogState = OpenCodeComposerCatalogState.Loading;
                         // Exact opening input is checked here; later typing does not revoke this request.
-                        pending = binding.Client.GetCommandsAsync(linked.Token);
+                        var directory = binding.Slot?.Directory ?? binding.ConfirmedDirectory;
+                        if (string.IsNullOrWhiteSpace(directory))
+                            throw new InvalidOperationException("命令目录尚未确认。");
+                        pending = binding.Client.GetCommandsAsync(directory, linked.Token);
                     }
                 }
             });
@@ -456,7 +459,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                 var trigger = OpenCodeComposerInputPolicy.ParseTrigger(_text);
                 if (completion.Length <= trigger.Filter.Length || completion.Length > OpenCodeComposerInputPolicy.MaxTriggerLength
                     || !completion.StartsWith(trigger.Filter, StringComparison.OrdinalIgnoreCase)
-                    || completion.Any(c => char.IsWhiteSpace(c) || c == '/')
+                    || completion.Any(c => char.IsWhiteSpace(c) || char.IsControl(c) || c == '\\') || completion.StartsWith('/')
                     || !_commands.Any(r => r.Name.StartsWith(completion, StringComparison.OrdinalIgnoreCase))) return;
                 UpdateContextText(_text[..(_text.IndexOf('/') + 1)] + completion);
                 Edited();
@@ -761,12 +764,14 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             var encoded = OpenCodeAttachment.Combine(attachments);
             if (command is not null && binding.Slot is not null)
             {
+                var directory = binding.Slot?.Directory ?? binding.ConfirmedDirectory;
+                if (string.IsNullOrWhiteSpace(directory)) return outcome;
                 // A restored command is data, not the old menu's capability. Validate against a fresh
                 // catalog on this activation/send before any continuation/gate mutation or command POST.
                 Task<IReadOnlyList<OpenCodeCommandInfo>>? catalog = null;
                 binding.Source.TryExecute(linked.Token, () =>
                 {
-                    if (CanStart(context.Origin)) catalog = binding.Client.GetCommandsAsync(linked.Token);
+                    if (CanStart(context.Origin)) catalog = binding.Client.GetCommandsAsync(directory, linked.Token);
                 });
                 if (catalog is null || !(await catalog.ConfigureAwait(false)).Any(row => row.Name == command)
                     || !CanStart(context.Origin)) return outcome;

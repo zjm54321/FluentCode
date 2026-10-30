@@ -140,17 +140,23 @@ public sealed class OpenCodeNativeComboBox : ComboBox
     internal static IReadOnlyList<Choice> Agents(IEnumerable<OpenCodeAgentPickerRow> rows) => rows.Where(r => r.Selectable).Select(Agent).ToArray();
     internal static IReadOnlyList<Choice> Models(IEnumerable<OpenCodeModelInfo> models) => models.Where(m => m.Enabled != false)
         .OrderBy(m => m.ProviderId, StringComparer.CurrentCultureIgnoreCase).ThenBy(m => m.Name, StringComparer.CurrentCultureIgnoreCase).Select(Model).ToArray();
-    internal static Choice Effort(string? id, string? label = null) => new(new OpenCodeEffortChoice(id), label ?? OpenCodeModelPresentation.VariantLabel(id), () =>
+    private static OpenCodeComposerEffortGauge EffortGauge(string? id, IReadOnlyList<OpenCodeEffortTick>? ticks)
+    {
+        var gauge = new OpenCodeComposerEffortGauge { VerticalAlignment = VerticalAlignment.Center };
+        gauge.Render(ticks ?? OpenCodeComposerEffort.SemanticTicks(id));
+        return gauge;
+    }
+    internal static Choice Effort(string? id, string? label = null, IReadOnlyList<OpenCodeEffortTick>? ticks = null) => new(new OpenCodeEffortChoice(id), label ?? OpenCodeModelPresentation.VariantLabel(id), () =>
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        panel.Children.Add(new FontIcon { Glyph = OpenCodeModelPresentation.VariantGlyph(id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+        panel.Children.Add(EffortGauge(id, ticks));
         panel.Children.Add(new TextBlock { Text = label ?? OpenCodeModelPresentation.VariantLabel(id),
             TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
         return panel;
-    }, "effort:" + (id ?? "<null>") + "\t" + label,
-        () => new FontIcon { Glyph = OpenCodeModelPresentation.VariantGlyph(id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+    }, "effort:" + (id ?? "<null>") + "\t" + label + "\t" + string.Join("|", ticks?.Select(tick => tick.Id + ":" + tick.Angle + ":" + tick.Selected) ?? Array.Empty<string>()),
+        () => EffortGauge(id, ticks));
 
     internal static IReadOnlyList<Choice> Efforts(OpenCodeModelInfo? model) => model is null ? Array.Empty<Choice>()
         : new string?[] { null }.Concat((model.Variants ?? new()).Select(v => v.Id).Where(id => id is not null)).Distinct()
-            .Select(id => Effort(id)).ToArray();
+            .Select(id => Effort(id, ticks: OpenCodeComposerEffort.Ticks(model, id))).ToArray();
 }

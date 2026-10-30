@@ -69,7 +69,9 @@ internal sealed class OpenCodeTurnChipView
         if (effortOnly)
         {
             name = OpenCodeModelPresentation.VariantLabel(_message.Model?.Variant);
-            panel.Children.Add(new FontIcon { Glyph = OpenCodeModelPresentation.VariantGlyph(_message.Model?.Variant), FontSize = 12 });
+            var gauge = new OpenCodeComposerEffortGauge();
+            gauge.Render(OpenCodeComposerEffort.SemanticTicks(_message.Model?.Variant));
+            panel.Children.Add(new Viewbox { Width = 18, Height = 15, Child = gauge });
         }
         else if (model is not null && !string.IsNullOrWhiteSpace(model.Name)
             && OpenCodeModelPresentation.Brand(model.Id, model.Name) != OpenCodeModelBrand.Neutral)

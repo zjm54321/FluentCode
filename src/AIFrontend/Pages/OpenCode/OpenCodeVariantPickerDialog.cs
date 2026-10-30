@@ -34,7 +34,7 @@ internal static class OpenCodeVariantPickerDialog
             return await OpenCodePickerFlyout.ShowAsync(anchor, list, cancelled, choose =>
                 list.ItemClick += (_, e) =>
                 {
-                    if (e.ClickedItem is not ListViewItem item || !state.SelectVariant(item.Tag as string)) return;
+                    if (OpenCodeNativeListChoice.ResolveItem(list, e.ClickedItem) is not { } item || !state.SelectVariant(item.Tag as string)) return;
                     choose(state.TryFreezeConfirmation() ?? cancelled);
                 }, () => list.Focus(FocusState.Programmatic));
         }

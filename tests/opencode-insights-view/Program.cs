@@ -4,8 +4,8 @@
 // OpenCodeSessionInsights.cs. Only WinUI and OpenCodeInteractionUi are synthetic (see WinUiOwnershipShim.cs).
 // The eight ownership cases use no controller/transport. Origin cases (PageOriginTests.cs) additionally link the real
 // controller, Billion client, OpenCodePage.SessionInsights.cs and extracted Page members (see run.ps1).
-// Origin-era adaptation of these eight cases: layout now has the persistent origin panel at index 1 (confirm 2,
-// button 3); events carry the rendered OpenCodeBillionContext, so event snapshots include a synthetic context.
+// Caption-free layout starts with the persistent origin panel, confirmation, then read button;
+// events carry the rendered OpenCodeBillionContext, so event snapshots include a synthetic context.
 #nullable enable
 using System;
 using System.Collections.Generic;
@@ -667,8 +667,9 @@ internal static class Program
         var section = (StackPanel)body.Children[0];
         Check(AutomationProperties.GetAutomationId(section) == "OpenCodeInsightsBillion", "Billion section on its own page");
         var content = (StackPanel)section.Children[1];
-        Check(content.Children.IndexOf(origin) == 1 && content.Children.IndexOf(confirm) == 2 && content.Children.IndexOf(button) == 3,
-            "origin panel, checkbox, then button directly after the intro caption");
+        Check(content.Children.IndexOf(origin) == 0 && content.Children.IndexOf(confirm) == 1 && content.Children.IndexOf(button) == 2
+            && content.Children.IndexOf(Field<Button>(view, "_billionDashboard")) == 3,
+            "caption-free content starts with origin panel, checkbox, read button, then dashboard");
         Check(ReferenceEquals(confirm.Owner, content) && ReferenceEquals(button.Owner, content) && ReferenceEquals(origin.Owner, content),
             "single owner = current Billion content");
         Check(confirm.IsChecked == snapshot.BillionConfirmed, "checked state mirrors snapshot");

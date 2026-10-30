@@ -81,11 +81,6 @@ foreach ($extraction in $extractions) {
     }
 }
 $members += [regex]::Matches([IO.File]::ReadAllText($eventPath), '(?m)^    partial void OnBrowser[^;]+;') | ForEach-Object Value
-foreach ($name in @('_statusRefreshEpoch', '_statusRefreshAgain')) {
-    $field = [regex]::Matches([IO.File]::ReadAllText($eventPath), ('(?m)^    private [^;\r\n]+\b' + $name + ';'))
-    if ($field.Count -ne 1) { throw "Missing/ambiguous production event-status field: $name" }
-    $members += $field[0].Value
-}
 $generated = Join-Path $output 'PageMembers.cs'
 @'
 using System;

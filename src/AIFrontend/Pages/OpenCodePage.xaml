@@ -289,11 +289,6 @@
                                 </StackPanel>
                             </Button>
                         </StackPanel>
-                        <TextBlock
-                            Text="本页不会自动创建或修改设置文件；设置入口由宿主接线（事件 OpenCodePage.SettingsRequested）。"
-                            Style="{ThemeResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                            TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 
@@ -324,7 +319,7 @@
                                     <Grid x:Name="RightSessionContent" Padding="16" RowSpacing="16" RowDefinitions="Auto,*">
                                         <StackPanel Spacing="16">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
-                                                <Grid x:Name="RightPanelHeaderSlot" Visibility="Collapsed" />
+                                                <StackPanel x:Name="RightPanelHeaderSlot" Spacing="12" Visibility="Collapsed" />
                                                 <!-- Compatibility hosts; the ring is shown only in the narrow header. -->
                                                 <StackPanel x:Name="RightPanelExistingActions" Grid.Column="1" Orientation="Horizontal"
                                                             Spacing="4" VerticalAlignment="Top" Margin="0,-4,-8,0">

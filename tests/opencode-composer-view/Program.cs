@@ -100,7 +100,7 @@ Check(t.Present && t.Filter == "" && t.RemainingArguments == "", "bare slash");
 t = OpenCodeComposerInputPolicy.ParseTrigger("hello /rev");
 Check(!t.Present && t.RemainingArguments == "hello /rev", "non-leading slash is not a trigger");
 t = OpenCodeComposerInputPolicy.ParseTrigger("/usr/bin/env x");
-Check(!t.Present && t.RemainingArguments == "/usr/bin/env x", "paths are not triggers");
+Check(t.Present && t.Filter == "usr/bin/env" && t.RemainingArguments == "x", "nested slash tokens can filter exact server names; parsing alone grants no execution authority");
 t = OpenCodeComposerInputPolicy.ParseTrigger("/" + new string('a', 65));
 Check(!t.Present, "overlong trigger rejected");
 t = OpenCodeComposerInputPolicy.ParseTrigger(null);

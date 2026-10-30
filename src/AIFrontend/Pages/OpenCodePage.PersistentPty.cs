@@ -134,7 +134,7 @@ public sealed partial class OpenCodePage
         var view = new OpenCodePersistentPtyView();
         var owner = new PersistentAttachmentOwner(inventory.Binding, origin, context, view);
         Volatile.Write(ref _persistentAttachmentOwner, owner);
-        owner.Adapter = new(view.Renderer, InvokePluginUiAsync, context, () => IsPersistentAttachmentCurrent(origin));
+        owner.Adapter = new(view.Renderer, InvokePersistentPtyUiAsync, context, () => IsPersistentAttachmentCurrent(origin));
         owner.Controller = new(origin, ptyId, owner.Adapter, IsPersistentAttachmentCurrent);
         owner.OnState = state => PersistentPtyStateChanged(owner, state);
         owner.Controller.StateChanged += owner.OnState;
@@ -270,4 +270,16 @@ public sealed partial class OpenCodePage
     }
     private static async Task DisposePersistentPtyAsync(PersistentAttachmentOwner owner)
     { try { await owner.Controller.DisposeAsync(); } catch (Exception) { /* Detach only; no DELETE or global operation. */ } }
+
+    private Task InvokePersistentPtyUiAsync(Func<Task> action)
+    {
+        if (DispatcherQueue.HasThreadAccess) return action();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try { await action(); completion.TrySetResult(true); }
+            catch (Exception error) { completion.TrySetException(error); }
+        })) completion.TrySetCanceled();
+        return completion.Task;
+    }
 }

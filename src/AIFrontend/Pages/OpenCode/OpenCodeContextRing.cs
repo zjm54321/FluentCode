@@ -304,7 +304,6 @@ internal sealed class OpenCodeContextRing
         AutomationProperties.SetAutomationId(groups, "OpenCodeInsightsContextFlyout");
         AutomationProperties.SetName(groups, "上下文");
         groups.Children.Add(OpenCodeSessionInsightsView.ContextUsageSection(snapshot));
-        groups.Children.Add(OpenCodeSessionInsightsView.Caption("花费为本会话及全部子智能体的合计。", 0.65));
         return Scroll(groups);
     }
 

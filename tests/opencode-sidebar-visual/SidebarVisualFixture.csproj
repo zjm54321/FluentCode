@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion><RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget><UseWinUI>true</UseWinUI><WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained><SelfContained>false</SelfContained>
+    <WindowsSdkPackageVersion>10.0.26100.57</WindowsSdkPackageVersion>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition><EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <Nullable>enable</Nullable><DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants><ApplicationManifest>../opencode-browser-foundation/native/app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="BackendAccess.cs" />
+    <Reference Include="NativeModelBackend"><HintPath>$(NativeModelBackend)</HintPath><Private>true</Private></Reference>
+    <Compile Include="$(GeneratedModelPage)" Link="Production/ModelPage.generated.cs" />
+    <Compile Include="$(GeneratedCommandRows)" Link="Production/CommandRows.generated.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerContracts.cs" Link="Production/ComposerContracts.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.cs" Link="Production/ComposerController.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.Continuation.cs" Link="Production/ComposerContinuation.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.Slots.cs" Link="Production/ComposerSlots.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs" Link="Production/ComposerBrowserAttachments.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerCharTriggers.cs" Link="Production/ComposerCharTriggers.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerEditorSync.cs" Link="Production/ComposerEditorSync.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerViewLifetime.cs" Link="Production/ComposerViewLifetime.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerAttachmentLoader.cs" Link="Production/ComposerAttachmentLoader.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerInputPolicy.cs" Link="Production/ComposerInputPolicy.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerCommandMenu.cs" Link="Production/ComposerCommandMenu.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerSplash.cs" Link="Production/ComposerSplash.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeSideQuestion.cs" Link="Production/SideQuestion.cs" />
+    <ApplicationDefinition Include="App.xaml" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="[1.8.260921001]" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="[10.0.26100.9169]" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeRightPanelView.cs" Link="Production/RightPanelView.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeRightPanelPresentation.cs" Link="Production/RightPanelPresentation.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerEffortGauge.cs" Link="Production/EffortGauge.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeComposerEffort.cs" Link="Production/Effort.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeNativeComboBox.cs" Link="Production/NativeComboBox.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeNativeListChoice.cs" Link="Production/NativeListChoice.cs" />
+    <Compile Include="$(GeneratedModelState)" Link="Production/ModelState.generated.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeModelPickerFavorites.cs" Link="Production/ModelPickerFavorites.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodePickerFlyout.cs" Link="Production/PickerFlyout.cs" />
+    <Compile Include="$(GeneratedModelPicker)" Link="Production/ModelPicker.generated.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessView.cs" Link="Production/WslQuickAccessView.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessIcons.cs" Link="Production/WslQuickAccessIcons.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccess.cs" Link="Production/WslQuickAccess.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccess.PathMapping.cs" Link="Production/PathMapping.cs" />
+    <Compile Include="../../src/AIFrontend/Pages/OpenCode/WslQuickAccessHome.cs" Link="Production/WslQuickAccessHome.cs" />
+  </ItemGroup>
+</Project>

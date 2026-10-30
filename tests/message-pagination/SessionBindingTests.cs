@@ -183,7 +183,7 @@ internal static partial class Program
         failure.Result.SetResult(new(HttpStatusCode.ServiceUnavailable)); await failed;
         Check(!page.TestEmptyText.Contains("暂无消息") && page.TestEmptyText.Contains("未完成"), "API failure remains retry/error, not successful empty");
         backend.Boundaries["ses_hidden"] = "msg_not_in_window"; await page.TestSwitchAsync("ses_hidden");
-        Check(page.TestLastApplied().Count == 0 && page.TestEmptyText.Contains("当前没有可显示") && !page.TestEmptyText.Contains("暂无消息"),
+        Check(page.TestLastApplied().Count == 0 && page.TestEmptyText == "暂无可显示的消息" && !page.TestEmptyText.Contains("暂无消息"),
             "nonempty response hidden by rollback projection is not an empty response");
     }
 

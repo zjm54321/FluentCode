@@ -29,8 +29,6 @@ internal static class OpenCodeSideQuestionDialog
         AutomationProperties.SetAutomationId(input, "OpenCodeSideQuestionInput");
         AutomationProperties.SetName(input, "顺便问的问题");
         var body = new StackPanel { Spacing = 12, Width = Math.Clamp(owner.Size.Width - 112, 232, 456) };
-        body.Children.Add(OpenCodeInteractionUi.StyledText("基于当前会话已有的上下文一次性回答；不会写入会话，也不会调用工具。",
-            OpenCodeInteractionUi.CaptionSubtleStyleKey));
         body.Children.Add(input);
         var dialog = new ContentDialog
         {
@@ -96,8 +94,6 @@ internal static class OpenCodeSideQuestionDialog
         };
 
         var body = new StackPanel { Spacing = 10, Width = AnswerWidth(owner) };
-        body.Children.Add(OpenCodeInteractionUi.StyledText("基于「" + (sessionLabel ?? answer.SessionId) + "」的上下文回答，不写入会话",
-            OpenCodeInteractionUi.CaptionSubtleStyleKey));
         var meta = new Grid { ColumnSpacing = 8 };
         meta.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         meta.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

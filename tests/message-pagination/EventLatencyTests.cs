@@ -197,31 +197,6 @@ internal static partial class Program
         Check(page.TestForeground is null && page.ActivityRefreshes == before, "old-source active REST cannot repopulate or notify the replacement page");
     }
 
-    private static async Task InvalidatedStatusReadIsReplaced()
-    {
-        var backend = new LatencyBackend(); using var client = backend.Client();
-        var page = new OpenCodePage(); page.TestActivate(Session, client); page.TestBeginEvents();
-        var oldResponse = Signal<HttpResponseMessage>();
-        var freshResponse = Signal<HttpResponseMessage>();
-        backend.ReadActive = () => oldResponse.Task;
-        var stale = page.TestActiveAsync();
-        Check(backend.Active == 1 && !stale.IsCompleted, "status read is held before the external invalidation signal");
-        page.TestInvalidateStatusRead();
-        page.TestInvalidateStatusRead();
-        backend.ReadActive = () => freshResponse.Task;
-        var published = page.TestWatchStatusPublication();
-        var before = page.ActivityRefreshes;
-        oldResponse.SetResult(Json(new { data = new Dictionary<string, object> { [Session] = new { type = "running" } } }));
-        await stale;
-        Check(page.TestForeground is null && page.ActivityRefreshes == before && !published.IsCompleted,
-            "retired status epoch cannot repopulate or publish the pre-clear running response");
-        Check(backend.Active == 2, "repeated invalidation coalesces into exactly one fresh replacement read");
-        freshResponse.SetResult(Json(new { data = new Dictionary<string, object>() }));
-        await published.WaitAsync(TimeSpan.FromSeconds(2));
-        Check(page.TestForeground == false && page.ActivityRefreshes == before + 1 && backend.Active == 2,
-            "replacement epoch publishes authoritative idle without retry loops");
-    }
-
     private static Task HealthyStreamSkipsPolling()
     {
         var backend = new LatencyBackend(); using var client = backend.Client();

@@ -65,7 +65,7 @@ internal static partial class Program
             Client = new(Http, new() { BaseUrl = "https://offline.invalid", Secret = "synthetic", Timeout = TimeSpan.FromSeconds(20) }, true);
             Source = new("endpoint_" + Guid.NewGuid().ToString("N"), 7,
                 () => new OpenCodeClient(Http, new() { BaseUrl = "https://offline.invalid", Secret = "synthetic", Timeout = TimeSpan.FromSeconds(20) }, true));
-            Binding = new(Source, 7, 1, Client, 1, 1, "ses_test");
+            Binding = new(Source, 7, 1, Client, 1, 1, "ses_test") { ConfirmedDirectory = "/workspace" };
             Core = new(b => { OwnershipObserved?.Invoke(); return b == Binding; }, Gate);
             Core.Bind(Binding);
             CatalogLifetime = Core.BeginCatalogLifetime();

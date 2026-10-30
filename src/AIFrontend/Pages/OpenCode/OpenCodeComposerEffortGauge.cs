@@ -13,9 +13,10 @@ namespace AIFrontend.Pages.OpenCode;
 /// </summary>
 internal sealed class OpenCodeComposerEffortGauge : Canvas
 {
-    // 24×20 DIP glyph box; the pivot sits low so the 140° fan uses the full width.
-    private const double PivotX = 12, PivotY = 16.5;
-    private const double TickInner = 7.5, TickOuter = 11, SelectedInner = 6.5, SelectedOuter = 11.5, Needle = 6;
+    // 24×20 DIP glyph box; the pivot sits low so the 140° fan uses the full width while the ink stays optically centred.
+    // Every level keeps its own tick (the needle stops short of the scale), so 3/4/5 levels always read as 3/4/5 marks.
+    private const double PivotX = 12, PivotY = 15.5;
+    private const double TickInner = 8.25, TickOuter = 11, Tick = 1.75, Needle = 5.5, NeedleThickness = 1.75, Pivot = 3.5;
 
     private IReadOnlyList<OpenCodeEffortTick> _ticks = Array.Empty<OpenCodeEffortTick>();
     private bool _dimmed;
@@ -42,22 +43,17 @@ internal sealed class OpenCodeComposerEffortGauge : Canvas
     {
         Children.Clear();
         var accent = _dimmed ? "TextFillColorDisabledBrush" : "AccentTextFillColorPrimaryBrush";
-        var quiet = _dimmed ? "TextFillColorDisabledBrush" : "TextFillColorSecondaryBrush";
-        OpenCodeEffortTick? selected = null;
-        foreach (var tick in _ticks)
-        {
-            if (tick.Selected) { selected = tick; continue; } // Drawn last so it sits above its neighbours.
-            Children.Add(Ray(tick.Angle, TickInner, TickOuter, 1.5, quiet));
-        }
-        if (selected is not null)
-        {
-            Children.Add(Ray(selected.Angle, SelectedInner, SelectedOuter, 2.5, accent));
-            Children.Add(Ray(selected.Angle, 0, Needle, 2, accent));
-        }
+        var quiet = _dimmed ? "TextFillColorDisabledBrush" : "TextFillColorTertiaryBrush";
+        // Scale fills up to the chosen level (like a speedometer sweep); levels above it stay quiet.
+        var selectedIndex = -1;
+        for (var i = 0; i < _ticks.Count; i++) if (_ticks[i].Selected) { selectedIndex = i; break; }
+        for (var i = 0; i < _ticks.Count; i++)
+            Children.Add(Ray(_ticks[i].Angle, TickInner, TickOuter, Tick, selectedIndex >= 0 && i <= selectedIndex ? accent : quiet));
+        if (selectedIndex >= 0) Children.Add(Ray(_ticks[selectedIndex].Angle, 0, Needle, NeedleThickness, accent));
         // Pivot: accent when a level is chosen, quiet when the model default (no explicit level) applies.
-        var pivot = new Ellipse { Width = 4, Height = 4, Style = OpenCodeThemedXaml.BrushStyle("Ellipse", ("Fill", selected is null ? quiet : accent)) };
-        SetLeft(pivot, PivotX - 2);
-        SetTop(pivot, PivotY - 2);
+        var pivot = new Ellipse { Width = Pivot, Height = Pivot, Style = OpenCodeThemedXaml.BrushStyle("Ellipse", ("Fill", selectedIndex < 0 ? quiet : accent)) };
+        SetLeft(pivot, PivotX - Pivot / 2);
+        SetTop(pivot, PivotY - Pivot / 2);
         Children.Add(pivot);
     }
 

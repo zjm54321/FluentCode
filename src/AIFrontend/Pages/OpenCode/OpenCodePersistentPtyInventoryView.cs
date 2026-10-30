@@ -64,10 +64,11 @@ internal sealed class OpenCodePersistentPtyInventoryView : UserControl
         {
             OpenCodePersistentPtyInventoryPhase.Loading => "正在读取…",
             OpenCodePersistentPtyInventoryPhase.Unsupported => "当前服务不支持持久终端",
-            OpenCodePersistentPtyInventoryPhase.Ready => state.Rows.Length == 0 ? "此会话没有持久终端" : "点击只读查看；接管需要单独确认",
+            OpenCodePersistentPtyInventoryPhase.Ready => state.Rows.Length == 0 ? "此会话没有持久终端" : string.Empty,
             _ => "暂时无法确认持久终端列表",
         };
         _list.IsEnabled = state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready;
+        _status.Visibility = _status.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         _list.ItemsSource = context is not null && state is not null ? state.Rows.Select(info => new Item(context, info)).ToArray() : null;
     }
 }

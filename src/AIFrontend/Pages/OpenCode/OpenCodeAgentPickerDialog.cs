@@ -32,7 +32,7 @@ internal static class OpenCodeAgentPickerDialog
         return await OpenCodePickerFlyout.ShowAsync<string?>(anchor, list, null, choose =>
             list.ItemClick += (_, e) =>
             {
-                if (e.ClickedItem is ListViewItem { Tag: OpenCodeAgentPickerRow { Selectable: true } row }) choose(row.Id);
+                if (OpenCodeNativeListChoice.Resolve<OpenCodeAgentPickerRow>(list, e.ClickedItem) is { Selectable: true } row) choose(row.Id);
             }, () =>
             {
                 if (list.SelectedItem is { } selected) list.ScrollIntoView(selected);

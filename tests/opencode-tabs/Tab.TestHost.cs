@@ -106,6 +106,7 @@ namespace Microsoft.UI.Xaml.Controls
         public event Action<object,ItemClickEventArgs>? ItemClick;public void ClickItem(object item)=>ItemClick?.Invoke(this,new(item));public bool Focus(FocusState state)=>true;
         public ItemVector Items{get;}=new();private object? _selected;public event Action<object,SelectionChangedEventArgs>? SelectionChanged;
         public object? SelectedItem{get=>_selected;set{if(ReferenceEquals(_selected,value))return;_selected=value;SelectionChanged?.Invoke(this,new());}}
+        public object? ContainerFromItem(object item)=>Items.OfType<ListViewItem>().FirstOrDefault(row=>ReferenceEquals(row,item)||ReferenceEquals(row.Content,item));
         public void ScrollIntoView(object item){}
     }
     public class TabViewItem:ContentControl{public object? Header{get;set;}public object? IconSource{get;set;}public bool IsClosable{get;set;}=true;public MenuFlyout? ContextFlyout{get;set;}}

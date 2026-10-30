@@ -156,7 +156,7 @@ internal static class OpenCodeComposerInputPolicy
         var end = start + 1;
         while (end < text.Length && !char.IsWhiteSpace(text[end])) end++;
         var filter = text.Substring(start + 1, end - start - 1);
-        if (filter.Length > MaxTriggerLength || filter.Contains('/')) return new(false, string.Empty, text);
+        if (filter.Length > MaxTriggerLength || filter.StartsWith('/') || filter.Contains('\\')) return new(false, string.Empty, text);
         var rest = text[end..];
         // Drop only the single separator run on the trigger line; keep later lines verbatim.
         var skip = 0;
@@ -169,7 +169,8 @@ internal static class OpenCodeComposerInputPolicy
     /// <summary>
     /// Typed-menu trigger: the WHOLE text is optional spaces/tabs, "/" and a valid trigger token (possibly empty), with
     /// nothing after it — no separator, newline or arguments. "/", "/re" and "  /rev" qualify; "/re x", "/re\n",
-    /// "hello /re", "/usr/bin", "//x" and over-long tokens do not. Shared by the typed-open episode and its tests.
+    /// "hello /re", "//x" and over-long tokens do not. A nested server name ("/nested/docs") is a filter,
+    /// not execution authority; only an exact row from the owned catalog can be staged.
     /// </summary>
     internal static bool IsBareTrigger(string? text)
     {

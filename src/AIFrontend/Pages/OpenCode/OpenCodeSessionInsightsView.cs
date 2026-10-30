@@ -125,7 +125,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         _billionOriginPanel = new StackPanel { Spacing = 4 };
         _billionOriginPanel.Children.Add(OpenCodeInteractionUi.StyledText("Billion 根地址", OpenCodeInteractionUi.BodyStrongStyleKey));
         _billionOriginPanel.Children.Add(_billionOriginBox);
-        _billionOriginPanel.Children.Add(Caption(BillionOriginHint, 0.6));
         _billionOriginPanel.Children.Add(_billionOriginStatus);
 
         _billionConfirm = new CheckBox
@@ -731,7 +730,6 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         _billionSection = panel;
         _billionHeading = (Grid)panel.Children[0];
         _billionBadge = _billionHeading.Children.Count > 1 ? _billionHeading.Children[1] as Border : null;
-        content.Children.Add(Caption(BillionIntro, 0.75));
 
         // 先记录宿主再加入：即使中途失败，下一次 Render 也能从这个面板取回已加入的控件。
         _billionHost = content;
@@ -829,7 +827,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
         if (billion.Origin is { } origin)
         {
-            var source = Caption("这次结果读取自 " + origin + "（读取时的地址；之后修改地址不会改写它）", 0.65);
+            var source = Caption("读取来源：" + origin, 0.65);
             AutomationProperties.SetAutomationId(source, "OpenCodeInsightsBillionResultOrigin");
             content.Children.Add(source);
         }
@@ -857,11 +855,11 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             }));
             if (stats.Ledger is { } ledger)
             {
-                content.Children.Add(OpenCodeInteractionUi.StyledText("缓存账本", OpenCodeInteractionUi.BodyStrongStyleKey));
+                var ledgerHeading = OpenCodeInteractionUi.StyledText("缓存账本", OpenCodeInteractionUi.BodyStrongStyleKey);
+                ledgerHeading.Margin = new Thickness(0, 8, 0, 0); // Separate the second table from the stats above it.
+                content.Children.Add(ledgerHeading);
                 content.Children.Add(Table(OpenCodeBillionPresentation.LedgerRows(ledger)));
-                content.Children.Add(Caption(OpenCodeBillionPresentation.LedgerNote, 0.65));
             }
-            content.Children.Add(Caption(BillionStatsNote, 0.65));
         }
     }
 

@@ -67,7 +67,7 @@ internal static class Program
             HttpClient = new(Http);
             Client = new(HttpClient, new() { BaseUrl = "https://offline.invalid", Secret = "synthetic", Timeout = TimeSpan.FromSeconds(20) }, true);
             Source = new("endpoint_" + Guid.NewGuid().ToString("N"), 7, () => Client);
-            Binding = new(Source, 7, 1, Client, 1, 1, "ses_view");
+            Binding = new(Source, 7, 1, Client, 1, 1, "ses_view") { ConfirmedDirectory = "/workspace" };
             Core = new(b => b == Binding, new OpenCodeInteractionGate());
             Core.Bind(Binding);
             Core.SubmitRequested += (_, _) => Submits++;

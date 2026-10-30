@@ -69,10 +69,9 @@ public sealed partial class OpenCodePage
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.Children.Add(new TextBlock { Text = "编辑消息", Style = OpenCodeInteractionUi.TryStyle("SubtitleTextBlockStyle"), VerticalAlignment = VerticalAlignment.Center });
-        var hint = new TextBlock { Text = "草稿会自动回到输入框 · Ctrl+Enter 发送 · Esc 收起", TextWrapping = TextWrapping.Wrap,
-            Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle"), VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(hint, 1); heading.Children.Add(hint);
-        var collapse = new Button { Content = new FontIcon { Glyph = "\uE73F", FontSize = 16 } };
+        var collapse = new Button { Content = new FontIcon { Glyph = "\uE73F", FontSize = 16 }, Width = 32, Height = 32, MinWidth = 0, Padding = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center };
+        if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quietCollapse) collapse.Style = quietCollapse;
         AutomationProperties.SetName(collapse, "收起编辑器");
         collapse.Click += (_, _) => CloseFullScreenComposer(focus: true);
         Grid.SetColumn(collapse, 2); heading.Children.Add(collapse);
@@ -159,11 +158,16 @@ public sealed partial class OpenCodePage
         _fullScreenAgent!.Content = ComposerChoiceLabel(OpenCodeAgentIcons.Glyph(agent), OpenCodeAgentIcons.DisplayName(agent ?? "不可用"), labels.Agent);
         OpenCodeAgentPresentation.Apply(_fullScreenAgent, color);
         _fullScreenModel!.Content = labels.Model ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? "模型不可用") : OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
-        _fullScreenEffort!.Content = ComposerChoiceLabel(OpenCodeModelPresentation.VariantGlyph(selected?.Variant), OpenCodeModelPresentation.VariantLabel(selected?.Variant), labels.Effort);
+        var gauge = new OpenCodeComposerEffortGauge { Dimmed = !enabled || model is null, VerticalAlignment = VerticalAlignment.Center };
+        gauge.Render(OpenCodeComposerEffort.Ticks(model, selected?.Variant));
+        var effortContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        effortContent.Children.Add(gauge);
+        if (labels.Effort) effortContent.Children.Add(new TextBlock { Text = OpenCodeModelPresentation.VariantLabel(selected?.Variant), VerticalAlignment = VerticalAlignment.Center });
+        _fullScreenEffort!.Content = effortContent;
         var buttons = new[] { _fullScreenAgent, _fullScreenModel, _fullScreenEffort };
         var expanded = new[] { labels.Agent, labels.Model, labels.Effort };
         for (var i = 0; i < buttons.Length; i++)
-        { buttons[i].MinWidth = 0; buttons[i].Width = expanded[i] ? double.NaN : 40; buttons[i].Padding = expanded[i] ? new Thickness(8, 0, 8, 0) : new Thickness(0); }
+        { buttons[i].MinWidth = 0; buttons[i].Width = expanded[i] ? double.NaN : 36; buttons[i].Height = 32; buttons[i].Padding = expanded[i] ? new Thickness(8, 0, 8, 0) : new Thickness(0); }
         DescribeComposerIcon(_fullScreenAgent, "选择智能体：" + OpenCodeAgentIcons.DisplayName(agent ?? "不可用"));
         DescribeComposerIcon(_fullScreenModel, "选择模型：" + (model?.Name ?? "不可用"));
         DescribeComposerIcon(_fullScreenEffort, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));

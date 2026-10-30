@@ -162,7 +162,7 @@ internal sealed class OpenCodeToolDetailPopup
     {
         // ---------------- 悬停预览 ----------------
         _previewChrome = new Chrome(large: false);
-        _previewHint = OpenCodeInteractionUi.StyledText("点击行打开完整内容", OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
+        _previewHint = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey, false);
         _previewHint.TextWrapping = TextWrapping.Wrap;
         _previewHint.Visibility = Visibility.Collapsed;
         var previewLayout = new Grid { RowSpacing = 8 };
@@ -772,7 +772,7 @@ internal sealed class OpenCodeToolDetailPopup
         _previewViewportWidth = -1;
         if (_scroller is { } currentScroller) currentScroller.LayoutUpdated += OnPreviewContentLayoutUpdated;
         _previewTruncated = view.IsTruncated;
-        _previewHint.Text = view.PreviewHint ?? (view.HiddenLineCount > 0 ? $"还有 {view.HiddenLineCount} 行 · 点击行打开完整内容" : "点击行打开完整内容");
+        _previewHint.Text = view.PreviewHint ?? (view.HiddenLineCount > 0 ? $"还有 {view.HiddenLineCount} 行" : "内容未完整显示");
         if (_mode == OpenCodeDetailPopupMode.Preview) PlacePreview();
         if (_scroller is { } scroller && (offset is not null || follow))
         {

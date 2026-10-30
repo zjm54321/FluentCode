@@ -55,8 +55,9 @@ internal static partial class Program
         Check(!OpenCodeComposerCharTriggers.FindMention("@readme", 3).Present, "no mention mid-token caret");
         foreach (var text in new[] { "/", " /review", "\t/re" })
             Check(OpenCodeComposerCharTriggers.Classify(text, text.Length) == OpenCodeComposerCharTriggerKind.Command, "existing legal command entry " + text);
-        foreach (var text in new[] { "body/re", "https://host/re", "/usr/bin", "//host", "C:/path" })
+        foreach (var text in new[] { "body/re", "https://host/re", "//host", "C:/path" })
             Check(OpenCodeComposerCharTriggers.Classify(text, text.Length) == OpenCodeComposerCharTriggerKind.None, "no slash trigger in word/url/path " + text);
+        Check(OpenCodeComposerCharTriggers.Classify("/nested/docs", 12) == OpenCodeComposerCharTriggerKind.Command, "nested server name can open a command filter without becoming execution authority");
         var insert = OpenCodeComposerCharTriggers.ContextInsertion("wordmore", 4);
         Check(insert == (" @ ", 2), "explicit context inserts legal token without destroying neighbouring text");
         Check(OpenCodeComposerCharTriggers.MentionInsertion(new("explorer", false)) == "@explorer "

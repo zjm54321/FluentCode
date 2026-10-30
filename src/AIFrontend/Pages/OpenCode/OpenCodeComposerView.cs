@@ -1165,15 +1165,9 @@ internal sealed class OpenCodeComposerView : StackPanel
             if (_editor is { IsEnabled: true }) _editor.Focus(FocusState.Programmatic);
         };
 
-        var footer = Caption("↑↓ 选择 · Enter / Tab 插入路径文本 · Esc 关闭 · 不上传文件", 0.6);
-        footer.Margin = new Thickness(12, 0, 12, 8);
-        footer.TextWrapping = TextWrapping.NoWrap;
-        footer.TextTrimming = TextTrimming.CharacterEllipsis;
-
         var stack = new StackPanel();
         stack.Children.Add(header);
         stack.Children.Add(_mentionList);
-        stack.Children.Add(footer);
         _mentionPanel = new Border
         {
             CornerRadius = new CornerRadius(8),

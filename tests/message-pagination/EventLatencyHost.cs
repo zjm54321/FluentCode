@@ -29,8 +29,7 @@ public sealed partial class OpenCodePage
     internal int ActivityRefreshes;
     internal int SelectionRefreshes;
     private void RefreshAgentSelectorDisplay() => SelectionRefreshes++;
-    private TaskCompletionSource? _testStatusPublication;
-    private void RefreshComposerSessionActivity() { ActivityRefreshes++; _testStatusPublication?.TrySetResult(); }
+    private void RefreshComposerSessionActivity() => ActivityRefreshes++;
     private void RefreshSessionStateUi() { }
     private Task RefreshSessionsAsync() => Task.CompletedTask;
     // Server-scoped PTY inventory is outside pagination; its real event/transport lifecycle is
@@ -65,14 +64,6 @@ public sealed partial class OpenCodePage
     }
     internal void TestBuffer(StreamBoundary stream, OpenCodeEvent item) => _eventQueue.Enqueue((stream.Owner, item));
     internal Task TestActiveAsync() => RefreshListedSessionStatusesAsync();
-    // Model only the invalidation signal from an accepted external plugin clear. The actual
-    // status-read epoch fence and its coalesced fresh-read replacement execute in EventSync.
-    internal void TestInvalidateStatusRead() { _statusRefreshEpoch++; _statusRefreshAgain = _statusRefreshRunning; }
-    internal Task TestWatchStatusPublication()
-    {
-        _testStatusPublication = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        return _testStatusPublication.Task;
-    }
     internal bool? TestForeground => _selectedSessionId is { } id && _liveSessionStatuses.TryGetValue(id, out var s) ? s.Working : null;
     internal bool TestRefreshBusy => _isRefreshing;
     internal bool TestReadyRepairPending => _eventReconciliationPending;

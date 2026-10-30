@@ -41,32 +41,6 @@ internal static class Program
             && context != context with { SessionId = "other" }, "view events retain generation, PTY and session identity");
         Check(OpenCodePersistentPtyRendererPolicy.ValidGeometry(80, 24) && !OpenCodePersistentPtyRendererPolicy.ValidGeometry(0, 24)
             && !OpenCodePersistentPtyRendererPolicy.ValidGeometry(80, 1001), "renderer bounds resource geometry");
-        Check(!OpenCodePluginActionsPolicy.CanSubmitExactName("") && !OpenCodePluginActionsPolicy.CanSubmitExactName(null), "empty names cannot submit");
-        foreach (var name in new[] { "  Exact Key  ", "中文/键", " ", "A.B-v2" })
-        {
-            var request = new OpenCodePresetApplyRequest(new(Guid.NewGuid(), 1, "session", "/work"), name);
-            Check(OpenCodePluginActionsPolicy.CanSubmitExactName(request.ExactName) && request.ExactName == name,
-                "opaque preset key is accepted without trim or substitution");
-        }
-        Check(new OpenCodeClearEncryptedCounts(0, 0, 0).Summary.Contains("0 条消息")
-            && new OpenCodeClearEncryptedCounts(2, 3, 5).Summary.Contains("5 个字段")
-            && new OpenCodeClearEncryptedCounts(-1, 3, 5).Summary == "清除结果无法确认", "structured counts use fixed safe copy; invalid counts never imply success");
-        var actionContext = new OpenCodePluginActionContext(Guid.NewGuid(), 4, "session", "/work");
-        var protection = new OpenCodePluginUnknownProtection(Guid.NewGuid(), OpenCodePluginActionKind.ApplyPreset);
-        var actions = new OpenCodePluginActionsPresentation(actionContext, "预设", true, true, false, UnknownProtection: protection);
-        var acknowledgement = new OpenCodePluginProtectionAcknowledgement(actionContext, protection.OperationId);
-        Check(OpenCodePluginActionsPolicy.CanAcknowledge(actions, acknowledgement), "manual acknowledgement targets exact current local operation token");
-        Check(!OpenCodePluginActionsPolicy.CanAcknowledge(actions with { UnknownProtection = protection with { OperationId = Guid.NewGuid() } }, acknowledgement),
-            "late confirmation cannot acknowledge a newer plugin protection");
-        foreach (var changed in new[] { actionContext with { Generation = 5 }, actionContext with { SessionId = "other" },
-            actionContext with { Directory = "/other" }, actionContext with { ViewId = Guid.NewGuid() } })
-            Check(!OpenCodePluginActionsPolicy.CanAcknowledge(actions with { Context = changed }, acknowledgement), "acknowledgement cannot cross view/session/directory/generation ownership");
-        Check(!OpenCodePluginActionsPolicy.CanAcknowledge(actions with { Pending = true }, acknowledgement)
-            && !OpenCodePluginActionsPolicy.CanAcknowledge(actions with { UnknownProtection = null }, acknowledgement)
-            && !OpenCodePluginActionsPolicy.CanAcknowledge(null, acknowledgement)
-            && !OpenCodePluginActionsPolicy.CanAcknowledge(actions, acknowledgement with { OperationId = Guid.Empty }),
-            "pending, removed, hidden or empty protection is never manually acknowledged");
-
         var assets = Path.Combine(args[0], "src/AIFrontend/Assets/OpenCode/PersistentPty");
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(assets, "vendor-manifest.json")));
         foreach (var package in manifest.RootElement.GetProperty("packages").EnumerateArray())

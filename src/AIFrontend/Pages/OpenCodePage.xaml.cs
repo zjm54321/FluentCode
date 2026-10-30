@@ -3836,7 +3836,7 @@ public sealed partial class OpenCodePage : Page
         {
             text = _messagesLoadError ?? (_firstMessagesLoading ? "正在加载消息…"
                 : _messagesResponseEmpty ? "该会话暂无消息。"
-                : "当前没有可显示的消息，历史状态将随刷新更新。");
+                : "暂无可显示的消息");
         }
 
         EmptyStateText.Text = text ?? string.Empty;
@@ -3850,13 +3850,12 @@ public sealed partial class OpenCodePage : Page
         UpdateQueuedPrompts();
         if (_pendingAckIds.Count > 0)
         {
-            WaitingText.Text = "已接受输入，等待投递到会话时间线（" + _pendingAckIds.Count +
-                " 项）；投递与执行结果以消息时间线为准。";
+            WaitingText.Text = "待投递 · " + _pendingAckIds.Count;
             WaitingText.Visibility = Visibility.Visible;
         }
         else if (_deliveredNoticeShown)
         {
-            WaitingText.Text = "输入已投递到会话时间线（投递不代表执行完成；结果以消息为准）。";
+            WaitingText.Text = "已投递";
             WaitingText.Visibility = Visibility.Visible;
         }
         else

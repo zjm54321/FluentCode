@@ -1,6 +1,6 @@
 // Real BuiltinActions.HasPendingNativeAction, page Send/Stop routes, composer and HTTP guards.
-// Plugin owner identities are a labelled boundary: this fixture does not simulate plugin RPC,
-// confirmation or server outcomes. Dedicated plugin Page fixtures exercise those contracts.
+// Retired UI-only plugin identities must not retain an invisible Send/Stop blocker.
+// Shared backend gate/unknown protections are covered separately; no plugin UI is mounted here.
 using System;
 using System.Threading.Tasks;
 using AIFrontend.Pages;
@@ -18,9 +18,9 @@ internal static class PluginPendingGuardTests
             using var f = new Program.Fixture();
             f.Page.Text("retain while plugin write is pending");
             f.Page.SetPluginOwnerBoundary(state);
-            var blocked = state == "matching";
+            var blocked = false;
             Check(f.Page.NativePending == blocked && f.Page.SendEnabled == !blocked,
-                "only the current exact pending plugin owner blocks the real Send display: " + state);
+                "retired plugin UI identity cannot invisibly block the real Send display: " + state);
             if (legacy) await f.Page.SendLegacyDirect(); else await f.Page.Send();
             Check(f.Http.Posts == (blocked ? 0 : 1) && f.Page.Begins == (blocked ? 0 : 1),
                 "plugin owner guard protects actual routed/legacy submission before HTTP/admission: " + state);
@@ -39,14 +39,14 @@ internal static class PluginPendingGuardTests
             using var f = new Program.Fixture();
             f.Page.SetWorking();
             f.Page.SetPluginOwnerBoundary(state);
-            var blocked = state == "matching";
+            var blocked = false;
             Check(f.Page.ShouldStop() == !blocked && f.Page.SendEnabled == !blocked,
                 "current pending plugin owner also protects the real Stop probe/display: " + state);
             await f.Page.StopDirect();
             Check(f.Http.Interrupts == (blocked ? 0 : 1),
                 "actual interrupt route cannot cross matching plugin-pending ownership: " + state);
         }
-        Console.WriteLine($"PASS pending-plugin native guard: {checks} assertions; real Send/Stop/display/HTTP routes, matched versus absent/retired/equal-but-distinct owner identities; plugin RPC boundary only.");
+        Console.WriteLine($"PASS retired-plugin UI guard: {checks} assertions; real Send/Stop/display/HTTP routes; no hidden preset/clear action owner remains.");
     }
 }
 
@@ -70,6 +70,7 @@ namespace AIFrontend.Pages
                 "none" or "owner-only" => null,
                 _ => throw new ArgumentOutOfRangeException(nameof(state)),
             };
+            _ = (_pluginActionOwner, _pluginPendingOwner); // Inert retired metadata, deliberately absent from production authority.
             UpdateComposerButtons();
         }
     }

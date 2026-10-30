@@ -336,7 +336,7 @@ internal static class OpenCodeConnectionFlyout
             var state = details.Capabilities.Value?.Lsp ?? new OpenCodeCapabilityState(OpenCodeCapabilityAvailability.Unavailable,
                 OpenCodeCapabilityStatus.LspUnavailableReason);
             var page = DetailPage("OpenCodeConnectionLspDetail", "LSP", DotIndicator(OpenCodeInsightsTheme.Neutral, "无法确认"), select);
-            page.Children.Add(OpenCodeSessionInsightsView.Caption(state.Reason + "；这里不根据连接或配置推测 LSP 是否运行。", 0.85));
+            page.Children.Add(OpenCodeSessionInsightsView.Caption(state.Reason, 0.85));
             return page;
         }
 
