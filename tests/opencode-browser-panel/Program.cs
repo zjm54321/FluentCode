@@ -16,7 +16,7 @@ internal static class Program
         {
             Check(OpenCodeBrowserPanelState.ColoredIcon(count) == (count > 0), "color follows real inventory");
             Check(OpenCodeBrowserPanelState.ShowCount(count) == (count >= 2), "badge only from two pages");
-            Check(OpenCodeBrowserPanelState.TooltipTitle(count) == (count == 0 ? "浏览器 · 打开浏览器页面" : $"浏览器 · {count} 个页面 · 点击展开缩略图"), "tooltip exact count/copy");
+            Check(OpenCodeBrowserPanelState.TooltipTitle(count) == (count == 0 ? "浏览器 · 打开浏览器页面" : $"浏览器 · {count} 个页面"), "tooltip exact count/copy without instruction footer");
             var state = new OpenCodeBrowserPanelState();
             Check(!state.ShowCommands(count), "collapsed hides both row commands and strip");
             state.Toggle(); Check(state.ShowCommands(count) == (count > 0), "expanded commands require pages");
@@ -31,7 +31,7 @@ internal static class Program
             };
             Check(OpenCodeBrowserPanelState.StatusBrushKey(availability) == brush, "BI2 success/caution/critical status dot " + availability);
             var text = OpenCodeBrowserPanelState.TooltipStatus(availability, "真实的原因");
-            Check(text == (availability == OpenCodeBrowserAvailability.Available ? "智能体可以使用浏览器（45 个操作）" : "真实的原因"), "truthful availability tooltip");
+            Check(text == (availability == OpenCodeBrowserAvailability.Available ? "智能体可以使用浏览器" : "真实的原因"), "truthful availability tooltip without explanatory operation count");
         }
         Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Detached, null).Contains("尚未接入"), "unknown status is not a failure count");
         Check(OpenCodeBrowserPanelState.TooltipStatus(OpenCodeBrowserAvailability.Attaching, null).Contains("正在接入"), "BI2 attaching has full state text");
@@ -92,13 +92,20 @@ internal static class Program
         Check(button.Contains("FontSize = 18") && wsl.Contains("FontSize = 18"), "STATIC BI1: browser and WSL glyph size matches");
         Check(button.Contains("ThemeResource ButtonBorderBrush") && button.Contains("ThemeResource ButtonBorderThemeThickness") && button.Contains("ThemeResource ControlCornerRadius") && !button.Contains("_toggle.BorderThickness = new Thickness(0)"), "STATIC BI1: native button frame is retained, not stripped");
         Check(button.Contains("ToggleButtonBackgroundChecked\"] = Brush(\"SubtleFillColorSecondaryBrush\")") && !button.Contains("_bar"), "STATIC BI1: subtle checked fill without selection underline");
-        Check(button.Contains("ms-appx:///Assets/OpenCode/browser.svg") && button.Contains("AccessibilitySettings().HighContrast") && !button.Contains("LinearGradientBrush"), "STATIC BI1: standard multicolor browser mark with high-contrast fallback, not accent tint");
+        Check(button.Contains("OpenCodeBrowserColorIcon.Create()") && !button.Contains("browser.svg") && button.Contains("AccessibilitySettings().HighContrast"), "STATIC BI1: generic Fluent color browser icon, not a Chrome brand, with high-contrast fallback");
+        var coloredIcon = Source("Pages/OpenCode/OpenCodeBrowserColorIcon.cs");
+        Check(coloredIcon.Contains("Glyph = \"\\uE774\"") && coloredIcon.Contains("Segoe Fluent Icons") && coloredIcon.Contains("LinearGradientBrush") && !coloredIcon.Contains("SystemAccentColor"), "STATIC BI1: colored open icon preserves the existing globe glyph, using a fixed color palette rather than a brand or theme-accent replacement");
         Check(button.Contains("var colored = _toggle.IsChecked == true && OpenCodeBrowserPanelState.ColoredIcon(_pages)") && button.Contains("_globe.Visibility = colored ? Visibility.Collapsed : Visibility.Visible"), "STATIC BI1: multicolor requires selected/expanded state and returns to native neutral glyph on collapse");
         var render = button.Split("public void Render(")[1];
         Check(render.IndexOf("_toggle.IsChecked =", StringComparison.Ordinal) < render.IndexOf("RefreshTheme();", StringComparison.Ordinal), "STATIC BI1: Render refreshes icon color after assigning the current selection state");
         Check(strip.Contains("Width = 96; Height = 60") && strip.Contains("ExpandedHeight = 72") && strip.Contains("Width = 254, Height = 159"), "STATIC: mini previews stay compact until hover");
         Check(strip.Contains("向左滚动浏览器页面") && strip.Contains("向右滚动浏览器页面") && strip.Contains("PointerWheelChangedEvent") && strip.Contains("IsHorizontalMouseWheel"), "STATIC: compact scroll arrows preserve horizontal and vertical wheel input");
         Check(strip.Contains("HorizontalScrollBarVisibility = ScrollingScrollBarVisibility.Hidden") && strip.Contains("HorizontalScrollMode = ScrollingScrollMode.Enabled") && !strip.Contains("HorizontalScrollBarVisibility = ScrollingScrollBarVisibility.Auto"), "STATIC: arrows replace scrollbar rail without disabling horizontal gestures");
+        var selectedList = Source("Pages/OpenCode/OpenCodeBrowserSelectedList.cs");
+        var selection = Source("Pages/OpenCode/OpenCodeBrowserSelection.cs");
+        var preview = Source("Pages/OpenCode/OpenCodeBrowserPreviewView.cs");
+        Check(!selectedList.Contains("发送到：当前会话") && !selection.Contains("Shift + 单击多选 · Esc 退出") && !selection.Contains("先输入，再在页面放置") && !strip.Contains("单击：在浮窗中显示 · 中键：关闭") && !preview.Contains("服务器未提供已核实的文件变更订阅"), "STATIC: explanatory footers and operation tutorials removed throughout browser UI");
+        Check(selection.Contains("_list.Status(\"无法完成操作：\" + ex.Message)") && preview.Contains("Status(\"无法读取此文件\", ex.Message)") && preview.Contains("parsed.CellsTruncated") && selectedList.Contains("添加批注（可选）"), "STATIC: actual errors, truncation status and field labels remain visible");
         Check(button.Contains("_statusButton = new()") && button.Contains("VerticalAlignment = VerticalAlignment.Top") && button.Contains("_statusDot = new() { Width = 6, Height = 6") && !button.Contains("Text = \"断开\""), "STATIC BI2: small top-right dot replaces disconnected text");
         Check(button.Contains("_statusButton.Visibility = workspace is not null ? Visibility.Visible : Visibility.Collapsed"), "STATIC BI2: attached and unavailable sessions both show status on button");
         Check(button.Contains("AutomationProperties.SetName(_statusButton, \"浏览器连接状态 · \" + _tipStatus.Text)") && button.Contains("ToolTipService.SetToolTip(_statusButton, _tipStatus.Text)") && button.Contains("AutomationProperties.SetName(_toggle, _tipTitle.Text + \" · \" + _tipStatus.Text)"), "STATIC BI2: dot tooltip and automation names carry full state");

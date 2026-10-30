@@ -38,7 +38,7 @@ internal static class Program
             var content = OpenCodeBrowserOverlayLayout.Content(place.Width, place.Height);
             Check(content.Width + 2 == place.Width && content.Height + 46 + 2 == place.Height, "WebView fills interior below one toolbar row");
             var selected = OpenCodeBrowserOverlayLayout.Content(place.Width, place.Height, 340);
-            Check(selected.Width == Math.Max(0, content.Width - 340) && selected.Height == content.Height, "selection tray consumes exactly its own width");
+            Check(selected.Width == content.Width && selected.Height == content.Height, "annotation tray never changes the browser viewport");
         }
         foreach (var (width, height) in new[] { (0d, 0d), (10d, 10d), (-1d, -1d) })
         {

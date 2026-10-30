@@ -67,7 +67,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var divider = new Border { Width = 1, Height = 20, Margin = new(8, 0, 8, 0) };
         Theme(divider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _actions.Children.Add(divider);
         var close = Button("\uE8BB", "关闭浏览器浮窗", () => _workspace?.HideOverlay());
-        ((FontIcon)close.Content).FontSize = 20; _actions.Children.Add(close);
+        _actions.Children.Add(close);
 
         var toolbar = new Grid { Padding = new(8, 0, 8, 0), ColumnSpacing = 6, BorderThickness = new(0, 0, 0, 1) };
         Theme(toolbar, Grid.BorderBrushProperty, "DividerStrokeColorDefaultBrush");
@@ -112,7 +112,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
             _back.Visibility = _forward.Visibility = siteIcon.Visibility = divider.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
             _actions.Children[0].Visibility = compact || _page?.PreviewPath is not null ? Visibility.Collapsed : Visibility.Visible;
         };
-        var content = new Grid(); content.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); content.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        var content = new OpenCodeBrowserContentHost(_body);
         _body.Children.Add(shownHost);
         _preview.Visibility = Visibility.Collapsed; _body.Children.Add(_preview);
         _external.Visibility = Visibility.Collapsed; _body.Children.Add(_external);
@@ -159,7 +159,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
             Shadow = new ThemeShadow(), Translation = new Vector3(0, 0, 32) };
         Theme(_agentPill, Border.BackgroundProperty, "AcrylicInAppFillColorDefaultBrush"); _body.Children.Add(_agentPill);
         _agentPill.BorderBrush = Brush("FlyoutBorderThemeBrush");
-        content.Children.Add(_body); RightPanelSlot = new Grid(); Grid.SetColumn(RightPanelSlot, 1); content.Children.Add(RightPanelSlot);
+        RightPanelSlot = content.AnnotationSlot;
         Grid.SetRow(content, 1); layout.Children.Add(content);
         _presenter = OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128);
         _presenter.HorizontalAlignment = HorizontalAlignment.Center; _presenter.VerticalAlignment = VerticalAlignment.Center;
@@ -243,7 +243,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _network.Visibility = local && !_editing ? Visibility.Visible : Visibility.Collapsed;
         _displayAddress.Margin = new(32, 0, preview ? 110 : local ? 100 : 12, 0);
         _preview.UpdateActions();
-        ToolTipService.SetToolTip(_refresh, preview ? "重新读取服务器文件（仅手动刷新）" : page.Loading ? "停止加载" : "刷新");
+        ToolTipService.SetToolTip(_refresh, preview ? "重新读取服务器文件" : page.Loading ? "停止加载" : "刷新");
         _back.IsEnabled = page.CanGoBack; _forward.IsEnabled = page.CanGoForward;
         (_refresh.Content as FontIcon)!.Glyph = !preview && page.Loading ? "\uE711" : "\uE72C";
         _address.IsReadOnly = page.PreviewPath is not null;
@@ -305,42 +305,46 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private MenuFlyout MoreMenu()
     {
         var menu = new MenuFlyout();
-        MenuFlyoutItem Item(string text, Action action) { var item = new MenuFlyoutItem { Text = text }; item.Click += (_, _) => action(); menu.Items.Add(item); return item; }
-        var back = Item("后退", () => _page?.GoBack()); var forward = Item("前进", () => _page?.GoForward());
-        Item("在 Chrome 中显示 / 在外部浏览器打开", () => _ = RunPageActionAsync(async page =>
+        MenuFlyoutItem Item(string text, Action action, string glyph) { var item = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } }; item.Click += (_, _) => action(); menu.Items.Add(item); return item; }
+        var back = Item("后退", () => _page?.GoBack(), "\uE72B"); var forward = Item("前进", () => _page?.GoForward(), "\uE72A");
+        menu.Items.Add(new MenuFlyoutSeparator());
+        var open = Item("在外部浏览器打开", () => _ = RunPageActionAsync(async page =>
         {
             if (page.Presentation == OpenCodeBrowserPresentation.ExternalWindow) await page.FocusAsync(page.Lifetime);
             else if (Uri.TryCreate(page.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") await Launcher.LaunchUriAsync(uri);
-        }));
-        Item("复制链接", () => Copy(_page?.Url ?? ""));
+        }), "\uE8A7");
+        Item("复制链接", () => Copy(_page?.Url ?? ""), "\uE71B");
         var devtools = Item("开发者工具", () => _ = RunPageActionAsync(async page =>
         {
             if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.OpenDevToolsWindow();
             else { await page.FocusAsync(page.Lifetime); ToolTipService.SetToolTip(_address, "请在 Chrome 窗口按 F12 打开开发者工具。"); }
-        }));
-        var zoom = new MenuFlyoutSubItem { Text = "缩放" };
+        }), "\uEC7A");
+        var zoom = new MenuFlyoutSubItem { Text = "缩放", Icon = new FontIcon { Glyph = "\uE71E" } };
         foreach (var factor in new[] { .5, .75, 1, 1.25, 1.5, 2.0 }) { var item = new MenuFlyoutItem { Text = factor.ToString("P0") }; item.Click += async (_, _) => { if (_page is not null) await _page.CdpAsync("Emulation.setPageScaleFactor", new() { ["pageScaleFactor"] = factor }); }; zoom.Items.Add(item); }
         menu.Items.Add(zoom);
         var print = Item("打印", () => _ = RunPageActionAsync(async page =>
         {
             if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.ShowPrintUI(Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
             else { await page.FocusAsync(page.Lifetime); await page.ExecuteScriptAsync("window.print()"); }
-        }));
-        Item("把此页面加到对话", () => { if (_page is not null) AddPageRequested?.Invoke(this, _page); });
+        }), "\uE749");
+        menu.Items.Add(new MenuFlyoutSeparator());
+        Item("把此页面加到对话", () => { if (_page is not null) AddPageRequested?.Invoke(this, _page); }, "\uE710");
         Item("清除此站点的数据", async () =>
         {
             if (_page is not null && Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
                 await _page.CdpAsync("Storage.clearDataForOrigin", new() { ["origin"] = uri.GetLeftPart(UriPartial.Authority), ["storageTypes"] = "all" });
-        });
+        }, "\uE74D");
         menu.Opening += (_, _) =>
         {
             var external = _page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow;
             back.IsEnabled = _page?.CanGoBack == true; forward.IsEnabled = _page?.CanGoForward == true;
+            open.Text = external ? "在 Chrome 中显示" : "在外部浏览器打开";
             devtools.Text = external ? "开发者工具 · 在 Chrome 中按 F12" : "开发者工具";
             print.Text = external ? "在 Chrome 中打印" : "打印";
             devtools.IsEnabled = print.IsEnabled = _page is { IsReady: true, PreviewPath: null };
         };
-        Item("浏览器设置", () => SettingsRequested?.Invoke(this, EventArgs.Empty)); return menu;
+        menu.Items.Add(new MenuFlyoutSeparator());
+        Item("浏览器设置", () => SettingsRequested?.Invoke(this, EventArgs.Empty), "\uE713"); return menu;
     }
     private async Task RunPageActionAsync(Func<OpenCodeBrowserPage, Task> action)
     {

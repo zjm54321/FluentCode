@@ -2,10 +2,10 @@ param([Parameter(Mandatory=$true)][string]$EvidenceRoot)
 $ErrorActionPreference='Stop'
 $repo=(Resolve-Path (Join-Path $PSScriptRoot '../..')).ProviderPath
 New-Item -ItemType Directory -Path $EvidenceRoot -Force|Out-Null
-$source=Get-Content -Raw "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserExternalView.cs"
+$source=Get-Content -Raw -Encoding UTF8 "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserExternalView.cs"
 $bind=$source.Substring($source.IndexOf('    internal void Bind('),$source.IndexOf('    private void UpdateStatus()')-$source.IndexOf('    internal void Bind('))
 $capture=$source.Substring($source.IndexOf('    private async Task CaptureAsync()'),$source.IndexOf('    private async Task ShowChromeAsync(')-$source.IndexOf('    private async Task CaptureAsync()'))
-$hostSource=(Get-Content -Raw "$PSScriptRoot/CaptureLifecycleHost.cs").Replace('    /* METHODS */',$bind+$capture)
+$hostSource=(Get-Content -Raw -Encoding UTF8 "$PSScriptRoot/CaptureLifecycleHost.cs").Replace('    /* METHODS */',$bind+$capture)
 $generated=Join-Path $EvidenceRoot 'CaptureLifecycle.Generated.cs';$hostSource|Set-Content -Encoding UTF8 $generated
 $dotnet=(Get-Command dotnet.exe).Source;$root=Split-Path $dotnet
 $sdk=Get-ChildItem "$root/sdk" -Directory|Where-Object Name -Like '10.*'|Sort-Object {[version]$_.Name} -Descending|Select-Object -First 1

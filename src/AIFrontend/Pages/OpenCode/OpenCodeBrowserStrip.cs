@@ -197,8 +197,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
             _close.Click += (_, _) => page.Close();
             Children.Add(_show); Children.Add(_outline); Children.Add(_badge); Children.Add(_close);
             _badge.IsHitTestVisible = false;
-            _tooltip = new ToolTip { Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Bottom, Content = new StackPanel { Spacing = 6, Children = { _label, _status, _large,
-                new TextBlock { Text = "单击：在浮窗中显示 · 中键：关闭", FontSize = 11 } } } };
+            _tooltip = new ToolTip { Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Bottom, Content = new StackPanel { Spacing = 6, Children = { _label, _status, _large } } };
             ToolTipService.SetToolTip(_show, _tooltip);
             // Set the exact approved 400ms delay rather than relying on the OS tooltip default.
             _hover.Tick += (_, _) => { _hover.Stop(); if (!_disposed) _tooltip.IsOpen = true; };

@@ -22,9 +22,9 @@ internal sealed class OpenCodeBrowserPanelState
         OpenCodeBrowserAvailability.Attaching or OpenCodeBrowserAvailability.Reconnecting => "SystemFillColorCautionBrush",
         _ => "SystemFillColorCriticalBrush",
     };
-    public static string TooltipTitle(int count) => count == 0 ? "浏览器 · 打开浏览器页面" : $"浏览器 · {count} 个页面 · 点击展开缩略图";
+    public static string TooltipTitle(int count) => count == 0 ? "浏览器 · 打开浏览器页面" : $"浏览器 · {count} 个页面";
     public static string TooltipStatus(OpenCodeBrowserAvailability availability, string? reason) => availability == OpenCodeBrowserAvailability.Available
-        ? "智能体可以使用浏览器（45 个操作）" : reason ?? (availability switch
+        ? "智能体可以使用浏览器" : reason ?? (availability switch
         {
             OpenCodeBrowserAvailability.Attaching => "正在接入浏览器…",
             OpenCodeBrowserAvailability.Reconnecting => "与 OpenCode 的连接断开，正在重连…",

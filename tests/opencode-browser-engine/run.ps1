@@ -11,6 +11,7 @@ $sources+="$PSScriptRoot/SelectionTests.cs"
 $sources+="$PSScriptRoot/FrameTests.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlayLayout.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectionScript.cs"
+$sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectionViewport.cs"
 $sources+="$PSScriptRoot/Program.cs"
 $dll=Join-Path $EvidenceRoot 'BrowserEngineTests.dll';$rsp=Join-Path $EvidenceRoot 'compile.rsp'
 $refs=@(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll"|ForEach-Object FullName)

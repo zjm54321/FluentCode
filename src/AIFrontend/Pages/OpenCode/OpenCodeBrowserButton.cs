@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -17,8 +16,7 @@ internal sealed class OpenCodeBrowserButton : Grid
 {
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
     private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
-    private readonly Image _coloredBrowser = new() { Width = 18, Height = 18, Visibility = Visibility.Collapsed,
-        Source = new SvgImageSource(new Uri("ms-appx:///Assets/OpenCode/browser.svg")) };
+    private readonly FrameworkElement _coloredBrowser = OpenCodeBrowserColorIcon.Create();
     private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new(3), IsHitTestVisible = false };
     private readonly Button _statusButton = new() { Width = 12, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new(0), Margin = new(0, 2, 2, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };

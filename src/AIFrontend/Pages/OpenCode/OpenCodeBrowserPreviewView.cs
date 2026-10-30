@@ -22,7 +22,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     private readonly SelectorBar _selector = new();
     private readonly SelectorBarItem _render = new() { Text = "渲染" }, _source = new() { Text = "源码" };
     private readonly Border _native = new();
-    private readonly Button _editor = new() { Content = "在编辑器中打开" }, _explorer = new() { Content = "在文件资源管理器中显示" };
+    private readonly Button _editor = Action("\uE70F", "在编辑器中打开"), _explorer = Action("\uE838", "在文件资源管理器中显示");
     private OpenCodeBrowserWorkspace? _workspace;
     private OpenCodeBrowserPage? _page;
     private OpenCodeBrowserPreviewContent? _content;
@@ -37,17 +37,17 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     internal OpenCodeBrowserPreviewView()
     {
         RowDefinitions.Add(new() { Height = new(48) }); RowDefinitions.Add(new() { Height = new(1, GridUnitType.Star) });
-        var toolbar = new Grid { Padding = new(12, 0, 12, 0) };
-        Theme(toolbar, "Background", "SolidBackgroundFillColorTertiaryBrush");
+        var toolbar = new Grid { Padding = new(12, 0, 8, 0), BorderThickness = new(0, 0, 0, 1) };
+        Theme(toolbar, "Background", "SolidBackgroundFillColorTertiaryBrush"); Theme(toolbar, "BorderBrush", "DividerStrokeColorDefaultBrush");
         _selector.Items.Add(_render); _selector.Items.Add(_source); _selector.SelectedItem = _render;
         toolbar.Children.Add(_selector);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         actions.Children.Add(_editor); actions.Children.Add(_explorer); toolbar.Children.Add(actions); Children.Add(toolbar);
         Grid.SetRow(_native, 1); Theme(_native, "Background", "SolidBackgroundFillColorBaseBrush"); Children.Add(_native);
         _selector.SelectionChanged += async (_, _) => { if (_selector.IsEnabled) await RenderSafelyAsync(); };
         _editor.Click += async (_, _) => await OpenAsync(true); _explorer.Click += async (_, _) => await OpenAsync(false);
         AutomationProperties.SetAutomationId(this, "OpenCodeBrowserPreview");
-        ToolTipService.SetToolTip(_selector, "文件预览 · 仅手动刷新（服务器未提供已核实的文件变更订阅）");
+        ToolTipService.SetToolTip(_selector, "文件预览");
     }
     internal void Bind(OpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPage? page)
     {
@@ -65,7 +65,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
         {
             var reason = _page?.PreviewPath is not { } path ? "尚未选择预览文件" : _workspace?.PreviewPathUnavailableReason?.Invoke(path, editor)
                 ?? (_workspace?.OpenPreviewPathAsync is null ? "当前连接未提供已授权的路径打开方式" : null);
-            button.IsEnabled = reason is null; ToolTipService.SetToolTip(button, reason ?? button.Content);
+            button.IsEnabled = reason is null; ToolTipService.SetToolTip(button, reason ?? AutomationProperties.GetName(button));
         }
     }
     private async Task OpenAsync(bool editor)
@@ -82,7 +82,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
         var page = _page; if (page?.PreviewPath is not { } path) return;
         _read = CancellationTokenSource.CreateLinkedTokenSource(page.Lifetime); var ct = _read.Token; var version = ++_version;
         _presentationVersion++;
-        ReleaseMedia(); _content = null; _text = null; _selector.IsEnabled = false; Status("正在读取服务器文件…", "仅手动刷新");
+        ReleaseMedia(); _content = null; _text = null; _selector.IsEnabled = false; Status("正在读取服务器文件…", "");
         try
         {
             var reader = _workspace?.ReadPreviewAsync;
@@ -97,7 +97,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
             var limit = OpenCodeBrowserPreviewPolicy.Limit(_kind);
             if (_content.Bytes.Length > limit) throw new IOException($"文件超过 {limit / 1024 / 1024} MiB 预览上限");
             if (OpenCodeBrowserPreviewPolicy.IsText(_kind)) _text = OpenCodeBrowserPreviewPolicy.Decode(_content.Bytes);
-            _source.IsEnabled = _text is not null; ToolTipService.SetToolTip(_source, _text is null ? "二进制文件没有可显示的 UTF-8 源码" : "原始 UTF-8 文本（含行号）");
+            _source.IsEnabled = _text is not null; ToolTipService.SetToolTip(_source, _text is null ? "二进制文件没有可显示的 UTF-8 源码" : "源码");
             if (_text is null) _selector.SelectedItem = _render;
             _selector.IsEnabled = true; await RenderSafelyAsync();
         }
@@ -142,7 +142,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
                     if (version != _presentationVersion) return;
                     var image = new Image { Source = imageSource, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
                     var host = new Grid(); host.Children.Add(Checkerboard()); host.Children.Add(new ScrollView { Content = image, ZoomMode = ScrollingZoomMode.Enabled, MinZoomFactor = .1, MaxZoomFactor = 8 });
-                    ToolTipService.SetToolTip(host, "按住 Ctrl 滚轮或双指缩放 · 10%–800%"); _native.Child = host;
+                    _native.Child = host;
                 }
                 break;
             case OpenCodeBrowserPreviewKind.Audio:
@@ -182,8 +182,10 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     private void Status(string title, string reason)
     {
         Native(true);
-        var panel = new StackPanel { Spacing = 12, Margin = new(32), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        panel.Children.Add(new TextBlock { Text = title, FontSize = 24 }); panel.Children.Add(Note(reason)); _native.Child = panel;
+        var panel = new StackPanel { Spacing = 8, Margin = new(32), MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        panel.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap });
+        if (!string.IsNullOrWhiteSpace(reason)) { var note = Note(reason); note.TextAlignment = TextAlignment.Center; Theme(note, "Foreground", "TextFillColorSecondaryBrush"); panel.Children.Add(note); }
+        _native.Child = panel;
     }
     private FrameworkElement Source(string text)
     {
@@ -249,6 +251,17 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
                     }
         };
         return canvas;
+    }
+    // Subtle command-bar buttons: icon + label, no resting fill, native hover/press.
+    private static Button Action(string glyph, string text)
+    {
+        var button = new Button { Height = 32, Padding = new(10, 0, 10, 0), BorderThickness = new(0), VerticalAlignment = VerticalAlignment.Center,
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = {
+                new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, new TextBlock { Text = text } } } };
+        if (Application.Current.Resources.TryGetValue("DefaultButtonStyle", out var native)) button.Style = (Style)native;
+        Theme(button, "Background", "SubtleFillColorTransparentBrush");
+        AutomationProperties.SetName(button, text);
+        return button;
     }
     private void ReleaseMedia() { _player?.Pause(); _player?.Dispose(); _player = null; _mediaStream?.Dispose(); _mediaStream = null; }
     private static TextBlock Note(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap, MaxWidth = 900 };

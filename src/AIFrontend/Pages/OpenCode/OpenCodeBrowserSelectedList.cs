@@ -15,10 +15,10 @@ namespace AIFrontend.Pages.OpenCode;
 
 internal sealed class OpenCodeBrowserSelectedList : Grid
 {
-    private readonly StackPanel _items = new() { Spacing = 8 };
-    private readonly TextBlock _heading = new() { FontSize = 16, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
-    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly Button _add = new();
+    private readonly StackPanel _items = new() { Spacing = 8, Padding = new(0, 0, 0, 4) };
+    private readonly TextBlock _heading = new() { FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12, Visibility = Visibility.Collapsed, Margin = new(0, 0, 0, 4) };
+    private readonly Button _add = new() { Height = 32 };
     internal readonly CheckBox FullPage = new() { Content = "附带整页截图", IsChecked = OpenCodeBrowserSelectionPolicy.DefaultFullPage };
     internal readonly CheckBox ElementInfo = new() { Content = "附带元素信息", IsChecked = OpenCodeBrowserSelectionPolicy.DefaultElementInfo };
     internal event Action? AddRequested;
@@ -28,22 +28,36 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
     internal event Action<byte[]>? SaveRequested;
     internal OpenCodeBrowserSelectedList()
     {
-        Width = 340; Padding = new(12); RowSpacing = 10; Visibility = Visibility.Collapsed;
-        Background = (Brush)Application.Current.Resources["SolidBackgroundFillColorSecondaryBrush"];
+        // Side sheet: one hairline divider toward the page, 16px gutters, cards on a quiet layer.
+        Width = 340; Padding = new(16, 12, 16, 16); RowSpacing = 12; Visibility = Visibility.Collapsed;
+        BorderThickness = new(1, 0, 0, 0);
+        Themed(this, "Background", "SolidBackgroundFillColorSecondaryBrush"); Themed(this, "BorderBrush", "DividerStrokeColorDefaultBrush");
         RowDefinitions.Add(new() { Height = GridLength.Auto }); RowDefinitions.Add(new() { Height = new(1, GridUnitType.Star) }); RowDefinitions.Add(new() { Height = GridLength.Auto });
-        Children.Add(_heading);
+        var headingRow = new Grid { ColumnSpacing = 8, Margin = new(0, 0, -8, 0) };
+        headingRow.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); headingRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        headingRow.Children.Add(_heading);
+        var hide = QuietButton("\uE8BB", 32, 12);
+        AutomationProperties.SetName(hide, "收起批注"); ToolTipService.SetToolTip(hide, "收起批注");
+        hide.Click += (_, _) => Visibility = Visibility.Collapsed;
+        SetColumn(hide, 1); headingRow.Children.Add(hide); Children.Add(headingRow);
         var scroll = new ScrollViewer { Content = _items, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         SetRow(scroll, 1); Children.Add(scroll);
-        var bottom = new StackPanel { Spacing = 4 };
+        var bottom = new StackPanel { Spacing = 0 };
+        Themed(_status, "Foreground", "SystemFillColorCriticalBrush");
+        FullPage.MinHeight = ElementInfo.MinHeight = 32;
+        _add.Margin = new(0, 8, 0, 0);
         bottom.Children.Add(_status); bottom.Children.Add(FullPage); bottom.Children.Add(ElementInfo);
-        bottom.Children.Add(new TextBlock { Text = "发送到：当前会话", Opacity = .7 });
         _add.HorizontalAlignment = HorizontalAlignment.Stretch;
         _add.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _add.Click += (_, _) => AddRequested?.Invoke(); bottom.Children.Add(_add); SetRow(bottom, 2); Children.Add(bottom);
         ChildrenTransitions = new TransitionCollection { new EntranceThemeTransition { FromHorizontalOffset = 40, FromVerticalOffset = 0 } };
         Transitions = new TransitionCollection { new EntranceThemeTransition { FromHorizontalOffset = 340, FromVerticalOffset = 0 } };
     }
-    internal void Status(string text) => _status.Text = text;
+    internal void Status(string text)
+    {
+        _status.Text = text;
+        _status.Visibility = string.IsNullOrWhiteSpace(text) ? Visibility.Collapsed : Visibility.Visible;
+    }
     internal void Render(OpenCodeBrowserSelectionList list)
     {
         Visibility = list.Items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -51,27 +65,60 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
         _items.Children.Clear();
         foreach (var item in list.Items)
         {
-            var row = new StackPanel { Spacing = 6 };
-            var header = new Grid { ColumnSpacing = 6 };
+            var row = new StackPanel { Spacing = 8 };
+            var header = new Grid { ColumnSpacing = 8, Margin = new(0, 0, -4, 0) };
             header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-            var badge = new Border { CornerRadius = new(12), Padding = new(5, 1, 5, 1), Background = ColorBrush(OpenCodeBrowserSelectionPolicy.Color(item.Kind)), Child = new TextBlock { Text = item.Number.ToString(), Foreground = new SolidColorBrush(Colors.White) } };
+            var number = new TextBlock { Text = item.Number.ToString(), FontSize = 11, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = new SolidColorBrush(Colors.White),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 0, 1) };
+            var badge = new Border { MinWidth = 20, Height = 20, CornerRadius = new(10), Padding = new(5, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center,
+                Background = ColorBrush(OpenCodeBrowserSelectionPolicy.Color(item.Kind)), Child = number };
             header.Children.Add(badge);
             var title = new TextBlock { Text = OpenCodeBrowserSelectionPolicy.Label(item.Kind) + " · " + item.Selector, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
             SetColumn(title, 1); header.Children.Add(title); ToolTipService.SetToolTip(title, title.Text);
-            var remove = new Button { Content = "×", Padding = new(5, 0, 5, 0), MinWidth = 24, MinHeight = 24 }; AutomationProperties.SetName(remove, $"移除第 {item.Number} 项");
+            var remove = QuietButton("\uE711", 28, 10); AutomationProperties.SetName(remove, $"移除第 {item.Number} 项"); ToolTipService.SetToolTip(remove, "移除");
             remove.Click += (_, _) => Removed?.Invoke(item.Id); SetColumn(remove, 2); header.Children.Add(remove); row.Children.Add(header);
-            var element = item.Elements.FirstOrDefault();
-            row.Children.Add(new TextBlock { Text = $"{element?.Value ?? element?.Text ?? item.AnnotationText} · {item.Box.Width:0} × {item.Box.Height:0} · {element?.Ref}", MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .7 });
-            row.Children.Add(Image(item.Image, 72));
+            if (Details(item, title.Text) is { Length: > 0 } details)
+            {
+                var meta = new TextBlock { Text = details, FontSize = 12, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(28, -6, 0, 0) };
+                Themed(meta, "Foreground", "TextFillColorSecondaryBrush"); ToolTipService.SetToolTip(meta, details); row.Children.Add(meta);
+            }
+            var thumbnail = Image(item.Image, 72); thumbnail.HorizontalAlignment = HorizontalAlignment.Center;
+            var frame = new Border { Child = thumbnail, Padding = new(8), CornerRadius = new(4), BorderThickness = new(1) };
+            Themed(frame, "Background", "SubtleFillColorSecondaryBrush"); Themed(frame, "BorderBrush", "CardStrokeColorDefaultBrush");
+            row.Children.Add(frame);
             var note = new TextBox { PlaceholderText = "添加批注（可选）", Text = item.Note, MaxLength = 4000 };
             AutomationProperties.SetName(note, $"第 {item.Number} 项批注");
             note.TextChanged += (_, _) => NoteChanged?.Invoke(item.Id, note.Text); row.Children.Add(note);
             var menu = new MenuFlyout();
-            var copy = new MenuFlyoutItem { Text = "复制图片" }; copy.Click += (_, _) => CopyRequested?.Invoke(item.Image); menu.Items.Add(copy);
-            var save = new MenuFlyoutItem { Text = "另存为图片" }; save.Click += (_, _) => SaveRequested?.Invoke(item.Image); menu.Items.Add(save);
-            var card = new Border { Padding = new(8), CornerRadius = new(6), BorderThickness = new(1), BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"], Child = row, ContextFlyout = menu };
+            var copy = new MenuFlyoutItem { Text = "复制图片", Icon = new FontIcon { Glyph = "\uE8C8" } }; copy.Click += (_, _) => CopyRequested?.Invoke(item.Image); menu.Items.Add(copy);
+            var save = new MenuFlyoutItem { Text = "另存为图片", Icon = new FontIcon { Glyph = "\uE74E" } }; save.Click += (_, _) => SaveRequested?.Invoke(item.Image); menu.Items.Add(save);
+            var card = new Border { Padding = new(12, 10, 12, 12), CornerRadius = new(8), BorderThickness = new(1), Child = row, ContextFlyout = menu };
+            Themed(card, "Background", "CardBackgroundFillColorDefaultBrush"); Themed(card, "BorderBrush", "CardStrokeColorDefaultBrush");
             _items.Children.Add(card);
         }
+    }
+    // Secondary line: captured text/value, size and ref, without repeating what the title already says.
+    private static string Details(BrowserSelectionItem item, string title)
+    {
+        var element = item.Elements.FirstOrDefault();
+        var text = string.Join(' ', (element?.Value ?? element?.Text ?? item.AnnotationText ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var size = $"{item.Box.Width:0} × {item.Box.Height:0}";
+        return string.Join(" · ", new[] { text, title.Contains(size, StringComparison.Ordinal) ? null : size, element?.Ref }.Where(part => !string.IsNullOrEmpty(part)));
+    }
+    private static Button QuietButton(string glyph, double size, double glyphSize)
+    {
+        var button = new Button { Content = new FontIcon { Glyph = glyph, FontSize = glyphSize }, Width = size, Height = size, MinWidth = 0, MinHeight = 0, Padding = new(0), BorderThickness = new(0) };
+        if (Application.Current.Resources.TryGetValue("DefaultButtonStyle", out var native)) button.Style = (Style)native;
+        Themed(button, "Background", "SubtleFillColorTransparentBrush");
+        return button;
+    }
+    private static void Themed(FrameworkElement element, string property, string resource)
+    {
+        var type = element.GetType();
+        while (type.Namespace?.StartsWith("Microsoft.UI.Xaml", StringComparison.Ordinal) != true) type = type.BaseType!;
+        var style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"" + type.Name + "\"><Setter Property=\"" + property + "\" Value=\"{ThemeResource " + resource + "}\"/></Style>");
+        style.BasedOn = element.Style; element.Style = style;
     }
     internal static Image Image(byte[] bytes, double height)
     {

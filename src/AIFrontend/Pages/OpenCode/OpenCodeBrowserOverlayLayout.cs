@@ -20,6 +20,6 @@ internal static class OpenCodeBrowserOverlayLayout
 
     // No content padding: the native WebView stretches from the toolbar to the bottom border.
     internal static (double Width, double Height) Content(double surfaceWidth, double surfaceHeight, double selectionWidth = 0)
-        => (Math.Max(0, surfaceWidth - 2 * BorderWidth - selectionWidth),
+        => (Math.Max(0, surfaceWidth - 2 * BorderWidth),
             Math.Max(0, surfaceHeight - 2 * BorderWidth - ToolbarHeight));
 }

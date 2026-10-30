@@ -25,7 +25,7 @@ internal static class SelectionTests
         check(script.Contains("if(mode==='Region'||mode==='Screenshot'){let r=rect(start,p,e.shiftKey);draft={box:r,elements:candidates(r)}}"), "STATIC rectangle and region screenshot preserve Shift-square drag path");
         check(script.Contains("corners(draft.box).findIndex") && script.Contains("start=corners(draft.box)[(handle+2)%4]"), "STATIC rectangle resize handles preserve opposite corner anchor");
         check(script.Contains("corners(r).every(p=>p.x>=box.x&&p.y>=box.y&&p.x<=box.x+box.width&&p.y<=box.y+box.height)"), "STATIC rectangle candidate filter requires full containment");
-        check(script.Contains("send('region',{key:draftKey,box:draft.box,selectors:draft.elements.map(e=>e.selector),kind:mode})"), "STATIC rectangle sends draft key, box and real element selectors");
+        check(script.Contains("send('region',{key:draftKey,box:draft.box,selectors:draft.elements.map(e=>e.selector),kind:mode,viewport:viewport()})"), "STATIC rectangle sends draft key, box, real element selectors and capture viewport");
         check(OpenCodeBrowserSelectionPolicy.DefaultFullPage && OpenCodeBrowserSelectionPolicy.DefaultElementInfo, "BQ9 both checkboxes default checked");
         foreach (var tool in Enum.GetValues<OpenCodeBrowserSelectionTool>())
         {
@@ -55,6 +55,16 @@ internal static class SelectionTests
         check(attachment.Context.Contains("input#search") && attachment.Context.Contains("hello") && attachment.Context.Contains("font: 14px") && attachment.Context.Contains("adjust spacing"), "selector value styles and note context");
         var noInfo = OpenCodeBrowserSelectionPolicy.Attachment("url", "tab1", 7, item, false);
         check(noInfo.Context == "adjust spacing" && !noInfo.Context.Contains("e42"), "unchecked element information excludes DOM but keeps user note");
+        var capturedViewport = new OpenCodeBrowserSelectionViewport(37, 410, 1200, 850);
+        var scrolledViewport = new OpenCodeBrowserSelectionViewport(50, 483, 1200, 850);
+        var projected = capturedViewport.AtViewport(item.Box, scrolledViewport);
+        check(projected.X == item.Box.X - 13 && projected.Y == item.Box.Y - 73, "region outline reprojects original document area after root scroll");
+        check(capturedViewport.DocumentBox(item.Box) == new BrowserRect(item.Box.X + 37, item.Box.Y + 410, item.Box.Width, item.Box.Height), "capture document coordinates are immutable");
+        check(capturedViewport.SameSize(scrolledViewport) && !capturedViewport.SameView(scrolledViewport) && !capturedViewport.SameSize(scrolledViewport with { Width = 860 }), "actual resize invalidates region outline instead of assigning stale viewport coordinates");
+        var described = capturedViewport.Describe(attachment, item.Box); var describedData = JsonNode.Parse(described.Details)!;
+        check(describedData["coordinateSpace"]!.ToString() == "viewport-at-capture" && describedData["documentBox"]!["y"]!.GetValue<double>() == item.Box.Y + 410, "posted annotation identifies original viewport and document region");
+        check(described.Context.Contains("viewportAtCapture") && described.Context.Contains("e42") && described.Context.Contains("adjust spacing") && described.Image.SequenceEqual(bytes), "added coordinate metadata preserves source refs, user note and captured image");
+        check(capturedViewport.Describe(noInfo, item.Box).Context == "adjust spacing", "coordinate metadata does not re-enable unchecked DOM context");
         var annotation = OpenCodeBrowserSelectionPolicy.Attachment("url", "tab1", 7, third, false);
         check(annotation.Context == "1. fix this", "finished annotation image and note form one item");
         var page = OpenCodeBrowserSelectionPolicy.Attachment("https://example.com/", "tab1", 7, first with { Kind = OpenCodeBrowserSelectionKind.Page }, false);
