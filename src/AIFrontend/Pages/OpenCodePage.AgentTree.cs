@@ -39,13 +39,9 @@ public sealed partial class OpenCodePage
 
     private void InitializeAgentTree()
     {
-        var treeAndPersistent = new Grid();
-        treeAndPersistent.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        treeAndPersistent.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        treeAndPersistent.Children.Add(_agentTree);
-        Grid.SetRow(_persistentPtyInventoryView, 1); treeAndPersistent.Children.Add(_persistentPtyInventoryView);
-        LeftAgentTreeSlot.Children.Add(treeAndPersistent);
+        LeftAgentTreeSlot.Children.Add(_agentTree);
         InitializePersistentPty();
+        InitializePersistentPtyPanel();
         _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
         _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
         _agentTree.ShellRequested += OpenTerminalView;

@@ -114,7 +114,7 @@ public sealed partial class OpenCodePage
         _browserPanelWorkspace = workspace; _browserStrip?.Bind(workspace);
         BrowserButtonSlot.Visibility = workspace is null ? Visibility.Collapsed : Visibility.Visible;
         // Remote sessions retain the browser row even while their WSL buttons are hidden.
-        WslQuickAccessSection.Visibility = workspace is not null || WslQuickAccessSlot.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        UpdateRightQuickAccessRow();
         RenderBrowserPanel();
     }
     private void RenderBrowserPanel()

@@ -185,10 +185,12 @@ internal static class PersistentPtyBindingTests
         var f = Fixture(); await f.Page.PrepareAsync();
         await Until(() => f.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
         f.Page.OpenPty("not-in-inventory");
-        Check(!f.Page.PtyOpen && f.Wire.Snapshots == 0, "opening is restricted to the exact current persistent inventory, never coreShell identity");
+        Check(!f.Page.PtyOpen && f.Wire.Snapshots == 0 && f.Page.OverlayView is null, "opening is restricted to the exact current persistent inventory, never coreShell identity");
         f.Page.OpenPty("pty_fixture");
         await f.Page.PtyView!.Renderer.ResetEntered.Task;
         var view = f.Page.PtyView!; var controller = f.Page.PtyController!; var run = f.Page.PtyRun!;
+        Check(ReferenceEquals(f.Page.OverlayView, view) && f.Page.OverlayPtyId == "pty_fixture",
+            "opened terminal is hosted in the floating card, keyed to the exact inventory row");
         Check(controller.State.Phase == PersistentPtyPhase.Replaying && f.Wire.Tickets == 0 && f.Wire.Writes == 0,
             "actual controller cannot attach or become Ready before UI checkpoint acknowledgement");
         Check(view.Renderer.Checkpoint.SequenceEqual(f.Wire.Checkpoint), "Page adapter passes decoded checkpoint bytes, never snapshot plain text");
@@ -227,8 +229,8 @@ internal static class PersistentPtyBindingTests
         var eventJson = "{\"type\":\"persistent-pty.removed\",\"data\":{\"sessionID\":\"foreign\",\"ptyID\":\"pty_fixture\"}}";
         f.Page.PtyEvent(eventJson); Check(f.Page.PtyOpen, "foreign session inventory event cannot close the current terminal");
         f.Page.PtyEvent(eventJson.Replace("foreign", "ses_plugin", StringComparison.Ordinal)); await run.WaitAsync(TimeSpan.FromSeconds(5));
-        Check(!f.Page.PtyOpen && view.Renderer.Disposed && f.Wire.Writes == 0 && f.Wire.Tickets == 0,
-            "native decoded removed event detaches/disposes immediately without DELETE, shutdown or implicit ticket/control");
+        Check(!f.Page.PtyOpen && view.Renderer.Disposed && f.Wire.Writes == 0 && f.Wire.Tickets == 0 && f.Page.OverlayView is null,
+            "native decoded removed event detaches/disposes immediately and hides the floating card without DELETE, shutdown or implicit ticket/control");
         f.Page.PausePty(); Check(f.Page.PtyInventory is null, "pause clears inventory lifetime and stops source-owned reads");
         await f.Page.PrepareAsync(); await Until(() => f.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
         Check(!f.Page.PtyOpen && f.Wire.Writes == 0, "reactivation refreshes inventory without reopening control or replaying input");
@@ -238,7 +240,7 @@ internal static class PersistentPtyBindingTests
         moved.Page.OpenPty("pty_fixture"); await moved.Page.PtyView!.Renderer.ResetEntered.Task;
         var movedView = moved.Page.PtyView!; var movedRun = moved.Page.PtyRun!;
         moved.Page.ChangePtyDirectory("/new-current-session-directory"); await movedRun.WaitAsync(TimeSpan.FromSeconds(5));
-        Check(!moved.Page.PtyOpen && movedView.Renderer.Disposed && moved.Wire.Writes == 0,
+        Check(!moved.Page.PtyOpen && movedView.Renderer.Disposed && moved.Wire.Writes == 0 && moved.Page.OverlayView is null,
             "directory ownership change disposes the attachment before new metadata paints, without resizing or killing");
         moved.Page.PausePty();
     }

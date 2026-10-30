@@ -12,7 +12,11 @@ namespace AIFrontend.Pages
 {
     public sealed partial class OpenCodePage
     {
-        private readonly Grid TerminalViewHost = new(), ConversationSurface = new();
+        // Floating-card hosting (OpenCodePage.PersistentPtyOverlay.cs) is native-only; record what was shown.
+        internal OpenCodePersistentPtyView? OverlayView { get; private set; }
+        internal string? OverlayPtyId { get; private set; }
+        private void ShowPersistentPtyOverlay(OpenCodePersistentPtyView view, string ptyId) { OverlayView = view; OverlayPtyId = ptyId; }
+        private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view) { if (ReferenceEquals(OverlayView, view)) { OverlayView = null; OverlayPtyId = null; } }
         private readonly Control Composer = new Button();
         private readonly Control MessageScroll = new Button();
         private Control? _terminalView = null;

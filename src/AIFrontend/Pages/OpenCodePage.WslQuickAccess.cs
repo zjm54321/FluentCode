@@ -99,7 +99,7 @@ public sealed partial class OpenCodePage
             _ = CompleteWslQuickAccessHomeAsync(_wslHomeRead);
         }
         WslQuickAccessSlot.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
-        WslQuickAccessSection.Visibility = WslQuickAccessSlot.Visibility;
+        UpdateRightQuickAccessRow();
         WslQuickAccessNoteSlot.Visibility = WslQuickAccessSlot.Visibility;
         _wslQuickAccessView.Render(state, _wslEditors, _selectedWslEditor);
         RefreshBrowserPanel();

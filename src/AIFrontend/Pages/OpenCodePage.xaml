@@ -329,12 +329,14 @@
                                             </Grid>
                                             <StackPanel x:Name="WslQuickAccessSection" Visibility="Collapsed" Spacing="0">
                                                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="4" Margin="0,12,0,0">
+                                                <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="4" Margin="0,12,0,0">
                                                     <Grid x:Name="WslQuickAccessSlot" Visibility="Collapsed" HorizontalAlignment="Left" />
                                                     <Grid x:Name="BrowserButtonSlot" Grid.Column="1" Visibility="Collapsed" />
-                                                    <Grid x:Name="BrowserCommandsSlot" Grid.Column="3" Visibility="Collapsed" />
+                                                    <Grid x:Name="PersistentPtyButtonSlot" Grid.Column="2" />
+                                                    <Grid x:Name="BrowserCommandsSlot" Grid.Column="3" HorizontalAlignment="Right" Visibility="Collapsed" />
                                                 </Grid>
                                                 <Grid x:Name="BrowserStripSlot" />
+                                                <Grid x:Name="PersistentPtyStripSlot" />
                                                 <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" Margin="0,12,0,0" />
                                             </StackPanel>
                                             <Border x:Name="RightContextDivider" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
@@ -861,5 +863,7 @@
             </Grid>
         </SplitView>
         <Grid x:Name="BrowserOverlayHost" Grid.Row="1" HorizontalAlignment="Left" Visibility="Collapsed" />
+        <Grid x:Name="PersistentPtyOverlayHost" Grid.Row="1" HorizontalAlignment="Left" Visibility="Collapsed"
+              AutomationProperties.AutomationId="OpenCodePersistentPtyOverlayHost" />
     </Grid>
 </Page>

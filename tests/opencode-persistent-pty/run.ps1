@@ -30,8 +30,13 @@ $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/1.8.26080300
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/1.8.260708001/lib/net6.0-windows10.0.18362.0/*.dll"
 $native += Get-Item "$nuget/microsoft.web.webview2/1.0.3179.45/lib_manual/net8.0-windows10.0.17763.0/Microsoft.Web.WebView2.Core.Projection.dll"
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
-    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs"))
+    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
+    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs"))
 Write-Output 'PASS actual WinUI/WebView2 view API reference compile; not a native window/rendering test.'
+Compile 'PtyOverlayGlueNativeCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
+    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
+    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs"))
+Write-Output 'PASS actual right-card/floating-card page glue reference compile against WinUI refs (page members shimmed).'
 
 # Production Billion/PTY bindings; the retired preset/clear action UI is intentionally absent.
 # Native view/dialog/OS-launch boundaries are inert, explicitly defined by BillionPtyPage.TestHost.cs.
@@ -52,6 +57,7 @@ $recordedInputs = @($bindingSources + $models + @("$folder/OpenCodeSessionInsigh
     "$repo/src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.RightPanelMetadata.cs",
     "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.EventSync.cs",
     "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.AgentTree.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.TerminalView.cs",
+    "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.xaml", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/AIFrontend/Pages/OpenCodePage.xaml.cs", "$PSScriptRoot/NativeHost.cs", "$PSScriptRoot/run.ps1"))
 $recordedInputs += @(Get-ChildItem "$folder/OpenCodePersistentPty*.cs" | ForEach-Object FullName)
 $recordedInputs += @(Get-ChildItem "$repo/src/AIFrontend/Assets/OpenCode/PersistentPty/*" -File | ForEach-Object FullName)

@@ -153,8 +153,7 @@ public sealed partial class OpenCodePage
             try { var data = new DataPackage(); data.SetText(request.Text); Clipboard.SetContent(data); }
             catch (Exception) { /* Explicit clipboard action failed; never send it to the terminal as input. */ }
         };
-        TerminalViewHost.Children.Add(view);
-        ConversationSurface.Visibility = Visibility.Collapsed; TerminalViewHost.Visibility = Visibility.Visible;
+        ShowPersistentPtyOverlay(view, ptyId);
         DismissSidebarDrawers();
         view.Render(PersistentPresentation(owner, owner.Controller.State));
         owner.Run = owner.Controller.RunAsync(); // Observation only: no user-consent/control call here.
@@ -262,8 +261,7 @@ public sealed partial class OpenCodePage
         owner.Adapter.Dispose(); owner.View.Renderer.SuspendInput();
         if (owner.Controller.State.InputOutcomeUncertain) _persistentInputUncertainty.Add((owner.Origin.Source.Identity, owner.Origin.SessionId, owner.Context.PtyId));
         _ = DisposePersistentPtyAsync(owner);
-        TerminalViewHost.Children.Remove(owner.View); owner.View.Renderer.Dispose();
-        TerminalViewHost.Visibility = Visibility.Collapsed; ConversationSurface.Visibility = Visibility.Visible;
+        HidePersistentPtyOverlay(owner.View); owner.View.Renderer.Dispose();
         if (restoreFocus && _persistentPtyReturnFocus?.Focus(FocusState.Programmatic) != true && !Composer.Focus(FocusState.Programmatic))
             MessageScroll.Focus(FocusState.Programmatic);
         _persistentPtyReturnFocus = null;

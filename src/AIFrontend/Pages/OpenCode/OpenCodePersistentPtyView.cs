@@ -3,23 +3,31 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>Center-terminal presentation. Viewing is read-only; closing only requests detach.</summary>
+/// <summary>Floating-card terminal: one browser-height toolbar over the renderer. Viewing is read-only; close only requests detach.</summary>
 internal sealed class OpenCodePersistentPtyView : Grid
 {
+    internal const double ToolbarHeight = 46;
     internal OpenCodePersistentPtyRenderer Renderer { get; } = new();
-    private readonly TextBlock _title = new() { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _title = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center,
+        FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
     private readonly TextBlock _status = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _detail = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
-    private readonly Button _back = new() { Content = new FontIcon { Glyph = "\uE72B", FontSize = 16 }, Width = 36, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
-    private readonly Button _copy = new() { Content = new FontIcon { Glyph = "\uE8C8", FontSize = 14 }, Width = 32, Height = 32, MinWidth = 0, Padding = new Thickness(0), IsEnabled = false };
+    private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Center };
+    private readonly Border _statusPill = new() { Height = 24, Padding = new Thickness(10, 0, 10, 0), CornerRadius = new CornerRadius(12), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _detail = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly InfoBar _notice = new() { IsClosable = false, IsOpen = false, Severity = InfoBarSeverity.Warning, CornerRadius = new CornerRadius(0) };
+    private readonly Button _back = IconButton("\uE8BB", "关闭终端浮窗");
+    private readonly Button _copy = IconButton("\uE8C8", "复制选中的终端文本");
     private string _selection = string.Empty;
-    private readonly Button _takeControl = new() { Content = "接管终端", MinHeight = 32 };
-    private readonly Button _fit = new() { Content = "适应窗口", MinHeight = 32, Visibility = Visibility.Collapsed };
-    private readonly Button _release = new() { Content = "回到只读", MinHeight = 32, Visibility = Visibility.Collapsed };
-    private readonly Button _reconnect = new() { Content = "重新连接", MinHeight = 32, Visibility = Visibility.Collapsed };
+    private string? _fitFailure;
+    private readonly Button _takeControl = TextButton("接管终端");
+    private readonly Button _fit = TextButton("适应窗口");
+    private readonly Button _release = TextButton("回到只读");
+    private readonly Button _reconnect = TextButton("重新连接");
     private OpenCodePersistentPtyPresentation? _model;
     private ContentDialog? _confirmation;
     internal event Action<OpenCodePersistentPtyViewContext>? TakeControlRequested;
@@ -30,28 +38,38 @@ internal sealed class OpenCodePersistentPtyView : Grid
 
     internal OpenCodePersistentPtyView()
     {
-        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        RowDefinitions.Add(new RowDefinition { Height = new GridLength(ToolbarHeight) });
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var header = new Grid { ColumnSpacing = 12, RowSpacing = 6, Padding = new Thickness(12, 8, 12, 8) };
-        for (var row = 0; row < 3; row++) header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
-        header.Children.Add(_back); Grid.SetColumn(_title, 1); header.Children.Add(_title);
-        Grid.SetColumn(_copy, 2); header.Children.Add(_copy);
-        _status.TextWrapping = TextWrapping.Wrap; Grid.SetRow(_status, 1); Grid.SetColumnSpan(_status, 3); header.Children.Add(_status);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8,
+        var toolbar = new Grid { Padding = new Thickness(12, 0, 8, 0), ColumnSpacing = 10, BorderThickness = new Thickness(0, 0, 0, 1) };
+        Theme(toolbar, "BorderBrush", "DividerStrokeColorDefaultBrush");
+        foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto, GridLength.Auto })
+            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
+        var icon = new FontIcon { Glyph = "\uE756", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
+        toolbar.Children.Add(icon);
+        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center, Children = { _title, _detail } };
+        Grid.SetColumn(heading, 1); toolbar.Children.Add(heading);
+        _statusPill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Children = { _statusDot, _status } };
+        Theme(_statusPill, "Background", "SubtleFillColorSecondaryBrush");
+        Grid.SetColumn(_statusPill, 2); toolbar.Children.Add(_statusPill);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
             Children = { _takeControl, _fit, _release, _reconnect } };
-        Grid.SetRow(actions, 2); Grid.SetColumnSpan(actions, 3); header.Children.Add(actions);
-        Children.Add(header);
-        _detail.Margin = new Thickness(16, 0, 16, 8); Grid.SetRow(_detail, 1); Children.Add(_detail);
-        Grid.SetRow(Renderer, 2); Children.Add(Renderer);
-        _title.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
+        Grid.SetColumn(actions, 3); toolbar.Children.Add(actions);
+        var divider = new Border { Width = 1, Height = 20, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        Theme(divider, "Background", "DividerStrokeColorDefaultBrush");
+        var chrome = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, divider, _back } };
+        Grid.SetColumn(chrome, 4); toolbar.Children.Add(chrome);
+        Children.Add(toolbar);
+        Grid.SetRow(_notice, 1); Children.Add(_notice);
+        // The renderer paints #0c0c0c; the same ground beneath it avoids a light flash while WebView2 starts.
+        var ground = new Grid { Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 12, 12, 12)), Children = { Renderer } };
+        Grid.SetRow(ground, 2); Children.Add(ground);
+        toolbar.SizeChanged += (_, _) => _detail.Visibility = toolbar.ActualWidth < 720 || _detail.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         _detail.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         AutomationProperties.SetAutomationId(this, "OpenCodePersistentPtyView");
-        AutomationProperties.SetName(_back, "返回会话，断开查看但不结束终端");
-        ToolTipService.SetToolTip(_back, "返回会话 · 不结束终端");
-        AutomationProperties.SetName(_copy, "复制选中的终端文本"); ToolTipService.SetToolTip(_copy, "复制选中文本；不会向终端发送 Ctrl+C");
+        AutomationProperties.SetAutomationId(_back, "OpenCodePersistentPtyClose");
+        ToolTipService.SetToolTip(_back, "关闭 · Esc");
+        _copy.IsEnabled = false; ToolTipService.SetToolTip(_copy, "复制");
         _copy.Click += (_, _) => { if (_model is { } model && _selection.Length > 0) CopySelectionRequested?.Invoke(new(model.Context, _selection)); };
         Renderer.SelectionChanged += selection =>
         {
@@ -63,9 +81,8 @@ internal sealed class OpenCodePersistentPtyView : Grid
         _takeControl.Click += async (_, _) => await ConfirmTakeControlAsync();
         _fit.Click += async (_, _) => await RequestFitAsync();
         _release.Click += (_, _) => { if (_model is { } model) ReleaseControlRequested?.Invoke(model.Context); };
-        ToolTipService.SetToolTip(_release, "断开当前控制连接并重新只读连接；不结束终端，也不保证下一控制者");
-        ToolTipService.SetToolTip(_fit, "明确请求将受控终端调整为当前窗口大小");
         Unloaded += (_, _) => { if (!IsLoaded) _confirmation?.Hide(); };
+        ActualThemeChanged += (_, _) => PaintStatus();
         Render(null);
     }
     internal void Render(OpenCodePersistentPtyPresentation? model)
@@ -74,11 +91,15 @@ internal sealed class OpenCodePersistentPtyView : Grid
         { _selection = string.Empty; _copy.IsEnabled = false; }
         if (_model?.Context != model?.Context || model?.Writable != true) Renderer.SuspendInput();
         if (_model?.Context != model?.Context || _model?.Role != model?.Role || model?.NeedsInputConsent != true) _confirmation?.Hide();
+        if (_model?.Context != model?.Context) _fitFailure = null;
         _model = model; Visibility = model is null ? Visibility.Collapsed : Visibility.Visible;
         _title.Text = model?.Title ?? string.Empty; ToolTipService.SetToolTip(_title, _title.Text);
         _status.Text = model?.Status ?? string.Empty;
-        _detail.Text = model is null ? string.Empty : string.Join(" · ", new[] { model.Directory, model.ControllerLabel, model.Notice }.WherePresent());
-        _detail.Visibility = _detail.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        _detail.Text = model is null ? string.Empty : string.Join(" · ", new[] { model.Directory, model.ControllerLabel }.WherePresent());
+        ToolTipService.SetToolTip(_detail, _detail.Text.Length == 0 ? null : _detail.Text);
+        if (_detail.Text.Length == 0) _detail.Visibility = Visibility.Collapsed;
+        else if (_detail.Parent is FrameworkElement { Parent: FrameworkElement toolbar }) _detail.Visibility = toolbar.ActualWidth is > 0 and < 720 ? Visibility.Collapsed : Visibility.Visible;
+        ShowNotice(string.Join(" ", new[] { model?.Notice, _fitFailure }.WherePresent()));
         _back.IsEnabled = model is not null && DetachRequested is not null;
         _takeControl.Content = model?.ConsentAction ?? "接管终端";
         _takeControl.Visibility = model is { Phase: OpenCodePersistentPtyPhase.Live } && (model.Role == OpenCodePersistentPtyRole.Observer || !model.InputAuthorized)
@@ -91,6 +112,26 @@ internal sealed class OpenCodePersistentPtyView : Grid
         _reconnect.Visibility = model?.Phase == OpenCodePersistentPtyPhase.Disconnected ? Visibility.Visible : Visibility.Collapsed;
         _reconnect.IsEnabled = ReconnectRequested is not null;
         AutomationProperties.SetName(_status, _status.Text);
+        PaintStatus();
+    }
+    private void ShowNotice(string text)
+    {
+        _notice.Message = text;
+        _notice.Severity = _model?.Phase is OpenCodePersistentPtyPhase.Unavailable or OpenCodePersistentPtyPhase.Disconnected
+            ? InfoBarSeverity.Error : InfoBarSeverity.Warning;
+        _notice.IsOpen = text.Length > 0;
+    }
+    private void PaintStatus()
+    {
+        if (Application.Current is null) return;
+        var key = _model?.Phase switch
+        {
+            OpenCodePersistentPtyPhase.Live => _model.Writable ? "AccentFillColorDefaultBrush" : "SystemFillColorSuccessBrush",
+            OpenCodePersistentPtyPhase.Connecting or OpenCodePersistentPtyPhase.Replaying => "SystemFillColorCautionBrush",
+            OpenCodePersistentPtyPhase.Exited => "SystemFillColorNeutralBrush",
+            _ => "SystemFillColorCriticalBrush",
+        };
+        if (Application.Current.Resources.TryGetValue(key, out var brush)) _statusDot.Background = (Brush)brush;
     }
     private async Task RequestFitAsync()
     {
@@ -99,7 +140,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         catch (Exception)
         {
             if (_model?.Context == model.Context)
-            { _detail.Text = "暂时无法请求调整终端大小，请检查连接状态。"; _detail.Visibility = Visibility.Visible; }
+            { _fitFailure = "暂时无法调整终端大小"; ShowNotice(string.Join(" ", new[] { _model.Notice, _fitFailure }.WherePresent())); }
         }
     }
     private async Task ConfirmTakeControlAsync()
@@ -117,6 +158,20 @@ internal sealed class OpenCodePersistentPtyView : Grid
         }
         finally { if (ReferenceEquals(_confirmation, dialog)) _confirmation = null; }
     }
+
+    private static Button IconButton(string glyph, string name)
+    {
+        var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 14 },
+            Width = 34, Height = 32, MinWidth = 0, Padding = new Thickness(0), BorderThickness = new Thickness(0) };
+        if (Application.Current?.Resources.TryGetValue("OpenCodeTransparentToolButtonStyle", out var style) == true && style is Style quiet) button.Style = quiet;
+        AutomationProperties.SetName(button, name);
+        return button;
+    }
+    private static Button TextButton(string text)
+        => new() { Content = text, Height = 32, FontSize = 13, Padding = new Thickness(12, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+    private static void Theme(FrameworkElement target, string property, string key)
+        => target.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\""
+            + target.GetType().Name + "\"><Setter Property=\"" + property + "\" Value=\"{ThemeResource " + key + "}\"/></Style>");
 }
 
 internal static class OpenCodePersistentPtyViewText

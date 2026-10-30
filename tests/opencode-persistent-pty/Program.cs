@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using AIFrontend.Pages.OpenCode;
@@ -49,6 +50,35 @@ internal static class Program
                 "unmodified vendor asset hash " + entry.Name);
         var html = File.ReadAllText(Path.Combine(assets, "index.html"));
         Check(html.Contains("connect-src 'none'") && html.Contains("frame-src 'none'") && !html.Contains("src=\"https://"), "renderer CSP and assets have no network or frame dependency");
+        var pages = Path.Combine(args[0], "src/AIFrontend/Pages");
+        var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(pages, "OpenCodePage.xaml"));
+        System.Xml.Linq.XElement Named(string name) => xaml.Descendants().Single(e => e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == name));
+        var button = Named("PersistentPtyButtonSlot"); var strip = Named("PersistentPtyStripSlot");
+        Check(button.Parent == Named("BrowserButtonSlot").Parent && (string?)button.Attribute("Grid.Column") == "2"
+            && strip.ElementsBeforeSelf().Any(e => e == Named("BrowserStripSlot")) && strip.Ancestors().Contains(Named("RightSessionCard")),
+            "terminal entry sits beside the browser button with its strip below the browser strip in the right session card");
+        var host = Named("PersistentPtyOverlayHost");
+        Check(host.Parent == Named("PageRoot") && host.ElementsBeforeSelf().Contains(Named("BrowserOverlayHost"))
+            && (string?)host.Attribute("Grid.Row") == "1" && (string?)host.Attribute("Visibility") == "Collapsed",
+            "terminal floating card is a page-level sibling of the browser card, hidden by default");
+        var tree = File.ReadAllText(Path.Combine(pages, "OpenCodePage.AgentTree.cs"));
+        Check(tree.Contains("LeftAgentTreeSlot.Children.Add(_agentTree);") && !tree.Contains("_persistentPtyInventoryView"),
+            "left pane holds only the agent tree");
+        var lifecycle = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPty.cs"));
+        Check(!lifecycle.Contains("TerminalViewHost") && !lifecycle.Contains("ConversationSurface")
+            && lifecycle.Contains("ShowPersistentPtyOverlay(view, ptyId);") && lifecycle.Contains("HidePersistentPtyOverlay(owner.View); owner.View.Renderer.Dispose();"),
+            "persistent terminal no longer replaces the conversation; command-output terminal keeps the center host");
+        var glue = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPtyOverlay.cs"));
+        Check(glue.Contains("OpenCodeBrowserOverlayLayout.Place(") && glue.Contains("workspace.HideOverlay();")
+            && glue.Contains("BrowserOverlayHost.Visibility == Visibility.Visible && _persistentAttachmentOwner is not null) ClosePersistentPtyView(restoreFocus: false)")
+            && glue.Contains("VirtualKey.Escape") && glue.Contains("IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, owner.View.Renderer)) return;"),
+            "browser geometry, one floating card at a time, Esc closes except while the terminal program has focus");
+        foreach (var file in new[] { "OpenCode/OpenCodePersistentPtyView.cs", "OpenCode/OpenCodePersistentPtyInventoryView.cs", "OpenCode/OpenCodePersistentPtyOverlay.cs" })
+        {
+            var text = File.ReadAllText(Path.Combine(pages, file));
+            Check(!text.Contains("点击只读查看") && !text.Contains("与命令输出终端分开") && !text.Contains("断开查看但不结束终端") && !text.Contains("不会向终端发送")
+                && !text.Contains("明确请求") && !text.Contains("也不保证"), "no explanatory sentences in " + file);
+        }
         Console.WriteLine($"PASS {_checks} pure presentation/security/vendor checks; no backend or native execution.");
     }
 }
