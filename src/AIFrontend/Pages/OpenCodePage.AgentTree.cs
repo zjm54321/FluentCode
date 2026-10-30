@@ -335,11 +335,11 @@ public sealed partial class OpenCodePage
                     .Append(message.Command).Append(':').Append(message.Status).Append(':').Append(message.Exit?.GetRawText())
                     .Append(':').Append(message.Metadata?.GetRawText()).Append(':').Append(message.Output?.Output).Append(';');
             }
-            else if (message.Type == "synthetic"
+            else if (message.Type is "synthetic" or "system"
                 && OpenCodeAgentTreeProjection.String(message.Metadata, "source") == "shell")
             {
                 signature.Append("n:").Append(message.Id).Append(':').Append(message.Description).Append(':')
-                    .Append(message.Metadata?.GetRawText()).Append(';');
+                    .Append(message.Metadata?.GetRawText()).Append(':').Append(message.Text).Append(':').Append(message.Output?.Output).Append(';');
             }
 
             foreach (var part in message.Content ?? new())
@@ -356,7 +356,9 @@ public sealed partial class OpenCodePage
     private bool MergeAgentTreeShell(OpenCodeTreeShell shell)
     {
         if (_treeShells.TryGetValue(shell.Id, out var previous))
-            shell = shell with { Cwd = shell.Cwd ?? previous.Cwd, Output = shell.Output ?? previous.Output,
+            shell = shell with { Cwd = shell.Cwd ?? previous.Cwd, Output = previous.Completed && !shell.Completed ? previous.Output ?? shell.Output : shell.Output ?? previous.Output,
+                Completed = shell.Completed || previous.Completed,
+                Command = shell.Command == shell.Id ? previous.Command : shell.Command,
                 Kind = shell.Kind == OpenCodeTreeShellKind.Unknown ? previous.Kind : shell.Kind,
                 Status = shell.Status == OpenCodeTreeStatus.Unknown
                     || shell.Status == OpenCodeTreeStatus.Running && previous.Status is OpenCodeTreeStatus.Succeeded or OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted
@@ -399,7 +401,7 @@ public sealed partial class OpenCodePage
                     "idle" => OpenCodeTreeStatus.Unknown,
                     _ => status
                 };
-            if (status.HasValue && !(item.Type == "session.idle" && _treeStatuses.GetValueOrDefault(id) is OpenCodeTreeStatus.Succeeded or OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted))
+            if (status.HasValue && !(status == OpenCodeTreeStatus.Unknown && _treeStatuses.GetValueOrDefault(id) is OpenCodeTreeStatus.Succeeded or OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted))
                 _treeStatuses[id] = status.Value;
             if (item.Type == "session.step.started")
             {

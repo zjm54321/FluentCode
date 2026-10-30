@@ -111,7 +111,7 @@ namespace AIFrontend.Pages.OpenCode
         internal int? FileIndex { get; private set; }
         internal int UpdateCount { get; private set; }
 
-        public event Action<string>? TerminalRequested { add { } remove { } }
+        public event Action<OpenCodeShellTerminalRequest>? TerminalRequested { add { } remove { } }
         public event Action<string?, string>? BrowserPageRequested { add { } remove { } }
         internal void Update(OpenCodeContentPart part, string? parentMessageId, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground = false, int? fileIndex = null)
         {
@@ -300,18 +300,22 @@ namespace AIFrontend.Pages.OpenCode
         internal string? DetailText { get; private set; }
         internal OpenCodeTimelineRowContent Content { get; private set; } = new(string.Empty, string.Empty, string.Empty, null, string.Empty, string.Empty, Array.Empty<OpenCodeToolProperty>(), null);
         internal Action? LinkInvoked { get; private set; }
-        internal void UpdateRow(OpenCodeTimelineRowContent content, Action? linkInvoked = null)
+        internal bool CompletionNotice { get; }
+        internal bool Cancelled { get; private set; }
+        internal void UpdateRow(OpenCodeTimelineRowContent content, Action? linkInvoked = null, bool cancelled = false)
         {
             Content = content;
             Label = content.Name;
             DetailText = content.DetailText;
             LinkInvoked = linkInvoked;
+            Cancelled = cancelled;
             ConversationViewTestProbe.Record("Update", this, content.Name, content.DetailText);
         }
         internal int DisposeCount { get; private set; }
-        internal OpenCodeTimelineChipView(string automationId, string glyph, string? labelAutomationId = null)
+        internal OpenCodeTimelineChipView(string automationId, string glyph, string? labelAutomationId = null, bool completionNotice = false)
         {
             _glyph = glyph;
+            CompletionNotice = completionNotice;
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(Element, automationId);
             ConversationViewTestProbe.Record("Construct", this, Element);
         }
@@ -652,6 +656,8 @@ namespace Microsoft.UI.Xaml.Controls
 
     public class Button : ContentControl
     {
+        public Thickness Padding { get; set; }
+        public double MinHeight { get; set; }
         public Flyout? Flyout { get; set; }
         public bool IsEnabled { get; set; } = true;
         public event RoutedEventHandler? Click;
@@ -677,7 +683,7 @@ namespace Microsoft.UI.Xaml.Controls
 
     public static class ToolTipService
     {
-        public static void SetToolTip(DependencyObject element, object value) { }
+        public static void SetToolTip(DependencyObject element, object? value) { }
     }
 
     public class InfoBar : FrameworkElement

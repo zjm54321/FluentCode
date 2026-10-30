@@ -244,7 +244,6 @@ public sealed partial class OpenCodePage
         _mutationEpoch++;
         _interactionBusy = false;
         _pendingAckIds.Clear();
-        _deliveredNoticeShown = false;
         PermissionBar.IsOpen = false;
         UpdateWaitingText();
         UpdateEmptyState();

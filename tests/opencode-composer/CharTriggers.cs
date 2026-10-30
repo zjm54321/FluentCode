@@ -16,8 +16,8 @@ internal static partial class Program
             OpenCodeComposerPlusMenuKind.Separator, OpenCodeComposerPlusMenuKind.Command,
             OpenCodeComposerPlusMenuKind.Context, OpenCodeComposerPlusMenuKind.Terminal }), "plus native menu order");
         Check(entries.Where(e => e.Kind != OpenCodeComposerPlusMenuKind.Separator).Select(e => e.Glyph)
-            .SequenceEqual(new[] { "\uE723", "\uE945", "\uE168", "\uE756" }),
-            "plus icons: attach paperclip, lightning for commands, @ mention for context, command prompt for terminal (same as agent tree)");
+            .SequenceEqual(new[] { "\uE723", "\uE945", "\uE168", string.Empty }),
+            "plus icons: attach paperclip, lightning for commands, @ mention for context; terminal has no font glyph (shared >_ path icon)");
         Check(entries.Where(e => e.Kind != OpenCodeComposerPlusMenuKind.Separator).Select(e => e.Text)
             .SequenceEqual(new[] { "添加附件", "命令", "上下文", "终端" }), "plus menu labels");
         Check(OpenCodeComposerPlusMenu.TerminalTooltip.Contains("Shell")

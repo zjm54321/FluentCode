@@ -38,11 +38,11 @@ $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
-    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
+    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
 Write-Output 'PASS actual WinUI/native terminal view API reference compile; no native runtime window executed.'
 Compile 'PtyOverlayGlueNativeCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
-    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
+    "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
 Write-Output 'PASS actual right-card/floating-card page glue reference compile against WinUI refs (page members shimmed).'
 
@@ -59,6 +59,8 @@ $bindingSources = $serviceSources + @("$folder/OpenCodeBillionPresentation.cs",
     "$folder/OpenCodeSessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.BillionDashboard.cs",
     "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPty.cs", "$folder/OpenCodePersistentPtyPresentation.cs", "$folder/OpenCodePersistentPtySurface.cs",
     "$folder/OpenCodePersistentPtyRendererAdapter.cs", "$folder/OpenCodePersistentPtyInventory.cs", "$folder/OpenCodePersistentPtyInventoryPresentation.cs",
+    "$folder/OpenCodeShellTerminalText.cs", "$folder/OpenCodeShellTerminalAdapter.cs", "$folder/OpenCodeShellTerminalState.cs", "$folder/OpenCodeShellTerminalReader.cs", "$folder/OpenCodeAgentTreeProjection.cs",
+    "$PSScriptRoot/ShellTerminalTests.cs",
     "$PSScriptRoot/PersistentPtyPage.TestHost.cs", "$PSScriptRoot/PersistentPtyBindingTests.cs",
     "$PSScriptRoot/BillionPtyPage.TestHost.cs", "$PSScriptRoot/BillionBindingTests.cs")
 $recordedInputs = @($bindingSources + $models + @("$folder/OpenCodeSessionInsightsView.cs",
@@ -75,8 +77,8 @@ Compile 'BillionPtyBindingTests' 'exe' $refs $bindingSources
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'BillionPtyBindingTests.runtimeconfig.json')
 & $dotnet (Join-Path $EvidenceRoot 'BillionPtyBindingTests.dll') | Tee-Object (Join-Path $EvidenceRoot 'binding-results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Billion/PTY Page binding tests failed: $LASTEXITCODE" }
-$bindingNative = @($bindingSources | Where-Object { $_ -notlike '*BillionBindingTests.cs' -and $_ -notlike '*PersistentPtyBindingTests.cs' }) + @(
-    "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources
+$bindingNative = @($bindingSources | Where-Object { $_ -notlike '*BillionBindingTests.cs' -and $_ -notlike '*PersistentPtyBindingTests.cs' -and $_ -notlike '*ShellTerminalTests.cs' }) + @(
+    "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources
 Compile 'BillionPtyBindingNativeCheck' 'library' ($refs + $native) $bindingNative 'NATIVE_UI'
 foreach ($input in $recordedInputs) {
     if ((Get-FileHash -Algorithm SHA256 $input).Hash -ne $inputHashes[$input]) { throw "Compiled/binding input changed during focused validation: $input" }

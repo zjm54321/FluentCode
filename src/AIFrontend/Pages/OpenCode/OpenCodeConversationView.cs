@@ -1097,7 +1097,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private readonly Dictionary<string, (string? Agent, string? Description)> _childToolTargets = new(StringComparer.Ordinal);
     private (string? Agent, string? Description)? FindChildTool(string child)
         => _childToolTargets.TryGetValue(child, out var target) ? target : null;
-    public event Action<string>? TerminalRequested;
+    public event Action<OpenCodeShellTerminalRequest>? TerminalRequested;
     public event Action<string?, string>? BrowserPageRequested;
 
     /// <summary>创建空的消息时间线视图。</summary>
@@ -1513,7 +1513,8 @@ public sealed class OpenCodeConversationView : StackPanel
     private string ComputeAsyncSignature(OpenCodeMessage message)
     {
         if (OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out var notice))
-            return "completion-represented:" + _subagentInvocationKeys.Contains(notice.Key);
+            return notice.Kind == OpenCodeAsyncCompletionKind.Subagent ? "subagent-completion-notice"
+                : "completion-represented:" + _subagentInvocationKeys.Contains(notice.Key);
         if (OpenCodeManualBackgroundIndex.TryReadNotice(message, out var items))
             return "manual-notice:" + string.Join(",", items.Select(item =>
                 _manualBackground.IsNoticeItemRepresented(message.Id, item.Kind, item.Title) ? "represented" : "notice"));
@@ -1587,10 +1588,12 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         var instruction = IsInstructionMessage(message);
         var async = !instruction && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out _);
+        var subagentNotice = async && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out var notice)
+            && notice.Kind == OpenCodeAsyncCompletionKind.Subagent;
         var manual = !instruction && !async && OpenCodeManualBackgroundIndex.TryReadNotice(message, out _);
         var initiator = !instruction && !async && !manual && OpenCodeStepRunPresentation.IsInternalInitiator(message);
         var process = !instruction && (async || manual || message.Type is OpenCodeMessageTypes.Shell or OpenCodeMessageTypes.LocationSwitched);
-        var state = process || !instruction && message.Type == OpenCodeMessageTypes.Assistant && !initiator
+        var state = !subagentNotice && (process || !instruction && message.Type == OpenCodeMessageTypes.Assistant && !initiator)
             ? new AssistantState { Message = message, IsProcessNotice = process } : null;
         var groups = new Dictionary<string, OpenCodeToolGroupView>(StringComparer.Ordinal);
         var previousParts = new Dictionary<string, PartEntry>(StringComparer.Ordinal);
@@ -1902,12 +1905,15 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     /// <summary>
-    /// 异步完成通知行：名称“终端完成 / 子任务完成 / 后台任务完成”、目标为命令 / 任务、摘要为退出码；
-    /// 详情为键值 + 结果正文；子任务完成的详情含“打开子会话”（只转发已通过不透明校验的 childID）。
+    /// 子代理完成是独立单行通知（智能体 + 终态 · 任务），不会被原调用去重或处理组折叠；
+    /// 其余异步完成保留工具样式行。正文只在详情中，点击仅转发通过不透明校验的 childID。
     /// </summary>
     private Entry CreateAsyncCompletionEntry(string key, OpenCodeMessage message)
     {
-        var chip = new OpenCodeTimelineChipView("OpenCodeAsyncCompletion", "\uE930");
+        var subagentNotice = OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out var initial)
+            && initial.Kind == OpenCodeAsyncCompletionKind.Subagent;
+        var chip = new OpenCodeTimelineChipView(subagentNotice ? "OpenCodeSubagentCompletionNotice" : "OpenCodeAsyncCompletion",
+            "\uE930", completionNotice: subagentNotice);
         string? parentId = message.Id;
         string? childId = null;
         var operationKey = "notice:" + key;
@@ -1930,16 +1936,26 @@ public sealed class OpenCodeConversationView : StackPanel
 
             childId = completion.ChildSessionId is { } child && OpenCodeSubagentPresentation.IsOpaqueSessionId(child) ? child : null;
             operationKey = completion.Key.Length > 0 ? "async:" + completion.Key : "notice:" + key;
-            var content = OpenCodeStepRunPresentation.DescribeAsyncCompletion(completion);
+            var content = subagentNotice
+                ? OpenCodeStepRunPresentation.DescribeSubagentCompletionNotice(completion, ResolveTaskTitle(m))
+                : OpenCodeStepRunPresentation.DescribeAsyncCompletion(completion);
             if (childId is null && content.LinkText is not null)
             {
                 content = content with { LinkText = null };
             }
 
-            chip.UpdateRow(content, childId is null ? null : OpenChild);
+            chip.UpdateRow(content, childId is null ? null : OpenChild,
+                cancelled: completion.State.ToLowerInvariant() is "cancelled" or "canceled" or "killed" or "aborted" or "interrupted");
         }
 
         Apply(message);
+        if (subagentNotice)
+        {
+            // Like TUI SessionNoticeMessageV2: a parent transcript notice, not another tool
+            // operation. Keep it visible even when its launch row already owns the result.
+            return new Entry { Key = key, Element = chip.Element, Update = Apply, IsAsyncCompletion = true,
+                Dispose = () => { childId = null; chip.Dispose(); } };
+        }
         return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
             chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, () =>
             {
@@ -2949,7 +2965,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 EventHandler<OpenCodeSubagentSessionRequestedEventArgs> handler =
                     (_, e) => SubagentSessionRequested?.Invoke(this, e);
                 view.SubagentSessionRequested += handler;
-                Action<string> terminalHandler = shellId => TerminalRequested?.Invoke(shellId);
+                Action<OpenCodeShellTerminalRequest> terminalHandler = request => TerminalRequested?.Invoke(request);
                 view.TerminalRequested += terminalHandler;
                 Action<string?, string> browserHandler = (parent, tabId) => BrowserPageRequested?.Invoke(parent, tabId);
                 view.BrowserPageRequested += browserHandler;
@@ -3110,27 +3126,23 @@ public sealed class OpenCodeConversationView : StackPanel
     private Entry CreateShellEntry(string key, OpenCodeMessage message)
     {
         var chip = new OpenCodeTimelineChipView("OpenCodeShell", OpenCodeStepRunPresentation.TerminalGlyph);
-        var preview = new TextBlock { MaxLines = 3, TextWrapping = TextWrapping.Wrap,
-            TextTrimming = TextTrimming.CharacterEllipsis, IsTextSelectionEnabled = true };
-        var open = new Button { Content = "在终端中打开", HorizontalAlignment = HorizontalAlignment.Left };
-        var content = new StackPanel { Spacing = 6, Children = { chip.Element, preview, open } };
-        string? shellId = null;
-        void OpenTerminal() { if (shellId is { Length: > 0 } id) TerminalRequested?.Invoke(id); }
-        open.Click += (_, _) => OpenTerminal();
+        var preview = new OpenCodeShellTerminalPreview();
+        var content = new StackPanel { Spacing = 4, Children = { chip.Element, preview } };
+        OpenCodeShellTerminalRequest? request = null;
+        void OpenTerminal() { if (request is not null) TerminalRequested?.Invoke(request); }
         void Apply(OpenCodeMessage m)
         {
-            shellId = m.ShellId;
-            open.Visibility = string.IsNullOrEmpty(shellId) ? Visibility.Collapsed : Visibility.Visible;
+            request = new(m.ShellId, m.Command ?? string.Empty, m.Output?.Output ?? string.Empty, m.Id,
+                Running: m.Status == OpenCodeShellStatuses.Running);
             var output = m.Output?.Output ?? string.Empty;
-            preview.Text = output.Length > 320 ? output[..320] + "…" : output;
-            preview.Visibility = output.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            preview.Update(m.Command, output, OpenTerminal);
             var status = m.Status == OpenCodeShellStatuses.Running ? OpenCodeToolRowStatus.Running
                 : m.Status is OpenCodeShellStatuses.Killed or OpenCodeShellStatuses.Timeout ? OpenCodeToolRowStatus.Error
                 : m.Status == OpenCodeShellStatuses.Exited && m.Exit is { ValueKind: JsonValueKind.Number } exit && exit.TryGetInt32(out var code)
                     ? code == 0 ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Error : OpenCodeToolRowStatus.Unknown;
             chip.UpdateRow(new OpenCodeTimelineRowContent("终端", m.Command ?? string.Empty, string.Empty,
                 status, DescribeShell(m), "终端", new[] { new OpenCodeToolProperty(0, "命令", m.Command ?? "（未提供）", OpenCodeToolPropertyKind.Code) },
-                preview.Text, LinkText: string.IsNullOrEmpty(shellId) ? null : "在终端中打开"), OpenTerminal);
+                preview.PreviewText, LinkText: "在终端中打开"), OpenTerminal);
         }
         Apply(message);
         return CreateProcessEntry(key, message, content, Apply, () => ChipModel(chip.Content),

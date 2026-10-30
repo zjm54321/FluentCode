@@ -30,6 +30,8 @@ public sealed partial class OpenCodePage
 
     private void BindTerminalAppearance(OpenCodePersistentPtyView view)
     {
+        view.NewTerminalRequested += () =>
+        { if (_persistentInventoryOwner is { } owner) _ = CreatePersistentTerminalAsync(owner.Context); };
         ApplyTerminalAppearance();
         view.AppearanceRequested += async () =>
         {

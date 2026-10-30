@@ -38,6 +38,9 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         Children.Add(_explorer);
         Children.Add(_editor);
         _editor.Resources["SplitButtonSecondaryButtonSize"] = EditorChevronWidth;
+        // Same transparent rest state as the explorer/browser/terminal tiles (stock SplitButton is control-filled);
+        // hover/pressed fills and the elevation border stay native.
+        _editor.Resources["SplitButtonBackground"] = Application.Current.Resources["SubtleFillColorTransparentBrush"];
         // The template right-pads its 12-DIP chevron by 12; centre it in the slimmer native segment.
         _editor.Loaded += (_, _) =>
         {
@@ -115,7 +118,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         var button = new Button
         {
             Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0),
-            Content = new FontIcon { Glyph = glyph, FontSize = 18 },
+            Content = new FontIcon { Glyph = glyph, FontSize = OpenCodeQuickAccessStyle.IconSize },
         };
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) button.Style = quiet;
         AutomationProperties.SetName(button, text);

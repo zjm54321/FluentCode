@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -16,6 +18,8 @@ public sealed partial class OpenCodePage
     private OpenCodePersistentPtyView? _terminalView;
     private OpenCodeShellTerminalAdapter? _shellTerminalAdapter;
     private OpenCodePersistentPtyViewContext? _shellTerminalContext;
+    private OpenCodeShellTerminalRequest? _shellTerminalRequest;
+    private string? _shellOutputApiId;
     private TreeBinding? _terminalBinding;
     private CancellationTokenSource? _terminalCts;
     private DispatcherTimer? _terminalTimer;
@@ -56,11 +60,29 @@ public sealed partial class OpenCodePage
     {
         var binding = CaptureTreeBinding();
         if (binding is null || _treeDirectory is null || !_treeShells.TryGetValue(shellId, out var shell)) return;
+        OpenShellTerminal(binding, shell, null);
+    }
+
+    private void OpenTerminalView(OpenCodeShellTerminalRequest request)
+    {
+        var binding = CaptureTreeBinding();
+        if (binding is null || _treeDirectory is null) return;
+        var shell = request.ShellId is { } id && _treeShells.TryGetValue(id, out var known) ? known
+            : new OpenCodeTreeShell(request.ShellId ?? "recorded:" + Guid.NewGuid().ToString("N"), request.Command, _treeDirectory,
+                OpenCodeTreeShellKind.Foreground, request.Running ? OpenCodeTreeStatus.Running : OpenCodeTreeStatus.Unknown, null, request.Output);
+        shell = shell with { Command = request.Command, Output = shell.Completed ? shell.Output : request.Output };
+        OpenShellTerminal(binding, shell, request);
+    }
+
+    private void OpenShellTerminal(TreeBinding binding, OpenCodeTreeShell shell, OpenCodeShellTerminalRequest? request)
+    {
         ClosePersistentPtyView(restoreFocus: false);
         var returnFocus = _terminalState.ShellId is null ? FocusManager.GetFocusedElement(XamlRoot) as Control : _terminalReturnFocus;
         CloseTerminalView(restoreFocus: false);
         _terminalReturnFocus = returnFocus;
         _terminalBinding = binding;
+        _shellTerminalRequest = request;
+        _shellOutputApiId = request is null ? shell.Id : request.ShellId;
         _terminalCts = CancellationTokenSource.CreateLinkedTokenSource(_pageCts!.Token, binding.Source.RevocationToken);
         _terminalState.Open(shell);
         var view = _terminalView = new OpenCodePersistentPtyView();
@@ -76,7 +98,7 @@ public sealed partial class OpenCodePage
         };
         BindTerminalAppearance(view);
         ShowPersistentPtyOverlay(view, shell.Id);
-        PaintShellTerminal();
+        _ = RenderShellTerminalAsync(_terminalCts.Token); // Stored full output is immediately available, before REST.
         DismissSidebarDrawers();
         _terminalTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _terminalTimer.Tick -= TerminalOutputTick;
@@ -95,6 +117,7 @@ public sealed partial class OpenCodePage
         _terminalBinding = null;
         _terminalState.Close();
         _shellTerminalAdapter = null; _shellTerminalContext = null;
+        _shellTerminalRequest = null; _shellOutputApiId = null;
         if (_terminalView is { } view)
         {
             HidePersistentPtyOverlay(view);
@@ -117,13 +140,39 @@ public sealed partial class OpenCodePage
     {
         PaintShellTerminal();
         if (_shellTerminalAdapter is not { } adapter) return;
-        try { await adapter.RenderAsync(_terminalState.Output, ct); }
+        try { await adapter.RenderAsync(_terminalState.Output, ct, _terminalState.Command); }
         catch (OperationCanceledException) { }
         catch (Exception)
         {
             if (!ct.IsCancellationRequested && ReferenceEquals(adapter, _shellTerminalAdapter))
             { _terminalTimer?.Stop(); _terminalState.Notice = "原生终端不可用"; PaintShellTerminal(); }
         }
+    }
+
+    private void UpdateShellTerminalTranscript(IReadOnlyList<OpenCodeMessage> messages)
+    {
+        if (_shellTerminalRequest is not { } request || _terminalBinding is not { } binding || !IsTreeCurrent(binding)
+            || _terminalCts is null) return;
+        if (_shellOutputApiId is { } shellId && messages.Select(OpenCodeAgentTreeProjection.Shell)
+            .LastOrDefault(shell => shell is { Completed: true } && shell.Id == shellId) is { } completion)
+        {
+            _terminalState.ApplyCompletion(completion);
+            _ = RenderShellTerminalAsync(_terminalCts.Token);
+            return;
+        }
+        var message = messages.FirstOrDefault(item => item.Id == request.MessageId);
+        if (message is null) return;
+        if (request.PartId is { Length: > 0 } partId)
+        {
+            var part = message.Content?.FirstOrDefault(item => item.Id == partId);
+            if (part is null) return;
+            var model = OpenCodeToolRowPresentation.Build(part);
+            if (model.Kind != OpenCodeToolKind.Shell) return;
+            _terminalState.UpdateRecordedOutput(model.Command ?? model.Target, model.OutputText ?? string.Empty, model.IsActive, _shellOutputApiId is null);
+        }
+        else _terminalState.UpdateRecordedOutput(message.Command ?? request.Command, message.Output?.Output ?? request.Output,
+            message.Status == OpenCodeShellStatuses.Running, _shellOutputApiId is null);
+        _ = RenderShellTerminalAsync(_terminalCts.Token);
     }
 
     private void TerminalOutputTick(object? sender, object e)
@@ -135,6 +184,7 @@ public sealed partial class OpenCodePage
 
     private async Task ReadTerminalOutputAsync()
     {
+        if (_shellOutputApiId is not { } apiId) return; // Tool-part-only output is updated by accepted transcript snapshots, never a made-up REST ID.
         if (_terminalReading || _terminalBinding is not { } binding || !IsTreeCurrent(binding)
             || _terminalState.ShellId is not { } id || _treeDirectory is not { } directory || _terminalCts is null) return;
         _terminalReading = true;
@@ -143,25 +193,17 @@ public sealed partial class OpenCodePage
         bool Current() => !ct.IsCancellationRequested && version == _terminalVersion && IsTreeCurrent(binding) && _terminalState.ShellId == id;
         try
         {
-            var info = await TreeReadAsync(binding, () => binding.Client.GetTreeShellAsync(id, directory, ct), ct);
-            if (!Current()) return;
-            // The ID was supplied by the current session's already-verified tree projection.
-            // Foreground message-backed jobs need not repeat metadata.sessionID on GET/shell.
-            _terminalState.ApplyInfo(info);
-            do
-            {
-                var page = await TreeReadAsync(binding, () => binding.Client.ReadTreeShellOutputAsync(id, directory, _terminalState.Cursor, ct), ct);
-                if (!Current()) return;
-                _terminalState.ApplyOutput(page);
-                await RenderShellTerminalAsync(ct);
-                // Drain retained pages after exit too; no dependence on the running-only shell list.
-            } while (_terminalState.HasMore && Current());
+            await OpenCodeShellTerminalReader.ReadAsync(
+                () => TreeReadAsync(binding, () => binding.Client.GetTreeShellAsync(apiId, directory, ct), ct),
+                cursor => TreeReadAsync(binding, () => binding.Client.ReadTreeShellOutputAsync(apiId, directory, cursor, ct), ct),
+                _terminalState, Current, () => RenderShellTerminalAsync(ct), ct);
         }
         catch (OperationCanceledException) { }
         catch (OpenCodeApiException error) when (error.StatusCode == 404)
         {
             if (!Current()) return;
-            _terminalState.UseRecordedOutput();
+            if (_treeShells.TryGetValue(apiId, out var completed) && completed.Completed) _terminalState.ApplyCompletion(completed);
+            else _terminalState.UseRecordedOutput();
             await RenderShellTerminalAsync(ct);
         }
         catch (OpenCodeException)

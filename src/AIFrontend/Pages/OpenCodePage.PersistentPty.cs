@@ -33,10 +33,13 @@ public sealed partial class OpenCodePage
         internal Action<PersistentPtyState>? OnState;
         internal long DisarmVersion, PaintedDisarmVersion;
         internal int UiInputAllowed;
+        internal int CreationConsent;
     }
     private PersistentInventoryOwner? _persistentInventoryOwner;
     private PersistentAttachmentOwner? _persistentAttachmentOwner;
     private Control? _persistentPtyReturnFocus;
+    private PersistentInventoryOwner? _persistentCreatingOwner;
+    private CancellationTokenSource? _persistentCreateCancellation;
     private readonly HashSet<(string Source, string Session, string Pty)> _persistentInputUncertainty = new();
 
     private void InitializePersistentPty()
@@ -50,6 +53,49 @@ public sealed partial class OpenCodePage
         {
             if (_persistentInventoryOwner is { } owner && owner.Context == request.Context) OpenPersistentPty(owner, request.PtyId);
         };
+        _persistentPtyInventoryView.CreateRequested += context => _ = CreatePersistentTerminalAsync(context);
+    }
+
+    private async Task CreatePersistentTerminalAsync(OpenCodePersistentPtyInventoryContext context)
+    {
+        if (_persistentInventoryOwner is not { } owner || context != owner.Context || !IsPersistentInventoryCurrent(owner.Origin)
+            || owner.Inventory.State.Phase != OpenCodePersistentPtyInventoryPhase.Ready || _persistentCreatingOwner is not null) return;
+        _persistentCreatingOwner = owner;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(owner.Origin.Source.RevocationToken);
+        _persistentCreateCancellation = cancellation;
+        _persistentPtyInventoryView.SetCreationState(true);
+        try
+        {
+            Task<PersistentPtyInfo>? pending = null;
+            owner.Origin.Source.TryExecute(cancellation.Token, () =>
+            {
+                if (IsPersistentInventoryCurrent(owner.Origin))
+                    pending = owner.Binding.Client.CreatePersistentPtyAsync(owner.Origin.SessionId,
+                        new(System.Collections.Immutable.ImmutableArray<string>.Empty, "终端", new Dictionary<string, string>(),
+                            Cwd: owner.Origin.Directory, Size: new(120, 32)), cancellation.Token);
+            });
+            if (pending is null) return;
+            var created = await pending;
+            if (!IsPersistentInventoryCurrent(owner.Origin) || cancellation.IsCancellationRequested) return;
+            await owner.Inventory.RefreshAsync();
+            if (!IsPersistentInventoryCurrent(owner.Origin) || cancellation.IsCancellationRequested) return;
+            owner.Inventory.AcceptCreated(created);
+            PaintPersistentInventory(owner);
+            OpenPersistentPty(owner, created.Id, enableCreatedInput: true);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            if (IsPersistentInventoryCurrent(owner.Origin)) _persistentPtyInventoryView.SetCreationState(false, "新建终端失败");
+        }
+        finally
+        {
+            if (ReferenceEquals(_persistentCreatingOwner, owner))
+            {
+                _persistentCreatingOwner = null; _persistentCreateCancellation = null;
+                if (IsPersistentInventoryCurrent(owner.Origin)) _persistentPtyInventoryView.SetCreationState(false);
+            }
+        }
     }
 
     private bool IsPersistentInventoryCurrent(PersistentPtyOrigin origin)
@@ -101,6 +147,7 @@ public sealed partial class OpenCodePage
     }
     private void ResetPersistentPtyScope()
     {
+        _persistentCreateCancellation?.Cancel(); _persistentCreateCancellation = null; _persistentCreatingOwner = null;
         var owner = Interlocked.Exchange(ref _persistentInventoryOwner, null);
         owner?.Inventory.Dispose();
         ClosePersistentPtyView(restoreFocus: false);
@@ -119,7 +166,7 @@ public sealed partial class OpenCodePage
         _ = owner.Inventory.RefreshAsync();
     }
 
-    private void OpenPersistentPty(PersistentInventoryOwner inventory, string ptyId)
+    private void OpenPersistentPty(PersistentInventoryOwner inventory, string ptyId, bool enableCreatedInput = false)
     {
         if (!IsPersistentInventoryCurrent(inventory.Origin) || inventory.Inventory.State.Phase != OpenCodePersistentPtyInventoryPhase.Ready
             || !inventory.Inventory.State.Rows.Any(row => row.Id == ptyId)) return;
@@ -132,6 +179,7 @@ public sealed partial class OpenCodePage
         var context = new OpenCodePersistentPtyViewContext(Guid.NewGuid(), 0, origin.SessionId, ptyId);
         var view = new OpenCodePersistentPtyView();
         var owner = new PersistentAttachmentOwner(inventory.Binding, origin, context, view);
+        owner.CreationConsent = enableCreatedInput ? 1 : 0;
         Volatile.Write(ref _persistentAttachmentOwner, owner);
         BindTerminalAppearance(view);
         owner.Adapter = new(view.Renderer, InvokePersistentPtyUiAsync, context, () => IsPersistentAttachmentCurrent(origin));
@@ -195,6 +243,11 @@ public sealed partial class OpenCodePage
         }
         catch (OperationCanceledException) { }
         catch (Exception) { owner.View.Renderer.SuspendInput(); Volatile.Write(ref owner.UiInputAllowed, 0); }
+        // The create click is input consent for this newly-created terminal's FIRST attachment only.
+        // Never carry it across reconnect, takeover by another client, or an existing-terminal open.
+        if (state.Epoch.Value > 1) Interlocked.Exchange(ref owner.CreationConsent, 0);
+        else if (state.Phase == PersistentPtyPhase.Ready && Interlocked.Exchange(ref owner.CreationConsent, 0) != 0)
+            await RequestPersistentControlAsync(owner, model.Context, release: false);
     }
     private OpenCodePersistentPtyPresentation PersistentPresentation(PersistentAttachmentOwner owner, PersistentPtyState state)
     {

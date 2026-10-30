@@ -71,7 +71,7 @@ $production = @()
 @('OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs', 'OpenCodeClient.View.cs',
     'OpenCodeDesktopBridge.cs', 'OpenCodeClient.PluginRpc.cs', 'OpenCodeModelFavoritesRpc.cs',
     'OpenCodeClient.SessionInfo.cs', 'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs', 'OpenCodeClient.ImageFiles.cs', 'OpenCodeImageFile.cs', 'OpenCodeAttachment.cs', 'OpenCodeDtos.Commands.cs', 'OpenCodeClientOptions.cs', 'OpenCodeAuthenticationMode.cs', 'OpenCodeConstants.cs',
-    'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeToolImageResolver.cs', 'OpenCodeUserAttachments.cs', 'OpenCodeManualBackgroundIndex.cs', 'OpenCodeNoticeDismissals.cs', 'OpenCodeSessionAncestry.cs',
+    'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeToolImageResolver.cs', 'OpenCodeUserAttachments.cs', 'OpenCodeManualBackgroundIndex.cs', 'OpenCodeShellCompletion.cs', 'OpenCodeNoticeDismissals.cs', 'OpenCodeSessionAncestry.cs',
     'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Inbox.cs',
     'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeCapabilityStatus.cs', 'OpenCodeDtos.Capabilities.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_
@@ -86,7 +86,8 @@ $production = @()
 }
 @('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeBrowserToolPresentation.cs', 'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
-    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs') | ForEach-Object {
+    'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs',
+    'OpenCodeShellTerminalText.cs', 'OpenCodeShellTerminalPreview.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
@@ -99,7 +100,7 @@ $commonText = $commonText.Replace($anchor + "`n    {", $anchor + "`n    {`n     
 if (!$commonText.Contains('event Action<object, SizeChangedEventArgs>')) { throw 'FrameworkElement shim failed.' }
 $commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
 [IO.File]::WriteAllText($commonHost, $commonText)
-$tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'))
+$tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'SubagentCompletionNoticeTests.cs'))
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))

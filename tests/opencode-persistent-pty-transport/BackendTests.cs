@@ -37,6 +37,7 @@ internal static class BackendTests
     {
         if (args.Length == 3 && args[0] == "--real") { await RealPty(args[1], args[2]); return; }
         await HttpContract();
+        await CreatedTerminalInput();
         await RendererBarrierAndAuthority();
         await AssignedControllerNeedsExplicitConsent();
         await QueuedWriteLoss();
@@ -75,6 +76,8 @@ internal static class BackendTests
             {
                 using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
                 Check(body.RootElement.GetProperty("cwd").GetString() == "/arbitrary" && body.RootElement.GetProperty("args").GetArrayLength() == 0, "exact create body independent cwd");
+                Check(!body.RootElement.TryGetProperty("command", out _) && body.RootElement.GetProperty("env").ValueKind == JsonValueKind.Object,
+                    "default-shell create omits null command instead of sending invalid explicit null, and preserves env object");
                 return Json(new { data = Info });
             }
             if (request.Method == HttpMethod.Put)
@@ -141,7 +144,7 @@ internal static class BackendTests
         internal TaskCompletionSource? HoldUpdate;
         internal PersistentPtySize SnapshotSize = Info.Size;
         internal byte[] SnapshotCheckpoint = Encoding.UTF8.GetBytes("canonical");
-        internal int Snapshots, Tickets, Deletes, Updates, Attempts;
+        internal int Snapshots, Tickets, Deletes, Updates, Attempts, Creates;
         internal string Base { get; }
         internal Server()
         {
@@ -183,6 +186,14 @@ internal static class BackendTests
                 }
                 Check(ctx.Request.Headers["Authorization"] == "Basic b3BlbmNvZGU6c3ludGhldGlj", "real network HTTP authentication");
                 if (path.EndsWith("/info")) { await Respond(ctx, new { version = "2.1.4", capabilities = new { persistentPty = true } }); return; }
+                if (path.EndsWith("/terminal") && ctx.Request.HttpMethod == "POST")
+                {
+                    Interlocked.Increment(ref Creates);
+                    using var body = await JsonDocument.ParseAsync(ctx.Request.InputStream);
+                    Check(!body.RootElement.TryGetProperty("command", out _) && body.RootElement.GetProperty("args").GetArrayLength() == 0,
+                        "loopback create selects backend default shell, not a client-side Windows/Linux executable guess");
+                    await Respond(ctx, new { data = Info }); return;
+                }
                 if (path.EndsWith("/snapshot"))
                 {
                     Interlocked.Increment(ref Snapshots);
@@ -238,6 +249,31 @@ internal static class BackendTests
 
     private static PersistentPtyController Controller(Server server, IPersistentPtyRenderer renderer, out OpenCodePageSource source)
     { source = server.Source(); return new(new(source, 7, "ses_captured", "/captured-directory", 1), Info.Id, renderer, _ => true); }
+
+    private static async Task CreatedTerminalInput()
+    {
+        await using var server = new Server { OnSocket = async (_, ws, id, _) => await Server.Attach(ws, id, replay: false) };
+        using var client = server.Client();
+        var created = await client.CreatePersistentPtyAsync("ses_captured",
+            new(ImmutableArray<string>.Empty, "终端", new Dictionary<string, string>(), Cwd: "/captured-directory", Size: new(120, 32)));
+        var renderer = new Renderer();
+        var source = server.Source();
+        await using var controller = new PersistentPtyController(new(source, 7, "ses_captured", "/captured-directory", 1), created.Id, renderer, _ => true);
+        var run = controller.RunAsync();
+        await Until(() => controller.State.Phase == PersistentPtyPhase.Ready);
+        Check(server.Creates == 1 && !controller.State.InputArmed && server.Frames.IsEmpty,
+            "created PTY is replayed through the normal observer attach before create-consent control");
+        await controller.TakeControlAsync(controller.State.Info!.Size.Cols, controller.State.Info.Size.Rows);
+        await Until(() => server.Frames.Count == 1);
+        await Server.Text(server.Sockets.First(), new { type = "controller_changed", attachmentID = server.Attachments.First(), generation = 2 });
+        await Until(() => controller.State.InputArmed);
+        await controller.SendInputAsync(Encoding.UTF8.GetBytes("echo created\r"), 80, 24);
+        await Until(() => server.Frames.Count == 2);
+        Check(server.Frames.First()[0] == 0 && server.Frames.Last()[0] == 1 && controller.State.InputArmed,
+            "new-terminal consent plus server authority enables actual framed keyboard input");
+        await controller.DisposeAsync(); await run;
+        Check(server.Deletes == 0 && server.Creates == 1, "closing created attachment leaves its persistent terminal running without another create");
+    }
 
     private static async Task RendererBarrierAndAuthority()
     {

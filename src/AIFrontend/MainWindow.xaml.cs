@@ -8,7 +8,6 @@ using AIFrontend.Pages.Web;
 using Microsoft.UI;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Composition.SystemBackdrops;
-using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -23,11 +22,7 @@ namespace AIFrontend;
 
 public sealed partial class MainWindow : Window
 {
-    private AppWindowTitleBar? _appWindowTitleBar;
     private object? _lastNavSelection;
-    private XamlRoot? _hookedXamlRoot;
-    private bool _updatingTitleBarRegions;
-    private bool _pendingTitleBarRegionsUpdate;
     private bool _syncingNavSelection;
     private object? _subscribedPage;
     private MicaController? _micaController;
@@ -99,7 +94,7 @@ public sealed partial class MainWindow : Window
         TrySetMicaBackdrop();
         Closed += MainWindow_Closed;
 
-        // 自定义标题栏：内容延伸进标题栏区域；保留系统原生 caption 按钮与默认拖拽区
+        // 自定义标题栏：由 WinUI 跟踪 XAML 拖拽区，保留系统原生 caption 按钮
         SetupCustomTitleBar();
 
         // 设置初始窗口尺寸
@@ -162,48 +157,6 @@ public sealed partial class MainWindow : Window
         };
     }
 
-    private void SetupCustomTitleBar()
-    {
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindowTitleBar = AppWindow.TitleBar;
-            _appWindowTitleBar.ExtendsContentIntoTitleBar = true;
-
-            // 让系统标题栏按钮背景透明以衬出窗口材质
-            _appWindowTitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindowTitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-
-            // 顶栏高 48px 且内含交互控件：Tall 让系统 caption 按钮与顶栏同高（官方对标题栏交互内容的建议）
-            _appWindowTitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
-
-            // 不调用 Window.SetTitleBar / AppWindowTitleBar.SetDragRectangles：
-            // 保留系统默认全宽拖拽区；布局变化（Loaded/SizeChanged）与
-            // XamlRoot 变化（DPI-only 缩放等）都会触发重算 caption 保留列宽与交互控件 Passthrough 区域
-            AppTitleBar.Loaded += AppTitleBar_Loaded;
-            AppTitleBar.SizeChanged += AppTitleBar_SizeChanged;
-        }
-    }
-
-    private void AppTitleBar_Loaded(object sender, RoutedEventArgs e)
-    {
-        // 官方建议：布局完成后再做首次区域计算，确保元素尺寸已就绪
-        UpdateTitleBarRegions();
-
-        // DPI-only 变化（RasterizationScale 改变但 XAML 逻辑尺寸不变）不会触发 SizeChanged：
-        // 挂接 XamlRoot.Changed（WinUI 3 稳定事件，随缩放/尺寸/可见性等属性变化触发）兜底重算
-        if (_hookedXamlRoot == null && AppTitleBar.XamlRoot is { } xamlRoot)
-        {
-            _hookedXamlRoot = xamlRoot;
-            _hookedXamlRoot.Changed += XamlRoot_Changed;
-        }
-    }
-
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        // 仅重算区域；UpdateTitleBarRegions 自带重入保护，避免列宽→布局→事件的自激循环
-        UpdateTitleBarRegions();
-    }
-
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged;
@@ -217,19 +170,7 @@ public sealed partial class MainWindow : Window
         // Shell 集成收尾：置导航 ready=false、退订 App 事件、清空页面可信身份（禁止旧 client 身份继续操作）。
         ShutdownShellIntegration();
 
-        // 窗口关闭时解除 XamlRoot 事件订阅，避免生命周期尾部悬挂
-        if (_hookedXamlRoot != null)
-        {
-            _hookedXamlRoot.Changed -= XamlRoot_Changed;
-            _hookedXamlRoot = null;
-        }
-
-        // 解除可能挂起的一次性“布局完成后重算”订阅，避免生命周期尾部悬挂
-        if (_pendingTitleBarRegionsUpdate)
-        {
-            AppTitleBar.LayoutUpdated -= TitleBarLayoutUpdatedOnce;
-            _pendingTitleBarRegionsUpdate = false;
-        }
+        ShutdownCustomTitleBar();
 
         // 解除当前页面事件订阅（SettingsRequested / LocalTaskCompleted），避免生命周期尾部悬挂
         DetachPageEvents();
@@ -242,79 +183,6 @@ public sealed partial class MainWindow : Window
 
         // 兜底解除仍在等待 Local 真正收尾的旧页面订阅（不泄漏）。
         DetachDeferredNormalPages();
-    }
-
-    private void AppTitleBar_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        // 官方建议：只在标题栏元素尺寸变化时更新（窗口 Changed 事件可能早于布局更新导致取值错误）
-        UpdateTitleBarRegions();
-    }
-
-    private void UpdateTitleBarRegions()
-    {
-        if (_appWindowTitleBar == null || AppTitleBar.XamlRoot == null || _updatingTitleBarRegions)
-        {
-            return;
-        }
-
-        // 重入保护：设置保留列宽会再次触发布局与事件（SizeChanged/XamlRoot.Changed），
-        // 同值 GridLength 赋值虽为无操作，仍在最外层兜底，确保不会形成自激循环
-        _updatingTitleBarRegions = true;
-        try
-        {
-            // AppWindow 使用物理像素：用 XamlRoot.RasterizationScale 换算为 XAML 逻辑尺寸
-            double scale = AppTitleBar.XamlRoot.RasterizationScale;
-
-            // 使用系统实际 caption 保留区宽度（RightInset/LeftInset），而不是猜测的硬编码值
-            RightPaddingColumn.Width = new GridLength(_appWindowTitleBar.RightInset / scale);
-            LeftPaddingColumn.Width = new GridLength(_appWindowTitleBar.LeftInset / scale);
-
-            // 顶栏内交互元素（返回、汉堡、搜索框/搜索按钮）位于系统 caption 按钮之旁或顶栏中部；
-            // 将其区域声明为 Passthrough，使鼠标点击命中控件而不是被标题栏拖拽区域吞掉。
-            // 折叠/不可见的元素由 TryGetInteractiveTitleBarRect 自动排除，不残留旧命中区。
-            var passthroughRects = new List<RectInt32>(4);
-            foreach (FrameworkElement element in new FrameworkElement[] { BackButton, HamburgerButton, SearchBox, SearchButton })
-            {
-                if (TryGetInteractiveTitleBarRect(element, scale, out var rect))
-                {
-                    passthroughRects.Add(rect);
-                }
-            }
-
-            if (passthroughRects.Count == 0)
-            {
-                return;
-            }
-
-            var nonClientInput = InputNonClientPointerSource.GetForWindowId(AppWindow.Id);
-            nonClientInput.SetRegionRects(NonClientRegionKind.Passthrough, passthroughRects.ToArray());
-        }
-        finally
-        {
-            _updatingTitleBarRegions = false;
-        }
-    }
-
-    private static bool TryGetInteractiveTitleBarRect(FrameworkElement element, double scale, out RectInt32 rect)
-    {
-        rect = default;
-
-        // 折叠（或尚不可见）的元素不参与命中：即使 ActualWidth 仍残留上一轮布局的旧值，
-        // 也必须立即排除，否则隐藏后的旧 rect 会继续吞掉标题栏拖拽区域
-        if (element.Visibility != Visibility.Visible || element.ActualWidth <= 0 || element.ActualHeight <= 0)
-        {
-            return false;
-        }
-
-        var bounds = element.TransformToVisual(null).TransformBounds(
-            new Windows.Foundation.Rect(0, 0, element.ActualWidth, element.ActualHeight));
-
-        rect = new RectInt32(
-            (int)Math.Round(bounds.X * scale),
-            (int)Math.Round(bounds.Y * scale),
-            (int)Math.Round(bounds.Width * scale),
-            (int)Math.Round(bounds.Height * scale));
-        return true;
     }
 
     private void SetInitialWindowSize(int width, int height)
@@ -690,28 +558,6 @@ public sealed partial class MainWindow : Window
         // 再请求布局完成后的重算——显示时按钮此刻才具备有效尺寸与位置，此时才能正确加入命中区域
         UpdateTitleBarRegions();
         RequestTitleBarRegionsUpdateAfterLayout();
-    }
-
-    private void RequestTitleBarRegionsUpdateAfterLayout()
-    {
-        // 重入保护：布局完成前多次请求（如快速连续前进/后退）只保留一个一次性订阅
-        if (_pendingTitleBarRegionsUpdate)
-        {
-            return;
-        }
-
-        _pendingTitleBarRegionsUpdate = true;
-        AppTitleBar.LayoutUpdated += TitleBarLayoutUpdatedOnce;
-    }
-
-    private void TitleBarLayoutUpdatedOnce(object? sender, object e)
-    {
-        // LayoutUpdated 在整轮布局（含全部 SizeChanged）之后触发，此时元素尺寸/位置已是终值；
-        // 官方语义：sender 恒为 null，不依赖 sender；触发一次后即解除订阅
-        AppTitleBar.LayoutUpdated -= TitleBarLayoutUpdatedOnce;
-        _pendingTitleBarRegionsUpdate = false;
-
-        UpdateTitleBarRegions();
     }
 
     /// <summary>Frame 内容页类型 → 对应的主导航项（设置页对应 FooterMenuItems 中的原生设置项 NavSettings）。</summary>

@@ -10,14 +10,12 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
     private OpenCodeTurnNavigator? _turnNavigator;
-    private FrameworkElement? _messageScrollBarHost;
-    private readonly TranslateTransform _messageScrollBarShift = new();
+    private OpenCodeGutterPlacement? _gutters;
     private bool _turnNavigatorQueued;
     private bool _turnOutlineDirty = true;
 
-    // Right gutter: the ScrollView's own native scrollbar (ScrollBarController, auto-hiding Fluent
-    // indicator, composition-driven thumb), shifted from the viewport edge to beside the reading column.
-    // Left gutter: the turn navigator. Both use the symmetric 56 + 8 reserve of ConversationColumn.
+    // Right gutter: the ScrollView's own native scrollbar, mirrored against the left-gutter turn navigator
+    // (OpenCodeGutterPlacement). Both use the symmetric 56 + 8 reserve of ConversationColumn.
     private void MessageScroll_Loaded(object sender, RoutedEventArgs e)
     {
         if (_turnNavigator is null)
@@ -28,27 +26,15 @@ public sealed partial class OpenCodePage
             _turnNavigator.TurnInvoked += NavigateToTurn;
             _conversationView.TurnOutlineChanged += (_, _) => { _turnOutlineDirty = true; QueueTurnNavigatorUpdate(); };
             MessageScroll.ViewChanged += (_, _) => QueueTurnNavigatorUpdate();
-        }
-        if (_messageScrollBarHost is null && FindTemplatePart(MessageScroll, "PART_VerticalScrollBar") is ScrollBar bar
-            && VisualTreeHelper.GetParent(bar) is FrameworkElement host)
-        {
-            _messageScrollBarHost = host;
-            host.RenderTransform = _messageScrollBarShift;
-            host.SizeChanged += (_, _) => UpdateConversationColumns();
+            // Re-applies itself on every relevant layout change (see OpenCodeGutterPlacement).
+            _gutters = new OpenCodeGutterPlacement(MessageScroll, _turnNavigator);
         }
         UpdateConversationColumns();
         _turnOutlineDirty = true;
         QueueTurnNavigatorUpdate();
     }
 
-    private void PlaceConversationGutters(double available, double columnWidth)
-    {
-        if (_turnNavigator is { } navigator)
-            navigator.Margin = new Thickness(OpenCodeTurnOutline.NavigatorLeft(available, columnWidth, navigator.Width), 0, 0, 0);
-        if (_messageScrollBarHost is { ActualWidth: > 0 } host)
-            _messageScrollBarShift.X = OpenCodeTurnOutline.ScrollBarShift(MessageScroll.ActualWidth, host.ActualWidth,
-                ConversationScrollBarLeft(available, columnWidth));
-    }
+    private void PlaceConversationGutters(double available, double columnWidth) => _gutters?.Update(available, columnWidth);
 
     private void QueueTurnNavigatorUpdate()
     {
@@ -77,13 +63,5 @@ public sealed partial class OpenCodePage
         var historyEpoch = _messageHistoryEpoch;
         _conversationView.JumpToTurn(MessageScroll, turn,
             () => IsScrollContextCurrent(pageGeneration, sessionGeneration, sessionId) && historyEpoch == _messageHistoryEpoch);
-    }
-
-    private static FrameworkElement? FindTemplatePart(DependencyObject root, string name)
-    {
-        if (root is FrameworkElement element && element.Name == name) return element;
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-            if (FindTemplatePart(VisualTreeHelper.GetChild(root, i), name) is { } child) return child;
-        return null;
     }
 }

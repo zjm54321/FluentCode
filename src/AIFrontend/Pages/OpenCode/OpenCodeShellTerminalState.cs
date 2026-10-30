@@ -18,6 +18,9 @@ internal sealed class OpenCodeShellTerminalState
     internal bool Running { get; private set; }
     internal bool HasMore { get; private set; }
     private string? _recordedOutput;
+    private string _apiOutput = string.Empty;
+    private bool _hasApiOutput, _completed, _retainedCompleted;
+    private string? _exit;
 
     internal void Open(OpenCodeTreeShell shell)
     {
@@ -26,22 +29,27 @@ internal sealed class OpenCodeShellTerminalState
         Cwd = shell.Cwd;
         Output = shell.Output ?? string.Empty;
         _recordedOutput = shell.Output;
+        _hasApiOutput = false;
+        _apiOutput = string.Empty;
+        _completed = _retainedCompleted = shell.Completed || shell.Status != OpenCodeTreeStatus.Running && shell.Exit is not null;
+        _exit = shell.Exit;
         Cursor = 0;
         HasMore = false;
         Notice = "正在读取输出…";
         TimeText = string.Empty;
         Running = shell.Status == OpenCodeTreeStatus.Running;
-        StatusText = Running ? "运行中" : shell.Exit is { } exit ? "已退出 · 退出码 " + exit : "状态不可用";
+        StatusText = Running ? "运行中" : _completed ? CompletedStatus() : "状态不可用";
     }
 
     internal void ApplyInfo(OpenCodeTreeShellInfo info)
     {
+        if (_retainedCompleted) return;
         Command = info.Command ?? Command;
         Cwd = info.Cwd ?? Cwd;
         Running = info.Status == "running";
-        StatusText = Running ? "运行中" : info.Status is "exited" or "killed" or "timeout"
-            ? "已退出" + (info.Exit is { } exit ? " · 退出码 " + exit.ToString(CultureInfo.InvariantCulture) : " · 退出码不可用")
-            : "状态不可用";
+        _completed = info.Status is "exited" or "killed" or "timeout";
+        _exit = info.Exit?.ToString(CultureInfo.InvariantCulture);
+        StatusText = Running ? "运行中" : _completed ? CompletedStatus() : "状态不可用";
         TimeText = info.Time?.Started is { } started ? "开始：" + Timestamp(started) : string.Empty;
         if (info.Time?.Completed is { } completed) TimeText += (TimeText.Length > 0 ? "\n" : string.Empty) + "结束：" + Timestamp(completed);
     }
@@ -52,7 +60,9 @@ internal sealed class OpenCodeShellTerminalState
             throw new OpenCodeProtocolException("终端输出响应缺少有效的输出或字节游标。");
         var previous = Cursor;
         if (next < size && next <= previous) throw new OpenCodeProtocolException("终端输出字节游标未前进。");
-        Output = (Cursor == 0 ? string.Empty : Output) + page.Output;
+        _apiOutput = (Cursor == 0 ? string.Empty : _apiOutput) + page.Output;
+        Output = _retainedCompleted && (_recordedOutput?.Length ?? 0) > _apiOutput.Length ? _recordedOutput! : _apiOutput;
+        _hasApiOutput = true;
         Cursor = next;
         HasMore = next < size;
         Notice = page.Truncated == true ? "后端标记输出已截断" : null;
@@ -60,6 +70,13 @@ internal sealed class OpenCodeShellTerminalState
 
     internal void UseRecordedOutput()
     {
+        if (_retainedCompleted || _hasApiOutput)
+        {
+            if (_retainedCompleted) Output = _hasApiOutput && _apiOutput.Length > (_recordedOutput?.Length ?? 0) ? _apiOutput : _recordedOutput ?? Output;
+            if (_completed) { Running = false; StatusText = CompletedStatus(); }
+            HasMore = false; Notice = null;
+            return;
+        }
         Output = _recordedOutput ?? Output;
         if (Running) StatusText = "后端已清理 · 状态不可用";
         Running = false;
@@ -68,6 +85,28 @@ internal sealed class OpenCodeShellTerminalState
             ? "后端已清理此终端；显示会话中记录的输出"
             : "后端已清理此终端；会话中没有记录的输出，已读取的内容予以保留";
     }
+
+    internal void UpdateRecordedOutput(string command, string output, bool running, bool recordedOnly)
+    {
+        if (_retainedCompleted) return; // A launch acknowledgement cannot replace durable completion output.
+        _recordedOutput = output;
+        if (!recordedOnly && Cursor != 0) return;
+        Command = command; Output = output; Running = running;
+        StatusText = running ? "运行中" : "已完成";
+        Notice = null;
+    }
+
+    internal void ApplyCompletion(OpenCodeTreeShell shell)
+    {
+        if (!shell.Completed) return;
+        Command = shell.Command == shell.Id ? Command : shell.Command;
+        _completed = _retainedCompleted = true; _exit = shell.Exit;
+        _recordedOutput = shell.Output ?? string.Empty;
+        Output = _hasApiOutput && _apiOutput.Length > _recordedOutput.Length && _apiOutput.Contains(_recordedOutput, StringComparison.Ordinal) ? _apiOutput : _recordedOutput;
+        Running = HasMore = false; StatusText = CompletedStatus(); Notice = null;
+    }
+
+    private string CompletedStatus() => "已完成" + (_exit is { } exit ? " · 退出码 " + exit : " · 退出码不可用");
 
     internal void Close() { ShellId = null; Running = false; HasMore = false; }
 

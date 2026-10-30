@@ -120,6 +120,7 @@ internal static class OpenCodeStepRunPresentation
             && encrypted.ValueKind == System.Text.Json.JsonValueKind.String && !string.IsNullOrWhiteSpace(encrypted.GetString());
     internal const string SubagentLabel = "子智能体";
     internal const string SubagentGlyph = "\uE99A";
+    // Semantic marker only: OpenCodeTerminalGlyphIcon renders the shared Fluent >_ path, never this font glyph.
     internal const string TerminalGlyph = "\uE756";
     internal static bool IsSubagentLabel(string name) => name is SubagentLabel or "子智能体（后台）";
     internal static string FormatRetryCountdown(int attempt, DateTimeOffset deadline, DateTimeOffset now)
@@ -278,7 +279,8 @@ internal static class OpenCodeStepRunPresentation
 
         if (string.Equals(source, "shell", StringComparison.Ordinal))
         {
-            var key = MetadataString(metadata, "shellID") ?? MetadataString(metadata, "jobID") ?? Attribute(attributes, "id") ?? string.Empty;
+            var retained = OpenCodeShellCompletion.Read(message);
+            var key = retained?.Id ?? MetadataString(metadata, "shellID") ?? MetadataString(metadata, "jobID") ?? Attribute(attributes, "id") ?? string.Empty;
             int? exit = null;
             if (metadata is { } meta && meta.TryGetProperty("exit", out var exitElement)
                 && exitElement.ValueKind == System.Text.Json.JsonValueKind.Number && exitElement.TryGetInt32(out var code))
@@ -289,10 +291,10 @@ internal static class OpenCodeStepRunPresentation
             completion = new OpenCodeAsyncCompletion(
                 OpenCodeAsyncCompletionKind.Shell,
                 key,
-                MetadataString(metadata, "state") ?? Attribute(attributes, "state") ?? string.Empty,
-                Attribute(attributes, "command") ?? message.Description ?? string.Empty,
+                retained?.State ?? MetadataString(metadata, "state") ?? Attribute(attributes, "state") ?? string.Empty,
+                retained?.Command ?? Attribute(attributes, "command") ?? message.Description ?? string.Empty,
                 exit,
-                tag == "shell" ? body : text.Trim(),
+                retained?.Output ?? (tag == "shell" ? body : text.Trim()),
                 null,
                 null);
             return true;
@@ -305,7 +307,7 @@ internal static class OpenCodeStepRunPresentation
                 OpenCodeAsyncCompletionKind.Subagent,
                 childId,
                 MetadataString(metadata, "state") ?? Attribute(attributes, "state") ?? string.Empty,
-                Attribute(attributes, "description") ?? message.Description ?? string.Empty,
+                message.Description ?? Attribute(attributes, "description") ?? string.Empty,
                 null,
                 tag == "subagent" ? body : text.Trim(),
                 childId,
@@ -419,6 +421,24 @@ internal static class OpenCodeStepRunPresentation
             string.IsNullOrWhiteSpace(completion.Body) ? null : completion.Body,
             DetailMarkdown: completion.Kind != OpenCodeAsyncCompletionKind.Shell,
             LinkText: completion.ChildSessionId is { Length: > 0 } ? "打开子会话" : null);
+    }
+
+    /// <summary>V2 parent notice: “Designer 已完成 · 任务”，结果正文只留在详情中。</summary>
+    internal static OpenCodeTimelineRowContent DescribeSubagentCompletionNotice(OpenCodeAsyncCompletion completion, string? taskTitle = null)
+    {
+        var content = DescribeAsyncCompletion(completion);
+        var agent = FirstLineOf(completion.Agent);
+        var actor = agent.Length == 0 ? SubagentLabel : char.ToUpperInvariant(agent[0]) + agent[1..];
+        var state = completion.State.ToLowerInvariant() switch
+        {
+            "error" or "failed" => "失败",
+            "cancelled" or "canceled" or "killed" or "aborted" => "已取消",
+            _ => DescribeAsyncState(completion.State),
+        };
+        var name = actor + " " + state;
+        var target = FirstLineOf(string.IsNullOrWhiteSpace(completion.Target) ? taskTitle : completion.Target);
+        return content with { Name = name, Target = target, Summary = string.Empty,
+            AccessibleName = name + (target.Length > 0 ? " · " + target : string.Empty) };
     }
 
     /// <summary>工具部件 state.metadata 中可与异步完成通知关联的不透明 id（shellID / jobID / sessionID / childID / taskID）。</summary>

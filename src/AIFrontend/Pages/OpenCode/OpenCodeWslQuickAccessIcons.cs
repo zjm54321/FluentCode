@@ -41,12 +41,16 @@ internal static class OpenCodeWslQuickAccessIcons
     // Source: simple-icons/simple-icons icons/vscodium.svg (CC0). The mark is owned by the VSCodium project.
     internal static PathIcon VsCodiumLogo() => Mark(24, "M11.583.54a1.467 1.467 0 0 0-.441 2.032c2.426 3.758 2.999 6.592 2.75 9.075c-1.004 4.756-3.187 5.721-5.094 5.721c-1.863 0-1.364-3.065.036-3.962c.836-.522 1.906-.861 2.728-.861c.814 0 1.474-.658 1.474-1.47s-.66-1.47-1.474-1.47c-.96 0-1.901.202-2.78.545c.18-.847.246-1.762.014-2.735c-.352-1.477-1.367-2.889-3.128-4.257a1.476 1.476 0 0 0-2.069.256c-.5.64-.384 1.564.259 2.063c1.435 1.114 1.908 1.939 2.07 2.618s.032 1.407-.293 2.408c-.416 1.349-.9 2.553-1.11 3.708c-.105.568-.114 1.187-.14 1.68c-1.034-1.006-1.438-2.336-1.438-4.279c0-.811-.66-1.47-1.474-1.47A1.47 1.47 0 0 0 0 11.612c0 2.654.776 5.179 2.855 6.863c1.883 1.793 6.67 1.13 6.67 4.01c0 .812 1.19 1.208 2.004 1.208c.834 0 1.885-.558 1.885-1.208c0-3.267 3.443-5.253 9.11-5.244A1.47 1.47 0 0 0 24 15.773a1.47 1.47 0 0 0-1.47-1.473q-.58.001-1.138.035c.634-1.49.915-3.13.857-4.903a1.473 1.473 0 0 0-1.522-1.42a1.47 1.47 0 0 0-1.425 1.517c.076 2.32-.01 4.393-1.74 5.485c-.49.31-1.062.58-1.604.58c.42-1.145.738-2.353.869-3.655c.083-.83.091-1.818-.003-2.585c-.148-1.188-.325-2.535.126-3.55c.405-.874 1.313-1.24 2.645-1.24c.814 0 1.473-.659 1.473-1.47s-.659-1.47-1.473-1.47c-1.98 0-3.481 1.042-4.332 2.3A25 25 0 0 0 13.621.981a1.474 1.474 0 0 0-2.037-.44z");
 
-    // 16 DIP: a full-bleed mark then matches the optical size of the neighbouring Fluent glyphs.
+    // 16-DIP icon box (OpenCodeQuickAccessStyle.IconSize) with the full-bleed mark drawn at 14 DIP, 1 DIP inset: Segoe
+    // Fluent glyphs leave about that much air inside their em box, so the brand mark now matches their optical size.
+    internal const double MarkArtSize = 14;
     private static PathIcon Mark(double grid, string data)
     {
         var icon = (PathIcon)XamlReader.Load(
             "<PathIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Width=\"16\" Height=\"16\" Data=\"" + data + "\" />");
-        if (grid != 16) icon.Data.Transform = new ScaleTransform { ScaleX = 16d / grid, ScaleY = 16d / grid };
+        var scale = MarkArtSize / grid;
+        var inset = (OpenCodeQuickAccessStyle.IconSize - MarkArtSize) / 2;
+        icon.Data.Transform = new MatrixTransform { Matrix = new Matrix(scale, 0, 0, scale, inset, inset) };
         return icon;
     }
 

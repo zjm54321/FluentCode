@@ -26,7 +26,7 @@
         <!-- 1. 顶部标题栏：按需返回 + 按需汉堡（仅小窗 Minimal）+ 标题 + 中间搜索框（宽/中）或搜索按钮（小）
              汉堡归属三态互斥：宽/中由左栏顶部内置 PaneToggleButton 承担（此处 HamburgerButton 折叠）；
              小窗内置按钮关闭，汉堡进入本顶栏左组（顺序 返回/汉堡/搜索，见 MainWindow.xaml.cs）。
-             可拖动区域由系统标题栏默认区域提供，交互元素经 Passthrough 区域放行（见 MainWindow.xaml.cs）。
+             可拖动区域由 Window.SetTitleBar 跟踪，交互元素经 Passthrough 区域放行（见 MainWindow.TitleBar.cs）。
              右上窗口按钮由系统 caption 按钮列保留（RightPaddingColumn），交互控件不侵入其区域。 -->
         <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent">
             <Grid.ColumnDefinitions>

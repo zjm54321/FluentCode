@@ -137,7 +137,7 @@ internal sealed class OpenCodeManualBackgroundIndex
     }
 
     private static bool Terminal(string? status) => status is "completed" or "succeeded" or "success" or "done"
-        or "error" or "failed" or "killed" or "aborted" or "timeout" or "cancelled" or "canceled";
+        or "error" or "failed" or "interrupted" or "killed" or "aborted" or "timeout" or "cancelled" or "canceled";
 
     private static string? Text(JsonElement? value, string key)
         => value is { ValueKind: JsonValueKind.Object } obj && obj.TryGetProperty(key, out var property)

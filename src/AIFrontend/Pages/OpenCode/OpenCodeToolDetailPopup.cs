@@ -1201,6 +1201,7 @@ internal sealed class OpenCodeToolDetailPopup
         internal Chrome(bool large)
         {
             Icon = new FontIcon { FontSize = large ? 20 : 14, VerticalAlignment = VerticalAlignment.Center };
+            _iconVisual = new(Icon);
             Name = OpenCodeInteractionUi.StyledText(string.Empty, large ? OpenCodeInteractionUi.SubtitleStyleKey : OpenCodeInteractionUi.BodyStrongStyleKey, false);
             Name.VerticalAlignment = VerticalAlignment.Center;
             Name.TextWrapping = TextWrapping.Wrap;
@@ -1233,12 +1234,12 @@ internal sealed class OpenCodeToolDetailPopup
             statusLine.Children.Add(StatusCapsule);
             Grid.SetColumn(Duration, 1);
             statusLine.Children.Add(Duration);
-            Grid.SetColumn(Icon, 0);
+            Grid.SetColumn(_iconVisual, 0);
             Grid.SetColumn(Name, 1);
             Grid.SetColumn(Target, 2);
             Grid.SetColumn(statusLine, 3);
             Grid.SetColumn(Actions, 4);
-            TitleBar.Children.Add(Icon);
+            TitleBar.Children.Add(_iconVisual);
             TitleBar.Children.Add(Name);
             TitleBar.Children.Add(Target);
             TitleBar.Children.Add(statusLine);
@@ -1246,6 +1247,7 @@ internal sealed class OpenCodeToolDetailPopup
         }
 
         internal FontIcon Icon { get; }
+        private readonly OpenCodeTerminalGlyphIcon _iconVisual;
 
         internal TextBlock Name { get; }
 
@@ -1267,7 +1269,7 @@ internal sealed class OpenCodeToolDetailPopup
 
         internal void Set(string glyph, string name, string target, string status, string statusBrushKey, string duration)
         {
-            Icon.Glyph = glyph;
+            _iconVisual.SetGlyph(glyph);
             Name.Text = name;
             Target.Text = target;
             ToolTipService.SetToolTip(Target, target);

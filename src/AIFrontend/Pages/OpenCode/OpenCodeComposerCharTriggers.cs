@@ -26,15 +26,15 @@ internal static class OpenCodeComposerPlusMenu
     internal const string CommandTooltip = "服务器命令与 AIFrontend 本机操作。也可以在输入框开头输入 /。";
 
     /// <summary>添加附件 · ── · 命令 / · 上下文 @ · 终端 !. The view builds its MenuFlyout from exactly this list.
-    /// Segoe Fluent Icons: Attach E723 · Lightning E945 (quick commands) · Mention "@" E168 · CommandPrompt E756 (same terminal
-    /// glyph as the agent tree's 终端 group).</summary>
+    /// Segoe Fluent Icons: Attach E723 · Lightning E945 (quick commands) · Mention "@" E168. 终端 has no font glyph: the view
+    /// uses the shared Fluent "&gt;_" window icon (OpenCodeQuickAccessStyle.TerminalIcon), like every terminal entry point.</summary>
     internal static readonly IReadOnlyList<OpenCodeComposerPlusMenuEntry> Entries = Array.AsReadOnly(new[]
     {
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Attach, "添加附件", "\uE723", "OpenCodeComposerAttachButton", null),
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Separator, string.Empty, string.Empty, "OpenCodeComposerPlusSeparator", null),
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Command, "命令", "\uE945", "OpenCodeComposerCommandButton", '/'),
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Context, "上下文", "\uE168", "OpenCodeComposerContextButton", '@'),
-        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Terminal, "终端", "\uE756", "OpenCodeComposerTerminalButton", '!'),
+        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Terminal, "终端", string.Empty, "OpenCodeComposerTerminalButton", '!'),
     });
 
     /// <summary>Availability of each independent composer action.</summary>

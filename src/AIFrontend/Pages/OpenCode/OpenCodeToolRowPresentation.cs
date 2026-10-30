@@ -697,6 +697,8 @@ internal static class OpenCodeToolRowPresentation
             || input is { } backgroundInput && backgroundInput.TryGetProperty("background", out var backgroundValue) && backgroundValue.ValueKind == JsonValueKind.True;
         if (asyncCompletion is { } completion)
         {
+            if (kind == OpenCodeToolKind.Shell && completion.Kind == OpenCodeAsyncCompletionKind.Shell && !completion.IsRunning)
+                output = completion.Body;
             var stateText = OpenCodeStepRunPresentation.DescribeAsyncState(completion.State);
             summary = "后台" + stateText
                 + (completion.ExitCode is { } asyncExit ? " · 退出码 " + asyncExit.ToString(CultureInfo.InvariantCulture) : string.Empty);

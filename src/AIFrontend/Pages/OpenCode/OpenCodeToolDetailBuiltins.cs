@@ -463,7 +463,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         }
 
         var entry = OpenCodeExecuteInnerCatalog.Find(call.Tool);
-        if (icon is null) grid.Children.Add(new FontIcon { Glyph = entry?.Glyph ?? "\uEA86", FontSize = 12 });
+        if (icon is null) grid.Children.Add(OpenCodeTerminalGlyphIcon.Create(entry?.Glyph ?? "\uEA86", 12));
         var labels = new StackPanel { Spacing = 2 };
         if (entry is not null) labels.Children.Add(OpenCodeInteractionUi.StyledText(entry.Name, OpenCodeInteractionUi.BodyStrongStyleKey));
         var raw = OpenCodeToolDetailContent.Mono(call.Tool);

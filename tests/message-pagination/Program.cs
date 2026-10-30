@@ -189,7 +189,15 @@ internal static partial class Program
             Check(left == (width + column.Width) / 2 + 8, $"SB1: {width}px bar sits 8px after the centered reading column");
             Check(left >= 0 && left + 56 <= width, $"SB1: {width}px bar stays inside the timeline");
             Check(column.RightGutter == 0, $"SB1: {width}px composer and messages retain the same center");
+            var gutters = AIFrontend.Pages.OpenCode.OpenCodeTurnOutline.Gutters(width, column.Width, 32, 12);
+            var columnLeft = (width - column.Width) / 2;
+            Check(gutters.NavigatorFits && Math.Abs((columnLeft - (gutters.NavigatorLeft + 32)) - (gutters.ScrollBarLeft - (columnLeft + column.Width))) < 0.001
+                && gutters.ScrollBarLeft == left && width - 12 + gutters.ScrollBarShift == gutters.ScrollBarLeft,
+                $"TN: {width}px native scrollbar mirrors the turn navigator's gap to the reading column");
         }
+        var cramped = AIFrontend.Pages.OpenCode.OpenCodeTurnOutline.Gutters(60, 0, 32, 12);
+        Check(!cramped.NavigatorFits && cramped.ScrollBarShift == 0 && cramped.ScrollBarLeft == 48,
+            "TN: too narrow for the navigator: it hides and the scrollbar returns to the viewport edge");
         var narrowBlank = OpenCodePage.ConversationColumn(480, 1040, true);
         Check(narrowBlank.Width == 480 && narrowBlank.RightGutter == 0, "blank/new-session does not reserve an invisible timeline bar");
         return Task.CompletedTask;
@@ -257,6 +265,7 @@ internal static partial class Program
                 ("held SSE readiness does not block REST paint; bounded first-ready/reconnect repair", FirstPaintAndRepair),
                 ("inflight deltas beat snapshot; stale readiness ignored; workflow reconciliation deferred", SnapshotAndReadinessFences),
                 ("authoritative SSE/active REST publish composer activity without stale overwrite", ActivityPublication),
+                ("background child completion refreshes parent row/result/count/tree without parent part events", BackgroundChildCompletion),
                 ("healthy SSE skips periodic messages/status HTTP; reconnect and session switch restore fallback", HealthyStreamSkipsPolling),
                 ("SSE execution window excludes retained older history across rollback boundaries", StreamExecutionWindowExcludesOlderHistory),
                 ("Home metadata-only source/directory/date/outcome projection", HomeMetadataProjection),

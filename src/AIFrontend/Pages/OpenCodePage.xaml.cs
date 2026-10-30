@@ -133,7 +133,6 @@ public sealed partial class OpenCodePage : Page
     private bool _shiftDown;
     private bool _enterDown;
     private bool _sessionMissing;
-    private bool _deliveredNoticeShown;
     private bool _interactionBusy;
     private int _mutationEpoch;
     private DateTimeOffset _lastCompositionEndedAt = DateTimeOffset.MinValue;
@@ -598,7 +597,6 @@ public sealed partial class OpenCodePage : Page
         _sessionMissing = false;
         BindComposer();
         _pendingAckIds.Clear();
-        _deliveredNoticeShown = false;
 
         _conversationView.ClearMessages();
         ClearAgentSelector();
@@ -840,7 +838,6 @@ public sealed partial class OpenCodePage : Page
         _mutationEpoch++;
         _interactionBusy = false;
         _pendingAckIds.Clear();
-        _deliveredNoticeShown = false;
         PermissionBar.IsOpen = false;
         UpdateWaitingText();
         UpdateEmptyState();
@@ -1173,12 +1170,7 @@ public sealed partial class OpenCodePage : Page
             }
 
             // 已核实语义：条目仍出现在 inbox = 尚未投递；不再出现 = 已投递到时间线。
-            var removed = _pendingAckIds.RemoveAll(id => !stillPending.Contains(id));
-            if (removed > 0 && _pendingAckIds.Count == 0)
-            {
-                _deliveredNoticeShown = true;
-            }
-
+            _pendingAckIds.RemoveAll(id => !stillPending.Contains(id));
             UpdateWaitingText();
         }
     }
@@ -3850,21 +3842,9 @@ public sealed partial class OpenCodePage : Page
     {
         RefreshSessionStateUi();
         UpdateQueuedPrompts();
-        if (_pendingAckIds.Count > 0)
-        {
-            WaitingText.Text = "待投递 · " + _pendingAckIds.Count;
-            WaitingText.Visibility = Visibility.Visible;
-        }
-        else if (_deliveredNoticeShown)
-        {
-            WaitingText.Text = "已投递";
-            WaitingText.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            WaitingText.Text = string.Empty;
-            WaitingText.Visibility = Visibility.Collapsed;
-        }
+        // Queued prompts are listed above the composer (OpenCodeQueuedPromptsView); the side panel no longer repeats a count.
+        WaitingText.Text = string.Empty;
+        WaitingText.Visibility = Visibility.Collapsed;
     }
 
     private void RaiseSessionTracked(string sessionId, OpenCodeSessionTrackReason reason)
@@ -4389,7 +4369,6 @@ public sealed partial class OpenCodePage : Page
         _mutationEpoch++;
         _interactionBusy = false;
         _pendingAckIds.Clear();
-        _deliveredNoticeShown = false;
         PermissionBar.IsOpen = false;
         UpdateWaitingText();
         UpdateEmptyState();

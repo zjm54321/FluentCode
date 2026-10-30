@@ -17,13 +17,25 @@ internal static class OpenCodeTurnOutline
     internal const double LinePitch = 8;
     internal const double JumpInset = 12;
 
-    /// <summary>Navigator left margin: right edge 8px before the centred reading column (mirrors the scrollbar gutter).</summary>
-    internal static double NavigatorLeft(double gridWidth, double columnWidth, double navigatorWidth)
-        => Math.Max(0, (gridWidth - columnWidth) / 2 - 8 - navigatorWidth);
+    internal readonly record struct GutterLayout(double NavigatorLeft, bool NavigatorFits, double ScrollBarLeft, double ScrollBarShift);
 
-    /// <summary>Translation moving the ScrollView's right-edge scrollbar host so its left edge sits at <paramref name="left"/>.</summary>
-    internal static double ScrollBarShift(double viewportWidth, double barHostWidth, double left)
-        => Math.Min(0, left - (viewportWidth - barHostWidth));
+    /// <summary>
+    /// Mirrored gutters around the centred reading column (<paramref name="columnWidth"/> inside a timeline of
+    /// <paramref name="gridWidth"/>): the navigator ends <see cref="GutterGap"/> before the column and the native
+    /// scrollbar itself starts the same distance after it. When the side gutter cannot hold the navigator plus that
+    /// gap (very narrow), the navigator hides and the scrollbar returns to its standard viewport-edge position.
+    /// </summary>
+    /// <param name="barInset">The bar's own left offset inside its template host (theme padding).</param>
+    internal static GutterLayout Gutters(double gridWidth, double columnWidth, double navigatorWidth, double barHostWidth, double barInset = 0)
+    {
+        var side = Math.Max(0, (gridWidth - columnWidth) / 2);
+        var fits = side >= navigatorWidth + GutterGap && side >= barHostWidth + GutterGap;
+        if (!fits) return new(0, false, Math.Max(0, gridWidth - barHostWidth + barInset), 0);
+        var barLeft = side + columnWidth + GutterGap;
+        return new(side - GutterGap - navigatorWidth, true, barLeft, Math.Min(0, barLeft - barInset - (gridWidth - barHostWidth)));
+    }
+
+    internal const double GutterGap = 8;
 
     internal static int LineCount(int turns) => Math.Clamp(turns, 0, MaxLines);
 
@@ -52,10 +64,6 @@ internal static class OpenCodeTurnOutline
         if (stackHeight <= 0 || !double.IsFinite(y)) return 0;
         return Math.Clamp((int)Math.Floor(Math.Clamp(y / stackHeight, 0, 0.999999) * turns), 0, turns - 1);
     }
-
-    /// <summary>Quiet rhythm: longer prompts read as slightly longer lines; the current turn is always longest.</summary>
-    internal static double LineLength(string prompt, bool current)
-        => current ? 18 : Math.Round(6 + Math.Min(8, Math.Sqrt(prompt.Trim().Length) * 1.1));
 
     /// <summary>
     /// Turn in view: the last turn starting above the upper third of the viewport. At the bottom of the

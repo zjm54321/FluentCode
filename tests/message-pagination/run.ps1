@@ -32,10 +32,21 @@ $openCode = @(
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs',
-    'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs'
+    'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs',
+    'OpenCodeManualBackgroundIndex.cs', 'OpenCodeShellCompletion.cs', 'OpenCodeClient.AgentTreeShells.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeCapabilityStatus.cs'
 ) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
 $sources = $openCode + @(
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeProjection.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeToolRowPresentation.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeStepRunPresentation.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSubagentPresentation.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeBrowserToolPresentation.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltinData.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeExecuteInnerCatalog.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeContextStatusParser.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeLineDiff.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs'),
+    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeTurnOutline.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'),
     (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs'),
     (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodePageSource.cs'),
@@ -52,6 +63,8 @@ $sources = $openCode + @(
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyTests.cs'),
+    (Join-Path $PSScriptRoot 'BackgroundCompletion.TestHost.cs'),
+    (Join-Path $PSScriptRoot 'BackgroundCompletionTests.cs'),
     (Join-Path $PSScriptRoot 'Pf2LatencyTests.cs'),
     (Join-Path $PSScriptRoot 'SessionBindingTests.cs'),
     (Join-Path $PSScriptRoot 'Viewport.TestHost.cs'),
@@ -65,7 +78,8 @@ $extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchT
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
     @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn', 'ConversationScrollBarLeft') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
-    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'CaptureHealthyEventStream', 'HasContinuousEventCoverage', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
+    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.AgentTree.cs"; Names = @('OnAgentTreeEvent', 'RenderAgentTree', 'MergeAgentTreeShell') },
+    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'CaptureHealthyEventStream', 'HasContinuousEventCoverage', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'IsSelectedBackgroundChildCompletion', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
     $text = [IO.File]::ReadAllText($extraction.Path)
@@ -87,6 +101,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;

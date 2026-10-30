@@ -36,6 +36,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
     internal event Action<OpenCodePersistentPtyViewContext>? ReconnectRequested;
     internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
     internal event Action? AppearanceRequested;
+    internal event Action? NewTerminalRequested;
 
     internal OpenCodePersistentPtyView()
     {
@@ -46,7 +47,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         Theme(toolbar, "BorderBrush", "DividerStrokeColorDefaultBrush");
         foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto, GridLength.Auto })
             toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
-        var icon = new FontIcon { Glyph = "\uE756", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
+        var icon = OpenCodeQuickAccessStyle.TerminalIcon(); // Shared Fluent ">_" terminal icon (16 DIP).
         toolbar.Children.Add(icon);
         var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center, Children = { _title, _detail } };
         Grid.SetColumn(heading, 1); toolbar.Children.Add(heading);
@@ -61,6 +62,9 @@ internal sealed class OpenCodePersistentPtyView : Grid
         var more = IconButton("\uE712", "更多");
         AutomationProperties.SetAutomationId(more, "OpenCodePersistentPtyMore");
         var menu = new MenuFlyout();
+        var create = new MenuFlyoutItem { Text = "新建终端" };
+        create.Click += (_, _) => NewTerminalRequested?.Invoke();
+        menu.Items.Add(create);
         var appearance = new MenuFlyoutItem { Text = "外观" };
         appearance.Click += (_, _) => AppearanceRequested?.Invoke();
         menu.Items.Add(appearance); more.Flyout = menu;
@@ -72,7 +76,9 @@ internal sealed class OpenCodePersistentPtyView : Grid
         Children.Add(toolbar);
         Grid.SetRow(_notice, 1); Children.Add(_notice);
         // The HWND is inset from every card edge: rounded XAML chrome/shadow stays outside its airspace.
-        var ground = new Grid { Margin = new Thickness(12), Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 12, 12, 12)), Children = { Renderer } };
+        var ground = (Border)XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Margin=\"12\" Padding=\"12\" CornerRadius=\"6\" BorderThickness=\"1\" BorderBrush=\"{ThemeResource ControlStrokeColorDefaultBrush}\" Background=\"{ThemeResource LayerFillColorDefaultBrush}\" />");
+        ground.Child = Renderer;
+        AutomationProperties.SetAutomationId(ground, "OpenCodeTerminalInset");
         Grid.SetRow(ground, 2); Children.Add(ground);
         toolbar.SizeChanged += (_, _) => _detail.Visibility = toolbar.ActualWidth < 720 || _detail.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         _detail.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);

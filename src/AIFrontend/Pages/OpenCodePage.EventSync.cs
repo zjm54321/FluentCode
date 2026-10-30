@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
@@ -239,7 +240,8 @@ public sealed partial class OpenCodePage
                 OnPersistentPtyEvent(item); // Separate server-scoped inventory, including during message workflows.
                 continue;
             }
-            if (_messageHistoryWorkflowOwner is not null && (item.SessionId is null || item.SessionId == _selectedSessionId))
+            var backgroundCompletion = IsSelectedBackgroundChildCompletion(item);
+            if (_messageHistoryWorkflowOwner is not null && (item.SessionId is null || item.SessionId == _selectedSessionId || backgroundCompletion))
             {
                 // These events used to be discarded, forcing a post-action snapshot. Keep FIFO
                 // ownership instead; a source/session replacement clears or rejects old events.
@@ -286,7 +288,14 @@ public sealed partial class OpenCodePage
                     selectedStatusChanged |= statusChanged && id == _selectedSessionId;
                 }
             }
-            if (id is not null && id != _selectedSessionId) continue;
+            if (id is not null && id != _selectedSessionId)
+            {
+                // Child execution ends on its own session. Its launch part need not change, and
+                // healthy SSE disables polling: fetch the parent's keyed completion/result once
+                // per batch instead of leaving the background row's historical running metadata.
+                refetch |= backgroundCompletion && !repeatedStatusOnly;
+                continue;
+            }
             // The same origin/history gates used by REST publication also fence streamed publication.
             if (_messageHistoryWorkflowOwner is not null) continue;
             changed |= _eventReducer?.Apply(item) == true;
@@ -335,6 +344,24 @@ public sealed partial class OpenCodePage
             Debug.WriteLine($"OpenCode.SSE apply received_utc={first:O} applied_utc={DateTimeOffset.UtcNow:O} latency_ms={(DateTimeOffset.UtcNow - first).TotalMilliseconds:F1} events={count}");
         }
         if (refetch) _ = RefreshMessagesAsync();
+    }
+
+    private bool IsSelectedBackgroundChildCompletion(OpenCodeEvent item)
+    {
+        if (item.SessionId is not { } id || id == _selectedSessionId) return false;
+        var terminal = item.Type is "session.idle" or "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted"
+            || item.Type == "session.status" && item.Data.TryGetProperty("status", out var status)
+                && status.TryGetProperty("type", out var kind) && kind.GetString() == "idle";
+        if (!terminal) return false; // Never scan history for foreign text/tool deltas.
+        if (_treeBinding is { } binding && IsTreeCurrent(binding)
+            && _treeChildren.TryGetValue(id, out var child) && child.ParentId == _selectedSessionId) return true;
+        if (_historyUnresolvedChildren.Contains(id)) return true;
+        // Covers manual backgrounding and a child completing before the tree REST read finishes.
+        return ProjectMessageHistory(MergeMessageHistory()).Any(message => message.Type == "assistant"
+            && message.Content?.Any(part => part.Type == "tool" && part.Name == "subagent"
+                && OpenCodeToolStates.ReadPart(part)?.Metadata is { ValueKind: JsonValueKind.Object } metadata
+                && metadata.TryGetProperty("sessionID", out var target) && target.ValueKind == JsonValueKind.String
+                && target.GetString() == id) == true);
     }
 
     partial void ApplyLiveSessionStatuses(Dictionary<string, OpenCodeSessionUiState> states)

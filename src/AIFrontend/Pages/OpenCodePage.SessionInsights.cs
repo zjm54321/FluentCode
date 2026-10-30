@@ -109,6 +109,7 @@ public sealed partial class OpenCodePage
 
     partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages)
     {
+        UpdateShellTerminalTranscript(messages);
         OnAgentTreeMessages(messages);
         OnRuntimeMessagesAccepted(messages);
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))

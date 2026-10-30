@@ -277,7 +277,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     private TreeViewNode Group(string key, string name, string glyph, string count,
         IReadOnlyList<FrameworkElement> rows, bool dimmed, string tooltip, string? color = null, string? agentName = null)
     {
-        var content = new Grid { ColumnSpacing = 8 };
+        var content = new Grid { ColumnSpacing = 8, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -285,7 +285,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             ? (FontIcon)XamlReader.Load("<FontIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{ThemeResource AccentTextFillColorPrimaryBrush}\" FontSize=\"14\" />")
             : OpenCodeAgentIconTheme.Create(agentName, color);
         icon.Glyph = glyph;
-        content.Children.Add(icon);
+        content.Children.Add(key == "shell" ? OpenCodeQuickAccessStyle.TerminalIcon(14, "AccentTextFillColorPrimaryBrush") : icon);
         var label = new TextBlock { Text = name, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None, MaxLines = 0,
             VerticalAlignment = VerticalAlignment.Center,
@@ -295,6 +295,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         var counter = Caption(count);
         Grid.SetColumn(counter, 2);
         content.Children.Add(counter);
+        foreach (var child in content.Children) child.IsHitTestVisible = false;
         ToolTipService.SetToolTip(content, tooltip);
         NameTreeContent(content, name + "，" + count);
         var group = new TreeViewNode { Content = content, IsExpanded = !_expanded.TryGetValue(key, out var open) || open };
@@ -355,6 +356,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey) is { } code) task.Style = code;
             else task.FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas");
         }
+        // Code text styles can enable selection and consume clicks before TreeViewItem sees them.
+        // Only the native full-width item owns pointer/hover/pressed/Enter interaction.
+        task.IsTextSelectionEnabled = false;
         Grid.SetColumn(task, 2);
         row.Children.Add(task);
         var model = Caption(subtitle);
@@ -379,6 +383,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         indicator.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(indicator, 0);
         row.Children.Add(indicator);
+        foreach (var child in row.Children) child.IsHitTestVisible = false;
         NameTreeContent(row, title + "，" + subtitle + "，" + statusText);
         ToolTipService.SetToolTip(row, title + "\n" + subtitle + " · " + statusText);
         return row;

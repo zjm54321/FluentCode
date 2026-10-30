@@ -33,6 +33,15 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
             return _running ??= Task.Run(ReadLoopAsync);
         }
     }
+
+    // An explicit create response is authoritative for this exact session, even before SSE/list catches up.
+    internal void AcceptCreated(PersistentPtyInfo info)
+    {
+        if (!Current()) return;
+        PersistentPtyValidation.Info(info, _origin.SessionId);
+        Publish(new(OpenCodePersistentPtyInventoryPhase.Ready,
+            ImmutableArray.CreateRange(State.Rows.RemoveAll(row => row.Id == info.Id).Add(info))));
+    }
     private Task<T> ReadAsync<T>(Func<Task<T>> read)
     {
         Task<T>? pending = null;

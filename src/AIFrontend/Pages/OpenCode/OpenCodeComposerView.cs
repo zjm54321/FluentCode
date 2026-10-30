@@ -232,7 +232,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         foreach (var entry in OpenCodeComposerPlusMenu.Entries)
         {
             if (entry.Kind == OpenCodeComposerPlusMenuKind.Separator) { addMenu.Items.Add(new MenuFlyoutSeparator()); continue; }
-            var item = new MenuFlyoutItem { Text = entry.Text, Icon = new FontIcon { Glyph = entry.Glyph } };
+            var item = new MenuFlyoutItem { Text = entry.Text, Icon = entry.Kind == OpenCodeComposerPlusMenuKind.Terminal ? OpenCodeQuickAccessStyle.TerminalIcon() : new FontIcon { Glyph = entry.Glyph } };
             AutomationProperties.SetAutomationId(item, entry.AutomationId);
             addMenu.Items.Add(item);
             switch (entry.Kind)
@@ -300,7 +300,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _commandChipRemove = ChipRemoveButton("OpenCodeComposerRemoveCommand");
         _commandChipRemove.Click += (_, _) => Raise(CommandRemoved);
         var commandChipRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        commandChipRow.Children.Add(new FontIcon { Glyph = "\uE756", FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+        commandChipRow.Children.Add(new FontIcon { Glyph = "\uE945", FontSize = 12, // Same lightning as the + menu's 命令. VerticalAlignment = VerticalAlignment.Center,
             Style = ThemedForeground("FontIcon", "AccentTextFillColorPrimaryBrush") });
         commandChipRow.Children.Add(_commandChipText);
         commandChipRow.Children.Add(_commandChipRemove);

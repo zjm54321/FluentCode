@@ -105,7 +105,8 @@ public sealed partial class OpenCodePage
         measure.Text = "Mg";
         measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var line = Math.Max(1, measure.DesiredSize.Height);
-        var padding = Composer.Padding;
+        // Measure against the base (no-button) inset so the expand decision never depends on its own padding change.
+        var padding = ComposerTextPadding(expandVisible: false);
         var stroke = Composer.BorderThickness;
         var chrome = padding.Top + padding.Bottom + stroke.Top + stroke.Bottom;
         var horizontalChrome = padding.Left + padding.Right + stroke.Left + stroke.Right;
@@ -128,7 +129,13 @@ public sealed partial class OpenCodePage
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
         _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(measure.DesiredSize.Height, line);
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;
+        var textPadding = ComposerTextPadding(_composerOverFiveLines);
+        if (Composer.Padding != textPadding) Composer.Padding = textPadding; // Shell editor binds to this padding.
     }
+
+    // Symmetric 12 so text fills the editor; the right inset grows to 44 (button 32 + margin 4 + gap 8) only while the
+    // expand button is shown over the text. A fixed 44 used to leave an empty strip at the right edge of every draft.
+    internal static Thickness ComposerTextPadding(bool expandVisible) => new(12, 9, expandVisible ? 44 : 12, 9);
 
     internal static (double Width, double RightGutter) ConversationColumn(double available, double maximum, bool blank)
     {

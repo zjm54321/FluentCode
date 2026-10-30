@@ -7,7 +7,7 @@ namespace AIFrontend.Pages.OpenCode;
 
 internal sealed record OpenCodeExecuteInnerName(string Name, string Family, string Keys)
 {
-    internal string Glyph => Family switch { "web" => "\uE774", "code" => "\uE721", "agent" => "\uE8D4", "pty" => "\uE756", "chrome" => "\uE7F4", "oc" => "\uE8B7", _ => "\uEA86" };
+    internal string Glyph => Family switch { "web" => "\uE774", "code" => "\uE721", "agent" => "\uE8D4", "pty" => OpenCodeStepRunPresentation.TerminalGlyph, "chrome" => "\uE7F4", "oc" => "\uE8B7", _ => "\uEA86" };
 }
 
 /// <summary>Designer execute-inner-catalog: exact ids only, seven families, fixed summary keys. Unknown ids stay raw.</summary>

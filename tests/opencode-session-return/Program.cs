@@ -15,11 +15,12 @@ using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-internal static class Program
+internal static partial class Program
 {
     private static int _assertions;
     private static async Task Main()
     {
+        SubagentCompletionNotices();
         await ImageBindings();
         await ChildPreviewLifecycle();
         await CardReturnAndFailures();

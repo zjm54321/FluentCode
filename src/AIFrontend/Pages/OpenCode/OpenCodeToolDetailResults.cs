@@ -21,12 +21,10 @@ internal static partial class OpenCodeToolDetailContent
 
     private static FrameworkElement BuildTerminal(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options, Action rebuild, out int hidden)
     {
-        var lines = (model.OutputText ?? string.Empty).TrimEnd('\r', '\n').Split('\n');
-        var limit = 3;
-        hidden = Math.Max(0, lines.Length - limit);
-        var output = string.IsNullOrEmpty(model.OutputText) ? model.IsActive ? "命令运行中，暂无输出…" : "（没有输出）" : string.Join('\n', lines.Take(limit));
-        return new TextBlock { Text = output.Length > 320 ? output[..320] + "…" : output, MaxLines = 3,
-            TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+        hidden = 0;
+        var preview = new OpenCodeShellTerminalPreview();
+        preview.Update(model.Command ?? model.Target, model.OutputText, null);
+        return preview;
     }
 
     private static Button ShowAllButton(int hidden, OpenCodeToolDetailOptions options, Action rebuild)

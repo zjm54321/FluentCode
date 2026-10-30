@@ -25,6 +25,9 @@ internal static class PersistentPtyBindingTests
     {
         internal bool? Capability = true;
         internal int CapReads, Lists, Snapshots, Tickets, Writes;
+        internal bool EmptyInitially, Created, FailCreate;
+        internal int Creates;
+        internal TaskCompletionSource<bool>? CreateEntered, HoldCreate;
         internal TaskCompletionSource<bool>? ListEntered, HoldList;
         internal readonly byte[] Checkpoint = System.Text.Encoding.UTF8.GetBytes("\u001b[2J\u001b[H真实 VT");
         internal readonly PersistentPtyInfo Info = new("pty_fixture", "agent terminal", "bash", ImmutableArray<string>.Empty,
@@ -39,18 +42,32 @@ internal static class PersistentPtyBindingTests
                 Check(uri.Query.Length == 0, "server-scoped PTY routes contain no invented location query");
                 if (request.Method != HttpMethod.Get)
                 {
+                    if (request.Method == HttpMethod.Post && uri.AbsolutePath.EndsWith("/terminal", StringComparison.Ordinal))
+                    {
+                        Creates++; Writes++; CreateEntered?.TrySetResult(true);
+                        using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+                        Check(body.RootElement.GetProperty("cwd").GetString() == "/work"
+                            && body.RootElement.GetProperty("args").GetArrayLength() == 0
+                            && !body.RootElement.TryGetProperty("command", out _)
+                            && body.RootElement.GetProperty("size").GetProperty("cols").GetInt32() == 120,
+                            "create uses captured remote cwd, backend default shell, empty args and explicit initial grid");
+                        if (HoldCreate is { } held) await held.Task;
+                        if (FailCreate) return new(HttpStatusCode.InternalServerError);
+                        Created = true;
+                        return Json(new { data = Info with { Id = "pty_created", Title = "终端" } });
+                    }
                     Writes++; if (uri.AbsolutePath.EndsWith("/connect-token", StringComparison.Ordinal)) Tickets++;
                     return new(HttpStatusCode.Unauthorized); // Never issue a real WS ticket in this isolated UI fixture.
                 }
                 if (uri.AbsolutePath.EndsWith("/terminal", StringComparison.Ordinal))
                 {
                     Lists++; ListEntered?.TrySetResult(true); if (HoldList is { } held) await held.Task;
-                    return Json(new { data = new[] { Info } });
+                    return Json(new { data = Created ? new[] { Info with { Id = "pty_created", Title = "终端" } } : EmptyInitially ? Array.Empty<PersistentPtyInfo>() : new[] { Info } });
                 }
                 if (uri.AbsolutePath.EndsWith("/snapshot", StringComparison.Ordinal))
                 {
                     Snapshots++;
-                    return Json(new { data = new { info = Info, text = "NOT A CHECKPOINT", checkpoint = Convert.ToBase64String(Checkpoint), cursor = new { x = 0, y = 0 } } });
+                    return Json(new { data = new { info = Created ? Info with { Id = "pty_created", Title = "终端" } : Info, text = "NOT A CHECKPOINT", checkpoint = Convert.ToBase64String(Checkpoint), cursor = new { x = 0, y = 0 } } });
                 }
             }
             if (uri.AbsolutePath.EndsWith("session-preset.v1/read", StringComparison.Ordinal))
@@ -89,7 +106,7 @@ internal static class PersistentPtyBindingTests
     }
     internal static async Task Run()
     {
-        await Adapter(); await Inventory(); await PageLifecycle();
+        await Adapter(); await Inventory(); await PageLifecycle(); await Creation(); await ShellTerminalTests.Run();
         Console.WriteLine($"PASS {_checks} PTY Page/renderer-adapter/inventory checks; real typed HTTP/controller and adapter barriers, inert native surface/state projection; no live socket/process/window.");
     }
     private static async Task Adapter()
@@ -191,6 +208,36 @@ internal static class PersistentPtyBindingTests
         Check(disposed.State.Phase == OpenCodePersistentPtyInventoryPhase.Unavailable && retired.Wire.Lists == 0,
             "retired page-client race yields honest unavailable state without faulting the refresh loop or issuing requests");
     }
+    private static async Task Creation()
+    {
+        var f = Fixture(); f.Wire.EmptyInitially = true; await f.Page.PrepareAsync();
+        await Until(() => f.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        Check(f.Page.PtyInventory!.State.Rows.Length == 0 && f.Wire.Creates == 0, "empty supported inventory does not implicitly create a terminal");
+        await f.Page.CreatePty();
+        await f.Page.PtyView!.Renderer.ResetEntered.Task;
+        Check(f.Wire.Creates == 1 && f.Page.OverlayPtyId == "pty_created" && f.Page.PtyInventory.State.Rows.Any(row => row.Id == "pty_created"),
+            "explicit new-terminal action creates and opens the returned PTY in the shared native overlay");
+        Check(f.Page.HasCreationConsent && !f.Page.PtyInputGate(f.Page.PtyView.Renderer.Context!),
+            "create click grants first-attachment consent but cannot arm input before parser replay and server authority");
+        f.Page.SupplyPtyState(new(new(2), PersistentPtyPhase.Connecting, PersistentPtyRole.Observer, false, false, f.Wire.Info, null));
+        Check(!f.Page.HasCreationConsent, "creation consent expires across reconnect rather than auto-taking over later");
+        var run = f.Page.PtyRun!; f.Page.ClosePty(); await run.WaitAsync(TimeSpan.FromSeconds(5));
+        Check(f.Wire.Creates == 1 && !f.Page.PtyOpen, "closing newly created viewer detaches without deleting or recreating the terminal");
+        var failed = Fixture(); failed.Wire.FailCreate = true; await failed.Page.PrepareAsync();
+        await Until(() => failed.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        await failed.Page.CreatePty();
+        Check(failed.Wire.Creates == 1 && !failed.Page.PtyOpen, "create failure stays visible/retryable without fake attachment or mutation retry");
+        var late = Fixture(); await late.Page.PrepareAsync();
+        await Until(() => late.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        late.Wire.CreateEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        late.Wire.HoldCreate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var creating = late.Page.CreatePty(); await late.Wire.CreateEntered.Task;
+        await late.Page.CreatePty();
+        Check(late.Wire.Creates == 1, "double-click while creating cannot issue a second POST");
+        late.Page.PausePty(); late.Wire.HoldCreate.SetResult(true); await creating;
+        Check(!late.Page.PtyOpen && late.Page.PtyInventory is null, "late create reply cannot open or enable input in a replacement page/source scope");
+    }
+
     private static async Task PageLifecycle()
     {
         var f = Fixture(); await f.Page.PrepareAsync();

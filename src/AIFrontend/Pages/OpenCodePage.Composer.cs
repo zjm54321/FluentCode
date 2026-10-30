@@ -541,7 +541,6 @@ public sealed partial class OpenCodePage
         if (receipt.Id is { Length: > 0 } id && !_pendingAckIds.Contains(id))
         {
             _pendingAckIds.Add(id);
-            _deliveredNoticeShown = false;
         }
         UpdateWaitingText();
         SetConnectionState(ConnectionState.Connected);

@@ -190,6 +190,18 @@ public sealed partial class OpenCodePage
         RightDock.Padding = _sidebarLayout.IsWide ? new Thickness(inner, top, outer, bottom) : new Thickness(0);
     }
 
+    private bool _rightSessionDiagnosticsAllowed;
+    private long? _agentSelectorVisibilityToken;
+
+    /// <summary>The diagnostics block only holds the selector's switch/recovery UI; collapse it (and its spacing) when that is hidden.</summary>
+    private void UpdateRightSessionDiagnosticsVisibility()
+    {
+        _agentSelectorVisibilityToken ??= _agentSelector.RegisterPropertyChangedCallback(VisibilityProperty,
+            (_, _) => UpdateRightSessionDiagnosticsVisibility());
+        RightSessionDiagnostics.Visibility = _rightSessionDiagnosticsAllowed && _agentSelector.Visibility == Visibility.Visible
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void ApplySidebarLayout()
     {
         if (_sidebarApplying) return;
@@ -231,7 +243,8 @@ public sealed partial class OpenCodePage
             SessionInsightsButton.Visibility = hasSessionSurface && (surface.ShowDrawerButtons || !workspaceVisible)
                 ? Visibility.Visible : Visibility.Collapsed;
             RightSessionContent.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
-            RightSessionDiagnostics.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
+            _rightSessionDiagnosticsAllowed = hasSessionSurface;
+            UpdateRightSessionDiagnosticsVisibility();
             RightPanelExistingActions.Visibility = rightResident ? Visibility.Visible : Visibility.Collapsed;
             MoveExistingSidebarActions(rightResident);
             MoveRightFooterForLayout(wide);

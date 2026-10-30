@@ -15,10 +15,10 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeBrowserButton : Grid
 {
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
-    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
+    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = OpenCodeQuickAccessStyle.IconSize };
+    private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new(3), IsHitTestVisible = false };
     private readonly FrameworkElement _coloredBrowser = OpenCodeBrowserColorIcon.Create();
     private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
-    private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new(3), IsHitTestVisible = false };
     private readonly Button _statusButton = new() { Width = 12, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new(0), Margin = new(0, 2, 2, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
     private readonly TextBlock _new = new() { Text = "NEW", FontSize = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
     private readonly TextBlock _tipTitle = new();
@@ -76,7 +76,9 @@ internal sealed class OpenCodeBrowserButton : Grid
             && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast;
         _coloredBrowser.Visibility = colored ? Visibility.Visible : Visibility.Collapsed;
         _globe.Visibility = colored ? Visibility.Collapsed : Visibility.Visible;
-        _globe.Foreground = Brush("TextFillColorPrimaryBrush");
+        // Inherit the tile's themed foreground: an Application-level brush is the app theme's, which made the globe
+        // white-on-white when the page theme differed from the app theme.
+        _globe.ClearValue(IconElement.ForegroundProperty);
         _dot.Background = _statusDot.Background = Brush(OpenCodeBrowserPanelState.StatusBrushKey(_availability));
         _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
         _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");

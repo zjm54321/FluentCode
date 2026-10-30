@@ -12,7 +12,7 @@ internal sealed record OpenCodeTreeInstance(string Id, string Title, string Mode
 internal sealed record OpenCodeTreeAgent(string Id, string Name, string? Description, string? Mode, bool Hidden,
     IReadOnlyList<OpenCodeTreeInstance> Children, string? Color);
 internal sealed record OpenCodeTreeShell(string Id, string Command, string? Cwd, OpenCodeTreeShellKind Kind,
-    OpenCodeTreeStatus Status, string? Exit, string? Output);
+    OpenCodeTreeStatus Status, string? Exit, string? Output, bool Completed = false);
 
 /// <summary>Read-only projection. Never derives completion or ownership from message text.</summary>
 internal static class OpenCodeAgentTreeProjection
@@ -87,24 +87,23 @@ internal static class OpenCodeAgentTreeProjection
     internal static OpenCodeTreeShell? Shell(OpenCodeTreeShellInfo info, string sessionId)
         => info.Id is { Length: > 0 } id && String(info.Metadata, "sessionID") == sessionId
             ? new(id, info.Command ?? id, info.Cwd, ShellKind(info.Metadata, false), ShellStatus(info.Status, info.Exit),
-                info.Exit?.ToString(System.Globalization.CultureInfo.InvariantCulture), null) : null;
+                info.Exit?.ToString(System.Globalization.CultureInfo.InvariantCulture), null, info.Status is "exited" or "killed" or "timeout") : null;
 
     internal static OpenCodeTreeShell? Shell(OpenCodeMessage message)
     {
         // Official shell completion notices retain structured metadata even after the live
         // Shell service removes a job. Only the numeric exit/timeout evidence is terminal.
-        if (message.Type == "synthetic" && String(message.Metadata, "source") == "shell"
-            && String(message.Metadata, "shellID") is { Length: > 0 } retainedId)
+        if (OpenCodeShellCompletion.Read(message) is { } completion)
         {
-            var retainedExit = Number(message.Metadata, "exit");
-            return new(retainedId, message.Description ?? retainedId, null, OpenCodeTreeShellKind.Unknown,
-                Boolean(message.Metadata, "timeout") == true ? OpenCodeTreeStatus.Failed : ShellStatus("exited", retainedExit),
-                retainedExit?.ToString(System.Globalization.CultureInfo.InvariantCulture), null);
+            return new(completion.Id, completion.Command ?? completion.Id, null, OpenCodeTreeShellKind.Background,
+                completion.State is "timeout" or "failed" or "error" ? OpenCodeTreeStatus.Failed : completion.State is "killed" or "interrupted" ? OpenCodeTreeStatus.Interrupted
+                    : ShellStatus(completion.Finished ? "exited" : "running", completion.Exit),
+                completion.Exit?.ToString(System.Globalization.CultureInfo.InvariantCulture), completion.Output, completion.Finished);
         }
         if (message.Type != "shell" || string.IsNullOrWhiteSpace(message.ShellId)) return null;
         double? exit = message.Exit is { ValueKind: JsonValueKind.Number } number && number.TryGetDouble(out var value) ? value : null;
         return new(message.ShellId, message.Command ?? message.ShellId, null, ShellKind(message.Metadata, true),
-            ShellStatus(message.Status, exit), message.Exit?.ToString(), message.Output?.Output);
+            ShellStatus(message.Status, exit), message.Exit?.ToString(), message.Output?.Output, message.Status is "exited" or "killed" or "timeout");
     }
 
     internal static OpenCodeTreeShell? Shell(OpenCodeContentPart part)
@@ -122,7 +121,8 @@ internal static class OpenCodeAgentTreeProjection
                 : ShellStatus(status == "running" ? "running" : "exited", exit),
             exit?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             state.Content is { Count: > 0 } content
-                ? string.Join("\n", content.Where(c => c.Type == "text").Select(c => c.Text)) : null);
+                ? string.Join("\n", content.Where(c => c.Type == "text").Select(c => c.Text)) : null,
+            status is "exited" or "killed" or "timeout");
     }
 
     private static double? Number(JsonElement? element, string name)

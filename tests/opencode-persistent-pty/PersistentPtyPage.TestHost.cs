@@ -30,6 +30,8 @@ namespace AIFrontend.Pages
         internal Task? PtyRun => _persistentAttachmentOwner?.Run;
         internal OpenCodePersistentPtyView? PtyView => _persistentAttachmentOwner?.View;
         internal void OpenPty(string id) { if (_persistentInventoryOwner is { } owner) OpenPersistentPty(owner, id); }
+        internal Task CreatePty() => _persistentInventoryOwner is { } owner ? CreatePersistentTerminalAsync(owner.Context) : Task.CompletedTask;
+        internal bool HasCreationConsent => _persistentAttachmentOwner?.CreationConsent == 1;
         internal void ClosePty() => ClosePersistentPtyView(restoreFocus: false);
         internal void PausePty() => ResetPersistentPtyScope();
         internal void ChangePtyDirectory(string directory)
@@ -81,9 +83,11 @@ namespace AIFrontend.Pages.OpenCode
     internal sealed class OpenCodePersistentPtyInventoryView
     {
         internal event Action<OpenCodePersistentPtyInventoryContext>? RefreshRequested;
+        internal event Action<OpenCodePersistentPtyInventoryContext>? CreateRequested;
         internal event Action<OpenCodePersistentPtyInventoryRequest>? TerminalRequested;
         internal void Render(OpenCodePersistentPtyInventoryContext? context, OpenCodePersistentPtyInventoryState? state) { }
-        internal void TouchEvents() { RefreshRequested?.Invoke(null!); TerminalRequested?.Invoke(null!); }
+        internal void SetCreationState(bool creating, string? error = null) { }
+        internal void TouchEvents() { RefreshRequested?.Invoke(null!); TerminalRequested?.Invoke(null!); CreateRequested?.Invoke(null!); }
     }
     internal sealed class OpenCodePersistentPtyView
     {

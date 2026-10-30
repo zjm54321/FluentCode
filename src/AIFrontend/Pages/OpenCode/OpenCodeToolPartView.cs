@@ -43,6 +43,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     private readonly FontIcon _statusIcon;
     private readonly ProgressRing _progress;
     private readonly FontIcon _kindIcon;
+    private readonly OpenCodeTerminalGlyphIcon _kindIconVisual;
     private readonly TextBlock _nameText;
     private readonly TextBlock _targetText;
     private readonly TextBlock _summaryText;
@@ -103,8 +104,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             OpenCodeToolDetailPopup.Shared.Close();
             RaiseSubagentSessionRequested(child);
         };
-        options.OpenTerminal = _model.ShellId is { Length: > 0 } shellId
-            ? () => { if (!_disposed) { OpenCodeToolDetailPopup.Shared.Close(); TerminalRequested?.Invoke(shellId); } } : null;
+        options.OpenTerminal = _model.Kind == OpenCodeToolKind.Shell ? RequestTerminal : null;
         options.BrowserImageScope = OpenCodeImageContext.Find(_root);
         options.ShowBrowserPage = tabId => { if (!_disposed) { OpenCodeToolDetailPopup.Shared.Close(); RequestBrowserPage(tabId); } };
     }
@@ -121,7 +121,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     /// <see cref="OpenCodeConversationView"/> 将其转发为自己的同名公开事件。
     /// </summary>
     public event EventHandler<OpenCodeSubagentSessionRequestedEventArgs>? SubagentSessionRequested;
-    public event Action<string>? TerminalRequested;
+    public event Action<OpenCodeShellTerminalRequest>? TerminalRequested;
+    private void RequestTerminal()
+    {
+        if (_disposed) return;
+        OpenCodeToolDetailPopup.Shared.Close();
+        TerminalRequested?.Invoke(new(_model.ShellId, _model.Command ?? _model.Target, _model.OutputText ?? string.Empty,
+            _parentMessageId, _model.PartId, _model.IsActive));
+    }
     /// <summary>Navigation hint only: parent message id + exact protocol tabID. Host validates session ownership.</summary>
     public event Action<string?, string>? BrowserPageRequested;
     private void RequestBrowserPage(string tabId)
@@ -149,6 +156,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
         _kindIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
+        _kindIconVisual = new(_kindIcon);
 
         _nameText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _nameText.VerticalAlignment = VerticalAlignment.Center;
@@ -183,11 +191,11 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(_kindIcon, 0);
+        Grid.SetColumn(_kindIconVisual, 0);
         Grid.SetColumn(_nameText, 1);
         Grid.SetColumn(_targetText, 2);
         Grid.SetColumn(summaryPanel, 3);
-        content.Children.Add(_kindIcon);
+        content.Children.Add(_kindIconVisual);
         content.Children.Add(_nameText);
         content.Children.Add(_targetText);
         content.Children.Add(summaryPanel);
@@ -486,7 +494,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit => "\uE70F",
         OpenCodeToolKind.Patch => "\uE8C8",
         OpenCodeToolKind.Write => "\uE8E5",
-        OpenCodeToolKind.Shell => "\uE756",
+        OpenCodeToolKind.Shell => OpenCodeStepRunPresentation.TerminalGlyph,
         OpenCodeToolKind.Grep or OpenCodeToolKind.WebSearch => "\uE721",
         OpenCodeToolKind.Glob or OpenCodeToolKind.List => "\uE8B7",
         OpenCodeToolKind.WebFetch => "\uE774",
@@ -498,7 +506,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     private void ApplyModel(OpenCodeToolRowModel model)
     {
-        _kindIcon.Glyph = model.AgentName is { Length: > 0 } agentName ? OpenCodeAgentIcons.Glyph(agentName) : model.GlyphOverride ?? KindGlyph(model.Kind);
+        _kindIconVisual.SetGlyph(model.AgentName is { Length: > 0 } agentName ? OpenCodeAgentIcons.Glyph(agentName) : model.GlyphOverride ?? KindGlyph(model.Kind));
         _nameText.Text = model.Name;
         _targetText.Text = model.Target;
         _rowTag.Text = model.IsBackground ? "后台" : model.RawToolLabel;
@@ -715,10 +723,10 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     internal void TogglePinnedDetail()
     {
-        if (_model.OpensTerminalView && _model.ShellId is { } shellId)
+        if (_model.Kind == OpenCodeToolKind.Shell)
         {
             CloseDetailIfShowing();
-            if (!_disposed) TerminalRequested?.Invoke(shellId);
+            RequestTerminal();
             return;
         }
         if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question || OpenCodeToolDetailContent.ToolImages(_model).Count > 0)
@@ -744,24 +752,16 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         if (_model.Kind == OpenCodeToolKind.Shell)
         {
             // Transcript remains XAML: a bounded text preview and an explicit shared-overlay action.
-            var output = _model.OutputText ?? string.Empty;
-            var preview = new TextBlock { Text = output.Length > 320 ? output[..320] + "…" : output,
-                MaxLines = 3, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap,
-                IsTextSelectionEnabled = true, FontFamily = new FontFamily("Cascadia Mono") };
-            var panel = new StackPanel { Spacing = 6 };
-            if (output.Length > 0) panel.Children.Add(preview);
-            if (_model.ShellId is { Length: > 0 } id)
-            {
-                var open = new Button { Content = "在终端中打开" };
-                open.Click += (_, _) => { if (!_disposed) TerminalRequested?.Invoke(id); };
-                panel.Children.Add(open);
-            }
-            _inlineRegion.Child = panel;
-            _inlineRegion.Visibility = panel.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            var preview = new OpenCodeShellTerminalPreview();
+            preview.Update(_model.Command ?? _model.Target, _model.OutputText, RequestTerminal);
+            _inlineRegion.Padding = new Thickness(32, 2, 12, 4);
+            _inlineRegion.Child = preview;
+            _inlineRegion.Visibility = Visibility.Visible;
             ApplyRunningTint();
             return;
         }
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
+        _inlineRegion.Padding = new Thickness(32, 12, 12, 12);
         ApplyRunningTint();
         if (!_inlineExpanded) { _inlineRegion.Child = null; return; }
         if (OpenCodeToolDetailContent.ToolImages(_model).Count > 0)

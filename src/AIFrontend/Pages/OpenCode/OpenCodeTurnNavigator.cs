@@ -17,17 +17,27 @@ using VirtualKey = Windows.System.VirtualKey;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// Left-gutter turn navigator: a quiet stack of short lines (one per loaded user turn, capped and
-/// proportionally mapped). Hover/focus shows a card with the turn's question and its reply text;
+/// Left-gutter turn navigator in the Fluent pips idiom: a column of identical short marks (one per loaded
+/// user turn, capped and proportionally mapped) with an accent pill on the turn in view that glides between
+/// marks (composition translation). Hover/focus shows a card with the turn's question and its reply text;
 /// click, Enter or a second tap jumps. Idle cost: nothing runs until the page reports a change.
 /// </summary>
 internal sealed class OpenCodeTurnNavigator : Grid
 {
     private const double CardWidth = 340;
     private const double CardGap = 6;
-    private readonly StackPanel _lines = new() { Spacing = OpenCodeTurnOutline.LinePitch - 2, HorizontalAlignment = HorizontalAlignment.Left,
-        VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
-    private readonly Border _surface = new() { CornerRadius = new CornerRadius(6), Padding = new Thickness(7, 8, 7, 8) };
+    private const double MarkWidth = 12;
+    private const double MarkThickness = 2;
+    private const double IndicatorWidth = 16;
+    private const double IndicatorThickness = 3;
+    private readonly StackPanel _lines = new() { Spacing = OpenCodeTurnOutline.LinePitch - MarkThickness, HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
+    // Fluent selection-indicator pill; moves via an implicit composition translation (no layout, no timers).
+    private readonly Rectangle _indicator = new() { Width = IndicatorWidth, Height = IndicatorThickness, RadiusX = IndicatorThickness / 2,
+        RadiusY = IndicatorThickness / 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
+        IsHitTestVisible = false, Visibility = Visibility.Collapsed,
+        TranslationTransition = new Vector3Transition { Duration = TimeSpan.FromMilliseconds(250) } };
+    private readonly Border _surface = new() { CornerRadius = new CornerRadius(4), Padding = new Thickness(0, 10, 0, 10) };
     private readonly Popup _popup = new() { ShouldConstrainToRootBounds = true, IsLightDismissEnabled = false };
     private readonly Border _card = new() { Width = CardWidth, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
         Padding = new Thickness(16, 14, 16, 14) };
@@ -52,7 +62,8 @@ internal sealed class OpenCodeTurnNavigator : Grid
 
     internal OpenCodeTurnNavigator()
     {
-        Width = 32;
+        Width = 32; // touch target; the marks themselves stay 12px
+        MinHeight = 32;
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Center;
         Visibility = Visibility.Collapsed;
@@ -62,7 +73,8 @@ internal sealed class OpenCodeTurnNavigator : Grid
         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         AutomationProperties.SetAutomationId(this, "OpenCodeTurnNavigator");
         AutomationProperties.SetName(this, "对话导航");
-        _surface.Child = _lines;
+        Apply(_indicator, FillStyle("AccentFillColorDefaultBrush"));
+        _surface.Child = new Grid { Children = { _lines, _indicator } };
         Children.Add(_surface);
 
         var body = new StackPanel();
@@ -96,18 +108,33 @@ internal sealed class OpenCodeTurnNavigator : Grid
         ActualThemeChanged += (_, _) => _popup.RequestedTheme = ActualTheme;
     }
 
+    private bool _gutterAvailable = true;
+
+    /// <summary>The page hides the navigator when the side gutter is too narrow to hold it.</summary>
+    internal void SetGutterAvailable(bool available)
+    {
+        if (_gutterAvailable == available) return;
+        _gutterAvailable = available;
+        ApplyVisibility();
+    }
+
+    private void ApplyVisibility()
+    {
+        Visibility = _gutterAvailable && _turns.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        if (Visibility == Visibility.Collapsed) CloseCard();
+    }
+
     internal void SetTurns(IReadOnlyList<OpenCodeTurnOutlineItem> turns, int current)
     {
         _turns = turns;
-        Visibility = turns.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        ApplyVisibility();
         var lines = OpenCodeTurnOutline.LineCount(turns.Count);
         while (_lines.Children.Count < lines)
-            _lines.Children.Add(new Rectangle { Height = 2, RadiusX = 1, RadiusY = 1, HorizontalAlignment = HorizontalAlignment.Left });
+            _lines.Children.Add(new Rectangle { Width = MarkWidth, Height = MarkThickness, RadiusX = MarkThickness / 2, RadiusY = MarkThickness / 2 });
         while (_lines.Children.Count > lines) _lines.Children.RemoveAt(_lines.Children.Count - 1);
         _current = Math.Min(current, turns.Count - 1);
         if (_preview >= turns.Count) _preview = -1;
-        if (Visibility == Visibility.Collapsed) CloseCard();
-        else if (_popup.IsOpen && _preview >= 0) ShowCard(_preview, force: true);
+        if (Visibility == Visibility.Visible && _popup.IsOpen && _preview >= 0) ShowCard(_preview, force: true);
         Paint();
     }
 
@@ -124,15 +151,24 @@ internal sealed class OpenCodeTurnNavigator : Grid
         var lines = _lines.Children.Count;
         var currentLine = OpenCodeTurnOutline.LineForTurn(_current, lines, _turns.Count);
         var previewLine = _popup.IsOpen ? OpenCodeTurnOutline.LineForTurn(_preview, lines, _turns.Count) : -1;
+        // Identical marks; only the hovered/previewed one strengthens. The current turn is the accent pill.
         for (var i = 0; i < lines; i++)
+            Apply((Rectangle)_lines.Children[i], FillStyle(i == previewLine ? "TextFillColorPrimaryBrush" : "TextFillColorTertiaryBrush"));
+        if (currentLine >= 0)
         {
-            var line = (Rectangle)_lines.Children[i];
-            var turn = OpenCodeTurnOutline.TurnForLine(i, lines, _turns.Count);
-            var current = i == currentLine;
-            line.Width = OpenCodeTurnOutline.LineLength(_turns[turn].Prompt, current || i == previewLine);
-            Apply(line, FillStyle(i == previewLine ? "AccentFillColorDefaultBrush"
-                : current ? "TextFillColorPrimaryBrush" : "TextFillColorTertiaryBrush"));
+            var y = (float)(currentLine * OpenCodeTurnOutline.LinePitch - (IndicatorThickness - MarkThickness) / 2);
+            // First placement (or re-show) jumps; later changes glide via TranslationTransition.
+            if (_indicator.Visibility == Visibility.Collapsed)
+            {
+                var transition = _indicator.TranslationTransition;
+                _indicator.TranslationTransition = null;
+                _indicator.Translation = new Vector3(0, y, 0);
+                _indicator.TranslationTransition = transition;
+                _indicator.Visibility = Visibility.Visible;
+            }
+            else if (_indicator.Translation.Y != y) _indicator.Translation = new Vector3(0, y, 0);
         }
+        else _indicator.Visibility = Visibility.Collapsed;
         Apply(_surface, BorderStyle(_pointerInside || _popup.IsOpen ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush", null));
         AutomationProperties.SetName(this, _preview >= 0 && _preview < _turns.Count
             ? $"对话导航，第 {_preview + 1} 轮，共 {_turns.Count} 轮" : $"对话导航，共 {_turns.Count} 轮");
