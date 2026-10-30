@@ -1,0 +1,6 @@
+Repository: https://github.com/0x5bfa/WindowsTerminalControl
+Commit: 8a9d4e05484ee848098471404e312fbd4ebaee16
+Version: 0.1.0
+License: MIT (LICENSE); native/dependency notices: NOTICE.md
+Scope: src/WindowsTerminalControl.Core and src/WindowsTerminalControl.WinUI
+Local changes: PATCHES.md

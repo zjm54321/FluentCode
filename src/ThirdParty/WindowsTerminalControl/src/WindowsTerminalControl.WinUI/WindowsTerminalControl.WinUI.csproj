@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <!-- The executable owns the self-contained SDK deployment; a library must not
+         export a second MsixContent tree into its consumer's publish graph. -->
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <Configurations>Debug;Release</Configurations>
+    <Platforms>x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>WindowsTerminalControl.WinUI</PackageId>
+    <Description>A WinUI 3 host for the native Windows Terminal renderer with composition and child-HWND modes.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CI.Microsoft.Terminal.WinUI3.Unofficial" Version="1.0.20-beta.1" ExcludeAssets="build;buildTransitive;contentFiles" />
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.321" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.9169" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <PackageReference Include="WinUIEx" Version="2.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WindowsTerminalControl.Core\WindowsTerminalControl.Core.csproj" />
+  </ItemGroup>
+
+</Project>
