@@ -21,10 +21,11 @@ internal static class Program
         await AttachmentPreparation.RunAsync();
         await ClipboardImages();
         await Catalog();
+        await DirectoryCatalogAndNestedCommand();
         await QolClearServerCommand();
         await Mutations();
         await Attachments();
-        Console.WriteLine($"PASS: 4 command/attachment groups, {assertions} assertions; fake HTTP only; no UI or live server.");
+        Console.WriteLine($"PASS: command/attachment suite, {assertions} assertions; fake HTTP only; no UI or live server.");
     }
 
     private static void Check(bool condition, string message)
@@ -134,6 +135,97 @@ internal static class Program
         Console.WriteLine("PASS group 1: command catalog, malformed rows/envelopes, HTTP errors.");
     }
 
+    private static async Task DirectoryCatalogAndNestedCommand()
+    {
+        var beforeAssertions = assertions;
+        // Pinned core/config/plugin/command.ts:170-180 and core/test/config/command.test.ts:203-218:
+        // commands/nested/docs.md is listed and executed literally as nested/docs.
+        const string directory = "/srv/projects/remote work/项目 & tools?#%";
+        const string catalogUrl = "https://offline.invalid/prefix/api/command?location%5Bdirectory%5D=%2Fsrv%2Fprojects%2Fremote%20work%2F%E9%A1%B9%E7%9B%AE%20%26%20tools%3F%23%25";
+        const string commandUrl = "https://offline.invalid/prefix/api/session/ses_remote/command";
+        const string text = "--topic docs & api";
+        var requests = new List<string>();
+        using var handler = new Handler(async (request, token) =>
+        {
+            requests.Add(request.Method + " " + request.RequestUri!.AbsoluteUri);
+            Check(request.Headers.Authorization?.ToString() == "Bearer synthetic-secret", "directory-scoped requests keep per-request authorization");
+            if (request.Method == HttpMethod.Get)
+            {
+                Check(request.RequestUri!.AbsoluteUri == catalogUrl && request.Content is null,
+                    "nondefault directory catalog uses exact prefixed URL, encoded deepObject key/value, and no body");
+                return Json("""
+                    {"data":[{"name":"nested/docs","description":"Write docs","hints":["$ARGUMENTS"]},
+                    {"name":"nested/docs","description":"duplicate"},{"name":"/nested/docs"},{"name":"nested/docs/"},
+                    {"name":"nested//docs"},{"name":"nested/./docs"},{"name":"nested/../docs"},
+                    {"name":"nested\\docs"},{"name":"nested/two words"},{"name":"nested/bad\u0000name"}]}
+                    """);
+            }
+            Check(request.Method == HttpMethod.Post && request.RequestUri!.AbsoluteUri == commandUrl && request.RequestUri.Query.Length == 0,
+                "nested command uses session-owned POST route, not a name route or catalog-directory query");
+            Check(request.Content!.Headers.ContentType?.MediaType == "application/json"
+                && await request.Content.ReadAsStringAsync(token) == "{\"name\":\"nested/docs\",\"text\":\"--topic docs \\u0026 api\"}",
+                "nested name and escaped arguments round-trip in exact JSON body");
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        });
+        using var http = new HttpClient(handler);
+        using var client = Client(http);
+        var catalog = await client.GetCommandsAsync(directory, CancellationToken.None);
+        Check(catalog.Count == 1 && catalog[0].Name == "nested/docs" && catalog[0].Description == "Write docs"
+            && catalog[0].Hints is { } hints && hints.SequenceEqual(new[] { "$ARGUMENTS" }),
+            "nested command admitted once with unchanged description/hints; malformed relative names ignored");
+        await client.ExecuteCommandAsync("ses_remote", catalog[0].Name, text);
+        Check(requests.SequenceEqual(new[] { "GET " + catalogUrl, "POST " + commandUrl }),
+            "nondefault catalog plus literal nested command execute once without default-directory fallback or retry");
+
+        var before = handler.Calls;
+        foreach (var invalidDirectory in new[] { null!, "", " \t" })
+            await Expect<ArgumentException>(() => client.GetCommandsAsync(invalidDirectory, CancellationToken.None));
+        Check(handler.Calls == before, "explicit missing/blank directory rejects before HTTP instead of selecting the backend default");
+
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        var catalogCancellation = await Expect<OperationCanceledException>(() => client.GetCommandsAsync(directory, cancelled.Token));
+        Check(catalogCancellation.CancellationToken == cancelled.Token && handler.Calls == before,
+            "pre-cancelled directory catalog preserves caller token with zero dispatches");
+        var starterCalls = 0;
+        var revoked = await Expect<OperationCanceledException>(() => client.ExecuteCommandGuardedAsync("ses_remote", "nested/docs", text, null,
+            _ => { starterCalls++; return false; }, CancellationToken.None));
+        Check(revoked.CancellationToken == CancellationToken.None && starterCalls == 1 && handler.Calls == before,
+            "revoked source blocks nested command at final synchronous starter with zero dispatches");
+        var commandCancellation = await Expect<OperationCanceledException>(() => client.ExecuteCommandGuardedAsync("ses_remote", "nested/docs", text, null,
+            action => { starterCalls++; action(); return true; }, cancelled.Token));
+        Check(commandCancellation.CancellationToken == cancelled.Token && starterCalls == 1 && handler.Calls == before,
+            "pre-cancelled nested command never invokes the source starter or transport");
+        await client.ExecuteCommandGuardedAsync("ses_remote", "nested/docs", text, null,
+            action => { starterCalls++; action(); return true; }, CancellationToken.None);
+        Check(starterCalls == 2 && handler.Calls == before + 1, "accepted source starter dispatches nested command exactly once");
+
+        using var legacyHandler = new Handler((request, _) =>
+        {
+            Check(request.Method == HttpMethod.Get && request.RequestUri!.AbsoluteUri == "https://offline.invalid/prefix/api/command"
+                && request.Content is null, "legacy cancellation-token overload keeps exact default-directory URL and no body");
+            return Task.FromResult(Json("{\"data\":[]}"));
+        });
+        using var legacyHttp = new HttpClient(legacyHandler);
+        using var legacyClient = Client(legacyHttp);
+        Check((await legacyClient.GetCommandsAsync(default)).Count == 0, "legacy default literal remains source-compatible");
+        Check((await legacyClient.GetCommandsAsync(CancellationToken.None)).Count == 0, "legacy positional token remains source-compatible");
+        Check((await legacyClient.GetCommandsAsync(cancellationToken: CancellationToken.None)).Count == 0,
+            "legacy named token remains source-compatible");
+        Check(legacyHandler.Calls == 3, "each legacy call makes one catalog request");
+
+        using var errorHandler = new Handler((request, _) =>
+        {
+            Check(request.RequestUri!.AbsoluteUri == catalogUrl, "failed directory lookup retains explicit location");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        });
+        using var errorHttp = new HttpClient(errorHandler);
+        using var errorClient = Client(errorHttp);
+        var error = await Expect<OpenCodeApiException>(() => errorClient.GetCommandsAsync(directory, CancellationToken.None));
+        Check(error.StatusCode == 404 && errorHandler.Calls == 1, "directory catalog errors surface without retry/default-location fallback");
+        Console.WriteLine($"PASS directory-scoped commands: exact encoded URL/JSON, nested catalog/POST, legacy overloads, cancellation/source guard, no fallback ({assertions - beforeAssertions} assertions).");
+    }
+
     private static async Task QolClearServerCommand()
     {
         // QOL plugins/clear-encrypted/src/index.ts:219-228; core/src/command.ts:65-69.
@@ -197,6 +289,9 @@ internal static class Program
         Check(Encoding.UTF8.GetString(requests[^1].Body) == "{\"name\":\"review\",\"text\":\"\"}", "optional command args normalized to contract-required text; absent files omitted");
         await client.ExecuteCommandAsync("ses_test", "review", "", Array.Empty<PromptFileAttachment>());
         Check(Encoding.UTF8.GetString(requests[^1].Body) == "{\"name\":\"review\",\"text\":\"\",\"files\":[]}", "explicit empty files retained");
+        await client.ExecuteCommandAsync("ses_test", new string('x', 256));
+        using (var document = JsonDocument.Parse(requests[^1].Body))
+            Check(document.RootElement.GetProperty("name").GetString() == new string('x', 256), "exact 256-character command name remains valid");
         var ack = await client.SendPromptAsync("ses_test", "hello", files, default);
         Check(ack.Id == "msg_ack" && ack.SessionId == "ses_test", "attachment prompt preserves accepted receipt");
         using (var document = JsonDocument.Parse(requests[^1].Body))
@@ -215,7 +310,8 @@ internal static class Program
         Check(requests[^1].Body.SequenceEqual(expected), "empty files delegates byte-identical legacy prompt");
 
         var before = handler.Calls;
-        foreach (var name in new[] { null!, "", " ", "/review", "two words", "a\nb", "a\\b", ".", "..", new string('x', 257) })
+        foreach (var name in new[] { null!, "", " ", "/review", "review/", "nested//docs", "nested/./docs", "nested/../docs",
+            "two words", "a\nb", "a\0b", "a\\b", ".", "..", new string('x', 257) })
             await Expect<ArgumentException>(() => client.ExecuteCommandAsync("ses_test", name));
         foreach (var id in new[] { "", "..", "other", "ses", "ses/x" })
             await Expect<ArgumentException>(() => client.ExecuteCommandAsync(id, "review"));

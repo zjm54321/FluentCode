@@ -12,6 +12,7 @@ The runner links the real `Services/OpenCode/*.cs` sources (excluding the unrela
 
 ```csharp
 Task<IReadOnlyList<OpenCodeCommandInfo>> GetCommandsAsync(CancellationToken cancellationToken = default);
+Task<IReadOnlyList<OpenCodeCommandInfo>> GetCommandsAsync(string directory, CancellationToken cancellationToken);
 Task ExecuteCommandAsync(string sessionId, string name, string? text = null,
     IReadOnlyList<PromptFileAttachment>? files = null, CancellationToken cancellationToken = default);
 Task<OpenCodeInboxUser> SendPromptAsync(string sessionId, string text,
@@ -31,7 +32,11 @@ The approved feature note omits command success response details. Existing local
 - The snapshot's request schema has `required: ["name", "text"]`. The public API still accepts omitted/null text, but serializes it as `"text":""`. No `order`, `delivery`, `agents`, `skills`, or local-command fields are sent.
 - Directory reads use `SendForJsonAsync` and `RequireData<List<JsonElement>>`; malformed entries are ignored, duplicate names retain their first valid occurrence, malformed envelopes still fail.
 
-These are pre-existing local snapshots, not a new server request or proof of the running server's exact version. Name validation is a client policy (1–256 characters, no whitespace/control characters/slashes, no `.`/`..`), not an inferred server regex.
+The directory-aware catalog overload requires both arguments, keeping existing `GetCommandsAsync(default)` calls unambiguous. It rejects null/blank directories and uses the shared `CapabilityLocationQuery` helper to send `location[directory]`; failures surface without falling back to the backend default. The legacy cancellation-token overload retains its no-query behavior.
+
+The pinned source at `/tmp/opencode/browser-session-family/candidate` confirms the directory query in `packages/protocol/src/groups/command.ts:9-13` and the literal command-name string in `packages/schema/src/command.ts:10-13`. `packages/core/src/config/plugin/command.ts:170-180` normalizes relative command filenames to forward-slash-separated names; `packages/core/test/config/command.test.ts:203-218` explicitly lists and executes `nested/docs`. The same name is accepted in catalog and execution, carried only in JSON, not concatenated into a route. Retained client validation is 1–256 total characters, no whitespace/control characters/backslashes, and no empty, `.` or `..` slash-separated segments; this is not a server regex.
+
+The snapshots above are pre-existing local artifacts, not a new server request or proof of the running server's exact version.
 
 Transport exceptions remain unchanged: explicit HTTP rejection is `OpenCodeApiException`; timeout/disconnect/unexpected response are `OpenCodeTimeoutException`/`OpenCodeTransportException`/`OpenCodeProtocolException`; caller cancellation retains its token. After a mutation starts, these ambiguous failures do not prove it was rejected. There is no automatic retry, result reconciliation, or invented inbox ID for commands. Existing endpoint-template fallback yields sanitized `api/request` labels for command errors; no shared transport partial was changed just to improve that label.
 
@@ -44,6 +49,8 @@ Transport exceptions remain unchanged: explicit HTTP rejection is `OpenCodeApiEx
 - File reading, target source/session binding, late-result guards, shared mutation leases/unknown protection, IME, picker focus, slash menu, and all UI integration remain out of this backend lane. No Pages/App/Notifications/Phase-1 files were changed.
 
 ## Recorded run
+
+2026-10-29: **PASS, 218 counted assertions plus 7 attachment-preparation checks**, Windows .NET 10 headless compilation with warnings-as-errors. Includes 31 assertions for the explicit nondefault-directory URL/JSON, `nested/docs` catalog/POST round-trip, legacy overload compatibility, pre-dispatch cancellation/source guards, and no default-location fallback. Raw runner log: `/tmp/opencode/commands-directory-service-20261029-pass.log`; evidence directory: `C:\Users\Zhang\AppData\Local\Temp\opencode-commands-attachments-69dbf326b294496b97e1761b41dd2014`.
 
 2026-10-09: **PASS, 3 groups / 157 assertions**, Windows .NET 10 headless compilation with warnings-as-errors.
 

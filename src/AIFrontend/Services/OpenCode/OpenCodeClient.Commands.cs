@@ -10,10 +10,23 @@ namespace AIFrontend.Services.OpenCode;
 
 public sealed partial class OpenCodeClient
 {
-    /// <summary>GET api/command；非法目录项忽略，只返回服务器命令，不合并本地 UI 快捷命令。</summary>
-    public async Task<IReadOnlyList<OpenCodeCommandInfo>> GetCommandsAsync(CancellationToken cancellationToken = default)
+    /// <summary>GET api/command；保留旧调用的服务端默认位置，不合并本地 UI 快捷命令。</summary>
+    public Task<IReadOnlyList<OpenCodeCommandInfo>> GetCommandsAsync(CancellationToken cancellationToken = default)
+        => GetCommandsCoreAsync(null, cancellationToken);
+
+    /// <summary>GET api/command；用公开的 location[directory] 读取指定目录，非法目录项忽略，不回退到默认位置。</summary>
+    // Both arguments are required so legacy GetCommandsAsync(default) remains unambiguous.
+    public Task<IReadOnlyList<OpenCodeCommandInfo>> GetCommandsAsync(string directory, CancellationToken cancellationToken)
     {
-        using var document = await SendForJsonAsync(HttpMethod.Get, "api/command", null, null, cancellationToken).ConfigureAwait(false);
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        return GetCommandsCoreAsync(directory, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<OpenCodeCommandInfo>> GetCommandsCoreAsync(string? directory, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var document = await SendForJsonAsync(HttpMethod.Get, "api/command",
+            CapabilityLocationQuery(directory), null, cancellationToken).ConfigureAwait(false);
         var data = RequireData<List<JsonElement>>(document, "GET api/command");
         var commands = new List<OpenCodeCommandInfo>();
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -70,7 +83,7 @@ public sealed partial class OpenCodeClient
         IReadOnlyList<PromptFileAttachment>? files, Func<Action, bool> starter, CancellationToken cancellationToken)
     {
         ValidateInteractionId(sessionId, "ses", nameof(sessionId));
-        if (!IsValidCommandName(name)) throw new ArgumentException("命令名必须为不含斜杠、空白或控制字符的名称（最多 256 字符）。", nameof(name));
+        if (!IsValidCommandName(name)) throw new ArgumentException("命令名必须为不含空白、控制字符或反斜杠的名称（最多 256 字符）；正斜杠分隔的各段不得为空、. 或 ..。", nameof(name));
         var body = new OpenCodeCommandBody(name, text ?? string.Empty, OpenCodeAttachment.ValidateFiles(files));
         var bytes = OpenCodeAttachment.SerializeRequest(body);
         cancellationToken.ThrowIfCancellationRequested();
@@ -85,9 +98,13 @@ public sealed partial class OpenCodeClient
 
     private static bool IsValidCommandName(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 256 || name is "." or "..") return false;
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 256) return false;
         foreach (var ch in name)
-            if (char.IsWhiteSpace(ch) || char.IsControl(ch) || ch is '/' or '\\') return false;
+            if (char.IsWhiteSpace(ch) || char.IsControl(ch) || ch == '\\') return false;
+        // Upstream config/plugin/command.ts normalizes relative command-file names to e.g. nested/docs.
+        // These are literal catalog keys carried in JSON, never URL route segments or local paths.
+        foreach (var segment in name.Split('/'))
+            if (segment is "" or "." or "..") return false;
         return true;
     }
 }
