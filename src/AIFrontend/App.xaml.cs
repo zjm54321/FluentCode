@@ -41,7 +41,7 @@ public partial class App : Application
         if (_closing) return;
         try
         {
-            if (_window is not null) { _window.Activate(); return; }
+            if (_window is not null) { ShowMainWindow(); return; }
             if (!await BecomePrimaryInstanceAsync()) { Exit(); return; }
             if (_closing) return;
             // 用户字体（F11）必须在任何界面创建前写入应用资源；失败时保持默认字体，不阻断启动。
@@ -54,6 +54,7 @@ public partial class App : Application
             window.AppWindow.Closing += OnAppWindowClosing;
             window.Closed += OnNotificationWindowClosed;
             window.Activate();
+            InitializeBackgroundMode(window);
             RecordDiagnostic("taskbar-initialize", taskbar: InitializeTaskbar(WinRT.Interop.WindowNative.GetWindowHandle(window)));
             StartCompletionNotifications(window);
             StartOpenCodeOwnership();

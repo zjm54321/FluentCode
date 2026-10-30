@@ -102,6 +102,11 @@ public sealed record AppSettings
     /// <summary>主题。</summary>
     public AppTheme Theme { get; init; } = AppTheme.System;
 
+    public TerminalAppearanceSettings TerminalAppearance { get; init; } = new();
+
+    /// <summary>关闭主窗口时保留托盘、OpenCode 连接与通知；旧设置默认开启。</summary>
+    public bool RunInBackground { get; init; } = true;
+
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public AppCodeTheme CodeTheme { get; init; } = AppCodeTheme.Fluent;
 

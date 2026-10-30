@@ -115,6 +115,7 @@ public sealed partial class OpenCodePage
             QueueSessionControlCardRefresh();
         };
         model.Click += ComposerModelButton_Click;
+        OpenCodePickerInput.Track(model);
         effort.ChoiceChanged += key =>
         {
             var selected = _newSessionDraftActive ? _blankPreferences?.Model : _agentSelector.CurrentModel;

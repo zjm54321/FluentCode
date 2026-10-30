@@ -23,6 +23,7 @@ public sealed partial class CompletionNotificationService
         {
             _interactions.InvalidateOpenCodeSource(endpointIdentity);
             _notificationSources.Remove(endpointIdentity);
+            if (_foregroundSession?.Scope.EndpointIdentity == endpointIdentity) _foregroundSession = null;
             foreach (var key in _observedIdle.Keys.Where(p => p.Endpoint == endpointIdentity).ToArray())
                 _observedIdle.Remove(key);
             foreach (var id in _completionTargets.Where(p => p.Value.Source == NotificationSource.OpenCode
@@ -91,6 +92,11 @@ public sealed partial class CompletionNotificationService
             {
                 _interactions.Retire(plan);
                 return prepared.Result with { Status = NotificationInteractionStatus.Cancelled, Detail = "通知提交已取消。" };
+            }
+            if (IsForegroundOpenCodeSessionLocked(source.Identity, sessionId))
+            {
+                _interactions.Retire(plan, NotificationInteractionStatus.Suppressed);
+                return prepared.Result with { Status = NotificationInteractionStatus.Suppressed, Detail = "当前会话已在前台呈现；未提交系统通知。" };
             }
             try
             {
@@ -170,6 +176,8 @@ public sealed partial class CompletionNotificationService
         lock (_gate)
         {
             if (_interactionsSuspended || _status != NotificationServiceStatus.Initialized) return;
+            if (result.NavigationTarget is { Source: NotificationSource.OpenCode } foregroundTarget
+                && IsForegroundOpenCodeSessionLocked(foregroundTarget.EndpointIdentity, foregroundTarget.SessionId)) return;
             try
             {
                 var receipt = _submitInteraction(plan);
@@ -217,11 +225,11 @@ public sealed partial class CompletionNotificationService
         var results = new List<NotificationDispatchResult>();
         if (!NotificationArgumentCodec.IsValidRequestId(endpointIdentity) || !NotificationArgumentCodec.IsValidRequestId(sessionId)
             || messages is null)
-            return [NotificationDispatchResult.Failed(NotificationSource.OpenCode, string.Empty, "invalid completion observation")];
+            return new[] { NotificationDispatchResult.Failed(NotificationSource.OpenCode, string.Empty, "invalid completion observation") };
         lock (_gate)
         {
             if (_status == NotificationServiceStatus.Disposed)
-                return [NotificationDispatchResult.Unavailable(NotificationSource.OpenCode, string.Empty, "notification service stopped")];
+                return new[] { NotificationDispatchResult.Unavailable(NotificationSource.OpenCode, string.Empty, "notification service stopped") };
             var key = (endpointIdentity, sessionId);
             if (!_observedIdle.TryGetValue(key, out var observation))
             {
@@ -276,7 +284,7 @@ public sealed partial class CompletionNotificationService
                     new(NotificationSource.OpenCode, endpointIdentity, sessionId, message.Id!, NotificationNavigationKind.Completion),
                     NotificationText.Completion(sessionTitle, summaryMessages, summaryIndex));
                 results.Add(result);
-                if (result.Status is NotificationDispatchStatus.Submitted or NotificationDispatchStatus.Duplicate)
+                if (result.Status is NotificationDispatchStatus.Submitted or NotificationDispatchStatus.Duplicate or NotificationDispatchStatus.Suppressed)
                 {
                     seen.Add(message.Id!);
                     observation.Attempts.Remove(message.Id!);

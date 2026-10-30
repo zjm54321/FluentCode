@@ -58,7 +58,12 @@ public sealed record OpenCodeSessionUiSnapshot(
 public sealed record OpenCodeSessionUiFact(
     bool? Value,
     DateTimeOffset ObservedAt,
-    OpenCodeStateUnknownReason UnknownReason = OpenCodeStateUnknownReason.None);
+    OpenCodeStateUnknownReason UnknownReason = OpenCodeStateUnknownReason.None)
+{
+    // A successfully hydrated, continuously connected event epoch keeps this exact revision
+    // valid without falsifying ObservedAt. Disconnect/untrack/new state invalidates the lease.
+    internal Func<bool>? CurrentEventStream { get; init; }
+}
 
 /// <summary>
 /// 一次观察输入。nullable 字段为 null 表示本次不更新（不清历史）；

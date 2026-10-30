@@ -21,16 +21,16 @@ public sealed partial class OpenCodePage
     private sealed record ViewportOwner(string Identity, MessageHistoryRead Read, OpenCodeConversationView Conversation);
     private sealed record ViewAcknowledgementLive(ViewportOwner Owner, OpenCodeIdleViewportSnapshot Snapshot, long ProofVersion);
     private volatile ViewAcknowledgementLive? _viewAcknowledgementLive;
+    private ViewAcknowledgementLive? _viewAcknowledgementAwaitingReview;
     private bool _viewAcknowledgementWindowVisible;
     private long _viewportProofVersion;
     private OpenCodeConversationView? _viewportConversation;
-    private ViewportOwner? _viewportObservedOwner;
-    private OpenCodeIdleViewportSnapshot? _viewportObservedSnapshot;
     private EventHandler<object>? _viewportFrame;
 
     private void AttachViewAcknowledgementEvents()
     {
         if (!_pageActive) return;
+        UpdateForegroundNotificationSession();
         if (ReferenceEquals(_viewportConversation, _conversationView)) return;
         DetachViewAcknowledgementEvents();
         _viewportConversation = _conversationView;
@@ -92,9 +92,9 @@ public sealed partial class OpenCodePage
     internal void InvalidateViewAcknowledgement()
     {
         if (!DispatcherQueue.HasThreadAccess) return;
+        UpdateForegroundNotificationSession();
         _viewAcknowledgementLive = null;
-        _viewportObservedOwner = null;
-        _viewportObservedSnapshot = null;
+        _viewAcknowledgementAwaitingReview = null;
         CancelViewAcknowledgementFrame();
     }
 
@@ -118,6 +118,7 @@ public sealed partial class OpenCodePage
     private void RequestViewAcknowledgementReview()
     {
         if (!DispatcherQueue.HasThreadAccess) return;
+        UpdateForegroundNotificationSession();
         if (!IsViewAcknowledgementPageVisible() || _source is not { IsRevoked: false } source
             || _client is not { } client || _selectedSessionId is not { Length: > 0 } session
             || _messageBinding?.Directory is not { Length: > 0 } || !_messageHistoryBoundaryKnown
@@ -126,16 +127,12 @@ public sealed partial class OpenCodePage
             InvalidateViewAcknowledgement();
             return;
         }
+        _viewAcknowledgementAwaitingReview ??= _viewAcknowledgementLive;
+        _viewAcknowledgementLive = null; // Reflow/scroll revokes background fences synchronously, without reading geometry.
+        if (!_conversationView.IsIdleLayoutCurrent) return;
+        if (_viewportFrame is not null) return;
         var owner = new ViewportOwner(source.Identity, CaptureMessageHistoryRead(client, session), _conversationView);
         if (!IsViewportOwnerCurrent(owner)) { InvalidateViewAcknowledgement(); return; }
-        var snapshot = _conversationView.CaptureIdleViewport(MessageScroll);
-        if (owner == _viewportObservedOwner && snapshot == _viewportObservedSnapshot) return;
-        _viewAcknowledgementLive = null; // Geometry/reflow revokes an in-flight fence synchronously.
-        CancelViewAcknowledgementFrame();
-        _viewportObservedOwner = owner;
-        _viewportObservedSnapshot = snapshot;
-        if (snapshot.Candidate is null) return;
-
         EventHandler<object> frame = null!;
         frame = (_, _) =>
         {
@@ -143,14 +140,16 @@ public sealed partial class OpenCodePage
             if (!ReferenceEquals(_viewportFrame, frame)) return;
             CancelViewAcknowledgementFrame();
             if (!IsViewportOwnerCurrent(owner)) { InvalidateViewAcknowledgement(); return; }
-            var current = owner.Conversation.CaptureIdleViewport(MessageScroll);
-            if (current != snapshot)
-            {
-                _viewportObservedSnapshot = null;
-                RequestViewAcknowledgementReview();
-                return;
-            }
-            var proof = new ViewAcknowledgementLive(owner, snapshot, ++_viewportProofVersion);
+            // Exactly one geometry walk per rendered frame, after WinUI layout. The view's
+            // layout/render-version gate rejects in-flight mutations; reflow revokes fences above.
+            var snapshot = owner.Conversation.CaptureIdleViewport(MessageScroll);
+            var pending = _viewAcknowledgementAwaitingReview;
+            _viewAcknowledgementAwaitingReview = null;
+            if (snapshot.Candidate is null) return;
+            // Unrelated layout can leave the exact same immutable proof valid. Reuse its identity
+            // after rechecking so an in-flight ACK isn't permanently fenced by an unchanged layout.
+            var proof = pending is not null && pending.Owner == owner && pending.Snapshot == snapshot
+                ? pending : new ViewAcknowledgementLive(owner, snapshot, ++_viewportProofVersion);
             _viewAcknowledgementLive = proof;
             TryAcknowledgeViewport(proof);
         };

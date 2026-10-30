@@ -71,12 +71,12 @@ public sealed partial class OpenCodePage
         _homeView.LoadMore += async (_, e) => { if (HomeEventCurrent(e.Revision, e.Project)) await LoadMoreHomeSessionsAsync(); };
         // No refresh button: session create/delete/rename events and live status snapshots already re-project Home.
         _homeView.SetWordmark(_homeWordmark);
-        Loaded += (_, _) => _homeChromeTimer?.Start();
+        Loaded += (_, _) => { if (_hostWindowVisible) _homeChromeTimer?.Start(); };
         Unloaded += (_, _) => { if (!IsLoaded) _homeChromeTimer?.Stop(); };
         _homeChromeTimer = DispatcherQueue.CreateTimer();
         _homeChromeTimer.Interval = TimeSpan.FromSeconds(1);
         // Local-state reconciliation only (connection state, already-read server version, settings); never a network poll.
-        _homeChromeTimer.Tick += (_, _) => { if (_homeActive) RefreshHomeChrome(); };
+        _homeChromeTimer.Tick += (_, _) => { if (_homeActive && _hostWindowVisible) RefreshHomeChrome(); };
     }
 
     private readonly Image _homeWordmark = new() { Height = 30, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,

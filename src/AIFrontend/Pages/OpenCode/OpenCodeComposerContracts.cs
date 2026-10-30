@@ -132,6 +132,8 @@ public sealed record OpenCodeComposerSnapshot(OpenCodeComposerToken Token, strin
     bool IsBusy, bool CanSubmit, bool IsProtected, string? Note)
 {
     public OpenCodeComposerCatalogHandle? CatalogHandle { get; init; }
+    /// <summary>The draft's chosen "@" contexts with their exact spans in <see cref="Text"/> (presentation/atomic editing only).</summary>
+    internal IReadOnlyList<OpenCodePromptContext> Mentions { get; init; } = Array.Empty<OpenCodePromptContext>();
     /// <summary>Active draft on the blank “新会话” tab (unbound binding): session-dependent actions explain “开始会话后可用”.</summary>
     public bool IsUnboundDraft { get; init; }
     public OpenCodeComposerClientIntent? ClientIntent { get; init; }

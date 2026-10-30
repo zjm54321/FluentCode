@@ -16,6 +16,8 @@ public sealed partial class OpenCodePage
 {
     /// <summary>宿主窗口级可见性（已激活且未最小化）；fail-closed 默认 false，仅宿主推送可置位。</summary>
     private bool _hostWindowVisible;
+    partial void OnHostUiVisibilityChanged(bool visible);
+    partial void UpdateForegroundNotificationSession();
 
     /// <summary>
     /// 宿主入口（<strong>必须在 UI 线程调用</strong>）：窗口级可见性变化（激活 / 失活 / 最小化 / 还原）。
@@ -30,6 +32,8 @@ public sealed partial class OpenCodePage
         }
 
         _hostWindowVisible = windowVisible;
+        OnHostUiVisibilityChanged(windowVisible);
         UpdateViewAcknowledgementVisibility(windowVisible); // Actual view review, never raw _latestMessages.
+        UpdateForegroundNotificationSession();
     }
 }

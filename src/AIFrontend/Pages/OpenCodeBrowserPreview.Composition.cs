@@ -19,7 +19,7 @@ public sealed partial class OpenCodePage
             if (!Current()) return new(true, null, "会话服务器未连接");
             var settings = _homeSettings?.Current?.OpenCode;
             if (settings?.Kind != OpenCodeConnectionKind.Wsl) return new(true, null, "Remote 连接没有已授权的 WSL 主机路径映射");
-            var directory = KnownSessionDirectory(workspace.SessionId);
+            var directory = BrowserSessionDirectory(workspace.SessionId);
             if (!path.StartsWith('/'))
             {
                 if (directory?.StartsWith('/') != true) return new(true, null, "会话未提供绝对服务器目录");
@@ -51,7 +51,7 @@ public sealed partial class OpenCodePage
         };
         workspace.ReadPreviewAsync = async (path, ct) =>
         {
-            if (!Current() || KnownSessionDirectory(workspace.SessionId) is not { } directory) throw new IOException("会话服务器未连接或缺少工作目录");
+            if (!Current() || BrowserSessionDirectory(workspace.SessionId) is not { } directory) throw new IOException("会话服务器未连接或缺少工作目录");
             var plan = OpenCodeBrowserPreviewPolicy.Plan(directory, path, _homeSettings?.Current?.OpenCode.Kind == OpenCodeConnectionKind.Wsl);
             if (plan.Route == OpenCodeBrowserPreviewRoute.Unavailable) throw new IOException(plan.Reason);
             if (plan.Route == OpenCodeBrowserPreviewRoute.Http) return await _client!.ReadBrowserPreviewAsync(directory, plan.Path, ct);

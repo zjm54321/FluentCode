@@ -89,9 +89,9 @@ internal sealed class OpenCodeBrowserButton : Grid
         _toggle.Resources["ToggleButtonBorderBrushCheckedPressed"] = Brush("ButtonBorderBrushPressed");
     }
 
-    public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen)
+    public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen, int? pageCount = null)
     {
-        _pages = workspace?.Pages.Count ?? 0; _availability = workspace?.Availability ?? OpenCodeBrowserAvailability.Detached;
+        _pages = pageCount ?? workspace?.Pages.Count ?? 0; _availability = workspace?.Availability ?? OpenCodeBrowserAvailability.Detached;
         _toggle.IsEnabled = workspace is not null;
         _toggle.IsChecked = state?.ShowCommands(_pages) == true;
         _count.Value = _pages; _count.Visibility = OpenCodeBrowserPanelState.ShowCount(_pages) ? Visibility.Visible : Visibility.Collapsed;

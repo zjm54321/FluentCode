@@ -94,7 +94,7 @@ public partial class App
         try
         {
             if (activation.Kind != ExtendedActivationKind.AppNotification)
-            { PostToApp(() => _window?.Activate()); return; }
+            { PostToApp(ShowMainWindow); return; }
             if (activation.Data is not AppNotificationActivatedEventArgs notification)
             { PublishActivationNeedsApp("activation-data-unavailable"); return; }
             RouteNotificationActivation(new Dictionary<string, string>(notification.Arguments),

@@ -185,7 +185,7 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
     private void Render()
     {
         var clock = OpenCodeWorkingClock.Shared;
-        if (clock.IsJoined(this) && clock.MotionEnabled) StartMotion();
+        if (clock.IsJoined(this) && clock.IsRunning) StartMotion();
         else StopMotion();
     }
 

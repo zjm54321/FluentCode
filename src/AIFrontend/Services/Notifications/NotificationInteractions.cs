@@ -23,7 +23,7 @@ public sealed class TrustedOpenCodeNotificationSource
 public enum NotificationInteractionStatus
 {
     Prepared, Submitted, Succeeded, Navigate, InvalidInput, Duplicate, Expired,
-    NeedsApp, Unavailable, Cancelled, Failed, OutcomeUnknown
+    NeedsApp, Unavailable, Cancelled, Failed, OutcomeUnknown, Suppressed
 }
 
 /// <summary>Submitted means handed to Windows, not delivered or authorized. Only Succeeded means HTTP 204.</summary>

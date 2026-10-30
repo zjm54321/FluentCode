@@ -66,6 +66,8 @@ internal enum OpenCodeComposerSubmitRoute
 internal readonly record struct OpenCodeComposerButtonState(bool CanSend, bool CanStop, bool StopMode, bool ShowProgress);
 
 /// <summary>Displayed slash trigger at the very start of the editor text (after leading whitespace).</summary>
+internal enum OpenCodeComposerAttachmentLimitLevel { Ok, Full, Over }
+
 internal readonly record struct OpenCodeComposerSlashTrigger(bool Present, string Filter, string RemainingArguments);
 
 internal static class OpenCodeComposerInputPolicy
@@ -252,6 +254,16 @@ internal static class OpenCodeComposerInputPolicy
     internal static string AttachmentSummary(int count, long totalBytes, int maxFiles, long maxTotalBytes)
         => count <= 0 ? string.Empty
             : $"{count}/{maxFiles} 个附件 · {FormatBytes(totalBytes)} / {FormatBytes(maxTotalBytes)}";
+
+    /// <summary>Composer limit indicator tone: green within limits, amber at/near a limit (≥90 % of total), red beyond.</summary>
+    internal static OpenCodeComposerAttachmentLimitLevel AttachmentLimitLevel(int count, long totalBytes, int maxFiles, long maxTotalBytes)
+        => count > maxFiles || totalBytes > maxTotalBytes ? OpenCodeComposerAttachmentLimitLevel.Over
+            : count >= maxFiles || totalBytes * 10 >= maxTotalBytes * 9 ? OpenCodeComposerAttachmentLimitLevel.Full
+            : OpenCodeComposerAttachmentLimitLevel.Ok;
+
+    /// <summary>Hover/focus details of the limit indicator (one limit per line).</summary>
+    internal static string AttachmentLimitDetails(int count, long totalBytes, int maxFiles, long maxTotalBytes, long maxFileBytes)
+        => $"附件 {count}/{maxFiles}\n合计 {FormatBytes(totalBytes)} / {FormatBytes(maxTotalBytes)}\n单个不超过 {FormatBytes(maxFileBytes)}";
 
     /// <summary>Picker allow-list and the MIME the adapter reports (core still validates).</summary>
     internal static readonly IReadOnlyList<string> PickerExtensions =

@@ -1,4 +1,4 @@
-// Only the unrelated application style lookup is stubbed. Controls, WebView2,
+// Only the unrelated application style lookup is stubbed. Controls, native terminal,
 // properties, dialogs and event APIs compile against the cached real WinUI refs.
 using Microsoft.UI.Xaml;
 namespace AIFrontend.Pages.OpenCode;

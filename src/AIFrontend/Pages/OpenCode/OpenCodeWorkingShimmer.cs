@@ -223,7 +223,7 @@ internal sealed class OpenCodeWorkingShimmer : IOpenCodeWorkingClockSubscriber
     private void Render()
     {
         var clock = OpenCodeWorkingClock.Shared;
-        var moving = clock.IsJoined(this) && clock.MotionEnabled && _width > 0;
+        var moving = clock.IsJoined(this) && clock.IsRunning && _width > 0;
         _trackFill.Opacity = clock.MotionEnabled ? TrackOpacity : StaticOpacity;
         if (moving) StartHighlight();
         else StopHighlight();

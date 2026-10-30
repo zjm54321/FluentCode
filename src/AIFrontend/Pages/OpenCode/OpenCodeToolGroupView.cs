@@ -17,6 +17,7 @@ internal sealed class OpenCodeToolGroupView
     private bool _expanded, _headerVisible = true, _inline, _visible = true;
     private Action? _open, _enter, _exit, _background;
     private string? _name, _glyph, _model;
+    private OpenCodeToolRowModel? _runningTool;
     private OpenCodeToolRowStatus? _status;
     private string _step = "处理中…";
     private bool _reasoning, _toolRunning, _disposed;
@@ -38,7 +39,7 @@ internal sealed class OpenCodeToolGroupView
             if (_visual is not null) return _visual;
             _visual = new OpenCodeToolGroupVisual(GroupId, (id, expanded) => { _expanded = expanded; _toggled(id, expanded); });
             _visual.SetCurrentStep(_step);
-            _visual.SetWorkingContext(_reasoning, _toolRunning, _model);
+            _visual.SetWorkingContext(_reasoning, _toolRunning, _model, _runningTool);
             _visual.BindSingleLeaf(_open, _enter, _exit, _name, _glyph, _status);
             _visual.SetBackgroundAction(_background);
             _visual.SetInlineLeaf(_inline);
@@ -51,8 +52,8 @@ internal sealed class OpenCodeToolGroupView
     internal void SetVisibility(bool visible)
     { _visible = visible; if (_visual is not null) _visual.Element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; }
     internal void SetCurrentStep(string step) { _step = step; _visual?.SetCurrentStep(step); }
-    internal void SetWorkingContext(bool reasoning, bool toolRunning, string? model)
-    { _reasoning = reasoning; _toolRunning = toolRunning; _model = model; _visual?.SetWorkingContext(reasoning, toolRunning, model); }
+    internal void SetWorkingContext(bool reasoning, bool toolRunning, string? model, OpenCodeToolRowModel? runningTool = null)
+    { _reasoning = reasoning; _toolRunning = toolRunning; _model = model; _runningTool = runningTool; _visual?.SetWorkingContext(reasoning, toolRunning, model, runningTool); }
     internal void BindSingleLeaf(Action? open, Action? enter, Action? exit, string? name = null, string? glyph = null, OpenCodeToolRowStatus? status = null)
     { _open = open; _enter = enter; _exit = exit; _name = name; _glyph = glyph; _status = status; _visual?.BindSingleLeaf(open, enter, exit, name, glyph, status); }
     internal void SetBackgroundAction(Action? action) { _background = action; _visual?.SetBackgroundAction(action); }
@@ -106,6 +107,7 @@ internal sealed class OpenCodeToolGroupVisual
         _headerText.TextTrimming = TextTrimming.CharacterEllipsis;
         _working = new OpenCodeWorkingIndicator(groupId);
         _working.VisibilityChanged += UpdateTimer;
+        OpenCodeWorkingClock.Shared.HostVisibilityChanged += HostVisibilityChanged;
         _chevron = new FontIcon
         {
             Glyph = "\uE76C", FontSize = 10, Margin = new Thickness(4, 0, 0, 0),
@@ -262,11 +264,34 @@ internal sealed class OpenCodeToolGroupVisual
     internal void BindSingleLeaf(Action? open, Action? enter, Action? exit, string? name = null, string? glyph = null, OpenCodeToolRowStatus? status = null)
     { var single = open is not null; if (_single == single) return; _single = single; ConfigureContainer(); RefreshWorking(); }
 
-    internal void SetWorkingContext(bool reasoning, bool toolRunning, string? model)
+    internal void SetWorkingContext(bool reasoning, bool toolRunning, string? model, OpenCodeToolRowModel? runningTool = null)
     {
-        _activity = reasoning ? OpenCodeWorkingActivity.Reasoning : toolRunning ? OpenCodeWorkingActivity.Tool : OpenCodeWorkingActivity.General;
+        _activity = WorkingActivity(reasoning, runningTool, toolRunning);
         _family = OpenCodeWorkingPhrases.Family(model);
         if (_working.IsActive && _phrases.UpdateContext(_activity, _family, NowMs())) RefreshWorkingText();
+    }
+
+    /// <summary>Only a live tool row (including a live background child) refines the working activity.</summary>
+    internal static OpenCodeWorkingActivity WorkingActivity(bool reasoning, OpenCodeToolRowModel? runningTool, bool toolRunning = false)
+    {
+        if (reasoning) return OpenCodeWorkingActivity.Reasoning;
+        if (runningTool is not { IsActive: true })
+            return toolRunning ? OpenCodeWorkingActivity.Tool : OpenCodeWorkingActivity.General;
+        var activity = OpenCodeWorkingPhrases.Activity(runningTool.ToolName,
+            waitingForSubagent: runningTool.Status == OpenCodeToolRowStatus.Running || runningTool.IsBackground);
+        if (activity != OpenCodeWorkingActivity.Tool) return activity;
+        return runningTool.Kind switch
+        {
+            OpenCodeToolKind.Subagent => runningTool.Status == OpenCodeToolRowStatus.Streaming && !runningTool.IsBackground
+                ? OpenCodeWorkingActivity.SubagentDispatch : OpenCodeWorkingActivity.SubagentWait,
+            OpenCodeToolKind.Read or OpenCodeToolKind.List => OpenCodeWorkingActivity.Read,
+            OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Patch or OpenCodeToolKind.Write => OpenCodeWorkingActivity.Edit,
+            OpenCodeToolKind.Shell => OpenCodeWorkingActivity.Shell,
+            OpenCodeToolKind.Grep or OpenCodeToolKind.Glob => OpenCodeWorkingActivity.Search,
+            OpenCodeToolKind.WebFetch or OpenCodeToolKind.WebSearch or OpenCodeToolKind.Browser => OpenCodeWorkingActivity.Web,
+            OpenCodeToolKind.Todo => OpenCodeWorkingActivity.Plan,
+            _ => OpenCodeWorkingActivity.Tool,
+        };
     }
 
     internal void Update(OpenCodeStepRunSummary summary, bool expanded, bool headerVisible)
@@ -356,7 +381,7 @@ internal sealed class OpenCodeToolGroupVisual
 
     private void UpdateTimer()
     {
-        if (_disposed || !_loaded || !_working.IsActive || !_working.IsVisibleWhileLoaded) { StopTimer(); return; }
+        if (_disposed || !_loaded || !OpenCodeWorkingClock.Shared.HostVisible || !_working.IsActive || !_working.IsVisibleWhileLoaded) { StopTimer(); return; }
         if (_timer is null && DispatcherQueue.GetForCurrentThread() is { } queue)
         {
             _timer = queue.CreateTimer();
@@ -368,8 +393,13 @@ internal sealed class OpenCodeToolGroupVisual
     }
 
     private void StopTimer() => _timer?.Stop();
+    private void HostVisibilityChanged(bool visible)
+    {
+        UpdateTimer();
+        if (visible) RefreshWorkingText();
+    }
     internal void Dispose()
-    { _disposed = true; StopTimer(); _phrases.Stop(); _working.Dispose(); }
+    { _disposed = true; OpenCodeWorkingClock.Shared.HostVisibilityChanged -= HostVisibilityChanged; StopTimer(); _phrases.Stop(); _working.Dispose(); }
 
     private static (StackPanel Panel, TextBlock Text) CreateTally(string glyph, string brushKey, string automationId)
     {

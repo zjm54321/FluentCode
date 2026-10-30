@@ -14,7 +14,7 @@ internal sealed record NotificationInteractionPlan(string BodyNonce, string Titl
     IReadOnlyList<NotificationInput> Inputs, IReadOnlyList<NotificationInteractionButton> Buttons,
     string? ExtraBody = null)
 {
-    internal IReadOnlyList<string> TextElements => string.IsNullOrEmpty(ExtraBody) ? [Title, Body] : [Title, Body, ExtraBody];
+    internal IReadOnlyList<string> TextElements => string.IsNullOrEmpty(ExtraBody) ? new[] { Title, Body } : new[] { Title, Body, ExtraBody };
 }
 internal sealed record NotificationPreparation(NotificationInteractionResult Result, NotificationInteractionPlan? Plan = null);
 
@@ -295,14 +295,14 @@ internal sealed class NotificationInteractionCoordinator : IDisposable
             && _tokens.TryGetValue(nonce, out var binding) ? binding.Entry.Source : null;
     }
 
-    internal void Retire(NotificationInteractionPlan plan)
+    internal void Retire(NotificationInteractionPlan plan, NotificationInteractionStatus status = NotificationInteractionStatus.NeedsApp)
     {
         lock (_gate)
             if (_tokens.TryGetValue(plan.BodyNonce, out var binding))
             {
                 binding.Entry.State = EntryState.Retired;
                 binding.Entry.NavigationTrustActive = false; // No successful native submission.
-                binding.Entry.FinalStatus = NotificationInteractionStatus.NeedsApp;
+                binding.Entry.FinalStatus = status;
             }
     }
 

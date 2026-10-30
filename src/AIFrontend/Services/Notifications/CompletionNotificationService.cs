@@ -172,6 +172,8 @@ public sealed partial class CompletionNotificationService : IDisposable
             {
                 return NotificationDispatchResult.Duplicate(source, requestId);
             }
+            if (source == NotificationSource.OpenCode && IsForegroundOpenCodeSessionLocked(target.EndpointIdentity, target.SessionId))
+                return new(NotificationDispatchStatus.Suppressed, source, requestId, "foreground session; completion consumed without toast");
             try
             {
                 string token = CreateCompletionTokenLocked();
@@ -223,6 +225,7 @@ public sealed partial class CompletionNotificationService : IDisposable
             _completionTargets.Clear();
             _displayLedger.Clear();
             _notificationSources.Clear();
+            _foregroundSession = null;
 
             if (_handlerSubscribed)
             {

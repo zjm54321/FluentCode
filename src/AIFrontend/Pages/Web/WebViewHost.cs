@@ -58,6 +58,7 @@ public sealed class WebViewHost : UserControl
     private bool _firstNavigationCompleted;
     private bool _needsRebuild;
     private bool _closed;
+    private bool _active;
 
     public WebViewHost(WebProvider provider)
     {
@@ -89,13 +90,15 @@ public sealed class WebViewHost : UserControl
             return;
         }
 
+        _active = true;
         Visibility = Visibility.Visible;
+        if (_webView is not null) _webView.Visibility = Visibility.Visible;
 
         try
         {
             await EnsureInitializedAsync();
 
-            if (_closed || _webView?.CoreWebView2 is null)
+            if (_closed || !_active || _webView?.CoreWebView2 is null)
             {
                 return;
             }
@@ -104,6 +107,8 @@ public sealed class WebViewHost : UserControl
             // 保证隐藏 provider 下次进入不留旧主题）。只写偏好，不触发导航与重载。
             ApplyThemeToWebView();
 
+            _webView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
+            _webView.CoreWebView2.Resume();
             if (!_hasNavigated)
             {
                 _hasNavigated = true;
@@ -130,7 +135,28 @@ public sealed class WebViewHost : UserControl
             return;
         }
 
+        _active = false;
         Visibility = Visibility.Collapsed;
+        if (_webView is not null) _webView.Visibility = Visibility.Collapsed;
+        _ = SuspendHiddenAsync();
+    }
+
+    private async Task SuspendHiddenAsync()
+    {
+        if (_closed || _active || _webView?.CoreWebView2 is not { } core) return;
+        try
+        {
+            core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
+            await core.TrySuspendAsync();
+            // Restore can race the asynchronous suspend. Do not leave the newly shown tab suspended.
+            if (!_closed && _active && ReferenceEquals(core, _webView?.CoreWebView2))
+            {
+                core.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
+                core.Resume();
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        { System.Diagnostics.Debug.WriteLine("WebView2 suspension unavailable: " + ex.GetType().Name); }
     }
 
     /// <summary>
@@ -251,6 +277,7 @@ public sealed class WebViewHost : UserControl
             }
 
             CoreWebView2 core = webView.CoreWebView2;
+            if (!_active) _ = SuspendHiddenAsync();
             core.NavigationCompleted += OnNavigationCompleted;
             core.NewWindowRequested += OnNewWindowRequested;
             core.ProcessFailed += OnProcessFailed;

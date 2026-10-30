@@ -14,7 +14,7 @@ internal static class OpenCodeSideQuestionPolicy
     /// <summary>Official slash name (<c>slash:{name:"btw",arguments:true}</c>).</summary>
     internal const string CommandName = "btw";
     internal const string Title = "/btw";
-    internal const string Description = "顺便问一句：基于当前会话上下文一次性回答，不写入会话";
+    internal const string Description = "顺带问一句，不写入会话记录";
     internal const string PromptPlaceholder = "想顺便问什么？";
     internal const int QuestionPreviewLength = 120;
 

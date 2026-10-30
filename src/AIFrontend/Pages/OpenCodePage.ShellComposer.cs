@@ -118,6 +118,10 @@ public sealed partial class OpenCodePage
     private void UpdateShellComposerGeometry()
     {
         // Normal layout remains measured (including CP2 rows and any chips/status), so the card never shrinks.
+        // ActualWidth/ActualHeight bindings take an initial snapshot but do not notify on later WinUI layout changes.
+        // Synchronize size as well as position, including after an initially constrained/hidden composer is arranged.
+        if (ComposerShellHost.Width != Composer.ActualWidth) ComposerShellHost.Width = Composer.ActualWidth;
+        if (ComposerShellHost.Height != Composer.ActualHeight) ComposerShellHost.Height = Composer.ActualHeight;
         var origin = Composer.TransformToVisual(ComposerSurfaceRoot).TransformPoint(new Point(0, 0));
         var offset = new Thickness(origin.X, origin.Y, 0, 0);
         if (ComposerShellHost.Margin != offset) ComposerShellHost.Margin = offset;

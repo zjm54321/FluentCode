@@ -294,13 +294,15 @@ public sealed class OpenCodeSessionUiStateStore
 
         // 独立检查证据有效期：任何事实过期都置空值并叠加 Expired。
         // 只做 |= 叠加，已有 Expired 不会因时钟回退被移除。
-        if (now - fact.ObservedAt >= _evidenceLifetime)
+        var stream = fact.CurrentEventStream;
+        var live = stream?.Invoke();
+        if (live == false || live is null && now - fact.ObservedAt >= _evidenceLifetime)
         {
             value = null;
             reason |= OpenCodeStateUnknownReason.Expired;
         }
 
-        return fact with { Value = value, UnknownReason = reason };
+        return fact with { Value = value, UnknownReason = reason, CurrentEventStream = live == false ? null : stream };
     }
 
     private static OpenCodeSessionUiFact? FilterFact(OpenCodeSessionUiFact? incoming, OpenCodeSessionUiFact? existing, DateTimeOffset now)

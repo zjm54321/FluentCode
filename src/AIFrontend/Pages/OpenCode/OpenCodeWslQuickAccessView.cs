@@ -9,10 +9,12 @@ namespace AIFrontend.Pages.OpenCode;
 internal sealed class OpenCodeWslQuickAccessView : StackPanel
 {
     private readonly Button _explorer = Action("\uEC50", ExplorerText);
+    // Primary editor target (40, same as the explorer button) + native separator (1) + a slim right chevron segment
+    // instead of WinUI's 35-DIP one, so the control is about one button wide, not two.
+    internal const double EditorChevronWidth = 20, EditorSplitWidth = 61;
     private readonly SplitButton _editor = new()
     {
-        // ~40px primary target plus the native dropdown segment.
-        Width = 72, Height = 36, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0),
+        Width = EditorSplitWidth, Height = 36, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0),
     };
     private WslHostEditor? _currentEditor;
     private int _renderVersion;
@@ -35,6 +37,13 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _note.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         Children.Add(_explorer);
         Children.Add(_editor);
+        _editor.Resources["SplitButtonSecondaryButtonSize"] = EditorChevronWidth;
+        // The template right-pads its 12-DIP chevron by 12; centre it in the slimmer native segment.
+        _editor.Loaded += (_, _) =>
+        {
+            if (FindTemplatePart(_editor, "SecondaryButton") is Button chevron)
+                chevron.Padding = new Thickness(0, 0, (EditorChevronWidth - 12) / 2, 0);
+        };
         AutomationProperties.SetAutomationId(_explorer, "OpenCodeWslExplorer");
         AutomationProperties.SetAutomationId(_editor, "OpenCodeWslHostEditor");
         _explorer.Click += (_, _) => ExplorerRequested?.Invoke(this, EventArgs.Empty);
@@ -82,6 +91,17 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
 
     private static async System.Threading.Tasks.Task SetMenuIconAsync(MenuFlyoutItem item, WslHostEditor editor)
         => item.Icon = await OpenCodeWslQuickAccessIcons.CreateAsync(editor);
+
+    private static FrameworkElement? FindTemplatePart(DependencyObject root, string name)
+    {
+        for (var i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement { Name: var n } element && n == name) return element;
+            if (FindTemplatePart(child, name) is { } found) return found;
+        }
+        return null;
+    }
 
     private void SetNote(string? text)
     {

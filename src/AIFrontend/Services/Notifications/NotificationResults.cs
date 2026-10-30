@@ -49,10 +49,13 @@ public enum NotificationDispatchStatus
 
     /// <summary>参数非法或平台调用失败。</summary>
     Failed = 3,
+
+    /// <summary>会话已在前台呈现；已消费该完成事件，不提交或稍后补发通知。</summary>
+    Suppressed = 4,
 }
 
 /// <summary>
-/// <c>NotifyCompleted</c> 的返回结构，区分 submitted / duplicate / unavailable / failed。
+/// <c>NotifyCompleted</c> 的返回结构，区分 submitted / duplicate / unavailable / failed / foreground-suppressed。
 /// </summary>
 /// <param name="Status">结果状态。</param>
 /// <param name="Source">来源任务类别（回显入参，便于调用方记录/关联）。</param>

@@ -22,7 +22,7 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Open
 }
 $arguments += '"' + (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs') + '"'
 $arguments += '"' + (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs') + '"'
-foreach ($name in @('OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs')) {
+foreach ($name in @('OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs', 'OpenCodePage.Foreground.cs')) {
     $arguments += '"' + (Join-Path $repo "src/AIFrontend/Pages/$name") + '"'
 }
 $pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'

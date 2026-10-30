@@ -10,12 +10,16 @@ public sealed partial class OpenCodePage : Page
 {
     private readonly Grid PageRoot = new(), BrowserOverlayHost = new(), PersistentPtyOverlayHost = new(),
         PersistentPtyButtonSlot = new(), PersistentPtyStripSlot = new(), WslQuickAccessSlot = new(), BrowserButtonSlot = new();
+    private readonly Grid PermissionOverlayHost = new(), QuestionOverlayHost = new();
     private readonly TabView SessionTabs = new();
     private readonly StackPanel WslQuickAccessSection = new();
     private readonly OpenCodePersistentPtyInventoryView _persistentPtyInventoryView = new();
     private readonly Dictionary<string, BrowserWorkspace> _browserWorkspaces = new();
-    private readonly string? _selectedSessionId = null;
     private readonly AttachmentOwner? _persistentAttachmentOwner = null;
+    private readonly OpenCodePersistentPtyView? _terminalView = null;
+    private void InitializeShellTerminal() { }
+    private void InitializeTerminalAppearance() { }
+    private void CloseTerminalView(bool restoreFocus = true) { }
     private void ClosePersistentPtyView(bool restoreFocus = true) => _ = restoreFocus;
     private sealed class AttachmentOwner { internal readonly OpenCodePersistentPtyView View = new(); }
     private sealed class BrowserWorkspace { public void HideOverlay() { } }

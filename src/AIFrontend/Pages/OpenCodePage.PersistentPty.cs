@@ -127,13 +127,13 @@ public sealed partial class OpenCodePage
         _pausedTerminal = null; // Explicit PTY selection supersedes a queued coreShell auto-resume.
         ClosePersistentPtyView(restoreFocus: false);
         CloseTerminalView(restoreFocus: false);
-        if (_terminalView is not null) _terminalView.Visibility = Visibility.Collapsed;
         _persistentPtyReturnFocus = returnFocus;
         var origin = inventory.Origin with { OwnerGeneration = ++_persistentPtyGeneration };
         var context = new OpenCodePersistentPtyViewContext(Guid.NewGuid(), 0, origin.SessionId, ptyId);
         var view = new OpenCodePersistentPtyView();
         var owner = new PersistentAttachmentOwner(inventory.Binding, origin, context, view);
         Volatile.Write(ref _persistentAttachmentOwner, owner);
+        BindTerminalAppearance(view);
         owner.Adapter = new(view.Renderer, InvokePersistentPtyUiAsync, context, () => IsPersistentAttachmentCurrent(origin));
         owner.Controller = new(origin, ptyId, owner.Adapter, IsPersistentAttachmentCurrent);
         owner.OnState = state => PersistentPtyStateChanged(owner, state);

@@ -25,14 +25,16 @@ internal static class OpenCodeComposerPlusMenu
     internal const string ContextUnavailableTooltip = "当前没有可用的工作区目录或服务器连接，无法读取 agent 和 skill。";
     internal const string CommandTooltip = "服务器命令与 AIFrontend 本机操作。也可以在输入框开头输入 /。";
 
-    /// <summary>添加附件 · ── · 命令（/） · 上下文（@） · 终端（!）. The view builds its MenuFlyout from exactly this list.</summary>
+    /// <summary>添加附件 · ── · 命令 / · 上下文 @ · 终端 !. The view builds its MenuFlyout from exactly this list.
+    /// Segoe Fluent Icons: Attach E723 · Lightning E945 (quick commands) · Mention "@" E168 · CommandPrompt E756 (same terminal
+    /// glyph as the agent tree's 终端 group).</summary>
     internal static readonly IReadOnlyList<OpenCodeComposerPlusMenuEntry> Entries = Array.AsReadOnly(new[]
     {
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Attach, "添加附件", "\uE723", "OpenCodeComposerAttachButton", null),
         new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Separator, string.Empty, string.Empty, "OpenCodeComposerPlusSeparator", null),
-        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Command, "命令（/）", "\uE756", "OpenCodeComposerCommandButton", '/'),
-        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Context, "上下文（@）", "\uE8A5", "OpenCodeComposerContextButton", '@'),
-        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Terminal, "终端（!）", "\uEC7A", "OpenCodeComposerTerminalButton", '!'),
+        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Command, "命令", "\uE945", "OpenCodeComposerCommandButton", '/'),
+        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Context, "上下文", "\uE168", "OpenCodeComposerContextButton", '@'),
+        new OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKind.Terminal, "终端", "\uE756", "OpenCodeComposerTerminalButton", '!'),
     });
 
     /// <summary>Availability of each independent composer action.</summary>
@@ -122,6 +124,28 @@ internal static class OpenCodeComposerCharTriggers
     }
 
     /// <summary>
+    /// A chosen "@" mention is one token: Backspace with the caret at its end, or Delete at its start, removes all of
+    /// "@id". Only spans the controller tracks (and that still match the editor text) qualify; typed "@text" and the
+    /// trailing space inserted with a mention stay ordinary characters.
+    /// </summary>
+    internal static OpenCodePromptContext? MentionAt(string? text, int caret, bool backward, IEnumerable<OpenCodePromptContext> mentions)
+    {
+        text ??= string.Empty;
+        foreach (var m in mentions)
+            if (m.Matches(text) && (backward ? m.End == caret : m.Start == caret)) return m;
+        return null;
+    }
+
+    /// <summary>A caret strictly inside a mention moves to the edge it was travelling towards (end when moving right).</summary>
+    internal static int SnapCaret(string? text, int caret, int previous, IEnumerable<OpenCodePromptContext> mentions)
+    {
+        text ??= string.Empty;
+        foreach (var m in mentions)
+            if (m.Matches(text) && caret > m.Start && caret < m.End) return caret >= previous ? m.End : m.Start;
+        return caret;
+    }
+
+    /// <summary>
     /// "+ → 上下文（@）" inserts a literal "@" at the caret so that it is always a LEGAL trigger: a separating space before
     /// it after a non-space character, and one after it when the caret sits right before a non-space character.
     /// <c>CaretOffset</c> is where the caret goes (immediately after the "@").
@@ -176,7 +200,8 @@ internal sealed class OpenCodeComposerMentionQueries
 }
 
 /// <summary>One server-registered agent or skill. Identity, not display name, is inserted and sent.</summary>
-internal sealed record OpenCodeComposerMentionCandidate(string Id, bool IsSkill, string? Description = null);
+/// <paramref name="Color"/> is the agent's runtime colour, presentation only (same icon as the agent picker).
+internal sealed record OpenCodeComposerMentionCandidate(string Id, bool IsSkill, string? Description = null, string? Color = null);
 
 /// <summary>Registered contexts in the current workspace; null provider means unavailable.</summary>
 internal delegate Task<IReadOnlyList<OpenCodeComposerMentionCandidate>> OpenCodeComposerMentionSearch(string query, CancellationToken cancellationToken);
@@ -198,7 +223,7 @@ internal static class OpenCodeComposerMentions
         var skillsTask = client.ListSkillsAsync(directory, cancellationToken);
         await Task.WhenAll(agentsTask, skillsTask).ConfigureAwait(false);
         var agents = agentsTask.Result.Data!.Where(a => !a.Hidden && a.Mode is OpenCodeAgentModes.Subagent or OpenCodeAgentModes.All)
-            .Select(a => new OpenCodeComposerMentionCandidate(a.Id!, false, a.Description));
+            .Select(a => new OpenCodeComposerMentionCandidate(a.Id!, false, a.Description, a.Color));
         var skills = skillsTask.Result.Data!.Select(s => new OpenCodeComposerMentionCandidate(s.Id!, true, s.Description));
         return agents.Concat(skills).Where(c => c.Id.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || c.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)

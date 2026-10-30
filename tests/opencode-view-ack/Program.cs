@@ -31,6 +31,7 @@ internal static class Program
                 ("owner/frame/reflow fences and listener lifecycle", Fences),
                 ("unknown same key never retries across source/revision/render", Unknown),
                 ("512 attempt cap never evicts", Cap),
+                ("foreground notification publisher follows selected tab and host/page visibility", ForegroundPublisher),
             })
             {
                 var before = _n; await run().WaitAsync(TimeSpan.FromSeconds(30));
@@ -42,6 +43,29 @@ internal static class Program
         }
         catch (Exception ex) { Console.WriteLine("FAIL: " + ex); return 1; }
     }
+    private static Task ForegroundPublisher()
+    {
+        var (app, page) = Fixture("ep-front-publisher");
+        Check(app.ForegroundSession is null, "no confirmed active host means no foreground suppression");
+        page.NotifyHostWindowVisibility(true);
+        Check(app.ForegroundSession == "ses_test", "active loaded page publishes its selected tab");
+        page.NotifyHostWindowVisibility(false);
+        Check(app.ForegroundSession is null, "deactivation/minimization clears foreground immediately");
+        page.NotifyHostWindowVisibility(true);
+        page.TestForegroundSelectTab("ses_other");
+        Check(app.ForegroundSession == "ses_other", "actual tab selection replaces foreground owner before any REST/render");
+        page.TestForegroundSelectTab(null);
+        Check(app.ForegroundSession is null, "Home/blank selection suppresses no session");
+        page.TestForegroundSelectTab("ses_test");
+        page.TestSetPageInvisible();
+        Check(app.ForegroundSession is null, "collapsed page immediately clears foreground scope");
+        page.TestSetPageVisible(); page.RepeatLayout();
+        Check(app.ForegroundSession == "ses_test", "visible laid-out selected page restores foreground scope");
+        page.Unload();
+        Check(app.ForegroundSession is null, "page unload removes foreground scope");
+        return Task.CompletedTask;
+    }
+
     private static Task Viewport()
     {
         var (app, page) = Fixture("ep-viewport");
@@ -51,11 +75,17 @@ internal static class Program
         Check(app.Calls == 0 && CompositionTarget.Count == 1, "layout requests exactly one fresh native-frame review");
         page.RepeatLayout(); page.Scroll();
         Check(CompositionTarget.Count == 1, "same geometry cannot add a frame per layout or scroll event");
+        for (var i = 0; i < 100; i++) { page.RepeatLayout(); page.Scroll(); }
+        Check(page.ViewportCaptures == 0, "layout/scroll burst does not walk geometry before the rendered frame");
         CompositionTarget.Frame();
+        Check(page.ViewportCaptures == 1, "one frame coalesces all geometry reviews to exactly one walk");
         Check(app.Calls == 1 && app.LastSent == 100, "only actually visible old idle ACKed, not newer DTO 220");
         var oldFence = app.LastFence!;
         page.RepeatLayout(); page.Scroll();
-        Check(CompositionTarget.Count == 0 && oldFence(), "unchanged geometry preserves proof without fresh request");
+        Check(CompositionTarget.Count == 1 && !oldFence(), "reflow immediately revokes proof and coalesces its next frame review");
+        CompositionTarget.Frame();
+        Check(app.Calls == 1, "same watermark reproof does not duplicate ACK publication");
+        Check(oldFence(), "unchanged post-frame geometry restores the same in-flight proof identity");
         page.Layout(220);
         Check(!oldFence() && app.Calls == 1 && CompositionTarget.Count == 1, "new visible candidate revokes old proof before next frame");
         CompositionTarget.Frame();
@@ -108,7 +138,7 @@ internal static class Program
         var (a, p) = Fixture("ep-reflow"); Render(p, 100); var original = a.LastFence!;
         p.Layout(100, 20); var detached = CompositionTarget.Capture();
         Check(!original() && CompositionTarget.Count == 1, "markdown/geometry reflow synchronously revokes live proof");
-        p.Layout(200, 30); detached?.Invoke(null, new());
+        p.InvalidateViewAcknowledgement(); p.Layout(200, 30); detached?.Invoke(null, new());
         Check(CompositionTarget.Count == 1 && a.Calls == 1, "detached old handler cannot consume replacement frame");
         CompositionTarget.Frame(); Check(a.Calls == 2 && a.LastSent == 200, "replacement geometry proof only");
         var fence = a.LastFence!;

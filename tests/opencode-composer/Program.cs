@@ -21,7 +21,7 @@ internal static partial class Program
         if (!condition) throw new InvalidOperationException(note);
     }
     private static HttpResponseMessage Json(string value) => new(HttpStatusCode.OK) { Content = new StringContent(value, Encoding.UTF8, "application/json") };
-    private static HttpResponseMessage Catalog() => Json("{\"data\":[{\"name\":\"review\",\"description\":\"Review\"}]}");
+    private static HttpResponseMessage Catalog() => Json("{\"location\":{\"directory\":\"/workspace\"},\"data\":[{\"name\":\"review\",\"description\":\"Review\"}]}");
     private sealed class Handler : HttpMessageHandler
     {
         internal new Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> Send = (r, _) => Task.FromResult(r.Method == HttpMethod.Get ? Catalog() : Json(Receipt));

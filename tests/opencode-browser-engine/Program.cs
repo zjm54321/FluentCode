@@ -27,6 +27,7 @@ internal static class Program
             if (args[1] != "--frames") FrameTests.LiveAsync(args[1], Check).GetAwaiter().GetResult();
             Console.WriteLine("PASS " + _checks + " focused frame/selection assertions"); return;
         }
+        ChildPeerTests.RunAsync(args[0], Check).GetAwaiter().GetResult();
         foreach (var (width, height) in new[] { (1600d, 1000d), (1200d, 800d), (640d, 480d), (300d, 200d) })
         {
             var place = OpenCodeBrowserOverlayLayout.Place(width, height);

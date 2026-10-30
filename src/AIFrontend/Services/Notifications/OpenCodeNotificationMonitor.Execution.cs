@@ -24,6 +24,7 @@ public sealed record OpenCodeSessionObservation(string EndpointIdentity, string 
 
     // 联合完成证明的最早时间。
     public DateTimeOffset? CompletionObservedAt { get; init; }
+    internal Func<bool>? EventStateCurrent { get; init; }
 }
 public sealed class OpenCodeSessionObservationEventArgs(OpenCodeSessionObservation observation) : EventArgs
 {
@@ -55,7 +56,11 @@ public sealed partial class OpenCodeNotificationMonitor
         if (!Active(session, state)) return;
         OpenCodeSessionInfo? info = null;
         var infoAt = DateTimeOffset.UtcNow;
-        try { info = await ReadSessionAsync(session, token).ConfigureAwait(false); }
+        try
+        {
+            info = await ReadSessionAsync(session, token).ConfigureAwait(false);
+            state.IsChild ??= info.ParentId is not null;
+        }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (Exception error) when (IsObservationFailure(error)) { Emit(session, state, OpenCodeNotificationObservationKind.ReadFailed, "session-watermark-read-failed"); }
 
@@ -142,6 +147,8 @@ public sealed partial class OpenCodeNotificationMonitor
                 : null;
 
         if (protectedSession) projection = projection with { State = OpenCodeExecutionState.Unknown };
+        state.Idle = projection.CanSwitchAgent && !projection.Waiting && !projection.KnownUnresolvedBackground
+            && state.Permissions.Count == 0 && state.Forms.Count == 0;
         PublishSession(session, state, new(_source.Identity, session, projection, outcome, watermark, viewed, evidenceAt, neutral)
         {
             WorkingFact = workingFact,
@@ -183,9 +190,13 @@ public sealed partial class OpenCodeNotificationMonitor
         return earliest;
     }
 
-    private void PublishUnknown(string session, StreamState state) => PublishSession(session, state,
-        new(_source.Identity, session, new(OpenCodeExecutionState.Unknown, false, false, false, false, []),
-            null, null, null, DateTimeOffset.UtcNow));
+    private void PublishUnknown(string session, StreamState state)
+    {
+        state.Idle = false;
+        PublishSession(session, state,
+            new(_source.Identity, session, new(OpenCodeExecutionState.Unknown, false, false, false, false, []),
+                null, null, null, DateTimeOffset.UtcNow));
+    }
 
     private void PublishSession(string session, StreamState state, OpenCodeSessionObservation observation)
     {

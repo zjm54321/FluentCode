@@ -16,7 +16,9 @@ using Windows.Storage.Streams;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>Flat image-only native repeater; pages stay owned by the engine, not these previews.</summary>
+internal sealed record OpenCodeBrowserStripGroup(IOpenCodeBrowserWorkspace Workspace, string? Label);
+
+/// <summary>Session-grouped native repeater; pages stay owned by their session engine, not these previews.</summary>
 internal sealed class OpenCodeBrowserStrip : Grid
 {
     private readonly ObservableCollection<UIElement> _items = new();
@@ -26,9 +28,12 @@ internal sealed class OpenCodeBrowserStrip : Grid
     private readonly Button _previous, _next;
     private const double ExpandedHeight = 72;
     private readonly DispatcherTimer _capture = new() { Interval = TimeSpan.FromMilliseconds(250) };
-    private IOpenCodeBrowserWorkspace? _workspace;
+    private IReadOnlyList<OpenCodeBrowserStripGroup> _groups = Array.Empty<OpenCodeBrowserStripGroup>();
+    private readonly Dictionary<IOpenCodeBrowserWorkspace, TextBlock> _labels = new();
+    public event Action<IOpenCodeBrowserWorkspace, IOpenCodeBrowserPage>? PageRequested;
     private Storyboard? _transition;
     private bool _expanded;
+    private bool _hostVisible = true;
 
     public OpenCodeBrowserStrip()
     {
@@ -56,13 +61,15 @@ internal sealed class OpenCodeBrowserStrip : Grid
         }), true);
         _capture.Tick += async (_, _) =>
         {
+            if (!_hostVisible || !_expanded || !IsLoaded) return;
             foreach (var tile in _tiles.Values.Where(tile => !tile.IsExternal).ToArray()) await tile.CaptureAsync();
         };
-        Loaded += (_, _) => { Refresh(); if (_expanded) _capture.Start(); };
+        Loaded += (_, _) => { Refresh(); UpdateCapture(); };
         Unloaded += (_, _) =>
         {
             if (IsLoaded) return;
             _capture.Stop();
+            foreach (var tile in _tiles.Values) tile.SetCaptureEnabled(false);
             _transition?.Stop(); _transition = null;
             Height = _expanded ? ExpandedHeight : 0d;
             Opacity = _expanded ? 1 : 0;
@@ -91,34 +98,67 @@ internal sealed class OpenCodeBrowserStrip : Grid
     }
 
     public void Bind(IOpenCodeBrowserWorkspace? workspace)
+        => BindGroups(workspace is null ? Array.Empty<OpenCodeBrowserStripGroup>() : new[] { new OpenCodeBrowserStripGroup(workspace, null) });
+
+    public void BindGroups(IReadOnlyList<OpenCodeBrowserStripGroup> groups)
     {
-        if (ReferenceEquals(_workspace, workspace)) return;
-        if (_workspace is not null) _workspace.PagesChanged -= PagesChanged;
-        foreach (var tile in _tiles.Values) tile.Dispose();
-        _tiles.Clear(); _items.Clear(); _workspace = workspace;
-        if (_workspace is not null) _workspace.PagesChanged += PagesChanged;
+        if (_groups.SequenceEqual(groups)) return;
+        foreach (var group in _groups) group.Workspace.PagesChanged -= PagesChanged;
+        _groups = groups;
+        foreach (var group in _groups) group.Workspace.PagesChanged += PagesChanged;
+        foreach (var old in _labels.Keys.Where(owner => !_groups.Any(group => ReferenceEquals(group.Workspace, owner))).ToArray()) _labels.Remove(old);
         Refresh();
     }
     private void PagesChanged(object? sender, EventArgs e) => Refresh();
+    internal void SetHostVisible(bool visible)
+    {
+        _hostVisible = visible;
+        UpdateCapture();
+    }
+    private void UpdateCapture()
+    {
+        var enabled = _hostVisible && _expanded && IsLoaded;
+        foreach (var tile in _tiles.Values) tile.SetCaptureEnabled(enabled);
+        if (enabled) _capture.Start(); else _capture.Stop();
+    }
     private void Refresh()
     {
-        var pages = _workspace?.Pages ?? Array.Empty<IOpenCodeBrowserPage>();
+        var pages = _groups.SelectMany(group => group.Workspace.Pages).ToArray();
         foreach (var old in _tiles.Keys.Where(p => !pages.Contains(p)).ToArray())
         {
             _items.Remove(_tiles[old]); _tiles[old].Dispose(); _tiles.Remove(old);
         }
-        for (var i = 0; i < pages.Count; i++)
+        var items = new List<UIElement>();
+        foreach (var group in _groups)
         {
-            var page = pages[i];
-            if (!_tiles.TryGetValue(page, out var tile))
+            var owner = group.Workspace;
+            if (owner.Pages.Count == 0) continue;
+            if (group.Label is { } label)
             {
-                tile = new Tile(page, () => _workspace?.Show(page)); _tiles.Add(page, tile);
+                if (!_labels.TryGetValue(owner, out var heading))
+                    _labels[owner] = heading = new TextBlock { MaxWidth = 100, FontSize = 12, TextWrapping = TextWrapping.Wrap,
+                        MaxLines = 3, VerticalAlignment = VerticalAlignment.Center };
+                heading.Text = label; AutomationProperties.SetName(heading, label + "的浏览器页面"); items.Add(heading);
             }
-            var index = _items.IndexOf(tile);
-            if (index < 0) _items.Insert(i, tile);
-            else if (index != i) _items.Move(index, i);
-            tile.SetShown(ReferenceEquals(_workspace?.Shown, page));
+            foreach (var page in owner.Pages)
+            {
+                if (!_tiles.TryGetValue(page, out var tile))
+                {
+                    tile = new Tile(page, () => { if (PageRequested is { } show) show(owner, page); else owner.Show(page); });
+                    _tiles.Add(page, tile);
+                }
+                tile.SetOwnerLabel(group.Label);
+                tile.SetShown(ReferenceEquals(owner.Shown, page)); items.Add(tile);
+            }
         }
+        foreach (var old in _items.Where(item => !items.Contains(item)).ToArray()) _items.Remove(old);
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i]; var index = _items.IndexOf(item);
+            if (index < 0) _items.Insert(i, item);
+            else if (index != i) _items.Move(index, i);
+        }
+        UpdateCapture();
     }
     public void Flash(IOpenCodeBrowserPage page)
     {
@@ -130,8 +170,8 @@ internal sealed class OpenCodeBrowserStrip : Grid
         if (_expanded == expanded) return;
         _expanded = expanded;
         _transition?.Stop(); _transition = null;
-        if (expanded) { Visibility = Visibility.Visible; _capture.Start(); }
-        else _capture.Stop();
+        if (expanded) Visibility = Visibility.Visible;
+        UpdateCapture();
         var height = expanded ? ExpandedHeight : 0d;
         if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
         {
@@ -176,6 +216,8 @@ internal sealed class OpenCodeBrowserStrip : Grid
         private bool _flashOn;
         private bool _shown;
         private bool _disposed;
+        private bool _captureEnabled;
+        private string? _ownerLabel;
         private byte[]? _bytes;
         private readonly DispatcherTimer _hover = new() { Interval = TimeSpan.FromMilliseconds(400) };
         private readonly DispatcherTimer _leave = new() { Interval = TimeSpan.FromMilliseconds(150) };
@@ -224,6 +266,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
         }
 
         public void SetShown(bool shown) { _shown = shown; Render(); }
+        public void SetOwnerLabel(string? label) { _ownerLabel = label; Render(); }
         private void Changed(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(OpenCodeBrowserPage.PreviewBytes)) _ = LoadImageAsync();
@@ -245,18 +288,19 @@ internal sealed class OpenCodeBrowserStrip : Grid
             else if (_page.PreviewPath is { } path) _badge.Child = new TextBlock { Text = OpenCodeBrowserPanelState.PreviewKind(path), FontSize = 10 };
             else _badge.Visibility = Visibility.Collapsed;
             var host = Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) ? uri.Host : _page.Url;
-            _label.Text = (string.IsNullOrEmpty(_page.Title) ? _page.PreviewPath ?? _page.Url : _page.Title) + " · " + host;
+            _label.Text = (_ownerLabel is null ? "" : _ownerLabel + " · ") + (string.IsNullOrEmpty(_page.Title) ? _page.PreviewPath ?? _page.Url : _page.Title) + " · " + host;
             _status.Text = (IsExternal ? "外部 Chrome · 独立窗口 · " : "") + OpenCodeBrowserPanelState.PageState(_page, _shown);
             AutomationProperties.SetName(_show, _label.Text + " · " + _status.Text);
         }
         public void Flash()
         {
+            if (!_captureEnabled) return;
             if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled) return;
             _flashFrame = 0; _flashOn = true; Render(); _flash.Start();
         }
         public async Task CaptureAsync()
         {
-            if (_disposed || _page is not OpenCodeBrowserPage page || !_throttle.TryBegin(DateTimeOffset.UtcNow)) return;
+            if (_disposed || !_captureEnabled || _page is not OpenCodeBrowserPage page || !_throttle.TryBegin(DateTimeOffset.UtcNow)) return;
             try
             {
                 var bytes = await page.CapturePreviewAsync();
@@ -266,6 +310,13 @@ internal sealed class OpenCodeBrowserStrip : Grid
             catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or OperationCanceledException)
             { if (!_disposed) _throttle.Invalidate(); } // Navigation/close can temporarily invalidate a real WebView capture.
             finally { _throttle.Complete(DateTimeOffset.UtcNow); }
+        }
+
+        internal void SetCaptureEnabled(bool enabled)
+        {
+            _captureEnabled = enabled;
+            if (enabled) return;
+            _flash.Stop(); _hover.Stop(); _leave.Stop(); _tooltip.IsOpen = false;
         }
         private async Task LoadImageAsync()
         {

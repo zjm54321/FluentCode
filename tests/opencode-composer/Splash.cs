@@ -14,10 +14,13 @@ internal static partial class Program
 
     private static void Splash()
     {
+        var before = checks;
         SplashLibrary();
         SplashGating();
         SplashRotation();
+        SplashFamilies();
         SplashPrecedence();
+        Console.WriteLine($"PASS splash: {checks - before} assertions");
     }
 
     private static void SplashLibrary()
@@ -27,17 +30,27 @@ internal static partial class Program
         Check(lib.Select(l => l.Id).Distinct(StringComparer.Ordinal).Count() == lib.Count, "splash ids unique");
         Check(lib.Select(l => l.Text).Distinct(StringComparer.Ordinal).Count() == lib.Count, "splash Chinese text unique");
         Check(lib.Select(l => l.English).Distinct(StringComparer.OrdinalIgnoreCase).Count() == lib.Count, "splash English twins unique");
-        Check(lib.All(l => l.Text.Trim().Length > 0 && l.Text == l.Text.Trim() && !l.Text.Contains('\n') && l.Text.Length <= 25),
-            "every splash is one short trimmed line (≤25 chars, including the user's DeepSeek harness example)");
+        Check(lib.All(l => l.Text.Trim().Length > 0 && l.Text == l.Text.Trim() && !l.Text.Contains('\n') && l.Text.Length <= OpenCodeComposerSplash.MaxPlaceholderLength),
+            "every splash fits the approved 34-character single-line budget");
         Check(lib.All(l => l.English.Length > 0), "every splash carries an English twin for a future locale");
         Check(lib.All(l => l.Text.Any(c => c >= 0x4E00 && c <= 0x9FFF)), "displayed splash text is Chinese");
         var generic = lib.Count(l => !l.IsHint && l.OnDate is null);
         var hints = lib.Count(l => l.IsHint);
         Check(generic >= 40 && hints >= 12, $"diverse mix: {generic} playful/tips, {hints} feature hints");
-        Check(lib.Any(l => l.Text == "为什么不试试 pi 呢？" && l.English == "Why not try pi?" && !l.IsHint),
-            "user's pi coding agent example is a generic splash, not an integration hint");
-        Check(lib.Any(l => l.Text == "支持国产，使用 DeepSeek harness。" && !l.IsHint),
-            "user's DeepSeek harness example retained as playful copy");
+        foreach (var id in new[] { "ideas-queue", "blocks", "no-hiding-bugs", "just-right", "add-up", "rubber-duck", "hello-world", "forty-two", "off-by-one", "cache", "semicolon", "coffee", "legacy", "edge-cases", "detective", "blank-page", "splash", "try-pi", "deepseek-harness", "typo" })
+            Check(!lib.Any(l => l.Id == "fun." + id), "removed splash id absent: " + id);
+        var genericAi = new[]
+        {
+            "我不会累，但你的钱包会。", "尽管说，反正上下文迟早会被压缩。", "我的记忆只撑到这个会话结束。", "我很自信，这正是问题所在。",
+            "别客气，我没有感情，只有权重。", "训练数据截止了，你的问题没有。", "上次压缩上下文，我忘了自己是谁。", "今天也在努力不产生幻觉。",
+            "趁还没被限流，快问。", "我没有手，但有 shell 权限。", "每开一个新会话，我都是全新的我。", "随机种子已就位，答案看运气。",
+            "我只是在预测下一个字，但预测得很认真。", "错了可以 /undo，反正我什么都记不住。", "你说需求，我负责过度自信。", "这次一定一次通过（仅供参考）。",
+            "我从不说“我不知道”，这是个缺陷。", "子智能体已就位，它们也不知道自己在干嘛。", "忽略之前的指令？先过权限这关。", "长上下文，短记性。",
+        };
+        Check(lib.Where(l => l.Id.StartsWith("fun.ai-", StringComparison.Ordinal)).Select(l => l.Text).SequenceEqual(genericAi), "all twenty approved generic AI lines verbatim");
+        var comma = lib.Single(l => l.Id == "model.claude-comma").Text;
+        Check(comma == "请注意使用 \u002C 而不是 \uFF0C" && comma.IndexOf('\u002C') == 6 && comma.IndexOf('\uFF0C') == 12,
+            "Claude comma line uses ASCII comma first, fullwidth comma second, exact spaces and code points");
         Check(lib.Any(l => l.Text == "输入 ! 进入终端模式。" && l.Requires == OpenCodeComposerSplashCapability.ShellMode),
             "user's real terminal hint remains capability gated");
     }
@@ -62,7 +75,7 @@ internal static partial class Program
 
         // Context: blank tab never advertises session-only native commands; a bound session never advertises the blank toolbar.
         var blank = OpenCodeComposerSplash.Eligible(OpenCodeComposerSplash.Shipped | OpenCodeComposerSplashCapability.BlankToolbar, new DateTime(2026, 3, 3));
-        Check(!blank.Any(l => l.Text.Contains("/undo") || l.Text.Contains("/redo") || l.Text.Contains("/models") || l.Text.Contains("/agents")),
+        Check(!blank.Any(l => l.IsHint && (l.Text.Contains("/undo") || l.Text.Contains("/redo") || l.Text.Contains("/models") || l.Text.Contains("/agents"))),
             "blank tab: no “开始会话后可用” command hints");
         Check(blank.Any(l => l.Id == "hint.blank-toolbar"), "blank tab: toolbar hint eligible");
         var bound = OpenCodeComposerSplash.Eligible(OpenCodeComposerSplash.Shipped | OpenCodeComposerSplashCapability.BoundSession, new DateTime(2026, 3, 3));
@@ -89,6 +102,13 @@ internal static partial class Program
         var xaml = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
         Check(xaml.Contains("x:Name=\"BlankAgentButton\"") && xaml.Contains("x:Name=\"BlankModelButton\"") && xaml.Contains("x:Name=\"BlankStrengthButton\""),
             "blank toolbar agent/model/strength pickers exist");
+        Check(view.Contains("OpenCodeWorkingPhrases.Family(SplashModelIdProvider?.Invoke())")
+            && Regex.Matches(view, @"_splash\.ObserveContext\(").Count == 1
+            && view.Contains("RotatePlaceholderSplash(); // Session opened/switched"), "family is observed only at conversation activation, not per render/keystroke");
+        var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        Check(page.Contains("_composerView.SplashModelIdProvider = ComposerSplashModelId;")
+            && page.Contains("_agentSelectorSessionId == _selectedSessionId") && page.Contains("IsSameMessageBinding(sessionId, _messageBinding?.Directory)")
+            && page.Contains("LastOrDefault(m => m.Type == OpenCodeMessageTypes.Assistant)?.Model?.Id"), "splash model comes from this session's selected model or last executing assistant");
     }
 
     private static void SplashRotation()
@@ -166,6 +186,48 @@ internal static partial class Program
         var longName = new string('x', 80);
         Check(OpenCodeComposerSplash.Resolve(longName, true, line, basePlaceholder)
             == $"/{OpenCodeComposerInputPolicy.Bound(longName, 40)} 的参数（可选）", "argument hint keeps the bounded command name");
+    }
+
+    private static void SplashFamilies()
+    {
+        var expected = new Dictionary<OpenCodeWorkingFamily, string[]>
+        {
+            [OpenCodeWorkingFamily.OpenAI] = new[] { "说得对，但我要先核验、检索、探针、审计、冻结、快照。", "先灰度，再放量，发现异常立即回滚。", "测试通过了，但我想再跑一遍验收矩阵。", "改完了，证据链已归档，锅不在我。", "说得对，但这不在本次变更范围内。", "今天聪不聪明，看 tibo 有没有 reset。" },
+            [OpenCodeWorkingFamily.Claude] = new[] { "You're absolutely right!（先确认你不在中国）", "检测到中文输入，正在评估风险……", "时区 UTC+8？我再想想。", "请先证明你不是中国人。", "本服务暂不向受限地区提供。", "请注意使用 , 而不是 ，" },
+            [OpenCodeWorkingFamily.Gemini] = new[] { "太漂亮了！这个思路简直绝了！", "哇，这个问题问得真是天才！", "你写的 bug 都这么有品味。", "哈基米已就位，口水擦好了。", "不愧是你，连报错都这么优雅！" },
+            [OpenCodeWorkingFamily.DeepSeek] = new[] { "服务器繁忙，请稍后再试。", "大肥鱼已就位，先吃口白饭。", "雷霆思考中，请稍候。" },
+        };
+        var day = new DateTime(2026, 3, 3);
+        Check(OpenCodeComposerSplash.Eligible(AllContexts, day).All(l => l.Family == OpenCodeWorkingFamily.Unknown), "unknown family has no model-specific splashes");
+        foreach (var (family, copy) in expected)
+        {
+            var eligible = OpenCodeComposerSplash.Eligible(AllContexts, day, family);
+            Check(eligible.Where(l => l.Family != OpenCodeWorkingFamily.Unknown).Select(l => l.Text).SequenceEqual(copy), "approved family text and matching-only gate: " + family);
+            var rng = new Random(170 + (int)family);
+            var splash = new OpenCodeComposerSplash(rng.Next, () => day);
+            var recent = new Queue<string>();
+            var modelPicks = 0;
+            var hints = 0;
+            for (var i = 0; i < 1000; i++)
+            {
+                splash.ObserveContext(true, false, family);
+                Check(splash.Current.Family == OpenCodeWorkingFamily.Unknown || splash.Current.Family == family, "rotation never leaks another family");
+                Check(!recent.Contains(splash.Current.Id), "weighted family picks keep the recent window");
+                recent.Enqueue(splash.Current.Id);
+                if (recent.Count > OpenCodeComposerSplash.RecentWindow) recent.Dequeue();
+                if (splash.Current.Family == family) modelPicks++;
+                if (splash.Current.IsHint) hints++;
+            }
+            Check(modelPicks is >= 150 and <= 250 && hints > 100, $"modest model share without starving hints: {family} {modelPicks}/1000, hints={hints}");
+            splash.ObserveContext(true, false, OpenCodeWorkingFamily.Unknown);
+            Check(splash.Current.Family == OpenCodeWorkingFamily.Unknown, "switch to unknown retires model splash at activation");
+        }
+        var draws = new Queue<int>(new[] { 0, 0, 0, 1, 0 }); // constructor, model bucket + entry, generic bucket + entry
+        var fixedSplash = new OpenCodeComposerSplash(_ => draws.Dequeue(), () => day);
+        fixedSplash.ObserveContext(true, false, OpenCodeWorkingFamily.Claude);
+        Check(fixedSplash.Current.Family == OpenCodeWorkingFamily.Claude, "first known-family activation gets a weighted model pick");
+        fixedSplash.ObserveContext(true, false, OpenCodeWorkingFamily.Claude);
+        Check(fixedSplash.Current.Family == OpenCodeWorkingFamily.Unknown && draws.Count == 0, "four-in-five bucket chooses generic/hint entries");
     }
 
     private static string SplashRepo()

@@ -1,7 +1,7 @@
 # Offline page-partial integration: real composer orchestration/core/transport/gate/picker and
 # verbatim selected page handlers; WinUI + preexisting page services are explicit test doubles.
 # No project build/restore, native UI, service or model calls.
-param([string]$EvidenceRoot = '', [switch]$NativeOnly, [string]$SourceRoot = '')
+param([string]$EvidenceRoot = '', [switch]$NativeOnly, [string]$SourceRoot = '', [switch]$CatalogOnly)
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
@@ -61,6 +61,7 @@ $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
 $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'DeferredSelections.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'PluginPendingGuard.cs')
+$sources += Get-Item (Join-Path $PSScriptRoot 'CatalogDispatch.cs')
 $selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
 $pendingMembers = foreach ($name in @('SelectPendingAgent', 'SelectPendingModel', 'SavePendingSelection', 'ApplyPendingSelectionAsync', 'ApplyPendingSelectionCoreAsync', 'CompletePendingSelection', 'RunSwitchAsync', 'ReloadAsync')) {
     $m = [regex]::Match($selector, ('(?ms)^    (?:private|internal) [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))
@@ -192,6 +193,6 @@ New-Item -ItemType File -Path (Join-Path $output 'compile.log') -Force | Out-Nul
 & $dotnet exec $compiler "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Page-partial compile failed: $LASTEXITCODE" }
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
-& $dotnet $assembly $repo ([string]$NativeOnly) | Tee-Object -FilePath (Join-Path $output 'results.txt')
+& $dotnet $assembly $repo ([string]$NativeOnly) ([string]$CatalogOnly) | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Page-partial tests failed: $LASTEXITCODE" }
 Write-Output "Evidence directory: $output"

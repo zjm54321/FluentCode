@@ -18,8 +18,12 @@ namespace Microsoft.UI.Xaml
     public class Application { public static Application? Current { get; set; } }
     public class Element
     {
+        public static object VisibilityProperty { get; } = new();
+        private Visibility _visibility;
+        private event Action<object, object>? VisibilityChanged;
         public bool IsLoaded { get; set; } = true;
-        public Visibility Visibility { get; set; }
+        public Visibility Visibility { get => _visibility; set { _visibility = value; VisibilityChanged?.Invoke(this, VisibilityProperty); } }
+        public long RegisterPropertyChangedCallback(object property, Action<object, object> callback) { VisibilityChanged += callback; return 1; }
         public XamlRoot? XamlRoot { get; set; } = new();
         public double ActualWidth { get; set; } = 800;
         public double ActualHeight { get; set; } = 600;
@@ -41,6 +45,13 @@ namespace Microsoft.UI.Dispatching
 namespace Microsoft.UI.Xaml.Controls
 {
     public class Page : Microsoft.UI.Xaml.Element { public Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; } = new(); }
+    public class TabViewItem { public object? Tag { get; set; } }
+    public class TabView
+    {
+        private object? _selected;
+        public object? SelectedItem { get => _selected; set { _selected = value; SelectionChanged?.Invoke(this, new()); } }
+        public event EventHandler<object>? SelectionChanged;
+    }
     public class ScrollViewChangedEventArgs : EventArgs { }
     public class ScrollView : Microsoft.UI.Xaml.Element
     {
@@ -73,12 +84,14 @@ namespace AIFrontend.Pages.OpenCode
         internal void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollView viewport, Func<bool> ownerCurrent) { }
         internal long RenderVersion { get; private set; }
         private OpenCodeVisibleIdle? _candidate;
+        internal bool IsIdleLayoutCurrent => _candidate is not null;
+        internal int Captures;
         internal event EventHandler? IdleViewportInvalidated;
         internal int InvalidatedListeners => IdleViewportInvalidated?.GetInvocationList().Length ?? 0;
         internal void ApplyMessages(IReadOnlyList<OpenCodeMessage> rows)
         { RenderVersion++; _candidate = null; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
         internal void ClearMessages() => ApplyMessages(Array.Empty<OpenCodeMessage>());
-        internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) => new(RenderVersion, _candidate);
+        internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) { Captures++; return new(RenderVersion, _candidate); }
         internal void SupplyGeometry(double? watermark, double x = 0)
         {
             _candidate = watermark is { } value ? new("msg_visible_" + value, value,
@@ -95,6 +108,13 @@ namespace AIFrontend
         public int Calls, Posts, FenceBlocked;
         public double? LastSent;
         public Func<bool>? LastFence;
+        internal string? ForegroundSession;
+        private object? _foregroundOwner;
+        internal void UpdateOpenCodeForegroundSession(object owner, OpenCodePageSource? source, string? session, bool foreground)
+        {
+            if (foreground) { _foregroundOwner = owner; ForegroundSession = session; }
+            else if (ReferenceEquals(owner, _foregroundOwner)) { _foregroundOwner = null; ForegroundSession = null; }
+        }
         public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string sessionId,
             double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
         {
@@ -116,6 +136,10 @@ namespace AIFrontend.Pages
         private int _sourceGeneration, _pageGeneration, _sessionGeneration;
         private string? _selectedSessionId;
         private bool _pageActive, _sessionMissing, _homeActive, _newSessionDraftActive;
+        private bool _draftRecoveryPending = false;
+        private readonly Microsoft.UI.Xaml.Controls.TabView SessionTabs = new();
+        private sealed record ForegroundTab(Microsoft.UI.Xaml.Controls.TabViewItem Item);
+        private readonly Dictionary<string, ForegroundTab> _sessionTabs = new();
         private CancellationTokenSource? _pageCts, _sessionCts;
         private OpenCodeConversationView _conversationView = new();
         private readonly Microsoft.UI.Xaml.Controls.ScrollView MessageScroll = new();
@@ -140,6 +164,7 @@ namespace AIFrontend.Pages
             InvalidateViewAcknowledgement();
             _source = source; _sourceRevision = source.Revision; _sourceGeneration++; _pageGeneration++; _sessionGeneration++;
             _selectedSessionId = sessionId; _pageActive = true; _sessionMissing = false;
+            TestForegroundSelectTab(sessionId);
             _homeActive = _newSessionDraftActive = false;
             _pageCts = new(); _sessionCts = new();
             _client = new(new System.Net.Http.HttpClient(), new() { BaseUrl = "https://offline.invalid" }, true);
@@ -179,5 +204,12 @@ namespace AIFrontend.Pages
             // Deliberately omit the normal transition's invalidation to exercise the frame's own guard.
         }
         internal int ViewListeners => _conversationView.InvalidatedListeners + _conversationView.LayoutListeners + MessageScroll.LayoutListeners;
+        internal int ViewportCaptures => _conversationView.Captures;
+        internal void TestForegroundSelectTab(string? session)
+        {
+            var item = new Microsoft.UI.Xaml.Controls.TabViewItem { Tag = session is null ? new object() : session };
+            if (session is not null) _sessionTabs[session] = new(item);
+            SessionTabs.SelectedItem = item;
+        }
     }
 }

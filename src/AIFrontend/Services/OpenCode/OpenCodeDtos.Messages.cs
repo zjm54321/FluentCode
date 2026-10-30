@@ -352,6 +352,13 @@ public sealed record OpenCodeToolState
 /// <summary>已核实工具状态读取器。</summary>
 public static class OpenCodeToolStates
 {
+    private sealed record CachedState(OpenCodeToolState? Value);
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<OpenCodeContentPart, CachedState> PartStates = new();
+
+    /// <summary>One decode per immutable part revision; history retention owns the cache lifetime.</summary>
+    public static OpenCodeToolState? ReadPart(OpenCodeContentPart part)
+        => PartStates.GetValue(part, static snapshot => new(Read(snapshot.State))).Value;
+
     /// <summary>
     /// 将 content 部分的原始 state 读为强类型 <see cref="OpenCodeToolState"/>。
     /// 仅当存在 status 且取值属于已核实集合（streaming / running / completed / error）

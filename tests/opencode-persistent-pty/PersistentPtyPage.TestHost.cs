@@ -19,7 +19,7 @@ namespace AIFrontend.Pages
         private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view) { if (ReferenceEquals(OverlayView, view)) { OverlayView = null; OverlayPtyId = null; } }
         private readonly Control Composer = new Button();
         private readonly Control MessageScroll = new Button();
-        private Control? _terminalView = null;
+        private void BindTerminalAppearance(OpenCodePersistentPtyView view) { }
         private object? _pausedTerminal = null;
         internal bool HasPausedCoreShell => _pausedTerminal is not null;
         private void CloseTerminalView(bool restoreFocus = true) { }

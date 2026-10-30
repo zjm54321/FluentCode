@@ -133,7 +133,7 @@ public static class OpenCodeSubagentPresentation
             return false;
         }
 
-        var state = OpenCodeToolStates.Read(part.State);
+        var state = OpenCodeToolStates.ReadPart(part);
 
         var agent = NonEmpty(StringProperty(state?.Input, "agent"));
         var description = NonEmpty(StringProperty(state?.Input, "description"));

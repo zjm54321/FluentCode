@@ -51,7 +51,7 @@ internal sealed class OpenCodeManualBackgroundIndex
             {
                 if (part.Type != "tool" || part.Id is not { Length: > 0 } partId
                     || partCounts[partId] != 1 || part.Name is not ("shell" or "subagent")
-                    || OpenCodeToolStates.Read(part.State) is not { } state
+                    || OpenCodeToolStates.ReadPart(part) is not { } state
                     || state.Status is not ("running" or "completed")
                     || Text(state.Input, part.Name == "shell" ? "command" : "description") is not { Length: > 0 } title) continue;
                 calls.Add(new(messageId, partId, part.Name, title, i,

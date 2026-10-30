@@ -15,8 +15,11 @@ internal static partial class Program
         Check(entries.Select(e => e.Kind).SequenceEqual(new[] { OpenCodeComposerPlusMenuKind.Attach,
             OpenCodeComposerPlusMenuKind.Separator, OpenCodeComposerPlusMenuKind.Command,
             OpenCodeComposerPlusMenuKind.Context, OpenCodeComposerPlusMenuKind.Terminal }), "plus native menu order");
+        Check(entries.Where(e => e.Kind != OpenCodeComposerPlusMenuKind.Separator).Select(e => e.Glyph)
+            .SequenceEqual(new[] { "\uE723", "\uE945", "\uE168", "\uE756" }),
+            "plus icons: attach paperclip, lightning for commands, @ mention for context, command prompt for terminal (same as agent tree)");
         Check(entries.Where(e => e.Kind != OpenCodeComposerPlusMenuKind.Separator).Select(e => e.Text)
-            .SequenceEqual(new[] { "添加附件", "命令（/）", "上下文（@）", "终端（!）" }), "plus menu labels");
+            .SequenceEqual(new[] { "添加附件", "命令", "上下文", "终端" }), "plus menu labels");
         Check(OpenCodeComposerPlusMenu.TerminalTooltip.Contains("Shell")
             && OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, true, false, false, true)
             && !OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, false, false, false, true), "terminal enabled only for editable composer");
@@ -62,6 +65,21 @@ internal static partial class Program
         Check(insert == (" @ ", 2), "explicit context inserts legal token without destroying neighbouring text");
         Check(OpenCodeComposerCharTriggers.MentionInsertion(new("explorer", false)) == "@explorer "
             && OpenCodeComposerCharTriggers.MentionInsertion(new("review", true)) == "@review ", "official agent and skill insertion uses registered ID");
+        var spans = new[] { new AIFrontend.Services.OpenCode.OpenCodePromptContext("explorer", false, 2) };
+        Check(OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 11, true, spans) is { Id: "explorer" }
+            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 2, false, spans) is { Id: "explorer" },
+            "chosen mention deletes as one token: Backspace at its end, Delete at its start");
+        Check(OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 12, true, spans) is null
+            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 7, true, spans) is null
+            && OpenCodeComposerCharTriggers.MentionAt("看 @explorex 继续", 11, true, spans) is null
+            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer", 11, true, Array.Empty<AIFrontend.Services.OpenCode.OpenCodePromptContext>()) is null,
+            "trailing space, mid-token caret, stale span (text no longer matches) and typed-only @text stay ordinary characters");
+        Check(OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 6, 5, spans) == 11
+            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 6, 11, spans) == 2
+            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 11, 3, spans) == 11
+            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 2, 9, spans) == 2
+            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorex 继续", 6, 5, spans) == 6,
+            "caret never rests inside a chosen mention: it hops to the edge it was moving towards; edges and stale spans untouched");
 
         using var f = new Fixture();
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NoContent));
@@ -83,13 +101,14 @@ internal static partial class Program
         {
             uris.Add(Uri.UnescapeDataString(r.RequestUri!.AbsoluteUri));
             return Task.FromResult(Json(r.RequestUri.AbsolutePath.EndsWith("/agent")
-                ? """{"location":{"directory":"/repo"},"data":[{"id":"explorer","name":"Explore","request":{},"mode":"subagent","hidden":false,"permissions":[]},{"id":"hidden","name":"Hidden","request":{},"mode":"subagent","hidden":true,"permissions":[]},{"id":"primary","name":"Primary","request":{},"mode":"primary","hidden":false,"permissions":[]},{"id":"all","name":"All","request":{},"mode":"all","hidden":false,"permissions":[]}]}"""
+                ? """{"location":{"directory":"/repo"},"data":[{"id":"explorer","name":"Explore","request":{},"mode":"subagent","hidden":false,"color":"#A1B2C3","permissions":[]},{"id":"hidden","name":"Hidden","request":{},"mode":"subagent","hidden":true,"permissions":[]},{"id":"primary","name":"Primary","request":{},"mode":"primary","hidden":false,"permissions":[]},{"id":"all","name":"All","request":{},"mode":"all","hidden":false,"permissions":[]}]}"""
                 : """{"location":{"directory":"/repo"},"data":[{"id":"review","name":"Review","path":"/repo/SKILL.md","content":"private skill content","description":"Review changes"}]}"""));
         };
         var found = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "", CancellationToken.None);
         Check(uris.Count == 2 && uris.Any(u => u.Contains("/api/agent?")) && uris.Any(u => u.Contains("/api/skill?"))
             && uris.All(u => u.Contains("location[directory]=/repo") && !u.Contains("/fs/")), "official agent and skill endpoints with exact deepObject directory; no filesystem");
         Check(found.Count == 3 && found[0].Id == "explorer" && found[1].Id == "all" && found[2].IsSkill, "visible subagent/all agents plus skills, never hidden or primary");
+        Check(found[0].Color == "#A1B2C3" && found[1].Color is null && found[2].Color is null, "agent rows carry the runtime colour for the picker-identical icon; skills none");
         var filtered = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "REVIEW", CancellationToken.None);
         Check(filtered.Count == 1 && filtered[0].Id == "review" && filtered[0].IsSkill, "case-insensitive context filtering");
 
@@ -163,6 +182,23 @@ internal static partial class Program
         Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts is { Count: 1 } restored && restored[0].Id == "review", "slot restoration preserves context identity and span");
         f.Core.DiscardDraft(f.Core.Snapshot.Token);
         Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts.Count == 0, "discard clears contexts");
+        // Atomic delete + Undo (editor-level: SelectedText removal, then native Undo restores the identical text).
+        f.Text("Prefix Inspect @changed @review @explorer ");
+        Check(f.Core.TryAddContext(f.Core.Snapshot.Token, "review", true, 24) && f.Core.TryAddContext(f.Core.Snapshot.Token, "explorer", false, 32) && f.Core.Snapshot.Mentions.Count == 2
+            && f.Core.Snapshot.Mentions.Any(m => m.Id == "explorer" && m.Start == 32), "snapshot exposes the exact chosen mention spans for the chip layer");
+        var beforeDelete = f.Core.Snapshot.Text;
+        var token = OpenCodeComposerCharTriggers.MentionAt(beforeDelete, 41, true, f.Core.Snapshot.Mentions)!;
+        f.Text(beforeDelete.Remove(token.Start, token.End - token.Start));
+        Check(f.Core.Snapshot.Text == "Prefix Inspect @changed @review  " && f.Core.Snapshot.Mentions.Count == 1,
+            "one Backspace removes all of @explorer and its sent agent part; the other mention keeps its span");
+        f.Text(beforeDelete);
+        Check(f.Core.Snapshot.Mentions.Count == 1 && f.Core.TryAddContext(f.Core.Snapshot.Token, token.Id, token.IsSkill, token.Start)
+            && f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts.Count == 2,
+            "Undo restoring the identical text re-attaches the same context at the same span (view re-raises ContextChosen)");
+        Check(view.Contains("RestoreUndoneMention();") && view.Contains("if (text != deleted.Before || !deleted.Mention.Matches(text)) return;")
+            && view.Contains("editor.SelectedText = string.Empty;") && view.Contains("if (_editor is { SelectionLength: 0 } editor && !_composing && !_guardedWrite)")
+            && view.Contains("e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && TryDeleteMentionToken("),
+            "atomic delete is native/undoable, never during IME composition; caret snapping skips composition and guarded writes");
         Console.WriteLine($"PASS: B7 {checks - before} menu/trigger/context/cancellation/empty/error/wiring assertions; synthetic HTTP, no native UI execution.");
     }
 }

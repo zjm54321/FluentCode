@@ -41,7 +41,7 @@ public sealed class CompletionNotificationService : IDisposable
 }
 
 public enum NotificationServiceStatus { NotInitialized, Initialized, Unsupported, Failed, Disposed }
-public enum NotificationDispatchStatus { Submitted, Duplicate, Unavailable, Failed }
+public enum NotificationDispatchStatus { Submitted, Duplicate, Unavailable, Failed, Suppressed }
 
 public readonly record struct NotificationDispatchResult(
     NotificationDispatchStatus Status, NotificationSource Source, string RequestId, string? Detail);
@@ -80,6 +80,7 @@ Dispose 不能撤回服务器已收到的决定；取消提交可能返回 Outco
 | `Duplicate` | 去重窗口内同一 (source, requestId) 已提交或提交中 | 否 |
 | `Unavailable` | 未初始化 / 平台不支持 / 注册失败 / 已释放 | 否 |
 | `Failed` | 参数非法（未知来源、requestId 不合规）或构建 / `Show` 抛异常 | 视路径 |
+| `Suppressed` | OpenCode 会话当前在前台显示，已消费该完成事件，之后不补发 | 否 |
 
 - `Submitted` **不代表用户一定看到横幅**：勿扰、通知设置、焦点助手等都可能抑制显示；
   Microsoft Learn 另注明 elevated（管理员）应用当前不支持通知。本服务不、也无法保证用户可见性。
@@ -197,7 +198,7 @@ public sealed class TrustedOpenCodeNotificationSource
 public enum NotificationInteractionStatus
 {
     Prepared, Submitted, Succeeded, Navigate, InvalidInput, Duplicate, Expired,
-    NeedsApp, Unavailable, Cancelled, Failed, OutcomeUnknown
+    NeedsApp, Unavailable, Cancelled, Failed, OutcomeUnknown, Suppressed
 }
 
 public sealed record NotificationInteractionResult(

@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AIFrontend.Services.OpenCode;
 
@@ -62,14 +63,14 @@ public sealed partial class OpenCodeClient
             throw new OpenCodeApiException((int)response.StatusCode, null, null,
                 $"OpenCode 服务返回 HTTP {(int)response.StatusCode}（GET api/event）。");
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
         using var readIdle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var reader = new StreamReader(new EventActivityStream(stream, readIdle, readIdleTimeout), Encoding.UTF8);
         var data = new StringBuilder();
         string? eventName = null;
         while (true)
         {
             string? line;
-            // Every line counts, including the server's 15-second heartbeat comments.
+            // Every byte read resets the watchdog, including partial lines and heartbeat comments.
             readIdle.CancelAfter(readIdleTimeout);
             try { line = await reader.ReadLineAsync(readIdle.Token).ConfigureAwait(false); }
             catch (OperationCanceledException)
@@ -102,5 +103,29 @@ public sealed partial class OpenCodeClient
             else if (line.StartsWith("event:", StringComparison.Ordinal)) eventName = line[6..].Trim();
         }
         throw new OpenCodeTransportException("OpenCode 事件流已结束；需要重新订阅并刷新。");
+    }
+
+    private sealed class EventActivityStream(Stream inner, CancellationTokenSource idle, TimeSpan timeout) : Stream
+    {
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            idle.CancelAfter(timeout);
+            var count = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (count > 0) idle.CancelAfter(timeout);
+            return count;
+        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        // The outer await-using owns inner; disposing the reader only disposes this adapter.
     }
 }

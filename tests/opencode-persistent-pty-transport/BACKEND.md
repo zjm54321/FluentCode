@@ -14,12 +14,6 @@ Assigned-controller consent cases cover both `attached(role=controller)` and obs
 
 Fake-renderer resource regressions verify exact authoritative checkpoint bytes on `ResetAsync` (an 8 MiB + 1 byte snapshot) and `ResizeAsync` (an ordered socket checkpoint rejected by the fake renderer). Throwing `PersistentPtyException("unsupported-renderer-state")` ends the run as disarmed `Unavailable`, with one bootstrap, no extra attachment/control/input, proper detach and idempotent controller disposal. The UI adapter owns ≤1 MiB output chunking/ACK order and >8 MiB checkpoint rejection before WebView creation; these tests change no wire limits or native UI code.
 
-For an actual installed OpenCode/native PTY pair, first compile the backend harness, then run:
-
-```text
-node real-fixture.mjs <opencode binary> <opencode-pty binary> <Windows dotnet.exe> <Windows assembly path> <evidence directory>
-```
-
-The launcher creates a fresh `/tmp/opencode/aif-phase2-pty-real-*` HOME/config/cache/data/state/runtime/DB and empty cwd, starts its own server on port 0, and invokes the production C# HTTP/WebSocket/controller harness against it. The test creates one `/bin/sh`/`cat` terminal, opens two passive observers, explicitly transfers control twice, observes output in both, verifies auto-promotion is disarmed, proves detach leaves the process alive, validates retained raw-byte replay, then removes only its terminal. The launcher terminates only its new process group. No user service, terminal, configuration, credentials or database is used. Missing native binaries must be reported as a skipped real-PTY test, not a simulated success.
+The separate live-service launcher was removed when the suite was pruned on 2026-10-30; only `run-backend.ps1` remains an entrypoint. See [the critical suite](../../docs/test-suite.md).
 
 UI renderer tests remain untouched in the separate `tests/opencode-persistent-pty/` directory. These backend checks do not open a WinUI window or perform combined application acceptance.

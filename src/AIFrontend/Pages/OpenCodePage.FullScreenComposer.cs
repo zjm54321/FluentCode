@@ -108,6 +108,7 @@ public sealed partial class OpenCodePage
         _fullScreenModel = new Button(); _fullScreenEffort = new Button();
         _fullScreenAgent.Click += ComposerAgentButton_Click;
         _fullScreenModel.Click += ComposerModelButton_Click;
+        OpenCodePickerInput.Track(_fullScreenModel);
         _fullScreenEffort.Click += ComposerEffortButton_Click;
         choices.Children.Add(_fullScreenAgent); choices.Children.Add(_fullScreenModel); choices.Children.Add(_fullScreenEffort);
         footer.Children.Add(choices);

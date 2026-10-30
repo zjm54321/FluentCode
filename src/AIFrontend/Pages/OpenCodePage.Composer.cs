@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Pages.OpenCode;
@@ -41,6 +42,7 @@ public sealed partial class OpenCodePage
         ConfigureComposerDelivery(true);
         _composerController = new(OwnsComposerBinding);
         _composerView = new(GetComposerSnapshot, _composerController.BeginCatalogLifetime, _composerController.EndCatalogLifetime);
+        _composerView.SplashModelIdProvider = ComposerSplashModelId;
         _composerView.MentionSearchProvider = ComposerMentionSearch;
         _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || FullScreenComposerActive || !_pageActive);
         InitializeComposerLayout();
@@ -76,10 +78,28 @@ public sealed partial class OpenCodePage
         };
         _composerView.CommandRemoved += (_, e) => _composerController.RemoveCommand(e.Token);
         _composerView.AttachmentRemoved += (_, e) => _composerController.RemoveAttachment(e.Token, e.Id);
+        _composerView.AttachmentImageOpened += (_, e) => OpenCodeComposerAttachmentImageViewer.Open(e);
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
         InitializeComposerPaste();
         InitializeShellComposer();
         _agentSelector.DisplayChanged += (_, _) => RefreshChildComposerVisibility();
+    }
+
+    private string? ComposerSplashModelId()
+    {
+        if (_newSessionDraftActive)
+        {
+            var value = _blankPreferences;
+            return value is not null && value.BlankSlotId == _activeBlankSlotId
+                && value.Matches(_homeRuntimeSource, _composerController!.Snapshot.Token.Draft)
+                ? value.Model?.Id : null;
+        }
+        if (ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision
+            && _agentSelectorSessionId == _selectedSessionId && _agentSelector.CurrentModel?.Id is { } selected)
+            return selected;
+        return _selectedSessionId is { } sessionId && _messageWindowAccepted && IsSameMessageBinding(sessionId, _messageBinding?.Directory)
+            ? ProjectMessageHistory(MergeMessageHistory()).LastOrDefault(m => m.Type == OpenCodeMessageTypes.Assistant)?.Model?.Id
+            : null;
     }
 
     private OpenCodeComposerMentionSearch? ComposerMentionSearch()
@@ -125,9 +145,16 @@ public sealed partial class OpenCodePage
 
     private void OnComposerSnapshotChanged(object? sender, OpenCodeComposerSnapshotChangedEventArgs e)
     {
-        if (_draftSlotChanging) return;
-        RefreshComposerView(); // Never render a queued event payload.
-        CheckNativeEditorOwnership();
+        // Catalog/attachment completions publish from worker threads. Marshal the whole page
+        // callback: RefreshComposerView touches WinUI before the view's own render dispatcher.
+        void Refresh()
+        {
+            if (_draftSlotChanging) return;
+            RefreshComposerView(); // Pull current state after dispatch, never the queued event payload.
+            CheckNativeEditorOwnership();
+        }
+        if (DispatcherQueue.HasThreadAccess) Refresh();
+        else DispatcherQueue.TryEnqueue(Refresh);
     }
 
     private void RefreshComposerView()

@@ -28,6 +28,8 @@ public sealed partial class OpenCodePage
         _composerConnectedDot.Style = OpenCodeInsightsTheme.Dot(OpenCodeInsightsTheme.Success);
         _insights!.Changed += (_, _) => QueueSessionControlCardRefresh();
         BindNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton);
+        InitializeComposerContextMenu();
+        InitializeComposerMentionChips();
         RefreshComposerToolbar();
     }
 
@@ -131,11 +133,43 @@ public sealed partial class OpenCodePage
         else OpenSessionControlModelPicker(variantOnly: true);
     }
 
+    // Segoe Fluent Icons: BlockContact (person with prohibition) / Contact / People / Group.
+    internal static string SubagentGlyph(int running) => running switch
+    {
+        <= 0 => "\uE8F8",
+        1 => "\uE77B",
+        2 => "\uE716",
+        _ => "\uE902",
+    };
+
+    internal static string SubagentsLabel(int running)
+        => running <= 0 ? "后台子智能体：无运行中" : "后台子智能体：" + running + " 个运行中";
+
+    private void RenderSubagentCount(int running)
+    {
+        ComposerSubagentsGlyph.Glyph = SubagentGlyph(running);
+        DescribeComposerIcon(ComposerSubagentsButton, SubagentsLabel(running));
+    }
+
+    private OpenCodeComposerMentionChips? _mentionChips;
+
+    private void InitializeComposerMentionChips()
+    {
+        if (_composerView is not { } view || _composerController is not { } controller) return;
+        _mentionChips = new OpenCodeComposerMentionChips(Composer, ComposerMentionLayer, () => view.MentionSpans, view.MentionColor);
+        // Context spans change on the controller (choose / edit / undo restore); repaint on the UI thread.
+        controller.SnapshotChanged += (_, _) => DispatcherQueue.TryEnqueue(() => _mentionChips.Refresh());
+    }
+
     private void ComposerSubagentsButton_Click(object sender, RoutedEventArgs e)
         => SessionPaneToggleButton_Click(sender, e); // B1 owns drawers; B4 owns their agent tree.
 
     private void ComposerConnectionButton_Click(object sender, RoutedEventArgs e)
-        => ConnectionFlyout.ShowAt(ComposerConnectionButton);
+    {
+        // Narrow: the dot carries the 概况 footer (directory + version); its › row opens the same connection details.
+        if (_composerOverviewInDot && _composerOverviewFlyout is { } overview) overview.ShowAt(ComposerConnectionButton);
+        else ConnectionFlyout.ShowAt(ComposerConnectionButton);
+    }
 
     partial void SetComposerConnectedDot(bool connected)
         => ComposerConnectionButton.Visibility = connected ? Visibility.Visible : Visibility.Collapsed;

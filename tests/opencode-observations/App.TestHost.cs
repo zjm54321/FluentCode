@@ -28,6 +28,8 @@ namespace AIFrontend
         private readonly object _integrationSync = new();
         private bool _closing = false;
         private OpenCodeNotificationMonitor? _openCodeMonitor;
+        private CompletionNotificationService? _completionNotifications;
+        internal void SetNotificationService(CompletionNotificationService service) => _completionNotifications = service;
         private OpenCodePageSource? _openCodePageSource;
         private long _openCodeSourceRevision;
         private string? _openCodeEndpointIdentity;

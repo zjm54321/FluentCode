@@ -60,10 +60,25 @@
           "AngleSharp": "[1.5.0, 2.0.0)"
         }
       },
+      "CI.Microsoft.Terminal.WinUI3.Unofficial": {
+        "type": "Transitive",
+        "resolved": "1.0.20-beta.1",
+        "contentHash": "zz3TJOexHz2yAx93agYwcpyeUwuQBtrZpDVzxbT9m101kolbKoqSDxQylplq4S46tmjCTPChjhIFej8HoFdC8w==",
+        "dependencies": {
+          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.1742",
+          "Microsoft.WindowsAppSDK": "1.7.250310001",
+          "WinUIEx": "2.5.1"
+        }
+      },
       "Microsoft.Web.WebView2": {
         "type": "Transitive",
         "resolved": "1.0.3179.45",
         "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
+      },
+      "Microsoft.Windows.CsWinRT": {
+        "type": "Transitive",
+        "resolved": "2.3.1",
+        "contentHash": "ojoYrj8m8mAx6LVxofQXgfvsReDTv2LQFeDgXt5Lw99r5fv7dCR19ybd1JN0OueaWvL+BNqv0E7zZCgqptP9zA=="
       },
       "Microsoft.Windows.SDK.BuildTools.MSIX": {
         "type": "Transitive",
@@ -154,9 +169,41 @@
         "type": "Transitive",
         "resolved": "9.0.0",
         "contentHash": "hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A=="
+      },
+      "WinUIEx": {
+        "type": "Transitive",
+        "resolved": "2.5.1",
+        "contentHash": "ihW4bA2quKbwWBOl5Uu80jBZagc4cT4E6CdExmvSZ05Qwz0jgoGyZuSTKcU9Uz7lZlQij3KxNor0dGXNUyIV9Q==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK": "1.6.240829007"
+        }
+      },
+      "windowsterminalcontrol.core": {
+        "type": "Project"
+      },
+      "windowsterminalcontrol.winui": {
+        "type": "Project",
+        "dependencies": {
+          "CI.Microsoft.Terminal.WinUI3.Unofficial": "[1.0.20-beta.1, )",
+          "Microsoft.Windows.CsWinRT": "[2.3.1, )",
+          "Microsoft.Windows.SDK.BuildTools": "[10.0.26100.9169, )",
+          "Microsoft.WindowsAppSDK": "[1.8.260921001, )",
+          "WinUIEx": "[2.5.1, )",
+          "WindowsTerminalControl.Core": "[0.1.0, )"
+        }
       }
     },
     "net10.0-windows10.0.26100/win-x64": {
+      "CI.Microsoft.Terminal.WinUI3.Unofficial": {
+        "type": "Transitive",
+        "resolved": "1.0.20-beta.1",
+        "contentHash": "zz3TJOexHz2yAx93agYwcpyeUwuQBtrZpDVzxbT9m101kolbKoqSDxQylplq4S46tmjCTPChjhIFej8HoFdC8w==",
+        "dependencies": {
+          "Microsoft.Windows.SDK.BuildTools": "10.0.26100.1742",
+          "Microsoft.WindowsAppSDK": "1.7.250310001",
+          "WinUIEx": "2.5.1"
+        }
+      },
       "Microsoft.Web.WebView2": {
         "type": "Transitive",
         "resolved": "1.0.3179.45",

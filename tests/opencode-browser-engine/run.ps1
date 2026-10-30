@@ -9,6 +9,11 @@ New-Item -ItemType Directory -Path $EvidenceRoot|Out-Null
 $sources=@('OpenCodeBrowserContracts.cs','OpenCodeBrowserPolicy.cs','OpenCodeBrowserNavigation.cs','OpenCodeBrowserInput.cs','OpenCodeBrowserSnapshot.cs','OpenCodeBrowserText.cs','OpenCodeBrowserGeometry.cs','OpenCodeBrowserFrames.cs','OpenCodeBrowserFrameGeometry.cs','OpenCodeBrowserInspection.cs','OpenCodeBrowserProfileAnalysis.cs','OpenCodeBrowserSelectionPolicy.cs')|ForEach-Object{"$repo/src/AIFrontend/Services/OpenCode/Browser/$_"}
 $sources+="$PSScriptRoot/SelectionTests.cs"
 $sources+="$PSScriptRoot/FrameTests.cs"
+@('OpenCodeBrowserPeerManager.cs','OpenCodeBrowserPeer.cs','OpenCodeBrowserPeerBinding.cs','OpenCodeBrowserEventFeed.cs','OpenCodeBrowserAttachmentLease.cs')|ForEach-Object{$sources+="$repo/src/AIFrontend/Services/OpenCode/Browser/$_"}
+$sources+="$repo/src/AIFrontend/Pages/OpenCodePage.BrowserPeer.cs"
+$sources+="$repo/src/AIFrontend/Pages/OpenCodePage.BrowserChildren.cs"
+$sources+="$PSScriptRoot/ChildPeerHost.cs"
+$sources+="$PSScriptRoot/ChildPeerTests.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlayLayout.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectionScript.cs"
 $sources+="$repo/src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectionViewport.cs"

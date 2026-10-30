@@ -1,0 +1,12 @@
+<Project>
+  <!-- Opt-in scratch builds keep every referenced project's NuGet/XAML intermediates separate. -->
+  <PropertyGroup Condition="'$(AifScratchRoot)' != ''">
+    <BaseIntermediateOutputPath>$(AifScratchRoot)\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+    <OutputPath>$(AifScratchRoot)\bin\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <!-- Redirecting obj must not make the normal build's generated .cs files source inputs. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)\obj\**;$(MSBuildProjectDirectory)\bin\**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

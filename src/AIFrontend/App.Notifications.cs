@@ -48,7 +48,7 @@ public partial class App
     {
         // OpenCode exclusively uses the complete event, never this legacy partial routing event.
         if (args.IsCompletionAction && args.Source == NotificationSource.LocalApi)
-            PostToApp(() => _window?.Activate());
+            PostToApp(ShowMainWindow);
     }
 
     private void OnOpenCodeNavigation(object? sender, NotificationNavigationEventArgs args)
@@ -57,8 +57,7 @@ public partial class App
         {
             PostToApp(() =>
             {
-                if (_window?.AppWindow.Presenter is OverlappedPresenter presenter) presenter.Restore();
-                _window?.Activate();
+                ShowMainWindow();
                 RaiseAppEvent(LocalNavigationRequested, args);
             });
             return;
@@ -72,6 +71,7 @@ public partial class App
         if (_closing || target.Source != NotificationSource.OpenCode) return;
         if (OpenCodeEndpointIdentity is { } endpoint && endpoint != target.EndpointIdentity)
         { RecordDiagnostic("navigation-stale-endpoint"); return; }
+        ShowMainWindow(); // A toast click wakes the UI even while navigation waits for source readiness.
         if (!_navigationSeen.Add(target)) return;
         if (_pendingNavigation.Count >= 64)
         {
@@ -90,8 +90,7 @@ public partial class App
             try
             {
                 if (target.EndpointIdentity != OpenCodeEndpointIdentity) { RecordDiagnostic("navigation-stale-endpoint"); continue; }
-                if (_window?.AppWindow.Presenter is OverlappedPresenter presenter) presenter.Restore();
-                _window?.Activate();
+                ShowMainWindow();
                 RaiseAppEvent(OpenCodeNavigationRequested, new NotificationNavigationEventArgs(target));
             }
             finally { _navigationSeen.Remove(target); } // Queued/in-flight only; later clicks must navigate again.
@@ -120,6 +119,17 @@ public partial class App
         if (_allowWindowClose) return;
         args.Cancel = true; // Keep the message loop alive while the bounded HTTP/monitor cancellation drains.
         if (_closing || _window is not MainWindow window) return;
+        if (ShouldHideWindowOnClose())
+        {
+            window.HideToBackground();
+            return;
+        }
+        await CloseWindowAfterShutdownAsync(window);
+    }
+
+    private async Task CloseWindowAfterShutdownAsync(MainWindow window)
+    {
+        if (_closing) return;
         BeginWindowShutdown(window);
         try { await ShutdownCompletion; }
         finally
@@ -143,7 +153,9 @@ public partial class App
 
     private void BeginWindowShutdown(MainWindow window)
     {
+        if (!_backgroundLifetime.TryBeginShutdown()) return;
         _closing = true;
+        ShutdownBackgroundMode();
         _navigationReady = false;
         _pendingNavigation.Clear();
         _navigationSeen.Clear();

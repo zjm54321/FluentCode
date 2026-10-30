@@ -5,7 +5,7 @@ using AIFrontend.Services.OpenCode;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>Read-only shell output state. Cursors are server byte offsets, never string lengths.</summary>
-internal sealed class OpenCodeTerminalState
+internal sealed class OpenCodeShellTerminalState
 {
     internal string? ShellId { get; private set; }
     internal string Command { get; private set; } = string.Empty;
@@ -70,9 +70,6 @@ internal sealed class OpenCodeTerminalState
     }
 
     internal void Close() { ShellId = null; Running = false; HasMore = false; }
-
-    internal static bool ShouldFollow(bool following, double offset, double scrollableHeight)
-        => following || scrollableHeight - offset <= 2;
 
     private static string Timestamp(double milliseconds)
         => DateTimeOffset.UnixEpoch.AddMilliseconds(milliseconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);

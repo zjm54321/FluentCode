@@ -86,7 +86,7 @@ internal static class NotificationFormPolicy
         int budget = 240 / form.Fields!.Count;
         return NotificationText.SingleLine(string.Join("；", form.Fields.Select(f =>
         {
-            string prompt = NotificationText.SingleLine(f.Title ?? f.Key, 32) + "：" + f.Description;
+            string prompt = NotificationText.SingleLine(f.Title ?? f.Key, 32) + "：" + NotificationText.PlainMarkdown(f.Description);
             bool numbered = f.Options is { Count: > 0 } && (f.Type == "multiselect" || f.Options.Count > MaxChoices);
             if (!numbered) return NotificationText.SingleLine(prompt, budget);
             string options = string.Join(" / ", f.Options!.Select((o, i) => $"#{i + 1} {o.Label}"));

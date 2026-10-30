@@ -32,7 +32,7 @@ internal sealed class OpenCodePersistentPtyRendererAdapter : IPersistentPtyRende
 
     public async ValueTask ResetAsync(PersistentPtyEpoch epoch, PersistentPtySize size, ReadOnlyMemory<byte> checkpoint, CancellationToken cancellationToken)
     {
-        Validate(size, checkpoint.Length); // Reject unsupported state BEFORE allocating/initializing any WebView.
+        Validate(size, checkpoint.Length); // Reject unsupported state before allocating a native parser/window.
         if (epoch.Value < Volatile.Read(ref _epoch)) throw new OperationCanceledException("旧终端代际已失效。", cancellationToken);
         Interlocked.Exchange(ref _epoch, epoch.Value);
         await RenderAsync(epoch, async ct =>
@@ -58,7 +58,7 @@ internal sealed class OpenCodePersistentPtyRendererAdapter : IPersistentPtyRende
         => RenderAsync(epoch, async ct =>
         {
             // A transport frame may exceed the local renderer's bounded message size.
-            // Chunks remain byte-exact/in-order; xterm retains its UTF-8 decoder between writes.
+            // Chunks remain byte-exact/in-order; the native surface retains its UTF-8 decoder between writes.
             for (var offset = 0; offset < bytes.Length;)
             {
                 Require(epoch, ct);
@@ -79,7 +79,8 @@ internal sealed class OpenCodePersistentPtyRendererAdapter : IPersistentPtyRende
             await _dispatch(async () => { Require(epoch, ct); await render(ct); Require(epoch, ct); }).WaitAsync(ct).ConfigureAwait(false);
             Require(epoch, ct);
         }
-        catch (Exception error) when (error is TimeoutException or System.IO.InvalidDataException)
+        catch (Exception error) when (error is TimeoutException or System.IO.InvalidDataException
+            or System.Runtime.InteropServices.COMException or System.ComponentModel.Win32Exception or InvalidCastException)
         { throw new PersistentPtyException("unsupported-renderer-state"); }
         finally { _order.Release(); }
     }

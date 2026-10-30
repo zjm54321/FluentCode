@@ -28,11 +28,13 @@ public sealed partial class OpenCodePage
     private string? _treeMessageSignature;
     private bool _treeRefreshQueued;
     private bool _treeLoading;
+    private bool _treeChildrenAccepted;
     private bool _treeReload;
     private string? _treeDirectory;
     private string? _treeHint;
     private SessionReturnTarget? _treeParentTarget;
     private bool _treeParentReturnBusy;
+    partial void OnBrowserAgentTreeChanged();
 
     private sealed record TreeBinding(OpenCodePageSource Source, long Revision, int SourceGeneration,
         OpenCodeClient Client, int PageGeneration, int SessionGeneration, string SessionId);
@@ -45,6 +47,7 @@ public sealed partial class OpenCodePage
         _agentTree.SessionRequested += id => _ = OpenAgentTreeChildAsync(id);
         _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
         _agentTree.ShellRequested += OpenTerminalView;
+        InitializeChildReturn();
         Loaded += (_, _) => QueueAgentTreeRefresh();
         Unloaded += (_, _) => { if (!IsLoaded) ResetAgentTree(); };
     }
@@ -75,9 +78,13 @@ public sealed partial class OpenCodePage
         _treeDirectory = null;
         _treeHint = null;
         _treeLoading = false;
+        _treeChildrenAccepted = false;
         _treeReload = false;
+        OnBrowserAgentTreeChanged();
         _agentTree.Reset();
         LeftAgentTreeSlot.Visibility = Visibility.Collapsed;
+        RefreshChildReturnButton();
+        RenderSubagentCount(0);
     }
 
     partial void OnAgentTreeReset()
@@ -142,6 +149,7 @@ public sealed partial class OpenCodePage
             if (_treeParentTarget is not null)
             {
                 _agentTree.ShowParentReturn(!_treeParentReturnBusy);
+                RefreshChildReturnButton();
                 return; // A child session replaces the entire tree card; do not load its own agent tree.
             }
             var directory = session.Location?.Directory;
@@ -186,6 +194,8 @@ public sealed partial class OpenCodePage
             foreach (var pair in children)
                 _treeChildren[pair.Key] = _treeObservedSteps.TryGetValue(pair.Key, out var step)
                     ? pair.Value with { Agent = step.Agent ?? pair.Value.Agent, Model = step.Model } : pair.Value;
+            _treeChildrenAccepted = true;
+            OnBrowserAgentTreeChanged();
             _treeHint = children.Values.Any(s => !_treeAgents.Any(a => a.Id == s.Agent))
                 ? "部分子会话的智能体不在当前有效配置中" : null;
             try
@@ -232,6 +242,7 @@ public sealed partial class OpenCodePage
     private void RenderAgentTree()
     {
         if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) return;
+        OnBrowserAgentTreeChanged();
         if (_treeParentTarget is not null)
         {
             _agentTree.ShowParentReturn(!_treeParentReturnBusy);
@@ -241,8 +252,9 @@ public sealed partial class OpenCodePage
         foreach (var id in _treeChildren.Keys)
             if (!statuses.ContainsKey(id) && _liveSessionStatuses.TryGetValue(id, out var live) && live.Working)
                 statuses[id] = OpenCodeTreeStatus.Running;
-        _agentTree.Render(OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses),
-            _treeShells.Values.ToArray(), _treeHint);
+        var agents = OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses);
+        RenderSubagentCount(agents.Sum(agent => agent.Children.Count(child => child.Status == OpenCodeTreeStatus.Running)));
+        _agentTree.Render(agents, _treeShells.Values.ToArray(), _treeHint);
     }
 
     private async Task ReturnFromAgentTreeAsync()
@@ -251,6 +263,7 @@ public sealed partial class OpenCodePage
             || _treeParentTarget is not { } parent) return;
         _treeParentReturnBusy = true;
         _agentTree.ShowParentReturn(false);
+        RefreshChildReturnButton();
         try
         {
             // The current GET/session's verified direct parent, never a sidebar or visited-origin guess.
@@ -261,11 +274,17 @@ public sealed partial class OpenCodePage
         {
             _treeParentReturnBusy = false;
             if (IsTreeCurrent(binding)) _agentTree.ShowParentReturn(true);
+            RefreshChildReturnButton();
         }
     }
 
     partial void OnAgentTreeActivityChanged()
     {
+        // The source-wide active snapshot repairs a missed completion, including unopened children.
+        foreach (var child in _treeChildren.Values)
+            if (child.Id is { } id && _liveSessionStatuses.TryGetValue(id, out var live) && !live.Working
+                && _treeStatuses.GetValueOrDefault(id) == OpenCodeTreeStatus.Running)
+                _treeStatuses[id] = OpenCodeAgentTreeProjection.Outcome(child.Outcome);
         RenderAgentTree();
     }
 
@@ -352,6 +371,14 @@ public sealed partial class OpenCodePage
     {
         if (_treeBinding is not { } binding || !IsTreeCurrent(binding)) return;
         var id = item.SessionId;
+        if (item.Type == "session.created" && item.Data.TryGetProperty("info", out var sessionInfo)
+            && sessionInfo.Deserialize<OpenCodeSessionInfo>() is { Id: { Length: > 0 } childId } created
+            && created.ParentId == binding.SessionId)
+        {
+            _treeChildren[childId] = created;
+            RenderAgentTree();
+        }
+        if (item.Type == "session.deleted" && id is not null && _treeChildren.Remove(id)) RenderAgentTree();
         if (item.Type is "agent.updated" or "config.updated" or "session.created" or "session.deleted"
             || item.Type == "session.agent.selected") QueueAgentTreeRefresh();
         if (id is not null)
@@ -365,6 +392,13 @@ public sealed partial class OpenCodePage
                 "session.idle" => OpenCodeTreeStatus.Unknown,
                 _ => (OpenCodeTreeStatus?)null
             };
+            if (item.Type == "session.status" && item.Data.TryGetProperty("status", out var liveStatus))
+                status = OpenCodeAgentTreeProjection.String(liveStatus, "type") switch
+                {
+                    "running" or "busy" or "retry" => OpenCodeTreeStatus.Running,
+                    "idle" => OpenCodeTreeStatus.Unknown,
+                    _ => status
+                };
             if (status.HasValue && !(item.Type == "session.idle" && _treeStatuses.GetValueOrDefault(id) is OpenCodeTreeStatus.Succeeded or OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted))
                 _treeStatuses[id] = status.Value;
             if (item.Type == "session.step.started")
@@ -376,6 +410,7 @@ public sealed partial class OpenCodePage
                     _treeChildren[id] = child with { Agent = agent ?? child.Agent, Model = model };
             }
             if (status.HasValue) RenderAgentTree();
+            if (status == OpenCodeTreeStatus.Running && id != binding.SessionId && !_treeChildren.ContainsKey(id)) QueueAgentTreeRefresh();
         }
         if (item.Type == "shell.created" && item.Data.TryGetProperty("info", out var info))
         {

@@ -385,8 +385,10 @@ public sealed partial class SettingsView : UserControl
         _suppressUiEvents = true;
         try
         {
+            _runInBackgroundToggle.IsOn = _settings.RunInBackground;
             ApplyThemeToUi();
             ApplyFontsToUi();
+            _terminalAppearance.Apply(_settings.TerminalAppearance);
             ApplyProvidersToUi();
             ApplyModelsToUi();
             ApplyBrowserToUi();
@@ -442,6 +444,8 @@ public sealed partial class SettingsView : UserControl
             "外观",
             "主题（跟随系统 / 浅色 / 深色）与字体（正文 / 衬线 / 等宽）。选择后立即保存并应用到整个应用。",
             BuildThemeSection()));
+        _categories.Add(new CategoryEntry("常规", string.Empty, BuildGeneralSection()));
+        _categories.Add(new CategoryEntry("终端", string.Empty, BuildTerminalSection()));
         _categories.Add(new CategoryEntry(
             "OpenCode 后端",
             "连接设置已移至“用户”→“连接 OpenCode”；现有连接与凭据保留。",

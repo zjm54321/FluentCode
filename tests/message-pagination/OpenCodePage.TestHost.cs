@@ -99,6 +99,7 @@ namespace AIFrontend.Pages
     public sealed partial class OpenCodePage
     {
         private OpenCodeEventReducer? _eventReducer = null; // Real reducer is enabled by the controlled readiness cases.
+        private bool _eventProjectionDirty;
         // ---- 替代 OpenCodePage.xaml.cs（未参与本测试编译）的最小页面面 ----
         private readonly OpenCodeConversationView _conversationView = new();
         // F3: no "load older" button; the production partial reports its presentation state through this hook.

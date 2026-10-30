@@ -303,7 +303,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _lastPart = part;
         _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex, FindChild);
         if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question
-            || _model is { Kind: OpenCodeToolKind.Shell, IsBackground: true, ShellId.Length: > 0 })
+            || _model is { Kind: OpenCodeToolKind.Shell, ShellId.Length: > 0 })
             _rowActionSource ??= new RowActionPreviewSource(this);
         else if (_rowActionSource is { } oldActionSource)
         {
@@ -741,6 +741,26 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     private void RefreshInlineContent()
     {
+        if (_model.Kind == OpenCodeToolKind.Shell)
+        {
+            // Transcript remains XAML: a bounded text preview and an explicit shared-overlay action.
+            var output = _model.OutputText ?? string.Empty;
+            var preview = new TextBlock { Text = output.Length > 320 ? output[..320] + "…" : output,
+                MaxLines = 3, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap,
+                IsTextSelectionEnabled = true, FontFamily = new FontFamily("Cascadia Mono") };
+            var panel = new StackPanel { Spacing = 6 };
+            if (output.Length > 0) panel.Children.Add(preview);
+            if (_model.ShellId is { Length: > 0 } id)
+            {
+                var open = new Button { Content = "在终端中打开" };
+                open.Click += (_, _) => { if (!_disposed) TerminalRequested?.Invoke(id); };
+                panel.Children.Add(open);
+            }
+            _inlineRegion.Child = panel;
+            _inlineRegion.Visibility = panel.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ApplyRunningTint();
+            return;
+        }
         _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
         ApplyRunningTint();
         if (!_inlineExpanded) { _inlineRegion.Child = null; return; }

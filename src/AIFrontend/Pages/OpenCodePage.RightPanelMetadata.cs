@@ -24,7 +24,8 @@ public sealed partial class OpenCodePage
         // B1 still moves/restores the original button for narrow layouts. In wide
         // mode only its old host is retired; the footer opens the very same Flyout.
         RightConnectionStatusHost.Visibility = Visibility.Collapsed;
-        _rightPanelMetadata.Footer.Click += (_, _) => ConnectionFlyout.ShowAt(_rightPanelMetadata.Footer);
+        _rightPanelMetadata.Footer.Click += (_, _) => OpenRightPanelConnectionDetails();
+        InitializeComposerOverview();
         _rightPanelMetadata.CopyButton.Click += (_, _) => CopyRightPanelSessionId();
         // Reset may publish before the navigation turn installs its next binding.
         // Reconcile after that turn, never start an old-session read inside Reset.
@@ -91,9 +92,11 @@ public sealed partial class OpenCodePage
         var connected = OpenCodeRightPanelPresentation.ShowConnectedDot(_pageActive, SourceReady, _connection == ConnectionState.Connected);
         view.RenderConnection(info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected);
         SetComposerConnectedDot(connected);
+        RefreshComposerOverviewTip(view.DirectoryText, view.VersionText, connected);
         RightPanelFooterSlot.Visibility = _pageActive && WorkspaceGrid.Visibility == Visibility.Visible
             ? Visibility.Visible : Visibility.Collapsed;
-        RightFooterCard.Visibility = RightPanelFooterSlot.Visibility;
+        // Narrow: its contents live in the composer dot's overview flyout, so the drawer card is empty and hidden.
+        RightFooterCard.Visibility = _composerOverviewInDot ? Visibility.Collapsed : RightPanelFooterSlot.Visibility;
     }
 
     private void CopyRightPanelSessionId()

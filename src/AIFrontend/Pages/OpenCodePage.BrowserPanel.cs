@@ -25,6 +25,9 @@ public sealed partial class OpenCodePage
     private void InitializeBrowserPanel()
     {
         _browserButton = new(); _browserStrip = new();
+        _browserStrip.PageRequested += (owner, page) => { if (owner is OpenCodeBrowserWorkspace workspace && IsBrowserPanelWorkspace(workspace)) workspace.Show(page); };
+        _agentSelector.DisplayChanged += (_, _) => { EnsureBrowserPeers(); RefreshBrowserPanel(); RefreshChildBrowserButton(); };
+        _browserStrip.SetHostVisible(_hostWindowVisible);
         BrowserButtonSlot.Children.Add(_browserButton); BrowserStripSlot.Children.Add(_browserStrip);
         _browserAdd = BrowserCommand("\uE710", "新建浏览器页面");
         _browserMore = BrowserCommand("\uE712", "更多浏览器操作");
@@ -35,7 +38,7 @@ public sealed partial class OpenCodePage
             MarkBrowserDiscovered();
             if (_browserPanelWorkspace is not { } workspace) return;
             var state = _browserPanelStates[workspace];
-            if (workspace.Pages.Count == 0) OpenBrowserPanelPage(); else { state.Toggle(); RenderBrowserPanel(); }
+            if (BrowserPanelGroups().All(group => group.Workspace.Pages.Count == 0)) OpenBrowserPanelPage(); else { state.Toggle(); RenderBrowserPanel(); }
         };
         _browserButton.NewPageRequested += (_, _) => OpenBrowserPanelPage();
         _browserAdd.Click += (_, _) => OpenBrowserPanelPage();
@@ -53,13 +56,14 @@ public sealed partial class OpenCodePage
         var closeAgent = new MenuFlyoutItem { Text = "关闭智能体打开的" };
         var settings = new MenuFlyoutItem { Text = "浏览器设置", IsEnabled = false };
         ToolTipService.SetToolTip(settings, "即将推出");
-        closeAll.Click += (_, _) => { foreach (var page in _browserPanelWorkspace?.Pages.ToArray() ?? Array.Empty<IOpenCodeBrowserPage>()) page.Close(); };
-        closeAgent.Click += (_, _) => { if (_browserPanelWorkspace is { } workspace) foreach (var page in OpenCodeBrowserPanelState.AgentOpened(workspace)) page.Close(); };
-        menu.Opening += (_, _) => { closeAll.IsEnabled = _browserPanelWorkspace?.Pages.Count > 0; closeAgent.IsEnabled = _browserPanelWorkspace is { } workspace && OpenCodeBrowserPanelState.AgentOpened(workspace).Count > 0; };
+        closeAll.Click += (_, _) => { foreach (var page in BrowserPanelGroups().SelectMany(group => group.Workspace.Pages).ToArray()) page.Close(); };
+        closeAgent.Click += (_, _) => { foreach (var page in BrowserPanelGroups().SelectMany(group => group.Workspace.Pages).Where(page => page.OpenedByAgent).ToArray()) page.Close(); };
+        menu.Opening += (_, _) => { var pages = BrowserPanelGroups().SelectMany(group => group.Workspace.Pages).ToArray(); closeAll.IsEnabled = pages.Length > 0; closeAgent.IsEnabled = pages.Any(page => page.OpenedByAgent); };
         menu.Items.Add(closeAll); menu.Items.Add(closeAgent); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(settings); _browserMore.Flyout = menu;
         BrowserWorkspaceCreated += BrowserPanelWorkspaceCreated;
         Loaded += (_, _) =>
         {
+            _browserStrip.SetHostVisible(_hostWindowVisible);
             BrowserWorkspaceCreated -= BrowserPanelWorkspaceCreated;
             BrowserWorkspaceCreated += BrowserPanelWorkspaceCreated;
             RefreshBrowserPanel();
@@ -84,12 +88,13 @@ public sealed partial class OpenCodePage
     {
         if (sender is not OpenCodeBrowserWorkspace workspace || !_browserPanelStates.TryGetValue(workspace, out var state)) return;
         state.AgentActivated(); // BQ4: deliberately no workspace.Show here.
-        if (!ReferenceEquals(workspace, _browserPanelWorkspace)) return;
+        if (!IsBrowserPanelWorkspace(workspace)) return;
+        if (_browserPanelWorkspace is { } parent) _browserPanelStates[parent].AgentActivated();
         RenderBrowserPanel(); _browserStrip?.Flash(page);
     }
     private void BrowserPanelChanged(object? sender, EventArgs e)
     {
-        if (ReferenceEquals(sender, _browserPanelWorkspace)) RenderBrowserPanel();
+        if (sender is OpenCodeBrowserWorkspace workspace && IsBrowserPanelWorkspace(workspace)) RenderBrowserPanel();
     }
     private void MarkBrowserDiscovered()
     {
@@ -105,23 +110,67 @@ public sealed partial class OpenCodePage
         if (_browserPanelWorkspace is not { } workspace) return;
         _browserPanelStates[workspace].Expand(); workspace.OpenPage("about:blank"); RenderBrowserPanel();
     }
+    private void RefreshChildBrowserButton()
+    {
+        ChildBrowserButton.Visibility = IsChildComposerSession && _pageActive && SourceReady && !_sessionMissing && !_sidebarLayout.IsWide
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+    private void ChildBrowserButton_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshBrowserPanel();
+        if (_browserPanelWorkspace is not { } workspace) return;
+        var menu = new MenuFlyout();
+        foreach (var page in workspace.Pages)
+        {
+            var item = new MenuFlyoutItem { Text = string.IsNullOrWhiteSpace(page.Title) ? page.Url : page.Title };
+            item.Click += (_, _) => { if (IsBrowserPanelWorkspace(workspace) && workspace.Pages.Contains(page)) workspace.Show(page); };
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count > 0) menu.Items.Add(new MenuFlyoutSeparator());
+        var add = new MenuFlyoutItem { Text = "新建浏览器页面" };
+        add.Click += (_, _) => { if (ReferenceEquals(workspace, _browserPanelWorkspace)) OpenBrowserPanelPage(); };
+        menu.Items.Add(add); menu.ShowAt(ChildBrowserButton);
+    }
     private void RefreshBrowserPanel()
     {
         if (_browserButton is null) return;
         // Browser local browsing/availability is independent of WSL quick-access eligibility.
         var workspace = _pageActive && SourceReady && !_homeActive && _selectedSessionId is { } session ? GetBrowserWorkspace(session) : null;
         if (workspace is not null) BrowserPanelWorkspaceCreated(this, workspace);
-        _browserPanelWorkspace = workspace; _browserStrip?.Bind(workspace);
+        _browserPanelWorkspace = workspace;
         BrowserButtonSlot.Visibility = workspace is null ? Visibility.Collapsed : Visibility.Visible;
         // Remote sessions retain the browser row even while their WSL buttons are hidden.
         UpdateRightQuickAccessRow();
+        RefreshChildBrowserButton();
         RenderBrowserPanel();
+    }
+    private bool IsBrowserPanelWorkspace(OpenCodeBrowserWorkspace workspace)
+        => _pageActive && SourceReady && !_homeActive && ReferenceEquals(_browserSource, _source)
+        && _browserWorkspaces.TryGetValue(workspace.SessionId, out var owned) && ReferenceEquals(owned, workspace)
+        && (workspace.SessionId == _selectedSessionId || _treeBinding is { } binding && IsTreeCurrent(binding)
+            && _treeChildren.TryGetValue(workspace.SessionId, out var child) && child.ParentId == _selectedSessionId);
+
+    private IReadOnlyList<OpenCodeBrowserStripGroup> BrowserPanelGroups()
+    {
+        if (_browserPanelWorkspace is not { } selected) return Array.Empty<OpenCodeBrowserStripGroup>();
+        var groups = new List<OpenCodeBrowserStripGroup> { new(selected, null) };
+        if (_treeBinding is not { } binding || !IsTreeCurrent(binding) || _treeParentTarget is not null) return groups;
+        foreach (var child in _treeChildren.Values.OrderBy(child => child.Agent).ThenBy(child => child.Time?.Created))
+        {
+            if (child.Id is null || child.ParentId != selected.SessionId || !_browserWorkspaces.TryGetValue(child.Id, out var workspace)) continue;
+            var agent = _treeAgents.FirstOrDefault(agent => agent.Id == child.Agent)?.Name ?? child.Agent ?? "子智能体";
+            groups.Add(new(workspace, agent + " · " + (child.Title ?? child.Id)));
+        }
+        return groups;
     }
     private void RenderBrowserPanel()
     {
+        var groups = BrowserPanelGroups();
+        _browserStrip?.BindGroups(groups);
         var state = _browserPanelWorkspace is { } workspace && _browserPanelStates.TryGetValue(workspace, out var current) ? current : null;
-        var expanded = state?.ShowCommands(_browserPanelWorkspace?.Pages.Count ?? 0) == true;
-        _browserButton?.Render(_browserPanelWorkspace, state, _browserDiscovered);
+        var pages = groups.Sum(group => group.Workspace.Pages.Count);
+        var expanded = state?.ShowCommands(pages) == true;
+        _browserButton?.Render(_browserPanelWorkspace, state, _browserDiscovered, pages);
         BrowserCommandsSlot.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
         _browserStrip?.SetExpanded(expanded);
     }
@@ -129,7 +178,8 @@ public sealed partial class OpenCodePage
     {
         workspace.PageActivatedByAgent -= BrowserPanelAgentActivated; workspace.PagesChanged -= BrowserPanelChanged; workspace.AvailabilityChanged -= BrowserPanelChanged;
         _browserPanelStates.Remove(workspace);
-        if (ReferenceEquals(_browserPanelWorkspace, workspace)) { _browserPanelWorkspace = null; _browserStrip?.Bind(null); RenderBrowserPanel(); }
+        if (ReferenceEquals(_browserPanelWorkspace, workspace)) _browserPanelWorkspace = null;
+        RenderBrowserPanel();
     }
     private void ReleaseBrowserPanelWorkspaces()
     {

@@ -609,6 +609,19 @@ internal static class Program
             Check(await next && heartbeat.Current.Type == "server.connected", "event arrives after heartbeat-only interval longer than idle limit");
         }
         handler.Stream = new LineStream();
+        await using (var chunks = client.SubscribeEventsAsync(safety.Token, TimeSpan.FromSeconds(1)).GetAsyncEnumerator())
+        {
+            var next = chunks.MoveNextAsync().AsTask();
+            foreach (var chunk in new[] { "data: ", "{\"type\":", "\"server.connected\",", "\"data\":", "{}", "}" })
+            {
+                handler.Stream.WriteChunk(chunk);
+                await Task.Delay(250, safety.Token);
+                Check(!next.IsCompleted, "partial SSE bytes keep the read alive before a newline exists");
+            }
+            handler.Stream.WriteChunk("\n\n");
+            Check(await next && chunks.Current.Type == "server.connected", "byte-active partial frame completes after longer than the read-idle limit");
+        }
+        handler.Stream = new LineStream();
         using var caller = new CancellationTokenSource();
         await using var cancelled = client.SubscribeEventsAsync(caller.Token, TimeSpan.FromSeconds(5)).GetAsyncEnumerator();
         var pending = cancelled.MoveNextAsync().AsTask();
@@ -628,6 +641,7 @@ internal static class Program
     {
         private readonly Channel<byte[]> _lines = Channel.CreateUnbounded<byte[]>();
         internal void WriteLine(string line) => _lines.Writer.TryWrite(Encoding.UTF8.GetBytes(line + "\n"));
+        internal void WriteChunk(string chunk) => _lines.Writer.TryWrite(Encoding.UTF8.GetBytes(chunk));
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
         {
             var line = await _lines.Reader.ReadAsync(ct);

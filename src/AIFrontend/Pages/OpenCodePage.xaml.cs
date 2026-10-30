@@ -873,12 +873,12 @@ public sealed partial class OpenCodePage : Page
             _pollTimer.Tick += PollTimer_Tick;
         }
 
-        _pollTimer.Start();
+        if (_hostWindowVisible) _pollTimer.Start();
     }
 
     private void PollTimer_Tick(DispatcherQueueTimer sender, object args)
     {
-        if (!_pageActive || _isRefreshing)
+        if (!_pageActive || !_hostWindowVisible || _isRefreshing)
         {
             return;
         }
@@ -3562,6 +3562,7 @@ public sealed partial class OpenCodePage : Page
         _isComposing = false;
         _shiftDown = false;
         _enterDown = false;
+        QueueDeferredComposerOverlayRefresh();
     }
 
     private void Composer_KeyUp(object sender, KeyRoutedEventArgs e)
@@ -3587,6 +3588,7 @@ public sealed partial class OpenCodePage : Page
     {
         _isComposing = false;
         _lastCompositionEndedAt = DateTimeOffset.UtcNow;
+        QueueDeferredComposerOverlayRefresh();
     }
 
     private bool IsShiftDown()

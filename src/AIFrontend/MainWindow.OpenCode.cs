@@ -451,7 +451,7 @@ public sealed partial class MainWindow
     /// <summary>AppWindow presenter 变化（最小化 / 还原等）：重算窗口可见性。</summary>
     private void ShellAppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
     {
-        if (args.DidPresenterChange)
+        if (args.DidPresenterChange || args.DidVisibilityChange)
         {
             UpdateOpenCodeWindowVisibility();
         }
@@ -475,13 +475,15 @@ public sealed partial class MainWindow
             _openCodeWindowActivated = false;
         }
 
-        PushOpenCodeWindowVisibility(_openCodeWindowActivated && !minimized);
+        PushOpenCodeWindowVisibility(_openCodeWindowActivated && !minimized && !IsHiddenToTray && AppWindow.IsVisible);
     }
 
     /// <summary>记录并把窗口可见性推送给当前 OpenCode 页（非当前页不推送，挂接时补推）。</summary>
     private void PushOpenCodeWindowVisibility(bool visible)
     {
         _openCodeWindowVisible = visible;
+        Pages.OpenCode.OpenCodeWorkingClock.Shared.SetHostVisible(visible);
+        _cachedNormalPage?.NotifyHostWindowVisibility(visible);
         if (ContentFrame.Content is Pages.OpenCodePage page)
         {
             page.NotifyHostWindowVisibility(visible);

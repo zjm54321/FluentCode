@@ -333,6 +333,12 @@ static class Checks
             && lines[1] + lines[2] == "OpenCode · " + longText.Summary, "summary uses both body elements with attribution and no lost characters");
         Check(NotificationText.CompletionLines(NotificationSource.LocalApi, null).Count == 2, "Local API completion structure unchanged");
         Check(!char.IsHighSurrogate(NotificationText.SingleLine(new string('x', 118) + "😀x", 120)[^2]), "truncation keeps Unicode scalar intact");
+        OpenCodeMessage[] markdown = [new() { Type = "assistant", Content = [new() { Type = "text", Text =
+            "## 完成\n\n- **修复**通知中的 `*Markdown*` 符号\n1. 参见 [文档](https://example.com/a_b) 与 <https://x.dev>\n> 引用 _强调_ 与 snake_case_name\n\n| 项 | 状态 |\n|---|:--:|\n| 构建 | ~~失败~~通过 |\n\n---\n```cs\nvar x = 1;\n```\n![图](a.png)<br/>2 * 3 * 4" }] }, new() { Type = "idle" }];
+        Check(NotificationText.Completion("会话", markdown, 1).Summary
+            == "完成 修复通知中的 *Markdown* 符号 参见 文档 与 https://x.dev 引用 强调 与 snake_case_name 项 状态 构建 失败通过 var x = 1; 图 2 * 3 * 4",
+            "completion summary strips Markdown syntax but keeps words, code text and identifiers");
+        Check(NotificationText.PlainMarkdown("a \\*b\\* `c` \u00019\u0001") == "a *b* c 9", "escapes and stray placeholders are safe");
         return Task.CompletedTask;
     }
 

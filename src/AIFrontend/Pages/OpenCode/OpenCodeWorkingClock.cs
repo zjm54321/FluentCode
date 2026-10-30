@@ -38,6 +38,7 @@ internal sealed class OpenCodeWorkingClock
     private readonly HashSet<IOpenCodeWorkingClockSubscriber> _subscribers = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<Action<DateTimeOffset>> _secondSubscribers = new();
     private bool _motionEnabled = true;
+    private bool _hostVisible = true;
 
     internal OpenCodeWorkingClock(Func<long> timestamp, long frequency, TimeSpan period)
     {
@@ -56,7 +57,7 @@ internal sealed class OpenCodeWorkingClock
     internal bool MotionEnabled => _motionEnabled;
 
     /// <summary>是否需要渲染层驱动帧（有订阅者且允许动画）。</summary>
-    internal bool IsRunning => _subscribers.Count > 0 && _motionEnabled;
+    internal bool IsRunning => _subscribers.Count > 0 && _motionEnabled && _hostVisible;
 
     /// <summary>启动/停止次数（诊断与测试：证明加入/离开不会重启正在运行的时钟）。</summary>
     internal int StartCount { get; private set; }
@@ -66,24 +67,27 @@ internal sealed class OpenCodeWorkingClock
     internal event Action<bool>? RunningChanged;
 
     // Semantic countdowns continue with reduced motion; only visible owners subscribe.
-    internal bool SecondsRunning => _secondSubscribers.Count > 0;
+    internal bool SecondsRunning => _secondSubscribers.Count > 0 && _hostVisible;
     internal event Action<bool>? SecondsRunningChanged;
+    internal event Action<bool>? HostVisibilityChanged;
+    internal bool HostVisible => _hostVisible;
 
     internal void JoinSeconds(Action<DateTimeOffset> subscriber)
     {
         if (!_secondSubscribers.Add(subscriber)) return;
-        if (_secondSubscribers.Count == 1) SecondsRunningChanged?.Invoke(true);
-        subscriber(DateTimeOffset.UtcNow);
+        if (_secondSubscribers.Count == 1 && _hostVisible) SecondsRunningChanged?.Invoke(true);
+        if (_hostVisible) subscriber(DateTimeOffset.UtcNow);
     }
 
     internal void LeaveSeconds(Action<DateTimeOffset> subscriber)
     {
-        if (_secondSubscribers.Remove(subscriber) && _secondSubscribers.Count == 0)
+        if (_secondSubscribers.Remove(subscriber) && _secondSubscribers.Count == 0 && _hostVisible)
             SecondsRunningChanged?.Invoke(false);
     }
 
     internal void TickSeconds(DateTimeOffset now)
     {
+        if (!_hostVisible) return;
         foreach (var subscriber in new List<Action<DateTimeOffset>>(_secondSubscribers))
             if (_secondSubscribers.Contains(subscriber)) subscriber(now);
     }
@@ -99,6 +103,20 @@ internal sealed class OpenCodeWorkingClock
     }
 
     internal bool IsJoined(IOpenCodeWorkingClockSubscriber subscriber) => _subscribers.Contains(subscriber);
+
+    internal void SetHostVisible(bool visible)
+    {
+        if (_hostVisible == visible) return;
+        var running = IsRunning;
+        var seconds = SecondsRunning;
+        _hostVisible = visible;
+        RaiseRunningIfChanged(running);
+        if (seconds != SecondsRunning) SecondsRunningChanged?.Invoke(SecondsRunning);
+        HostVisibilityChanged?.Invoke(visible);
+        foreach (var subscriber in new List<IOpenCodeWorkingClockSubscriber>(_subscribers))
+            if (_subscribers.Contains(subscriber)) subscriber.OnWorkingClockStateChanged(this);
+        if (visible) TickSeconds(DateTimeOffset.UtcNow);
+    }
 
     /// <summary>加入时钟：只通知加入者本身（让它在当前全局相位上起步），不打扰其他订阅者。</summary>
     internal bool Join(IOpenCodeWorkingClockSubscriber subscriber)

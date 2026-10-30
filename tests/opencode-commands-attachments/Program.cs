@@ -22,6 +22,7 @@ internal static class Program
         await ClipboardImages();
         await Catalog();
         await DirectoryCatalogAndNestedCommand();
+        await LiveQolCatalogContract();
         await QolClearServerCommand();
         await Mutations();
         await Attachments();
@@ -154,7 +155,7 @@ internal static class Program
                 Check(request.RequestUri!.AbsoluteUri == catalogUrl && request.Content is null,
                     "nondefault directory catalog uses exact prefixed URL, encoded deepObject key/value, and no body");
                 return Json("""
-                    {"data":[{"name":"nested/docs","description":"Write docs","hints":["$ARGUMENTS"]},
+                    {"location":{"directory":"/srv/projects/remote work/项目 & tools?#%"},"data":[{"name":"nested/docs","description":"Write docs","hints":["$ARGUMENTS"]},
                     {"name":"nested/docs","description":"duplicate"},{"name":"/nested/docs"},{"name":"nested/docs/"},
                     {"name":"nested//docs"},{"name":"nested/./docs"},{"name":"nested/../docs"},
                     {"name":"nested\\docs"},{"name":"nested/two words"},{"name":"nested/bad\u0000name"}]}
@@ -224,6 +225,39 @@ internal static class Program
         var error = await Expect<OpenCodeApiException>(() => errorClient.GetCommandsAsync(directory, CancellationToken.None));
         Check(error.StatusCode == 404 && errorHandler.Calls == 1, "directory catalog errors surface without retry/default-location fallback");
         Console.WriteLine($"PASS directory-scoped commands: exact encoded URL/JSON, nested catalog/POST, legacy overloads, cancellation/source guard, no fallback ({assertions - beforeAssertions} assertions).");
+    }
+
+    private static async Task LiveQolCatalogContract()
+    {
+        var before = assertions;
+        // Read-only probe of the running QOL 2.1.4 service: Basic/opencode, deepObject location,
+        // { location: { directory }, data: [...] }; rows contain name/description but no hints.
+        const string directory = "/home/ming";
+        var names = new[] { "init", "review", "deepwork", "reflect", "loop", "interview", "implement", "acp", "acp-cache", "clear-encrypted-contents" };
+        using var handler = new Handler((request, _) =>
+        {
+            Check(request.Method == HttpMethod.Get && request.RequestUri!.AbsoluteUri == "https://offline.invalid/api/command?location%5Bdirectory%5D=%2Fhome%2Fming"
+                && request.Content is null, "observed QOL catalog uses one location-scoped body-free GET");
+            Check(request.Headers.Authorization?.ToString() == "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("opencode:synthetic-password")),
+                "QOL service discovery credentials use Basic/opencode, not Bearer");
+            return Task.FromResult(Json(JsonSerializer.Serialize(new
+            {
+                location = new { directory },
+                data = names.Select(name => new { name, description = "Server command " + name }).ToArray(),
+            })));
+        });
+        using var http = new HttpClient(handler);
+        using var client = new OpenCodeClient(http, new()
+        {
+            BaseUrl = "https://offline.invalid", AuthenticationMode = OpenCodeAuthenticationMode.Basic,
+            Username = "opencode", Secret = "synthetic-password",
+        }, true);
+        var rows = await client.GetCommandsAsync(directory, CancellationToken.None);
+        Check(rows.Select(row => row.Name).SequenceEqual(names), "all ten observed QOL names survive the location/data response envelope in server order");
+        Check(rows.All(row => row.Description == "Server command " + row.Name && row.Hints is null),
+            "observed description-only rows remain usable; absent hints do not become known argument-free");
+        Check(handler.Calls == 1, "catalog discovery needs no skills/MCP prompts/secondary catalog or fallback");
+        Console.WriteLine($"PASS live QOL catalog fixture: Basic/opencode, exact location query, location/data envelope, ten hint-free commands ({assertions - before} assertions; synthetic credentials, fake HTTP).");
     }
 
     private static async Task QolClearServerCommand()

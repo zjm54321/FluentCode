@@ -34,7 +34,8 @@ internal sealed class OpenCodeTurnChipView
         var button = new Button
         {
             Height = 24, MinHeight = 24, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0),
-            CornerRadius = new CornerRadius(4), HorizontalAlignment = HorizontalAlignment.Left,
+            // 4 + 4: consecutive switch/instruction chips sit 8 DIP apart instead of touching.
+            CornerRadius = new CornerRadius(4), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 4),
             VerticalContentAlignment = VerticalAlignment.Center,
         };
         AutomationProperties.SetAutomationId(button, automationId);

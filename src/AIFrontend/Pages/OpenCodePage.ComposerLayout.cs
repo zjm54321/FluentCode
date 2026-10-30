@@ -23,6 +23,7 @@ public sealed partial class OpenCodePage
         ComposerCell.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         ComposerQueueHost.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         RefreshChildStopButton();
+        RefreshChildReturnButton();
         if (child) ExitShellComposer(focus: false);
         if (FullScreenComposerActive && (child || _fullScreenBinding is not { } binding || !OwnsComposerBinding(binding)))
             CloseFullScreenComposer(focus: false);
@@ -160,8 +161,7 @@ public sealed partial class OpenCodePage
         if (!_blankComposerPlacement)
         {
             MessageHost.Width = column.Width;
-            ConversationScrollBar.Width = Math.Min(56, available);
-            ConversationScrollBar.Margin = new Thickness(ConversationScrollBarLeft(available, column.Width), 0, 0, 0);
+            PlaceConversationGutters(available, column.Width);
         }
     }
 

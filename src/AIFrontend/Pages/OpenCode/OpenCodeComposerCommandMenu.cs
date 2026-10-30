@@ -245,7 +245,7 @@ internal sealed class OpenCodeComposerCommandMenuSession
             {
                 serverRows++;
                 var ready = s.CatalogState == OpenCodeComposerCatalogState.Ready && !s.IsBusy;
-                rows.Add(new(row.Identity, row.Name, row.Description, OpenCodeComposerCommandOrigin.Server, ready,
+                rows.Add(new(row.Identity, row.Name, ServerDescription(row.Name, row.Description), OpenCodeComposerCommandOrigin.Server, ready,
                     ready ? null : "当前不能选择", collides) { ArgumentHints = row.ArgumentHints });
             }
         }
@@ -458,15 +458,26 @@ internal sealed class OpenCodeComposerCommandMenuSession
 
     internal static string NativeDescription(OpenCodeComposerClientActionKind kind) => kind switch
     {
-        OpenCodeComposerClientActionKind.NewSession => "新建会话",
-        OpenCodeComposerClientActionKind.ChooseSession => "返回主页（/session、/sessions）",
-        OpenCodeComposerClientActionKind.ChooseAgent => "选择智能体",
-        OpenCodeComposerClientActionKind.ChooseModel => "选择此会话使用的模型（确认后才更改）",
-        OpenCodeComposerClientActionKind.Undo => "撤回最近一条消息并放回输入框（确认后执行，尽力而为）",
-        OpenCodeComposerClientActionKind.Redo => "恢复已撤回的消息（确认后执行）",
-        OpenCodeComposerClientActionKind.EditDraft => "在 AIFrontend 的大编辑框中编辑草稿",
-        OpenCodeComposerClientActionKind.SideQuestion => "顺便问一句：基于当前会话上下文一次性回答，不写入会话", // = OpenCodeSideQuestionPolicy.Description
+        OpenCodeComposerClientActionKind.NewSession => "开始新会话",
+        OpenCodeComposerClientActionKind.ChooseSession => "回到主页切换会话",
+        OpenCodeComposerClientActionKind.ChooseAgent => "切换智能体",
+        OpenCodeComposerClientActionKind.ChooseModel => "切换本会话的模型",
+        OpenCodeComposerClientActionKind.Undo => "撤回上一条消息，放回输入框",
+        OpenCodeComposerClientActionKind.Redo => "恢复刚撤回的消息",
+        OpenCodeComposerClientActionKind.EditDraft => "在全屏编辑器中编辑草稿",
+        OpenCodeComposerClientActionKind.SideQuestion => "顺带问一句，不写入会话记录", // = OpenCodeSideQuestionPolicy.Description
         _ => "本机操作",
+    };
+
+    /// <summary>Known built-in server commands get Chinese copy; anything else (or changed wording) shows the server text.</summary>
+    internal static string? ServerDescription(string name, string? description) => (name, description) switch
+    {
+        ("init", "guided AGENTS.md setup" or "create/update AGENTS.md") => "引导创建或更新 AGENTS.md",
+        ("review", "review changes [commit|branch|pr], defaults to uncommitted") => "审查改动，可指定 commit、branch 或 pr，默认审查未提交的改动",
+        ("compact", _) when description is null || description.StartsWith("compact", StringComparison.OrdinalIgnoreCase) => "压缩会话上下文",
+        ("clear-encrypted-contents", "Clear encrypted reasoning content from the current session while preserving chat history")
+            => "清除本会话中加密的推理内容，聊天记录保留",
+        _ => description,
     };
 
     /// <summary>空白“新会话”标签上需要会话的命令的说明文字。</summary>
@@ -500,8 +511,8 @@ internal sealed class OpenCodeComposerCommandMenuSession
             : (filter.Length > 0 ? $"匹配 /{shown} · {rows} 项" : $"{rows} 项");
         var tail = status switch
         {
-            OpenCodeComposerMenuStatus.Loading => " · 正在读取服务器命令，本机操作可直接选择",
-            OpenCodeComposerMenuStatus.Failed => " · 服务器命令未能读取，可重试；本机操作仍可选择",
+            OpenCodeComposerMenuStatus.Loading => " · 正在读取服务器命令",
+            OpenCodeComposerMenuStatus.Failed => " · 服务器命令读取失败",
             _ => string.Empty,
         };
         var keys = rows == 0 ? " · Esc 关闭后可继续输入" : " · Tab 补全 · Enter 确认 · Esc 关闭";

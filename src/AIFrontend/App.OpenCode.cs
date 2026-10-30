@@ -107,6 +107,7 @@ public partial class App
             _openCodePageSource?.Revoke();
             _openCodePageSource = null;
             _ = _completionNotifications?.SuspendInteractionsAsync(_openCodeEndpointIdentity);
+            _openCodeMonitor?.Dispose(); // Cancel its app-owned SSE immediately; release below awaits drainage.
         }
         PostToApp(() => RaiseAppEvent(OpenCodeSourceChanged, EventArgs.Empty));
         _pendingNavigation.Clear();
@@ -226,6 +227,7 @@ public partial class App
             _openCodePageSource = null;
             Interlocked.Increment(ref _configurationGeneration);
             _ = _completionNotifications?.SuspendInteractionsAsync(_openCodeEndpointIdentity);
+            _openCodeMonitor?.Dispose();
         }
         PostToApp(() => InvalidateSessionUiStore(stoppedSource));
         if (_settingsService is not null) _settingsService.Changed -= OnAppSettingsChanged;

@@ -89,7 +89,7 @@ public sealed partial class OpenCodePage
 
     /// <summary>
     /// 按交互面板中的权限请求同步遮罩；返回待处理权限数。遮罩显示时输入框留在可视树中、仅禁用。
-    /// 输入法组合进行中暂不覆盖（避免打断组合与草稿），组合结束后的下一次刷新（约 2 秒轮询）再覆盖。
+    /// 输入法组合进行中暂不覆盖（避免打断组合与草稿），组合结束或失焦后立即排队重新同步。
     /// </summary>
     private int SyncPermissionOverlay()
     {

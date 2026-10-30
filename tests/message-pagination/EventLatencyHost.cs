@@ -63,6 +63,7 @@ public sealed partial class OpenCodePage
         DrainEventQueue();
     }
     internal void TestBuffer(StreamBoundary stream, OpenCodeEvent item) => _eventQueue.Enqueue((stream.Owner, item));
+    internal void TestDrain() => DrainEventQueue();
     internal Task TestActiveAsync() => RefreshListedSessionStatusesAsync();
     internal bool? TestForeground => _selectedSessionId is { } id && _liveSessionStatuses.TryGetValue(id, out var s) ? s.Working : null;
     internal bool TestRefreshBusy => _isRefreshing;

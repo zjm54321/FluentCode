@@ -13,34 +13,47 @@ public sealed partial class OpenCodePage
 
     private void InitializePersistentPtyPanel()
     {
+        InitializeShellTerminal();
+        InitializeTerminalAppearance();
         PersistentPtyButtonSlot.Children.Add(_persistentPtyInventoryView.Button);
         PersistentPtyStripSlot.Children.Add(_persistentPtyInventoryView);
         _persistentPtyInventoryView.Button.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => UpdateRightQuickAccessRow());
         var overlay = _persistentPtyOverlay = new OpenCodePersistentPtyOverlay();
         PersistentPtyOverlayHost.Children.Add(overlay);
-        overlay.CloseRequested += (_, _) => ClosePersistentPtyView();
+        overlay.CloseRequested += (_, _) => CloseTerminalOverlay();
         PageRoot.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, key) =>
         {
             if (key.Key != Windows.System.VirtualKey.Escape || PersistentPtyOverlayHost.Visibility != Visibility.Visible) return;
             // Esc inside the terminal belongs to the terminal program (vim, less, …).
-            if (_persistentAttachmentOwner is { } owner && IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, owner.View.Renderer)) return;
+            if (_persistentAttachmentOwner is { } owner && (owner.View.Renderer.HasTerminalFocus
+                || IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, owner.View.Renderer))) return;
+            if (_terminalView is { } shell && (shell.Renderer.HasTerminalFocus
+                || IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, shell.Renderer))) return;
             key.Handled = true;
-            ClosePersistentPtyView();
+            CloseTerminalOverlay();
         }), true);
         // One floating card at a time: a browser card shown by the user or agent replaces the terminal card.
         BrowserOverlayHost.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) =>
         {
-            if (BrowserOverlayHost.Visibility == Visibility.Visible && _persistentAttachmentOwner is not null) ClosePersistentPtyView(restoreFocus: false);
+            if (BrowserOverlayHost.Visibility == Visibility.Visible) CloseTerminalOverlay(restoreFocus: false);
         });
         PageRoot.SizeChanged += (_, _) => SizePersistentPtyOverlay();
         UpdateRightQuickAccessRow();
     }
 
+    private void CloseTerminalOverlay(bool restoreFocus = true)
+    {
+        if (_terminalView is not null) CloseTerminalView(restoreFocus);
+        else ClosePersistentPtyView(restoreFocus);
+    }
+
     private void ShowPersistentPtyOverlay(OpenCodePersistentPtyView view, string ptyId)
     {
         if (_persistentPtyOverlay is not { } overlay) return;
-        if (_selectedSessionId is { } session && _browserWorkspaces.TryGetValue(session, out var workspace)) workspace.HideOverlay();
+        foreach (var workspace in _browserWorkspaces.Values) workspace.HideOverlay();
         overlay.Content = view;
+        view.Renderer.SetAirspaceLayers(PermissionOverlayHost, QuestionOverlayHost, BrowserOverlayHost);
+        view.Renderer.SetPresentationVisible(true);
         _persistentPtyInventoryView.SetOpen(ptyId);
         PersistentPtyOverlayHost.Visibility = Visibility.Visible;
         SizePersistentPtyOverlay();
@@ -48,6 +61,7 @@ public sealed partial class OpenCodePage
 
     private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view)
     {
+        view.Renderer.SetPresentationVisible(false);
         if (_persistentPtyOverlay is { } overlay && ReferenceEquals(overlay.Content, view)) overlay.Content = null;
         _persistentPtyInventoryView.SetOpen(null);
         PersistentPtyOverlayHost.Visibility = Visibility.Collapsed;

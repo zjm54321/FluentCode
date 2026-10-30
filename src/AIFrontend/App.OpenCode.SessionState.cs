@@ -83,7 +83,8 @@ public partial class App
         OpenCodeSessionObservation observation, DateTimeOffset now)
     {
         if (!IsSessionUiOwner(source, source.Revision)) return null;
-        var completion = IsFreshSessionUiEvidence(observation.CompletionObservedAt, now)
+        var continuous = observation.EventStateCurrent?.Invoke() == true;
+        var completion = (continuous || IsFreshSessionUiEvidence(observation.CompletionObservedAt, now))
             && observation.Outcome is { } outcome && observation.IdleWatermark is { } idle
             ? new OpenCodeCompletionMark(outcome, idle) : null;
         var viewed = IsFreshSessionUiEvidence(observation.InfoObservedAt, now)
@@ -93,7 +94,7 @@ public partial class App
             observation.WorkingFact, observation.PendingActionFact, Completion: completion, ViewedWatermark: viewed)
         {
             QuestionPending = observation.QuestionPendingFact is { } question
-                && IsFreshSessionUiEvidence(question.ObservedAt, now) ? question : null,
+                && (continuous || IsFreshSessionUiEvidence(question.ObservedAt, now)) ? question : null,
         };
     }
 

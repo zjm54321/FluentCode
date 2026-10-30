@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text;
 using AIFrontend.Pages.OpenCode;
 
 internal static class Program
@@ -12,13 +13,13 @@ internal static class Program
     { if (!value) throw new Exception(name); _checks++; Console.WriteLine("PASS " + name); }
     private static void Main(string[] args)
     {
-        foreach (var file in new[] { "index.html", "terminal.js", "terminal.css", "xterm.js", "xterm.css", "addon-fit.js" })
-            Check(OpenCodePersistentPtyRendererPolicy.AllowsResource(OpenCodePersistentPtyRendererPolicy.Origin + file), "allow exact offline asset " + file);
-        foreach (var uri in new[] { "https://evil.invalid/xterm.js", "https://persistent-pty.aif.invalid:123/xterm.js",
-            "https://user@persistent-pty.aif.invalid/xterm.js", "https://persistent-pty.aif.invalid/xterm.js?url=remote",
-            "https://persistent-pty.aif.invalid/xterm.js#script", "http://persistent-pty.aif.invalid/index.html",
-            "https://persistent-pty.aif.invalid/other.html", "file:///tmp/index.html", "javascript:alert(1)", "data:text/html,hello" })
-            Check(!OpenCodePersistentPtyRendererPolicy.AllowsResource(uri), "reject non-asset navigation/resource " + uri);
+        var stream = new OpenCodePersistentPtyVtStream();
+        var decoded = new StringBuilder();
+        foreach (var value in Encoding.UTF8.GetBytes("\u001b[31m中文 😀\0suffix\u001b[0m")) decoded.Append(stream.Decode(new byte[] { value }));
+        Check(decoded.ToString() == "\u001b[31m中文 😀suffix\u001b[0m", "byte-fragmented UTF-8 and VT retained; NUL does not truncate subsequent output");
+        stream = new(); decoded.Clear();
+        foreach (var value in Encoding.UTF8.GetBytes("before\u001b]52;c;c2VjcmV0\u001b\\after\u001b]0;title\aend")) decoded.Append(stream.Decode(new byte[] { value }));
+        Check(decoded.ToString() == "beforeafter\u001b]0;title\aend", "fragmented OSC52 cannot overwrite the clipboard; other OSC is preserved");
         var context = new OpenCodePersistentPtyViewContext(Guid.NewGuid(), 4, "session", "pty-opaque");
         foreach (var phase in Enum.GetValues<OpenCodePersistentPtyPhase>())
         foreach (var role in Enum.GetValues<OpenCodePersistentPtyRole>())
@@ -42,14 +43,9 @@ internal static class Program
             && context != context with { SessionId = "other" }, "view events retain generation, PTY and session identity");
         Check(OpenCodePersistentPtyRendererPolicy.ValidGeometry(80, 24) && !OpenCodePersistentPtyRendererPolicy.ValidGeometry(0, 24)
             && !OpenCodePersistentPtyRendererPolicy.ValidGeometry(80, 1001), "renderer bounds resource geometry");
-        var assets = Path.Combine(args[0], "src/AIFrontend/Assets/OpenCode/PersistentPty");
-        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(assets, "vendor-manifest.json")));
-        foreach (var package in manifest.RootElement.GetProperty("packages").EnumerateArray())
-        foreach (var entry in package.GetProperty("files").EnumerateObject())
-            Check(Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(Path.Combine(assets, entry.Name)))) == entry.Value.GetString(),
-                "unmodified vendor asset hash " + entry.Name);
-        var html = File.ReadAllText(Path.Combine(assets, "index.html"));
-        Check(html.Contains("connect-src 'none'") && html.Contains("frame-src 'none'") && !html.Contains("src=\"https://"), "renderer CSP and assets have no network or frame dependency");
+        var rendererSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
+        Check(rendererSource.Contains("TerminalHostMode.ChildWindow") && !rendererSource.Contains("WebView2") && !rendererSource.Contains("CoreWebView")
+            && rendererSource.Contains("TerminalTextReader.ReadSelectionAsync"), "persistent renderer uses the native child HWND and non-destructive selection, not WebView");
         var pages = Path.Combine(args[0], "src/AIFrontend/Pages");
         var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(pages, "OpenCodePage.xaml"));
         System.Xml.Linq.XElement Named(string name) => xaml.Descendants().Single(e => e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == name));
@@ -67,11 +63,11 @@ internal static class Program
         var lifecycle = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPty.cs"));
         Check(!lifecycle.Contains("TerminalViewHost") && !lifecycle.Contains("ConversationSurface")
             && lifecycle.Contains("ShowPersistentPtyOverlay(view, ptyId);") && lifecycle.Contains("HidePersistentPtyOverlay(owner.View); owner.View.Renderer.Dispose();"),
-            "persistent terminal no longer replaces the conversation; command-output terminal keeps the center host");
+             "persistent terminal uses the shared floating card without replacing conversation");
         var glue = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPtyOverlay.cs"));
         Check(glue.Contains("OpenCodeBrowserOverlayLayout.Place(") && glue.Contains("workspace.HideOverlay();")
-            && glue.Contains("BrowserOverlayHost.Visibility == Visibility.Visible && _persistentAttachmentOwner is not null) ClosePersistentPtyView(restoreFocus: false)")
-            && glue.Contains("VirtualKey.Escape") && glue.Contains("IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, owner.View.Renderer)) return;"),
+            && glue.Contains("BrowserOverlayHost.Visibility == Visibility.Visible) CloseTerminalOverlay(restoreFocus: false)")
+            && glue.Contains("VirtualKey.Escape") && glue.Contains("owner.View.Renderer.HasTerminalFocus") && glue.Contains("IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, owner.View.Renderer)"),
             "browser geometry, one floating card at a time, Esc closes except while the terminal program has focus");
         foreach (var file in new[] { "OpenCode/OpenCodePersistentPtyView.cs", "OpenCode/OpenCodePersistentPtyInventoryView.cs", "OpenCode/OpenCodePersistentPtyOverlay.cs" })
         {

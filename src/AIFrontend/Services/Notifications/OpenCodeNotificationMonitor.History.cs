@@ -7,20 +7,21 @@ using AIFrontend.Services.OpenCode;
 
 namespace AIFrontend.Services.Notifications;
 
-internal sealed record OpenCodeMessageHistoryResult(List<OpenCodeMessage> Messages, bool Complete);
+internal sealed record OpenCodeMessageHistoryResult(List<OpenCodeMessage> Messages, bool Complete, bool AnchorFound = false);
 
 /// <summary>next is an opaque message anchor, not a short-page heuristic. No cursor+order requests.</summary>
 internal static class OpenCodeMessageHistory
 {
     internal static async Task<OpenCodeMessageHistoryResult> ReadAsync(
         Func<OpenCodeMessageQuery, CancellationToken, Task<OpenCodeSessionMessagesResponse>> read,
-        int pageSize, int pageBudget, CancellationToken token)
+        int pageSize, int pageBudget, CancellationToken token, string? anchor = null)
     {
         var messages = new List<OpenCodeMessage>();
         var cursors = new HashSet<string>(StringComparer.Ordinal);
         var ids = new HashSet<string>(StringComparer.Ordinal);
         string? cursor = null;
         bool complete = false;
+        bool anchorFound = false;
         for (int pageIndex = 0; pageIndex < pageBudget; pageIndex++)
         {
             var page = await read(new() { Limit = pageSize, Cursor = cursor,
@@ -36,11 +37,13 @@ internal static class OpenCodeMessageHistory
             if (!valid) break;
             cursor = page.Cursor?.Next;
             if (cursor is not null && !IsValidCursor(cursor)) break;
+            anchorFound = anchor is not null && ids.Contains(anchor);
             if (page.Data.Count == 0 || cursor is null) { complete = true; break; }
+            if (anchorFound) break; // Newest pages cover the entire delta; older history is already retained.
             if (!cursors.Add(cursor!)) break;
         }
         messages.Reverse();
-        return new(messages, complete);
+        return new(messages, complete, anchorFound);
     }
 
     private const int MaxCursorLength = 4096;

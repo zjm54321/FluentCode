@@ -22,6 +22,7 @@ public sealed partial class OpenCodePage
     private readonly Queue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _workflowEventQueue = new();
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new(StringComparer.Ordinal);
     private long _liveStatusVersion;
+    private bool _eventProjectionDirty;
     private bool _statusRefreshRunning;
     private bool _eventSnapshotBeforeReady;
     private bool _eventReconciliationPending;
@@ -45,6 +46,7 @@ public sealed partial class OpenCodePage
 
     private void StopEventSync()
     {
+        _eventProjectionDirty = false;
         OnBrowserEventSyncStopped();
         OnAgentTreeReset();
         ResetRuntimeFeedback();
@@ -187,7 +189,7 @@ public sealed partial class OpenCodePage
                             {
                                 try
                                 {
-                                    await Task.Delay(50, ct).ConfigureAwait(false);
+                                    await Task.Delay(100, ct).ConfigureAwait(false);
                                     DispatcherQueue.TryEnqueue(() =>
                                     {
                                         Interlocked.Exchange(ref applyScheduled, 0);
@@ -219,6 +221,7 @@ public sealed partial class OpenCodePage
         var refetch = false;
         var refreshSessionList = false;
         var statusesChanged = false;
+        var selectedStatusChanged = false;
         var selectionChanged = false;
         var first = DateTimeOffset.MaxValue;
         var count = 0;
@@ -248,6 +251,7 @@ public sealed partial class OpenCodePage
             count++;
             if (item.ReceivedAt < first) first = item.ReceivedAt;
             var id = item.SessionId;
+            var repeatedStatusOnly = false;
             selectionChanged |= id == _selectedSessionId && item.Type is "session.agent.selected" or "session.model.selected" or "session.location.selected";
             if (id == _selectedSessionId && item.Type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted"
                 && _eventReducer?.IsCurrentAssistantEvent(item) == false) continue;
@@ -275,7 +279,11 @@ public sealed partial class OpenCodePage
                 if (runningEvent || terminalEvent)
                 {
                     _liveSessionStatuses[id] = (working, ++_liveStatusVersion);
-                    statusesChanged = true;
+                    // Advance the REST race fence for every event, but don't republish identical UI state.
+                    var statusChanged = old.Version == 0 || old.Working != working;
+                    repeatedStatusOnly = !statusChanged && item.Type == "session.status";
+                    statusesChanged |= statusChanged;
+                    selectedStatusChanged |= statusChanged && id == _selectedSessionId;
                 }
             }
             if (id is not null && id != _selectedSessionId) continue;
@@ -285,23 +293,28 @@ public sealed partial class OpenCodePage
             var direct = item.Type.StartsWith("session.text.", StringComparison.Ordinal)
                 || item.Type.StartsWith("session.reasoning.", StringComparison.Ordinal)
                 || item.Type.StartsWith("session.tool.", StringComparison.Ordinal);
-            if (!direct && (item.Type.StartsWith("session.", StringComparison.Ordinal)
+            if (!direct && !repeatedStatusOnly && (item.Type.StartsWith("session.", StringComparison.Ordinal)
                 || item.Type.StartsWith("permission.", StringComparison.Ordinal) || item.Type.StartsWith("form.", StringComparison.Ordinal)
                 || item.Type.StartsWith("inbox.", StringComparison.Ordinal) || item.Type.StartsWith("todo.", StringComparison.Ordinal))) refetch = true;
             if (item.Type is "session.revert.staged" or "session.revert.cleared" or "session.revert.committed") _messageHistoryNeedsState = true;
         }
-        RefreshCurrentRetry();
-        if (statusesChanged)
+        if (_hostWindowVisible && (changed || selectedStatusChanged)) RefreshCurrentRetry();
+        if (statusesChanged && _hostWindowVisible)
         {
             RefreshSessionStateUi();
+        }
+        if (selectedStatusChanged && _hostWindowVisible)
+        {
             RefreshComposerSessionActivity();
             RefreshConversationSessionActivity();
         }
         if (refreshSessionList) _ = RefreshSessionsAsync();
         if (selectionChanged) RefreshAgentSelectorDisplay();
-        if (changed && _eventReducer is not null && _selectedSessionId is { } selected
+        _eventProjectionDirty |= changed;
+        if (_eventProjectionDirty && _hostWindowVisible && _eventReducer is not null && _selectedSessionId is { } selected
             && _messageHistoryWorkflowOwner is null && !_messageHistoryNeedsState && !_sessionMissing)
         {
+            _eventProjectionDirty = false;
             var follow = IsScrolledToBottom();
             _latestMessages.Clear();
             _latestMessages.AddRange(_eventReducer.Messages);
@@ -368,7 +381,7 @@ public sealed partial class OpenCodePage
             var response = await pending;
             if (ct.IsCancellationRequested || generation != _pageGeneration || !ReferenceEquals(client, _client)
                 || !ReferenceEquals(source, _source) || source.Revision != _sourceRevision || !_pageActive) return;
-            foreach (var id in _sessionItems.Keys.Concat(response.Data!.Keys)
+            foreach (var id in _sessionItems.Keys.Concat(response.Data!.Keys).Concat(_liveSessionStatuses.Keys)
                 .Concat(_selectedSessionId is { } selected ? new[] { selected } : Array.Empty<string>()).Distinct(StringComparer.Ordinal))
             {
                 if (_liveSessionStatuses.TryGetValue(id, out var live) && live.Version > version) continue;

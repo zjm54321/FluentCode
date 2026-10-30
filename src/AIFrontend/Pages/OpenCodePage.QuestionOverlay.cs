@@ -9,7 +9,7 @@ namespace AIFrontend.Pages;
 /// </summary>
 /// <remarks>
 /// 权限与提问同时待处理时权限遮罩优先，提问遮罩在权限遮罩关闭后显示。输入法组合进行中暂不覆盖
-/// （避免打断组合与草稿），组合结束后的下一次刷新再覆盖。输入框留在可视树中、仅禁用，草稿原样保留；
+/// （避免打断组合与草稿），组合结束或失焦后立即排队重新同步。输入框留在可视树中、仅禁用，草稿原样保留；
 /// 全部回答完后焦点回到输入框。
 /// </remarks>
 public sealed partial class OpenCodePage
@@ -25,6 +25,25 @@ public sealed partial class OpenCodePage
     private void InitializeQuestionOverlay()
     {
         QuestionOverlayHost.Children.Add(_questionOverlay);
+    }
+
+    /// <summary>IME 只延迟覆盖到当前组合结束，不等待下一次服务端快照；不改写或重新绑定输入框。</summary>
+    private void QueueDeferredComposerOverlayRefresh()
+    {
+        if (!_pageActive || ComposerCoveredByOverlay || (_questionOverlay.Count == 0 && _permissionOverlay.Count == 0))
+        {
+            return;
+        }
+
+        // Let composition/TextChanged handlers finish committing the user's text before disabling/focusing anything.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            // Re-read current cards, not captured requests; navigation/removal or a new composition may have intervened.
+            if (_pageActive && !_isComposing && !ComposerCoveredByOverlay)
+            {
+                UpdateInteractionsSection();
+            }
+        });
     }
 
     /// <summary>

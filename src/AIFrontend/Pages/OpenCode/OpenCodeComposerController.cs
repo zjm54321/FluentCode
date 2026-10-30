@@ -141,6 +141,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                         : _note)
                 {
                     CatalogHandle = _catalogOwner?.Handle,
+                    Mentions = _contexts.ToArray(),
                     IsUnboundDraft = active && IsUnbound(_binding),
                     ClientIntent = _clientIntent,
                     CanInvokeClientAction = active && !Busy && _clientIntent is not null

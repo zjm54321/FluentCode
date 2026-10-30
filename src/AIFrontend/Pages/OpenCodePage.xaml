@@ -410,8 +410,9 @@
                                 </StackPanel>
 
                                 <!-- Row 3 时间线（居中，最大宽度见 OpenCodeTimelineMaxWidth）；新标签页布局时换为标题区 -->
-                                <!-- SB1: scrolling covers the whole center area; the annotated bar overlays
-                                     the reserved space immediately beside the symmetric reading column. -->
+                                <!-- SB1: scrolling covers the whole center area. The ScrollView's native scrollbar is shifted
+                                     into the reserved right gutter beside the reading column; the turn navigator
+                                     (OpenCodePage.TurnNavigator.cs) sits in the mirrored left gutter. -->
                                 <Grid x:Name="TimelineGrid" Grid.Row="3" RowDefinitions="Auto,*"
                                       SizeChanged="TimelineColumn_SizeChanged">
                                     <ScrollView
@@ -421,8 +422,9 @@
                                         HorizontalContentAlignment="Center"
                                         HorizontalScrollMode="Disabled"
                                         HorizontalScrollBarVisibility="Hidden"
-                                        VerticalScrollBarVisibility="Hidden"
+                                        VerticalScrollBarVisibility="Auto"
                                         ContentOrientation="Vertical"
+                                        Loaded="MessageScroll_Loaded"
                                         ViewChanged="MessageScroll_ViewChanged"
                                         AutomationProperties.AutomationId="OpenCodeMessageScroll">
                                         <Grid
@@ -432,32 +434,6 @@
                                              SizeChanged="TimelineColumn_SizeChanged"
                                              Padding="6,0,6,0" />
                                     </ScrollView>
-                                    <AnnotatedScrollBar x:Name="ConversationScrollBar" Grid.Row="1"
-                                                        HorizontalAlignment="Left" Width="56" SmallChange="40"
-                                                        Loaded="ConversationScrollBar_Loaded" Unloaded="ConversationScrollBar_Unloaded"
-                                                        DetailLabelRequested="ConversationScrollBar_DetailLabelRequested"
-                                                        AutomationProperties.AutomationId="OpenCodeAnnotatedScrollBar"
-                                                        AutomationProperties.Name="会话消息导航">
-                                        <AnnotatedScrollBar.LabelTemplate>
-                                            <DataTemplate>
-                                                <!-- SB2: native layout measures the padded dash for label collision handling. -->
-                                                <Border HorizontalAlignment="Right" Padding="0,6,0,6"
-                                                        AutomationProperties.Name="{Binding}">
-                                                    <Rectangle Width="12" Height="2" RadiusX="1" RadiusY="1"
-                                                               HorizontalAlignment="Right"
-                                                               Fill="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                </Border>
-                                            </DataTemplate>
-                                        </AnnotatedScrollBar.LabelTemplate>
-                                        <AnnotatedScrollBar.DetailLabelTemplate>
-                                            <DataTemplate>
-                                                <!-- Text content: one role line, then at most two excerpt lines. -->
-                                                <TextBlock Text="{Binding}" MaxWidth="260" MaxLines="3"
-                                                           TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
-                                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
-                                            </DataTemplate>
-                                        </AnnotatedScrollBar.DetailLabelTemplate>
-                                    </AnnotatedScrollBar>
 
                                     <!-- F3 消息历史分页：滚动到顶部附近自动加载更早消息（单飞、预插保持阅读位置；
                                          游标语义见 OpenCodePage.MessagePagination.cs）。加载中时在顶部显示小型进度环（叠放，不推动布局）。 -->
@@ -580,8 +556,21 @@
                                     <FontIcon Glyph="&#xE70D;" FontSize="12" />
                                 </Button>
 
-                                <Grid x:Name="ChildStopHost" Grid.Row="6" Visibility="Collapsed"
-                                      HorizontalAlignment="Center" Margin="0,12,0,8">
+                                <!-- Child-session footer in the composer's place: return bottom-left (when the left drawer
+                                     is not resident), stop centred in the remaining width so the two never overlap. Same column as the composer. -->
+                                <Grid x:Name="ChildFooter" Grid.Row="6" ColumnSpacing="8"
+                                      MaxWidth="{StaticResource OpenCodeTimelineMaxWidth}" ColumnDefinitions="Auto,*,Auto">
+                                    <Button x:Name="ChildReturnButton" Height="40" Padding="12,0" Margin="0,12,0,8" Visibility="Collapsed"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            Click="ChildReturnButton_Click"
+                                            AutomationProperties.AutomationId="OpenCodeChildReturn"
+                                            AutomationProperties.Name="返回主智能体" ToolTipService.ToolTip="返回主智能体">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE72B;" FontSize="16" />
+                                            <TextBlock Text="返回" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                <Grid x:Name="ChildStopHost" Grid.Column="1" Visibility="Collapsed" Margin="0,12,0,8" HorizontalAlignment="Center">
                                     <Button x:Name="ChildStopButton" Height="40" Padding="20,0"
                                             Style="{StaticResource AccentButtonStyle}"
                                             Click="ChildStopButton_Click"
@@ -590,6 +579,16 @@
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="&#xE71A;" FontSize="16" />
                                             <TextBlock x:Name="ChildStopLabel" Text="停止子智能体" FontSize="16" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                    <Button x:Name="ChildBrowserButton" Grid.Column="2" Height="40" Padding="12,0" Margin="0,12,0,8"
+                                            Visibility="Collapsed" Click="ChildBrowserButton_Click"
+                                            AutomationProperties.AutomationId="OpenCodeChildBrowser"
+                                            AutomationProperties.Name="子智能体浏览器" ToolTipService.ToolTip="子智能体自己的浏览器页面">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE774;" FontSize="16" />
+                                            <TextBlock Text="浏览器" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
                                 </Grid>
@@ -706,6 +705,9 @@
                                                         KeyUp="Composer_KeyUp"
                                                         AutomationProperties.AutomationId="OpenCodeComposer"
                                                         AutomationProperties.Name="消息输入" />
+                                                    <!-- Inline "@" mention chips painted over the plain-text editor (OpenCodeComposerMentionChips); never hit-testable. -->
+                                                    <Canvas x:Name="ComposerMentionLayer" IsHitTestVisible="False"
+                                                            AutomationProperties.AccessibilityView="Raw" />
                                                     <Button x:Name="ComposerExpandButton" Width="32" Height="32" MinWidth="0" Padding="0"
                                                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
                                                             Visibility="Collapsed" Click="ComposerExpandButton_Click"
@@ -737,10 +739,32 @@
                                                                         AutomationProperties.Name="选择智能体" ToolTipService.ToolTip="选择智能体"
                                                                         AutomationProperties.AutomationId="OpenCodeBlankAgent">
                                                                 </openCode:OpenCodeNativeComboBox>
-                                                                <Button x:Name="BlankModelButton" Grid.Column="2"
+                                                                <!-- Same native bordered chrome as the neighbouring agent/effort ComboBoxes, not the toolbar's transparent icon buttons. -->
+                                                                <Button x:Name="BlankModelButton" Grid.Column="2" Style="{StaticResource DefaultButtonStyle}"
                                                                          Height="32" MinWidth="96" MaxWidth="260" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择模型" ToolTipService.ToolTip="选择模型"
-                                                                        AutomationProperties.AutomationId="OpenCodeBlankModel" />
+                                                                        AutomationProperties.AutomationId="OpenCodeBlankModel">
+                                                                    <!-- Restore the stock per-theme disabled chrome that ComposerInputLayout clears for its icon buttons.
+                                                                         ThemeResource colours, not StaticResource brush aliases, so a runtime theme switch repaints them. -->
+                                                                    <Button.Resources>
+                                                                        <ResourceDictionary>
+                                                                            <ResourceDictionary.ThemeDictionaries>
+                                                                                <ResourceDictionary x:Key="Default">
+                                                                                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="{ThemeResource ControlFillColorDisabled}" />
+                                                                                    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="{ThemeResource ControlStrokeColorDefault}" />
+                                                                                </ResourceDictionary>
+                                                                                <ResourceDictionary x:Key="Light">
+                                                                                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="{ThemeResource ControlFillColorDisabled}" />
+                                                                                    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="{ThemeResource ControlStrokeColorDefault}" />
+                                                                                </ResourceDictionary>
+                                                                                <ResourceDictionary x:Key="HighContrast">
+                                                                                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="{ThemeResource SystemColorButtonFaceColor}" />
+                                                                                    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
+                                                                                </ResourceDictionary>
+                                                                            </ResourceDictionary.ThemeDictionaries>
+                                                                        </ResourceDictionary>
+                                                                    </Button.Resources>
+                                                                </Button>
                                                                 <openCode:OpenCodeNativeComboBox x:Name="BlankStrengthButton" Grid.Column="3"
                                                                          Height="32" MinWidth="64" MaxWidth="104" VerticalAlignment="Center"
                                                                         AutomationProperties.Name="选择推理强度" ToolTipService.ToolTip="选择推理强度"
@@ -750,7 +774,8 @@
                                                             <Button x:Name="ComposerSubagentsButton" Width="32" Height="32" MinWidth="0" Padding="0"
                                                                     Click="ComposerSubagentsButton_Click" AutomationProperties.Name="后台子智能体"
                                                                     ToolTipService.ToolTip="后台子智能体" AutomationProperties.AutomationId="OpenCodeComposerSubagents">
-                                                                <FontIcon Glyph="&#xE902;" FontSize="16" />
+                                                                <!-- Glyph follows the running background-subagent count (OpenCodePage.ComposerToolbar.cs). -->
+                                                                <FontIcon x:Name="ComposerSubagentsGlyph" Glyph="&#xE8F8;" FontSize="16" />
                                                             </Button>
                                                             <Button x:Name="ComposerConnectionButton" Width="20" Height="32" MinWidth="0" Padding="0" Visibility="Collapsed"
                                                                     Click="ComposerConnectionButton_Click" AutomationProperties.Name="OpenCode 连接详情"
@@ -854,9 +879,6 @@
                             <Grid x:Name="HomePageHost" Visibility="Collapsed" />
                             </Grid>
                             <!-- AT6: takes over only the center, preserving both dock regions. -->
-                            <Grid x:Name="TerminalViewHost" Visibility="Collapsed"
-                                  Loaded="TerminalViewHost_Loaded"
-                                  AutomationProperties.AutomationId="OpenCodeTerminalViewHost" />
                         </Grid>
                     </SplitView>
                 </Grid>

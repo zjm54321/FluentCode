@@ -45,6 +45,7 @@ public sealed partial class NormalPage : Page
     // null 表示 Local 标签；非 null 表示某个官方站点 provider。
     private WebProvider? _selectedProvider = WebProvider.ChatGPT;
     private bool _loaded;
+    private bool _hostWindowVisible = true;
     private bool _hostsBuilt;
 
     // 最终释放标记：窗口关闭路径经 ShutdownWebViews 置位后，宿主不再重建/复活
@@ -420,7 +421,7 @@ public sealed partial class NormalPage : Page
 
         foreach (KeyValuePair<WebProvider, WebViewHost> entry in _hosts)
         {
-            bool isActive = _selectedProvider == entry.Key;
+            bool isActive = _loaded && _hostWindowVisible && _selectedProvider == entry.Key;
 
             if (isActive)
             {
@@ -457,6 +458,13 @@ public sealed partial class NormalPage : Page
         {
             host.Refresh();
         }
+    }
+
+    internal void NotifyHostWindowVisibility(bool visible)
+    {
+        if (_hostWindowVisible == visible) return;
+        _hostWindowVisible = visible;
+        if (_loaded) ApplySelection();
     }
 
     private void OnLocalSettingsRequested(object? sender, EventArgs e)

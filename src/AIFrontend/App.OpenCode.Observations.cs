@@ -13,6 +13,7 @@ namespace AIFrontend;
 public partial class App
 {
     private readonly Dictionary<TaskbarSessionKey, (long Revision, DateTimeOffset At)> _sessionObservationTimes = new();
+    private readonly Dictionary<TaskbarSessionKey, Func<bool>> _sessionEventLeases = new();
     private DispatcherQueueTimer? _sessionObservationTimer;
 
     private void SeedOpenCodeObservation(OpenCodePageSource source, string session, bool sampleUiProtection = true)
@@ -42,7 +43,10 @@ public partial class App
                 {
                     if (CurrentOpenCodePageSource is { } source && source.Revision == pair.Value.Revision)
                         changed |= RefreshOpenCodeSessionProtection(source, pair.Key.SessionId);
-                    if (DateTimeOffset.UtcNow - pair.Value.At > OpenCodeNotificationMonitor.ObservationLifetime
+                    var hasStream = _sessionEventLeases.TryGetValue(pair.Key, out var stream);
+                    var continuous = stream?.Invoke() == true;
+                    if (hasStream && !continuous) _sessionEventLeases.Remove(pair.Key);
+                    if ((hasStream && !continuous || !continuous && DateTimeOffset.UtcNow - pair.Value.At > OpenCodeNotificationMonitor.ObservationLifetime)
                         && _taskbarState.GetSession(pair.Key)?.State != TaskbarSessionState.Unknown)
                         changed |= _taskbarState.ObserveSession(pair.Key, pair.Value.Revision, new(TaskbarSessionState.Unknown));
                 }
@@ -59,6 +63,7 @@ public partial class App
         foreach (var endpoint in _sessionObservationTimes.Keys.Select(k => k.EndpointIdentity).Distinct())
             _taskbarState.RevokeSessionSource(endpoint);
         _sessionObservationTimes.Clear();
+        _sessionEventLeases.Clear();
         ApplyTaskbarAggregate();
     }
 
@@ -76,10 +81,11 @@ public partial class App
             if (!IsCurrentOpenCodeCallback(sender, source, source.Revision)) return;
             var observation = args.Observation;
             if (observation.EndpointIdentity != source.Identity) return;
+            if (observation.EventStateCurrent is { } eventState && !eventState()) return;
             SeedOpenCodeObservation(source, observation.SessionId, sampleUiProtection: false);
             var key = new TaskbarSessionKey(source.Identity, observation.SessionId);
             var projection = observation.Projection;
-            var state = DateTimeOffset.UtcNow - observation.ObservedAt > OpenCodeNotificationMonitor.ObservationLifetime
+            var state = observation.EventStateCurrent is null && DateTimeOffset.UtcNow - observation.ObservedAt > OpenCodeNotificationMonitor.ObservationLifetime
                 ? TaskbarSessionState.Unknown
                 : projection.WaitingKnown && projection.Waiting ? TaskbarSessionState.Waiting
                 : projection.State == Services.Notifications.OpenCodeExecutionState.Working ? TaskbarSessionState.Working
@@ -93,6 +99,8 @@ public partial class App
             _taskbarState.ObserveSession(key, source.Revision,
                 new(state, observation.Outcome, observation.IdleWatermark, observation.ViewedWatermark));
             _sessionObservationTimes[key] = (source.Revision, observation.ObservedAt);
+            if (observation.EventStateCurrent is { } lease) _sessionEventLeases[key] = lease;
+            else _sessionEventLeases.Remove(key);
             var now = DateTimeOffset.UtcNow;
             RefreshOpenCodeSessionProtection(source, observation.SessionId,
                 CreateSessionUiObservation(source, observation, now), now);

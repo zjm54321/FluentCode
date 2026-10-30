@@ -106,14 +106,20 @@ public sealed class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
 
 现有可信来源构造：`new TrustedOpenCodeNotificationSource(string identity, OpenCodeClient client)`；identity 是稳定不透明 endpoint 标识，不能是 URL、凭据或含秘密的字符串。client 由配置 owner 构造并持有；monitor 不读取配置、取 token、注册通知或 dispose client/service。
 
-- `Start` 仅在 `service.Status == Initialized` 返回 true 并开始观察；不调用 Initialize。Start 幂等；App 串行协调 Start/Stop/替换。
+- `Start` 幂等地开始 App 级观察，不调用 Initialize；原生通知尚不可用时仍发布会话状态。App 串行协调 Start/Stop/替换。
 - 仅监控本应用明确 Track 的 session，最多 128 个；不枚举所有会话，不声称全局监控。页面隐藏不应 Stop；离开页面不会丢失 App monitor 的锚点。Untrack 后重新 Track 建立新基线。
-- 所有 tracked session 串行轮询，无重叠 tick；默认 5 秒，最小 100ms；pageSize 1..500，pageBudget 1..32。网络请求使用现有 client 的有限超时。
-- 首次成功读取最新消息页为历史基线（不报完成）。记录最新消息 ID 作为锚点，不依赖 session idle 状态、用户 prompt/inbox 关联或计时猜测。
-- 后续从 `order=desc` 最新页读取，沿响应 `cursor.next` 寻找旧锚点；后续请求只传 cursor + limit，绝不混传 order，不用 type=idle 过滤。只有找到锚点（或原基线确实为空且遍历到末尾）才将锚点之后的消息交给现有 `ObserveOpenCodeMessages(..., isHistoricalSnapshot:false)`；只有新 idle+succeeded 才通知。
-- 断线/读取失败保留原锚点。锚点丢失、分页预算耗尽、游标重复或无效消息 ID 产生结构化 Gap，**不推进锚点、不把收集到的旧历史报作新完成**。需要 owner 呈现缺口；可以显式 Untrack/Track 接受新历史基线，而非静默恢复。
-- pending Permission/Form 分别维护快照。一次查询失败保留该类旧集合；不转成空列表。首次出现的 pending 调用现有通知服务，处理 NeedsApp/Failed 等返回；后台不自动重试 mutation、重新启用 nonce 或解除未知结果保护。同一个连续 pending ID 不反复准备通知；准备失败需消费结果并交由用户处理。
-- pending 最多 256/类/session；超预算产生 Gap，保留旧快照。
+- 按 OpenCode TUI v2.1.4 的模式，App monitor 持有**一条** `GET api/event` SSE，通过 `await foreach` 等待；不依赖页面/窗口是否可见，不为每个 session 建流。健康时**没有定时轮询、300ms 拉取、防漏安全补查**；文本/思考及全部 `session.tool.*` 都不进入 monitor 工作队列。原生 `session.renamed` 只更新缓存标题，不触发 GET/通知。
+- stream 为 live-only、无 Last-Event-ID replay。每个连接的首个 `server.connected` 静默重建所有 tracked session 的 active、pending permission/form 基线，并缓存通知所需的 parent/title 元数据；基线不发送任何完成/权限/问题 toast，不读取消息历史。GET 期间的 SSE 事件缓冲并在发布前覆盖基线；连接 epoch 和 session 对象身份隔离迟到结果。重复握手幂等，新 Track 只初始化该 session，重新选择已初始化会话直接发布缓存状态。
+- `session.execution.started` 重置该会话的终态去重；`succeeded` 才发完成通知，`failed` 只发错误通知、不会再追加“完成”，`interrupted` 不发完成通知。忽略已废弃 `session.idle`，不由静默、active 缺席或消息历史猜测完成。终态使用服务端同一投影规则 `evt_x → msg_x` 和事件 created 水位，保留原去重/导航/ACK 身份；shutdown interruption 不伪造 idle 标记。成功事件可读取**一页最多 20 条**最新消息作为摘要，失败/中断/子会话不拉历史。
+- `permission.asked` 直接加入 data.id，`permission.replied` 按 data.requestID 移除；`form.created` 使用 data.form.sessionID/id/metadata，`form.replied/cancelled` 按 data.id 移除。只有 live asked/created 准备通知；重复 ID 去重，基线已有项静默，replied/cancelled 精确撤下已结算通知。原交互 coordinator 仍在真实 toast/按钮提交前重读详情、校验指纹和 gate；事件本身不是授权，也不解除 unknown protection。pending 每类最多 256，未完成/失败的基线读不构造已知空集。
+- 客户端 45 秒**无字节**判定 stalled（部分行和 15 秒心跳也续期）；断流/EOF/认证/协议错误按 1/2/4/8/16/30 秒上限重连，稳定连接 30 秒后重置退避。断线期间没有 5/15 秒 fallback，也不猜测/补发历史完成；重连只做静默基线。兼容构造参数 `pollInterval` 和内部显式快照/分页辅助仍保留供原边界测试/显式操作使用，`Start` 不调度它们。
+- UI 事件事实保留原 ObservedAt，并附带“已完成基线、当前连接 epoch/session/revision 仍连续”的内存租约；健康静默时不靠 GET 或更新时间戳维持状态。断线、Stop、Untrack、来源替换或新 revision 立即撤销旧租约；普通非事件快照的独立 15 秒 TTL、未来时间戳/迟到证据拒绝规则不变。
+
+### 前台会话不弹通知
+
+- OpenCode 页发布当前**选中的真实会话标签**、页面实际可见/已加载状态；窗口必须已激活且未最小化。Home/空白标签、页面隐藏/卸载、窗口失活/最小化都不抑制后台会话。状态以当前 page owner 和当前 `OpenCodePageSource` capability 绑定，不由后台线程读取 XAML。
+- 完成、权限、问题/Form 和交互反馈均在最终原生派发锁内检查当前前台 scope；异步详情 GET 期间前后台切换以**派发时**状态为准。被抑制的完成返回 `NotificationDispatchStatus.Suppressed`，idle ID 进入 Seen；被抑制的交互返回 `NotificationInteractionStatus.Suppressed`，撤销未显示 plan 的 nonce 并加入 monitor 的已准备集合。离开前台后不补发同一事件；新的后台事件照常通知。
+- 已显示 toast 的会话进入前台时，按精确 endpoint/session/source generation 标为本地已读并移除其现有 native IDs（完成及权限/Form）。这不写 server viewed watermark，不表示权限/问题已结算，不解除 Gate unknown，不影响其它会话/子会话；原有真实视口 ACK 和 `ReconcileViewedCompletionsAsync` 继续独立工作。
 
 结构化事件（后台线程，订阅者异常被隔离）：
 
@@ -136,6 +142,7 @@ public sealed record OpenCodeNotificationObservation(
 1. App 创建唯一 CompletionNotificationService，订阅结果与导航，然后成功 Initialize（仍须原生回调先订阅再 Register 的既有服务流程）。
 2. 配置 owner 构建稳定 client/source，构建 App 级 monitor，订阅 Observed，明确 Track session，再 Start。页面接入 `service.InteractionGate`，不自行创建第二套仲裁。
 3. 配置换代：先同步 Revoke 旧 `OpenCodePageSource` 并清空 `App.CurrentOpenCodePageSource`、推进 generation；**首次 await 之前**调用 `Task interactions = service.SuspendInteractionsAsync(oldIdentity)`，同步关闭新激活 admission、Invalidate 旧来源、取消已登记 activation（包括 native/SDK redirect/IPC 三入口）。然后 `await oldMonitor.StopAsync()`；`await interactions`；`await oldMonitor.DisposeAsync()`；再 dispose 旧 **monitor client**（以及 owner 自有的注入 HttpClient）。页面自行取消/drain/Dispose 其独立 client，App 不依赖 page drain。新来源以同份已验证不可变 options 构建工厂，只在 generation 检查内发布，`service.ResumeInteractions()` 后再启动新 monitor。同 endpoint 换密也新 revision/source、gate identity 不变。App 为避免排队空窗在请求入口先 revoke/suspend，在释放来源时再次 fence/drain；服务 admission/登记/快照使用同锁，不漏任务。Stop 保留锚点供同来源 resume；换代用新 monitor 基线。
+   请求换代/退出入口还会同步 `Dispose` 旧 monitor，立即取消其 SSE、重连/合并/安全补查等待并封住旧观察；后续 release 仍通过 Stop/DisposeAsync 等待 worker 与 HTTP 排空后才 dispose client。普通同来源 Stop 不清锚点；Dispose 不再允许 Start/Track。
 4. Invalidate 撤销旧 entry/nonce、未提交 plan、完成导航映射的资格，不清除 gate 未知结果 tombstone。已跨过 mutation 检查并送出的请求不能撤回；迟到/网络未知仍通过 gate 保护。新来源不要复用已撤销 client 对象。
 5. 退出：先停止页面 mutation 入口，**同步** suspend/revoke 通知交互，再 drain monitor **及全部 activation**，释放 monitor/client，最后 `await service.DisposeAsync()` 并退订 App 事件。`CompletionNotificationService.Dispose()` 保留兼容，只同步 fence/cancel 不等待；仅 await monitor.StopAsync 并不足以释放 activation 正在使用的 client。禁止同步 `.Wait()`/`.Result`。`ResumeInteractions()` 要求所有旧 activation 已 drain，关闭/disposing 后抛 ObjectDisposedException；不会解除共享 gate 的 OutcomeUnknown。已发起 mutation 的取消不能声称撤回，最终未知结果仍保护请求/Reject 会话。来源撤销与 coordinator 最后检查/发起 mutation 以同锁线性化。
 

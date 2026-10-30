@@ -5,20 +5,16 @@ using System.Text.RegularExpressions;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>B17：working 指示器所处的真实活动（由服务端事件推出的部件状态决定，不由装饰词推断）。</summary>
-internal enum OpenCodeWorkingActivity { General, Reasoning, Tool }
-
-/// <summary>B17：真实执行模型的品牌家族（只来自正在运行的 assistant 消息的 modelID，从不来自 UI 下拉框）。</summary>
-internal enum OpenCodeWorkingFamily { Unknown, DeepSeek, Claude, OpenAI, Gemini }
+internal enum OpenCodeWorkingActivity { General, Reasoning, Tool, SubagentDispatch, SubagentWait, Read, Edit, Shell, Search, Web, Plan }
 
 /// <summary>B17：词条分层。</summary>
-internal enum OpenCodeWorkingTier { Standard, Playful, Satire }
+internal enum OpenCodeWorkingTier { Standard, Contextual, Playful, Satire }
 
 /// <summary>
 /// B17：working 状态的装饰性状态词库（纯逻辑，无 WinUI 依赖）。
 /// </summary>
 /// <remarks>
-/// <para>三层：① 标准状态词（与已知真实活动对应：思考 / 工具 / 一般）；② 通用风趣短句；
-/// ③ 低概率的模型家族段子（用户原话），只在实际执行模型属于该家族时可能出现。</para>
+/// <para>标准状态词、真实活动对应的风趣短句、通用风趣短句，以及仅匹配实际模型家族的段子。</para>
 /// <para>纯客户端装饰：从不替换错误、提问、权限等真实状态文本，也不表示模型真的在做这些事。</para>
 /// </remarks>
 internal static class OpenCodeWorkingPhrases
@@ -30,20 +26,72 @@ internal static class OpenCodeWorkingPhrases
     internal const double MinIntervalMs = 8_000;
     internal const double MaxIntervalMs = 12_000;
 
-    /// <summary>换词时各层概率：段子（仅开关开启且家族已知）→ 风趣 → 其余为标准词。</summary>
-    internal const double SatireProbability = 0.04;
-    internal const double PlayfulProbability = 0.35;
+    /// <summary>固定概率区间；无家族的段子份额归标准，无上下文池的份额归通用风趣。</summary>
+    internal const double SatireProbability = 0.15;
+    internal const double ContextualProbability = 0.35;
+    internal const double PlayfulProbability = 0.25;
+
+    /// <summary>服务端实际工具名；命名空间前缀不改变工具活动。只有已运行的子任务才算等待结果。</summary>
+    internal static OpenCodeWorkingActivity Activity(string? toolName, bool waitingForSubagent = false)
+    {
+        if (string.IsNullOrWhiteSpace(toolName)) return OpenCodeWorkingActivity.Tool;
+        var name = toolName.Trim().ToLowerInvariant();
+        var separator = name.LastIndexOfAny(new[] { '.', '/', ':' });
+        if (separator >= 0) name = name[(separator + 1)..];
+        if (name.StartsWith("browser", StringComparison.Ordinal)) return OpenCodeWorkingActivity.Web;
+        if (name.StartsWith("pty", StringComparison.Ordinal)) return OpenCodeWorkingActivity.Shell;
+        var activity = name switch
+        {
+            "task" or "subagent" or "agent" => waitingForSubagent ? OpenCodeWorkingActivity.SubagentWait : OpenCodeWorkingActivity.SubagentDispatch,
+            "task_result" or "background_output" or "background_result" or "background_wait" or "subagent_result" or "subagent_wait" => OpenCodeWorkingActivity.SubagentWait,
+            "read" or "view" or "list" or "ls" => OpenCodeWorkingActivity.Read,
+            "edit" or "multiedit" or "write" or "patch" or "apply_patch" => OpenCodeWorkingActivity.Edit,
+            "bash" or "shell" => OpenCodeWorkingActivity.Shell,
+            "grep" or "glob" or "find" or "codesearch" => OpenCodeWorkingActivity.Search,
+            "webfetch" or "websearch" => OpenCodeWorkingActivity.Web,
+            "todowrite" or "todoread" or "todo" or "plan" => OpenCodeWorkingActivity.Plan,
+            _ => OpenCodeWorkingActivity.Tool,
+        };
+        // MCP tool names use namespace_tool; try the suffix without losing compound names such as apply_patch / task_result.
+        if (activity == OpenCodeWorkingActivity.Tool && name.IndexOf('_') is var underscore && underscore >= 0)
+            return Activity(name[(underscore + 1)..], waitingForSubagent);
+        return activity;
+    }
 
     internal static IReadOnlyList<string> Standard(OpenCodeWorkingActivity activity) => activity switch
     {
         OpenCodeWorkingActivity.Reasoning => StandardReasoning,
-        OpenCodeWorkingActivity.Tool => StandardTool,
-        _ => StandardGeneral,
+        OpenCodeWorkingActivity.General => StandardGeneral,
+        _ => StandardTool,
     };
 
     private static readonly string[] StandardGeneral = { "处理中…", "工作中…" };
     private static readonly string[] StandardReasoning = { "思考中…", "推敲中…" };
     private static readonly string[] StandardTool = { "处理中…", "执行中…" };
+
+    internal static IReadOnlyList<string> Contextual(OpenCodeWorkingActivity activity) => activity switch
+    {
+        OpenCodeWorkingActivity.SubagentDispatch => ContextualSubagentDispatch,
+        OpenCodeWorkingActivity.SubagentWait => ContextualSubagentWait,
+        OpenCodeWorkingActivity.Read => ContextualRead,
+        OpenCodeWorkingActivity.Edit => ContextualEdit,
+        OpenCodeWorkingActivity.Shell => ContextualShell,
+        OpenCodeWorkingActivity.Search => ContextualSearch,
+        OpenCodeWorkingActivity.Web => ContextualWeb,
+        OpenCodeWorkingActivity.Plan => ContextualPlan,
+        OpenCodeWorkingActivity.Reasoning => ContextualReasoning,
+        _ => Array.Empty<string>(),
+    };
+
+    private static readonly string[] ContextualSubagentDispatch = { "让子智能体背锅中…", "摇人中…", "把锅分下去中…", "当甩手掌柜中…" };
+    private static readonly string[] ContextualSubagentWait = { "等打工人交作业中…", "监工中…", "抽查子智能体摸鱼中…" };
+    private static readonly string[] ContextualRead = { "考古旧代码中…", "读你三年前写的代码中…", "试图理解这段注释中…" };
+    private static readonly string[] ContextualEdit = { "动刀中…", "“只改一行”中…", "悄悄改代码中…" };
+    private static readonly string[] ContextualShell = { "祈祷别是 rm -rf…", "假装懂这条命令中…", "等终端回话中…" };
+    private static readonly string[] ContextualSearch = { "大海捞针中…", "满仓库翻找中…" };
+    private static readonly string[] ContextualWeb = { "去 Stack Overflow 抄作业中…", "上网冲浪中…" };
+    private static readonly string[] ContextualPlan = { "画饼中…", "列 TODO 中，完成看缘分…" };
+    private static readonly string[] ContextualReasoning = { "预测下一个 token…", "说服自己这是对的…", "深度思考（其实在发呆）…" };
 
     internal static IReadOnlyList<string> Playful { get; } = new[]
     {
@@ -62,6 +110,12 @@ internal static class OpenCodeWorkingPhrases
         "整理思绪中…",
         "召唤灵感中…",
         "咖啡因注入中…",
+        "认真编造中…",
+        "和幻觉保持距离…",
+        "计算你的 token 账单…",
+        "等 GPU 空出来…",
+        "假装很懂中…",
+        "在上下文里翻旧账…",
     };
 
     /// <summary>用户提供的段子原文。仅在 <see cref="EnableModelSatire"/> 开启且家族匹配时可能出现。</summary>
@@ -74,10 +128,10 @@ internal static class OpenCodeWorkingPhrases
         _ => Array.Empty<string>(),
     };
 
-    private static readonly string[] SatireDeepSeek = { "大肥鱼吃白饭中…", "大肥鱼娱乐中…" };
-    private static readonly string[] SatireClaude = { "封禁中文中…", "封禁中国人中…", "检测中国人中…" };
-    private static readonly string[] SatireOpenAI = { "降智中…", "tibo重置中…" };
-    private static readonly string[] SatireGemini = { "奉承用户中…" };
+    private static readonly string[] SatireDeepSeek = { "大肥鱼吃白饭中…", "大肥鱼娱乐中…", "吃白饭中…", "雷霆思考中…", "服务器繁忙中…" };
+    private static readonly string[] SatireClaude = { "封禁中文中…", "封禁中国人中…", "检测中国人中…", "核查 IP 归属中…", "检查时区是不是 UTC+8…", "扫描中文注释中…", "审核账号国籍中…", "检查支付卡发卡行中…" };
+    private static readonly string[] SatireOpenAI = { "降智中…", "tibo重置中…", "核验中…", "探针中…", "冻结快照中…", "计算 SHA 中…", "搭夹具中…", "过门禁中…", "灰度放量中…", "跑验收矩阵中…", "复核复核中…", "归档证据链中…", "准备回滚中…", "不粘锅模式中…", "老油条摸鱼中…", "随机降智中…" };
+    private static readonly string[] SatireGemini = { "奉承用户中…", "流口水中…", "哈基米摇尾巴中…", "酝酿彩虹屁中…", "疯狂点赞中…", "擦口水中…", "被你的天才震撼中…" };
 
     /// <summary>
     /// 由真实执行的 modelID 判断品牌家族：沿用 A2 的 <see cref="OpenCodeModelPresentation.Brand"/>（网关后的显式家族词也能识别），
@@ -132,7 +186,7 @@ internal static class OpenCodeWorkingMotion
 
 /// <summary>
 /// B17：一个进行中分组的换词状态机。working 开始时取一次标准词；之后最多每 8–12 秒换一次（由已有的每秒头部刷新驱动，
-/// 不新增计时器）。真实活动变化（思考 ↔ 工具）时，若当前是标准词则立即改为对应的标准词，保证不显示与真实状态矛盾的词；
+/// 不新增计时器）。真实活动变化时，若当前是标准词或上下文词则立即改为新活动对应的词，保证不显示与真实状态矛盾的词；
 /// 风趣/段子与活动无关，保留到下次换词。
 /// </summary>
 internal sealed class OpenCodeWorkingPhrasePicker
@@ -169,7 +223,7 @@ internal sealed class OpenCodeWorkingPhrasePicker
     /// <summary>离开 working（完成 / 隐藏 / 卸载）：下次进入重新从标准词开始。</summary>
     internal void Stop() => _started = false;
 
-    /// <summary>更新真实上下文（每次流式刷新都可能调用；不会因此换装饰词）。返回当前词是否变化。</summary>
+    /// <summary>更新真实上下文；仅活动或家族改变时立即退役不匹配的词，不改变定时换词期限。</summary>
     internal bool UpdateContext(OpenCodeWorkingActivity activity, OpenCodeWorkingFamily family, double nowMs)
     {
         if (!_started) { Start(activity, family, nowMs); return true; }
@@ -183,11 +237,14 @@ internal sealed class OpenCodeWorkingPhrasePicker
         }
         if (activity == _activity) return false;
         _activity = activity;
-        if (Tier != OpenCodeWorkingTier.Standard) return false;
-        var pool = OpenCodeWorkingPhrases.Standard(activity);
-        if (Contains(pool, Current)) return false;
-        Set(PickFrom(pool), OpenCodeWorkingTier.Standard);
-        return true;
+        if (Tier is not (OpenCodeWorkingTier.Standard or OpenCodeWorkingTier.Contextual)) return false;
+        var previous = Current;
+        var contextual = OpenCodeWorkingPhrases.Contextual(activity);
+        if (_random() < 0.5 && contextual.Count > 0)
+            Set(PickFrom(contextual), OpenCodeWorkingTier.Contextual);
+        else
+            Set(PickFrom(OpenCodeWorkingPhrases.Standard(activity)), OpenCodeWorkingTier.Standard);
+        return !string.Equals(previous, Current, StringComparison.Ordinal);
     }
 
     /// <summary>定时检查（约每秒一次）：仅到点才换词。返回当前词是否变化。</summary>
@@ -197,9 +254,18 @@ internal sealed class OpenCodeWorkingPhrasePicker
         var previous = Current;
         var roll = _random();
         var satire = _satireEnabled ? OpenCodeWorkingPhrases.Satire(_family) : Array.Empty<string>();
-        if (satire.Count > 0 && roll < OpenCodeWorkingPhrases.SatireProbability)
-            Set(PickFrom(satire), OpenCodeWorkingTier.Satire);
-        else if (roll < OpenCodeWorkingPhrases.SatireProbability + OpenCodeWorkingPhrases.PlayfulProbability)
+        if (roll < OpenCodeWorkingPhrases.SatireProbability)
+        {
+            if (satire.Count > 0) Set(PickFrom(satire), OpenCodeWorkingTier.Satire);
+            else Set(PickFrom(OpenCodeWorkingPhrases.Standard(_activity)), OpenCodeWorkingTier.Standard);
+        }
+        else if (roll < OpenCodeWorkingPhrases.SatireProbability + OpenCodeWorkingPhrases.ContextualProbability)
+        {
+            var contextual = OpenCodeWorkingPhrases.Contextual(_activity);
+            if (contextual.Count > 0) Set(PickFrom(contextual), OpenCodeWorkingTier.Contextual);
+            else Set(PickFrom(OpenCodeWorkingPhrases.Playful), OpenCodeWorkingTier.Playful);
+        }
+        else if (roll < OpenCodeWorkingPhrases.SatireProbability + OpenCodeWorkingPhrases.ContextualProbability + OpenCodeWorkingPhrases.PlayfulProbability)
             Set(PickFrom(OpenCodeWorkingPhrases.Playful), OpenCodeWorkingTier.Playful);
         else
             Set(PickFrom(OpenCodeWorkingPhrases.Standard(_activity)), OpenCodeWorkingTier.Standard);
@@ -226,12 +292,6 @@ internal sealed class OpenCodeWorkingPhrasePicker
         if (index >= pool.Count) index = pool.Count - 1;
         if (string.Equals(pool[index], Current, StringComparison.Ordinal)) index = (index + 1) % pool.Count;
         return pool[index];
-    }
-
-    private static bool Contains(IReadOnlyList<string> pool, string value)
-    {
-        for (var i = 0; i < pool.Count; i++) if (string.Equals(pool[i], value, StringComparison.Ordinal)) return true;
-        return false;
     }
 
     private static double Clamp01(double value) => value < 0 ? 0 : value >= 1 ? 0.999999 : value;

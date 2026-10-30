@@ -60,6 +60,7 @@ namespace AIFrontend.Pages
     {
         internal long RenderVersion { get; private set; }
         private OpenCode.OpenCodeVisibleIdle? _testIdle;
+        internal bool IsIdleLayoutCurrent => _testIdle is not null;
         internal event EventHandler? IdleViewportInvalidated;
         public event EventHandler<object>? LayoutUpdated;
         public event Action<object, Microsoft.UI.Xaml.SizeChangedEventArgs>? SizeChanged;

@@ -107,6 +107,8 @@ internal static class Program
         typeof(OpenCodeRecentModels).GetField("_path",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,
             Path.Combine(Path.GetTempPath(),"a7-offline-recents-"+Guid.NewGuid().ToString("N")+".json"));
         typeof(OpenCodeRecentModels).GetField("_loaded",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,true);
+        await CatalogDispatchTests.Run();
+        if (args.Length > 2 && args[2] == "True") return;
         await ComposerActivityTests.Run();
         ComposerStatusHost.Run();
         await SideQuestionTests.Run();
@@ -931,7 +933,7 @@ namespace AIFrontend.Pages
         internal readonly TextBox ChildStopLabel = new();
         internal void RefreshChildStop() => RefreshChildStopButton();
         internal Task StopChild() => InterruptSelectedSessionAsync(childStop: true);
-        private void RefreshChildComposerVisibility() { }
+        private void RefreshChildComposerVisibility() { AssertComposerUiThread(); }
         private void OpenFullScreenComposer() { FullScreenOpens++; }
         internal int FullScreenOpens;
         internal void AdvanceSourceGeneration() => _sourceGeneration++;
@@ -955,6 +957,8 @@ namespace AIFrontend.Pages
         // Production member lives in Pages/OpenCodePage.QuestionOverlay.cs (L13, WinUI overlay glue, not compiled here);
         // the question overlay is not modelled by this harness, so only the permission cover contributes.
         private bool ComposerCoveredByOverlay => _composerCoveredByPermission;
+        // Actual IME overlay wake-up + both overlay partials are exercised by opencode-form-view, not this composer host.
+        private void QueueDeferredComposerOverlayRefresh() { }
         internal bool ComposerEnabled => Composer.IsEnabled;
         internal OpenCodePage(OpenCodePageSource source, OpenCodeClient client)
         {
@@ -1204,6 +1208,8 @@ namespace AIFrontend.Pages.OpenCode
         internal OpenCodeComposerEditorAck? Acknowledgment { get; set; }
     }
     public sealed class OpenCodeComposerAttachmentRemovedEventArgs(OpenCodeComposerToken token, Guid id) : EventArgs { public OpenCodeComposerToken Token => token; public Guid Id => id; }
+    internal sealed class OpenCodeComposerAttachmentImageEventArgs : EventArgs { }
+    internal static class OpenCodeComposerAttachmentImageViewer { internal static void Open(OpenCodeComposerAttachmentImageEventArgs e) { } } // Native viewer; page wiring only.
     internal sealed class OpenCodeComposerView(Func<OpenCodeComposerSnapshot> source,
         Func<OpenCodeComposerCatalogLifetime>? begin = null, Action<OpenCodeComposerCatalogLifetime>? end = null)
     {
@@ -1211,6 +1217,7 @@ namespace AIFrontend.Pages.OpenCode
         // WinUI event delivery or rendering. Immediate scheduling is deliberate, with a hold seam below.
         internal event EventHandler? StateChanged;
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
+        internal Func<string?>? SplashModelIdProvider { get; set; }
         internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
         internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
         internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, PickRequested;
@@ -1237,6 +1244,9 @@ namespace AIFrontend.Pages.OpenCode
         internal void DismissIntent() { var s = source(); ClientIntentDismissed?.Invoke(this, new(s.Token, s.ClientIntent!.Id, s.ClientIntent.Kind)); }
         internal void Dismiss(OpenCodeComposerCatalogHandle handle) => CatalogDismissRequested?.Invoke(this, new(handle));
         internal event EventHandler<OpenCodeComposerAttachmentRemovedEventArgs>? AttachmentRemoved;
+#pragma warning disable CS0067 // Raised only by the native view.
+        internal event EventHandler<OpenCodeComposerAttachmentImageEventArgs>? AttachmentImageOpened;
+#pragma warning restore CS0067
         internal int RequestCount, QueueCount, FocusAttempts;
         private TextBox? editor;
         private Func<bool> composing = () => false;

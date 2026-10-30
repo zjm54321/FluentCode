@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -9,7 +8,7 @@ internal enum OpenCodePersistentPtyPhase { Unavailable, Connecting, Replaying, L
 internal enum OpenCodePersistentPtyRole { Observer, Controller }
 internal sealed record OpenCodePersistentPtyPresentation(OpenCodePersistentPtyViewContext Context, string Title,
     string? Directory, OpenCodePersistentPtyPhase Phase, OpenCodePersistentPtyRole Role, string? ControllerLabel,
-    bool CanTakeControl, bool InputAuthorized, string? Notice = null)
+    bool CanTakeControl, bool InputAuthorized, string? Notice = null, string? OutputStatus = null)
 {
     internal bool Writable => Phase == OpenCodePersistentPtyPhase.Live && Role == OpenCodePersistentPtyRole.Controller && InputAuthorized;
     internal bool NeedsInputConsent => Phase == OpenCodePersistentPtyPhase.Live && CanTakeControl
@@ -18,7 +17,7 @@ internal sealed record OpenCodePersistentPtyPresentation(OpenCodePersistentPtyVi
     internal string ConsentExplanation => Role == OpenCodePersistentPtyRole.Controller
         ? "当前连接已获分配控制权，但尚未启用输入。确认后，键盘输入将发送到此终端。"
         : "接管后，键盘输入将发送到此终端，当前控制者将转为只读观察。仅查看不会接管终端。";
-    internal string Status => Phase switch
+    internal string Status => OutputStatus ?? (Phase switch
     {
         OpenCodePersistentPtyPhase.Connecting => "正在连接",
         OpenCodePersistentPtyPhase.Replaying => "正在恢复终端画面",
@@ -27,7 +26,7 @@ internal sealed record OpenCodePersistentPtyPresentation(OpenCodePersistentPtyVi
         OpenCodePersistentPtyPhase.Disconnected => "连接已断开",
         OpenCodePersistentPtyPhase.Exited => "终端已退出",
         _ => "终端不可用",
-    };
+    });
 }
 internal sealed record OpenCodePersistentPtyInput(OpenCodePersistentPtyViewContext Context, ReadOnlyMemory<byte> Bytes);
 internal sealed record OpenCodePersistentPtyResize(OpenCodePersistentPtyViewContext Context, int Columns, int Rows);
@@ -35,13 +34,6 @@ internal sealed record OpenCodePersistentPtySelection(OpenCodePersistentPtyViewC
 
 internal static class OpenCodePersistentPtyRendererPolicy
 {
-    internal const string Origin = "https://persistent-pty.aif.invalid/";
-    internal const string Document = Origin + "index.html";
-    private static readonly HashSet<string> Files = new(StringComparer.Ordinal)
-        { "/index.html", "/terminal.js", "/terminal.css", "/xterm.js", "/xterm.css", "/addon-fit.js" };
-    internal static bool AllowsResource(string? value)
-        => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "persistent-pty.aif.invalid"
-            && uri.IsDefaultPort && uri.UserInfo.Length == 0 && uri.Query.Length == 0 && uri.Fragment.Length == 0 && Files.Contains(uri.AbsolutePath);
     internal static bool ValidGeometry(int columns, int rows) => columns is >= 2 and <= 1000 && rows is >= 1 and <= 1000;
     internal static bool AcceptsInputGeneration(bool writable, string expected, string? received)
         => writable && expected.Length > 0 && string.Equals(expected, received, StringComparison.Ordinal);

@@ -234,6 +234,7 @@ public sealed partial class OpenCodePage
             RightSessionDiagnostics.Visibility = hasSessionSurface ? Visibility.Visible : Visibility.Collapsed;
             RightPanelExistingActions.Visibility = rightResident ? Visibility.Visible : Visibility.Collapsed;
             MoveExistingSidebarActions(rightResident);
+            MoveRightFooterForLayout(wide);
             // Session connection details live in the resident footer or narrow composer dot.
             ConnectionStatusButton.Visibility = hasSessionSurface ? Visibility.Collapsed : Visibility.Visible;
             ContextRingHost.Visibility = (_sidebarLayout.ShowHeaderContext || !workspaceVisible) && hasSessionSurface
@@ -247,6 +248,7 @@ public sealed partial class OpenCodePage
             QueueSessionControlCardRefresh();
             UpdateDockInsets();
             QueueComposerLayout();
+            RefreshChildReturnButton();
         }
         finally { _sidebarApplying = false; }
     }

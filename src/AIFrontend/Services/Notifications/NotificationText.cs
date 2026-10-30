@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using AIFrontend.Services.OpenCode;
 
 namespace AIFrontend.Services.Notifications;
@@ -22,9 +23,9 @@ internal static class NotificationText
     internal static IReadOnlyList<string> CompletionLines(NotificationSource source, NotificationCompletionText? text)
     {
         string title = text?.Title ?? (source == NotificationSource.OpenCode ? "OpenCode 会话" : NotificationSourceLabels.GetDisplayName(source));
-        if (source != NotificationSource.OpenCode) return [title, "任务已完成"];
+        if (source != NotificationSource.OpenCode) return new[] { title, "任务已完成" };
         var body = BodyLines("OpenCode · " + (text?.Summary ?? "任务已完成"), 220);
-        return body.Second is null ? [title, body.First] : [title, body.First, body.Second];
+        return body.Second is null ? new[] { title, body.First } : new[] { title, body.First, body.Second };
     }
 
     internal static string SingleLine(string? value, int limit, string fallback = "")
@@ -58,6 +59,51 @@ internal static class NotificationText
             text = messages[i].Content?.LastOrDefault(p => p.Type == "text" && !string.IsNullOrWhiteSpace(p.Text))?.Text;
             if (text is not null) break;
         }
-        return new(SingleLine(title, 80, "OpenCode 会话"), SingleLine(text, 200, "任务已完成"));
+        return new(SingleLine(title, 80, "OpenCode 会话"), SingleLine(PlainMarkdown(text), 200, "任务已完成"));
+    }
+
+    private static readonly Regex Fence = new(@"^(```|~~~)", RegexOptions.Compiled);
+    private static readonly Regex Rule = new(@"^(?=.*-)(?=.*\|)[\s|:-]+$|^([-*_]\s*){3,}$", RegexOptions.Compiled);
+    private static readonly Regex BlockPrefix = new(@"^(#{1,6}\s+|>\s?|[-*+]\s+(\[[ xX]\]\s+)?|\d{1,9}[.)]\s+)", RegexOptions.Compiled);
+    private static readonly Regex Image = new(@"!\[([^\]]*)\]\([^)]*\)", RegexOptions.Compiled);
+    private static readonly Regex Link = new(@"\[([^\]]+)\]\([^)]*\)", RegexOptions.Compiled);
+    private static readonly Regex AutoLink = new(@"<((?:https?|mailto):[^>\s]+)>", RegexOptions.Compiled);
+    private static readonly Regex Tag = new(@"</?[A-Za-z][A-Za-z0-9-]*(\s[^<>]*)?/?>", RegexOptions.Compiled);
+    private static readonly Regex Code = new(@"(`+)(.+?)\1", RegexOptions.Compiled);
+    private static readonly Regex Escape = new(@"\\([\\`*_{}\[\]()#+\-.!|<>~])", RegexOptions.Compiled);
+    private static readonly Regex Held = new("\u0001(\\d+)\u0001", RegexOptions.Compiled);
+    private static readonly Regex Strong = new(@"(\*\*|__|~~)(?=\S)(.+?)(?<=\S)\1", RegexOptions.Compiled);
+    private static readonly Regex Emphasis = new(@"(?<!\*)\*(?=\S)(.+?)(?<=\S)\*(?!\*)|(?<![A-Za-z0-9_])_(?=\S)(.+?)(?<=\S)_(?![A-Za-z0-9_])", RegexOptions.Compiled);
+
+    /// <summary>Toasts render plain text only: drop Markdown syntax, keep the readable words.</summary>
+    internal static string? PlainMarkdown(string? markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown)) return markdown;
+        var lines = new List<string>();
+        bool fenced = false;
+        foreach (string raw in markdown.Replace("\r\n", "\n").Split('\n'))
+        {
+            string line = raw.Replace("\u0001", "").Trim();
+            if (Fence.IsMatch(line)) { fenced = !fenced; continue; }
+            if (fenced) { lines.Add(line); continue; }
+            if (Rule.IsMatch(line)) continue;
+            for (string previous = ""; previous != line;) { previous = line; line = BlockPrefix.Replace(line, ""); }
+            var held = new List<string>();
+            string Hold(string value) { held.Add(value); return "\u0001" + (held.Count - 1).ToString(CultureInfo.InvariantCulture) + "\u0001"; }
+            line = Code.Replace(line, m => Hold(m.Groups[2].Value.Trim()));
+            line = Escape.Replace(line, m => Hold(m.Groups[1].Value));
+            if (line.StartsWith('|') && line.EndsWith('|') && line.Length > 1)
+                line = string.Join("  ", line[1..^1].Split('|').Select(c => c.Trim()));
+            line = Image.Replace(line, "$1");
+            line = Link.Replace(line, "$1");
+            line = AutoLink.Replace(line, "$1");
+            line = Tag.Replace(line, " ");
+            for (string previous = ""; previous != line;) { previous = line; line = Strong.Replace(line, "$2"); }
+            line = Emphasis.Replace(line, m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value);
+            line = Held.Replace(line, m => int.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int i)
+                && i < held.Count ? held[i] : "");
+            lines.Add(line);
+        }
+        return string.Join("\n", lines);
     }
 }

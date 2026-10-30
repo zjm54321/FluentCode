@@ -16,6 +16,9 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Graphics.Imaging;
+using Windows.Storage.Streams;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -29,6 +32,15 @@ public sealed class OpenCodeComposerAttachmentRemovedEventArgs(OpenCodeComposerT
 {
     public OpenCodeComposerToken Token { get; } = token;
     public Guid Id { get; } = id;
+}
+/// <summary>Full-size viewing of a composer image attachment; the page owns the shared image viewer.</summary>
+internal sealed class OpenCodeComposerAttachmentImageEventArgs(Guid id, string name, string mime, byte[] bytes, FrameworkElement anchor) : EventArgs
+{
+    public Guid Id { get; } = id;
+    public string Name { get; } = name;
+    public string Mime { get; } = mime;
+    public byte[] Bytes { get; } = bytes;
+    public FrameworkElement Anchor { get; } = anchor;
 }
 public sealed class OpenCodeComposerTextEditedEventArgs(OpenCodeComposerToken token, string text) : EventArgs
 {
@@ -69,7 +81,9 @@ internal sealed class OpenCodeComposerView : StackPanel
     // Context inserts a legal "@"; terminal is a separate editor/transport owned by the page.
     private readonly MenuFlyoutItem _contextItem;
     private readonly MenuFlyoutItem _terminalItem;
-    private readonly TextBlock _summaryText;
+    // Attachment limits: one status glyph (green ✓ / amber / red); the numbers live in its tooltip.
+    private readonly ContentControl _limitIndicator;
+    private readonly FontIcon _limitIcon;
 
     // Draft chips
     private readonly ScrollViewer _chipScroll;
@@ -163,6 +177,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved;
     internal event EventHandler<OpenCodeComposerTokenEventArgs>? PickRequested;
     internal event EventHandler<OpenCodeComposerAttachmentRemovedEventArgs>? AttachmentRemoved;
+    /// <summary>Click / Enter / Space on an image tile: the page opens its shared full-size image viewer.</summary>
+    internal event EventHandler<OpenCodeComposerAttachmentImageEventArgs>? AttachmentImageOpened;
     internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
     /// <summary>Raised on the UI thread after a render whose visible/eligibility state changed (page refreshes Send/Stop).</summary>
     internal event EventHandler? StateChanged;
@@ -209,7 +225,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetAutomationId(this, "OpenCodeComposerCompanion");
         AutomationProperties.SetName(this, "命令与附件");
 
-        // ---- Leading "+" button (B7): 添加附件 · ── · 命令（/） · 上下文（@） · 终端（!） ----
+        // ---- Leading "+" button (B7): 添加附件 · ── · 命令 / · 上下文 @ · 终端 ! ----
         // Built from OpenCodeComposerPlusMenu.Entries so the order/labels are verified offline against the same data.
         var addMenu = new MenuFlyout { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
         MenuFlyoutItem? attach = null, command = null, context = null, terminal = null;
@@ -255,10 +271,21 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetName(_addButton, "添加附件、命令或上下文");
         ToolTipService.SetToolTip(_addButton, "添加附件、命令、上下文");
 
-        _summaryText = Caption(string.Empty, 0.75);
-        _summaryText.VerticalAlignment = VerticalAlignment.Center;
-        _summaryText.TextWrapping = TextWrapping.NoWrap;
-        _summaryText.Visibility = Visibility.Collapsed;
+        _limitIcon = new FontIcon { Glyph = "\uEC61", FontSize = 16 };
+        _limitIndicator = new ContentControl
+        {
+            Content = _limitIcon,
+            Width = 32,
+            Height = 32,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTabStop = true,
+            UseSystemFocusVisuals = true,
+            Visibility = Visibility.Collapsed,
+        };
+        AutomationProperties.SetAutomationId(_limitIndicator, "OpenCodeComposerAttachmentLimit");
+        ToolTipService.SetPlacement(_limitIndicator, PlacementMode.Top);
 
         // ---- Chips: 命令 pill + 附件 pills (bounded horizontal strip) ----
         _commandChipText = new TextBlock
@@ -284,6 +311,7 @@ internal sealed class OpenCodeComposerView : StackPanel
             BorderThickness = new Thickness(1),
             Style = ThemedBorder("SystemFillColorAttentionBackgroundBrush", "AccentFillColorDefaultBrush"),
             Child = commandChipRow,
+            VerticalAlignment = VerticalAlignment.Center, // Attachment tiles are taller than text chips.
             Visibility = Visibility.Collapsed,
         };
         AutomationProperties.SetAutomationId(_commandChip, "OpenCodeComposerCommandChip");
@@ -315,6 +343,7 @@ internal sealed class OpenCodeComposerView : StackPanel
             BorderThickness = new Thickness(1),
             Style = ThemedBorder("SubtleFillColorSecondaryBrush", "ControlStrokeColorDefaultBrush"),
             Child = intentRow,
+            VerticalAlignment = VerticalAlignment.Center,
             Visibility = Visibility.Collapsed,
         };
         AutomationProperties.SetAutomationId(_intentChip, "OpenCodeComposerClientActionChip");
@@ -343,7 +372,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Place(_chipRow, _chipScroll, 0);
-        Place(_chipRow, _summaryText, 1);
+        Place(_chipRow, _limitIndicator, 1);
 
         // ---- Status line ----
         _statusIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 1, 0, 0) };
@@ -636,8 +665,12 @@ internal sealed class OpenCodeComposerView : StackPanel
     private void RotatePlaceholderSplash()
     {
         var s = _source();
-        _splash.ObserveContext(boundSession: s.IsActive && !s.IsUnboundDraft, blankSession: s.IsActive && s.IsUnboundDraft);
+        _splash.ObserveContext(boundSession: s.IsActive && !s.IsUnboundDraft, blankSession: s.IsActive && s.IsUnboundDraft,
+            family: OpenCodeWorkingPhrases.Family(SplashModelIdProvider?.Invoke()));
     }
+
+    // Read only at draft-slot activation, never from rendering, typing, model-picker changes or a timer.
+    internal Func<string?>? SplashModelIdProvider { get; set; }
 
     internal OpenCodeComposerEditorRecovery SuspendDraftSlotForRecovery(string reason)
     {
@@ -743,9 +776,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || _terminalItem.IsEnabled;
         long total = 0;
         foreach (var a in snapshot.Attachments) total += a.Bytes;
-        _summaryText.Text = OpenCodeComposerInputPolicy.AttachmentSummary(snapshot.Attachments.Count, total,
-            OpenCodeAttachment.MaxFiles, OpenCodeAttachment.MaxTotalBytes);
-        _summaryText.Visibility = _summaryText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RenderAttachmentLimit(snapshot.Attachments.Count, total);
 
         RenderChips(snapshot, canEdit);
         RenderStatus(snapshot, enhanced, inactiveBound);
@@ -763,6 +794,32 @@ internal sealed class OpenCodeComposerView : StackPanel
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+
+    private OpenCodeComposerAttachmentLimitLevel? _limitLevel;
+
+    private void RenderAttachmentLimit(int count, long total)
+    {
+        _limitIndicator.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (count <= 0) return;
+        var level = OpenCodeComposerInputPolicy.AttachmentLimitLevel(count, total, OpenCodeAttachment.MaxFiles, OpenCodeAttachment.MaxTotalBytes);
+        var details = OpenCodeComposerInputPolicy.AttachmentLimitDetails(count, total,
+            OpenCodeAttachment.MaxFiles, OpenCodeAttachment.MaxTotalBytes, OpenCodeAttachment.MaxFileBytes);
+        if (_limitLevel != level)
+        {
+            _limitLevel = level;
+            (_limitIcon.Glyph, _limitIcon.Style) = level switch
+            {
+                OpenCodeComposerAttachmentLimitLevel.Over => ("\uEB90", ThemedForeground("FontIcon", "SystemFillColorCriticalBrush")),
+                OpenCodeComposerAttachmentLimitLevel.Full => ("\uE7BA", ThemedForeground("FontIcon", "SystemFillColorCautionBrush")),
+                _ => ("\uEC61", ThemedForeground("FontIcon", "SystemFillColorSuccessBrush")),
+            };
+        }
+        if (details == _limitDetails) return; // An open tooltip survives unrelated renders.
+        _limitDetails = details;
+        ToolTipService.SetToolTip(_limitIndicator, details);
+        AutomationProperties.SetName(_limitIndicator, details.Replace('\n', '，'));
+    }
+    private string? _limitDetails;
 
     private static bool MenuWanted(OpenCodeComposerSnapshot s) => s.IsActive && s.CatalogState != OpenCodeComposerCatalogState.Closed;
 
@@ -805,6 +862,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         // TextChanged (not TextChanging): the tree may change. Evaluate the acknowledged observation and keep a visible
         // menu's filter in step with the text, so key evidence is captured against what the user actually sees.
         if (_menuSession.EvaluateAcknowledged(this) || _menuShown) Render(_source());
+        RestoreUndoneMention();
         EvaluateMentionTrigger(); // After the command menu settled: the two lists are never shown together.
     }
 
@@ -844,6 +902,11 @@ internal sealed class OpenCodeComposerView : StackPanel
         TimeSpan sinceCompositionEnded, bool enterLatched, bool pageBusy)
     {
         ArgumentNullException.ThrowIfNull(e);
+        if (e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && TryDeleteMentionToken(e.Key == VirtualKey.Back))
+        {
+            e.Handled = true;
+            return new(OpenCodeComposerKeyAction.Swallow, true, false);
+        }
         var key = e.Key switch
         {
             VirtualKey.Enter => OpenCodeComposerKey.Enter,
@@ -1197,7 +1260,16 @@ internal sealed class OpenCodeComposerView : StackPanel
     // Caret moves never OPEN candidates; they only close a list whose "@" token is no longer under the caret.
     private void OnEditorSelectionChanged(object sender, RoutedEventArgs e)
     {
-        if (!ReferenceEquals(sender, _editor) || !_mentionShown) return;
+        if (!ReferenceEquals(sender, _editor)) return;
+        // The caret never rests inside a chosen mention: it hops to the edge it was moving towards.
+        if (_editor is { SelectionLength: 0 } editor && !_composing && !_guardedWrite)
+        {
+            var caret = editor.SelectionStart;
+            var snapped = OpenCodeComposerCharTriggers.SnapCaret(editor.Text, caret, _lastCaret, _source().Mentions);
+            _lastCaret = snapped;
+            if (snapped != caret) { editor.Select(snapped, 0); return; }
+        }
+        if (!_mentionShown) return;
         if (MentionAtCaret() is not { Present: true } trigger || trigger.Start != _mentionTrigger.Start) CloseMention();
     }
 
@@ -1294,13 +1366,12 @@ internal sealed class OpenCodeComposerView : StackPanel
     {
         var name = candidate.Id;
         var parent = candidate.IsSkill ? "Skill" : "Agent";
-        var icon = new FontIcon
-        {
-            Glyph = candidate.IsSkill ? "\uE734" : "\uE77B",
-            FontSize = 14,
-            VerticalAlignment = VerticalAlignment.Center,
-            Opacity = 0.9,
-        };
+        // Agents use the same per-agent glyph and colour as the agent picker/toolbar; skills keep their neutral glyph.
+        var icon = candidate.IsSkill
+            ? new FontIcon { Glyph = "\uE734", FontSize = 14, Opacity = 0.9 }
+            : OpenCodeAgentIconTheme.Create(candidate.Id, candidate.Color, 14);
+        icon.VerticalAlignment = VerticalAlignment.Center;
+        icon.Width = 16; // One icon column width for agents and skills.
         var title = new TextBlock
         {
             Text = "@" + OpenCodeComposerInputPolicy.Bound(name, 64),
@@ -1388,6 +1459,47 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// TextBox (exactly like typing/paste): TextChanging records it in the existing ledger and TextChanged flushes it with
     /// its own token. Never a guarded application write, never a submission.
     /// </summary>
+    // Runtime agent colours seen in the "@" list (presentation only, for the inline mention chips).
+    private readonly Dictionary<string, string> _mentionColors = new(StringComparer.Ordinal);
+    private (string Before, string After, OpenCodePromptContext Mention)? _deletedMention;
+    private int _lastCaret;
+
+    /// <summary>The draft's chosen mentions (controller-tracked spans) for the inline chip layer.</summary>
+    internal IReadOnlyList<OpenCodePromptContext> MentionSpans => _source().Mentions;
+    internal string? MentionColor(string id) => _mentionColors.TryGetValue(id, out var c) ? c : null;
+
+    /// <summary>
+    /// Native, undoable removal (SelectedText) of one whole chosen mention, through the normal edit ledger: the controller
+    /// then drops that context exactly as for any edit inside it. Remembered so an Undo that restores the identical text
+    /// re-attaches the same context at the same place.
+    /// </summary>
+    private bool TryDeleteMentionToken(bool backward)
+    {
+        if (_editor is not { } editor || editor.IsReadOnly || editor.SelectionLength != 0 || !_lifetime.IsLive) return false;
+        if (!FlushForIntent()) return false;
+        var before = editor.Text ?? string.Empty;
+        if (OpenCodeComposerCharTriggers.MentionAt(before, editor.SelectionStart, backward, _source().Mentions) is not { } mention)
+            return false;
+        CloseMention();
+        editor.Select(mention.Start, mention.End - mention.Start);
+        editor.SelectedText = string.Empty;
+        editor.Select(mention.Start, 0);
+        _deletedMention = (before, editor.Text ?? string.Empty, mention);
+        return true;
+    }
+
+    /// <summary>After a clean flush: Undo of an atomic mention deletion restores its context; other edits forget it.</summary>
+    private void RestoreUndoneMention()
+    {
+        if (_deletedMention is not { } deleted || _editor is not { } editor) return;
+        var text = editor.Text ?? string.Empty;
+        if (text == deleted.After) return;
+        _deletedMention = null;
+        if (text != deleted.Before || !deleted.Mention.Matches(text)) return;
+        if (_source() is { IsActive: true, IsBusy: false } s)
+            ContextChosen?.Invoke(s.Token, deleted.Mention.Id, deleted.Mention.IsSkill, deleted.Mention.Start);
+    }
+
     private void AcceptMention(int index)
     {
         if (!FlushForIntent()) { CloseMention(); return; }
@@ -1402,6 +1514,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         }
         CloseMention();
         var insertion = OpenCodeComposerCharTriggers.MentionInsertion(candidate);
+        if (candidate.Color is { } color) _mentionColors[candidate.Id] = color;
         editor.Select(trigger.Start, trigger.Length);
         editor.SelectedText = insertion;
         editor.Select(trigger.Start + insertion.Length, 0);
@@ -1650,28 +1763,6 @@ internal sealed class OpenCodeComposerView : StackPanel
     private FrameworkElement AttachmentChip(OpenCodeComposerAttachmentRow a, OpenCodeComposerToken activation)
     {
         var name = OpenCodeComposerInputPolicy.Bound(a.Presentation?.Name ?? a.Name, OpenCodeComposerInputPolicy.MaxChipNameLength);
-        var size = OpenCodeComposerInputPolicy.FormatBytes(a.Bytes);
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        if (a.Presentation is { } preview) row.Children.Add(OpenCodeBrowserSelectedList.Image(preview.Thumbnail, 28));
-        row.Children.Add(new FontIcon
-        {
-            Glyph = OpenCodeComposerInputPolicy.GlyphForMime(a.Mime),
-            FontSize = 13,
-            VerticalAlignment = VerticalAlignment.Center,
-            Style = ThemedForeground("FontIcon", "TextFillColorSecondaryBrush"),
-        });
-        row.Children.Add(new TextBlock
-        {
-            Text = name,
-            MaxWidth = 180,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        var sizeText = Caption(size, 0.6);
-        sizeText.TextWrapping = TextWrapping.NoWrap;
-        sizeText.IsTextSelectionEnabled = false;
-        sizeText.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(sizeText);
         var remove = ChipRemoveButton("OpenCodeComposerRemoveAttachment");
         AutomationProperties.SetName(remove, $"移除附件 {name}");
         ToolTipService.SetToolTip(remove, "移除此附件");
@@ -1690,27 +1781,187 @@ internal sealed class OpenCodeComposerView : StackPanel
             if (fresh.Token.Scope != activation.Scope || fresh.Token.Draft != activation.Draft) return;
             AttachmentRemoved?.Invoke(this, new(fresh.Token, id));
         };
-        row.Children.Add(remove);
-        var chip = new Border
-        {
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(10, 3, 3, 3),
-            BorderThickness = new Thickness(1),
-            Style = ThemedBorder("ControlFillColorSecondaryBrush", "ControlStrokeColorDefaultBrush"),
-            Child = row,
-            Tag = remove,
-        };
+        var chip = AttachmentTile(a, name, remove, anchor => OpenAttachmentImage(a, name, generation, renderedChip, anchor));
         renderedChip = chip;
-        AutomationProperties.SetName(chip, $"附件 {name}，{size}");
-        if (a.Presentation is { } details)
-        {
-            var content = new StackPanel { Spacing = 8, MaxWidth = 440 };
-            content.Children.Add(OpenCodeBrowserSelectedList.Image(details.Thumbnail, 180));
-            content.Children.Add(new TextBlock { Text = details.Details, TextWrapping = TextWrapping.Wrap, MaxLines = 20 });
-            ToolTipService.SetToolTip(chip, new ToolTip { Content = content });
-        }
-        else ToolTipService.SetToolTip(chip, $"{name} · {a.Mime} · {size}");
         return chip;
+    }
+
+    /// <summary>Viewing is read-only: only a still-rendered tile of the live view may open its own bytes.</summary>
+    private void OpenAttachmentImage(OpenCodeComposerAttachmentRow a, string name, int generation, FrameworkElement? rendered, FrameworkElement anchor)
+    {
+        if (a.Presentation is not { } image || !_lifetime.IsLive || generation != _lifetime.Generation || rendered is null
+            || !_attachmentChips.TryGetValue(a.Id, out var live) || !ReferenceEquals(rendered, live)) return;
+        AttachmentImageOpened?.Invoke(this, new(a.Id, name, a.Mime.StartsWith("image/", StringComparison.Ordinal) ? a.Mime : "image/png",
+            image.Thumbnail, anchor));
+    }
+
+    // ------------------------------------------------------------------
+    // Attachment tiles: images are a small center-cropped square (hover/focus = larger thumbnail,
+    // click/Enter = full image); files keep the same height with type glyph + name. No sizes.
+    // ------------------------------------------------------------------
+
+    internal const double AttachmentTileSize = 52;
+    private const double AttachmentPreviewSize = 240;
+
+    private FrameworkElement AttachmentTile(OpenCodeComposerAttachmentRow a, string name, Button remove, Action<FrameworkElement> openImage)
+    {
+        var root = new Grid { Height = AttachmentTileSize, VerticalAlignment = VerticalAlignment.Center, Tag = remove };
+        AutomationProperties.SetAutomationId(root, "OpenCodeComposerAttachment");
+        AutomationProperties.SetName(root, "附件 " + name);
+        if (a.Presentation is { } image)
+        {
+            var picture = new Image
+            {
+                Stretch = Stretch.UniformToFill,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            _ = LoadAttachmentImageAsync(picture, image.Thumbnail, AttachmentTileSize, fill: true);
+            var tile = new Button
+            {
+                Content = new Border { CornerRadius = new CornerRadius(7), Child = picture },
+                Width = AttachmentTileSize,
+                Height = AttachmentTileSize,
+                MinWidth = 0,
+                MinHeight = 0,
+                Padding = new Thickness(0),
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(1),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Stretch,
+            };
+            AutomationProperties.SetAutomationId(tile, "OpenCodeComposerAttachmentImage");
+            AutomationProperties.SetName(tile, "查看图片 " + name);
+            ToolTipService.SetToolTip(tile, AttachmentImagePreview(image, name));
+            tile.Click += (_, _) => openImage(tile);
+            root.Children.Add(tile);
+        }
+        else
+        {
+            var label = new TextBlock
+            {
+                Text = name,
+                FontSize = 12,
+                MaxWidth = 112,
+                MaxLines = 2,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var face = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            face.Children.Add(new FontIcon
+            {
+                Glyph = OpenCodeComposerInputPolicy.GlyphForMime(a.Mime),
+                FontSize = 18,
+                VerticalAlignment = VerticalAlignment.Center,
+                Style = ThemedForeground("FontIcon", "TextFillColorSecondaryBrush"),
+            });
+            face.Children.Add(label);
+            var file = new Border
+            {
+                MinWidth = AttachmentTileSize,
+                Padding = new Thickness(12, 0, 28, 0),
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(1),
+                Style = ThemedBorder("ControlFillColorSecondaryBrush", "ControlStrokeColorDefaultBrush"),
+                Child = face,
+            };
+            AutomationProperties.SetAutomationId(file, "OpenCodeComposerAttachmentFile");
+            ToolTipService.SetToolTip(file, $"{a.Name} · {a.Mime}");
+            root.Children.Add(file);
+        }
+
+        StyleAttachmentRemove(remove);
+        root.Children.Add(remove);
+        // × stays reachable: revealed by hover or keyboard focus; once touched/pen-pressed it stays visible.
+        bool hovered = false, focused = false, touched = false;
+        void Reveal() => remove.Opacity = hovered || focused || touched ? 1 : 0;
+        root.PointerEntered += (_, e) =>
+        {
+            hovered = true;
+            if (e.Pointer.PointerDeviceType != PointerDeviceType.Mouse) touched = true;
+            Reveal();
+        };
+        root.PointerExited += (_, _) => { hovered = false; Reveal(); };
+        root.GotFocus += (_, _) => { focused = true; Reveal(); };
+        root.LostFocus += (_, _) => { focused = false; Reveal(); };
+        Reveal();
+        return root;
+    }
+
+    private static ToolTip AttachmentImagePreview(OpenCodeComposerAttachmentPresentation image, string name)
+    {
+        var picture = new Image
+        {
+            Stretch = Stretch.Uniform,
+            MaxWidth = AttachmentPreviewSize,
+            MaxHeight = AttachmentPreviewSize,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        _ = LoadAttachmentImageAsync(picture, image.Thumbnail, AttachmentPreviewSize, fill: false);
+        var content = new StackPanel { Spacing = 6 };
+        content.Children.Add(new Border { CornerRadius = new CornerRadius(4), Child = picture, HorizontalAlignment = HorizontalAlignment.Left });
+        var caption = Caption(name, 0.75);
+        caption.MaxLines = 1;
+        caption.TextTrimming = TextTrimming.CharacterEllipsis;
+        caption.MaxWidth = AttachmentPreviewSize;
+        content.Children.Add(caption);
+        if (!string.IsNullOrWhiteSpace(image.Details) && image.Details != image.Name)
+            content.Children.Add(new TextBlock { Text = image.Details, TextWrapping = TextWrapping.Wrap, MaxLines = 8, MaxWidth = AttachmentPreviewSize });
+        var tip = new ToolTip { Content = content };
+        AutomationProperties.SetAutomationId(tip, "OpenCodeComposerAttachmentPreview");
+        return tip;
+    }
+
+    private static void StyleAttachmentRemove(Button remove)
+    {
+        var rest = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xB8, 0x1C, 0x1C, 0x1C));
+        var over = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xE6, 0x1C, 0x1C, 0x1C));
+        var pressed = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xFF, 0x00, 0x00, 0x00));
+        var white = new SolidColorBrush(Microsoft.UI.Colors.White);
+        var dim = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
+        remove.Resources["ButtonBackground"] = rest;
+        remove.Resources["ButtonBackgroundPointerOver"] = over;
+        remove.Resources["ButtonBackgroundPressed"] = pressed;
+        remove.Resources["ButtonBackgroundDisabled"] = rest;
+        remove.Resources["ButtonForeground"] = white;
+        remove.Resources["ButtonForegroundPointerOver"] = white;
+        remove.Resources["ButtonForegroundPressed"] = white;
+        remove.Resources["ButtonForegroundDisabled"] = dim;
+        remove.Background = rest;
+        remove.Foreground = white;
+        remove.Width = 22;
+        remove.Height = 22;
+        remove.CornerRadius = new CornerRadius(11);
+        remove.Margin = new Thickness(0, 3, 3, 0);
+        remove.HorizontalAlignment = HorizontalAlignment.Right;
+        remove.VerticalAlignment = VerticalAlignment.Top;
+        if (remove.Content is FontIcon glyph) glyph.FontSize = 9;
+        remove.OpacityTransition = new ScalarTransition { Duration = TimeSpan.FromMilliseconds(120) };
+    }
+
+    /// <summary>Decodes at display size (logical px): <paramref name="fill"/> sizes the shorter side, else the longer; never upscales.</summary>
+    private static async Task LoadAttachmentImageAsync(Image image, byte[] bytes, double side, bool fill)
+    {
+        try
+        {
+            using var stream = new InMemoryRandomAccessStream();
+            using (var writer = new DataWriter(stream.GetOutputStreamAt(0))) { writer.WriteBytes(bytes); await writer.StoreAsync(); }
+            stream.Seek(0);
+            var decoder = await BitmapDecoder.CreateAsync(stream);
+            var (width, height) = (decoder.PixelWidth, decoder.PixelHeight);
+            stream.Seek(0);
+            var bitmap = new BitmapImage { DecodePixelType = DecodePixelType.Logical };
+            var target = (int)Math.Ceiling(side);
+            if ((fill ? Math.Min(width, height) : Math.Max(width, height)) > target)
+            {
+                if ((width <= height) == fill) bitmap.DecodePixelWidth = target;
+                else bitmap.DecodePixelHeight = target;
+            }
+            await bitmap.SetSourceAsync(stream);
+            image.Source = bitmap;
+        }
+        catch (Exception) { image.Source = null; }
     }
 
     // ------------------------------------------------------------------

@@ -35,6 +35,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
     internal event Action<OpenCodePersistentPtyViewContext>? DetachRequested;
     internal event Action<OpenCodePersistentPtyViewContext>? ReconnectRequested;
     internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
+    internal event Action? AppearanceRequested;
 
     internal OpenCodePersistentPtyView()
     {
@@ -57,17 +58,27 @@ internal sealed class OpenCodePersistentPtyView : Grid
         Grid.SetColumn(actions, 3); toolbar.Children.Add(actions);
         var divider = new Border { Width = 1, Height = 20, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         Theme(divider, "Background", "DividerStrokeColorDefaultBrush");
-        var chrome = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, divider, _back } };
+        var more = IconButton("\uE712", "更多");
+        AutomationProperties.SetAutomationId(more, "OpenCodePersistentPtyMore");
+        var menu = new MenuFlyout();
+        var appearance = new MenuFlyoutItem { Text = "外观" };
+        appearance.Click += (_, _) => AppearanceRequested?.Invoke();
+        menu.Items.Add(appearance); more.Flyout = menu;
+        IDisposable? menuAirspace = null;
+        menu.Opening += (_, _) => menuAirspace = Renderer.SuppressAirspace();
+        menu.Closed += (_, _) => { menuAirspace?.Dispose(); menuAirspace = null; };
+        var chrome = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, more, divider, _back } };
         Grid.SetColumn(chrome, 4); toolbar.Children.Add(chrome);
         Children.Add(toolbar);
         Grid.SetRow(_notice, 1); Children.Add(_notice);
-        // The renderer paints #0c0c0c; the same ground beneath it avoids a light flash while WebView2 starts.
-        var ground = new Grid { Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 12, 12, 12)), Children = { Renderer } };
+        // The HWND is inset from every card edge: rounded XAML chrome/shadow stays outside its airspace.
+        var ground = new Grid { Margin = new Thickness(12), Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 12, 12, 12)), Children = { Renderer } };
         Grid.SetRow(ground, 2); Children.Add(ground);
         toolbar.SizeChanged += (_, _) => _detail.Visibility = toolbar.ActualWidth < 720 || _detail.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         _detail.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         AutomationProperties.SetAutomationId(this, "OpenCodePersistentPtyView");
         AutomationProperties.SetAutomationId(_back, "OpenCodePersistentPtyClose");
+        AutomationProperties.SetAutomationId(_copy, "OpenCodePersistentPtyCopy");
         ToolTipService.SetToolTip(_back, "关闭 · Esc");
         _copy.IsEnabled = false; ToolTipService.SetToolTip(_copy, "复制");
         _copy.Click += (_, _) => { if (_model is { } model && _selection.Length > 0) CopySelectionRequested?.Invoke(new(model.Context, _selection)); };
@@ -102,7 +113,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         ShowNotice(string.Join(" ", new[] { model?.Notice, _fitFailure }.WherePresent()));
         _back.IsEnabled = model is not null && DetachRequested is not null;
         _takeControl.Content = model?.ConsentAction ?? "接管终端";
-        _takeControl.Visibility = model is { Phase: OpenCodePersistentPtyPhase.Live } && (model.Role == OpenCodePersistentPtyRole.Observer || !model.InputAuthorized)
+        _takeControl.Visibility = model is { Phase: OpenCodePersistentPtyPhase.Live, CanTakeControl: true } && (model.Role == OpenCodePersistentPtyRole.Observer || !model.InputAuthorized)
             ? Visibility.Visible : Visibility.Collapsed;
         _takeControl.IsEnabled = model?.NeedsInputConsent == true && TakeControlRequested is not null;
         _fit.Visibility = model?.Writable == true ? Visibility.Visible : Visibility.Collapsed;
@@ -150,6 +161,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         var dialog = _confirmation = new ContentDialog { XamlRoot = XamlRoot, Title = model.ConsentAction + "？",
             Content = new TextBlock { Text = model.ConsentExplanation, TextWrapping = TextWrapping.Wrap },
             PrimaryButtonText = model.ConsentAction, CloseButtonText = "继续只读查看", DefaultButton = ContentDialogButton.Close };
+        using var airspace = Renderer.SuppressAirspace();
         try
         {
             if (await dialog.ShowAsync() == ContentDialogResult.Primary && IsLoaded && _model?.Context == model.Context

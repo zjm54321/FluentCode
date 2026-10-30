@@ -19,7 +19,7 @@ function Compile([string]$name, [string]$kind, $references, $sources, [string]$d
     & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp" 2>&1 | Tee-Object (Join-Path $EvidenceRoot "$name-compile.log")
     if ($LASTEXITCODE -ne 0) { throw "$name compile failed: $LASTEXITCODE" }
 }
-Compile 'PtyPresentationTests' 'exe' $refs ($models + @("$PSScriptRoot/Program.cs"))
+Compile 'PtyPresentationTests' 'exe' $refs ($models + @("$folder/OpenCodePersistentPtyVtStream.cs", "$PSScriptRoot/Program.cs"))
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'PtyPresentationTests.runtimeconfig.json')
 & $dotnet (Join-Path $EvidenceRoot 'PtyPresentationTests.dll') $repo | Tee-Object (Join-Path $EvidenceRoot 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Presentation tests failed: $LASTEXITCODE" }
@@ -28,14 +28,22 @@ $native = @(Get-Item "$nuget/microsoft.windows.sdk.net.ref/10.0.26100.57/lib/net
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.winui/1.8.260803003/lib/net6.0-windows10.0.17763.0/*.dll"
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/1.8.260803002/lib/net6.0-windows10.0.17763.0/*.dll"
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/1.8.260708001/lib/net6.0-windows10.0.18362.0/*.dll"
-$native += Get-Item "$nuget/microsoft.web.webview2/1.0.3179.45/lib_manual/net8.0-windows10.0.17763.0/Microsoft.Web.WebView2.Core.Projection.dll"
+$library = Join-Path $EvidenceRoot 'native-library'
+& (Join-Path $PSScriptRoot 'BuildNativeTerminal.ps1') -EvidenceRoot $library
+if ($LASTEXITCODE -ne 0) { throw 'Native terminal dependency build failed' }
+$native += Get-Item "$library/bin/WindowsTerminalControl.WinUI.dll", "$library/bin/WindowsTerminalControl.Core.dll"
+$native += Get-Item "$nuget/ci.microsoft.terminal.winui3.unofficial/1.0.20-beta.1/lib/net8.0-windows10.0.19041/Microsoft.Terminal.WinUI3.dll"
+$native += Get-ChildItem "$nuget/winuiex/2.5.1/lib" -Filter WinUIEx.dll -Recurse | Select-Object -First 1
+$native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
+$native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
+$rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs"))
-Write-Output 'PASS actual WinUI/WebView2 view API reference compile; not a native window/rendering test.'
+    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
+Write-Output 'PASS actual WinUI/native terminal view API reference compile; no native runtime window executed.'
 Compile 'PtyOverlayGlueNativeCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs"))
+    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
 Write-Output 'PASS actual right-card/floating-card page glue reference compile against WinUI refs (page members shimmed).'
 
 # Production Billion/PTY bindings; the retired preset/clear action UI is intentionally absent.
@@ -55,12 +63,11 @@ $bindingSources = $serviceSources + @("$folder/OpenCodeBillionPresentation.cs",
     "$PSScriptRoot/BillionPtyPage.TestHost.cs", "$PSScriptRoot/BillionBindingTests.cs")
 $recordedInputs = @($bindingSources + $models + @("$folder/OpenCodeSessionInsightsView.cs",
     "$repo/src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.RightPanelMetadata.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.EventSync.cs",
-    "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.AgentTree.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.TerminalView.cs",
+    "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs",
+    "$repo/src/AIFrontend/Pages/OpenCodePage.AgentTree.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.TerminalView.cs",
     "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.xaml", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/AIFrontend/Pages/OpenCodePage.xaml.cs", "$PSScriptRoot/NativeHost.cs", "$PSScriptRoot/run.ps1"))
 $recordedInputs += @(Get-ChildItem "$folder/OpenCodePersistentPty*.cs" | ForEach-Object FullName)
-$recordedInputs += @(Get-ChildItem "$repo/src/AIFrontend/Assets/OpenCode/PersistentPty/*" -File | ForEach-Object FullName)
 $recordedInputs = $recordedInputs | Sort-Object -Unique
 $inputHashes = @{}
 foreach ($input in $recordedInputs) { $inputHashes[$input] = (Get-FileHash -Algorithm SHA256 $input).Hash }
@@ -69,7 +76,7 @@ Compile 'BillionPtyBindingTests' 'exe' $refs $bindingSources
 & $dotnet (Join-Path $EvidenceRoot 'BillionPtyBindingTests.dll') | Tee-Object (Join-Path $EvidenceRoot 'binding-results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Billion/PTY Page binding tests failed: $LASTEXITCODE" }
 $bindingNative = @($bindingSources | Where-Object { $_ -notlike '*BillionBindingTests.cs' -and $_ -notlike '*PersistentPtyBindingTests.cs' }) + @(
-    "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$PSScriptRoot/NativeHost.cs")
+    "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources
 Compile 'BillionPtyBindingNativeCheck' 'library' ($refs + $native) $bindingNative 'NATIVE_UI'
 foreach ($input in $recordedInputs) {
     if ((Get-FileHash -Algorithm SHA256 $input).Hash -ne $inputHashes[$input]) { throw "Compiled/binding input changed during focused validation: $input" }

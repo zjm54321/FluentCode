@@ -4,6 +4,10 @@ VisualStudioVersion = 18.0.0.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIFrontend", "src\AIFrontend\AIFrontend.csproj", "{52E19729-39F3-4E50-90A3-87F12091827D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsTerminalControl.Core", "src\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.Core\WindowsTerminalControl.Core.csproj", "{DFE270B5-5CEE-42E5-BFBD-3AE6D6AC67B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsTerminalControl.WinUI", "src\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj", "{3583E5F3-47DC-4F0E-8E93-0F895E931221}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -14,6 +18,14 @@ Global
 		{52E19729-39F3-4E50-90A3-87F12091827D}.Debug|x64.Build.0 = Debug|x64
 		{52E19729-39F3-4E50-90A3-87F12091827D}.Release|x64.ActiveCfg = Release|x64
 		{52E19729-39F3-4E50-90A3-87F12091827D}.Release|x64.Build.0 = Release|x64
+		{DFE270B5-5CEE-42E5-BFBD-3AE6D6AC67B7}.Debug|x64.ActiveCfg = Debug|x64
+		{DFE270B5-5CEE-42E5-BFBD-3AE6D6AC67B7}.Debug|x64.Build.0 = Debug|x64
+		{DFE270B5-5CEE-42E5-BFBD-3AE6D6AC67B7}.Release|x64.ActiveCfg = Release|x64
+		{DFE270B5-5CEE-42E5-BFBD-3AE6D6AC67B7}.Release|x64.Build.0 = Release|x64
+		{3583E5F3-47DC-4F0E-8E93-0F895E931221}.Debug|x64.ActiveCfg = Debug|x64
+		{3583E5F3-47DC-4F0E-8E93-0F895E931221}.Debug|x64.Build.0 = Debug|x64
+		{3583E5F3-47DC-4F0E-8E93-0F895E931221}.Release|x64.ActiveCfg = Release|x64
+		{3583E5F3-47DC-4F0E-8E93-0F895E931221}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

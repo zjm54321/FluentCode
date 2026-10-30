@@ -24,6 +24,7 @@ public sealed partial class OpenCodePage
     private string? _browserSelectedSession;
     private bool _browserInitialized;
     private OpenCodeBrowserOverlay? _browserOverlay;
+    private OpenCodeBrowserWorkspace? _browserOverlayWorkspace;
     private OpenCodePageSource? _browserSource;
     private CancellationTokenRegistration _browserSourceRevocation;
     public OpenCodeBrowserOverlay? BrowserOverlay => _browserOverlay;
@@ -54,7 +55,7 @@ public sealed partial class OpenCodePage
         workspace.SetAvailabilityProvider(() => ReferenceEquals(_source, source) && source is { IsRevoked: false } && BrowserPeerManager is { } manager
             ? (manager.GetAvailability(sessionId), manager.GetAvailabilityReason(sessionId))
             : (OpenCodeBrowserAvailability.Detached, "智能体暂时不能使用浏览器：会话尚未接入"));
-        workspace.ReadPreviewTextAsync = (path, ct) => ReferenceEquals(_source, source) && source is { IsRevoked: false } && _client is { } client && KnownSessionDirectory(sessionId) is { } directory
+        workspace.ReadPreviewTextAsync = (path, ct) => ReferenceEquals(_source, source) && source is { IsRevoked: false } && _client is { } client && BrowserSessionDirectory(sessionId) is { } directory
             ? client.ReadTextFileAsync(directory, path, ct)
             : System.Threading.Tasks.Task.FromException<string>(new OpenCodeBrowserException("unavailable", "会话服务器未连接"));
         ConfigureBrowserPreview(workspace, source);
@@ -88,11 +89,12 @@ public sealed partial class OpenCodePage
         {
             if (key.Key != Windows.System.VirtualKey.Escape || BrowserOverlayHost.Visibility != Visibility.Visible) return;
             key.Handled = true;
-            if (_browserOverlay.ExitPageTool?.Invoke() != true && _selectedSessionId is { } session && _browserWorkspaces.TryGetValue(session, out var workspace)) workspace.HideOverlay();
+            if (_browserOverlay.ExitPageTool?.Invoke() != true) _browserOverlayWorkspace?.HideOverlay();
         }), true);
         _browserOverlay.StopRequested += async (_, page) => await InterruptBrowserTurnAsync(page);
         _browserOverlay.SendErrorRequested += (_, page) =>
         {
+            if (_selectedSessionId is not { } session || !_browserWorkspaces.TryGetValue(session, out var workspace) || !workspace.Pages.Contains(page)) return;
             Composer.Text += (Composer.Text.Length == 0 ? "" : "\n") + page.Url + "\n" + OpenCodeBrowserOverlay.ErrorReason(page.LoadError, page.Url) + "\n" + page.LoadError;
         };
         PageRoot.SizeChanged += (_, _) => SizeBrowserHosts();
@@ -116,6 +118,7 @@ public sealed partial class OpenCodePage
     {
         SyncBrowserSource();
         _browserSelectedSession = _selectedSessionId;
+        EnsureBrowserPeers();
         foreach (var workspace in _browserWorkspaces.Values) if (workspace.SessionId != _browserSelectedSession) workspace.HideOverlay();
         UpdateBrowserOverlay(_browserSelectedSession is not null && _browserWorkspaces.TryGetValue(_browserSelectedSession, out var current) ? current : null);
         RefreshBrowserPanel();
@@ -140,6 +143,7 @@ public sealed partial class OpenCodePage
     }
     partial void OnBrowserEngineSessionTabClosed(string sessionId)
     {
+        _browserSessionDirectories.Remove(sessionId);
         if (_browserBackends.Remove(sessionId, out var backend)) backend.Dispose();
         if (_browserWorkspaces.Remove(sessionId, out var workspace)) { ReleaseBrowserPanelWorkspace(workspace); workspace.Dispose(); }
     }
@@ -151,6 +155,7 @@ public sealed partial class OpenCodePage
         foreach (var backend in _browserBackends.Values) backend.Dispose();
         foreach (var workspace in _browserWorkspaces.Values.ToArray()) workspace.Dispose();
         _browserBackends.Clear(); _browserWorkspaces.Clear();
+        _browserSessionDirectories.Clear(); _browserOverlayWorkspace = null;
         _browserOverlay?.Bind(null); BrowserOverlayHost.Visibility = Visibility.Collapsed;
     }
     private void ShowBrowserPageFromTimeline(string? parentMessageId, string tabId)
@@ -165,9 +170,22 @@ public sealed partial class OpenCodePage
     }
     private void UpdateBrowserOverlay(OpenCodeBrowserWorkspace? workspace)
     {
-        if (workspace is not null && workspace.SessionId != _selectedSessionId) { workspace.HideOverlay(); return; }
-        _browserOverlay?.Bind(workspace);
-        BrowserOverlayHost.Visibility = workspace?.Shown is null ? Visibility.Collapsed : Visibility.Visible;
+        if (workspace is not null && !IsBrowserPanelWorkspace(workspace))
+        {
+            if (ReferenceEquals(_browserOverlayWorkspace, workspace))
+            {
+                _browserOverlayWorkspace = null; _browserOverlay?.Bind(null); BrowserOverlayHost.Visibility = Visibility.Collapsed;
+            }
+            workspace.HideOverlay(); return;
+        }
+        if (workspace?.Shown is not null)
+        {
+            foreach (var other in _browserWorkspaces.Values.Where(other => !ReferenceEquals(other, workspace)).ToArray()) other.HideOverlay();
+            _browserOverlayWorkspace = workspace;
+        }
+        else if (workspace is null || ReferenceEquals(_browserOverlayWorkspace, workspace)) _browserOverlayWorkspace = null;
+        _browserOverlay?.Bind(_browserOverlayWorkspace);
+        BrowserOverlayHost.Visibility = _browserOverlayWorkspace?.Shown is null ? Visibility.Collapsed : Visibility.Visible;
         SizeBrowserHosts();
     }
     private void SizeBrowserHosts()

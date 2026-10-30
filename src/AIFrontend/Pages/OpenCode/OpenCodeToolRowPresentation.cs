@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -243,7 +244,7 @@ internal sealed class OpenCodeToolRowModel
     public string AccessibleName { get; init; } = string.Empty;
 
     public bool IsBackground { get; init; }
-    public bool OpensTerminalView => Kind == OpenCodeToolKind.Shell && IsBackground && !string.IsNullOrEmpty(ShellId);
+    public bool OpensTerminalView => Kind == OpenCodeToolKind.Shell && !string.IsNullOrEmpty(ShellId);
     public string? GlyphOverride { get; init; }
     public string? AgentName { get; init; }
     public bool CanMoveToBackground => IsActive && !IsBackground && Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent;
@@ -278,6 +279,15 @@ internal sealed record OpenCodeQuestionFallback(string Title, string StatusText,
 /// </summary>
 internal static class OpenCodeToolRowPresentation
 {
+    // Parts are immutable SSE/REST snapshots. Weak keys release cached data with the history;
+    // completion/background/file identity remain part of the presentation revision.
+    private sealed class ToolModels
+    {
+        internal readonly List<(OpenCodeAsyncCompletion? Completion, bool Background, int? File, OpenCodeToolRowModel Model)> Entries = new();
+    }
+    private static readonly ConditionalWeakTable<OpenCodeContentPart, ToolModels> Models = new();
+    private sealed record StructuredProperties(IReadOnlyList<OpenCodeToolProperty> Rows);
+    private static readonly ConditionalWeakTable<string, StructuredProperties> StructuredOutputs = new();
     internal static readonly JsonSerializerOptions ReadableJson = new()
     {
         WriteIndented = true,
@@ -418,9 +428,30 @@ internal static class OpenCodeToolRowPresentation
         Func<string, (string? Agent, string? Description)?>? findChild = null)
     {
         ArgumentNullException.ThrowIfNull(part);
+        // Companion labels depend on another message, not solely on this part's revision.
+        if (findChild is not null && part.Name is "task_status" or "task_result" or "task_message" or "task_cancel" or "task_revive" or "wait_for_user")
+            return BuildCore(part, asyncCompletion, manualBackground, fileIndex, findChild);
+        var cache = Models.GetValue(part, static _ => new());
+        lock (cache)
+        {
+            foreach (var entry in cache.Entries)
+                if (entry.Completion == asyncCompletion && entry.Background == manualBackground && entry.File == fileIndex) return entry.Model;
+            var model = BuildCore(part, asyncCompletion, manualBackground, fileIndex, findChild);
+            if (cache.Entries.Count >= 8) cache.Entries.RemoveAt(0);
+            cache.Entries.Add((asyncCompletion, manualBackground, fileIndex, model));
+            return model;
+        }
+    }
+
+    private static OpenCodeToolRowModel BuildCore(OpenCodeContentPart part, OpenCodeAsyncCompletion? asyncCompletion, bool manualBackground, int? fileIndex,
+        Func<string, (string? Agent, string? Description)?>? findChild)
+    {
+        ArgumentNullException.ThrowIfNull(part);
         var kind = Classify(part.Name);
         var name = DisplayName(part.Name);
-        var state = TryReadState(part.State);
+        OpenCodeToolState? state;
+        try { state = OpenCodeToolStates.ReadPart(part); }
+        catch (OpenCodeProtocolException) { state = null; }
         var status = state?.Status switch
         {
             OpenCodeToolStatuses.Streaming => OpenCodeToolRowStatus.Streaming,
@@ -982,27 +1013,110 @@ internal static class OpenCodeToolRowPresentation
     /// <summary>文本输出整体为 JSON 对象/数组（去首尾空白后以 { 或 [ 开头且可完整解析）时展开为属性列表；否则空。</summary>
     internal static IReadOnlyList<OpenCodeToolProperty> TryParseStructuredOutput(string? output)
     {
-        if (string.IsNullOrWhiteSpace(output))
-        {
-            return Array.Empty<OpenCodeToolProperty>();
-        }
+        if (string.IsNullOrWhiteSpace(output)) return Array.Empty<OpenCodeToolProperty>();
+        return StructuredOutputs.GetValue(output, static text => new(ParseStructuredOutput(text))).Rows;
+    }
 
-        var trimmed = output.Trim();
-        if (trimmed.Length < 2 || (trimmed[0] != '{' && trimmed[0] != '['))
-        {
-            return Array.Empty<OpenCodeToolProperty>();
-        }
+    private static IReadOnlyList<OpenCodeToolProperty> ParseStructuredOutput(string output)
+    {
+        var text = output.AsSpan().Trim();
+        if (text.Length < 2 || text[0] is not ('{' or '[')) return Array.Empty<OpenCodeToolProperty>();
+        // TryParseValue still throws for malformed JSON. Validate its grammar without exceptions
+        // first (notably shell output such as "[Command output]"). Bound nesting like JsonDocument.
+        var syntax = new JsonSyntax(text);
+        if (!syntax.Complete()) return Array.Empty<OpenCodeToolProperty>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(text.ToString()));
+        if (!JsonDocument.TryParseValue(ref reader, out var document)) return Array.Empty<OpenCodeToolProperty>();
+        using (document) return BuildProperties(document.RootElement);
+    }
 
-        try
+    private ref struct JsonSyntax(ReadOnlySpan<char> text)
+    {
+        private readonly ReadOnlySpan<char> _text = text;
+        private int _at;
+        internal bool Complete() { Space(); return Value(0) && End(); }
+        private bool End() { Space(); return _at == _text.Length; }
+        private void Space() { while (_at < _text.Length && _text[_at] is ' ' or '\r' or '\n' or '\t') _at++; }
+        private bool Take(char c) { if (_at >= _text.Length || _text[_at] != c) return false; _at++; return true; }
+        private bool Value(int depth)
         {
-            using var document = JsonDocument.Parse(trimmed);
-            return document.RootElement.ValueKind is JsonValueKind.Object or JsonValueKind.Array
-                ? BuildProperties(document.RootElement)
-                : Array.Empty<OpenCodeToolProperty>();
+            Space();
+            if (_at == _text.Length) return false;
+            var c = _text[_at];
+            if (c == '"') return String();
+            if (c is '{' or '[')
+            {
+                if (depth >= 64) return false;
+                _at++; Space();
+                var close = c == '{' ? '}' : ']';
+                if (Take(close)) return true;
+                do
+                {
+                    Space();
+                    if (c == '{') { if (!String()) return false; Space(); if (!Take(':')) return false; }
+                    if (!Value(depth + 1)) return false;
+                    Space();
+                    if (Take(close)) return true;
+                } while (Take(','));
+                return false;
+            }
+            if (c is 't' or 'f' or 'n')
+            {
+                var literal = c == 't' ? "true" : c == 'f' ? "false" : "null";
+                if (!_text[_at..].StartsWith(literal, StringComparison.Ordinal)) return false;
+                _at += literal.Length; return true;
+            }
+            Take('-');
+            if (!Take('0'))
+            {
+                if (_at == _text.Length || _text[_at] is < '1' or > '9') return false;
+                Digits();
+            }
+            if (Take('.') && !Digits()) return false;
+            if (Take('e') || Take('E')) { if (!Take('+')) Take('-'); if (!Digits()) return false; }
+            return true;
         }
-        catch (JsonException)
+        private bool Digits()
         {
-            return Array.Empty<OpenCodeToolProperty>();
+            var start = _at;
+            while (_at < _text.Length && _text[_at] is >= '0' and <= '9') _at++;
+            return _at > start;
+        }
+        private bool String()
+        {
+            if (!Take('"')) return false;
+            while (_at < _text.Length)
+            {
+                var c = _text[_at++];
+                if (c == '"') return true;
+                if (c < ' ') return false;
+                if (c != '\\')
+                {
+                    if (char.IsSurrogate(c) && (!char.IsHighSurrogate(c) || _at == _text.Length || !char.IsLowSurrogate(_text[_at++]))) return false;
+                    continue;
+                }
+                if (_at == _text.Length) return false;
+                c = _text[_at++];
+                if (c is '"' or '\\' or '/' or 'b' or 'f' or 'n' or 'r' or 't') continue;
+                if (c != 'u' || !Hex(out var code)) return false;
+                if (code is >= 0xDC00 and <= 0xDFFF) return false;
+                if (code is >= 0xD800 and <= 0xDBFF
+                    && (!Take('\\') || !Take('u') || !Hex(out var low) || low is < 0xDC00 or > 0xDFFF)) return false;
+            }
+            return false;
+        }
+        private bool Hex(out int code)
+        {
+            code = 0;
+            if (_text.Length - _at < 4) return false;
+            for (var n = 0; n < 4; n++)
+            {
+                var c = _text[_at++];
+                var digit = c is >= '0' and <= '9' ? c - '0' : c is >= 'a' and <= 'f' ? c - 'a' + 10 : c is >= 'A' and <= 'F' ? c - 'A' + 10 : -1;
+                if (digit < 0) return false;
+                code = (code << 4) | digit;
+            }
+            return true;
         }
     }
 

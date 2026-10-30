@@ -113,6 +113,9 @@ internal sealed class OpenCodeRightPanelView
         CopyButton.IsEnabled = session is not null;
     }
 
+    internal string DirectoryText => _directory.Text;
+    internal string VersionText => _version.Text;
+
     public void ShowCopyHint(string? text)
     {
         _hint.Text = text ?? string.Empty;

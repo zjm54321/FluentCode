@@ -31,6 +31,8 @@ internal static class OpenCodeModelPickerDialog
         if (owner is null || anchor is null) return new(OpenCodeModelPickerOutcome.OwnerUnavailable, null, null);
         var cancelled = new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, null);
         var state = new OpenCodeModelPickerState(presentation);
+        // Like the agent/effort ComboBoxes: a touch/pen invocation gets touch-sized rows and star targets.
+        var touch = OpenCodePickerInput.IsTouch(anchor);
         var favoriteStore = new OpenCodeModelFavoriteStore(favoriteClient, favoriteDirectory, favoriteCancellation);
         string? favoriteError = null;
         try { await favoriteStore.LoadAsync(); }
@@ -118,12 +120,13 @@ internal static class OpenCodeModelPickerDialog
             var sections = favorites.Filter(OpenCodeModelPresentation.Order(presentation.Rows, sourceKey), filter);
             foreach (var row in sections.Favorites)
             {
-                var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row), favoriteStore.Available);
+                var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row), favoriteStore.Available, touch);
                 favoriteList.Items.Add(item);
                 if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) favoriteList.SelectedItem = item;
             }
             if (favoriteList.Items.Count == 0)
-                favoriteList.Items.Add(new ListViewItem { Content = filter.Length == 0 ? "尚无收藏模型" : "没有匹配的收藏模型", IsEnabled = false, IsTabStop = false });
+                favoriteList.Items.Add(new ListViewItem { Content = filter.Length == 0 ? "尚无收藏模型" : "没有匹配的收藏模型", IsEnabled = false, IsTabStop = false,
+                    MinHeight = touch ? OpenCodePickerInput.TouchRowHeight : OpenCodePickerInput.MouseRowHeight });
             foreach (var provider in sections.All.GroupBy(row => row.ProviderId))
             {
                 var label = OpenCodeInteractionUi.StyledText(provider.First().ProviderName ?? provider.Key,
@@ -132,7 +135,7 @@ internal static class OpenCodeModelPickerDialog
                     Padding = new Thickness(10, 12, 10, 4), MinHeight = 28 });
                 foreach (var row in provider)
                 {
-                    var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row), favoriteStore.Available);
+                    var item = RowItem(row, favorites.Contains(row), !savingFavorite, () => ToggleFavorite(row), favoriteStore.Available, touch);
                     list.Items.Add(item);
                     if (current is not null && row.ProviderId == current.ProviderId && row.ModelId == current.ModelId) list.SelectedItem = item;
                 }
@@ -186,8 +189,10 @@ internal static class OpenCodeModelPickerDialog
     private static double ModelListMaxHeight(XamlRoot? owner) =>
         Math.Max(34, Math.Min(640, (owner?.Size.Height ?? 760) - 192));
 
-    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, bool canToggle, Action toggleFavorite, bool showFavorite)
+    private static ListViewItem RowItem(OpenCodeModelPickerRow row, bool isFavorite, bool canToggle, Action toggleFavorite, bool showFavorite,
+        bool touch = false)
     {
+        var star = touch ? OpenCodePickerInput.TouchActionSize : OpenCodePickerInput.MouseActionSize;
         var grid = OpenCodeModelLogo.Label(row.ModelId, row.Name);
         var content = new Grid { ColumnSpacing = 8 };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -196,7 +201,7 @@ internal static class OpenCodeModelPickerDialog
         // Keep both states discoverable; only the glyph changes, not the native subtle chrome.
         // Inherit the style's primary text foreground instead of an accent-filled checked button.
         var favorite = new Button { Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle"),
-            IsEnabled = canToggle, Width = 24, Height = 24, MinWidth = 0, MinHeight = 0,
+            IsEnabled = canToggle, Width = star, Height = star, MinWidth = 0, MinHeight = 0,
             Visibility = showFavorite ? Visibility.Visible : Visibility.Collapsed,
             Padding = new Thickness(0), BorderThickness = new Thickness(0), VerticalAlignment = VerticalAlignment.Center,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
@@ -212,8 +217,9 @@ internal static class OpenCodeModelPickerDialog
         favorite.Click += (_, _) => toggleFavorite(); // Never selects a model or calls choose/flyout.Hide.
         Grid.SetColumn(favorite, 1);
         content.Children.Add(favorite);
-        var item = new ListViewItem { Content = content, Tag = row, IsEnabled = row.Available, MinHeight = 34,
-            Padding = new Thickness(10, 4, 10, 4), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var item = new ListViewItem { Content = content, Tag = row, IsEnabled = row.Available,
+            MinHeight = touch ? OpenCodePickerInput.TouchRowHeight : OpenCodePickerInput.MouseRowHeight,
+            Padding = touch ? new Thickness(12, 4, 4, 4) : new Thickness(10, 4, 10, 4), HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(item, row.Name + (row.Available ? string.Empty : "，不可用"));
         return item;
     }

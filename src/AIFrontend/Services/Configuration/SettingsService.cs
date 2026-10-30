@@ -217,6 +217,8 @@ public sealed class SettingsService
         }
 
         AIFrontend.Services.Appearance.AppFontDefaults.Validate(settings.Fonts, errors);
+        if (settings.TerminalAppearance is null) errors.Add("terminalAppearance 不能为空");
+        else if (settings.TerminalAppearance.ValidationError() is { } terminalError) errors.Add(terminalError);
         if (!Enum.IsDefined(settings.CodeTheme)) errors.Add("codeTheme 取值非法");
 
         if (settings.OpenCodeProjectDirectories is { } directories)

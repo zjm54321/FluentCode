@@ -74,12 +74,14 @@ internal static class PersistentPtyBindingTests
         internal TaskCompletionSource<bool>? HoldReset, ResetEntered;
         internal TaskCompletionSource<bool>? HoldFirstWrite, FirstWriteEntered;
         internal byte[] LastCheckpoint = Array.Empty<byte>();
+        internal Exception? Failure;
         public Task<bool> InitializeAsync(OpenCodePersistentPtyViewContext context, int columns, int rows, CancellationToken ct)
         { Initialized++; return Task.FromResult(true); }
         public async Task ResetAsync(OpenCodePersistentPtyViewContext context, ReadOnlyMemory<byte> bytes, int columns, int rows, CancellationToken ct)
         { Resets++; LastCheckpoint = bytes.ToArray(); ResetEntered?.TrySetResult(true); if (HoldReset is { } held) await held.Task.WaitAsync(ct); }
         public async Task WriteAsync(OpenCodePersistentPtyViewContext context, ReadOnlyMemory<byte> bytes, CancellationToken ct)
         {
+            if (Failure is { } failure) throw failure;
             Writes++; Bytes.Add(bytes.ToArray());
             if (Writes == 1) { FirstWriteEntered?.TrySetResult(true); if (HoldFirstWrite is { } held) await held.Task.WaitAsync(ct); }
         }
@@ -118,11 +120,11 @@ internal static class PersistentPtyBindingTests
         Check(surface.Resets == 2 && surface.Initialized == 1 && surface.LastCheckpoint.SequenceEqual(raw), "resize consumes the full authoritative checkpoint, never geometry alone");
         var allocations = surface.Initialized;
         try { await adapter.ResetAsync(new(2), new(80, 24), new byte[8 * 1024 * 1024 + 1], CancellationToken.None); throw new Exception("oversize accepted"); }
-        catch (PersistentPtyException error) { Check(error.Code == "unsupported-renderer-state" && surface.Initialized == allocations, "oversized checkpoint is finite unsupported before WebView initialization"); }
+        catch (PersistentPtyException error) { Check(error.Code == "unsupported-renderer-state" && surface.Initialized == allocations, "oversized checkpoint is finite unsupported before native initialization"); }
         var resetCount = surface.Resets;
         try { await adapter.ResizeAsync(new(1), new(100, 30), new byte[8 * 1024 * 1024 + 1], CancellationToken.None); throw new Exception("oversize resize accepted"); }
         catch (PersistentPtyException error) { Check(error.Code == "unsupported-renderer-state" && surface.Initialized == allocations && surface.Resets == resetCount,
-            "oversized resize checkpoint fails with the same finite code before native state changes or WebView recreation"); }
+            "oversized resize checkpoint fails with the same finite code before native state changes or HWND recreation"); }
         try { await adapter.ResetAsync(new(2), new(1, 24), raw, CancellationToken.None); throw new Exception("grid accepted"); }
         catch (PersistentPtyException error) { Check(error.Code == "unsupported-grid" && surface.Initialized == allocations, "canonical grid is rejected, never silently clamped or fitted"); }
         await adapter.ResetAsync(new(2), new(80, 24), raw, CancellationToken.None);
@@ -142,12 +144,21 @@ internal static class PersistentPtyBindingTests
             work => { scheduled.TrySetResult(work); return delivered.Task; }, new(Guid.NewGuid(), 0, "session", "pty"), () => owns);
         var queuedReset = queuedAdapter.ResetAsync(new(1), new(80, 24), raw, CancellationToken.None).AsTask();
         var callback = await scheduled.Task;
-        Check(!queuedReset.IsCompleted && queuedSurface.Initialized == 0, "adapter queues the native operation instead of allocating a WebView on the receive worker");
+        Check(!queuedReset.IsCompleted && queuedSurface.Initialized == 0, "adapter queues the native operation instead of allocating an HWND on the receive worker");
         owns = false;
         try { await callback(); throw new Exception("stale queued surface initialized"); }
         catch (OperationCanceledException error) { delivered.TrySetException(error); }
         try { await queuedReset; throw new Exception("expired queued reset succeeded"); }
         catch (OperationCanceledException) { Check(queuedSurface.Initialized == 0, "queued UI callback rechecks origin/epoch before any native initialization"); }
+        var failedSurface = new Surface();
+        using var failedAdapter = new OpenCodePersistentPtyRendererAdapter(failedSurface, work => work(), new(Guid.NewGuid(), 0, "session", "pty"), () => true);
+        await failedAdapter.ResetAsync(new(1), new(80, 24), raw, CancellationToken.None);
+        foreach (var failure in new Exception[] { new System.Runtime.InteropServices.COMException("native renderer unavailable"), new System.ComponentModel.Win32Exception(5) })
+        {
+            failedSurface.Failure = failure;
+            try { await failedAdapter.WriteAsync(new(1), raw, CancellationToken.None); throw new Exception("native failure accepted"); }
+            catch (PersistentPtyException error) { Check(error.Code == "unsupported-renderer-state", "native renderer failure is finite unsupported, not an endless socket rebootstrap"); }
+        }
     }
     private static async Task Inventory()
     {

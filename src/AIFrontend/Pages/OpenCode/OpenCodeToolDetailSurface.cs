@@ -217,7 +217,7 @@ internal static partial class OpenCodeToolDetailContent
         }
         if (model.Kind == OpenCodeToolKind.Shell && options.OpenTerminal is { } terminal)
         {
-            var button = new Button { Content = "在终端页打开", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
+            var button = new Button { Content = "在终端中打开", Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
             button.Click += (_, _) => terminal();
             actions.Children.Add(button);
         }
