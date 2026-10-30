@@ -104,7 +104,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Confi
 
 - 会话 detail 的 HTTP 200 响应必须含唯一的根级字符串 `id`，与请求的会话 ID 按 Ordinal 精确匹配；缺失、null、非字符串、非法、不匹配或重复 ID 均返回 `Malformed`，所有遥测清空为 Unknown，不回显错误 ID。请求 ID 仍支持 `ses` 前缀、4–256 个 ASCII 字母/数字/`_`/`-`；JSON 转义不改变身份比较结果。
 - 匹配 ID 但无遥测字段仍为 `Available` + Unknown；404 仍为 `NoRecord`，其他非 200、取消、超时与体积限制语义不变。只投影允许的遥测字段，不将忽略的 handoff/title/summary 内容解码成字符串，也不公开响应 ID。
-- 运行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\billion-context\run.ps1`：Windows .NET 10 离线编译（nullable、warnings as errors）及 **944 项断言通过**，覆盖身份、流式读取、白名单投影和缓存账本边界；使用假传输。原生界面分别保留最佳上下文、原始参考及未知值，官方本机控制台须显式确认后打开。
+- 历史离线验证：Windows .NET 10 编译（nullable、warnings as errors）及 **944 项断言通过**，覆盖身份、流式读取、白名单投影和缓存账本边界；使用假传输。该独立 runner 已在 2026-10-30 精简中移除，当前入口见[关键测试清单](docs/test-suite.md)。原生界面分别保留最佳上下文、原始参考及未知值，官方本机控制台须显式确认后打开。
 - 本次证据：`artifacts/phase2-billion-20261029T014205Z-7ed612a7a4b54f1cb81cf07d5dbfcbfa/results.txt`；页面接线、构建发布与其余验证见 [QOL 专项记录](docs/validation/2026-10-29-qol-plugin-frontend.md)。
 
 关于自动化断言数据、真机实测结果、已知待修事项与待验收范围，请查看完整记录：  

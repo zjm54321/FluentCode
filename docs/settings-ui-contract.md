@@ -1,5 +1,7 @@
 # 设置 UI 契约：可嵌入 `SettingsView`
 
+> 2026-10-30 测试已精简为[清单中的 25 个关键入口](test-suite.md)；下文已移除 runner 的路径与结果仅为历史证据。
+
 > 状态：本轮仅**静态实现与静态核对**（2026-10-06）；**未构建、未运行、未做 UI 操作、未发真实请求、未 git**。编译、集成与行为验收由父会话统一执行。
 > 写范围（本 lane 独占）：`src/AIFrontend/Pages/Settings/**`、`docs/settings-ui-contract.md`。**未**改动 `MainWindow.*`、`NormalPage.*`、`Pages/Web/**`、`Services/**`、`Models/**`、`*.csproj`、`App.*`、其他文档。
 >

@@ -1,5 +1,7 @@
 # Shell UI 契约：主窗口外框（NavigationView Auto / 三态汉堡归属 / 左栏底部设置）
 
+> 2026-10-30 测试已精简为[清单中的 25 个关键入口](test-suite.md)；下文已移除 runner 的路径与结果仅为历史证据。
+
 > 状态：**静态实现完成（第 3 轮，2026-10-06）**。第 3 轮按用户实测新要求：① 展开左栏收窄（`OpenPaneLength=240`、`CompactPaneLength=48`）；② 左栏底部账户由居中头像改为与设置/导航项一致的整行左对齐项（未登录显示“登录”，位于设置之上）；③ 设置改为**应用内页面**（`Pages.Settings.SettingsPage`）经 `ContentFrame` 导航承载，**不再使用 ContentDialog / 独立窗口 / 模态浮层**。第 2 轮“汉堡归属”结论（宽/中左栏顶部、仅小窗顶栏）**保留不变**。
 > 第 6 轮（2026-10-06）：Shell 集成接线（App 事件、OpenCode 身份/会话/导航、任务栏映射、诊断提示、设置凭据刷新）——见 §12；§11.3 待接清单已被 §12 取代。
 > 第 7 轮（2026-10-06）：Local 完成通知导航接线（订阅 `App.LocalNavigationRequested` → 公开安全定位；排队/去重/关闭回收的最小生命周期修正）——见 §13；§12.6 的 App 接口缺口请求已由 App 冻结接口满足（真实签名 `EventHandler<NotificationNavigationEventArgs>`，见 `docs/app-integration-contract.md`）。

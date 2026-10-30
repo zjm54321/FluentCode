@@ -82,8 +82,8 @@ retain its last visual state until Windows removes it.
 
 ## Assigned headless validation
 
-Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/taskbar/run.ps1`.
-The script uses the installed .NET 10 SDK/ref pack and direct Roslyn compilation:
+The former taskbar runner was removed when the suite was pruned on 2026-10-30 to [the listed critical runners](test-suite.md); the following describes its historical validation.
+The script used the installed .NET 10 SDK/ref pack and direct Roslyn compilation:
 no project edits, restore, install, GUI, real API, or full application build.
 
 - Independently compile all production Taskbar sources and App.Taskbar.cs as an x64

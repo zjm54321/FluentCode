@@ -1,5 +1,7 @@
 # OpenCode 页 UI 合同（`src/AIFrontend/Pages/OpenCodePage.*` + `src/AIFrontend/Pages/OpenCode/**`）
 
+> 2026-10-30 测试已精简为[清单中的 25 个关键入口](test-suite.md)；下文已移除 runner 的路径与结果仅为历史证据。
+
 > 状态：**来源绑定安全闭环修正**（2026-10-06，本 lane 本轮）。页面数据源改为 App 发布的 `OpenCodePageSource`（对象引用 + 单调 `Revision` 共同构成唯一代际）；六入口（权限提交 / 表单回答 / 表单取消 / 权限重查 / 表单重查 / 解除保护）统一捕获绑定并在来源私锁内原子起发；拒绝结果未知的整会话保护改为**精确来源键 + 显式整会话恢复**；静态身份注入降级为**导航提示**（绝不授权）。前轮的卡片交互、共享仲裁接入、导航入口、会话/执行事件保留；“页面自行读设置/凭据构建客户端”被本轮**整体替换**。
 > **收口修正（2026-10-06，同日追加）**：②三处 mutation 的非 unknown lease 结果（`Expired`/`Failed`/`Succeeded`，含成功分支）统一改经 `TryCompleteMutation`——`TryExecute` 私锁内复核完整绑定后才 `CompleteMutation`，`completed` 标志区分 action 被调用与真正写入；绑定失效/来源撤销/取消一律保留旧 lease 为 `OutcomeUnknown`。④-A 整会话恢复入口改为**有效会话常驻**（不依赖 pending/hint；点击才读取保护与完整列表，无保护如实提示）；④-B 两个会话切换入口清除提示/确认快照/确认面板，确认快照绑定（来源引用 + Revision + 来源代际 + 会话 + 会话代际 + 精确来源键），第二步逐项匹配否则重做确认。并修复父构建 5×CS1061（可空元组未解包）与 5×CS8602（client 捕获后未做非空检查）。
 > 收口修正只写：`src/AIFrontend/Pages/OpenCodePage.xaml.cs`、`src/AIFrontend/Pages/OpenCode/OpenCodeSessionRecoveryPanel.cs`（注释）、本文档。**未改** `App.*` / `Services/**` / `MainWindow.*` / 其他 Pages / `*.csproj` / `OpenCodePage.xaml`。

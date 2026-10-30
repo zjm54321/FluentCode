@@ -1,4 +1,0 @@
-{
-  "input": { "protocolVersions": [1] },
-  "output": { "protocolVersion": 1, "capabilities": ["billion.origin.v1", "model.favorites.v1"] }
-}

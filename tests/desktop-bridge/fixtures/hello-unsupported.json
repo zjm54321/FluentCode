@@ -1,4 +1,0 @@
-{
-  "input": { "protocolVersions": [2] },
-  "output": { "protocolVersion": null, "supportedVersions": [1], "capabilities": [] }
-}
