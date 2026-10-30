@@ -52,8 +52,8 @@ internal static partial class Program
         var section = controller.SessionPresetFor(binding, directory);
         Check(section.Value?.IsFor(page.Client, binding.SessionId, directory) == true
             && section.Value.Status == OpenCodeSessionPresetStatus.Bound, "named preset retains exact client/session/directory scope");
-        Check(OpenCodeSessionInsightsController.SessionPresetLabel(section) == "预设：真实预设"
-            && section.Note.Contains("之后新建的子会话"), "preset name and future-children-only scope have truthful copy");
+        Check(section.Value?.PresetName == "真实预设" && section.Note.Contains("之后新建的子会话"),
+            "preset name and future-children-only scope are retained");
         Check(Uri.UnescapeDataString(http.Directories[0]).Contains(directory), "RPC carries the exact verified session directory");
         for (var i = 0; i < 8; i++) await controller.LoadSessionPresetAsync(binding, directory, CancellationToken.None);
         controller.UpdateContext(binding, Array.Empty<OpenCodeMessage>(), true);
@@ -63,11 +63,11 @@ internal static partial class Program
 
         http.Respond = (id, _) => Task.FromResult(PresetReply(id, "unbound", "not-the-global-default"));
         await controller.LoadSessionPresetAsync(binding, directory, CancellationToken.None, refresh: true);
-        Check(http.Reads == 2 && OpenCodeSessionInsightsController.SessionPresetLabel(controller.Snapshot.Preset) == "预设：未绑定",
-            "explicit refresh shows unbound without adopting a supplied/global-looking name");
+        Check(http.Reads == 2 && controller.Snapshot.Preset.Value?.Status == OpenCodeSessionPresetStatus.Unbound,
+            "explicit refresh reports unbound even when a global-looking name is supplied");
         http.Respond = (id, _) => Task.FromResult(PresetReply(id, "bound", null));
         await controller.LoadSessionPresetAsync(binding, directory, CancellationToken.None, refresh: true);
-        Check(OpenCodeSessionInsightsController.SessionPresetLabel(controller.Snapshot.Preset) == "预设：已绑定（名称不可用）",
+        Check(controller.Snapshot.Preset.Value?.Status == OpenCodeSessionPresetStatus.Bound && controller.Snapshot.Preset.Value.PresetName is null,
             "bound without name is neither unbound nor a guessed preset");
 
         http.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));

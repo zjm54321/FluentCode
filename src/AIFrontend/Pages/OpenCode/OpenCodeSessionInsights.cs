@@ -538,18 +538,6 @@ public sealed class OpenCodeSessionInsightsController
     private CancellationTokenSource? _presetCts;
     private Task? _presetTask;
 
-    internal static string SessionPresetLabel(OpenCodeInsightSection<OpenCodeSessionPresetState> section) => section switch
-    {
-        { State: OpenCodeInsightState.Loaded, Value.Status: OpenCodeSessionPresetStatus.Unbound } => "预设：未绑定",
-        { State: OpenCodeInsightState.Loaded, Value.Status: OpenCodeSessionPresetStatus.Bound, Value.PresetName: { } name }
-            when !string.IsNullOrWhiteSpace(name) => "预设：" + name,
-        { State: OpenCodeInsightState.Loaded, Value.Status: OpenCodeSessionPresetStatus.Bound } => "预设：已绑定（名称不可用）",
-        { State: OpenCodeInsightState.Loading } => "预设：读取中…",
-        { State: OpenCodeInsightState.Unavailable } => "预设：不可用",
-        { State: OpenCodeInsightState.Failed } => "预设：读取失败",
-        _ => "预设：尚未读取",
-    };
-
     internal OpenCodeInsightSection<OpenCodeSessionPresetState> SessionPresetFor(OpenCodeInsightsBinding binding, string? directory)
         => _binding is { } owned && SameScope(owned, binding) && IsCurrent(binding)
             && _presetAttempted && _presetDirectory == directory ? Snapshot.Preset
