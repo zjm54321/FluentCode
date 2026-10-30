@@ -70,4 +70,9 @@
     </PropertyGroup>
     <Exec Command="&quot;$(_BrowserRuntimeBundleDirectory)\node.exe&quot; &quot;$(MSBuildProjectDirectory)\..\..\tools\browser-runtime\copy-runtime.mjs&quot; &quot;$(_BrowserRuntimeBundleDirectory)&quot; &quot;$(_BrowserRuntimePublishDirectory)&quot;" />
   </Target>
+  <!-- Unpackaged publish does not copy the app's merged PRI; without it every XAML LoadComponent fails at launch. -->
+  <Target Name="CopyAppPriToPublish" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="!Exists('$(TargetDir)$(TargetName).pri')" Text="Missing $(TargetName).pri in $(TargetDir); XAML resources would not load." />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pri" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+  </Target>
 </Project>
