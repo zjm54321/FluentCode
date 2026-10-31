@@ -161,12 +161,9 @@ public sealed partial class OpenCodePage
         _fullScreenModel!.Content = labels.Model ? OpenCodeModelLogo.Label(model?.Id ?? selected?.Id, model?.Name ?? "模型不可用") : OpenCodeModelLogo.Create(model?.Id ?? selected?.Id, model?.Name);
         var gauge = new OpenCodeComposerEffortGauge { Dimmed = !enabled || model is null, VerticalAlignment = VerticalAlignment.Center };
         gauge.Render(OpenCodeComposerEffort.Ticks(model, selected?.Variant));
-        var effortContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        effortContent.Children.Add(gauge);
-        if (labels.Effort) effortContent.Children.Add(new TextBlock { Text = OpenCodeModelPresentation.VariantLabel(selected?.Variant), VerticalAlignment = VerticalAlignment.Center });
-        _fullScreenEffort!.Content = effortContent;
+        _fullScreenEffort!.Content = gauge; // Icon-only in every layout; the level is in the tooltip/accessible name.
         var buttons = new[] { _fullScreenAgent, _fullScreenModel, _fullScreenEffort };
-        var expanded = new[] { labels.Agent, labels.Model, labels.Effort };
+        var expanded = new[] { labels.Agent, labels.Model, false };
         for (var i = 0; i < buttons.Length; i++)
         { buttons[i].MinWidth = 0; buttons[i].Width = expanded[i] ? double.NaN : 36; buttons[i].Height = 32; buttons[i].Padding = expanded[i] ? new Thickness(8, 0, 8, 0) : new Thickness(0); }
         DescribeComposerIcon(_fullScreenAgent, "选择智能体：" + OpenCodeAgentIcons.DisplayName(agent ?? "不可用"));

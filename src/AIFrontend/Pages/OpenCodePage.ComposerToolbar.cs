@@ -14,8 +14,10 @@ public sealed partial class OpenCodePage
 
     // Use the actual editor width, not the sidebar threshold: a new-session page
     // has no sidebars and can fit labels well before two resident panes would fit.
-    internal static (bool Agent, bool Model, bool Effort) ComposerChoiceLabels(double width)
-        => (width >= 430, width >= 540, width >= 680);
+    // The effort control is icon-only in every layout (its level lives in the tooltip/accessible name and the
+    // list rows); only agent and model chips grow labels with width.
+    internal static (bool Agent, bool Model) ComposerChoiceLabels(double width)
+        => (width >= 430, width >= 540);
 
     private void UpdateComposerToolbarLayout()
     {
@@ -68,15 +70,15 @@ public sealed partial class OpenCodePage
         }
         RenderNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton, enabled, labels.Model);
         BlankAgentButton.SetLabelExpanded(labels.Agent);
-        BlankStrengthButton.SetLabelExpanded(labels.Effort);
+        BlankStrengthButton.SetLabelExpanded(false);
         // The native popup remains, but closed controls have no redundant chevron. Icon-only
         // pickers share one 36-DIP square-ish footprint with zero padding so every glyph is centred.
         BlankAgentButton.MinWidth = labels.Agent ? 96 : 0;
         BlankAgentButton.Width = labels.Agent ? double.NaN : 36;
         BlankAgentButton.Padding = labels.Agent ? new Thickness(8, 0, 6, 0) : new Thickness(0);
-        BlankStrengthButton.MinWidth = labels.Effort ? 64 : 0;
-        BlankStrengthButton.Width = labels.Effort ? double.NaN : 36;
-        BlankStrengthButton.Padding = labels.Effort ? new Thickness(8, 0, 6, 0) : new Thickness(0);
+        BlankStrengthButton.MinWidth = 0;
+        BlankStrengthButton.Width = 36;
+        BlankStrengthButton.Padding = new Thickness(0);
         BlankModelButton.MinWidth = labels.Model ? 96 : 0;
         BlankModelButton.Width = labels.Model ? double.NaN : 36;
         BlankModelButton.Padding = labels.Model ? new Thickness(8, 0, 8, 0) : new Thickness(0);

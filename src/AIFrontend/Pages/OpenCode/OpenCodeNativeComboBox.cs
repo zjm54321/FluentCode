@@ -20,9 +20,43 @@ public sealed class OpenCodeNativeComboBox : ComboBox
         public FrameworkElement Visual => CreateVisual();
         public override string ToString() => Name; // Native incremental text search uses the display name.
     }
-    private sealed class ChoiceItem(Choice choice) : ComboBoxItem
+    private sealed class ChoiceItem : ComboBoxItem
     {
-        public override string ToString() => choice.Name;
+        private readonly Choice _choice;
+        private FrameworkElement _visual;
+
+        internal ChoiceItem(Choice choice)
+        {
+            _choice = choice;
+            _visual = choice.CreateVisual();
+            Content = _visual;
+        }
+
+        public override string ToString() => _choice.Name;
+
+        // Stock ComboBox moves the selected UIElement row into its closed ContentPresenter and, when the
+        // drop-down reopens, writes *whatever that presenter then holds* straight into this item's template
+        // ContentPresenter (bypassing ContentControl.Content). OpenCodeNativeComboBox replaces the closed
+        // presenter's content with its own (often icon-only) visual, so the selected row came back as a bare
+        // gauge/glyph without its label. Reclaim the row: never let a foreign visual render here.
+        private ContentPresenter? _presenter;
+
+        protected override void OnApplyTemplate()
+        {
+            base.OnApplyTemplate();
+            if (ReferenceEquals(_presenter, GetTemplateChild("ContentPresenter"))) return;
+            _presenter = GetTemplateChild("ContentPresenter") as ContentPresenter;
+            _presenter?.RegisterPropertyChangedCallback(ContentPresenter.ContentProperty, (_, _) => Reclaim());
+            Reclaim();
+        }
+
+        private void Reclaim()
+        {
+            if (_presenter is null || _presenter.Content is null || ReferenceEquals(_presenter.Content, _visual)) return;
+            // The original row may still be parented by the closed selection presenter; never share one element.
+            if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(_visual) is not null) { _visual = _choice.CreateVisual(); Content = _visual; }
+            _presenter.Content = _visual;
+        }
     }
 
     private bool _rendering;
@@ -102,7 +136,7 @@ public sealed class OpenCodeNativeComboBox : ComboBox
                 foreach (var choice in choices)
                 {
                     var item = new ChoiceItem(choice) { Style = (Style)Application.Current.Resources["DefaultComboBoxItemStyle"],
-                        Content = choice.CreateVisual(), Tag = choice };
+                        Tag = choice };
                     AutomationProperties.SetName(item, choice.Name);
                     Items.Add(item);
                 }
