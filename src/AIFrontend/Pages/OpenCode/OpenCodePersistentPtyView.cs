@@ -131,6 +131,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
             else if (Accelerator(args.Key, ctrl, shift)) args.Handled = true;
         };
         ActualThemeChanged += (_, _) => { PaintStatus(); PaintWell(); };
+        Loaded += (_, _) => { PaintStatus(); PaintWell(); };
         AutomationProperties.SetAutomationId(this, "OpenCodePersistentPtyView");
         Render(null);
     }
@@ -141,7 +142,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
             _header.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         _badge.Child = _badgeText;
         OpenCodeTerminalUi.Themed(_badge, "Background", "SolidBackgroundFillColorSecondaryBrush");
-        _badge.BorderBrush = OpenCodeTerminalUi.Brush("ControlStrokeColorDefaultBrush");
+        _badge.BorderBrush = Services.Appearance.ThemeResources.Brush(this, "ControlStrokeColorDefaultBrush");
         OpenCodeTerminalUi.Themed(_badgeText, "Foreground", "TextFillColorSecondaryBrush");
         _menu.Click += (_, _) => SetListExpanded(_listColumn.Width.Value == 0);
         AutomationProperties.SetAutomationId(_menu, "OpenCodePersistentPtyList");
@@ -406,8 +407,8 @@ internal sealed class OpenCodePersistentPtyView : Grid
         OpenCodeTerminalUi.Themed(_jump, "BorderBrush", "AccentFillColorDefaultBrush");
         OpenCodeTerminalUi.Themed(_jumpText, "Foreground", "AccentTextFillColorPrimaryBrush");
         _jump.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-        _marker.Background = OpenCodeTerminalUi.Brush("AccentFillColorDefaultBrush");
-        _badge.BorderBrush = OpenCodeTerminalUi.Brush("ControlStrokeColorDefaultBrush");
+        _marker.Background = Services.Appearance.ThemeResources.Brush(this, "AccentFillColorDefaultBrush");
+        _badge.BorderBrush = Services.Appearance.ThemeResources.Brush(this, "ControlStrokeColorDefaultBrush");
     }
 
     private void PaintTerminateItem()
@@ -416,7 +417,8 @@ internal sealed class OpenCodePersistentPtyView : Grid
         var exited = model?.Phase == OpenCodePersistentPtyPhase.Exited;
         _terminate.Text = exited ? "移除终端" : "结束终端";
         _terminate.Visibility = model is not null && TerminateRequested is not null ? Visibility.Visible : Visibility.Collapsed;
-        _terminate.Foreground = exited ? null : OpenCodeTerminalUi.Brush("SystemFillColorCriticalBrush");
+        if (exited) _terminate.Style = null;
+        else OpenCodeTerminalUi.Themed(_terminate, "Foreground", "SystemFillColorCriticalBrush");
         _createItem.Visibility = NewTerminalRequested is not null ? Visibility.Visible : Visibility.Collapsed;
         _appearanceItem.Visibility = AppearanceRequested is not null ? Visibility.Visible : Visibility.Collapsed;
         _activateItem.Visibility = model?.CanActivate == true && TakeControlRequested is not null ? Visibility.Visible : Visibility.Collapsed;

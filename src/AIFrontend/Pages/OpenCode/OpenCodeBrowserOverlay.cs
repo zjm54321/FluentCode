@@ -144,7 +144,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var pointerLabel = new Border { Child = _pointerName, Padding = new(8, 1, 8, 1), CornerRadius = new(10), Margin = new(-4, 18, 0, 0) };
         Theme(pointerLabel, Border.BackgroundProperty, "AccentFillColorDefaultBrush");
         _pointer.Children.Add(pointerIcon); _pointer.Children.Add(pointerLabel); _pointerLayer.Children.Add(_pointer); _pointerLayer.Children.Add(_ripple);
-        _ripple.Stroke = Brush("AccentFillColorDefaultBrush"); _body.Children.Add(_pointerLayer);
+        Theme(_ripple, Microsoft.UI.Xaml.Shapes.Shape.StrokeProperty, "AccentFillColorDefaultBrush"); _body.Children.Add(_pointerLayer);
         var pillContent = new Grid { ColumnSpacing = 10 };
         foreach (var width in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto }) pillContent.ColumnDefinitions.Add(new() { Width = width });
         var liveDot = new Border { Width = 6, Height = 6, CornerRadius = new(3), VerticalAlignment = VerticalAlignment.Center };
@@ -158,7 +158,6 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _agentPill = new Border { Child = pillContent, Height = 44, Padding = new(14, 0, 6, 0), BorderThickness = new(1), CornerRadius = new(22), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new(14), MaxWidth = 900,
             Shadow = new ThemeShadow(), Translation = new Vector3(0, 0, 32) };
         Theme(_agentPill, Border.BackgroundProperty, "AcrylicInAppFillColorDefaultBrush"); _body.Children.Add(_agentPill);
-        _agentPill.BorderBrush = Brush("FlyoutBorderThemeBrush");
         RightPanelSlot = content.AnnotationSlot;
         Grid.SetRow(content, 1); layout.Children.Add(content);
         _presenter = OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128);
@@ -178,21 +177,20 @@ public sealed class OpenCodeBrowserOverlay : Grid
         AutomationProperties.SetAutomationId(this, "OpenCodeBrowserOverlay");
         KeyDown += (_, key) => { if (key.Key == VirtualKey.Escape) { if (ExitPageTool?.Invoke() != true) _workspace?.HideOverlay(); key.Handled = true; } };
         _body.SizeChanged += (_, _) => { _agentPill.MaxWidth = Math.Max(0, Math.Min(900, _body.ActualWidth - 28)); ContentSizeChanged?.Invoke(this, EventArgs.Empty); };
-        PageTools.Loaded += (_, _) => RefreshTheme(); ActualThemeChanged += (_, _) => RefreshTheme();
+        Services.Appearance.ThemeResources.Aliases(PageTools,
+            ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPointerOver", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonForegroundChecked", "AccentTextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPointerOver", "AccentTextFillColorPrimaryBrush"));
+        // Keep background and border in one ThemeResource style; no application-theme brush snapshot.
+        _agentPill.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\"><Setter Property=\"Background\" Value=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource FlyoutBorderThemeBrush}\"/></Style>");
     }
 
     public Grid RightPanelSlot { get; }
 
     internal AIFrontend.Motion.OverlayCardMotion Motion { get; }
     internal void SetSurfaceSize(double width, double height) { _presenter.Width = width; _presenter.Height = height; }
-    private void RefreshTheme()
-    {
-        PageTools.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
-        PageTools.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
-        PageTools.Resources["ToggleButtonForegroundChecked"] = Brush("AccentTextFillColorPrimaryBrush");
-        PageTools.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("AccentTextFillColorPrimaryBrush");
-        _agentPill.BorderBrush = Brush("FlyoutBorderThemeBrush");
-    }
     public Grid PageToolSurface => _body;
     public StackPanel PageTools { get; }
     public Grid ErrorSurface { get; }
@@ -272,7 +270,10 @@ public sealed class OpenCodeBrowserOverlay : Grid
         {
             _activity.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = page.AgentName + " " });
             _activity.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = "正在操作此页面", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-            _activity.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = " · " + page.AgentActivity, Foreground = Brush("TextFillColorSecondaryBrush") });
+            var activity = (Microsoft.UI.Xaml.Documents.Run)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+                "<Run xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{ThemeResource TextFillColorSecondaryBrush}\"/>");
+            activity.Text = " · " + page.AgentActivity;
+            _activity.Inlines.Add(activity);
         }
         _agentIcon.Glyph = OpenCodeAgentIcons.Glyph(page.AgentName);
         ((TextBlock)((StackPanel)_takeover.Content).Children[1]).Text = page.UserTakeover ? "交还" : "接管";
@@ -373,10 +374,10 @@ public sealed class OpenCodeBrowserOverlay : Grid
         AutomationProperties.SetName(button, text); button.Click += (_, _) => click(); return button;
     }
     private static void Copy(string text) { var package = new DataPackage(); package.SetText(text); Clipboard.SetContent(package); }
-    private static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
     private static void Theme(DependencyObject target, DependencyProperty property, string key)
     {
-        var name = property == Border.BorderBrushProperty || property == Grid.BorderBrushProperty ? "BorderBrush" : "Background";
+        var name = property == Microsoft.UI.Xaml.Shapes.Shape.StrokeProperty ? "Stroke"
+            : property == Border.BorderBrushProperty || property == Grid.BorderBrushProperty ? "BorderBrush" : "Background";
         if (target is FrameworkElement element) element.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"" + target.GetType().Name + "\"><Setter Property=\"" + name + "\" Value=\"{ThemeResource " + key + "}\"/></Style>");
     }

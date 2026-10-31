@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     private object? _subscribedPage;
     private MicaController? _micaController;
     private SystemBackdropConfiguration? _backdropConfiguration;
+    private readonly Services.Appearance.AppThemeController _themeController;
 
     // 已解除“设置/加载”订阅、但 Local 运行事件订阅仍暂留（等待其 Local 执行真正终结）的旧 NormalPage 实例。
     private readonly HashSet<Pages.NormalPage> _detachedNormalPages = new();
@@ -79,6 +80,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         this.InitializeComponent();
+        _themeController = new(RootElement, Pages.NormalPage.SharedSettingsService.Current?.Theme ?? AppTheme.System);
         NavView.Loaded += (_, _) =>
         {
             if (NavView.DisplayMode == NavigationViewDisplayMode.Expanded && !_paneOpenedByUser) NavView.IsPaneOpen = false;
@@ -159,6 +161,7 @@ public sealed partial class MainWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         RootElement.ActualThemeChanged -= RootElement_ActualThemeChanged;
+        _themeController.Dispose();
         _micaController?.Dispose();
         _micaController = null;
         _backdropConfiguration = null;
@@ -889,14 +892,9 @@ public sealed partial class MainWindow : Window
         ApplyTheme(e.Theme);
     }
 
-    /// <summary>把持久化的应用主题应用到根元素（System → Default，跟随系统）。</summary>
+    /// <summary>Apply the saved choice; System follows Windows live, not only its startup theme.</summary>
     private void ApplyTheme(AppTheme theme)
     {
-        RootElement.RequestedTheme = theme switch
-        {
-            AppTheme.Light => ElementTheme.Light,
-            AppTheme.Dark => ElementTheme.Dark,
-            _ => ElementTheme.Default,
-        };
+        _themeController.Apply(theme);
     }
 }

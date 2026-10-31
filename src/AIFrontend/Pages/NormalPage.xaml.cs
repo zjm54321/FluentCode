@@ -69,7 +69,7 @@ public sealed partial class NormalPage : Page
         this.Loaded += OnPageLoaded;
         this.Unloaded += OnPageUnloaded;
         // 品牌图标（ChatGPT）含浅/深两版；主题切换后按新主题重应用，保持图标配色跟随。
-        this.ActualThemeChanged += OnPageActualThemeChanged;
+        Services.Appearance.ThemeResources.Observe(this, () => OnPageActualThemeChanged(this, EventArgs.Empty));
     }
 
     /// <summary>应用级共享的设置服务（惰性单例）；供 Local 与未来主窗口设置界面复用。</summary>

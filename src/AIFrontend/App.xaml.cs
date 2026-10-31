@@ -51,6 +51,7 @@ public partial class App : Application
             catch (Exception ex) { RecordDiagnostic("app-fonts-initialize-failed", error: ex); }
             if (_closing) return;
             InitializeMotion();
+            InitializeStartupSmokeDiagnostics();
             var window = new MainWindow();
             _window = window;
             _appDispatcher = window.DispatcherQueue;

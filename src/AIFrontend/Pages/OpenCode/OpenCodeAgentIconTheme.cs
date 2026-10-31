@@ -12,9 +12,7 @@ internal static class OpenCodeAgentIconTheme
         var icon = new FontIcon { Glyph = OpenCodeAgentIcons.Glyph(agentName), FontSize = fontSize };
         void Refresh() => icon.Foreground = new SolidColorBrush(OpenCodeAgentPresentation.Color(
             OpenCodeAgentIcons.Color(agentName, runtimeColor, icon.ActualTheme == ElementTheme.Dark))!.Value);
-        icon.ActualThemeChanged += (_, _) => Refresh();
-        icon.Loaded += (_, _) => Refresh();
-        Refresh();
+        Services.Appearance.ThemeResources.Observe(icon, Refresh);
         return icon;
     }
 }

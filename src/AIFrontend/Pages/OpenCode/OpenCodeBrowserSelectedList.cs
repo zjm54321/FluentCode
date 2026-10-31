@@ -89,11 +89,11 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
             var note = new TextBox { PlaceholderText = "添加批注（可选）", Text = item.Note, MaxLength = 4000 };
             AutomationProperties.SetName(note, $"第 {item.Number} 项批注");
             note.TextChanged += (_, _) => NoteChanged?.Invoke(item.Id, note.Text); row.Children.Add(note);
-            // Shared context-menu shape: icon row 复制图片; list 另存为图片.
+            // Shared context-menu shape: list 另存为图片; bottom row 复制.
             var image = item.Image;
             var menu = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
             {
-                new("复制图片", "\uE8C8", () => CopyRequested?.Invoke(image)) { Row = true },
+                new("复制", "\uE8C8", () => CopyRequested?.Invoke(image)) { Row = true },
                 new("另存为图片", "\uE74E", () => SaveRequested?.Invoke(image)),
             });
             var card = new Border { Padding = new(12, 10, 12, 12), CornerRadius = new(8), BorderThickness = new(1), Child = row, ContextFlyout = menu };

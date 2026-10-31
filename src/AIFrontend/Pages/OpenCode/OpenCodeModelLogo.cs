@@ -42,8 +42,7 @@ internal static class OpenCodeModelLogo
             }
             catch (Exception) { if (ticket == revision) { image.Source = null; fallback.Visibility = Visibility.Visible; } }
         }
-        host.Loaded += Update;
-        host.ActualThemeChanged += Update;
+        Services.Appearance.ThemeResources.Observe(host, () => Update(null, EventArgs.Empty));
         // This host's brand never changes. Let its pending asset load finish even while detached:
         // reparenting can deliver Unloaded after Loaded, with no subsequent load to retry it.
         // Only a newer load/theme request supersedes the source, via revision above.

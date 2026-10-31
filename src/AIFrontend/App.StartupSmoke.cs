@@ -10,16 +10,30 @@ public partial class App
     private static string? StartupSmokeRoot => Environment.GetEnvironmentVariable("AIF_STARTUP_SMOKE_ROOT")
         is { Length: > 0 } root ? Path.GetFullPath(root) : null;
 
+    private void InitializeStartupSmokeDiagnostics()
+    {
+        if (StartupSmokeRoot is not { } root || Environment.GetEnvironmentVariable("AIF_THEME_REFRESH_TEST") != "1") return;
+        DebugSettings.IsXamlResourceReferenceTracingEnabled = true;
+        DebugSettings.XamlResourceReferenceFailed += (_, args) => File.AppendAllText(Path.Combine(root, "resource-errors.txt"), args.Message + Environment.NewLine);
+    }
+
     private static void StartStartupSmoke(MainWindow window)
     {
         var timer = window.DispatcherQueue.CreateTimer();
         timer.Interval = TimeSpan.FromSeconds(3);
         timer.IsRepeating = false;
-        timer.Tick += (_, _) =>
+        timer.Tick += async (_, _) =>
         {
             timer.Stop();
             try
             {
+                if (Environment.GetEnvironmentVariable("AIF_THEME_REFRESH_TEST") == "1")
+                {
+                    await window.VerifyThemeRefreshAsync(StartupSmokeRoot!);
+                    File.WriteAllText(Path.Combine(StartupSmokeRoot!, "ready.txt"),
+                        $"PID={Environment.ProcessId}; HWND={WinRT.Interop.WindowNative.GetWindowHandle(window)}; Base={AppContext.BaseDirectory}");
+                    return;
+                }
                 window.VerifyStartupMotion(() =>
                     File.WriteAllText(Path.Combine(StartupSmokeRoot!, "ready.txt"),
                         $"PID={Environment.ProcessId}; HWND={WinRT.Interop.WindowNative.GetWindowHandle(window)}; Base={AppContext.BaseDirectory}"),

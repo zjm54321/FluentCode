@@ -4,7 +4,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 
 namespace AIFrontend.Pages.OpenCode;
@@ -97,8 +96,7 @@ internal sealed class OpenCodeRightPanelView
         Footer.BorderThickness = new Thickness(0); // a quiet row on the card; hover/pressed fill still marks it as a button
         AutomationProperties.SetAutomationId(Footer, "OpenCodeRightPanelConnection");
         ToolTipService.SetToolTip(Footer, "查看 OpenCode 服务版本、MCP 与 LSP 详情");
-        Footer.ActualThemeChanged += (_, _) => UpdateLogo();
-        UpdateLogo();
+        OpenCodeThemeAssets.BindWordmark(_logo);
     }
 
     public void RenderSession(OpenCodeRightPanelPresentation? session)
@@ -129,6 +127,4 @@ internal sealed class OpenCodeRightPanelView
         AutomationProperties.SetName(Footer, "OpenCode 服务版本：" + _version.Text + "；查看连接详情");
     }
 
-    private void UpdateLogo() => _logo.Source = new SvgImageSource(new Uri(Footer.ActualTheme == ElementTheme.Dark
-        ? "ms-appx:///Assets/OpenCode/logo-dark.svg" : "ms-appx:///Assets/OpenCode/logo-light.svg"));
 }

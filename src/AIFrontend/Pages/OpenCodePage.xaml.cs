@@ -3697,6 +3697,8 @@ public sealed partial class OpenCodePage : Page
     private void ShowMessage(InfoBarSeverity severity, string title, string message)
     {
         if (IsRuntimeNoticeDismissed(title, message)) return;
+        // Success is already visible in place (transcript chips, composer, toolbar); no banner.
+        if (severity == InfoBarSeverity.Success) return;
         MessageBar.ActionButton = null; // 撤回“复制内容”等一次性操作按钮不跨消息残留。
         MessageBar.Severity = severity;
         MessageBar.Title = title;

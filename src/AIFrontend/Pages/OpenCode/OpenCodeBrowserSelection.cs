@@ -67,7 +67,8 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         _list.SaveRequested += bytes => Run(() => OpenCodeBrowserSelectionFiles.SaveAsync(bytes, overlay.XamlRoot));
         // Same floating-pill language as the agent activity pill: acrylic, hairline, elevation.
         var pillRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center };
-        _modeIcon.VerticalAlignment = VerticalAlignment.Center; _modeIcon.Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+        _modeIcon.VerticalAlignment = VerticalAlignment.Center;
+        _modeIcon.Style = OpenCodeToolTheme.Icon("AccentTextFillColorPrimaryBrush");
         pillRow.Children.Add(_modeIcon);
         _modeLabel.VerticalAlignment = VerticalAlignment.Center; _modeLabel.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; pillRow.Children.Add(_modeLabel);
         BuildAnnotationTools(); pillRow.Children.Add(_annotationTools);
@@ -75,13 +76,9 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var accent)) done.Style = (Style)accent;
         done.Click += (_, _) => Run(FinishAsync); pillRow.Children.Add(done);
         _pill = new Border { Child = pillRow, Height = 44, CornerRadius = new(22), Padding = new(16, 0, 6, 0), Margin = new(16), BorderThickness = new(1), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Visibility = Visibility.Collapsed,
-            Background = (Brush)Application.Current.Resources["AcrylicInAppFillColorDefaultBrush"], BorderBrush = (Brush)Application.Current.Resources["FlyoutBorderThemeBrush"],
             Shadow = new ThemeShadow(), Translation = new System.Numerics.Vector3(0, 0, 32) };
-        _pill.ActualThemeChanged += (_, _) =>
-        {
-            _pill.Background = (Brush)Application.Current.Resources["AcrylicInAppFillColorDefaultBrush"]; _pill.BorderBrush = (Brush)Application.Current.Resources["FlyoutBorderThemeBrush"];
-            _modeIcon.Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
-        };
+        _pill.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\"><Setter Property=\"Background\" Value=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource FlyoutBorderThemeBrush}\"/></Style>");
         overlay.PageToolSurface.Children.Add(_pill);
         overlay.SelectionBindingChanged += BindingChanged; overlay.AddPageRequested += AddPage;
         overlay.ExitPageTool = Exit;

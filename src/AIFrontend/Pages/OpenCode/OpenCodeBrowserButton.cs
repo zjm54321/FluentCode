@@ -41,11 +41,16 @@ internal sealed class OpenCodeBrowserButton : Grid
         _toggle.Style = (Style)XamlReader.Load(
             "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource ButtonBorderBrush}\"/><Setter Property=\"BorderThickness\" Value=\"{ThemeResource ButtonBorderThemeThickness}\"/><Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
         // Native ToggleButton chrome with subtle checked states, never the stock accent-filled state.
-        _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
-        _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
+        Services.Appearance.ThemeResources.Aliases(_toggle,
+            ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPointerOver", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPressed", "SubtleFillColorTertiaryBrush"),
+            ("ToggleButtonForegroundChecked", "TextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPointerOver", "TextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPressed", "TextFillColorPrimaryBrush"),
+            ("ToggleButtonBorderBrushChecked", "ButtonBorderBrush"),
+            ("ToggleButtonBorderBrushCheckedPointerOver", "ButtonBorderBrushPointerOver"),
+            ("ToggleButtonBorderBrushCheckedPressed", "ButtonBorderBrushPressed"));
         _statusButton.Content = _statusDot;
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) _statusButton.Style = quiet;
         Children.Add(_toggle); Children.Add(_statusButton); Children.Add(_new); Grid.SetColumn(_new, 1);
@@ -66,6 +71,7 @@ internal sealed class OpenCodeBrowserButton : Grid
         _statusButton.Flyout = _availabilityFlyout;
         _reclaim.Click += (_, _) => { _availabilityFlyout.Hide(); ReclaimRequested?.Invoke(this, EventArgs.Empty); };
         ActualThemeChanged += (_, _) => RefreshTheme();
+        Loaded += (_, _) => RefreshTheme();
     }
 
     private int _pages;
@@ -79,16 +85,8 @@ internal sealed class OpenCodeBrowserButton : Grid
         // Inherit the tile's themed foreground: an Application-level brush is the app theme's, which made the globe
         // white-on-white when the page theme differed from the app theme.
         _globe.ClearValue(IconElement.ForegroundProperty);
-        _dot.Background = _statusDot.Background = Brush(OpenCodeBrowserPanelState.StatusBrushKey(_availability));
-        _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
-        _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPressed"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonBorderBrushChecked"] = Brush("ButtonBorderBrush");
-        _toggle.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = Brush("ButtonBorderBrushPointerOver");
-        _toggle.Resources["ToggleButtonBorderBrushCheckedPressed"] = Brush("ButtonBorderBrushPressed");
+        _dot.Background = _statusDot.Background = Services.Appearance.ThemeResources.Brush(this,
+            OpenCodeBrowserPanelState.StatusBrushKey(_availability));
     }
 
     public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen, int? pageCount = null)
@@ -110,5 +108,4 @@ internal sealed class OpenCodeBrowserButton : Grid
         RefreshTheme();
     }
 
-    internal static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 }

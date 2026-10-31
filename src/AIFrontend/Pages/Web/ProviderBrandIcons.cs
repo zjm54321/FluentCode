@@ -87,7 +87,8 @@ public static class ProviderBrandIcons
         ArgumentNullException.ThrowIfNull(item);
 
         // 按控件当前主题选择变体（ChatGPT 浅/深各地一并显式 fill；其余 provider 与主题无关）。
-        string path = GetAbsolutePath(provider, item.ActualTheme);
+        var theme = item.ActualTheme;
+        string path = GetAbsolutePath(provider, theme);
         if (!File.Exists(path))
         {
             return false;
@@ -105,6 +106,8 @@ public static class ProviderBrandIcons
                 return false;
             }
 
+            // An older light load must not overwrite a newer dark request (or vice versa).
+            if (theme != item.ActualTheme) return false;
             item.Icon = new ImageIcon
             {
                 Source = source,

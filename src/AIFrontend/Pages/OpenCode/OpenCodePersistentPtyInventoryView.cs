@@ -94,6 +94,16 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         // Same native frame as the browser entry: transparent rest state, subtle (never accent) checked state.
         _toggle.Style = (Style)XamlReader.Load(
             "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource ButtonBorderBrush}\"/><Setter Property=\"BorderThickness\" Value=\"{ThemeResource ButtonBorderThemeThickness}\"/><Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
+        Services.Appearance.ThemeResources.Aliases(_toggle,
+            ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPointerOver", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPressed", "SubtleFillColorTertiaryBrush"),
+            ("ToggleButtonForegroundChecked", "TextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPointerOver", "TextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPressed", "TextFillColorPrimaryBrush"),
+            ("ToggleButtonBorderBrushChecked", "ButtonBorderBrush"),
+            ("ToggleButtonBorderBrushCheckedPointerOver", "ButtonBorderBrushPointerOver"),
+            ("ToggleButtonBorderBrushCheckedPressed", "ButtonBorderBrushPressed"));
         AutomationProperties.SetAutomationId(_toggle, "OpenCodePersistentPtyButton");
         _toggle.Click += (_, _) => { ToggleOverlay(); RefreshTheme(); };
         _toggle.Loaded += (_, _) => RefreshTheme();
@@ -231,16 +241,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
     {
         if (Application.Current is null) return;
         _toggle.IsChecked = _openId is not null;
-        _live.Background = OpenCodeTerminalUi.Brush("SystemFillColorSuccessBrush");
-        _toggle.Resources["ToggleButtonBackgroundChecked"] = OpenCodeTerminalUi.Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = OpenCodeTerminalUi.Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = OpenCodeTerminalUi.Brush("SubtleFillColorTertiaryBrush");
-        _toggle.Resources["ToggleButtonForegroundChecked"] = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPressed"] = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonBorderBrushChecked"] = OpenCodeTerminalUi.Brush("ButtonBorderBrush");
-        _toggle.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = OpenCodeTerminalUi.Brush("ButtonBorderBrushPointerOver");
-        _toggle.Resources["ToggleButtonBorderBrushCheckedPressed"] = OpenCodeTerminalUi.Brush("ButtonBorderBrushPressed");
+        OpenCodeTerminalUi.Themed(_live, "Background", "SystemFillColorSuccessBrush");
     }
 
     /// <summary>32px chip: >_ · command (≤104) · status dot; hover swaps the dot for ×; 2px accent outline while shown.</summary>
@@ -317,8 +318,8 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         {
             if (Application.Current is null || Entry is not { } entry) return;
             var active = _hover || _outline.Visibility == Visibility.Visible;
-            _title.Foreground = OpenCodeTerminalUi.Brush(active ? "TextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
-            _outline.BorderBrush = OpenCodeTerminalUi.Brush("AccentFillColorDefaultBrush");
+            OpenCodeTerminalUi.Themed(_title, "Foreground", active ? "TextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
+            OpenCodeTerminalUi.Themed(_outline, "BorderBrush", "AccentFillColorDefaultBrush");
             var showEnd = entry.CanEnd && (_hover || _open.FocusState != FocusState.Unfocused);
             _end.Visibility = showEnd ? Visibility.Visible : Visibility.Collapsed;
             _dot.Visibility = showEnd ? Visibility.Collapsed : Visibility.Visible;
@@ -434,10 +435,10 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         private void Paint()
         {
             if (Application.Current is null || _entry is not { } entry) return;
-            _selected.Background = _isSelected ? OpenCodeTerminalUi.Brush("SubtleFillColorSecondaryBrush") : null;
-            _bar.Background = OpenCodeTerminalUi.Brush("AccentFillColorDefaultBrush");
+            OpenCodeTerminalUi.Themed(_selected, "Background", _isSelected ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush");
+            OpenCodeTerminalUi.Themed(_bar, "Background", "AccentFillColorDefaultBrush");
             _bar.Visibility = _isSelected ? Visibility.Visible : Visibility.Collapsed;
-            _title.Foreground = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
+            OpenCodeTerminalUi.Themed(_title, "Foreground", "TextFillColorPrimaryBrush");
             OpenCodeTerminalUi.Themed((FrameworkElement)_icon, "Foreground", _isSelected ? "TextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
             var showEnd = entry.CanEnd && (_hover || _open.FocusState != FocusState.Unfocused);
             _end.Visibility = showEnd ? Visibility.Visible : Visibility.Collapsed;
@@ -478,9 +479,6 @@ internal static class OpenCodeTerminalUi
         dot.ClearValue(Border.BackgroundProperty); dot.ClearValue(Border.BorderBrushProperty);
         Themed(dot, ring ? "BorderBrush" : "Background", BrushKey(state));
     }
-
-    internal static Brush? Brush(string key)
-        => Application.Current?.Resources.TryGetValue(key, out var value) == true ? value as Brush : null;
 
     /// <summary>ThemeResource-backed setter, so element-level light/dark overrides repaint without code.</summary>
     internal static void Themed(FrameworkElement target, string property, string key)

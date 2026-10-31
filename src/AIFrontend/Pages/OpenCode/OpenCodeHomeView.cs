@@ -714,9 +714,9 @@ public sealed class OpenCodeHomeView : UserControl
         return item;
     }
 
-    // Shared context-menu shape (File Explorer style): icon row 重命名 · 复制 session ID · 删除; list 归档此会话.
+    // Shared context-menu shape: list 归档此会话; bottom row 重命名 · 复制 ID · 删除 (short cell labels).
     // Fluent order confirmed by the user: edit actions first, destructive delete last (rightmost in the row).
-    private CommandBarFlyout CreateSessionMenu(ListViewItem owner)
+    private FlyoutBase CreateSessionMenu(ListViewItem owner)
     {
         return OpenCodeContextMenu.Create(_ =>
         {
@@ -739,9 +739,9 @@ public sealed class OpenCodeHomeView : UserControl
             }
             return new OpenCodeContextCommand?[]
             {
-                Command(OpenCodeHomeSessionAction.Rename, "修改名称", "\uE8AC") with { Row = true, Accelerator = "F2" },
-                Command(OpenCodeHomeSessionAction.CopyId, "复制 session ID", "\uE8C8") with { Row = true },
-                Command(OpenCodeHomeSessionAction.Delete, "删除此会话", "\uE74D") with { Row = true, Accelerator = "Del", Critical = true },
+                Command(OpenCodeHomeSessionAction.Rename, "重命名", "\uE8AC") with { Row = true, Accelerator = "F2" },
+                Command(OpenCodeHomeSessionAction.CopyId, "复制 ID", "\uE8C8") with { Row = true },
+                Command(OpenCodeHomeSessionAction.Delete, "删除", "\uE74D") with { Row = true, Accelerator = "Del", Critical = true },
                 Command(OpenCodeHomeSessionAction.Archive, "归档此会话", "\uE7B8"),
             };
         });

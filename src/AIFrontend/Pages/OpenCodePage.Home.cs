@@ -10,7 +10,6 @@ using AIFrontend.Services.Notifications;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace AIFrontend.Pages;
@@ -53,10 +52,11 @@ public sealed partial class OpenCodePage
         HomePageHost.Children.Add(_homeView);
         Loaded += (_, _) => { if (_homeActive) ShowHomePage(); };
         Unloaded += (_, _) => { if (!IsLoaded) ResetHomeSource(); };
-        ActualThemeChanged += (_, _) => UpdateWordmark();
         SessionLayoutRoot.SizeChanged += (_, _) => { UpdateConversationColumns(); if (_blankComposerPlacement) QueueComposerLayout(); };
         MessageScroll.SizeChanged += (_, _) => UpdateConversationColumns();
-        UpdateWordmark();
+        OpenCodeThemeAssets.BindWordmark(NewConversationWordmark);
+        OpenCodeThemeAssets.BindWordmark(_homeWordmark);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_homeWordmark, "OpenCode");
         _homeView.AddProject += (_, e) => { if (HomeEventCurrent(e.Revision, e.Project)) _ = AddHomeDirectoryAsync(); };
         _homeView.NewSession += (_, e) =>
         {
@@ -83,14 +83,6 @@ public sealed partial class OpenCodePage
         HorizontalAlignment = HorizontalAlignment.Left };
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeChromeTimer;
     private (string? Version, bool Connected, string? Identity)? _homeChromeShown;
-
-    private void UpdateWordmark()
-    {
-        var uri = new Uri(ActualTheme == ElementTheme.Dark ? "ms-appx:///Assets/OpenCode/logo-dark.svg" : "ms-appx:///Assets/OpenCode/logo-light.svg");
-        NewConversationWordmark.Source = new SvgImageSource(uri);
-        _homeWordmark.Source = new SvgImageSource(uri);
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_homeWordmark, "OpenCode");
-    }
 
     /// <summary>Right-side Home identity card from real state only: accepted server version, live connection,
     /// and configured connection identity. Directory quick access belongs only to the session right panel.</summary>

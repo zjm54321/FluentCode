@@ -40,7 +40,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _editor.Resources["SplitButtonSecondaryButtonSize"] = EditorChevronWidth;
         // Same transparent rest state as the explorer/browser/terminal tiles (stock SplitButton is control-filled);
         // hover/pressed fills and the elevation border stay native.
-        _editor.Resources["SplitButtonBackground"] = Application.Current.Resources["SubtleFillColorTransparentBrush"];
+        Services.Appearance.ThemeResources.Aliases(_editor, ("SplitButtonBackground", "SubtleFillColorTransparentBrush"));
         // The template right-pads its 12-DIP chevron by 12; centre it in the slimmer native segment.
         _editor.Loaded += (_, _) =>
         {

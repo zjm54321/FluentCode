@@ -1460,7 +1460,7 @@ public sealed class LocalChatView : UserControl
         {
             if (resources.TryGetValue(key, out object value) && value is Brush brush)
             {
-                pane.Background = brush;
+                pane.Background = Services.Appearance.ThemeResources.Brush(pane, key);
                 return;
             }
         }

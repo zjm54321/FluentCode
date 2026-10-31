@@ -275,10 +275,10 @@ internal sealed class OpenCodeBrowserStrip : Grid
             };
             GotFocus += (_, _) => _hover.Start();
             LostFocus += (_, _) => { _hover.Stop(); _leave.Start(); };
-            // Shared context-menu shape: icon row 关闭页面; list 显示页面.
+            // Shared context-menu shape: list 显示页面; bottom row 关闭.
             ContextFlyout = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
             {
-                new("关闭页面", "\uE711", page.Close) { Row = true },
+                new("关闭", "\uE711", page.Close) { Row = true },
                 new("显示页面", "\uE8A7", show),
             });
             AddHandler(PointerPressedEvent, new PointerEventHandler((_, e) =>
@@ -308,13 +308,13 @@ internal sealed class OpenCodeBrowserStrip : Grid
         }
         private void Render()
         {
-            _outline.BorderBrush = OpenCodeBrowserButton.Brush(_flashOn ? "SystemFillColorCautionBrush" : _shown || _page.AgentActivity is not null ? "AccentFillColorDefaultBrush" : "ControlStrokeColorDefaultBrush");
+            _outline.BorderBrush = Services.Appearance.ThemeResources.Brush(this, _flashOn ? "SystemFillColorCautionBrush" : _shown || _page.AgentActivity is not null ? "AccentFillColorDefaultBrush" : "ControlStrokeColorDefaultBrush");
             _outline.BorderThickness = new Thickness(_shown || _page.AgentActivity is not null || _flashOn ? 2 : 1);
-            _badge.Background = OpenCodeBrowserButton.Brush("SolidBackgroundFillColorBaseBrush");
+            _badge.Background = Services.Appearance.ThemeResources.Brush(this, "SolidBackgroundFillColorBaseBrush");
             _badge.Visibility = Visibility.Visible;
-            if (_page.LoadError is not null) _badge.Child = new FontIcon { Glyph = "\uE7BA", FontSize = 12, Foreground = OpenCodeBrowserButton.Brush("SystemFillColorCriticalBrush") };
+            if (_page.LoadError is not null) _badge.Child = new FontIcon { Glyph = "\uE7BA", FontSize = 12, Style = OpenCodeToolTheme.Icon("SystemFillColorCriticalBrush") };
             else if (_page.AgentActivity is not null) _badge.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, Children = {
-                new FontIcon { Glyph = "\uEC26", FontSize = 12, Foreground = OpenCodeBrowserButton.Brush("AccentTextFillColorPrimaryBrush") }, new TextBlock { Text = "智能体", FontSize = 10 } } };
+                new FontIcon { Glyph = "\uEC26", FontSize = 12, Style = OpenCodeToolTheme.Icon("AccentTextFillColorPrimaryBrush") }, new TextBlock { Text = "智能体", FontSize = 10 } } };
             else if (_page.Loading) _badge.Child = new ProgressRing { Width = 16, Height = 16, IsActive = true };
             else if (_page.PreviewPath is { } path) _badge.Child = new TextBlock { Text = OpenCodeBrowserPanelState.PreviewKind(path), FontSize = 10 };
             else _badge.Visibility = Visibility.Collapsed;
