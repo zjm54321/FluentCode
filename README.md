@@ -1,6 +1,6 @@
 # AIFrontend
 
-原生 C# / WinUI 3 桌面端框架（Windows 11 x64），提供 Fluent 风格桌面外壳，整合网页端大模型、本地/直接协议模型（Local）、OpenCode 编程助手协作与任务看板。
+原生 C# / WinUI 3 桌面端框架（Windows 11 x64），提供 Fluent 风格桌面外壳，整合网页端大模型、本地/直接协议模型（Local）与 OpenCode 编程助手协作。普通界面与 OpenCode 保留各自独立的导航入口。
 
 > **当前验证状态（2026-10-29）**：OpenCode 遗留需求及 QOL 插件前端整合已完成，72 个测试入口经失败项定向修复后全部通过；Debug/x64 构建与发布均为 0 警告、0 错误。真实验证覆盖会话浏览器、离线终端渲染及原生持久 PTY 协议。功能及证据见 [当前验证记录](docs/current-validation-status.md)。
 
@@ -29,9 +29,6 @@
 
 ### 5. 系统通知与任务栏
 - **原生状态与通知**：源码对接 Windows 任务栏状态与 Fail-Closed 原生通知服务（跨进程实测待验）。
-
-### 6. 看板 (Board)
-- **主界面骨架**：提供 Scaffold 基础导航骨架；任务编排与 MCP 协议集成明确延期。
 
 ---
 

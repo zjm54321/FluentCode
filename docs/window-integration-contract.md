@@ -54,7 +54,6 @@
 | `Pages.NormalPage` | `public event EventHandler? SettingsRequested` | `Page_SettingsRequested` → `ShowSettingsDialogAsync` | — |
 | `Pages.NormalPage` | `public event EventHandler<LocalTaskCompletedEventArgs>? LocalTaskCompleted` | `NormalPage_LocalTaskCompleted` → 转发本窗口公开事件 | 仅转发 |
 | `Pages.OpenCodePage` | `public event EventHandler? SettingsRequested` | `Page_SettingsRequested` | — |
-| `Pages.BoardPage` | 无事件 | — | 不订阅 |
 
 - 解除时机：① 下一次 Navigated（旧页面先解后订；同实例重导航亦安全——先解再订，不产生重复订阅）；② `MainWindow_Closed` 调用 `DetachPageEvents()`。
 - 顺序说明：Frame 导航先触发旧页 `Unloaded`（NormalPage 在此关闭 WebView2 宿主），后触发新页 `Navigated`；旧页面订阅在 Navigated 时点解除，之后旧实例不再被本窗口引用（Frame 默认 `NavigationCacheMode.Disabled`，全仓未设置该属性——已核对），可被回收。

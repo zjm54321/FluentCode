@@ -1,7 +1,7 @@
 # 实现契约：共享基础层（Models / Services.Configuration / Services.Contracts）
 
 > 状态：接手已有实现并补齐数据保护缺口（2026-10-06）；仅静态核对，待父会话编译与行为测试后提交。
-> 适用范围：UI 各页（Normal / OpenCode / Board）、后续协议实现 lane、OpenCode lane 均以本文档为准。
+> 适用范围：UI 各页（Normal / OpenCode）、后续协议实现 lane、OpenCode lane 均以本文档为准。
 > 本轮边界：只提供数据模型与本地持久化；**不包含**任何页面、网络请求、协议实现、OpenCode 接口实现。
 > 并行 lane 边界：`Services/OpenCode/**`（独立 DTO）与 `Services/Notifications/**` 由各自 lane 负责，本层不引用。
 

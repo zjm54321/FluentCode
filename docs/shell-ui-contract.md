@@ -29,7 +29,7 @@
 | 1 | `NavigationView.PaneDisplayMode=Auto`；宽展开、中 Compact、小 Minimal 默认行为与手动切换保留；**宽、中汉堡必须在左侧导航栏顶部**；**只有小窗 Minimal 汉堡进入顶栏**（顺序 返回(按需)/汉堡/搜索）；**不得出现两个汉堡** | `NavView PaneDisplayMode="Auto"`（阈值用 NavigationView 自身默认，不自造）；汉堡归属由 `UpdateResponsiveLayout()` 按实际 `DisplayMode` 互斥切换：宽/中 → 内置 `PaneToggleButton`（`IsPaneToggleButtonVisible=true`，模板悬浮层位于左栏顶部，见 §3）；小 → 内置关闭，顶栏 `HamburgerButton` 显示。手动切换：宽/中点击内置按钮（原生开合），小窗点击顶栏汉堡（`NavView.IsPaneOpen` 开合浮出侧栏） |
 | 2 | 设置置左栏最底、头像在设置上方；保留用户菜单与设置入口 | 头像 `AccountButton`（含用户菜单 Flyout）在 `PaneFooter`；设置项 `NavSettings` 在 `FooterMenuItems`。模板 `ItemsContainerGrid` 行序 MenuItems(0)/溢出分隔符(1)/PaneFooter(2)/FooterMenuItems(3)（§3 行号）→ 头像在设置上方、设置最底。顶栏无账户入口；Flyout 内设置入口保留 |
 | 3 | 点击齿轮旋转一圈、遵从系统关闭动画偏好、不妨碍打开设置 | `SettingsGearIcon`（E713）+ `NavView_ItemInvoked`（Tag=="Settings"）→ `AnimateSettingsGear()`（0→360°、400ms、`CubicEase`、`EnableDependentAnimation`，每次重建 `RotateTransform` 保证可重播）后立即 `OpenSettingsPage()`（进入应用内设置页），不等待动画；`UISettings.AnimationsEnabled==false` 时跳过动画直接打开 |
-| 4 | 顶栏按需返回/按需汉堡/标题；宽中放原生 AutoSuggestBox；小窗搜索框变搜索按钮（原生 Flyout 承载），顺序 返回/汉堡/搜索 | 顶栏左组顺序固定：`BackButton`（无历史折叠）/`HamburgerButton`（仅小窗可见）/`SearchButton`（仅小窗可见，Flyout 内 `SearchBoxFlyout`）/标题；中部 `SearchBox` 仅宽/中。仅匹配既有三项导航，无全局内容搜索 |
+| 4 | 顶栏按需返回/按需汉堡/标题；宽中放原生 AutoSuggestBox；小窗搜索框变搜索按钮（原生 Flyout 承载），顺序 返回/汉堡/搜索 | 顶栏左组顺序固定：`BackButton`（无历史折叠）/`HamburgerButton`（仅小窗可见）/`SearchButton`（仅小窗可见，Flyout 内 `SearchBoxFlyout`）/标题；中部 `SearchBox` 仅宽/中。仅匹配普通界面与 OpenCode 两项导航，无全局内容搜索 |
 | 5 | 响应式以实际 DisplayMode 为准；避免重复汉堡/返回；拖拽区避开交互控件与右上窗口按钮 | `UpdateResponsiveLayout()` 读 `NavView.DisplayMode`（无自造阈值），同时切换汉堡归属与搜索框/搜索按钮；内置返回 `IsBackButtonVisible=Collapsed`（仅顶栏 BackButton）；顶栏交互控件经 `NonClientRegionKind.Passthrough` 放行；caption 保留列按 Left/RightInset（`RasterizationScale` 换算） |
 
 ---
@@ -48,7 +48,7 @@ Grid 列：`LeftPaddingColumn`(LeftInset) → 左组(Auto) → 中部(`*`) → `
 ## 3. 左栏结构与模板依据（`MainWindow.xaml` Row 1 `NavView`）
 
 - `PaneDisplayMode="Auto"`、`OpenPaneLength="240"`、`CompactPaneLength="48"`、`IsPaneToggleButtonVisible="True"`（运行时按 DisplayMode 切换，见 §4）、`IsBackButtonVisible="Collapsed"`、`IsSettingsVisible="False"`、`IsTitleBarAutoPaddingEnabled="False"`。
-- `MenuItems`：`NavNormal`(Tag `Normal`) / `NavOpenCode`(Tag `OpenCode`) / `NavBoard`(Tag `Board`) —— **AutomationId 与 Tag 均未改**（保留既有路由与 UIA 契约）。
+- `MenuItems`：仅保留 `NavNormal`(Tag `Normal`) / `NavOpenCode`(Tag `OpenCode`) 两个独立入口；两项的 AutomationId 与 Tag 保持不变。
 - **无 `PaneFooter`**（不再使用居中小头像）。账户与设置项同置于 `FooterMenuItems`，账户在上、设置最底。
 - `FooterMenuItems` 第 1 项 `NavAccount`（`Tag="Account"`、`SelectsOnInvoked="False"`、`Content="登录"`、`AutomationProperties.AutomationId="AccountButton"`、`Icon` = `SymbolThemeFontFamily` 16 号 `E77B`，字号与设置项一致；`FlyoutBase.AttachedFlyout` = 既有账户菜单：如实显示未登录状态 + 设置入口 `OpenSettings`）。`NavView_ItemInvoked` 中 `Tag=="Account"` 时 `FlyoutBase.ShowAttachedFlyout` 弹出菜单，不改变页面选中、不导航、不假造已登录。
 - `FooterMenuItems` 第 2 项 `NavSettings`（`Tag="Settings"`、`SelectsOnInvoked="False"`、`Icon` = 命名 `SettingsGearIcon` 齿轮 E713 16 号、`AutomationProperties.AutomationId="NavSettings"`，位于左栏最底）。
@@ -74,7 +74,7 @@ Grid 列：`LeftPaddingColumn`(LeftInset) → 左组(Auto) → 中部(`*`) → `
 | `NavView_ItemInvoked` | `Tag=="Settings"` → `AnimateSettingsGear()` + `OpenSettingsPage()`；`Tag=="Account"` → `FlyoutBase.ShowAttachedFlyout(item)`（两者均不改变页面选中） |
 | `AnimateSettingsGear()` | 系统允许动画时：重建 `RotateTransform` → `DoubleAnimation` 0→360°（400ms，`CubicEase`，`EnableDependentAnimation`）→ `Storyboard.SetTarget/SetTargetProperty("(UIElement.RenderTransform).(RotateTransform.Angle)")` → `Begin()`；异常静默 |
 | `SystemAnimationsEnabled()` | `new Windows.UI.ViewManagement.UISettings().AnimationsEnabled`；读取失败按允许动画 |
-| `SearchBox_TextChanged/QuerySubmitted/SuggestionChosen` | 仅对 `SearchTargets`（三项导航）做名称匹配与跳转；不伪造全局搜索 |
+| `SearchBox_TextChanged/QuerySubmitted/SuggestionChosen` | 仅对 `SearchTargets`（普通界面与 OpenCode 两项导航）做名称匹配与跳转；不伪造全局搜索 |
 | `NavigateToTag(tag)` | 设置 `NavView.SelectedItem`（触发 `SelectionChanged` 导航），已选中时兜底 `ContentFrame.Navigate` |
 | `UpdateTitleBarRegions()` | Passthrough 元素列表 `{ BackButton, HamburgerButton, SearchBox, SearchButton }`（折叠项自动排除；头像在左栏，不参与） |
 
@@ -88,12 +88,12 @@ Grid 列：`LeftPaddingColumn`(LeftInset) → 左组(Auto) → 中部(`*`) → `
   1. **汉堡互斥**：顶栏 `HamburgerButton` 与内置 `TogglePaneButton` 恰有一个可见；全隐或全显均 Failed（"不能重复两个汉堡"与"缺汉堡"都拦截）。
   2. **PaneShown（宽/中）**：`TogglePaneButton` 位于左栏顶部（底边 ≤ 首项 `NavNormal` 顶边 + 容差、右缘不超左栏、位于窗口内）；顶栏汉堡必须不可见（由互斥项覆盖）；中部 `SearchBox` 可见、`SearchButton` 隐藏。
   3. **Minimal**：顶栏汉堡可见且位于标题栏行内（由 `SearchButton` 高度反推 scale，底边 ≤ 窗口顶 + 48×scale + 2，且与搜索按钮同行对齐）；顺序 `BackButton`(如可见)/`HamburgerButton`/`SearchButton` 从左到右；`TogglePaneButton` 不可见（侧栏浮出时也不得出现，防第二汉堡）；`SearchButton` 可见、`SearchBox` 隐藏。按证据分 `MinimalPaneOpen`（侧栏浮出）与 `MinimalPaneClosed`（侧栏隐藏）两态；底部布局检查在浮出时同样适用。
-  4. **左栏底部布局（PaneShown/MinimalPaneOpen）**：三个导航项均可见且按 `NavNormal→NavOpenCode→NavBoard` 自上而下；`AccountButton`（现为 `FooterMenuItems` 中的账户项）在末项之下、`NavSettings` 之上；`NavSettings` 为左栏最低元素且贴近窗口底（≤64 物理像素）；账户项与设置项均在左栏水平区域内。（脚本按 `AutomationId="AccountButton"` 读取，账户项迁移后该 Id 保留，断言不变。）
+  4. **左栏底部布局（PaneShown/MinimalPaneOpen）**：两个导航项均可见且按 `NavNormal→NavOpenCode` 自上而下；`AccountButton`（现为 `FooterMenuItems` 中的账户项）在末项之下、`NavSettings` 之上；`NavSettings` 为左栏最低元素且贴近窗口底（≤64 物理像素）；账户项与设置项均在左栏水平区域内。（脚本按 `AutomationId="AccountButton"` 读取，账户项迁移后该 Id 保留，断言不变。）
   5. **caption 不重叠**：所有可见 chrome 元素（Back/汉堡/内置汉堡/搜索按钮/搜索框/头像/设置）与 DWM caption 按钮区无交叠；BackButton 保留原几何/可用态断言（可见但禁用 → Failed；隐藏允许，不推断历史）。
   6. **稳定性**：检查期间窗口几何、BackButton 状态、汉堡归属发生变化即报"重试"（Unknown）。
   - 严格性：DWM caption 边界不可得 → 总状态保持 Unknown（永不 Passed）；仅 `Status=Passed` 时 exit 0。JSON 新增字段：`Mode`/`HamburgerExclusivityStatus`/`TopBarOrderStatus`/`SearchPlacementStatus`/`PaneTogglePlacementStatus`/`PaneBottomLayoutStatus`/`PaneContainmentStatus`/`ElementsOverlappingCaptionButtons` 等；移除仅适用于"顶栏头像"的 `AccountRightLECaptionButtonsLeft`/`RectanglesOverlap`（由"所有可见元素与 caption 区不重叠"整体断言取代）。
 - 本轮对脚本只做了 **ParseFile 仅解析**语法核对（Windows PowerShell 5.1.26100.9444，零错误），**未运行**。
-- `Invoke-NavigationSmoke.ps1`（本 lane 未改、不在写范围）：静态核对其仅依赖 `BackButton`（无历史折叠、有历史可见可用）、`NavNormal/NavOpenCode/NavBoard`、页面 AutomationId 与原生返回点击——这些契约本轮全部保留（未触碰）；不涉及汉堡/头像/搜索/侧栏状态，未见冲突断言。仍建议父会话运行确认。
+- `Invoke-NavigationSmoke.ps1` 已随测试精简移除，其历史结果不属于当前验证入口；当前导航契约保留 `BackButton`（无历史折叠、有历史可见可用）、`NavNormal/NavOpenCode`、页面 AutomationId 与原生返回点击。
 
 ---
 
@@ -111,7 +111,7 @@ Grid 列：`LeftPaddingColumn`(LeftInset) → 左组(Auto) → 中部(`*`) → `
 4. **Compact/Minimal 下 `FooterMenuItems` 账户项与设置项的呈现**（compact 收窄为图标、minimal 随侧栏隐藏）——未运行验证。
 5. **齿轮旋转**：动画可见性（`FontIcon` 位于 NavigationViewItemPresenter 的 IconBox/Viewbox 内）、系统关闭动画时跳过、连续点击可重播——未运行验证。
 6. **响应式**：`DisplayModeChanged` 在小/中/宽切换时正确切换搜索框↔搜索按钮与汉堡归属——未运行验证。
-7. **搜索**：仅三项导航匹配跳转；Flyout 打开后聚焦——未运行验证。
+7. **搜索**：仅普通界面与 OpenCode 两项导航匹配跳转；Flyout 打开后聚焦——未运行验证。
 8. **拖拽区**：Passthrough 命中（搜索框可点击输入）与右上窗口按钮不重叠——未运行验证。
 9. **DPI-only 缩放/多显示器**回归（逻辑沿用，仅回归确认）。
 10. **重写后的 `Inspect-WindowChrome.ps1`**：仅语法核对，未运行；断言需父会话在应用运行时实测（默认 1100×720 → Expanded/PaneShown 为主场景；建议另在宽/中/小三种窗口宽度各跑一次）。
@@ -133,7 +133,7 @@ Grid 列：`LeftPaddingColumn`(LeftInset) → 左组(Auto) → 中部(`*`) → `
 
 | 项 | 旧值（第 2 轮） | 新值（第 3 轮） | 理由 |
 | --- | --- | --- | --- |
-| `OpenPaneLength`（展开宽度） | 未设 → 原生默认 320 | **240** | 用户反馈展开太宽；240 对“普通界面/OpenCode/看板/设置/登录”等短标签无挤压、不截断 |
+| `OpenPaneLength`（展开宽度） | 未设 → 原生默认 320 | **240** | 用户反馈展开太宽；240 对“普通界面/OpenCode/设置/登录”等短标签无挤压、不截断 |
 | `CompactPaneLength`（中态图标栏宽） | 68（偏宽、留白多） | **48** | 原生标准图标栏宽度，去掉多余留白 |
 
 Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DPI 与 Passthrough 全部保留不变。
@@ -149,7 +149,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 - 设置 = **应用内页面** `Pages.Settings.SettingsPage`（纯 C# `Page`，位于 `Pages/Settings/**`，由默认编译项纳入，**未新增 XAML、未改 csproj**）。经既有 `ContentFrame.Navigate(typeof(SettingsPage))` 承载既有 `SettingsView`；**不新增窗口、不使用 ContentDialog / 模态浮层**。
 - 导航入口：左栏设置项（`Tag=="Settings"`，齿轮旋转后）、账户菜单内 `OpenSettings`、以及页面事件 `NormalPage.SettingsRequested` / `OpenCodePage.SettingsRequested`（`MainWindow.Page_SettingsRequested`）。
 - 返回：由 `ContentFrame` 返回栈与顶栏原生 `BackButton` 承担（进入设置页后 `CanGoBack=true`，返回按钮显示可用；返回后回写主导航选中）。
-- 选中语义：设置页导航时不改变 `NavigationViewItem` 选中（账户/设置项均 `SelectsOnInvoked=False`；设置页类型不在 `SyncNavSelectionWithFrame` 映射内，保持进入前选中）。**不新增搜索项**（搜索仍仅普通界面/OpenCode/看板）。
+- 选中语义：设置页导航时不改变 `NavigationViewItem` 选中（账户/设置项均 `SelectsOnInvoked=False`；设置页类型不在 `SyncNavSelectionWithFrame` 映射内，保持进入前选中）。**不新增搜索项**（搜索仅普通界面/OpenCode）。
 - 共享服务：`SettingsPage` 复用 `NormalPage.SharedSettingsService` / `SharedSecretStore`（应用级惰性单例），**不反复创建 `SettingsService`**。
 - 主题：`SettingsPage.ThemeChanged`（转发 `SettingsView.ThemeChanged`，并在首次 `LoadAsync` 后以已保存主题触发一次）→ `MainWindow.ApplyTheme`。
 - 事件转发保留：`AttachPageEvents`/`DetachPageEvents` 增订/解订 `SettingsPage.ThemeChanged`；`NormalPage.LocalTaskCompleted` 转发不变。
@@ -188,7 +188,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 - `RootElement` 第一个子元素新增 `TransientCookieHostLayer`（`Grid.Row=1`、`IsHitTestVisible=False`）：仅供设置页 Cookie 清理临时承载 1×1 `WebViewHost`；正常为空、不显示、不参与命中测试（详见 window-integration §11）。
 - `ContentFrame` 新增 `Navigating="ContentFrame_Navigating"`：设置页未保存输入的离开保护（详见 window-integration §11）。
-- 左栏底部账户/设置项、`AutomationId`（`AccountButton`/`NavSettings`/`OpenSettings`/`NavNormal`/`NavOpenCode`/`NavBoard`/`BackButton`/`HamburgerButton`/`SearchButton`/`SearchBox`）**均未改**，`Inspect-WindowChrome.ps1` 断言对象不变。
+- 左栏底部账户/设置项、`AutomationId`（`AccountButton`/`NavSettings`/`OpenSettings`/`NavNormal`/`NavOpenCode`/`BackButton`/`HamburgerButton`/`SearchButton`/`SearchBox`）**均未改**，`Inspect-WindowChrome.ps1` 断言对象不变。
 
 ### 10.4 未验证点
 
@@ -368,7 +368,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 1. **慢刷新后正确定位 + 关闭取消等待**：通知点击 → `App_LocalNavigationRequested` → `TryNavigateToLocalSessionAsync` → 等页面 Loaded → `await TryActivateLocalSessionAsync` 复用慢加载 Task（如 `ListAsync` 耗时 > 3s）→ 加载完成 → `TryActivateSession` 命中 → `true`。（静态：`_loadTask` 单实例，无第二次 Load。）*实机点*：在慢盘/大 sessions 目录下点击完成通知，观察定位成功且只发生一次 `ListAsync`。
 2. **有草稿不丢**：设置页有未保存输入时 `NavigateToTag("Normal")` 被 `ContentFrame_Navigating` 拦下 → `TryActivateLocalSessionAsync` 不执行 → 提示“设置中有未保存的修改”；`TryActivateSession[Async]` 全程不读/清/改 `_input`。*实机点*：设置页输入未保存内容后点通知，草稿仍在、提示如实。
-3. **Local 运行切页 → 旧 run 唯一取消终态 → 任务栏不滞留且无旧 UI 污染**：Local 运行中切到 Board/OpenCode/设置 → `DetachPageEvents` 保留旧页 Local 订阅 → 旧页 `Unloaded`→`DisposeLocalView`→`ShutdownAsync` 取消流、流内 `finally` 发 `Cancelled`、dispatcher 栅栏交付 → 旧页转发 → `App.UpdateTaskbarTask(SourceRequestId, Cancelled)` 恰一次 → `LocalTeardownCompleted` 后退订。*实机点*：运行中切页，任务栏对应执行由“进行中”转“已取消”（可确认清除），新页面无旧转录/状态写入。
+3. **Local 运行切页 → 旧 run 唯一取消终态 → 任务栏不滞留且无旧 UI 污染**：Local 运行中切到 OpenCode/设置 → `DetachPageEvents` 保留旧页 Local 订阅 → 旧页 `Unloaded`→`DisposeLocalView`→`ShutdownAsync` 取消流、流内 `finally` 发 `Cancelled`、dispatcher 栅栏交付 → 旧页转发 → `App.UpdateTaskbarTask(SourceRequestId, Cancelled)` 恰一次 → `LocalTeardownCompleted` 后退订。*实机点*：运行中切页，任务栏对应执行由“进行中”转“已取消”（可确认清除），新页面无旧转录/状态写入。
 
 ### 14.4 未验证点（父会话验收重点）
 
@@ -389,7 +389,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ### 15.1 设置页选中项归位（本轮核心）
 
-- **根因**：`SyncNavSelectionWithFrame` 仅映射 `NormalPage`/`OpenCodePage`/`BoardPage`，`SettingsPage` 落入 `null` 分支直接返回 → 进入设置页后选中项保持进入前的 `NavNormal`。
+- **根因**：当时 `SyncNavSelectionWithFrame` 未映射 `SettingsPage`，使其落入 `null` 分支直接返回 → 进入设置页后选中项保持进入前的 `NavNormal`。
 - **改法**：新增 `NavItemForPageType(Type?)` 统一映射（含 `SettingsPage → NavSettings`）；`SyncNavSelectionWithFrame` 改用它。导航到设置页时把 `NavSettings`（FooterMenuItems 中的原生设置项）设为 `SelectedItem`，单选中语义自动取消其余三项；返回上一页时 `ContentFrame_Navigated` 以相同映射回写对应主项。
 - **无额外导航循环**：赋值前经 `_syncingNavSelection` 抑制 `NavView_SelectionChanged`；且 `NavSettings` 命中该 handler 的底部项兜底分支时，兜底目标 `_lastNavSelection` 亦为 `NavSettings`（赋值前已置），两分支均为幂等、不导航。
 - **脏离开保护保留且一致**：`ContentFrame_Navigating` 拦下脏导航（`e.Cancel=true`）后立即把选中项同步回当前内容页（设置页 → `NavSettings`）；用户“取消/保存失败”留在设置页时，`RestoreNavSelectionAfterCancelledLeave` 改为按当前 Frame 内容同步（不再依赖本轮删除的 `_navSelectionBeforeSettings`）。“保存并离开/放弃并离开”经 `PerformPendingLeave` 完成导航后由 `Navigated` 回写目标主项。`SelectsOnInvoked=False` 语义不变：点击设置项仍只触发 `ItemInvoked`（齿轮旋转 + 进入设置页），不改变选中。
@@ -400,7 +400,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ### 15.3 原生默认尺寸：移除主项显式 `MinHeight="60"`
 
-- **核对**：`MainWindow.xaml` 三个主导航项（`NavNormal`/`NavOpenCode`/`NavBoard`）残留显式 `MinHeight="60"`（Footer 项无任何尺寸覆盖）。WinUI 主题 `generic.xaml`（WindowsAppSDK `1.8.260803003` → WinUI `1.8.260803003`）资源 `NavigationViewItemOnLeftMinHeight = 36`（L32392），作模板 `LayoutRoot`/`ContentGrid` 的 `MinHeight` → 原生左侧项默认最小高 36，与证据中 Footer 项 36 一致；主项证据行距 60 与显式 `MinHeight="60"` 相符。
+- **核对**：当时 `MainWindow.xaml` 的主导航项残留显式 `MinHeight="60"`（Footer 项无任何尺寸覆盖）。WinUI 主题 `generic.xaml`（WindowsAppSDK `1.8.260803003` → WinUI `1.8.260803003`）资源 `NavigationViewItemOnLeftMinHeight = 36`（L32392），作模板 `LayoutRoot`/`ContentGrid` 的 `MinHeight` → 原生左侧项默认最小高 36，与证据中 Footer 项 36 一致；主项证据行距 60 与显式 `MinHeight="60"` 相符。
 - **处置**：**移除**三处 `MinHeight="60"`，让原生默认生效；**不新增任何自定义尺寸替代**。未改 `OpenPaneLength`/`CompactPaneLength`（均未覆盖 = 原生 320/48）、`PaneDisplayMode="Auto"`、顶栏搜索框/搜索按钮。
 - **说明**：证据中主项 `Rect` 高为 56（非 60），系 UIA 取到的元素内容矩形（模板内边距/边距所致），与“行距 60 = 显式 `MinHeight`”不矛盾；移除后预期与 Footer 项同归原生 36，**以父会话实机为准**。
 
@@ -424,7 +424,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ### 16.1 复核结论（对“条目高度仍太高”的静态定位）
 
-- 当前源码已是**全原生默认**：六个 `NavigationViewItem`（主 `NavNormal`/`NavOpenCode`/`NavBoard`；Footer `NavTasks`/`NavAccount`/`NavSettings`）均无 `MinHeight`/`Height`/`Padding`/`Style` 覆盖；全仓无 `ItemContainerStyle`/`MenuItemContainerStyle`、无隐式 `NavigationViewItem` 样式、无相关资源覆盖（`App.xaml` 仅 `XamlControlsResources` 与一个 TextBlock 样式；`MainWindow.xaml` 无任何 `Resources`）；运行时代码（`MainWindow*.cs`）亦无任何项高度/内边距写入（grep 零命中，`obj/` 除外）。
+- 当前源码已是**全原生默认**：五个 `NavigationViewItem`（主 `NavNormal`/`NavOpenCode`；Footer `NavTasks`/`NavAccount`/`NavSettings`）均无 `MinHeight`/`Height`/`Padding`/`Style` 覆盖；全仓无 `ItemContainerStyle`/`MenuItemContainerStyle`、无隐式 `NavigationViewItem` 样式、无相关资源覆盖（`App.xaml` 仅 `XamlControlsResources` 与一个 TextBlock 样式；`MainWindow.xaml` 无任何 `Resources`）；运行时代码（`MainWindow*.cs`）亦无任何项高度/内边距写入（grep 零命中，`obj/` 除外）。
 - 唯一尺寸相关项（均不增行高）：`NavNormal Margin="0,8,0,0"`（首个条目呼吸间距，仅间距）；主项图标 `FontIcon FontSize=20`、Footer 16——经模板 `IconBox`（Viewbox Height=16）归一化，字号不构成行高。
 - **用户所见“过高”来自运行中的 PID 17204 旧二进制**：§15.3 的 `MinHeight="60"` 移除未进入该二进制；`docs/current-validation-status.md`（2026-10-07）亦记录“默认 itemheight … 源码修正已完成，待重构建生效”。宽度（原生 320/48）此前已生效，故表现为“宽度对、高度仍旧”。
 
@@ -472,7 +472,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ### 17.1 背景与目标
 
-- 用户新要求：ChatGPT/Gemini/Claude 三个官网标签与主导航（Normal↔OpenCode↔Settings/Board）往返后必须是**同一 WebView2 活实例与当前页面**（不只是 profile/cookie 重建保登录）。实现载体：NormalPage `NavigationCacheMode.Required` + `Unloaded` 仅挂起宿主（Web lane，`docs/web-ui-contract.md` §11）；窗口最终关闭时才真正释放。
+- 用户新要求：ChatGPT/Gemini/Claude 三个官网标签与主导航（Normal↔OpenCode↔Settings）往返后必须是**同一 WebView2 活实例与当前页面**（不只是 profile/cookie 重建保登录）。实现载体：NormalPage `NavigationCacheMode.Required` + `Unloaded` 仅挂起宿主（Web lane，`docs/web-ui-contract.md` §11）；窗口最终关闭时才真正释放。
 
 ### 17.2 MainWindow 侧改动（仅释放相关局部）
 

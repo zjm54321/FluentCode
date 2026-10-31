@@ -44,14 +44,13 @@ public sealed partial class MainWindow : Window
     private object? _pendingLeaveParameter;
 
     /// <summary>
-    /// 搜索可跳转的导航项（仅既有三项；无全局内容搜索服务，不伪造全局搜索）。
+    /// 搜索可跳转的导航项（仅既有两项；无全局内容搜索服务，不伪造全局搜索）。
     /// 名称用于匹配与展示，Tag 与 NavigationViewItem.Tag 一致。
     /// </summary>
     private static readonly (string Name, string Tag)[] SearchTargets =
     {
         ("普通界面", "Normal"),
         ("OpenCode", "OpenCode"),
-        ("看板", "Board"),
     };
 
     // ------------------------------------------------------------------
@@ -352,7 +351,6 @@ public sealed partial class MainWindow : Window
         {
             "Normal" => NavNormal,
             "OpenCode" => NavOpenCode,
-            "Board" => NavBoard,
             _ => null,
         };
 
@@ -372,7 +370,6 @@ public sealed partial class MainWindow : Window
         {
             "Normal" => typeof(Pages.NormalPage),
             "OpenCode" => typeof(Pages.OpenCodePage),
-            "Board" => typeof(Pages.BoardPage),
             _ => null,
         };
         if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)
@@ -495,7 +492,6 @@ public sealed partial class MainWindow : Window
             {
                 "Normal" => typeof(Pages.NormalPage),
                 "OpenCode" => typeof(Pages.OpenCodePage),
-                "Board" => typeof(Pages.BoardPage),
                 _ => null
             };
 
@@ -564,7 +560,6 @@ public sealed partial class MainWindow : Window
     private NavigationViewItem? NavItemForPageType(Type? sourcePageType) =>
         sourcePageType == typeof(Pages.NormalPage) ? NavNormal :
         sourcePageType == typeof(Pages.OpenCodePage) ? NavOpenCode :
-        sourcePageType == typeof(Pages.BoardPage) ? NavBoard :
         sourcePageType == typeof(Pages.Settings.SettingsPage) ? NavSettings :
         null;
 

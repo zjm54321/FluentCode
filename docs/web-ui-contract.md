@@ -16,7 +16,7 @@
 - 三个 WebView2 宿主具备**真正可见的圆角**（内容随容器被裁剪，非仅边框）：`Border` 圆角容器 + composition 几何裁剪（半径 8 DIP = `OverlayCornerRadius`），机制与依据见 §5.1。
 - 顶部工具栏垂直留白收紧：容器内边距 24,12,24,8 → 24,4,24,6，`SelectorBar` 实例 `Padding="0,0"`（覆盖主题 `SelectorBarPadding=0,4`）；项内部度量保持 Fluent 默认，整体约减少 18 DIP（见 §5.2）。
 - 浏览器控件生命周期、加载错误提示与重试（UI 逻辑）。
-- **网页保活（第 7 轮）**：三个官网宿主跨标签切换与主导航（Normal↔OpenCode↔Settings/Board）保活——同一 `NormalPage` 实例（`NavigationCacheMode.Required`）、同一 WebView2、当前 URL 与登录态，返回不重新导航首页；仅窗口最终关闭路径释放（`ShutdownWebViews`，见 §11）。
+- **网页保活（第 7 轮）**：三个官网宿主跨标签切换与主导航（Normal↔OpenCode↔Settings）保活——同一 `NormalPage` 实例（`NavigationCacheMode.Required`）、同一 WebView2、当前 URL 与登录态，返回不重新导航首页；仅窗口最终关闭路径释放（`ShutdownWebViews`，见 §11）。
 - 供未来设置 UI 调用的 `ClearCookiesAsync(provider)`。
 - Local 标签承载本地聊天视图 `LocalChatView`（首次选中懒创建，之后仅显隐、不销毁）。
 
@@ -386,7 +386,7 @@ if (https && WebProviderInfo.IsHostAllowed(_provider, uri.Host))
 ### 11.2 保活语义（对照用户要求）
 
 - ChatGPT/Gemini/Claude 三标签切换：宿主实例本就重叠驻留（仅显隐），本轮不变。
-- 主导航往返（Normal↔OpenCode↔Settings/Board）：同一 `NormalPage` 实例、同一三个 `WebView2`、当前 URL / DOM / 会话 / 登录态原样保留——不是 profile/cookie 重建、不保存/恢复 URL、不 Reload、无任何 DOM/localStorage 脚本操作。
+- 主导航往返（Normal↔OpenCode↔Settings）：同一 `NormalPage` 实例、同一三个 `WebView2`、当前 URL / DOM / 会话 / 登录态原样保留——不是 profile/cookie 重建、不保存/恢复 URL、不 Reload、无任何 DOM/localStorage 脚本操作。
 - 释放仅两处：窗口最终关闭（`MainWindow_Closed` → `ReleaseCachedNormalPageWebViews` → `ShutdownWebViews`，即使 Frame 停在 OpenCode/Settings 也释放缓存实例，避免孤儿）；显式进程失败重建（宿主内既有 `RebuildAsync` 路径，语义不变）。
 
 ### 11.3 重订阅去重（MainWindow，防重复转发）

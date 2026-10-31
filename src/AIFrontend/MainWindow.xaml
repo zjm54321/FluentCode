@@ -158,7 +158,7 @@
             </StackPanel>
 
             <!-- 中间：原生 AutoSuggestBox 搜索框（仅宽/中显示；小窗折叠为左组搜索按钮）。
-                 只做既有导航项（普通界面 / OpenCode / 看板）的匹配跳转，不伪造全局内容搜索。 -->
+                 只做既有导航项（普通界面 / OpenCode）的匹配跳转，不伪造全局内容搜索。 -->
             <AutoSuggestBox
                 x:Name="SearchBox"
                 Grid.Column="2"
@@ -219,7 +219,7 @@
                     <NavigationViewItem.Icon>
                         <FontIcon
                             FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Glyph="&#xE8BD;"
+                            Glyph="&#xE8F2;"
                             FontSize="20" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
@@ -233,10 +233,12 @@
                     Content="OpenCode"
                     Tag="OpenCode">
                     <NavigationViewItem.Icon>
-                        <FontIcon
-                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Glyph="&#xE943;"
-                            FontSize="20" />
+                        <!-- OpenCode 标志（方形 O：圆角外框 + 下部实心块）的单色描线版；20×20 画布与主项 FontIcon 同尺度，
+                             经模板 IconBox 归一到 16px，前景随主题/选中/禁用态变化。 -->
+                        <PathIcon
+                            Width="20"
+                            Height="20"
+                            Data="M5.2,0.5 H14.8 A2.8,2.8 0 0 1 17.6,3.3 V16.7 A2.8,2.8 0 0 1 14.8,19.5 H5.2 A2.8,2.8 0 0 1 2.4,16.7 V3.3 A2.8,2.8 0 0 1 5.2,0.5 Z M5.2,2.1 A1.2,1.2 0 0 0 4,3.3 V16.7 A1.2,1.2 0 0 0 5.2,17.9 H14.8 A1.2,1.2 0 0 0 16,16.7 V3.3 A1.2,1.2 0 0 0 14.8,2.1 Z M6.4,8.6 H13.6 A1,1 0 0 1 14.6,9.6 V15.5 A1,1 0 0 1 13.6,16.5 H6.4 A1,1 0 0 1 5.4,15.5 V9.6 A1,1 0 0 1 6.4,8.6 Z" />
                     </NavigationViewItem.Icon>
                     <!-- 原生 InfoBadge（默认样式 = 系统 Attention 色）：有会话等待你处理（权限/提问）时显示数量；
                          只有未查看的完成结果时显示圆点；都没有时隐藏。由 MainWindow.OpenCode.cs 按 App 会话状态快照更新。 -->
@@ -249,21 +251,6 @@
                     </NavigationViewItem.InfoBadge>
                 </NavigationViewItem>
 
-                <!-- 导航 3：看板 -->
-                <NavigationViewItem
-                    x:Name="NavBoard"
-                    AutomationProperties.AutomationId="NavBoard"
-                    AutomationProperties.Name="看板"
-                    ToolTipService.ToolTip="看板"
-                    Content="看板"
-                    Tag="Board">
-                    <NavigationViewItem.Icon>
-                        <FontIcon
-                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Glyph="&#xE8A9;"
-                            FontSize="20" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <!-- 左栏底部区（FooterMenuItems：模板行序在 MenuItems 之下、贴近窗口底）：
