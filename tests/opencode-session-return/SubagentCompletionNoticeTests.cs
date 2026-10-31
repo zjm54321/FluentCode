@@ -28,10 +28,15 @@ internal static partial class Program
                 && row.Content.Summary.Length == 0, "notice.heading-agent-state-and-message-description");
             Check(row.Cancelled == (state is "cancelled" or "interrupted"), "notice.cancelled-warning-variant");
             Check(row.Content.Status == (state == "completed" ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Error), "notice.terminal-status");
-            Check(ReferenceEquals(row.Element.Parent, view) && row.Element.Visibility == Visibility.Visible,
-                "notice.standalone-visible-parent-row-even-with-original-call");
-            Check(Constructed<OpenCodeToolGroupView>().Count() == 1, "notice.not-an-extra-tool-operation-or-collapsed-process-group");
-            group.OpenLeaf!();
+            var groups = Constructed<OpenCodeToolGroupView>().ToArray();
+            Check(!ReferenceEquals(row.Element.Parent, view) && groups.Any(g => ReferenceEquals(row.Element.Parent, g.ItemsHost))
+                && row.Element.Visibility == Visibility.Visible,
+                "notice.folded-into-processed-group-items-even-with-original-call");
+            var completedNotice = state == "completed";
+            // Launch row + notice are two counted operations; a failed child also turns its launch row red.
+            Check(group.OpenLeaf is null && group.HeaderVisible && group.Summary is { } joined
+                && joined.SuccessCount + joined.ErrorCount == 2 && (completedNotice ? joined.ErrorCount == 0 : joined.ErrorCount > 0),
+                "notice.joins-turn-chain-header-and-is-counted-in-its-tally");
             Check(tool.AsyncCompletion?.State == state && tool.UpdateCount >= 2, "notice.still-updates-existing-background-tool-cache");
             OpenCodeSubagentSessionRequestedEventArgs? navigation = null;
             view.SubagentSessionRequested += (_, args) => navigation = args;
@@ -49,6 +54,10 @@ internal static partial class Program
         var orphan = SubagentNotice("completed", "Explicit description");
         orphanView.ApplyMessages(new[] { orphan });
         var retained = Constructed<OpenCodeTimelineChipView>().Single(chip => chip.CompletionNotice);
+        var lone = Constructed<OpenCodeToolGroupView>().Single();
+        Check(lone.OpenLeaf is null && lone.HeaderVisible && lone.Summary is { SuccessCount: 1, ErrorCount: 0 }
+            && ReferenceEquals(retained.Element.Parent, lone.ItemsHost),
+            "notice.lone-notice-still-gets-a-processed-header-not-an-orphan-row");
         orphanView.ApplyMessages(new[] { SubagentCall("Old launch title"), orphan });
         Check(ReferenceEquals(retained, Constructed<OpenCodeTimelineChipView>().Single(chip => chip.CompletionNotice))
             && retained.Element.Visibility == Visibility.Visible && retained.Content.Target == "Explicit description",

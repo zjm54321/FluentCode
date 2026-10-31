@@ -892,6 +892,9 @@ public sealed class OpenCodeConversationView : StackPanel
         /// <summary>是否为可参与分组的工具行（含 question 工具：普通工具行 + 隐藏的提问锚点）。</summary>
         public bool IsGroupableTool { get; init; }
 
+        /// <summary>即使是链中唯一一行也收进“已处理”组头（子智能体完成通知：不留孤立行）。</summary>
+        public bool ForceGroup { get; init; }
+
         /// <summary>元素当前所在容器（消息部件面板或某个工具组的列表）；未入树为 null。</summary>
         public Panel? Host { get; set; }
 
@@ -1842,7 +1845,8 @@ public sealed class OpenCodeConversationView : StackPanel
     private Entry CreateProcessEntry(string key, OpenCodeMessage? message, FrameworkElement content,
         Action<OpenCodeMessage> apply, Func<OpenCodeToolRowModel> presentation,
         Action open, Action enter, Action exit, Action<FrameworkElement?> anchor, Func<string> glyph,
-        Action dispose, bool instruction = false, bool async = false, Func<string>? operationKey = null, bool inline = false, Func<bool>? represented = null)
+        Action dispose, bool instruction = false, bool async = false, Func<string>? operationKey = null, bool inline = false, Func<bool>? represented = null,
+        bool forceGroup = false)
     {
         var group = new OpenCodeToolGroupView(key + "/process", OnStepGroupToggled);
         var state = new AssistantState { Element = group.Element, Message = message, IsProcessNotice = true };
@@ -1851,7 +1855,7 @@ public sealed class OpenCodeConversationView : StackPanel
             Key = key, Kind = "process", Element = content, Update = (_, _, _) => { },
             OpenDetail = open, HoverEnter = enter, HoverExit = exit, SetDetailAnchor = anchor,
             Presentation = presentation, Glyph = glyph, OperationKey = operationKey ?? (() => "notice:" + key),
-            InlinePresentation = inline,
+            InlinePresentation = inline, ForceGroup = forceGroup,
         };
         var run = new StepRun { Group = group, Owner = state, StartsMessage = true, EndsMessage = true };
         run.Leaves.Add(leaf);
@@ -1905,8 +1909,8 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     /// <summary>
-    /// 子代理完成是独立单行通知（智能体 + 终态 · 任务），不会被原调用去重或处理组折叠；
-    /// 其余异步完成保留工具样式行。正文只在详情中，点击仅转发通过不透明校验的 childID。
+    /// 子代理完成通知（智能体 + 终态 · 任务）收进所在回合的“已处理”组（计入组头 ✓ 计数），不会被原调用去重；
+    /// 即使它是最终回答之后唯一的一行，也以“已处理”组头收起，不留孤立行。其余异步完成保留工具样式行。正文只在详情中，点击仅转发通过不透明校验的 childID。
     /// </summary>
     private Entry CreateAsyncCompletionEntry(string key, OpenCodeMessage message)
     {
@@ -1951,10 +1955,11 @@ public sealed class OpenCodeConversationView : StackPanel
         Apply(message);
         if (subagentNotice)
         {
-            // Like TUI SessionNoticeMessageV2: a parent transcript notice, not another tool
-            // operation. Keep it visible even when its launch row already owns the result.
-            return new Entry { Key = key, Element = chip.Element, Update = Apply, IsAsyncCompletion = true,
-                Dispose = () => { childId = null; chip.Dispose(); } };
+            // Like TUI SessionNoticeMessageV2 it is never deduplicated against its launch row
+            // (own "notice:" operation key), but it lives inside the turn's processed group.
+            return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
+                chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph,
+                () => { childId = null; chip.Dispose(); }, async: true, operationKey: () => "notice:" + key, forceGroup: true);
         }
         return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
             chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, () =>
@@ -2707,7 +2712,7 @@ public sealed class OpenCodeConversationView : StackPanel
             for (var k = 0; k < chain.Count; k++)
             {
                 chain[k].IsFollower = k > 0;
-                var leaf = leaves.Count == 1 && k == 0 ? leaves[0] : null;
+                var leaf = leaves.Count == 1 && k == 0 && !leaves[0].ForceGroup ? leaves[0] : null;
                 leaf?.SetDetailAnchor?.Invoke(summary.IsActive ? null : chain[k].Group.DetailAnchor);
                 var leafModel = leaf?.Presentation?.Invoke()
                     ?? (leaf is null ? null : StepModel(leaf));
@@ -3126,26 +3131,22 @@ public sealed class OpenCodeConversationView : StackPanel
     private Entry CreateShellEntry(string key, OpenCodeMessage message)
     {
         var chip = new OpenCodeTimelineChipView("OpenCodeShell", OpenCodeStepRunPresentation.TerminalGlyph);
-        var preview = new OpenCodeShellTerminalPreview();
-        var content = new StackPanel { Spacing = 4, Children = { chip.Element, preview } };
         OpenCodeShellTerminalRequest? request = null;
         void OpenTerminal() { if (request is not null) TerminalRequested?.Invoke(request); }
         void Apply(OpenCodeMessage m)
         {
             request = new(m.ShellId, m.Command ?? string.Empty, m.Output?.Output ?? string.Empty, m.Id,
                 Running: m.Status == OpenCodeShellStatuses.Running);
-            var output = m.Output?.Output ?? string.Empty;
-            preview.Update(m.Command, output, OpenTerminal);
             var status = m.Status == OpenCodeShellStatuses.Running ? OpenCodeToolRowStatus.Running
                 : m.Status is OpenCodeShellStatuses.Killed or OpenCodeShellStatuses.Timeout ? OpenCodeToolRowStatus.Error
                 : m.Status == OpenCodeShellStatuses.Exited && m.Exit is { ValueKind: JsonValueKind.Number } exit && exit.TryGetInt32(out var code)
                     ? code == 0 ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Error : OpenCodeToolRowStatus.Unknown;
             chip.UpdateRow(new OpenCodeTimelineRowContent("终端", m.Command ?? string.Empty, string.Empty,
                 status, DescribeShell(m), "终端", new[] { new OpenCodeToolProperty(0, "命令", m.Command ?? "（未提供）", OpenCodeToolPropertyKind.Code) },
-                preview.PreviewText, LinkText: "在终端中打开"), OpenTerminal);
+                null, LinkText: "在终端中打开"), OpenTerminal);
         }
         Apply(message);
-        return CreateProcessEntry(key, message, content, Apply, () => ChipModel(chip.Content),
+        return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
             OpenTerminal, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, chip.Dispose, inline: true);
     }
 

@@ -92,13 +92,15 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _targetText.TextWrapping = TextWrapping.NoWrap;
         _targetText.TextTrimming = TextTrimming.CharacterEllipsis;
         _targetText.Visibility = Visibility.Collapsed;
+        // "Designer 已完成 · 任务" reads as one phrase: keep the old 4px join without leaving the shared 8px icon gap.
+        if (_completionNotice) _targetText.Margin = new Thickness(-4, 0, 0, 0);
 
         _summaryText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
         _summaryText.VerticalAlignment = VerticalAlignment.Center;
         _summaryText.TextWrapping = TextWrapping.NoWrap;
         _summaryText.Visibility = Visibility.Collapsed;
 
-        var content = new Grid { ColumnSpacing = _completionNotice ? 4 : 8 };
+        var content = new Grid { ColumnSpacing = OpenCodeTimelineRowMetrics.ColumnGap };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(OpenCodeTimelineRowMetrics.IconColumn) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -368,7 +370,16 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
 // Kept separate from the native styling boundary so the exact policy is headlessly testable.
 internal static class OpenCodeTimelineRowMetrics
 {
+    // Shared transcript grid for every secondary row in a turn (tool, reasoning, completion chip, 已处理 header):
+    // [3px selection bar][2px gap] | 8px padding | 24px icon column | 8px gap | text … | 16px status | 8px.
+    // Icon column x = 13…37 (glyph centre 25), text x = 45, trailing status centre = right − 16.
+    internal const double LeadInset = 5;
+    internal const double Padding = 8;
     internal const double IconColumn = 24;
+    internal const double ColumnGap = 8;
+    internal const double StatusColumn = 16;
+    /// <summary>Expanded group children indent so their icon column starts where the header text starts.</summary>
+    internal const double ChildIndent = IconColumn + ColumnGap;
     internal static bool IsRunning(OpenCodeToolRowStatus? status) => status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
     internal static double Height(OpenCodeToolRowStatus? status) => IsRunning(status) ? 36 : 30;
     internal static double FontSize(OpenCodeToolRowStatus? status) => IsRunning(status) ? 14 : 13;

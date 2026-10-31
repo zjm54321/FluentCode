@@ -95,13 +95,18 @@ internal sealed class OpenCodeToolGroupVisual
     private bool? _groupContainer;
     private bool _pointerOver, _headerPointerOver, _focusVisible, _headerFocusVisible;
 
+    // Expanded children: a 1px guide under the header icon's centre (x = 24.5 ≈ 5 + 8 + 12), and the
+    // children's icon column starts exactly where the header text starts (x = 45 = 32 + 13).
+    private static readonly Thickness ChildGuideMargin = new(OpenCodeTimelineRowMetrics.LeadInset + OpenCodeTimelineRowMetrics.Padding + OpenCodeTimelineRowMetrics.IconColumn / 2 - 1, 0, 0, 0);
+    private static readonly Thickness ChildGuidePadding = new(OpenCodeTimelineRowMetrics.ChildIndent - ChildGuideMargin.Left - 1, 0, 0, 0);
+
     internal OpenCodeToolGroupVisual(string groupId, Action<string, bool> onUserToggled)
     {
         _groupId = groupId;
         _toggled = onUserToggled;
-        _icon = new FontIcon { Glyph = "\uE9F5", FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
+        _icon = new FontIcon { Glyph = "\uE9F5", FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         _headerText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
-        _headerText.FontSize = 12;
+        _headerText.FontSize = OpenCodeTimelineRowMetrics.FontSize(null);
         _headerText.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         _headerText.VerticalAlignment = VerticalAlignment.Center;
         _headerText.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -115,7 +120,9 @@ internal sealed class OpenCodeToolGroupVisual
         };
         OpenCodeToolTheme.Apply(_chevron, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
         AutomationProperties.SetAccessibilityView(_chevron, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-        var iconCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
+        // One transcript grid (OpenCodeTimelineRowMetrics): same 24px icon column, 8px gap, 13px text
+        // and 30px height as tool / reasoning / completion rows, so every secondary row shares one left edge.
+        var iconCell = new Grid { Width = OpenCodeTimelineRowMetrics.IconColumn, Height = 16, VerticalAlignment = VerticalAlignment.Center };
         iconCell.Children.Add(_icon);
         iconCell.Children.Add(_working.Gear);
         var title = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
@@ -139,8 +146,8 @@ internal sealed class OpenCodeToolGroupVisual
         var tally = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         tally.Children.Add(_successTally);
         tally.Children.Add(_errorTally);
-        var header = new Grid { ColumnSpacing = 8, MinHeight = 32, HorizontalAlignment = HorizontalAlignment.Stretch };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        var header = new Grid { ColumnSpacing = OpenCodeTimelineRowMetrics.ColumnGap, MinHeight = OpenCodeTimelineRowMetrics.Height(null), HorizontalAlignment = HorizontalAlignment.Stretch };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(OpenCodeTimelineRowMetrics.IconColumn) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(iconCell);
@@ -151,16 +158,19 @@ internal sealed class OpenCodeToolGroupVisual
         // PG7: a settled group highlights only this header, never the Expander/content container.
         _headerSurface = new Border
         {
-            Child = header, CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12, 0, 8, 0), HorizontalAlignment = HorizontalAlignment.Stretch,
+            // Same 4px radius, 5px lead (rows' 3px selection bar + 2px gap) and 8px padding as a row button:
+            // the hover surface and the icon/text columns coincide with the rows below, no extra card inset.
+            Child = header, CornerRadius = new CornerRadius(4),
+            Margin = new Thickness(OpenCodeTimelineRowMetrics.LeadInset, 0, 0, 0),
+            Padding = new Thickness(OpenCodeTimelineRowMetrics.Padding, 0, OpenCodeTimelineRowMetrics.Padding, 0),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         OpenCodeToolTheme.Apply(_headerSurface, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
         _itemsBorder = new Border
         {
             Child = _items,
-            CornerRadius = new CornerRadius(0, 0, 8, 8),
-            Margin = new Thickness(15, 0, 0, 0),
-            Padding = new Thickness(8, 0, 0, 0),
+            Margin = ChildGuideMargin,
+            Padding = ChildGuidePadding,
             BorderThickness = new Thickness(1, 0, 0, 0),
         };
         OpenCodeToolTheme.Apply(_itemsBorder, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush", OpenCodeToolTheme.Divider));
@@ -170,7 +180,7 @@ internal sealed class OpenCodeToolGroupVisual
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(0),
-            MinHeight = 32,
+            MinHeight = OpenCodeTimelineRowMetrics.Height(null),
             MinWidth = 0,
             Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
             BorderThickness = new Thickness(0),
@@ -181,6 +191,7 @@ internal sealed class OpenCodeToolGroupVisual
         _outline = new Border { Child = _expander, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8) };
         OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
         AutomationProperties.SetAutomationId(_expander, "OpenCodeToolGroup." + groupId);
+        _expander.Loaded += (_, _) => NormalizeTemplateInsets();
         _expander.Expanding += (_, _) => ExpansionChanged(true);
         _expander.Collapsed += (_, _) => ExpansionChanged(false);
         _root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };
@@ -226,6 +237,26 @@ internal sealed class OpenCodeToolGroupVisual
         _expander.Resources["ExpanderChevronButtonSize"] = 0d;
         _expander.Resources["ExpanderChevronGlyphSize"] = 0d;
         _expander.Resources["ExpanderHeaderPadding"] = new Thickness(0);
+    }
+
+    // The stock template reads ExpanderHeaderPadding (16,0,0,0) and ExpanderContentDownBorderThickness (1,0,1,1)
+    // as StaticResource, so the lightweight overrides above cannot reach them: that 16px/1px inset is what pushed
+    // "已处理" out of line with the rows. Zero the two template parts directly once they exist.
+    private void NormalizeTemplateInsets()
+    {
+        var pending = new System.Collections.Generic.Stack<DependencyObject>();
+        pending.Push(_expander);
+        var found = 0;
+        while (pending.Count > 0 && found < 2)
+        {
+            var current = pending.Pop();
+            if (current is Microsoft.UI.Xaml.Controls.Primitives.ToggleButton { Name: "ExpanderHeader" } toggle)
+            { toggle.Padding = new Thickness(0); found++; continue; }
+            if (current is Border { Name: "ExpanderContent" } content)
+            { content.BorderThickness = new Thickness(0); content.Padding = new Thickness(0); found++; continue; }
+            if (ReferenceEquals(current, _headerSurface) || ReferenceEquals(current, _itemsBorder)) continue;
+            for (var i = VisualTreeHelper.GetChildrenCount(current) - 1; i >= 0; i--) pending.Push(VisualTreeHelper.GetChild(current, i));
+        }
     }
 
     private bool IsItemsSource(DependencyObject? source)
@@ -330,8 +361,8 @@ internal sealed class OpenCodeToolGroupVisual
             _groupContainer = grouped;
         }
         var direct = _single || _inline;
-        _itemsBorder.Margin = direct ? new Thickness(0) : new Thickness(15, 0, 0, 0);
-        _itemsBorder.Padding = direct ? new Thickness(0) : new Thickness(8, 0, 0, 0);
+        _itemsBorder.Margin = direct ? new Thickness(0) : ChildGuideMargin;
+        _itemsBorder.Padding = direct ? new Thickness(0) : ChildGuidePadding;
         _itemsBorder.BorderThickness = direct ? new Thickness(0) : new Thickness(1, 0, 0, 0);
         _itemsBorder.Visibility = direct || IsExpanded ? Visibility.Visible : Visibility.Collapsed;
         RefreshCurrentStep();
@@ -404,14 +435,18 @@ internal sealed class OpenCodeToolGroupVisual
     private static (StackPanel Panel, TextBlock Text) CreateTally(string glyph, string brushKey, string automationId)
     {
         var text = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
-        text.FontSize = 12;
+        text.FontSize = OpenCodeTimelineRowMetrics.FontSize(null);
         text.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
+        text.VerticalAlignment = VerticalAlignment.Center;
         OpenCodeToolTheme.Apply(text, OpenCodeToolTheme.Text(brushKey, OpenCodeInteractionUi.CaptionStyleKey));
-        var icon = new FontIcon { Glyph = glyph, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        // Same 16px status cell / 14px glyph as a row's trailing ✓, so the tally's mark sits in the rows' status column.
+        var icon = new FontIcon { Glyph = glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(brushKey));
+        var cell = new Grid { Width = OpenCodeTimelineRowMetrics.StatusColumn, Height = 16, VerticalAlignment = VerticalAlignment.Center };
+        cell.Children.Add(icon);
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         panel.Children.Add(text);
-        panel.Children.Add(icon);
+        panel.Children.Add(cell);
         AutomationProperties.SetAutomationId(panel, automationId);
         return (panel, text);
     }
