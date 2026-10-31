@@ -37,6 +37,9 @@ internal static class BackendTests
     {
         if (args.Length == 3 && args[0] == "--real") { await RealPty(args[1], args[2]); return; }
         await HttpContract();
+        await AutomaticOwnership();
+        await ResizeAcknowledgementBarrier();
+        if (args.Length == 1) await RecordedNushellReplay(args[0]);
         await CreatedTerminalInput();
         await RendererBarrierAndAuthority();
         await AssignedControllerNeedsExplicitConsent();
@@ -145,6 +148,7 @@ internal static class BackendTests
         internal PersistentPtySize SnapshotSize = Info.Size;
         internal byte[] SnapshotCheckpoint = Encoding.UTF8.GetBytes("canonical");
         internal int Snapshots, Tickets, Deletes, Updates, Attempts, Creates;
+        internal bool AtomicControl, BusyController, AtomicReplay;
         internal string Base { get; }
         internal Server()
         {
@@ -168,13 +172,18 @@ internal static class BackendTests
                 {
                     Check(ctx.Request.Headers["Origin"] is null && ctx.Request.Headers["Authorization"] is null, "native WS no Origin/credential header");
                     var q = ctx.Request.QueryString; var attachment = q["attachment_id"]!;
-                    Check(q["role"] == "observer" && q["takeover"] == "false" && q["input_protocol"] == "1" && q["cursor"] == "4", "observer attach exact query byte cursor");
+                    Check((q["role"] == "observer" || AtomicControl && q["role"] == "controller") && q["takeover"] == "false" && q["input_protocol"] == "1" && q["cursor"] == "4", "non-forcing attach exact role/query byte cursor");
                     Check(q["location[directory]"] is null && TicketValues.Contains(q["ticket"]!), "ticket confined to native trusted socket");
                     Attachments.Enqueue(attachment);
                     if (Mode == "redirect") { ctx.Response.StatusCode = 302; ctx.Response.RedirectLocation = Base + "alternate"; ctx.Response.Close(); return; }
                     var socket = (await ctx.AcceptWebSocketAsync(null)).WebSocket; Sockets.Enqueue(socket);
                     var attempt = Interlocked.Increment(ref Attempts);
-                    if (OnSocket is not null) await OnSocket(this, socket, attachment, attempt);
+                    if (AtomicControl && q["role"] == "controller")
+                    {
+                        if (BusyController) { await socket.CloseAsync((WebSocketCloseStatus)4404, "occupied", _stop.Token); return; }
+                        await Attach(socket, attachment, role: "controller", replay: AtomicReplay);
+                    }
+                    else if (OnSocket is not null) await OnSocket(this, socket, attachment, attempt);
                     var chunk = new byte[65536];
                     while (socket.State == WebSocketState.Open)
                     {
@@ -249,6 +258,91 @@ internal static class BackendTests
 
     private static PersistentPtyController Controller(Server server, IPersistentPtyRenderer renderer, out OpenCodePageSource source)
     { source = server.Source(); return new(new(source, 7, "ses_captured", "/captured-directory", 1), Info.Id, renderer, _ => true); }
+
+    private static async Task AutomaticOwnership()
+    {
+        await using (var server = new Server { AtomicControl = true, OnSocket = async (_, ws, id, _) => await Server.Attach(ws, id, replay: false) })
+        {
+            await using var controller = Controller(server, new Renderer(), out _);
+            var run = controller.RunAsync(); await Until(() => controller.State.Phase == PersistentPtyPhase.Ready);
+            Check(!controller.State.InputArmed && server.Frames.IsEmpty, "opening/focusing an agent terminal does not acquire control");
+            Check(await controller.TryTakeControlAsync(), "first user-input intent atomically acquires an unowned terminal without takeover");
+            Check(controller.State.InputArmed && server.Frames.IsEmpty && server.Attempts == 2, "automatic acquisition waits for fresh replay and sends no force-control frame");
+            await controller.SendInputAsync(Encoding.UTF8.GetBytes("ls\r"), 80, 24);
+            await Until(() => server.Frames.Count == 1);
+            Check(server.Frames.Single().AsSpan(5).SequenceEqual("ls\r"u8), "first input is transmitted exactly once after ownership is ready");
+            await controller.DisposeAsync(); await run;
+        }
+        await using (var server = new Server { AtomicControl = true, BusyController = true, OnSocket = async (_, ws, id, _) => await Server.Attach(ws, id, replay: false) })
+        {
+            await using var controller = Controller(server, new Renderer(), out _);
+            var run = controller.RunAsync(); await Until(() => controller.State.Phase == PersistentPtyPhase.Ready);
+            Check(!await controller.TryTakeControlAsync(), "another live controller rejects automatic acquisition instead of being displaced");
+            await Until(() => server.Attempts >= 3 && controller.State.Phase == PersistentPtyPhase.Ready);
+            Check(!controller.State.InputArmed && server.Frames.IsEmpty, "busy automatic acquisition returns to observation with no force/input replay");
+            await controller.DisposeAsync(); await run;
+        }
+        await using (var server = new Server { AtomicControl = true, AtomicReplay = true, OnSocket = async (_, ws, id, _) => await Server.Attach(ws, id, replay: false) })
+        {
+            var renderer = new Renderer { Block = true }; var source = server.Source();
+            await using var controller = new PersistentPtyController(new(source, 7, "ses_captured", "/work", 1), Info.Id, renderer, _ => true, acquireOnStart: true);
+            var run = controller.RunAsync(); await Until(() => renderer.Barrier is not null);
+            Check(!controller.State.InputArmed && server.Frames.IsEmpty, "user-created ownership still waits for recorded/native replay acknowledgement");
+            renderer.Barrier!.SetResult(); await Until(() => controller.State.InputArmed);
+            Check(controller.State.Role == PersistentPtyRole.Controller && server.Attempts == 1 && server.Frames.IsEmpty,
+                "user-created terminal is owned on its first attachment, without an extra header action or force-control frame");
+            server.Sockets.First().Abort(); await Until(() => server.Attempts >= 2 && controller.State.Phase == PersistentPtyPhase.Ready);
+            Check(!controller.State.InputArmed && !controller.State.InputOutcomeUncertain && server.Frames.IsEmpty,
+                "reconnect neither replays terminal replies nor treats protocol replies as uncertain user execution/automatic consent");
+            await controller.DisposeAsync(); await run;
+        }
+    }
+
+    private static async Task ResizeAcknowledgementBarrier()
+    {
+        await using var server = new Server { AtomicControl = true, HoldUpdate = new(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var source = server.Source();
+        await using var controller = new PersistentPtyController(new(source, 7, "ses_captured", "/work", 1), Info.Id, new Renderer(), _ => true, acquireOnStart: true);
+        var run = controller.RunAsync(); await Until(() => controller.State.InputArmed);
+        var resize = controller.ResizeAsync(100, 30).AsTask(); await Until(() => server.Updates == 1);
+        var ready = controller.WaitForInputReadyAsync(expectedSize: new(100, 30));
+        Check(!controller.State.InputArmed && !ready.IsCompleted, "auto resize immediately gates keyboard input while the canonical grid is changing");
+        await Fails(async () => await controller.SendInputAsync("x"u8.ToArray(), 80, 24), "input-disarmed");
+        server.HoldUpdate.SetResult(); await resize;
+        Check(!ready.IsCompleted && controller.State.Info!.Size == new PersistentPtySize(80, 24), "resize PUT completion is not a native geometry acknowledgement");
+        await Server.Text(server.Sockets.First(), new { type = "resized", cols = 100, rows = 30, generation = 1, checkpoint = Convert.ToBase64String("resized"u8) });
+        await ready;
+        await controller.SendInputAsync("ls\r"u8.ToArray(), 100, 30); await Until(() => server.Frames.Count == 1);
+        Check(server.Frames.Single().SequenceEqual(new byte[] { 1, 0, 100, 0, 30, 108, 115, 13 }), "keyboard resumes only after ordered resize replay, with the acknowledged dimensions");
+        server.HoldUpdate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var early = controller.ResizeAsync(110, 35).AsTask(); await Until(() => server.Updates == 2);
+        await Server.Text(server.Sockets.First(), new { type = "resized", cols = 110, rows = 35, generation = 1, checkpoint = Convert.ToBase64String("early-ack"u8) });
+        await early; await controller.WaitForInputReadyAsync(expectedSize: new(110, 35));
+        Check(controller.State.Info!.Size == new PersistentPtySize(110, 35), "ordered resize acknowledgement can precede and cancel its own HTTP response without losing the first keyboard input");
+        server.HoldUpdate.SetResult();
+        await controller.DisposeAsync(); await run;
+    }
+
+    private static async Task RecordedNushellReplay(string fixture)
+    {
+        var recorded = File.ReadAllBytes(fixture);
+        var payload = recorded.Concat(new byte[] { 10, 13, 0, 27, 91, 54, 110 }).ToArray();
+        await using var server = new Server { OnSocket = async (_, ws, id, _) =>
+        {
+            await Server.Attach(ws, id, replay: false);
+            for (var offset = 0; offset < payload.Length;)
+            {
+                var length = Math.Min(4093, payload.Length - offset);
+                await ws.SendAsync(payload.AsMemory(offset, length), WebSocketMessageType.Binary, true, CancellationToken.None); offset += length;
+            }
+        }};
+        var renderer = new Renderer(); await using var controller = Controller(server, renderer, out _);
+        var run = controller.RunAsync(); await Until(() => renderer.Bytes.Count == payload.Length);
+        Check(renderer.Bytes.ToArray().SequenceEqual(payload), "recorded live nushell VT, split UTF-8, OSC 133/7, bracketed paste, raw LF/CR/NUL and CPR query stay byte-exact through PTY transport");
+        Check(renderer.Operations.Count(item => item.StartsWith("reset:", StringComparison.Ordinal)) == 1 && server.Frames.IsEmpty,
+            "recorded replay is ordered after one checkpoint and cannot emit stale input or later reset live output");
+        await controller.DisposeAsync(); await run;
+    }
 
     private static async Task CreatedTerminalInput()
     {
@@ -417,7 +511,7 @@ internal static class BackendTests
         await Until(() => !controller.State.InputArmed);
         await Fails(async () => await input, "input-disarmed");
         try { await resizing; } catch (OperationCanceledException) { }
-        try { await nextResize; } catch (OperationCanceledException) { }
+        await Fails(async () => await nextResize, "input-disarmed");
         Check(server.Frames.Count == 1 && server.Updates == 1, "controller loss drops queued input and resize before network dispatch");
         Check(!controller.State.InputOutcomeUncertain, "definitely unsent input is not labelled uncertain");
         server.HoldUpdate!.SetResult();

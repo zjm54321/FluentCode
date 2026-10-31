@@ -34,10 +34,12 @@ internal sealed class PersistentPtyConnection : IPersistentPtyConnection
     private PersistentPtySize _size;
     private long _geometryRevision;
     private bool _attached, _dead, _exited;
+    private readonly bool _requestedController;
     internal string? FailureCode { get; private set; }
     internal event Action? AuthorityChanged;
     internal event Action? InputStarted;
     internal Func<bool, bool>? CanWrite { get; set; }
+    internal Func<bool>? CanResize { get; set; }
     internal Func<Action, bool>? TryStart { get; set; }
     public string PtyId { get; }
     public string AttachmentId { get; }
@@ -47,9 +49,10 @@ internal sealed class PersistentPtyConnection : IPersistentPtyConnection
     internal long GeometryRevision { get { lock (_sync) return _geometryRevision; } }
 
     internal PersistentPtyConnection(OpenCodeClient client, ClientWebSocket socket, HttpMessageInvoker invoker,
-        string sessionId, string ptyId, string attachmentId, CancellationToken cancellationToken)
+        string sessionId, string ptyId, string attachmentId, CancellationToken cancellationToken, bool requestedController = false)
     {
         _client = client; _socket = socket; _invoker = invoker; _sessionId = sessionId; PtyId = ptyId; AttachmentId = attachmentId;
+        _requestedController = requestedController;
         _lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _receive = ReceiveAsync();
     }
@@ -78,7 +81,8 @@ internal sealed class PersistentPtyConnection : IPersistentPtyConnection
                 do
                 {
                     result = await _socket.ReceiveAsync(chunk.AsMemory(), _lifetime.Token).ConfigureAwait(false);
-                    if (result.MessageType == WebSocketMessageType.Close) throw new PersistentPtyException("socket-closed");
+                    if (result.MessageType == WebSocketMessageType.Close)
+                        throw new PersistentPtyException(_requestedController && !_attached && (int?)_socket.CloseStatus == 4404 ? "control-busy" : "socket-closed");
                     if (kind is not null && kind != result.MessageType) throw new PersistentPtyException("fragment-type");
                     kind = result.MessageType;
                     if (message.Length > MaxMessageBytes - result.Count) throw new PersistentPtyException("message-overflow");
@@ -160,7 +164,6 @@ internal sealed class PersistentPtyConnection : IPersistentPtyConnection
         => SendFrameAsync(0, ReadOnlyMemory<byte>.Empty, cols, rows, requireController: false, cancellationToken);
     public ValueTask SendInputAsync(ReadOnlyMemory<byte> input, ushort cols, ushort rows, CancellationToken cancellationToken = default)
         => SendFrameAsync(1, input, cols, rows, requireController: true, cancellationToken);
-
     private async ValueTask SendFrameAsync(byte type, ReadOnlyMemory<byte> input, ushort cols, ushort rows,
         bool requireController, CancellationToken cancellationToken)
     {
@@ -197,34 +200,41 @@ internal sealed class PersistentPtyConnection : IPersistentPtyConnection
     public async ValueTask ResizeAsync(ushort cols, ushort rows, CancellationToken cancellationToken = default)
     {
         PersistentPtyValidation.Size(new(cols, rows));
-        var lease = CaptureAuthority(true);
+        var lease = CaptureAuthority(true, resizing: true);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token, lease.Token);
         await _tx.WaitAsync(linked.Token).ConfigureAwait(false);
         try
         {
-            CheckAuthority(lease.Revision, true);
+            CheckAuthority(lease.Revision, true, resizing: true);
             Task? resize = null;
             Start(() =>
             {
-                CheckAuthority(lease.Revision, true);
+                CheckAuthority(lease.Revision, true, resizing: true);
                 resize = _client.ResizePersistentPtyAsync(_sessionId, PtyId, AttachmentId, new(cols, rows), linked.Token);
             });
             await resize!.ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !_lifetime.IsCancellationRequested
+            && CanonicalSize == new PersistentPtySize(cols, rows) && Authority is var authority
+            && !authority.Dead && authority.ControllerId == AttachmentId)
+        {
+            // The ordered resized event can arrive before the HTTP response. Its new
+            // authority lease cancels this PUT; renderer acknowledgement still gates input.
+        }
         finally { _tx.Release(); }
     }
-    private (long Revision, CancellationToken Token) CaptureAuthority(bool requireController)
+    private (long Revision, CancellationToken Token) CaptureAuthority(bool requireController, bool resizing = false)
     {
-        CheckAuthorityCallback(requireController);
+        CheckAuthorityCallback(requireController, resizing);
         lock (_sync)
         {
             CheckAuthorityLocked(_authorityRevision, requireController);
             return (_authorityRevision, _authority.Token);
         }
     }
-    private void CheckAuthority(long revision, bool requireController)
+    private void CheckAuthority(long revision, bool requireController, bool resizing = false)
     {
-        CheckAuthorityCallback(requireController);
+        CheckAuthorityCallback(requireController, resizing);
         lock (_sync)
         {
             CheckAuthorityLocked(revision, requireController);
@@ -235,9 +245,9 @@ internal sealed class PersistentPtyConnection : IPersistentPtyConnection
         if (_dead || !_attached || revision != _authorityRevision || (requireController && _controllerId != AttachmentId))
             throw new PersistentPtyException("input-disarmed");
     }
-    private void CheckAuthorityCallback(bool requireController)
+    private void CheckAuthorityCallback(bool requireController, bool resizing = false)
     {
-        if (CanWrite is not null && !CanWrite(requireController)) throw new PersistentPtyException("input-disarmed");
+        if (resizing && CanResize is not null ? !CanResize() : CanWrite is not null && !CanWrite(requireController)) throw new PersistentPtyException("input-disarmed");
     }
     private void Start(Action action)
     {

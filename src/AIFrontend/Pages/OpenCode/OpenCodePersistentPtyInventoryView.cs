@@ -1,93 +1,103 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using AIFrontend.Services.OpenCode;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 
 namespace AIFrontend.Pages.OpenCode;
 
-/// <summary>Right session card terminal strip: native toggle beside the browser, tiles below it.</summary>
+/// <summary>
+/// Right session card terminal entry (the >_ tile) and the one-row strip below it, in the same arrangement as the
+/// browser page strip. Persistent PTYs and running agent commands share one list, which the overlay's side list mirrors.
+/// </summary>
 internal sealed class OpenCodePersistentPtyInventoryView : Grid
 {
-    private const double ExpandedHeight = 72;
-    private readonly ObservableCollection<UIElement> _items = new();
-    private readonly ItemsRepeater _repeater;
-    private readonly ScrollView _scroll;
+    private const double StripHeight = 40;
+    private readonly StackPanel _row = new() { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(6, 0, 6, 0) };
+    private readonly ScrollViewer _scroll;
+    private readonly Button _previous, _next;
     private readonly TextBlock _status = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 0, 8, 0) };
-    private readonly Button _refresh;
-    private readonly Button _create = new() { Content = new FontIcon { Glyph = "\uE710", FontSize = 14 }, Width = 28, Height = 32,
-        MinWidth = 0, Padding = new Thickness(0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly Button _create;
     private bool _creating;
     private string? _createError;
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
-    private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private readonly Border _live = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Margin = OpenCodeQuickAccessStyle.StatusDotMargin,
         HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private OpenCodePersistentPtyInventoryContext? _context;
     private OpenCodePersistentPtyInventoryState? _state;
-    private string? _openId;
-    private bool _expanded;
-    private Storyboard? _transition;
+    private string? _openId, _lastOpenedId;
+    private IReadOnlyList<OpenCodeTerminalEntry> _shellEntries = Array.Empty<OpenCodeTerminalEntry>();
+    private OpenCodeTerminalEntry[] _entries = Array.Empty<OpenCodeTerminalEntry>();
+    private readonly Dictionary<string, Chip> _chips = new(StringComparer.Ordinal);
     internal event Action<OpenCodePersistentPtyInventoryRequest>? TerminalRequested;
     internal event Action<OpenCodePersistentPtyInventoryContext>? RefreshRequested;
     internal event Action<OpenCodePersistentPtyInventoryContext>? CreateRequested;
+    /// <summary>An agent command (shell tool) entry was chosen; opened read-only in the same overlay.</summary>
+    internal event Action<string>? ShellRequested;
+    /// <summary>× / middle click / menu: end a running PTY (after confirmation in the overlay) or remove an exited one.</summary>
+    internal event Action<OpenCodeTerminalEntry>? EndRequested;
+    /// <summary>The >_ tile was clicked while the overlay shows a terminal.</summary>
+    internal event Action? CloseRequested;
+    internal event Action? EntriesChanged;
 
-    /// <summary>The 40px session-card entry; the page places it beside the browser button.</summary>
+    /// <summary>The 40px quick-access tile; the page places it beside the browser button.</summary>
     internal ToggleButton Button => _toggle;
+    internal IReadOnlyList<OpenCodeTerminalEntry> Entries => _entries;
+    internal string? OpenId => _openId;
+    internal bool CanCreate => !_creating && _context is not null && _state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready;
 
     internal OpenCodePersistentPtyInventoryView()
     {
-        Height = 0; Opacity = 0; Visibility = Visibility.Collapsed;
-        Margin = new Thickness(-8, 0, -8, 0);
-        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        _repeater = new ItemsRepeater { ItemsSource = _items, ItemTemplate = new TileFactory(), Layout = new StackLayout { Orientation = Orientation.Horizontal, Spacing = 8 } };
-        _scroll = new ScrollView { Content = _repeater, HorizontalScrollBarVisibility = ScrollingScrollBarVisibility.Hidden,
-            VerticalScrollBarVisibility = ScrollingScrollBarVisibility.Hidden, HorizontalScrollMode = ScrollingScrollMode.Enabled,
-            VerticalScrollMode = ScrollingScrollMode.Disabled, ContentOrientation = ScrollingContentOrientation.Horizontal,
-            Padding = new Thickness(8, 4, 8, 4) };
-        Children.Add(_scroll); Children.Add(_status);
-        _refresh = new Button { Width = 28, Height = 32, MinWidth = 0, Padding = new Thickness(0), VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 4, 0), Content = new FontIcon { Glyph = "\uE72C", FontSize = 12 } };
-        if (Application.Current?.Resources.TryGetValue("OpenCodeTransparentToolButtonStyle", out var quiet) == true && quiet is Style style) _refresh.Style = style;
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Children = { _create, _refresh } };
-        Grid.SetColumn(actions, 1); Children.Add(actions);
-        AutomationProperties.SetName(_create, "新建终端"); AutomationProperties.SetAutomationId(_create, "OpenCodePersistentPtyCreate");
-        ToolTipService.SetToolTip(_create, "新建终端");
+        Height = StripHeight; Visibility = Visibility.Collapsed;
+        Margin = new Thickness(-6, 8, -6, 0);
+        foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
+            ColumnDefinitions.Add(new ColumnDefinition { Width = width });
+        _scroll = new ScrollViewer { Content = _row, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled, IsTabStop = false };
+        Grid.SetColumn(_scroll, 1); Children.Add(_scroll);
+        Grid.SetColumn(_status, 1); Children.Add(_status);
+        _previous = OpenCodeTerminalUi.IconButton("\uE76B", "向左滚动终端", 24, 32, 12);
+        _next = OpenCodeTerminalUi.IconButton("\uE76C", "向右滚动终端", 24, 32, 12);
+        _previous.Click += (_, _) => _scroll.ChangeView(Math.Max(0, _scroll.HorizontalOffset - Math.Max(104, _scroll.ViewportWidth * 0.75)), null, null);
+        _next.Click += (_, _) => _scroll.ChangeView(_scroll.HorizontalOffset + Math.Max(104, _scroll.ViewportWidth * 0.75), null, null);
+        Children.Add(_previous); Grid.SetColumn(_next, 2); Children.Add(_next);
+        _create = OpenCodeTerminalUi.IconButton("\uE710", "新建终端", 28, 28, 12);
+        _create.Margin = new Thickness(2, 0, 0, 0);
+        ToolTipService.SetToolTip(_create, "新建终端 · Ctrl+Shift+T");
+        AutomationProperties.SetAutomationId(_create, "OpenCodePersistentPtyCreate");
         _create.Click += (_, _) => RequestCreate();
+        Grid.SetColumn(_create, 3); Children.Add(_create);
+        _scroll.ViewChanged += (_, _) => UpdateScrollButtons();
+        _scroll.SizeChanged += (_, _) => UpdateScrollButtons();
+        _row.SizeChanged += (_, _) => UpdateScrollButtons();
+        // The wheel scrolls the one-row strip sideways, like the browser page strip.
+        _scroll.AddHandler(PointerWheelChangedEvent, new PointerEventHandler((_, args) =>
+        {
+            var delta = args.GetCurrentPoint(_scroll).Properties.MouseWheelDelta;
+            if (_scroll.ScrollableWidth <= 1 || delta == 0) return;
+            _scroll.ChangeView(Math.Clamp(_scroll.HorizontalOffset - delta, 0, _scroll.ScrollableWidth), null, null, true);
+            args.Handled = true;
+        }), true);
         _status.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
-        AutomationProperties.SetName(this, "持久终端");
+        AutomationProperties.SetName(this, "终端");
         AutomationProperties.SetAutomationId(this, "OpenCodePersistentPtyInventory");
-        AutomationProperties.SetName(_refresh, "刷新持久终端列表"); ToolTipService.SetToolTip(_refresh, "刷新");
-        _refresh.Click += (_, _) => { if (_context is { } context) RefreshRequested?.Invoke(context); };
 
         var glyph = OpenCodeQuickAccessStyle.TerminalIcon(); // Shared quick-access icon (>_ window), 16 DIP.
-        _toggle.Content = new Grid { Width = 36, Height = 32, Children = { glyph, _count, _live } };
+        _toggle.Content = new Grid { Width = 36, Height = 32, Children = { glyph, _live } };
         // Same native frame as the browser entry: transparent rest state, subtle (never accent) checked state.
         _toggle.Style = (Style)XamlReader.Load(
             "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource ButtonBorderBrush}\"/><Setter Property=\"BorderThickness\" Value=\"{ThemeResource ButtonBorderThemeThickness}\"/><Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
         AutomationProperties.SetAutomationId(_toggle, "OpenCodePersistentPtyButton");
-        _toggle.Click += (_, _) =>
-        {
-            if (_state is { Phase: OpenCodePersistentPtyInventoryPhase.Ready, Rows.Length: 0 }) { RequestCreate(); RefreshTheme(); }
-            else SetExpanded(!_expanded);
-        };
+        _toggle.Click += (_, _) => { ToggleOverlay(); RefreshTheme(); };
         _toggle.Loaded += (_, _) => RefreshTheme();
         _toggle.ActualThemeChanged += (_, _) => RefreshTheme();
-        Unloaded += (_, _) =>
-        {
-            if (IsLoaded) return;
-            _transition?.Stop(); _transition = null;
-            Height = _expanded ? ExpandedHeight : 0d; Opacity = _expanded ? 1 : 0;
-            Visibility = _expanded ? Visibility.Visible : Visibility.Collapsed;
-        };
         Render(null, null);
     }
 
@@ -97,162 +107,400 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         _context = context; _state = state;
         var available = context is not null && state?.Phase != OpenCodePersistentPtyInventoryPhase.Unsupported;
         _toggle.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
-        if (!available && _expanded) SetExpanded(false);
-        _refresh.IsEnabled = context is not null && state?.Phase != OpenCodePersistentPtyInventoryPhase.Loading;
-        _create.IsEnabled = context is not null && state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready && !_creating;
+        _create.IsEnabled = CanCreate;
         _toggle.IsEnabled = !_creating;
-        var rows = state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready ? state.Rows : default;
-        var count = rows.IsDefault ? 0 : rows.Length;
+        var rows = state?.Phase is OpenCodePersistentPtyInventoryPhase.Ready or OpenCodePersistentPtyInventoryPhase.Loading
+            ? state.Rows.ToArray() : Array.Empty<PersistentPtyInfo>();
+        // Persistent terminals (live and exited ones the backend still retains) first, then running agent commands.
+        var entries = rows.Select(OpenCodeTerminalUi.Entry).Concat(_shellEntries.Where(shell => rows.All(row => row.Id != shell.Id))).ToArray();
         _status.Text = _creating ? "正在新建…" : _createError ?? (state?.Phase switch
         {
-            OpenCodePersistentPtyInventoryPhase.Loading => "正在读取…",
-            OpenCodePersistentPtyInventoryPhase.Unsupported => "当前服务不支持持久终端",
-            OpenCodePersistentPtyInventoryPhase.Ready => count == 0 ? "此会话没有持久终端" : string.Empty,
-            _ => "暂时无法确认持久终端列表",
+            OpenCodePersistentPtyInventoryPhase.Loading => entries.Length == 0 ? "正在读取…" : string.Empty,
+            OpenCodePersistentPtyInventoryPhase.Unsupported => string.Empty,
+            OpenCodePersistentPtyInventoryPhase.Ready => string.Empty,
+            null => string.Empty,
+            _ => "暂时无法读取终端列表",
         });
         _status.Visibility = _status.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _scroll.Visibility = count == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _items.Clear();
-        if (context is not null && count > 0)
-            foreach (var info in rows) _items.Add(new Tile(info, info.Id == _openId, () => Request(context, info.Id)));
-        _count.Value = count;
-        _count.Visibility = count >= 2 ? Visibility.Visible : Visibility.Collapsed; // Same rule as the browser count.
-        _live.Visibility = count > 0 && rows.Any(row => row.Status != "exited") ? Visibility.Visible : Visibility.Collapsed;
-        var label = count == 0 && state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready ? "新建终端" : "持久终端 · " + count;
-        AutomationProperties.SetName(_toggle, label); ToolTipService.SetToolTip(_toggle, label);
+        Visibility = available && (entries.Length > 0 || _status.Text.Length > 0) ? Visibility.Visible : Visibility.Collapsed;
+        ApplyEntries(entries);
+        var running = entries.Count(entry => entry.State is OpenCodeTerminalState.Running or OpenCodeTerminalState.Elsewhere);
+        _live.Visibility = running > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var label = entries.Length == 0 ? "新建终端" : "终端 · " + entries.Length;
+        AutomationProperties.SetName(_toggle, label);
+        ToolTipService.SetToolTip(_toggle, entries.Length == 0 ? "新建终端 · Ctrl+Shift+T" : _openId is null ? "打开终端 · Ctrl+`" : "关闭终端浮窗 · Ctrl+`");
         RefreshTheme();
     }
+
+    /// <summary>Running agent commands (background shell tools) and the agent command currently shown in the overlay.</summary>
+    internal void SetShellEntries(IReadOnlyList<OpenCodeTerminalEntry> shells)
+    {
+        if (shells.SequenceEqual(_shellEntries)) return;
+        _shellEntries = shells;
+        Render(_context, _state);
+    }
+
+    private void ApplyEntries(OpenCodeTerminalEntry[] entries)
+    {
+        var changed = !entries.SequenceEqual(_entries);
+        _entries = entries;
+        if (!changed) return;
+        // Reconcile in place so an unchanged chip keeps hover/focus during the 2 s inventory refresh.
+        var keep = new HashSet<string>(entries.Select(Key), StringComparer.Ordinal);
+        foreach (var stale in _chips.Keys.Where(key => !keep.Contains(key)).ToArray()) { _row.Children.Remove(_chips[stale]); _chips.Remove(stale); }
+        for (var index = 0; index < entries.Length; index++)
+        {
+            var entry = entries[index];
+            if (!_chips.TryGetValue(Key(entry), out var chip))
+            {
+                chip = new Chip(this);
+                _chips[Key(entry)] = chip;
+            }
+            chip.Update(entry, entry.Id == _openId);
+            var at = _row.Children.IndexOf(chip);
+            if (at != index) { if (at >= 0) _row.Children.RemoveAt(at); _row.Children.Insert(index, chip); }
+        }
+        EntriesChanged?.Invoke();
+        DispatcherQueue?.TryEnqueue(UpdateScrollButtons);
+    }
+
+    private static string Key(OpenCodeTerminalEntry entry) => entry.Kind + ":" + entry.Id;
 
     internal void SetCreationState(bool creating, string? error = null)
     {
         _creating = creating;
-        if (creating || error is not null) { _createError = error; SetExpanded(true); }
+        if (creating || error is not null) _createError = error;
         Render(_context, _state);
     }
 
-    private void RequestCreate()
+    internal void RequestCreate()
     {
-        if (!_creating && _context is { } context && _state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready)
-            CreateRequested?.Invoke(context);
+        if (CanCreate && _context is { } context) CreateRequested?.Invoke(context);
     }
 
-    /// <summary>Marks the tile whose terminal is shown in the floating card.</summary>
-    internal void SetOpen(string? ptyId)
+    /// <summary>Marks the chip whose terminal is shown in the floating card.</summary>
+    internal void SetOpen(string? id)
     {
-        _openId = ptyId;
-        foreach (var tile in _items.OfType<Tile>()) tile.SetShown(tile.Id == ptyId);
+        _openId = id;
+        if (id is not null) _lastOpenedId = id;
+        foreach (var (key, chip) in _chips) chip.SetShown(chip.Entry?.Id == id);
+        if (id is not null && _chips.Values.FirstOrDefault(chip => chip.Entry?.Id == id) is { } shown)
+            DispatcherQueue?.TryEnqueue(() => shown.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false }));
+        RefreshTheme();
+        EntriesChanged?.Invoke();
     }
 
-    private void Request(OpenCodePersistentPtyInventoryContext context, string id)
+    internal void Open(OpenCodeTerminalEntry entry)
     {
-        if (context == _context && _state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready && _state.Rows.Any(row => row.Id == id))
-            TerminalRequested?.Invoke(new(context, id));
+        if (entry.Kind == OpenCodeTerminalEntryKind.Shell) { ShellRequested?.Invoke(entry.Id); return; }
+        if (_context is { } context && _state?.Phase == OpenCodePersistentPtyInventoryPhase.Ready && _state.Rows.Any(row => row.Id == entry.Id))
+            TerminalRequested?.Invoke(new(context, entry.Id));
+    }
+
+    internal void End(OpenCodeTerminalEntry entry) { if (entry.CanEnd) EndRequested?.Invoke(entry); }
+
+    /// <summary>Ctrl+Tab order shared by the strip and the overlay list.</summary>
+    internal void Step(int direction)
+    {
+        if (_entries.Length < 2) return;
+        var index = Array.FindIndex(_entries, entry => entry.Id == _openId);
+        Open(_entries[((index < 0 ? 0 : index + direction) % _entries.Length + _entries.Length) % _entries.Length]);
+    }
+
+    internal void ToggleOverlay()
+    {
+        if (_openId is not null) { CloseRequested?.Invoke(); return; }
+        if (_state?.Phase is not (OpenCodePersistentPtyInventoryPhase.Ready or OpenCodePersistentPtyInventoryPhase.Loading) && _context is { } context)
+        { RefreshRequested?.Invoke(context); return; }
+        var target = _entries.FirstOrDefault(entry => entry.Id == _lastOpenedId)
+            ?? _entries.FirstOrDefault(entry => entry.State is OpenCodeTerminalState.Running or OpenCodeTerminalState.Elsewhere)
+            ?? _entries.FirstOrDefault();
+        if (target is not null) Open(target);
+        else RequestCreate();
+    }
+
+    private void UpdateScrollButtons()
+    {
+        var overflow = _scroll.ScrollableWidth > 1;
+        _previous.Visibility = _next.Visibility = overflow ? Visibility.Visible : Visibility.Collapsed;
+        _previous.IsEnabled = _scroll.HorizontalOffset > 1;
+        _next.IsEnabled = _scroll.HorizontalOffset < _scroll.ScrollableWidth - 1;
     }
 
     private void RefreshTheme()
     {
         if (Application.Current is null) return;
-        _toggle.IsChecked = _expanded;
-        _live.Background = Brush("SystemFillColorSuccessBrush");
-        _toggle.Resources["ToggleButtonBackgroundChecked"] = Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = Brush("SubtleFillColorSecondaryBrush");
-        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = Brush("SubtleFillColorTertiaryBrush");
-        _toggle.Resources["ToggleButtonForegroundChecked"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonForegroundCheckedPressed"] = Brush("TextFillColorPrimaryBrush");
-        _toggle.Resources["ToggleButtonBorderBrushChecked"] = Brush("ButtonBorderBrush");
-        _toggle.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = Brush("ButtonBorderBrushPointerOver");
-        _toggle.Resources["ToggleButtonBorderBrushCheckedPressed"] = Brush("ButtonBorderBrushPressed");
+        _toggle.IsChecked = _openId is not null;
+        _live.Background = OpenCodeTerminalUi.Brush("SystemFillColorSuccessBrush");
+        _toggle.Resources["ToggleButtonBackgroundChecked"] = OpenCodeTerminalUi.Brush("SubtleFillColorSecondaryBrush");
+        _toggle.Resources["ToggleButtonBackgroundCheckedPointerOver"] = OpenCodeTerminalUi.Brush("SubtleFillColorSecondaryBrush");
+        _toggle.Resources["ToggleButtonBackgroundCheckedPressed"] = OpenCodeTerminalUi.Brush("SubtleFillColorTertiaryBrush");
+        _toggle.Resources["ToggleButtonForegroundChecked"] = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonForegroundCheckedPointerOver"] = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonForegroundCheckedPressed"] = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
+        _toggle.Resources["ToggleButtonBorderBrushChecked"] = OpenCodeTerminalUi.Brush("ButtonBorderBrush");
+        _toggle.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = OpenCodeTerminalUi.Brush("ButtonBorderBrushPointerOver");
+        _toggle.Resources["ToggleButtonBorderBrushCheckedPressed"] = OpenCodeTerminalUi.Brush("ButtonBorderBrushPressed");
     }
 
-    private void SetExpanded(bool expanded)
+    /// <summary>32px chip: >_ · command (≤104) · status dot; hover swaps the dot for ×; 2px accent outline while shown.</summary>
+    private sealed class Chip : Grid
     {
-        _toggle.IsChecked = expanded;
-        if (_expanded == expanded) return;
-        _expanded = expanded;
-        _transition?.Stop(); _transition = null;
-        if (expanded) Visibility = Visibility.Visible;
-        var height = expanded ? ExpandedHeight : 0d;
-        if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
-        { Height = height; Opacity = expanded ? 1 : 0; Visibility = expanded ? Visibility.Visible : Visibility.Collapsed; return; }
-        var storyboard = new Storyboard();
-        var size = new DoubleAnimation { From = ActualHeight, To = height, Duration = TimeSpan.FromMilliseconds(200), EnableDependentAnimation = true };
-        var fade = new DoubleAnimation { From = Opacity, To = expanded ? 1 : 0, Duration = TimeSpan.FromMilliseconds(200) };
-        Storyboard.SetTarget(size, this); Storyboard.SetTargetProperty(size, "Height");
-        Storyboard.SetTarget(fade, this); Storyboard.SetTargetProperty(fade, "Opacity");
-        storyboard.Children.Add(size); storyboard.Children.Add(fade); _transition = storyboard;
-        storyboard.Completed += (_, _) =>
+        private readonly OpenCodePersistentPtyInventoryView _owner;
+        private readonly Button _open = new() { Height = 32, MinWidth = 0, Padding = new Thickness(8, 0, 4, 0), CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _title = new() { FontSize = 12, MaxWidth = 104, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        private readonly FrameworkElement _icon = OpenCodeQuickAccessStyle.TerminalIcon(14);
+        private readonly Border _dot = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Margin = new Thickness(2, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        private readonly Button _end = OpenCodeTerminalUi.IconButton("\uE711", "结束终端", 20, 20, 10);
+        private readonly Border _outline = new() { CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(2), IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+        private readonly MenuFlyoutItem _endItem = new() { Text = "结束终端", Icon = new FontIcon { Glyph = "\uE7E8" } };
+        private bool _hover;
+        internal OpenCodeTerminalEntry? Entry { get; private set; }
+
+        internal Chip(OpenCodePersistentPtyInventoryView owner)
         {
-            if (!ReferenceEquals(_transition, storyboard)) return;
-            Height = height; Opacity = expanded ? 1 : 0; storyboard.Stop(); _transition = null;
-            if (!expanded) Visibility = Visibility.Collapsed;
-        };
-        storyboard.Begin();
-    }
-
-    private static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
-
-    private sealed class TileFactory : IElementFactory
-    {
-        public UIElement GetElement(ElementFactoryGetArgs args) => (UIElement)args.Data;
-        public void RecycleElement(ElementFactoryRecycleArgs args) { }
-    }
-
-    /// <summary>Miniature of the terminal surface itself: the same #0c0c0c ground in both themes.</summary>
-    private sealed class Tile : Grid
-    {
-        private static readonly Windows.UI.Color Ground = Windows.UI.Color.FromArgb(255, 12, 12, 12);
-        private readonly Border _outline = new() { CornerRadius = new CornerRadius(5), IsHitTestVisible = false };
-        private bool _shown;
-        internal string Id { get; }
-
-        internal Tile(PersistentPtyInfo info, bool shown, Action open)
-        {
-            Id = info.Id; _shown = shown; Width = 96; Height = 60; VerticalAlignment = VerticalAlignment.Top;
-            var exited = info.Status == "exited";
-            var mono = new FontFamily("Cascadia Mono, Consolas");
-            var title = new TextBlock { Text = info.Title, FontFamily = mono, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 204, 204, 204)) };
-            var process = new TextBlock { Text = "$ " + (info.ForegroundProcess ?? info.Command), FontFamily = mono, FontSize = 10,
-                TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 128, 128, 128)) };
-            var dot = new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Center,
-                Background = new SolidColorBrush(exited ? Windows.UI.Color.FromArgb(255, 118, 118, 118) : Windows.UI.Color.FromArgb(255, 108, 203, 95)) };
-            var state = new TextBlock { Text = exited ? "已退出" : "运行中", FontSize = 10, VerticalAlignment = VerticalAlignment.Center,
-                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 150, 150, 150)) };
-            var face = new Grid { Padding = new Thickness(8, 6, 8, 6), RowSpacing = 1 };
-            face.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            face.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            face.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            face.Children.Add(title); Grid.SetRow(process, 1); face.Children.Add(process);
-            var footer = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom, Children = { dot, state } };
-            Grid.SetRow(footer, 2); face.Children.Add(footer);
-            var show = new Button { Padding = new Thickness(0), BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(5),
-                HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch,
-                Background = new SolidColorBrush(Ground), Content = face };
-            // Keep the dark ground under pointer/press instead of the theme's button fill.
-            foreach (var key in new[] { "ButtonBackground", "ButtonBackgroundPointerOver", "ButtonBackgroundPressed" })
-                show.Resources[key] = new SolidColorBrush(key == "ButtonBackground" ? Ground : Windows.UI.Color.FromArgb(255, 28, 28, 28));
-            show.Click += (_, _) => open();
-            Children.Add(show); Children.Add(_outline);
-            var name = info.Title + "，" + state.Text;
-            AutomationProperties.SetName(show, name);
-            ToolTipService.SetToolTip(show, new ToolTip { Content = new StackPanel { Spacing = 4, Children = {
-                new TextBlock { Text = name },
-                new TextBlock { Text = string.Join(" ", new[] { info.Command }.Concat(info.Args)), FontFamily = mono, FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 320 },
-                new TextBlock { Text = info.Cwd, FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 320, Opacity = 0.7 } } } });
-            PointerEntered += (_, _) => Translation = new System.Numerics.Vector3(0, -2, 0);
-            PointerExited += (_, _) => Translation = default;
-            ActualThemeChanged += (_, _) => Render();
-            Loaded += (_, _) => Render();
+            _owner = owner; Height = 32; VerticalAlignment = VerticalAlignment.Center;
+            _end.Visibility = Visibility.Collapsed; _end.VerticalAlignment = VerticalAlignment.Center;
+            _open.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
+                Children = { _icon, _title, new Grid { Width = 20, Children = { _dot, _end } } } };
+            _dot.HorizontalAlignment = HorizontalAlignment.Center; _dot.Margin = new Thickness(0);
+            _open.Click += (_, _) => { if (Entry is { } entry) { if (entry.Id == _owner._openId) _owner.CloseRequested?.Invoke(); else _owner.Open(entry); } };
+            _end.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
+            Children.Add(_open); Children.Add(_outline);
+            var tip = new ToolTip { Placement = PlacementMode.Bottom };
+            ToolTipService.SetToolTip(_open, tip);
+            var menu = new MenuFlyout();
+            var open = new MenuFlyoutItem { Text = "在浮窗中打开", Icon = new FontIcon { Glyph = "\uE8A7" } };
+            open.Click += (_, _) => { if (Entry is { } entry) _owner.Open(entry); };
+            var copy = new MenuFlyoutItem { Text = "复制命令", Icon = new FontIcon { Glyph = "\uE8C8" } };
+            copy.Click += (_, _) =>
+            {
+                if (Entry is not { } entry) return;
+                try { var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(entry.Title); Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data); }
+                catch (Exception) { }
+            };
+            _endItem.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
+            menu.Items.Add(open); menu.Items.Add(copy); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(_endItem);
+            _open.ContextFlyout = menu;
+            PointerEntered += (_, _) => { _hover = true; Paint(); };
+            PointerExited += (_, _) => { _hover = false; Paint(); };
+            _open.GotFocus += (_, _) => Paint(); _open.LostFocus += (_, _) => Paint();
+            AddHandler(PointerPressedEvent, new PointerEventHandler((_, args) =>
+            {
+                // Middle click is the same as ×, as on the browser strip.
+                if (args.GetCurrentPoint(this).Properties.PointerUpdateKind == PointerUpdateKind.MiddleButtonPressed && Entry is { } entry)
+                { _owner.End(entry); args.Handled = true; }
+            }), true);
+            ActualThemeChanged += (_, _) => Paint();
+            Loaded += (_, _) => Paint();
         }
 
-        internal void SetShown(bool shown) { _shown = shown; Render(); }
-        private void Render()
+        internal void Update(OpenCodeTerminalEntry entry, bool shown)
         {
-            if (Application.Current is null) return;
-            _outline.BorderBrush = Brush(_shown ? "AccentFillColorDefaultBrush" : "ControlStrokeColorDefaultBrush");
-            _outline.BorderThickness = new Thickness(_shown ? 2 : 1);
+            Entry = entry;
+            _title.Text = entry.Title;
+            var name = entry.Title + " · " + entry.Source + " · " + entry.StateText;
+            AutomationProperties.SetName(_open, name);
+            if (ToolTipService.GetToolTip(_open) is ToolTip tip) tip.Content = name;
+            var ending = entry.State is OpenCodeTerminalState.Done or OpenCodeTerminalState.Failed ? "移除终端" : "结束终端";
+            AutomationProperties.SetName(_end, ending); ToolTipService.SetToolTip(_end, ending);
+            _endItem.Text = ending; _endItem.Visibility = entry.CanEnd ? Visibility.Visible : Visibility.Collapsed;
+            SetShown(shown);
         }
+
+        internal void SetShown(bool shown) { _outline.Visibility = shown ? Visibility.Visible : Visibility.Collapsed; Paint(); }
+
+        private void Paint()
+        {
+            if (Application.Current is null || Entry is not { } entry) return;
+            var active = _hover || _outline.Visibility == Visibility.Visible;
+            _title.Foreground = OpenCodeTerminalUi.Brush(active ? "TextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
+            _outline.BorderBrush = OpenCodeTerminalUi.Brush("AccentFillColorDefaultBrush");
+            var showEnd = entry.CanEnd && (_hover || _open.FocusState != FocusState.Unfocused);
+            _end.Visibility = showEnd ? Visibility.Visible : Visibility.Collapsed;
+            _dot.Visibility = showEnd ? Visibility.Collapsed : Visibility.Visible;
+            OpenCodeTerminalUi.PaintDot(_dot, entry.State);
+        }
+    }
+}
+
+/// <summary>The overlay's collapsible side list (220): the same entries as the right-panel strip.</summary>
+internal sealed class OpenCodeTerminalSwitcher : Grid
+{
+    internal const double ExpandedWidth = 220;
+    private readonly OpenCodePersistentPtyInventoryView _inventory;
+    private readonly StackPanel _rows = new() { Spacing = 2 };
+    private readonly TextBlock _count = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Button _create = OpenCodeTerminalUi.IconButton("\uE710", "新建终端", 28, 28, 12);
+    internal event Action? CountChanged;
+    internal int Count => _inventory.Entries.Count;
+    /// <summary>The view border currently hosting this single list instance.</summary>
+    internal Border? Host { get; set; }
+
+    internal OpenCodeTerminalSwitcher(OpenCodePersistentPtyInventoryView inventory)
+    {
+        _inventory = inventory; Width = ExpandedWidth; Padding = new Thickness(8, 0, 8, 0);
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var heading = new TextBlock { Text = "终端", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        OpenCodeTerminalUi.Themed(heading, "Foreground", "TextFillColorSecondaryBrush");
+        OpenCodeTerminalUi.Themed(_count, "Foreground", "TextFillColorTertiaryBrush");
+        var header = new Grid { Height = 32, Margin = new Thickness(0, 0, 0, 2) };
+        header.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(10, 0, 0, 0), Children = { heading, _count } });
+        _create.HorizontalAlignment = HorizontalAlignment.Right; ToolTipService.SetToolTip(_create, "新建终端 · Ctrl+Shift+T");
+        _create.Click += (_, _) => _inventory.RequestCreate();
+        header.Children.Add(_create);
+        Children.Add(header);
+        var scroll = new ScrollViewer { Content = _rows, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Grid.SetRow(scroll, 1); Children.Add(scroll);
+        AutomationProperties.SetName(this, "终端列表");
+        AutomationProperties.SetAutomationId(this, "OpenCodeTerminalSwitcher");
+        inventory.EntriesChanged += Render;
+        Render();
+    }
+
+    private void Render()
+    {
+        var entries = _inventory.Entries;
+        _count.Text = entries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _create.IsEnabled = _inventory.CanCreate;
+        while (_rows.Children.Count > entries.Count) _rows.Children.RemoveAt(_rows.Children.Count - 1);
+        for (var index = 0; index < entries.Count; index++)
+        {
+            if (index >= _rows.Children.Count) _rows.Children.Add(new Row(_inventory));
+            ((Row)_rows.Children[index]).Update(entries[index], entries[index].Id == _inventory.OpenId);
+        }
+        CountChanged?.Invoke();
+    }
+
+    private sealed class Row : Grid
+    {
+        private readonly OpenCodePersistentPtyInventoryView _inventory;
+        private readonly Button _open = new() { Height = 40, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10, 0, 6, 0), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(0) };
+        private readonly Border _selected = new() { CornerRadius = new CornerRadius(4), IsHitTestVisible = false };
+        private readonly Border _bar = new() { Width = 3, Height = 16, CornerRadius = new CornerRadius(1.5), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+        private readonly TextBlock _title = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 };
+        private readonly TextBlock _state = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 };
+        private readonly Border _dot = new() { Width = 7, Height = 7, CornerRadius = new CornerRadius(3.5), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        private readonly Button _end = OpenCodeTerminalUi.IconButton("\uE711", "结束终端", 24, 24, 10);
+        private readonly FrameworkElement _icon = OpenCodeQuickAccessStyle.TerminalIcon(16);
+        private bool _hover, _isSelected;
+        private OpenCodeTerminalEntry? _entry;
+
+        internal Row(OpenCodePersistentPtyInventoryView inventory)
+        {
+            _inventory = inventory;
+            if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) _open.Style = quiet;
+            _open.Height = 40; _open.HorizontalAlignment = HorizontalAlignment.Stretch; _open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            _open.Padding = new Thickness(10, 0, 6, 0);
+            var content = new Grid { ColumnSpacing = 10 };
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+            content.Children.Add(_icon);
+            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { _title, _state } };
+            Grid.SetColumn(text, 1); content.Children.Add(text);
+            _end.Visibility = Visibility.Collapsed;
+            var trail = new Grid { Children = { _dot, _end } };
+            Grid.SetColumn(trail, 2); content.Children.Add(trail);
+            _open.Content = content;
+            _open.Click += (_, _) => { if (_entry is { } entry && entry.Id != _inventory.OpenId) _inventory.Open(entry); };
+            _end.Click += (_, _) => { if (_entry is { } entry) _inventory.End(entry); };
+            Children.Add(_selected); Children.Add(_open); Children.Add(_bar);
+            OpenCodeTerminalUi.Themed(_state, "Foreground", "TextFillColorTertiaryBrush");
+            PointerEntered += (_, _) => { _hover = true; Paint(); };
+            PointerExited += (_, _) => { _hover = false; Paint(); };
+            _open.GotFocus += (_, _) => Paint(); _open.LostFocus += (_, _) => Paint();
+            ActualThemeChanged += (_, _) => Paint();
+            Loaded += (_, _) => Paint();
+        }
+
+        internal void Update(OpenCodeTerminalEntry entry, bool selected)
+        {
+            _entry = entry; _isSelected = selected;
+            _title.Text = entry.Title;
+            _state.Text = entry.StateText;
+            AutomationProperties.SetName(_open, entry.Title + " · " + entry.StateText);
+            ToolTipService.SetToolTip(_open, entry.Title + "\n" + entry.Source + (entry.Cwd is { Length: > 0 } cwd ? " · " + cwd : string.Empty));
+            var ending = entry.State is OpenCodeTerminalState.Done or OpenCodeTerminalState.Failed ? "移除终端" : "结束终端";
+            AutomationProperties.SetName(_end, ending); ToolTipService.SetToolTip(_end, ending);
+            Paint();
+        }
+
+        private void Paint()
+        {
+            if (Application.Current is null || _entry is not { } entry) return;
+            _selected.Background = _isSelected ? OpenCodeTerminalUi.Brush("SubtleFillColorSecondaryBrush") : null;
+            _bar.Background = OpenCodeTerminalUi.Brush("AccentFillColorDefaultBrush");
+            _bar.Visibility = _isSelected ? Visibility.Visible : Visibility.Collapsed;
+            _title.Foreground = OpenCodeTerminalUi.Brush("TextFillColorPrimaryBrush");
+            OpenCodeTerminalUi.Themed((FrameworkElement)_icon, "Foreground", _isSelected ? "TextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
+            var showEnd = entry.CanEnd && (_hover || _open.FocusState != FocusState.Unfocused);
+            _end.Visibility = showEnd ? Visibility.Visible : Visibility.Collapsed;
+            _dot.Visibility = showEnd ? Visibility.Collapsed : Visibility.Visible;
+            OpenCodeTerminalUi.PaintDot(_dot, entry.State);
+        }
+    }
+}
+
+/// <summary>Shared terminal chrome: the one status component (dot + text), subtle icon buttons and themed brushes.</summary>
+internal static class OpenCodeTerminalUi
+{
+    private static readonly Dictionary<(string, string, string), Style> Styles = new();
+
+    internal static OpenCodeTerminalEntry Entry(PersistentPtyInfo row)
+    {
+        var exited = row.Status == "exited";
+        var failed = exited && row.ExitCode is { } code && code != 0;
+        var state = !exited ? OpenCodeTerminalState.Running : failed ? OpenCodeTerminalState.Failed : OpenCodeTerminalState.Done;
+        var text = !exited ? "运行中" : OpenCodeTerminalNames.ExitText(row.ExitCode);
+        return new(OpenCodeTerminalEntryKind.Pty, row.Id, OpenCodeTerminalNames.Title(row.Title, row.Command), "终端", row.Cwd, state, text, true);
+    }
+
+    internal static string BrushKey(OpenCodeTerminalState state) => state switch
+    {
+        OpenCodeTerminalState.Running => "SystemFillColorSuccessBrush",
+        OpenCodeTerminalState.Failed or OpenCodeTerminalState.Disconnected => "SystemFillColorCriticalBrush",
+        OpenCodeTerminalState.Connecting => "SystemFillColorCautionBrush",
+        OpenCodeTerminalState.Elsewhere => "TextFillColorSecondaryBrush",
+        _ => "TextFillColorTertiaryBrush",
+    };
+
+    /// <summary>Filled dot for every state except "another client is typing", which is a neutral ring.</summary>
+    internal static void PaintDot(Border dot, OpenCodeTerminalState state)
+    {
+        var ring = state == OpenCodeTerminalState.Elsewhere;
+        dot.BorderThickness = new Thickness(ring ? 1.5 : 0);
+        dot.ClearValue(Border.BackgroundProperty); dot.ClearValue(Border.BorderBrushProperty);
+        Themed(dot, ring ? "BorderBrush" : "Background", BrushKey(state));
+    }
+
+    internal static Brush? Brush(string key)
+        => Application.Current?.Resources.TryGetValue(key, out var value) == true ? value as Brush : null;
+
+    /// <summary>ThemeResource-backed setter, so element-level light/dark overrides repaint without code.</summary>
+    internal static void Themed(FrameworkElement target, string property, string key)
+    {
+        var id = (target.GetType().Name, property, key);
+        if (!Styles.TryGetValue(id, out var style))
+            Styles[id] = style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\""
+                + target.GetType().Name + "\"><Setter Property=\"" + property + "\" Value=\"{ThemeResource " + key + "}\"/></Style>");
+        target.Style = style;
+    }
+
+    internal static Button IconButton(string glyph, string name, double width = 32, double height = 32, double size = 14)
+    {
+        var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = size },
+            Width = width, Height = height, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
+        if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) button.Style = quiet;
+        button.Width = width; button.Height = height; button.CornerRadius = new CornerRadius(4);
+        // Subtle buttons stay transparent when disabled (the default style paints a filled disabled plate).
+        button.Resources["ButtonBackgroundDisabled"] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        button.Resources["ButtonBorderBrushDisabled"] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        AutomationProperties.SetName(button, name);
+        ToolTipService.SetToolTip(button, name);
+        return button;
     }
 }

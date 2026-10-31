@@ -111,7 +111,7 @@ internal static class ShellTerminalTests
         Check(state.Output.Contains("0239") && !state.Output.Contains("Command moved to the background") && state.StatusText == "已完成 · 退出码 0"
             && !state.Running && state.Notice is null, "durable completion replaces launch text and survives stale tool updates without cleared/unknown warning");
         state.ApplyCompletion(completed with { Exit = "7", Status = OpenCodeTreeStatus.Failed });
-        Check(state.StatusText == "已完成 · 退出码 7", "collected failed background shell still reports its known numeric exit");
+        Check(state.StatusText == "失败 · 退出码 7" && state.Failed, "collected failed background shell still reports its known numeric exit");
         Check(OpenCodeAgentTreeProjection.Shell(message with { Type = "user" }) is null,
             "ordinary user text cannot fabricate a shell completion or output source");
         state.Open(new("sh_missing", command, "/work", OpenCodeTreeShellKind.Background, OpenCodeTreeStatus.Running, null, launch));

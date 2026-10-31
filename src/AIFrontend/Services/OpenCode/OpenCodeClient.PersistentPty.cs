@@ -96,9 +96,9 @@ public sealed partial class OpenCodeClient
         return result;
     }
 
-    /// <summary>Native observer attachment. The ticket and URI never cross the host boundary.</summary>
+    /// <summary>Native non-forcing attachment. The ticket and URI never cross the host boundary.</summary>
     public async Task<IPersistentPtyConnection> ConnectPersistentPtyAsync(string sessionId, string ptyId, long cursor,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool requestControl = false)
     {
         PersistentPtyValidation.Id(sessionId); PersistentPtyValidation.Offset(cursor);
         using var doc = await PersistentPtyJsonAsync(HttpMethod.Post, PersistentPath(ptyId) + "/connect-token", null, true, cancellationToken).ConfigureAwait(false);
@@ -115,7 +115,7 @@ public sealed partial class OpenCodeClient
         var uri = new UriBuilder(BuildUri(PersistentPath(ptyId) + "/connect", new List<KeyValuePair<string, string>>
         {
             new("ticket", ticket), new("cursor", cursor.ToString(CultureInfo.InvariantCulture)),
-            new("attachment_id", attachmentId), new("role", "observer"), new("takeover", "false"), new("input_protocol", "1"),
+            new("attachment_id", attachmentId), new("role", requestControl ? "controller" : "observer"), new("takeover", "false"), new("input_protocol", "1"),
         })) { Scheme = _baseUri.Scheme == "https" ? "wss" : "ws" };
         var socket = new ClientWebSocket();
         // ConnectAsync's custom invoker is essential: the default WS handler may follow redirects.
@@ -126,7 +126,7 @@ public sealed partial class OpenCodeClient
         try
         {
             await socket.ConnectAsync(uri.Uri, invoker, timeout.Token).ConfigureAwait(false);
-            return new PersistentPtyConnection(this, socket, invoker, sessionId, ptyId, attachmentId, cancellationToken);
+            return new PersistentPtyConnection(this, socket, invoker, sessionId, ptyId, attachmentId, cancellationToken, requestControl);
         }
         catch (Exception)
         {

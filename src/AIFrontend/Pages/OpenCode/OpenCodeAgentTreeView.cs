@@ -369,7 +369,19 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         row.Children.Add(model);
         FrameworkElement indicator;
         var statusText = status switch { OpenCodeTreeStatus.Running => "运行中", OpenCodeTreeStatus.Succeeded => "成功", OpenCodeTreeStatus.Failed => "失败", OpenCodeTreeStatus.Interrupted => "已中断", _ => "状态不可用" };
-        if (status == OpenCodeTreeStatus.Running) indicator = new ProgressRing { IsActive = true, Width = 14, Height = 14, MinWidth = 0, MinHeight = 0 };
+        if (tag is OpenCodeTreeShell)
+        {
+            // Terminal rows use the shared terminal status dot (same as the strip, list and overlay header).
+            var dot = new Border { Width = 7, Height = 7, CornerRadius = new CornerRadius(3.5) };
+            OpenCodeTerminalUi.PaintDot(dot, status switch
+            {
+                OpenCodeTreeStatus.Running => OpenCodeTerminalState.Running,
+                OpenCodeTreeStatus.Failed or OpenCodeTreeStatus.Interrupted => OpenCodeTerminalState.Failed,
+                _ => OpenCodeTerminalState.Done,
+            });
+            indicator = dot;
+        }
+        else if (status == OpenCodeTreeStatus.Running) indicator = new ProgressRing { IsActive = true, Width = 14, Height = 14, MinWidth = 0, MinHeight = 0 };
         else
         {
             var resource = status == OpenCodeTreeStatus.Succeeded ? "SystemFillColorSuccessBrush"

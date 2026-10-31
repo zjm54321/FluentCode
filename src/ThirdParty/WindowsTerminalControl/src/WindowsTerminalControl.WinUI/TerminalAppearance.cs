@@ -22,6 +22,14 @@ public sealed record TerminalAppearance(string FontFamily = "Cascadia Mono", sho
         return (ColorRef(bg), ColorRef(fg), ColorRef(selection), colors.Split(' ').Select(ColorRef).ToArray());
     }
 
+    /// <summary>Scheme background/foreground for host chrome around the native window (padding, gutter).</summary>
+    public (Windows.UI.Color Background, Windows.UI.Color Foreground) SurfaceColors(bool light)
+    {
+        var (bg, fg, _, _) = Colors(light);
+        static Windows.UI.Color Rgb(uint c) => Windows.UI.Color.FromArgb(255, (byte)c, (byte)(c >> 8), (byte)(c >> 16));
+        return (Rgb(bg), Rgb(fg));
+    }
+
     private static uint ColorRef(string hex)
     {
         var rgb = Convert.ToUInt32(hex, 16);

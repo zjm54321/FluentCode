@@ -30,6 +30,7 @@ public sealed partial class OpenCodePage
     private bool IsTreeCurrent(TreeBinding binding) => _pageActive && binding.SessionId == _selectedSessionId;
     private void OnBrowserAgentTreeChanged() { }
     private void QueueAgentTreeRefresh() { }
+    private void SyncShellTerminalEntries() { }
     internal int TestBackgroundCount { get; private set; }
     private void RenderSubagentCount(int running) => TestBackgroundCount = running;
     internal IReadOnlyList<OpenCodeTreeAgent> TestBackgroundTree => _agentTree.Agents;

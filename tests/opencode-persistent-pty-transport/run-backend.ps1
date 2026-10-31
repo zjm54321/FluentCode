@@ -41,6 +41,9 @@ $sourceInputs = @($arguments | Where-Object { $_ -match '^".+\.cs"$' } | ForEach
  Copy-Item -LiteralPath $path -Destination $snapshot
  [ordered]@{ path = $path; relativePath = $relative; snapshotPath = $snapshot; sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
 })
+$vtFixture = Join-Path $repo 'tests/opencode-persistent-pty/Fixtures/nushell-session.vt'
+$vtHash = (Get-FileHash $vtFixture -Algorithm SHA256).Hash
+Copy-Item -LiteralPath $vtFixture -Destination (Join-Path $EvidenceRoot 'nushell-session.vt')
 $manifest = [ordered]@{
  capturedUtc = [DateTime]::UtcNow.ToString('o'); repository = $repo
  compiler = $compiler; compilerSha256 = (Get-FileHash $compiler -Algorithm SHA256).Hash
@@ -48,6 +51,7 @@ $manifest = [ordered]@{
  wireResponseFile = $wireRsp; wireResponseSha256 = (Get-FileHash $wireRsp -Algorithm SHA256).Hash
  backendResponseFile = $rsp; backendResponseSha256 = (Get-FileHash $rsp -Algorithm SHA256).Hash
  sources = $sourceInputs
+ recordedNushellVtSha256 = $vtHash
 }
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'candidate-inputs.json')
 # csc is silent on success. Write explicit UTF-8 result logs rather than leaving an old
@@ -67,7 +71,7 @@ $backendResult = if ($backendExit -eq 0) { 'PASS production-linked persistent PT
 $backendOutput | Write-Output; Write-Output $backendResult
 if ($backendExit -ne 0) { throw "Backend compile failed: $backendExit" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'PtyBackendTests.runtimeconfig.json')
-$testOutput = @(& $dotnet $dll 2>&1)
+$testOutput = @(& $dotnet $dll $vtFixture 2>&1)
 $testExit = $LASTEXITCODE
 $testOutput | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'backend-results.txt')
 $testOutput | Write-Output
@@ -78,6 +82,7 @@ foreach ($sourceInput in $sourceInputs) {
   throw "Source input changed during focused compile/test: $($sourceInput.relativePath)"
  }
 }
+if ((Get-FileHash $vtFixture -Algorithm SHA256).Hash -ne $vtHash) { throw 'Recorded nushell fixture changed during validation' }
 [ordered]@{
  completedUtc = [DateTime]::UtcNow.ToString('o'); wireCompilerExitCode = $wireExit; backendCompilerExitCode = $backendExit
  testsExitCode = $testExit; sourceInputsUnchanged = $true

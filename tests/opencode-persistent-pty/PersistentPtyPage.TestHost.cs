@@ -33,6 +33,12 @@ namespace AIFrontend.Pages
         internal Task CreatePty() => _persistentInventoryOwner is { } owner ? CreatePersistentTerminalAsync(owner.Context) : Task.CompletedTask;
         internal bool HasCreationConsent => _persistentAttachmentOwner?.CreationConsent == 1;
         internal void ClosePty() => ClosePersistentPtyView(restoreFocus: false);
+#if !NATIVE_UI
+        internal void ClickPtyClose() => _persistentAttachmentOwner?.View.EmitDetach(_persistentAttachmentOwner.Adapter.ViewContext(_persistentAttachmentOwner.Controller.State.Epoch));
+        internal void ExpirePtyScope() => _homeActive = true;
+        internal void TickPtyInventory() => _persistentInventoryTimer?.Fire();
+#endif
+        internal Task KillPty() => _persistentAttachmentOwner is { } owner ? TerminatePersistentPtyAsync(owner, owner.Adapter.ViewContext(owner.Controller.State.Epoch)) : Task.CompletedTask;
         internal void PausePty() => ResetPersistentPtyScope();
         internal void ChangePtyDirectory(string directory)
         { if (_messageBinding is { } binding) _messageBinding = binding with { Directory = directory }; RefreshRightPanelMetadata(); }
@@ -58,6 +64,15 @@ namespace Microsoft.UI.Xaml
 {
     public enum Visibility { Visible, Collapsed }
     public enum FocusState { Programmatic }
+    public sealed class DispatcherTimer
+    {
+        public TimeSpan Interval { get; set; }
+        public bool IsEnabled { get; private set; }
+        public event EventHandler<object>? Tick;
+        public void Start() => IsEnabled = true;
+        public void Stop() => IsEnabled = false;
+        internal void Fire() { if (IsEnabled) Tick?.Invoke(this, EventArgs.Empty); }
+    }
 }
 namespace Microsoft.UI.Xaml.Input
 {
@@ -93,10 +108,11 @@ namespace AIFrontend.Pages.OpenCode
     {
         internal OpenCodePersistentPtyRenderer Renderer { get; } = new();
         internal OpenCodePersistentPtyPresentation? Model;
-        internal event Action<OpenCodePersistentPtyViewContext>? DetachRequested, TakeControlRequested, ReleaseControlRequested, ReconnectRequested;
+        internal event Action<OpenCodePersistentPtyViewContext>? DetachRequested, TakeControlRequested, ReleaseControlRequested, ReconnectRequested, TerminateRequested;
         internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
         internal void Render(OpenCodePersistentPtyPresentation? model) => Model = model;
-        internal void TouchEvents() { DetachRequested?.Invoke(null!); TakeControlRequested?.Invoke(null!); ReleaseControlRequested?.Invoke(null!); ReconnectRequested?.Invoke(null!); CopySelectionRequested?.Invoke(null!); }
+        internal void EmitDetach(OpenCodePersistentPtyViewContext context) => DetachRequested?.Invoke(context);
+        internal void TouchEvents() { DetachRequested?.Invoke(null!); TakeControlRequested?.Invoke(null!); ReleaseControlRequested?.Invoke(null!); ReconnectRequested?.Invoke(null!); TerminateRequested?.Invoke(null!); CopySelectionRequested?.Invoke(null!); }
     }
     internal sealed class OpenCodePersistentPtyRenderer : IOpenCodePersistentPtySurface
     {
@@ -106,6 +122,9 @@ namespace AIFrontend.Pages.OpenCode
         internal byte[] Checkpoint = Array.Empty<byte>();
         internal bool Writable, Disposed;
         internal event Action<OpenCodePersistentPtyInput>? InputRequested;
+        internal event Action<OpenCodePersistentPtyViewContext>? ActivationRequested;
+        internal int Focuses;
+        internal void FocusTerminal() => Focuses++;
         internal event Action<OpenCodePersistentPtyResize>? ResizeRequested;
         public Task<bool> InitializeAsync(OpenCodePersistentPtyViewContext context, int columns, int rows, CancellationToken ct)
         { Context = context; return Task.FromResult(true); }
@@ -117,6 +136,8 @@ namespace AIFrontend.Pages.OpenCode
         internal void SuspendInput() => Writable = false;
         public void Dispose() { Writable = false; Disposed = true; }
         internal void EmitInput(OpenCodePersistentPtyInput input) => InputRequested?.Invoke(input);
+        internal void EmitActivation(OpenCodePersistentPtyViewContext context) => ActivationRequested?.Invoke(context);
+        internal OpenCodePersistentPtyResize MeasureViewport(OpenCodePersistentPtyViewContext context) => new(context, 80, 24);
         internal void EmitResize(OpenCodePersistentPtyResize resize) => ResizeRequested?.Invoke(resize);
     }
 }

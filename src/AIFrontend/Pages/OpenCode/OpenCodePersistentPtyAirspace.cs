@@ -65,6 +65,8 @@ internal sealed class OpenCodePersistentPtyAirspace : IDisposable
     internal void Hold(int milliseconds = 100)
     { _quietUntil = Math.Max(_quietUntil, Environment.TickCount64 + milliseconds); _stableFrames = 0; Hide(); }
 
+    internal void RestoreFocusWhenVisible() => _restoreFocus = true;
+
     private void BeforePointer(object sender, PointerRoutedEventArgs args)
     {
         // Button clicks open flyouts/dialogs after pointer routing. Hide in that same dispatch,

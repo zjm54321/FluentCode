@@ -106,7 +106,8 @@ internal sealed class OpenCodeShellTerminalState
         Running = HasMore = false; StatusText = CompletedStatus(); Notice = null;
     }
 
-    private string CompletedStatus() => "已完成" + (_exit is { } exit ? " · 退出码 " + exit : " · 退出码不可用");
+    private string CompletedStatus() => _exit is { } exit ? (exit == "0" ? "已完成 · 退出码 0" : "失败 · 退出码 " + exit) : "已完成 · 退出码不可用";
+    internal bool Failed => !Running && _completed && _exit is { } exit && exit != "0";
 
     internal void Close() { ShellId = null; Running = false; HasMore = false; }
 

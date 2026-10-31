@@ -255,6 +255,7 @@ public sealed partial class OpenCodePage
         var agents = OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses);
         RenderSubagentCount(agents.Sum(agent => agent.Children.Count(child => child.Status == OpenCodeTreeStatus.Running)));
         _agentTree.Render(agents, _treeShells.Values.ToArray(), _treeHint);
+        SyncShellTerminalEntries();
     }
 
     private async Task ReturnFromAgentTreeAsync()

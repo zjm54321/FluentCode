@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
@@ -15,6 +16,8 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
     private readonly Func<PersistentPtyOrigin, bool> _isCurrent;
     private readonly CancellationTokenSource _stop;
     private readonly object _sync = new();
+    private readonly HashSet<string> _removed = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _exited = new(StringComparer.Ordinal);
     private Task? _running;
     private bool _again, _recheck, _capabilityRead;
     private bool? _capability;
@@ -41,6 +44,20 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
         PersistentPtyValidation.Info(info, _origin.SessionId);
         Publish(new(OpenCodePersistentPtyInventoryPhase.Ready,
             ImmutableArray.CreateRange(State.Rows.RemoveAll(row => row.Id == info.Id).Add(info))));
+    }
+    internal void AcceptRemoved(string id)
+    {
+        PersistentPtyValidation.Id(id);
+        if (!Current()) return;
+        lock (_sync) _removed.Add(id);
+        Publish(State);
+    }
+    internal void AcceptExited(string id, int? exitCode)
+    {
+        PersistentPtyValidation.Id(id);
+        if (!Current()) return;
+        lock (_sync) _exited[id] = exitCode;
+        Publish(State);
     }
     private Task<T> ReadAsync<T>(Func<Task<T>> read)
     {
@@ -84,7 +101,13 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
     private void Publish(OpenCodePersistentPtyInventoryState state)
     {
         if (!Current()) return;
-        Volatile.Write(ref _state, state);
+        lock (_sync)
+        {
+            // A list request already in flight cannot resurrect a confirmed removal or exit.
+            state = state with { Rows = ImmutableArray.CreateRange(state.Rows.Where(row => !_removed.Contains(row.Id))
+                .Select(row => _exited.TryGetValue(row.Id, out var code) ? row with { Status = "exited", ExitCode = code } : row)) };
+            Volatile.Write(ref _state, state);
+        }
         try { Changed?.Invoke(state); } catch (Exception) { /* Observer failure cannot turn an inventory read into a terminal mutation. */ }
     }
     public void Dispose() { if (!_stop.IsCancellationRequested) _stop.Cancel(); }

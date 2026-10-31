@@ -27,6 +27,8 @@ internal static class PersistentPtyBindingTests
         internal int CapReads, Lists, Snapshots, Tickets, Writes;
         internal bool EmptyInitially, Created, FailCreate;
         internal int Creates;
+        internal int Removes;
+        internal bool FailRemove, Missing, Exited;
         internal TaskCompletionSource<bool>? CreateEntered, HoldCreate;
         internal TaskCompletionSource<bool>? ListEntered, HoldList;
         internal readonly byte[] Checkpoint = System.Text.Encoding.UTF8.GetBytes("\u001b[2J\u001b[H真实 VT");
@@ -42,6 +44,8 @@ internal static class PersistentPtyBindingTests
                 Check(uri.Query.Length == 0, "server-scoped PTY routes contain no invented location query");
                 if (request.Method != HttpMethod.Get)
                 {
+                    if (request.Method == HttpMethod.Delete)
+                    { Removes++; Writes++; return new(FailRemove ? HttpStatusCode.InternalServerError : HttpStatusCode.NoContent); }
                     if (request.Method == HttpMethod.Post && uri.AbsolutePath.EndsWith("/terminal", StringComparison.Ordinal))
                     {
                         Creates++; Writes++; CreateEntered?.TrySetResult(true);
@@ -62,13 +66,15 @@ internal static class PersistentPtyBindingTests
                 if (uri.AbsolutePath.EndsWith("/terminal", StringComparison.Ordinal))
                 {
                     Lists++; ListEntered?.TrySetResult(true); if (HoldList is { } held) await held.Task;
-                    return Json(new { data = Created ? new[] { Info with { Id = "pty_created", Title = "终端" } } : EmptyInitially ? Array.Empty<PersistentPtyInfo>() : new[] { Info } });
+                    return Json(new { data = Created ? new[] { Info with { Id = "pty_created", Title = "终端" } } : EmptyInitially ? Array.Empty<PersistentPtyInfo>() : new[] { Exited ? Info with { Status = "exited", ExitCode = 23 } : Info } });
                 }
                 if (uri.AbsolutePath.EndsWith("/snapshot", StringComparison.Ordinal))
                 {
                     Snapshots++;
                     return Json(new { data = new { info = Created ? Info with { Id = "pty_created", Title = "终端" } : Info, text = "NOT A CHECKPOINT", checkpoint = Convert.ToBase64String(Checkpoint), cursor = new { x = 0, y = 0 } } });
                 }
+                if (uri.AbsolutePath.EndsWith("/persistent-pty/pty_fixture", StringComparison.Ordinal))
+                    return Missing ? new(HttpStatusCode.NotFound) : Json(new { data = Info });
             }
             if (uri.AbsolutePath.EndsWith("session-preset.v1/read", StringComparison.Ordinal))
                 return Json(new { output = new { sessionID = "ses_plugin", status = "unbound", presetName = (string?)null, affects = "future-children-only" } });
@@ -106,7 +112,7 @@ internal static class PersistentPtyBindingTests
     }
     internal static async Task Run()
     {
-        await Adapter(); await Inventory(); await PageLifecycle(); await Creation(); await ShellTerminalTests.Run();
+        await Adapter(); await Inventory(); await PageLifecycle(); await Creation(); await Termination(); await ShellTerminalTests.Run();
         Console.WriteLine($"PASS {_checks} PTY Page/renderer-adapter/inventory checks; real typed HTTP/controller and adapter barriers, inert native surface/state projection; no live socket/process/window.");
     }
     private static async Task Adapter()
@@ -207,7 +213,61 @@ internal static class PersistentPtyBindingTests
         await disposed.RefreshAsync(); await disposed.RefreshAsync();
         Check(disposed.State.Phase == OpenCodePersistentPtyInventoryPhase.Unavailable && retired.Wire.Lists == 0,
             "retired page-client race yields honest unavailable state without faulting the refresh loop or issuing requests");
+        var lifecycle = Fixture();
+        using var known = new OpenCodePersistentPtyInventory(lifecycle.Origin, lifecycle.Client, _ => true);
+        await known.RefreshAsync();
+        lifecycle.Wire.ListEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        lifecycle.Wire.HoldList = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stale = known.RefreshAsync(); await lifecycle.Wire.ListEntered.Task;
+        known.AcceptExited("pty_fixture", 23);
+        lifecycle.Wire.HoldList.SetResult(true); await stale;
+        Check(known.State.Rows.Single() is { Status: "exited", ExitCode: 23 } && lifecycle.Wire.Writes == 0,
+            "confirmed natural exit survives a stale running list without deleting retained terminal output");
+        known.AcceptRemoved("pty_fixture"); await known.RefreshAsync();
+        Check(known.State.Rows.IsEmpty && lifecycle.Wire.Writes == 0,
+            "confirmed removal immediately removes the inventory row and stale list replies cannot resurrect it");
     }
+    private static async Task Termination()
+    {
+        var fixture = Fixture(); await fixture.Page.PrepareAsync();
+        await Until(() => fixture.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        fixture.Page.OpenPty("pty_fixture");
+        var view = fixture.Page.PtyView!; await view.Renderer.ResetEntered.Task;
+        await fixture.Page.KillPty();
+        Check(fixture.Wire.Removes == 1 && !fixture.Page.PtyOpen && fixture.Page.OverlayView is null && view.Renderer.Disposed,
+            "explicit end-terminal action deletes the exact owned PTY and destroys its native window; ordinary close still only detaches");
+        await Until(() => fixture.Page.PtyInventory?.State is { Phase: OpenCodePersistentPtyInventoryPhase.Ready, Rows.IsEmpty: true });
+        Check(fixture.Page.PtyInventory!.State.Rows.IsEmpty, "successful DELETE removes the strip inventory immediately even when the following list is stale");
+        var failed = Fixture(); await failed.Page.PrepareAsync();
+        await Until(() => failed.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        failed.Page.OpenPty("pty_fixture"); await failed.Page.PtyView!.Renderer.ResetEntered.Task;
+        failed.Wire.FailRemove = true; await failed.Page.KillPty();
+        Check(failed.Page.PtyOpen && failed.Page.PtyView!.Model?.Notice?.Contains("结束终端失败") == true
+            && failed.Page.PtyInventory!.State.Rows.Length == 1, "failed DELETE stays visible and retryable without falsely hiding/removing the terminal");
+        failed.Wire.FailRemove = false; await failed.Page.KillPty();
+        Check(!failed.Page.PtyOpen && failed.Wire.Removes == 2, "explicit retry ends a previously failed terminal without a mutation retry loop");
+        var gone = Fixture(); await gone.Page.PrepareAsync();
+        await Until(() => gone.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        gone.Page.OpenPty("pty_fixture"); await gone.Page.PtyView!.Renderer.ResetEntered.Task;
+        gone.Wire.Missing = true; await gone.Page.KillPty();
+        Check(!gone.Page.PtyOpen && gone.Wire.Removes == 0 && gone.Page.PtyInventory!.State.Rows.IsEmpty,
+            "already-removed PTY closes and leaves the inventory without issuing DELETE to an unverified target");
+        var expired = Fixture(); await expired.Page.PrepareAsync();
+        await Until(() => expired.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        expired.Page.OpenPty("pty_fixture"); var closed = expired.Page.PtyView!; await closed.Renderer.ResetEntered.Task;
+        expired.Page.ExpirePtyScope(); expired.Page.ClickPtyClose();
+        Check(!expired.Page.PtyOpen && closed.Renderer.Disposed && expired.Wire.Removes == 0,
+            "overlay close depends on displayed-view identity, not expired backend authority, and never kills the process");
+        var idle = Fixture(); await idle.Page.PrepareAsync();
+        await Until(() => idle.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        idle.Wire.Exited = true; idle.Page.TickPtyInventory();
+        await Until(() => idle.Page.PtyInventory?.State.Rows.SingleOrDefault()?.Status == "exited");
+        var lists = idle.Wire.Lists; idle.Page.TickPtyInventory();
+        Check(idle.Wire.Writes == 0 && idle.Wire.Lists == lists,
+            "unopened terminal natural exit is detected by read-only inventory refresh, which stops once no live rows remain");
+        idle.Page.PausePty();
+    }
+
     private static async Task Creation()
     {
         var f = Fixture(); f.Wire.EmptyInitially = true; await f.Page.PrepareAsync();
@@ -263,6 +323,9 @@ internal static class PersistentPtyBindingTests
         f.Page.SupplyPtyState(new(new(1), PersistentPtyPhase.Ready, PersistentPtyRole.Controller, true, false, info, null));
         await f.Page.PaintPty();
         Check(f.Page.PtyInputGate(context), "UI input only arms after current backend authority and UI mode acknowledgement");
+        view.Renderer.EmitInput(new(context, "\x1b[40;1R"u8.ToArray(), IsTerminalResponse: true));
+        Check(f.Wire.Writes == 0 && controller.State.InputArmed,
+            "native CPR is consumed locally while the daemon answers queries, without duplicate input or loss of consent");
         f.Page.HoldPtyPaint();
         await Task.Run(() => f.Page.SupplyPtyState(new(new(1), PersistentPtyPhase.Ready, PersistentPtyRole.Observer, false, false, info, null)));
         Check(view.Renderer.Writable && !f.Page.PtyInputGate(context), "worker authority loss revokes the logical input boundary before queued UI paint");
@@ -278,6 +341,7 @@ internal static class PersistentPtyBindingTests
             "unsupported canonical geometry is honestly unavailable/disarmed, never rendered as a clamped live terminal");
         f.Page.SupplyPtyState(new(new(2), PersistentPtyPhase.Closed, PersistentPtyRole.Observer, false, true, info with { Status = "exited" }, null));
         Check(view.Model?.Phase == OpenCodePersistentPtyPhase.Exited, "Closed plus exited Info maps to an exited read-only terminal, not generic disconnect");
+        await f.Page.PtyInventory!.RefreshAsync(); // Drain the read-only refresh scheduled by the actual exit notification.
         var listReads = f.Wire.Lists;
         f.Page.PtyEvent("{\"type\":\"persistent-pty.added\",\"data\":{\"sessionID\":123}}");
         Check(f.Wire.Lists == listReads && f.Page.PtyOpen, "malformed optional inventory event is ignored without a wire-file rewrite or unsafe SessionId cast");

@@ -751,12 +751,9 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     {
         if (_model.Kind == OpenCodeToolKind.Shell)
         {
-            // Transcript remains XAML: a bounded text preview and an explicit shared-overlay action.
-            var preview = new OpenCodeShellTerminalPreview();
-            preview.Update(_model.Command ?? _model.Target, _model.OutputText, RequestTerminal);
-            _inlineRegion.Padding = new Thickness(32, 2, 12, 4);
-            _inlineRegion.Child = preview;
-            _inlineRegion.Visibility = Visibility.Visible;
+            // The transcript owns only the task line. Complete output belongs to the shared terminal overlay.
+            _inlineRegion.Child = null;
+            _inlineRegion.Visibility = Visibility.Collapsed;
             ApplyRunningTint();
             return;
         }

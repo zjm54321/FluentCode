@@ -18,6 +18,7 @@ public sealed partial class OpenCodePage
     private readonly Guid _persistentPtyPageId = Guid.NewGuid();
     private long _persistentPtyGeneration;
     private bool _persistentPtyInitialized;
+    private DispatcherTimer? _persistentInventoryTimer;
     private sealed record PersistentInventoryOwner(OpenCodeInsightsBinding Binding, PersistentPtyOrigin Origin,
         OpenCodePersistentPtyInventoryContext Context, OpenCodePersistentPtyInventory Inventory);
     private sealed class PersistentAttachmentOwner(OpenCodeInsightsBinding binding, PersistentPtyOrigin origin,
@@ -34,6 +35,10 @@ public sealed partial class OpenCodePage
         internal long DisarmVersion, PaintedDisarmVersion;
         internal int UiInputAllowed;
         internal int CreationConsent;
+        internal readonly SemaphoreSlim InputGesture = new(1, 1);
+        internal readonly CancellationTokenSource Lifetime = CancellationTokenSource.CreateLinkedTokenSource(origin.Source.RevocationToken);
+        internal bool ControlConflict, Terminating;
+        internal string? TerminationError;
     }
     private PersistentInventoryOwner? _persistentInventoryOwner;
     private PersistentAttachmentOwner? _persistentAttachmentOwner;
@@ -137,6 +142,16 @@ public sealed partial class OpenCodePage
         if (!IsPersistentInventoryCurrent(owner.Origin)) return;
         var state = owner.Inventory.State;
         _persistentPtyInventoryView.Render(owner.Context, state);
+        if (state.Rows.Any(row => row.Status != "exited"))
+        {
+            if (_persistentInventoryTimer is null)
+            {
+                _persistentInventoryTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+                _persistentInventoryTimer.Tick += (_, _) => QueuePersistentPtyInventoryRefresh();
+            }
+            _persistentInventoryTimer.Start(); // The backend publishes added/removed SSE, not natural process exits.
+        }
+        else _persistentInventoryTimer?.Stop();
         if (_persistentAttachmentOwner is { } attachment && (state.Phase == OpenCodePersistentPtyInventoryPhase.Unsupported
             || state.Phase == OpenCodePersistentPtyInventoryPhase.Ready && !state.Rows.Any(row => row.Id == attachment.Context.PtyId)))
             ClosePersistentPtyView(restoreFocus: false);
@@ -147,6 +162,7 @@ public sealed partial class OpenCodePage
     }
     private void ResetPersistentPtyScope()
     {
+        _persistentInventoryTimer?.Stop();
         _persistentCreateCancellation?.Cancel(); _persistentCreateCancellation = null; _persistentCreatingOwner = null;
         var owner = Interlocked.Exchange(ref _persistentInventoryOwner, null);
         owner?.Inventory.Dispose();
@@ -161,8 +177,12 @@ public sealed partial class OpenCodePage
             || !IsPersistentInventoryCurrent(owner.Origin) || !item.Data.TryGetProperty("sessionID", out var session)
             || session.ValueKind != System.Text.Json.JsonValueKind.String || session.GetString() != owner.Origin.SessionId) return;
         if (item.Type == "persistent-pty.removed" && item.Data.TryGetProperty("ptyID", out var id)
-            && id.ValueKind == System.Text.Json.JsonValueKind.String && id.GetString() == _persistentAttachmentOwner?.Context.PtyId)
-            ClosePersistentPtyView(restoreFocus: false);
+            && id.ValueKind == System.Text.Json.JsonValueKind.String && id.GetString() is { Length: > 0 } removed)
+        {
+            try { owner.Inventory.AcceptRemoved(removed); }
+            catch (PersistentPtyException) { return; }
+            if (removed == _persistentAttachmentOwner?.Context.PtyId) ClosePersistentPtyView(restoreFocus: false);
+        }
         _ = owner.Inventory.RefreshAsync();
     }
 
@@ -183,17 +203,24 @@ public sealed partial class OpenCodePage
         Volatile.Write(ref _persistentAttachmentOwner, owner);
         BindTerminalAppearance(view);
         owner.Adapter = new(view.Renderer, InvokePersistentPtyUiAsync, context, () => IsPersistentAttachmentCurrent(origin));
-        owner.Controller = new(origin, ptyId, owner.Adapter, IsPersistentAttachmentCurrent);
+        owner.Controller = new(origin, ptyId, owner.Adapter, IsPersistentAttachmentCurrent, acquireOnStart: enableCreatedInput);
         owner.OnState = state => PersistentPtyStateChanged(owner, state);
         owner.Controller.StateChanged += owner.OnState;
-        view.DetachRequested += request => { if (SamePersistentPane(owner, request)) ClosePersistentPtyView(); };
-        view.TakeControlRequested += request => _ = RequestPersistentControlAsync(owner, request, release: false);
-        view.ReleaseControlRequested += request => _ = RequestPersistentControlAsync(owner, request, release: true);
+        view.DetachRequested += request =>
+        {
+            // Closing the exact displayed view must work even after its backend scope has expired.
+            if (ReferenceEquals(_persistentAttachmentOwner, owner) && request.ViewId == owner.Context.ViewId)
+                ClosePersistentPtyView();
+        };
+        view.TakeControlRequested += request => _ = ActivatePersistentInputAsync(owner, request); // More → 在此输入 (keyboard path)
+        view.ReleaseControlRequested += request => _ = ReleasePersistentControlAsync(owner, request);
         view.ReconnectRequested += request =>
         {
             if (SamePersistentPane(owner, request) && owner.Run?.IsCompleted == true) OpenPersistentPty(inventory, ptyId);
         };
+        view.TerminateRequested += request => _ = TerminatePersistentPtyAsync(owner, request);
         view.Renderer.InputRequested += request => _ = SendPersistentInputAsync(owner, request);
+        view.Renderer.ActivationRequested += request => _ = ActivatePersistentInputAsync(owner, request); // double-click on the terminal
         view.Renderer.ResizeRequested += request => _ = ResizePersistentInputAsync(owner, request);
         view.CopySelectionRequested += request =>
         {
@@ -204,7 +231,7 @@ public sealed partial class OpenCodePage
         ShowPersistentPtyOverlay(view, ptyId);
         DismissSidebarDrawers();
         view.Render(PersistentPresentation(owner, owner.Controller.State));
-        owner.Run = owner.Controller.RunAsync(); // Observation only: no user-consent/control call here.
+        owner.Run = owner.Controller.RunAsync(); // Only explicit creation starts owned; merely opening an agent terminal stays observational.
     }
 
     private bool SamePersistentPane(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext request)
@@ -221,7 +248,15 @@ public sealed partial class OpenCodePage
         { Volatile.Write(ref owner.UiInputAllowed, 0); Interlocked.Increment(ref owner.DisarmVersion); }
         DispatcherQueue.TryEnqueue(() =>
         {
+            if (IsPersistentAttachmentCurrent(owner.Origin) && state is { Phase: PersistentPtyPhase.Closed, Info.Status: "exited" }
+                && _persistentInventoryOwner is { } inventory)
+            {
+                inventory.Inventory.AcceptExited(owner.Context.PtyId, state.Info.ExitCode);
+                QueuePersistentPtyInventoryRefresh();
+            }
             if (state.InputOutcomeUncertain) _persistentInputUncertainty.Add((owner.Origin.Source.Identity, owner.Origin.SessionId, owner.Context.PtyId));
+            if (state.FailureCode == "control-busy") owner.ControlConflict = true;
+            if (state.InputArmed) owner.ControlConflict = false;
             if (IsPersistentAttachmentCurrent(owner.Origin)) _ = PaintPersistentPtyAsync(owner);
         });
     }
@@ -243,11 +278,7 @@ public sealed partial class OpenCodePage
         }
         catch (OperationCanceledException) { }
         catch (Exception) { owner.View.Renderer.SuspendInput(); Volatile.Write(ref owner.UiInputAllowed, 0); }
-        // The create click is input consent for this newly-created terminal's FIRST attachment only.
-        // Never carry it across reconnect, takeover by another client, or an existing-terminal open.
-        if (state.Epoch.Value > 1) Interlocked.Exchange(ref owner.CreationConsent, 0);
-        else if (state.Phase == PersistentPtyPhase.Ready && Interlocked.Exchange(ref owner.CreationConsent, 0) != 0)
-            await RequestPersistentControlAsync(owner, model.Context, release: false);
+        if (state.Epoch.Value > 1 || state.Phase == PersistentPtyPhase.Ready) Interlocked.Exchange(ref owner.CreationConsent, 0);
     }
     private OpenCodePersistentPtyPresentation PersistentPresentation(PersistentAttachmentOwner owner, PersistentPtyState state)
     {
@@ -272,31 +303,114 @@ public sealed partial class OpenCodePage
             _ => state.Phase == PersistentPtyPhase.Disconnected ? "连接已断开；重新连接仅恢复观察，不会重发输入或自动接管。" : null,
         };
         if (uncertain) reason = (reason is null ? string.Empty : reason + " ") + "先前输入是否执行无法确认；不会重发。";
-        return new(owner.Adapter.ViewContext(state.Epoch), state.Info?.Title ?? "持久终端", state.Info?.Cwd, phase,
+        var conflict = owner.ControlConflict && state.Phase == PersistentPtyPhase.Ready && !state.InputArmed;
+        if (conflict) reason = "另一客户端正在控制此终端";
+        if (owner.TerminationError is { } terminationError) reason = reason is null ? terminationError : reason + " " + terminationError;
+        var exitCode = state.Info?.ExitCode;
+        return new(owner.Adapter.ViewContext(state.Epoch), OpenCodeTerminalNames.Title(state.Info?.Title, state.Info?.Command),
+            state.Info?.Cwd, phase,
             state.Role == PersistentPtyRole.Controller ? OpenCodePersistentPtyRole.Controller : OpenCodePersistentPtyRole.Observer,
-            state.Info?.ForegroundProcess, state.Phase == PersistentPtyPhase.Ready, state.InputArmed, reason);
+            state.Info?.ForegroundProcess, state.Phase == PersistentPtyPhase.Ready, state.InputArmed, reason,
+            phase == OpenCodePersistentPtyPhase.Exited ? OpenCodeTerminalNames.ExitText(exitCode) : null, conflict,
+            "终端", phase == OpenCodePersistentPtyPhase.Exited && exitCode is { } code && code != 0);
     }
 
-    private async Task RequestPersistentControlAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext context, bool release)
+    private async Task ReleasePersistentControlAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext context)
     {
         if (!SamePersistentPane(owner, context) || context != owner.Adapter.ViewContext(owner.Controller.State.Epoch)
-            || owner.Controller.State is not { Phase: PersistentPtyPhase.Ready, Info: { } info }) return;
+            || owner.Controller.State is not { Phase: PersistentPtyPhase.Ready }) return;
         try
         {
-            if (release)
-            {
-                Volatile.Write(ref owner.UiInputAllowed, 0); owner.View.Renderer.SuspendInput();
-                await owner.Controller.ReleaseControlAsync();
-            }
-            else await owner.Controller.TakeControlAsync(info.Size.Cols, info.Size.Rows); // Explicit consent, canonical grid; never implicit fit.
+            Volatile.Write(ref owner.UiInputAllowed, 0); owner.View.Renderer.SuspendInput();
+            await owner.Controller.ReleaseControlAsync();
         }
         catch (Exception) { if (IsPersistentAttachmentCurrent(owner.Origin)) await PaintPersistentPtyAsync(owner); }
     }
     private async Task SendPersistentInputAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyInput request)
     {
+        if (request.IsTerminalResponse)
+        {
+            // The persistent-PTY daemon's Ghostty emulator already answers terminal queries.
+            // A second native CPR reaches reedline's next read and clears valid nushell output.
+            // This also keeps historical checkpoint/replay queries from becoming fresh input.
+            return;
+        }
         if (!CurrentPersistentInput(owner, request.Context) || owner.Controller.State.Info is not { } info) return;
         try { await owner.Controller.SendInputAsync(request.Bytes, info.Size.Cols, info.Size.Rows); }
         catch (Exception) { if (IsPersistentAttachmentCurrent(owner.Origin)) await PaintPersistentPtyAsync(owner); }
+    }
+    /// <summary>
+    /// Two-click acquisition: a double-click on the read-only terminal (or More → 在此输入) asks for input here.
+    /// Free terminals are acquired without force (role=controller&amp;takeover=false); when another client is known to
+    /// be typing, the same deliberate gesture is the explicit takeover. Keystrokes before this are dropped, never sent.
+    /// </summary>
+    private async Task ActivatePersistentInputAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext context)
+    {
+        if (!SamePersistentPane(owner, context)) return;
+        try
+        {
+            await owner.InputGesture.WaitAsync(owner.Lifetime.Token);
+            try
+            {
+                var state = owner.Controller.State;
+                if (!SamePersistentPane(owner, context) || state.Phase != PersistentPtyPhase.Ready || state.Info is not { } info
+                    || context.Generation != state.Epoch.Value) return;
+                if (!state.InputArmed)
+                {
+                    if (owner.ControlConflict) await owner.Controller.TakeControlAsync(info.Size.Cols, info.Size.Rows, owner.Lifetime.Token);
+                    else if (!await owner.Controller.TryTakeControlAsync(owner.Lifetime.Token))
+                    { owner.ControlConflict = true; await PaintPersistentPtyAsync(owner); return; }
+                }
+                // The control request can complete before the server's role change arrives; wait for it, then for armed input.
+                for (var i = 0; i < 100 && owner.Controller.State is { Phase: PersistentPtyPhase.Ready, Role: not PersistentPtyRole.Controller }; i++)
+                    await Task.Delay(50, owner.Lifetime.Token);
+                await owner.Controller.WaitForInputReadyAsync(owner.Lifetime.Token);
+                owner.ControlConflict = false;
+                await SynchronizePersistentViewportAsync(owner);
+                if (IsPersistentAttachmentCurrent(owner.Origin)) { await PaintPersistentPtyAsync(owner); owner.View.Renderer.FocusTerminal(); }
+            }
+            finally { owner.InputGesture.Release(); }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception) { if (IsPersistentAttachmentCurrent(owner.Origin)) await PaintPersistentPtyAsync(owner); }
+    }
+
+    private async Task SynchronizePersistentViewportAsync(PersistentAttachmentOwner owner)
+    {
+        if (!IsPersistentAttachmentCurrent(owner.Origin) || !owner.Controller.State.InputArmed) return;
+        var request = owner.View.Renderer.MeasureViewport(owner.Adapter.ViewContext(owner.Controller.State.Epoch));
+        var size = new PersistentPtySize((ushort)request.Columns, (ushort)request.Rows);
+        if (owner.Controller.State.Info?.Size == size) return;
+        await owner.Controller.ResizeAsync(size.Cols, size.Rows, owner.Lifetime.Token);
+        await owner.Controller.WaitForInputReadyAsync(owner.Lifetime.Token, size);
+    }
+
+    private async Task TerminatePersistentPtyAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext context)
+    {
+        if (!SamePersistentPane(owner, context) || owner.Terminating) return;
+        owner.Terminating = true;
+        owner.TerminationError = null;
+        try
+        {
+            using var client = owner.Origin.Source.CreateClient();
+            await client.RemovePersistentPtyAsync(owner.Origin.SessionId, owner.Context.PtyId, owner.Lifetime.Token);
+            CompletePersistentTermination(owner, context);
+        }
+        catch (PersistentPtyException error) when (error.Code == "not-found") { CompletePersistentTermination(owner, context); }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            owner.TerminationError = "结束终端失败";
+            if (IsPersistentAttachmentCurrent(owner.Origin)) await PaintPersistentPtyAsync(owner);
+        }
+        finally { owner.Terminating = false; }
+    }
+    private void CompletePersistentTermination(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext context)
+    {
+        if (!SamePersistentPane(owner, context)) return;
+        _persistentInventoryOwner?.Inventory.AcceptRemoved(owner.Context.PtyId);
+        ClosePersistentPtyView();
+        QueuePersistentPtyInventoryRefresh();
     }
     private async Task ResizePersistentInputAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyResize request)
     {
@@ -309,6 +423,7 @@ public sealed partial class OpenCodePage
     {
         var owner = Interlocked.Exchange(ref _persistentAttachmentOwner, null); // Invalidates backend guard BEFORE queued painting/disposal.
         if (owner is null) return;
+        owner.Lifetime.Cancel();
         Volatile.Write(ref owner.UiInputAllowed, 0);
         owner.Controller.StateChanged -= owner.OnState;
         owner.Adapter.Dispose(); owner.View.Renderer.SuspendInput();

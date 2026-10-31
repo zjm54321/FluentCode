@@ -19,6 +19,7 @@ public sealed partial class OpenCodePage : Page
     private readonly OpenCodePersistentPtyView? _terminalView = null;
     private void InitializeShellTerminal() { }
     private void InitializeTerminalAppearance() { }
+    private void InitializeTerminalSwitcher() { }
     private void CloseTerminalView(bool restoreFocus = true) { }
     private void ClosePersistentPtyView(bool restoreFocus = true) => _ = restoreFocus;
     private sealed class AttachmentOwner { internal readonly OpenCodePersistentPtyView View = new(); }

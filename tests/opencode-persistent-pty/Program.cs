@@ -20,6 +20,13 @@ internal static class Program
         stream = new(); decoded.Clear();
         foreach (var value in Encoding.UTF8.GetBytes("before\u001b]52;c;c2VjcmV0\u001b\\after\u001b]0;title\aend")) decoded.Append(stream.Decode(new byte[] { value }));
         Check(decoded.ToString() == "beforeafter\u001b]0;title\aend", "fragmented OSC52 cannot overwrite the clipboard; other OSC is preserved");
+        var recording = File.ReadAllBytes(Path.Combine(args[0], "tests/opencode-persistent-pty/Fixtures/nushell-session.vt"));
+        stream = new(); decoded.Clear();
+        foreach (var value in recording) decoded.Append(stream.Decode(new byte[] { value }));
+        var replayed = decoded.ToString();
+        Check(replayed == Encoding.UTF8.GetString(recording).Replace("\0", string.Empty, StringComparison.Ordinal)
+            && replayed.Contains("\x1b[6n") && replayed.Contains("\x1b]133;") && replayed.Contains("\x1b]7;") && replayed.Contains("\x1b[?2004h"),
+            "recorded nushell VT decodes byte-fragmented without PTY LF conversion, stale query rewriting, OSC 133/7 or bracketed-paste loss");
         var context = new OpenCodePersistentPtyViewContext(Guid.NewGuid(), 4, "session", "pty-opaque");
         foreach (var phase in Enum.GetValues<OpenCodePersistentPtyPhase>())
         foreach (var role in Enum.GetValues<OpenCodePersistentPtyRole>())
@@ -33,8 +40,19 @@ internal static class Program
         }
         var promoted = new OpenCodePersistentPtyPresentation(context, "terminal", "/work", OpenCodePersistentPtyPhase.Live,
             OpenCodePersistentPtyRole.Controller, "当前连接", true, false);
-        Check(!promoted.Writable && promoted.NeedsInputConsent && promoted.Status == "控制权已分配，输入未启用"
-            && promoted.Role == OpenCodePersistentPtyRole.Controller, "automatic server promotion preserves actual role without claiming manual control");
+        Check(!promoted.Writable && promoted.NeedsInputConsent && promoted.CanActivate && promoted.Status == "运行中"
+            && promoted.TerminalState == OpenCodeTerminalState.Running && promoted.Role == OpenCodePersistentPtyRole.Controller,
+            "automatic server promotion preserves actual role, stays read-only and only offers the double-click activation");
+        Check((promoted with { ControlConflict = true }).TerminalState == OpenCodeTerminalState.Elsewhere
+            && (promoted with { ControlConflict = true }).Status == "其他客户端正在输入"
+            && (promoted with { Phase = OpenCodePersistentPtyPhase.Exited, Failed = true }).TerminalState == OpenCodeTerminalState.Failed
+            && !(promoted with { Phase = OpenCodePersistentPtyPhase.Exited }).CanActivate && !(promoted with { CanTakeControl = false }).CanActivate,
+            "one status component: running / elsewhere ring / failed; recorded or exited output can never be activated");
+        Check(OpenCodeTerminalNames.Title("终端", "/etc/profiles/per-user/ming/bin/nu") == "nu" && OpenCodeTerminalNames.Title("dev server", "nu") == "dev server"
+            && OpenCodeTerminalNames.Title("/mnt/c/repo", "nu") == "nu" && OpenCodeTerminalNames.Title(@"C:\repo", @"C:\Program Files\PowerShell\7\pwsh.exe") == "pwsh"
+            && OpenCodeTerminalNames.Title("", @"C:\x\pwsh.exe") == "pwsh"
+            && OpenCodeTerminalNames.ExitText(0) == "已完成 · 退出码 0" && OpenCodeTerminalNames.ExitText(101) == "失败 · 退出码 101",
+            "terminal titles prefer an explicit title, never a shell-reported path or flickering prompt helper, else the shell name; exit text follows the status component");
         Check(promoted.ConsentAction == "启用输入" && !promoted.ConsentExplanation.Contains("转为只读")
             && !promoted.ConsentExplanation.Contains("当前控制者"), "existing-controller confirmation does not falsely promise another controller will lose control");
         Check((promoted with { Role = OpenCodePersistentPtyRole.Observer }).ConsentAction == "接管终端"
@@ -46,6 +64,30 @@ internal static class Program
         var rendererSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
         Check(rendererSource.Contains("TerminalHostMode.ChildWindow") && !rendererSource.Contains("WebView2") && !rendererSource.Contains("CoreWebView")
             && rendererSource.Contains("TerminalTextReader.ReadSelectionAsync"), "persistent renderer uses the native child HWND and non-destructive selection, not WebView");
+        var nativeSource = File.ReadAllText(Path.Combine(args[0], "src/ThirdParty/WindowsTerminalControl/src/WindowsTerminalControl.WinUI/TerminalControl.cs"));
+        var wheel = nativeSource[nativeSource.IndexOf("private bool ScrollViewportWithMouseWheel", StringComparison.Ordinal)..nativeSource.IndexOf("private void OnGotFocus", StringComparison.Ordinal)];
+        Check(nativeSource.Contains("case NativeMethods.WmMouseWheel:") && nativeSource.Contains("ValueChanged += OnScrollBarValueChanged")
+            && wheel.Contains("_terminalScrollBar.Value = top") && wheel.Contains("_wheelDelta %= 120")
+            && !wheel.Contains("Resize(") && !wheel.Contains("WriteInput"), "child-HWND wheel scrolls clamped local history with high-resolution delta accumulation, never PTY input/resize");
+        var viewSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyView.cs"));
+        Check(!viewSource.Contains("适应窗口") && !viewSource.Contains("ConfirmTakeControlAsync") && !viewSource.Contains("接管终端\"")
+            && viewSource.Contains("TerminateRequested") && viewSource.Contains("internal void RequestEnd()") && viewSource.Contains("_confirm.Visibility = Visibility.Visible; _header.Visibility = Visibility.Collapsed;"),
+            "no Fit/takeover button/modal: ending a running terminal is confirmed in place of the header; close only detaches");
+        Check(viewSource.Contains("Renderer.SuppressAirspace(snapshot: true)") && viewSource.Contains("Grid.SetColumn(_scrollBar, 2)") && viewSource.Contains("Grid.SetColumn(Renderer, 1)")
+            && viewSource.Contains("ListExpanded ?? count >= 2"), "B2 card: menus freeze the terminal frame, scrollbar sits in its own gutter beside the HWND, list defaults collapsed for one terminal");
+        var renderer = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
+        Check(!renderer.Contains("InputIntentRequested") && renderer.Contains("else ReadOnlyInteraction?.Invoke();")
+            && renderer.Contains("if (click.ClickCount == 2 && _activatable)") && renderer.Contains("click.Handled = true;")
+            && renderer.Contains("_activatable = activatable && !_shellViewport"),
+            "two-click takeover: read-only keystrokes are dropped, a single click only focuses/selects, the second press of a double-click (not a drag) requests input and is not passed on as word selection");
+        var nativeClicks = nativeSource[nativeSource.IndexOf("private bool NativeLeftButton", StringComparison.Ordinal)..nativeSource.IndexOf("private bool Accelerator", StringComparison.Ordinal)];
+        Check(nativeClicks.Contains("GetDoubleClickTime()") && nativeClicks.Contains("_nativeUpNearDown") && nativeClicks.Contains("_swallowLeftUp = true")
+            && nativeSource.Contains("ScrollStateChanged?.Invoke(this, ScrollState);") && nativeSource.Contains("public bool ShowScrollBar"),
+            "vendored control reports double-click only within system time/distance after a non-drag release, and publishes scroll state for the host scrollbar");
+        var toolRowSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs"));
+        var shellBranch = toolRowSource[toolRowSource.IndexOf("private void RefreshInlineContent()", StringComparison.Ordinal)..];
+        Check(shellBranch.Contains("_inlineRegion.Child = null;") && !shellBranch.Contains("new OpenCodeShellTerminalPreview"),
+            "shell transcript keeps only its clickable task line, with no command/output preview");
         var pages = Path.Combine(args[0], "src/AIFrontend/Pages");
         var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(pages, "OpenCodePage.xaml"));
         System.Xml.Linq.XElement Named(string name) => xaml.Descendants().Single(e => e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == name));
@@ -61,6 +103,15 @@ internal static class Program
         Check(tree.Contains("LeftAgentTreeSlot.Children.Add(_agentTree);") && !tree.Contains("_persistentPtyInventoryView"),
             "left pane holds only the agent tree");
         var lifecycle = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPty.cs"));
+        var inventoryView = File.ReadAllText(Path.Combine(pages, "OpenCode/OpenCodePersistentPtyInventoryView.cs"));
+        Check(inventoryView.Contains("rows.Select(OpenCodeTerminalUi.Entry).Concat(_shellEntries") && inventoryView.Contains("if (!changed) return;")
+            && inventoryView.Contains("Reconcile in place") && inventoryView.Contains("class OpenCodeTerminalSwitcher"),
+            "one-row strip lists PTYs and agent commands once, shared with the overlay list, and reconciles chips in place during refresh");
+        Check(lifecycle.Contains("ActivationRequested += request => _ = ActivatePersistentInputAsync(owner, request)") && !lifecycle.Contains("AcquirePersistentInputAsync")
+            && lifecycle.Contains("if (owner.ControlConflict) await owner.Controller.TakeControlAsync(") && lifecycle.Contains("TryTakeControlAsync(owner.Lifetime.Token)"),
+            "activation acquires without force; only a known conflict turns the same deliberate gesture into the explicit takeover");
+        Check(lifecycle.Contains("if (request.IsTerminalResponse)") && !lifecycle.Contains("SendTerminalResponseAsync"),
+            "persistent daemon owns DSR/CPR replies; native live/checkpoint query responses never become duplicate PTY input");
         Check(!lifecycle.Contains("TerminalViewHost") && !lifecycle.Contains("ConversationSurface")
             && lifecycle.Contains("ShowPersistentPtyOverlay(view, ptyId);") && lifecycle.Contains("HidePersistentPtyOverlay(owner.View); owner.View.Renderer.Dispose();"),
              "persistent terminal uses the shared floating card without replacing conversation");

@@ -89,7 +89,7 @@ public sealed partial class OpenCodePage
         var context = _shellTerminalContext = new(Guid.NewGuid(), _terminalVersion, binding.SessionId, shell.Id);
         view.Renderer.UseShellViewport();
         _shellTerminalAdapter = new(view.Renderer, context);
-        view.DetachRequested += _ => CloseTerminalView();
+        view.DetachRequested += _ => { if (ReferenceEquals(_terminalView, view)) CloseTerminalView(); };
         view.CopySelectionRequested += selection =>
         {
             if (_shellTerminalContext != selection.Context) return;
@@ -118,6 +118,7 @@ public sealed partial class OpenCodePage
         _terminalState.Close();
         _shellTerminalAdapter = null; _shellTerminalContext = null;
         _shellTerminalRequest = null; _shellOutputApiId = null;
+        SyncShellTerminalEntries();
         if (_terminalView is { } view)
         {
             HidePersistentPtyOverlay(view);
@@ -133,7 +134,9 @@ public sealed partial class OpenCodePage
         if (_terminalView is not { } view || _shellTerminalContext is not { } context) return;
         view.Render(new(context, _terminalState.Command, _terminalState.Cwd,
             _terminalState.Running ? OpenCodePersistentPtyPhase.Live : OpenCodePersistentPtyPhase.Exited,
-            OpenCodePersistentPtyRole.Observer, _terminalState.TimeText, false, false, _terminalState.Notice, _terminalState.StatusText));
+            OpenCodePersistentPtyRole.Observer, _terminalState.TimeText, false, false, _terminalState.Notice, _terminalState.StatusText,
+            false, "智能体命令", _terminalState.Failed));
+        SyncShellTerminalEntries();
     }
 
     private async Task RenderShellTerminalAsync(CancellationToken ct)

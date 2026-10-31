@@ -27,11 +27,12 @@ public sealed class PersistentPtyController : IAsyncDisposable
     private long _consentGeneration;
     private long _renderedGeometryRevision;
     private long _epoch;
+    private TaskCompletionSource<bool>? _acquireRequest, _activeAcquire;
     public PersistentPtyState State => Volatile.Read(ref _state);
     public event Action<PersistentPtyState>? StateChanged;
 
     public PersistentPtyController(PersistentPtyOrigin origin, string ptyId, IPersistentPtyRenderer renderer,
-        Func<PersistentPtyOrigin, bool> isCurrent)
+        Func<PersistentPtyOrigin, bool> isCurrent, bool acquireOnStart = false)
     {
         ArgumentNullException.ThrowIfNull(origin); ArgumentNullException.ThrowIfNull(origin.Source);
         PersistentPtyValidation.Id(origin.SessionId); PersistentPtyValidation.Id(ptyId);
@@ -39,6 +40,7 @@ public sealed class PersistentPtyController : IAsyncDisposable
         _origin = origin; _ptyId = ptyId; _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _isCurrent = isCurrent ?? throw new ArgumentNullException(nameof(isCurrent));
         _stop = CancellationTokenSource.CreateLinkedTokenSource(origin.Source.RevocationToken);
+        if (acquireOnStart) _acquireRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     public Task RunAsync(CancellationToken cancellationToken = default)
@@ -66,6 +68,8 @@ public sealed class PersistentPtyController : IAsyncDisposable
         {
             while (!lifetime.IsCancellationRequested && Current())
             {
+                TaskCompletionSource<bool>? acquisition;
+                lock (_sync) { acquisition = _acquireRequest; _acquireRequest = null; _activeAcquire = acquisition; }
                 var epoch = new PersistentPtyEpoch(Interlocked.Increment(ref _epoch));
                 using var attempt = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
                 lock (_sync) { _attempt = attempt; _consent = _controlSent = _sentInput = false; _renderedGeometryRevision = 0; }
@@ -89,8 +93,10 @@ public sealed class PersistentPtyController : IAsyncDisposable
                     await _renderer.ResetAsync(epoch, snapshot.Info.Size, snapshot.Checkpoint.ToArray(), attempt.Token).ConfigureAwait(false);
                     RequireCurrent(attempt.Token);
                     connection = (PersistentPtyConnection)await client.ConnectPersistentPtyAsync(_origin.SessionId, _ptyId,
-                        snapshot.Info.Output.Tail, attempt.Token).ConfigureAwait(false);
+                        snapshot.Info.Output.Tail, attempt.Token, requestControl: acquisition is not null).ConfigureAwait(false);
                     connection.CanWrite = requireController => CanSend() && (!requireController || State.InputArmed);
+                    connection.CanResize = () => CanSend() && State.Phase == PersistentPtyPhase.Ready && State.Role == PersistentPtyRole.Controller
+                        && Volatile.Read(ref _consent) && Volatile.Read(ref _controlSent);
                     connection.TryStart = action => _origin.Source.TryExecute(_stop.Token, () =>
                     {
                         if (!Current()) throw new PersistentPtyException("input-disarmed");
@@ -129,8 +135,14 @@ public sealed class PersistentPtyController : IAsyncDisposable
                                     throw new PersistentPtyException("replay-offset-mismatch");
                                 // Every prior write/checkpoint has been awaited. This is a renderer ACK barrier.
                                 replayComplete = true;
+                                if (acquisition is not null && connection.Authority.ControllerId == connection.AttachmentId)
+                                {
+                                    lock (_sync) { _consent = _controlSent = true; _consentGeneration = connection.Authority.Generation; _requestedControlSize = null; }
+                                }
                                 Publish(State with { Phase = PersistentPtyPhase.Ready, FailureCode = null });
                                 AuthorityChanged();
+                                acquisition?.TrySetResult(State.InputArmed);
+                                lock (_sync) if (ReferenceEquals(_activeAcquire, acquisition)) _activeAcquire = null;
                                 break;
                             case PersistentPtyResized resized:
                                 RequireRendererGrid(resized.Size);
@@ -160,6 +172,7 @@ public sealed class PersistentPtyController : IAsyncDisposable
                     throw new PersistentPtyException("socket-closed");
                 }
                 catch (OperationCanceledException) when (lifetime.IsCancellationRequested || !Current()) { break; }
+                catch (OperationCanceledException) when (_acquireRequest is not null) { /* Intentional observer-to-controller attachment change. */ }
                 catch (Exception ex)
                 {
                     if (_sentInput) MarkInputUncertain();
@@ -170,12 +183,15 @@ public sealed class PersistentPtyController : IAsyncDisposable
                     }
                     var code = connection?.FailureCode ?? (ex is PersistentPtyException pty ? pty.Code : "attachment-failed");
                     Publish(State with { Phase = PersistentPtyPhase.Disconnected, InputArmed = false, FailureCode = code });
+                    acquisition?.TrySetResult(false);
                     if (code is "not-found" or "identity-mismatch" or "unauthorized") return;
                 }
                 finally
                 {
+                    acquisition?.TrySetResult(false);
                     lock (_sync)
                     {
+                        if (ReferenceEquals(_activeAcquire, acquisition)) _activeAcquire = null;
                         _consent = _controlSent = false;
                         if (ReferenceEquals(_connection, connection)) _connection = null;
                         if (ReferenceEquals(_attempt, attempt)) _attempt = null;
@@ -188,6 +204,7 @@ public sealed class PersistentPtyController : IAsyncDisposable
                     }
                 }
                 // Bounded backoff, observation only. Re-bootstrap uses a fresh snapshot, cursor and single-use ticket.
+                lock (_sync) if (_acquireRequest is not null) continue;
                 await Task.Delay(TimeSpan.FromMilliseconds(500), lifetime.Token).ConfigureAwait(false);
             }
         }
@@ -256,6 +273,48 @@ public sealed class PersistentPtyController : IAsyncDisposable
         }
     }
 
+    /// <summary>First user input may acquire an unowned terminal atomically, never displacing another controller.</summary>
+    public async Task<bool> TryTakeControlAsync(CancellationToken cancellationToken = default)
+    {
+        var connection = RequireConnection(armed: false);
+        Task<bool>? acquiring = null; bool own;
+        lock (_sync)
+        {
+            var authority = connection.Authority;
+            own = !authority.Dead && authority.ControllerId == connection.AttachmentId;
+            if (own)
+            {
+                _consent = _controlSent = true; _consentGeneration = authority.Generation;
+            }
+            else
+            {
+                var request = _acquireRequest ?? _activeAcquire;
+                if (request is null)
+                {
+                    request = _acquireRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _attempt?.Cancel(); // Reattach with role=controller&takeover=false; server decides atomically.
+                }
+                acquiring = request.Task;
+            }
+        }
+        if (own) { AuthorityChanged(); return true; }
+        return await acquiring!.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task WaitForInputReadyAsync(CancellationToken cancellationToken = default, PersistentPtySize? expectedSize = null)
+    {
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Changed(PersistentPtyState state)
+        {
+            if (state.InputArmed && (expectedSize is null || state.Info?.Size == expectedSize)) ready.TrySetResult();
+            else if (state.Phase != PersistentPtyPhase.Ready || state.Role != PersistentPtyRole.Controller)
+                ready.TrySetException(new PersistentPtyException("input-disarmed"));
+        }
+        StateChanged += Changed;
+        try { Changed(State); await ready.Task.WaitAsync(TimeSpan.FromSeconds(8), cancellationToken).ConfigureAwait(false); }
+        finally { StateChanged -= Changed; }
+    }
+
     public async ValueTask SendInputAsync(ReadOnlyMemory<byte> bytes, ushort cols, ushort rows, CancellationToken cancellationToken = default)
     {
         if (bytes.Length == 0) return;
@@ -280,7 +339,16 @@ public sealed class PersistentPtyController : IAsyncDisposable
     public async ValueTask ResizeAsync(ushort cols, ushort rows, CancellationToken cancellationToken = default)
     {
         var connection = RequireConnection(armed: true);
-        await connection.ResizeAsync(cols, rows, cancellationToken).ConfigureAwait(false);
+        var requested = new PersistentPtySize(cols, rows);
+        if (State.Info?.Size == requested) return;
+        lock (_sync) _requestedControlSize = requested;
+        Publish(State with { InputArmed = false }); // Keyboard input waits for the ordered resized checkpoint, not merely PUT completion.
+        try { await connection.ResizeAsync(cols, rows, cancellationToken).ConfigureAwait(false); }
+        catch
+        {
+            lock (_sync) if (ReferenceEquals(connection, _connection)) _requestedControlSize = null;
+            AuthorityChanged(); throw;
+        }
         // Canonical renderer geometry changes only when the ordered resized checkpoint is consumed.
     }
     public Task ReleaseControlAsync(CancellationToken cancellationToken = default)
@@ -340,6 +408,7 @@ public sealed class PersistentPtyController : IAsyncDisposable
         {
             if (_disposed) return;
             _disposed = true; _consent = _controlSent = false; run = _run;
+            _acquireRequest?.TrySetCanceled(); _activeAcquire?.TrySetCanceled();
         }
         _stop.Cancel();
         Publish(State with { Phase = PersistentPtyPhase.Closed, InputArmed = false }, allowStale: true);

@@ -1,0 +1,21 @@
+{
+  "source": "owned live OpenCode 2.1.4 nushell probe; test PTY deleted",
+  "size": {
+    "cols": 80,
+    "rows": 24
+  },
+  "bytes": 91673,
+  "sha256": "203c370922c5067aafc70e017571b8aae42a47e438f717ca8f2b2b2e607f2c07",
+  "commands": [
+    "ls",
+    "ls | table",
+    "long table",
+    "clear",
+    "arrow history",
+    "Ctrl+C"
+  ],
+  "rawLF": 243,
+  "cprQueries": 10,
+  "osc133": 414,
+  "osc7": 9
+}

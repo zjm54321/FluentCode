@@ -67,12 +67,16 @@ public sealed partial class TerminalControl : UserControl, IDisposable
     private bool _disposed;
     private bool _initialized;
     private bool _updatingScrollBar;
+    private int _wheelDelta;
     private TerminalSize? _fixedSize;
     private bool _fixedGridApplied;
     private NativeMethods.TerminalSizeNative _fixedPixels;
     private bool _hostVisible = true;
     private XamlRoot? _subscribedRoot;
     private TerminalAppearance _appearance = new();
+    private long _nativeDownTime;
+    private int _nativeDownX, _nativeDownY;
+    private bool _nativeUpNearDown, _swallowLeftUp, _swallowAccelerator;
 
     /// <summary>Live font, palette and cursor settings without replacing the terminal parser.</summary>
     public TerminalAppearance Appearance
@@ -137,7 +141,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
         _presenter.PointerCanceled += OnPointerCanceled;
         _presenter.PointerCaptureLost += OnPointerCaptureLost;
         _presenter.PointerExited += OnPointerExited;
-        _terminalScrollBar.Scroll += OnScroll;
+        _terminalScrollBar.ValueChanged += OnScrollBarValueChanged;
     }
 
     /// <summary>
@@ -269,6 +273,33 @@ public sealed partial class TerminalControl : UserControl, IDisposable
             Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
         }
     }
+
+    /// <summary>Hides the built-in scrollbar so a host can draw its own outside the native window.</summary>
+    public bool ShowScrollBar
+    {
+        get => _terminalScrollBar.Visibility == Visibility.Visible;
+        set => _terminalScrollBar.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Current local scrollback position.</summary>
+    public TerminalScrollState ScrollState
+        => new((int)_terminalScrollBar.Value, (int)_terminalScrollBar.ViewportSize, (int)(_terminalScrollBar.Maximum + _terminalScrollBar.ViewportSize));
+
+    /// <summary>Raised after native output or a local scroll moves the viewport or grows the buffer.</summary>
+    public event EventHandler<TerminalScrollState>? ScrollStateChanged;
+
+    /// <summary>Scrolls local history only; never writes to or resizes the connection.</summary>
+    public void ScrollTo(int viewTop)
+    {
+        if (!CanUseTerminal) return;
+        _terminalScrollBar.Value = Math.Clamp(viewTop, 0, Math.Max(0, (int)_terminalScrollBar.Maximum));
+    }
+
+    /// <summary>Primary-button presses on the native window, raised before the renderer sees them.</summary>
+    public event EventHandler<TerminalClickEventArgs>? TerminalClicked;
+
+    /// <summary>Host shortcuts: (key, ctrl, shift) returns true to consume the key instead of sending it to the terminal.</summary>
+    public Func<VirtualKey, bool, bool, bool>? AcceleratorFilter { get; set; }
 
     /// <inheritdoc/>
     public void Dispose()
@@ -698,14 +729,84 @@ public sealed partial class TerminalControl : UserControl, IDisposable
         {
             _updatingScrollBar = false;
         }
+        ScrollStateChanged?.Invoke(this, ScrollState);
     }
 
-    private void OnScroll(object sender, ScrollEventArgs e)
+    private void OnScrollBarValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         if (!_updatingScrollBar && CanUseTerminal)
         {
             NativeMethods.TerminalUserScroll(_terminal!, checked((int)e.NewValue));
+            RequestRedraw();
+            ScrollStateChanged?.Invoke(this, ScrollState);
         }
+    }
+
+    private bool _redrawPending;
+
+    /// <summary>
+    /// The native user-scroll export moves the viewport without scheduling a frame (WM_PAINT/InvalidateRect do not
+    /// help); the window kept showing the old rows until output or a layout change. A same-DPI notification is the
+    /// exported call that repaints everything; it is coalesced to one per dispatcher turn during drags and wheel bursts.
+    /// </summary>
+    private void RequestRedraw()
+    {
+        if (_redrawPending) return;
+        _redrawPending = true;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+        {
+            _redrawPending = false;
+            if (!CanUseTerminal) return;
+            NativeMethods.TerminalDpiChanged(_terminal!, GetDpi());
+            // A trailing repaint once the scroll settles: the first frame can still be composed from the old rows.
+            await System.Threading.Tasks.Task.Delay(80);
+            if (!_redrawPending && CanUseTerminal) NativeMethods.TerminalDpiChanged(_terminal!, GetDpi());
+        });
+    }
+
+    private bool NativeLeftButton(uint message, nint lParam)
+    {
+        var x = unchecked((short)(lParam.ToInt64() & 0xFFFF));
+        var y = unchecked((short)((lParam.ToInt64() >> 16) & 0xFFFF));
+        var dx = Math.Max(1, NativeMethods.GetSystemMetrics(NativeMethods.SystemMetricDoubleClickWidth) / 2);
+        var dy = Math.Max(1, NativeMethods.GetSystemMetrics(NativeMethods.SystemMetricDoubleClickHeight) / 2);
+        if (message == NativeMethods.WmLeftButtonUp)
+        {
+            _nativeUpNearDown = Math.Abs(x - _nativeDownX) <= dx && Math.Abs(y - _nativeDownY) <= dy;
+            if (_swallowLeftUp) { _swallowLeftUp = false; return true; }
+            return false;
+        }
+        var now = Environment.TickCount64;
+        // A double-click is the second press, near the first, within the system time, after a release that did not drag.
+        var second = message == NativeMethods.WmLeftButtonDoubleClick
+            || _nativeDownTime != 0 && now - _nativeDownTime <= NativeMethods.GetDoubleClickTime() && _nativeUpNearDown
+                && Math.Abs(x - _nativeDownX) <= dx && Math.Abs(y - _nativeDownY) <= dy;
+        _nativeDownTime = second ? 0 : now; _nativeDownX = x; _nativeDownY = y; _nativeUpNearDown = false;
+        var args = new TerminalClickEventArgs(second ? 2 : 1);
+        TerminalClicked?.Invoke(this, args);
+        if (args.Handled) _swallowLeftUp = true;
+        return args.Handled;
+    }
+
+    private bool Accelerator(ushort virtualKey)
+        => AcceleratorFilter is { } filter && filter((VirtualKey)virtualKey, NativeMethods.IsKeyDown((int)VirtualKey.Control), NativeMethods.IsKeyDown((int)VirtualKey.Shift));
+
+    private bool ScrollViewportWithMouseWheel(nuint wheelState)
+    {
+        // The standalone child HWND does not implement wheel-to-history scrolling.
+        // Use the same local-only API as the scrollbar; never resize or write to the PTY.
+        if (_terminalScrollBar.Maximum <= 0 || (wheelState & 0x000C) != 0
+            || !NativeMethods.SystemParametersInfo(0x0068, 0, out var lines, 0)) return false;
+        _wheelDelta += unchecked((short)(wheelState >> 16));
+        var steps = _wheelDelta / 120;
+        _wheelDelta %= 120;
+        if (steps != 0)
+        {
+            var distance = lines == uint.MaxValue ? _terminalScrollBar.LargeChange : lines;
+            var top = Math.Clamp(_terminalScrollBar.Value - steps * distance, 0, _terminalScrollBar.Maximum);
+            _terminalScrollBar.Value = top; // ValueChanged drives the native viewport; the API does not echo a callback.
+        }
+        return true;
     }
 
     private void OnGotFocus(object sender, RoutedEventArgs e)
@@ -760,6 +861,11 @@ public sealed partial class TerminalControl : UserControl, IDisposable
         var message = args.Message;
         switch (message.MessageId)
         {
+            case NativeMethods.WmMouseWheel:
+                if (ScrollViewportWithMouseWheel(message.WParam))
+                { args.Handled = true; args.Result = nint.Zero; }
+                break;
+
             case NativeMethods.WmSetFocus:
                 SetTerminalFocused(true);
                 break;
@@ -773,20 +879,29 @@ public sealed partial class TerminalControl : UserControl, IDisposable
                 FocusNativeTerminal();
                 break;
 
+            case NativeMethods.WmLeftButtonDown:
+            case NativeMethods.WmLeftButtonDoubleClick:
+            case NativeMethods.WmLeftButtonUp:
+                if (NativeLeftButton(message.MessageId, message.LParam)) { args.Handled = true; args.Result = nint.Zero; }
+                break;
+
             case NativeMethods.WmKeyDown:
             case NativeMethods.WmSystemKeyDown:
                 UnpackKeyMessage(message.WParam, message.LParam, out var virtualKey, out var scanCode, out var flags);
+                if (Accelerator(virtualKey)) { _swallowAccelerator = true; args.Handled = true; args.Result = nint.Zero; break; }
                 NativeMethods.TerminalSendKeyEvent(_terminal!, virtualKey, scanCode, flags, true);
                 break;
 
             case NativeMethods.WmKeyUp:
             case NativeMethods.WmSystemKeyUp:
                 UnpackKeyMessage(message.WParam, message.LParam, out virtualKey, out scanCode, out flags);
+                if (_swallowAccelerator && virtualKey is not (0x10 or 0x11 or 0x12)) { _swallowAccelerator = false; args.Handled = true; args.Result = nint.Zero; break; }
                 NativeMethods.TerminalSendKeyEvent(_terminal!, virtualKey, scanCode, flags, false);
                 break;
 
             case NativeMethods.WmChar:
             case NativeMethods.WmSystemChar:
+                if (_swallowAccelerator) { args.Handled = true; args.Result = nint.Zero; break; }
                 UnpackKeyMessage(message.WParam, message.LParam, out virtualKey, out scanCode, out flags);
                 NativeMethods.TerminalSendCharEvent(_terminal!, unchecked((char)virtualKey), scanCode, flags);
                 break;
@@ -819,6 +934,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
         }
 
         var status = e.KeyStatus;
+        if (Accelerator(checked((ushort)e.Key))) { e.Handled = true; return; }
         NativeMethods.TerminalSendKeyEvent(_terminal!, checked((ushort)e.Key), checked((ushort)status.ScanCode), GetKeyFlags(status), true);
         e.Handled = true;
     }
@@ -1159,6 +1275,10 @@ public sealed partial class TerminalControl : UserControl, IDisposable
     private static class NativeMethods
     {
         private const string TerminalControlLibrary = "Microsoft.Terminal.Control.dll";
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool SystemParametersInfo(uint action, uint parameter, out uint value, uint flags);
 
         internal const int DwmWindowAttributeCloak = 13;
         internal const int ShowWindowNoActivate = 4;

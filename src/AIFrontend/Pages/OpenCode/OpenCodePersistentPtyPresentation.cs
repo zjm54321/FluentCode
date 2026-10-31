@@ -8,8 +8,18 @@ internal enum OpenCodePersistentPtyPhase { Unavailable, Connecting, Replaying, L
 internal enum OpenCodePersistentPtyRole { Observer, Controller }
 internal sealed record OpenCodePersistentPtyPresentation(OpenCodePersistentPtyViewContext Context, string Title,
     string? Directory, OpenCodePersistentPtyPhase Phase, OpenCodePersistentPtyRole Role, string? ControllerLabel,
-    bool CanTakeControl, bool InputAuthorized, string? Notice = null, string? OutputStatus = null)
+    bool CanTakeControl, bool InputAuthorized, string? Notice = null, string? OutputStatus = null, bool ControlConflict = false,
+    string? Source = null, bool Failed = false)
 {
+    /// <summary>Read-only now, but a double-click on the terminal may acquire input here (never for recorded shell output).</summary>
+    internal bool CanActivate => Phase == OpenCodePersistentPtyPhase.Live && CanTakeControl && !Writable;
+    internal OpenCodeTerminalState TerminalState => Phase switch
+    {
+        OpenCodePersistentPtyPhase.Connecting or OpenCodePersistentPtyPhase.Replaying => OpenCodeTerminalState.Connecting,
+        OpenCodePersistentPtyPhase.Live => ControlConflict ? OpenCodeTerminalState.Elsewhere : OpenCodeTerminalState.Running,
+        OpenCodePersistentPtyPhase.Exited => Failed ? OpenCodeTerminalState.Failed : OpenCodeTerminalState.Done,
+        _ => OpenCodeTerminalState.Disconnected,
+    };
     internal bool Writable => Phase == OpenCodePersistentPtyPhase.Live && Role == OpenCodePersistentPtyRole.Controller && InputAuthorized;
     internal bool NeedsInputConsent => Phase == OpenCodePersistentPtyPhase.Live && CanTakeControl
         && (Role == OpenCodePersistentPtyRole.Observer || !InputAuthorized);
@@ -21,16 +31,40 @@ internal sealed record OpenCodePersistentPtyPresentation(OpenCodePersistentPtyVi
     {
         OpenCodePersistentPtyPhase.Connecting => "正在连接",
         OpenCodePersistentPtyPhase.Replaying => "正在恢复终端画面",
-        OpenCodePersistentPtyPhase.Live => Role == OpenCodePersistentPtyRole.Controller
-            ? InputAuthorized ? "你正在控制" : "控制权已分配，输入未启用" : "只读观察",
+        OpenCodePersistentPtyPhase.Live => ControlConflict ? "其他客户端正在输入" : "运行中",
         OpenCodePersistentPtyPhase.Disconnected => "连接已断开",
-        OpenCodePersistentPtyPhase.Exited => "终端已退出",
+        OpenCodePersistentPtyPhase.Exited => "已退出",
         _ => "终端不可用",
     });
 }
-internal sealed record OpenCodePersistentPtyInput(OpenCodePersistentPtyViewContext Context, ReadOnlyMemory<byte> Bytes);
+internal enum OpenCodeTerminalState { Connecting, Running, Done, Failed, Elsewhere, Disconnected }
+internal enum OpenCodeTerminalEntryKind { Pty, Shell }
+/// <summary>One terminal in the right-panel strip and the overlay list: persistent PTYs and agent commands alike.</summary>
+internal sealed record OpenCodeTerminalEntry(OpenCodeTerminalEntryKind Kind, string Id, string Title, string Source, string? Cwd,
+    OpenCodeTerminalState State, string StateText, bool CanEnd);
+internal sealed record OpenCodePersistentPtyInput(OpenCodePersistentPtyViewContext Context, ReadOnlyMemory<byte> Bytes, bool IsTerminalResponse = false);
 internal sealed record OpenCodePersistentPtyResize(OpenCodePersistentPtyViewContext Context, int Columns, int Rows);
 internal sealed record OpenCodePersistentPtySelection(OpenCodePersistentPtyViewContext Context, string Text);
+
+internal static class OpenCodeTerminalNames
+{
+    /// <summary>
+    /// Display title: an explicit title, else the shell's file name. Shell-reported paths (OSC 0/2) are skipped — the path is
+    /// already the subtitle — and so is the foreground process, which flips to prompt helpers (starship) on every prompt.
+    /// </summary>
+    internal static string Title(string? title, string? command)
+    {
+        var pathLike = title is { } t && (t.StartsWith('/') || t.StartsWith('~') || t.Contains(":\\", StringComparison.Ordinal));
+        if (!string.IsNullOrWhiteSpace(title) && title != "终端" && !pathLike) return title;
+        var name = (command ?? string.Empty).Replace('\\', '/');
+        name = name[(name.LastIndexOf('/') + 1)..];
+        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
+        return name.Length == 0 ? "终端" : name;
+    }
+
+    internal static string ExitText(int? exitCode)
+        => exitCode is { } code ? (code == 0 ? "已完成 · 退出码 0" : "失败 · 退出码 " + code) : "已退出";
+}
 
 internal static class OpenCodePersistentPtyRendererPolicy
 {

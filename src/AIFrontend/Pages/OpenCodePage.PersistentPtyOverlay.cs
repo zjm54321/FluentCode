@@ -10,6 +10,7 @@ namespace AIFrontend.Pages;
 public sealed partial class OpenCodePage
 {
     private OpenCodePersistentPtyOverlay? _persistentPtyOverlay;
+    private OpenCodeTerminalSwitcher? _terminalSwitcher;
 
     private void InitializePersistentPtyPanel()
     {
@@ -21,9 +22,17 @@ public sealed partial class OpenCodePage
         var overlay = _persistentPtyOverlay = new OpenCodePersistentPtyOverlay();
         PersistentPtyOverlayHost.Children.Add(overlay);
         overlay.CloseRequested += (_, _) => CloseTerminalOverlay();
+        _terminalSwitcher = new OpenCodeTerminalSwitcher(_persistentPtyInventoryView);
+        InitializeTerminalSwitcher();
         PageRoot.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, key) =>
         {
+            // Ctrl+` shows or hides the terminal card from anywhere on the page (inside the HWND the view handles it).
+            if (key.Key == (Windows.System.VirtualKey)192 && Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down) && _persistentPtyInventoryView.Button.Visibility == Visibility.Visible)
+            { key.Handled = true; _persistentPtyInventoryView.ToggleOverlay(); return; }
             if (key.Key != Windows.System.VirtualKey.Escape || PersistentPtyOverlayHost.Visibility != Visibility.Visible) return;
+            // Find bar and end confirmation take Esc first.
+            if (_persistentAttachmentOwner?.View.ConsumesEscape == true || _terminalView?.ConsumesEscape == true) return;
             // Esc inside the terminal belongs to the terminal program (vim, less, …).
             if (_persistentAttachmentOwner is { } owner && (owner.View.Renderer.HasTerminalFocus
                 || IsWithin(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject, owner.View.Renderer))) return;
@@ -52,6 +61,8 @@ public sealed partial class OpenCodePage
         if (_persistentPtyOverlay is not { } overlay) return;
         foreach (var workspace in _browserWorkspaces.Values) workspace.HideOverlay();
         overlay.Content = view;
+        if (_terminalSwitcher is { } switcher) view.SetSwitcher(switcher);
+        view.StepRequested += _persistentPtyInventoryView.Step;
         view.Renderer.SetAirspaceLayers(PermissionOverlayHost, QuestionOverlayHost, BrowserOverlayHost);
         view.Renderer.SetPresentationVisible(true);
         _persistentPtyInventoryView.SetOpen(ptyId);

@@ -12,13 +12,17 @@ public static class TerminalTextReader
 {
     /// <summary>Reads selected text without changing the native selection.</summary>
     public static Task<string> ReadSelectionAsync(nint window, int maximumLength = 262144)
-        => Task.Run(() => Read(window, maximumLength, false));
+        => Task.Run(() => Read(window, maximumLength, 0));
 
     /// <summary>Reads the native document for diagnostics, without changing parser or viewport state.</summary>
     public static Task<string> ReadDocumentAsync(nint window, int maximumLength = 8388608)
-        => Task.Run(() => Read(window, maximumLength, true));
+        => Task.Run(() => Read(window, maximumLength, 1));
 
-    private static unsafe string Read(nint window, int maximumLength, bool document)
+    /// <summary>Reads visible native text ranges for scroll diagnostics, without moving the viewport.</summary>
+    public static Task<string> ReadViewportAsync(nint window, int maximumLength = 8388608)
+        => Task.Run(() => Read(window, maximumLength, 2));
+
+    private static unsafe string Read(nint window, int maximumLength, int mode)
     {
         if (window == 0 || maximumLength <= 0) throw new ArgumentOutOfRangeException(nameof(window));
         var initialized = CoInitializeEx(0, 0); // COINIT_MULTITHREADED; all pointers stay on this worker.
@@ -36,14 +40,14 @@ public static class TerminalTextReader
             var textPatternIid = new Guid("32EBA289-3583-42C9-9C59-3B6D9A1E9B6A");
             var getPattern = (delegate* unmanaged[Stdcall]<nint, int, Guid*, nint*, int>)Slot(element, 14);
             Marshal.ThrowExceptionForHR(getPattern(element, 10014, &textPatternIid, &pattern));
-            if (document)
+            if (mode == 1)
             {
                 var getDocument = (delegate* unmanaged[Stdcall]<nint, nint*, int>)Slot(pattern, 7);
                 Marshal.ThrowExceptionForHR(getDocument(pattern, &range));
             }
             else
             {
-                var getSelection = (delegate* unmanaged[Stdcall]<nint, nint*, int>)Slot(pattern, 5);
+                var getSelection = (delegate* unmanaged[Stdcall]<nint, nint*, int>)Slot(pattern, mode == 2 ? 6 : 5);
                 Marshal.ThrowExceptionForHR(getSelection(pattern, &ranges));
                 var getLength = (delegate* unmanaged[Stdcall]<nint, int*, int>)Slot(ranges, 3);
                 var length = 0;
