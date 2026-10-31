@@ -214,7 +214,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         };
         _row.Click += (_, _) => TogglePinnedDetail();
         // A8: capture the entry point immediately (not on first move) so the preview centres on the pointer.
-        _row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); HoverEnterDetail(); };
+        // Touch: a finger entering is a press or the start of a pan, not a hover — tap opens the detail instead.
+        _row.PointerEntered += (_, e) => { if (OpenCodeTouchInput.IsTouch(e)) return; OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); HoverEnterDetail(); };
         _row.PointerExited += (_, _) => HoverExitDetail();
         _row.KeyDown += OnRowKeyDown;
         _row.Unloaded += (_, _) => CloseDetailIfShowing();

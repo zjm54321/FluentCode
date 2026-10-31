@@ -89,7 +89,8 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource, I
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
         };
         _row.Click += (_, _) => OpenDetail();
-        _row.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); OpenCodeToolDetailPopup.Shared.HoverEnter(this); };
+        // Touch never starts the hover preview (a pan would leave it open); tap opens the detail.
+        _row.PointerEntered += (_, e) => { if (OpenCodeTouchInput.IsTouch(e)) return; OpenCodeToolDetailPopup.Shared.TrackPointer(_row, e); OpenCodeToolDetailPopup.Shared.HoverEnter(this); };
         _row.PointerExited += (_, _) => OpenCodeToolDetailPopup.Shared.HoverExit(this);
         _row.KeyDown += OnRowKeyDown;
         _row.Unloaded += (_, _) => OpenCodeToolDetailPopup.Shared.CloseIf(this);

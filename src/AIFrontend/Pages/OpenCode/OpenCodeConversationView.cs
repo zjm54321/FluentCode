@@ -1055,6 +1055,22 @@ public sealed class OpenCodeConversationView : StackPanel
 
     internal Action<OpenCodeToolDetailOptions, string?, Func<string, bool>>? ConfigureToolDetail { get; set; }
 
+    /// <summary>Main page supplies busy/draft/revert facts; null (child or read-only windows) hides 撤回 / 恢复.</summary>
+    internal Func<OpenCodeRollbackContext?>? RollbackContext { get; set; }
+
+    /// <summary>Message menu 撤回 (true = /undo) or 恢复 (false = /redo); the page runs the confirmed native flow.</summary>
+    internal event EventHandler<bool>? RollbackRequested;
+
+    private void RequestRollback(bool undo) => RollbackRequested?.Invoke(this, undo);
+
+    private OpenCodeRollbackMenuState? RollbackMenuState(string? userKey)
+    {
+        if (RollbackContext?.Invoke() is not { } context) return null;
+        var target = userKey is not null && OpenCodeMessageRollbackPolicy.IsUndoTarget(
+            _entries.Select(entry => (entry.Key, entry.MessageType)).ToList(), userKey);
+        return OpenCodeMessageRollbackPolicy.Evaluate(context, target);
+    }
+
     /// <summary>Selected-session authoritative turn activity, not an individual message/tool completion.
     /// Call after applying a snapshot; null restores message-based inference. ClearMessages resets the binding.</summary>
     public void SetCurrentTurnActivity(bool? active)
@@ -1981,12 +1997,17 @@ public sealed class OpenCodeConversationView : StackPanel
         var bubble = new OpenCodeUserBubbleView(presenter.Element, delivered: true, attachments: attachments.Element);
         if (_rowExpansion.TryGetValue(key, out var expanded)) bubble.SetExpanded(expanded);
         bubble.Element.Margin = new Thickness(0, 6, 0, 6);
+        var text = message.Text;
+        // One menu for right-click, menu key and touch press-and-hold: copy, 复制整段, 撤回 / 恢复.
+        var menu = OpenCodeMessageContextMenu.Create(() => text, () => RollbackMenuState(key), RequestRollback);
+        presenter.TextContextFlyout = menu;
+        bubble.Element.ContextFlyout = menu;
 
         return new Entry
         {
             Key = key,
             Element = bubble.Element,
-            Update = m => { presenter.Render(m.Text, OpenCodeRichTextStyle.Body); attachments.Update(m); },
+            Update = m => { text = m.Text; presenter.Render(m.Text, OpenCodeRichTextStyle.Body); attachments.Update(m); },
             Dispose = () => { _rowExpansion[key] = bubble.IsExpanded; attachments.Dispose(); },
         };
     }
@@ -2860,19 +2881,23 @@ public sealed class OpenCodeConversationView : StackPanel
             {
                 var presenter = new OpenCodeRichTextPresenter();
                 presenter.Render(part.Text, OpenCodeRichTextStyle.Body);
+                var text = part.Text;
+                var menu = OpenCodeMessageContextMenu.Create(() => text, () => RollbackMenuState(null), RequestRollback);
+                presenter.TextContextFlyout = menu;
                 return new PartEntry
                 {
                     Key = partKey,
                     Kind = kind,
                     Element = new Border
                     {
+                        ContextFlyout = menu,
                         Child = presenter.Element, Padding = new Thickness(12, 10, 12, 10),
                         CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
                         // MB1: assistant text owns a solid theme surface rather than showing Mica through its card.
                         Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SolidBackgroundFillColorTertiaryBrush"),
                             ("BorderBrush", OpenCodeInteractionUi.CardStrokeBrushKey)),
                     },
-                    Update = (p, _, _) => presenter.Render(p.Text, OpenCodeRichTextStyle.Body),
+                    Update = (p, _, _) => { text = p.Text; presenter.Render(p.Text, OpenCodeRichTextStyle.Body); },
                 };
             }
 

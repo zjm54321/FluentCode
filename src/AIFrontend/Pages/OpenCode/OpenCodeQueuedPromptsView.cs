@@ -172,7 +172,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
 
     private FrameworkElement CreateRow(string id, string text, string delivery, bool withdrawable, bool changeable, int number)
     {
-        var grid = new Grid { ColumnSpacing = 12 };
+        // Transparent (not null) background: the whole row, gaps included, is the touch target that reveals actions.
+        var grid = new Grid { ColumnSpacing = 12, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -230,15 +231,13 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         Grid.SetColumn(deliveryControl, 2);
         grid.Children.Add(deliveryControl);
 
-        void ShowActions(double opacity)
+        // Hidden actions are not hit-testable, so a finger can never fire an invisible 撤回; the first touch
+        // on the row reveals (and keeps) them. Keyboard focus still reaches them and reveals them.
+        OpenCodeTouchInput.WireReveal(grid, visible =>
         {
-            foreach (var child in grid.Children) if (child is Button action) action.Opacity = opacity;
-        }
-        ShowActions(0);
-        grid.PointerEntered += (_, _) => ShowActions(1);
-        grid.PointerExited += (_, _) => ShowActions(0);
-        grid.GotFocus += (_, _) => ShowActions(1);
-        grid.LostFocus += (_, _) => ShowActions(0);
+            foreach (var child in grid.Children)
+                if (child is Button action) { action.Opacity = visible ? 1 : 0; action.IsHitTestVisible = visible; }
+        });
 
         AutomationProperties.SetAutomationId(grid, "OpenCodeQueuedPrompt." + id);
         AutomationProperties.SetName(grid, text + "，" + DescribeDelivery(delivery));

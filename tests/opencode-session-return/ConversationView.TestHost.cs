@@ -54,10 +54,29 @@ namespace AIFrontend.Pages.OpenCode
 
     public enum OpenCodeRichTextStyle { Body = 0, Reasoning = 1 }
 
+    // Inert transcript message menu: records the production delegates so tests can open it headlessly.
+    internal sealed class OpenCodeMessageMenuProbe : Microsoft.UI.Xaml.Controls.MenuFlyout
+    {
+        internal Func<string?> WholeText { get; init; } = () => null;
+        internal Func<OpenCodeRollbackMenuState?>? Rollback { get; init; }
+        internal Action<bool>? RollbackRequested { get; init; }
+    }
+    internal static class OpenCodeMessageContextMenu
+    {
+        internal static OpenCodeMessageMenuProbe Create(Func<string?> wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
+            Action<bool>? rollbackRequested = null)
+        {
+            var menu = new OpenCodeMessageMenuProbe { WholeText = wholeText, Rollback = rollback, RollbackRequested = rollbackRequested };
+            ConversationViewTestProbe.Record("Construct", menu);
+            return menu;
+        }
+    }
+
     public sealed class OpenCodeRichTextPresenter
     {
         public FrameworkElement Element { get; } = new StackPanel();
         public OpenCodeRichTextPresenter() => ConversationViewTestProbe.Record("Construct", this, Element);
+        internal Microsoft.UI.Xaml.Controls.Flyout? TextContextFlyout { get; set; }
         public void Render(string? source, OpenCodeRichTextStyle style)
             => ConversationViewTestProbe.Record("Render", this, source, style);
     }

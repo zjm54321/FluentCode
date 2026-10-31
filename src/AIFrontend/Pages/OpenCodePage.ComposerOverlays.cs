@@ -55,6 +55,7 @@ public sealed partial class OpenCodePage
         QueuedPromptsHost.Children.Add(_queuedPromptsView);
         InitializeQueuedWithdraw();
         InitializePendingDeliveryActions();
+        InitializeTranscriptMenu();
         _conversationView.BindingCleared += (_, _) => ClearSteerReceipts();
         _conversationView.PendingSteerWithdrawRequested += (_, id) => _queuedPromptsView.RequestWithdraw(id);
         _conversationView.PendingSteerDeliveryChangeRequested += (_, request) => _queuedPromptsView.RequestDeliveryChange(request);

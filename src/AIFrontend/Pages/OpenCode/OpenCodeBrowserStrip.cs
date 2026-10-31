@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode.Browser;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -246,10 +247,26 @@ internal sealed class OpenCodeBrowserStrip : Grid
             _leave.Tick += (_, _) => { _leave.Stop(); _tooltip.IsOpen = false; };
             _tooltip.PointerEntered += (_, _) => _leave.Stop();
             _tooltip.PointerExited += (_, _) => _leave.Start();
-            PointerEntered += (_, _) => { _leave.Stop(); _close.Visibility = Visibility.Visible; Translation = new System.Numerics.Vector3(0, -2, 0); _hover.Start(); };
-            PointerExited += (_, _) => { _hover.Stop(); _leave.Start(); _close.Visibility = Visibility.Collapsed; Translation = default; };
-            GotFocus += (_, _) => { _close.Visibility = Visibility.Visible; _hover.Start(); };
-            LostFocus += (_, _) => { _hover.Stop(); _leave.Start(); _close.Visibility = Visibility.Collapsed; };
+            // Mouse: hover lifts the tile, reveals × and opens the preview after 400ms. Touch/pen: the first
+            // contact latches × visible (a finger lifting is not "leaving"); press-and-hold opens the menu below.
+            OpenCodeTouchInput.WireReveal(this, visible => _close.Visibility = visible ? Visibility.Visible : Visibility.Collapsed);
+            PointerEntered += (_, e) =>
+            {
+                if (e.Pointer.PointerDeviceType != PointerDeviceType.Mouse) return;
+                _leave.Stop(); Translation = new System.Numerics.Vector3(0, -2, 0); _hover.Start();
+            };
+            PointerExited += (_, e) =>
+            {
+                if (e.Pointer.PointerDeviceType != PointerDeviceType.Mouse) return;
+                _hover.Stop(); _leave.Start(); Translation = default;
+            };
+            GotFocus += (_, _) => _hover.Start();
+            LostFocus += (_, _) => { _hover.Stop(); _leave.Start(); };
+            var showItem = new MenuFlyoutItem { Text = "显示页面", Icon = new FontIcon { Glyph = "\uE8A7" } };
+            showItem.Click += (_, _) => show();
+            var closeItem = new MenuFlyoutItem { Text = "关闭页面", Icon = new FontIcon { Glyph = "\uE8BB" } };
+            closeItem.Click += (_, _) => page.Close();
+            ContextFlyout = new MenuFlyout { Items = { showItem, closeItem } };
             AddHandler(PointerPressedEvent, new PointerEventHandler((_, e) =>
             {
                 if (!e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed) return;

@@ -105,6 +105,17 @@ public sealed class OpenCodeRichTextPresenter
     /// <summary>最近一次 <see cref="Render"/> 是否因转换异常处于明示纯文本降级态（供诊断/静态验证）。</summary>
     public bool IsPlainFallback { get; private set; }
 
+    /// <summary>
+    /// Optional message menu that replaces the default text flyout on every selectable text this presenter
+    /// renders (re-applied after each render). Null keeps the platform TextCommandBarFlyout.
+    /// </summary>
+    internal Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase? TextContextFlyout
+    {
+        get => _textContextFlyout;
+        set { _textContextFlyout = value; if (value is not null) OpenCodeMessageContextMenu.Apply(_root, value); }
+    }
+    private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase? _textContextFlyout;
+
     /// <summary>创建空的呈现器；通过 <see cref="Render"/> 填充内容。</summary>
     public OpenCodeRichTextPresenter()
     {
@@ -190,6 +201,7 @@ public sealed class OpenCodeRichTextPresenter
         {
             _root.Children.Add(block);
         }
+        if (_textContextFlyout is { } menu) OpenCodeMessageContextMenu.Apply(_root, menu);
         ConstrainBlocks();
     }
 
@@ -575,6 +587,7 @@ public sealed class OpenCodeRichTextPresenter
             IsTextSelectionEnabled = true,
         };
         AppFonts.Apply(code, AppFontSlot.Monospace);
+        OpenCodeMessageContextMenu.MarkCode(code, source);
 
         var language = CodeLanguages.TryGetValue(pre, out var hint) ? hint.Name : "text";
         OpenCodeCodePalette.BindText(code, OpenCodeDetailTextPolicy.CodeDisplayText(source), language);

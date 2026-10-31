@@ -531,6 +531,11 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     internal OpenCodeComposerClientActionTicket? TryTakeModelPickerAction(OpenCodeComposerToken expected)
         => TryTakeDirectClientAction(expected, OpenCodeComposerClientActionKind.ChooseModel);
 
+    // Transcript message menu 撤回 / 恢复: the same fenced /undo and /redo capability, without typing a slash
+    // command. Undo keeps its empty-draft eligibility because accepted undo writes the prompt back into it.
+    internal OpenCodeComposerClientActionTicket? TryTakeRollbackAction(OpenCodeComposerToken expected, bool undo)
+        => TryTakeDirectClientAction(expected, undo ? OpenCodeComposerClientActionKind.Undo : OpenCodeComposerClientActionKind.Redo);
+
     private OpenCodeComposerClientActionTicket? TryTakeDirectClientAction(OpenCodeComposerToken expected,
         OpenCodeComposerClientActionKind kind)
     {

@@ -132,8 +132,9 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         AutomationProperties.SetHelpText(_chip, _completionNotice ? "按 Enter 打开子会话，悬停查看结果" : "悬停或按 Enter 查看完整内容，Esc 关闭");
         _chip.Click += (_, _) => OpenCodeToolDetailPopup.Shared.TogglePinned(Source);
         // A8: capture the entry point immediately (not on first move) so the preview centres on the pointer.
-        _chip.PointerEntered += (_, e) => { OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e); OpenCodeToolDetailPopup.Shared.HoverEnter(Source); };
-        _chip.PointerMoved += (_, e) => OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e);
+        // Touch never starts the hover preview (a pan would leave it open); tap opens the pinned detail.
+        _chip.PointerEntered += (_, e) => { if (OpenCodeTouchInput.IsTouch(e)) return; OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e); OpenCodeToolDetailPopup.Shared.HoverEnter(Source); };
+        _chip.PointerMoved += (_, e) => { if (!OpenCodeTouchInput.IsTouch(e)) OpenCodeToolDetailPopup.Shared.TrackPointer(_chip, e); };
         _chip.PointerExited += (_, _) => OpenCodeToolDetailPopup.Shared.HoverExit(Source);
         _chip.KeyDown += OnKeyDown;
         _chip.Unloaded += (_, _) => { OpenCodeToolDetailPopup.Shared.CloseIf(this); OpenCodeToolDetailPopup.Shared.CloseIf(_childSource); };
