@@ -92,7 +92,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
         _card.PointerExited += (_, _) => { _pointerInCard = false; ScheduleClose(); };
         _card.Tapped += (_, e) => { e.Handled = true; Invoke(_cardTurn); };
         _popup.Child = _card;
-        _popup.ChildTransitions = new TransitionCollection { new PopupThemeTransition { FromHorizontalOffset = -8, FromVerticalOffset = 0 } };
+        AIFrontend.Motion.FluentMotion.BindTransitions(_popup, transitions => _popup.ChildTransitions = transitions, () => new TransitionCollection { new PopupThemeTransition { FromHorizontalOffset = -8, FromVerticalOffset = 0 } });
         Children.Add(_popup);
 
         PointerEntered += OnPointerMoved;

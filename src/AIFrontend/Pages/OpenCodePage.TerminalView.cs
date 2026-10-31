@@ -127,7 +127,7 @@ public sealed partial class OpenCodePage
         SyncShellTerminalEntries();
         if (_terminalView is { } view)
         {
-            HidePersistentPtyOverlay(view);
+            HidePersistentPtyOverlay(view, animate: restoreFocus);
             view.Renderer.Dispose();
             _terminalView = null;
         }

@@ -320,11 +320,34 @@ internal sealed class OpenCodePersistentPtyView : Grid
         ToolTipService.SetToolTip(_menu, new ToolTip { Content = label, Placement = PlacementMode.Top });
     }
 
+    private IDisposable? _listMotionLease;
+
+    /// <summary>
+    /// ☰ list: slides in from the left (X −24→0 plus fade, 250ms) and out (X −12 plus fade, 167ms, column collapses after).
+    /// The column change moves the native HWND, which cannot animate or sit under the sliding list, so it stays hidden
+    /// (terminal-coloured well shows) for the duration and returns once bounds are stable again.
+    /// </summary>
     private void SetListExpanded(bool expanded)
     {
         if (_switcher is null) return;
         ListExpanded = expanded; // One column change: the terminal is re-measured once after layout (renderer debounce).
-        PaintList();
+        _listMotionLease?.Dispose(); _listMotionLease = null;
+        if (!AIFrontend.Motion.FluentMotion.Enabled) { AIFrontend.Motion.FluentMotion.Settle(_listHost); PaintList(); return; }
+        var lease = _listMotionLease = Renderer.SuppressAirspace();
+        void Release() { if (ReferenceEquals(_listMotionLease, lease)) _listMotionLease = null; lease.Dispose(); }
+        if (expanded)
+        {
+            PaintList();
+            AIFrontend.Motion.FluentMotion.SlideFadeIn(_listHost, new System.Numerics.Vector3(-24, 0, 0), completed: Release);
+            return;
+        }
+        if (_listHost.Visibility != Visibility.Visible) { PaintList(); Release(); return; }
+        AIFrontend.Motion.FluentMotion.SlideFadeOut(_listHost, new System.Numerics.Vector3(-12, 0, 0), completed: () =>
+        {
+            PaintList();
+            AIFrontend.Motion.FluentMotion.Settle(_listHost);
+            Release();
+        });
     }
 
     internal void Render(OpenCodePersistentPtyPresentation? model)

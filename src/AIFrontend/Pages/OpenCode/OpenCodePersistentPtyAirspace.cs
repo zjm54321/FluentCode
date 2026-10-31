@@ -25,7 +25,9 @@ internal sealed class OpenCodePersistentPtyAirspace : IDisposable
     private readonly KeyEventHandler _beforeKey;
     private Rect _bounds;
     private int _stableFrames;
-    private long _quietUntil = Environment.TickCount64 + 600; // card entrance transition
+    // No fixed entrance delay: the floating card holds Renderer.SuppressAirspace() until its entrance animation
+    // reports completion (OpenCodePage.ShowPersistentPtyOverlay); bounds must then still be stable for 3 frames.
+    private long _quietUntil;
     private bool _moving, _disposed, _restoreFocus;
     internal bool IsVisible { get; private set; }
 

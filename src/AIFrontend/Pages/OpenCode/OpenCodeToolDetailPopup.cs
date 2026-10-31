@@ -253,10 +253,10 @@ internal sealed class OpenCodeToolDetailPopup
         _dialogPresenter.HorizontalAlignment = HorizontalAlignment.Center;
         _dialogPresenter.VerticalAlignment = VerticalAlignment.Center;
         _dialogPresenter.SizeChanged += (_, _) => ApplyResponsiveDiff();
-        _dialogPresenter.Transitions = new TransitionCollection
+        AIFrontend.Motion.FluentMotion.BindTransitions(_dialogPresenter, transitions => _dialogPresenter.Transitions = transitions, () => new TransitionCollection
         {
             new EntranceThemeTransition { FromHorizontalOffset = 0, FromVerticalOffset = 24, IsStaggeringEnabled = false },
-        };
+        });
         AutomationProperties.SetAutomationId(_dialogPresenter, "OpenCodeToolDetailPopup");
 
         // 系统遮罩层（与 ContentDialog 的 SmokeFill 同一画刷，ThemeResource 跟随主题）；点击遮罩 = 关闭。
@@ -611,6 +611,8 @@ internal sealed class OpenCodeToolDetailPopup
             if (!_dialogPopup.IsOpen)
             {
                 _dialogPopup.IsOpen = true;
+                // The card keeps its EntranceThemeTransition; the smoke behind it now fades in (167ms) instead of popping.
+                AIFrontend.Motion.FluentMotion.FadeIn(_smoke);
             }
 
             // 与 ContentDialog 一致：焦点移入视图（Esc 可用、Tab 在视图内循环），关闭时还给原焦点。

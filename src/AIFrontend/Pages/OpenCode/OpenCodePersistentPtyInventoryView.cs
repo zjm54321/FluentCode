@@ -260,6 +260,9 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         internal Chip(OpenCodePersistentPtyInventoryView owner)
         {
             _owner = owner; Height = 44; VerticalAlignment = VerticalAlignment.Center;
+            // New chip: scale 0.9→1 plus fade (167ms); press: 0.97 (render-only, hit area unchanged).
+            AIFrontend.Motion.FluentMotion.ChipEntrance(this);
+            AIFrontend.Motion.FluentMotion.PressScale(this);
             _end.Visibility = Visibility.Collapsed; _end.VerticalAlignment = VerticalAlignment.Center;
             _open.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
                 Children = { _icon, _title, new Grid { Width = 40, Children = { _dot, _end } } } };

@@ -50,8 +50,8 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
         _add.HorizontalAlignment = HorizontalAlignment.Stretch;
         _add.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _add.Click += (_, _) => AddRequested?.Invoke(); bottom.Children.Add(_add); SetRow(bottom, 2); Children.Add(bottom);
-        ChildrenTransitions = new TransitionCollection { new EntranceThemeTransition { FromHorizontalOffset = 40, FromVerticalOffset = 0 } };
-        Transitions = new TransitionCollection { new EntranceThemeTransition { FromHorizontalOffset = 340, FromVerticalOffset = 0 } };
+        AIFrontend.Motion.FluentMotion.BindTransitions(this, transitions => ChildrenTransitions = transitions, () => new TransitionCollection { new EntranceThemeTransition { FromHorizontalOffset = 40, FromVerticalOffset = 0 } });
+        AIFrontend.Motion.FluentMotion.BindTransitions(this, transitions => Transitions = transitions, () => new TransitionCollection { new EntranceThemeTransition { FromHorizontalOffset = 340, FromVerticalOffset = 0 } });
     }
     internal void Status(string text)
     {

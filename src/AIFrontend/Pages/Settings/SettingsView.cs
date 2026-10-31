@@ -386,6 +386,7 @@ public sealed partial class SettingsView : UserControl
         try
         {
             _runInBackgroundToggle.IsOn = _settings.RunInBackground;
+            ApplyMotionToUi();
             ApplyThemeToUi();
             ApplyFontsToUi();
             _terminalAppearance.Apply(_settings.TerminalAppearance);
@@ -477,6 +478,14 @@ public sealed partial class SettingsView : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
+        // 切换分类：右侧内容从下方 12px 淡入（ContentThemeTransition 只在合成层动根节点）；减少动画时清空。
+        AIFrontend.Motion.FluentMotion.BindTransitions(
+            _categoryContentHost,
+            transitions => _categoryContentHost.ContentTransitions = transitions,
+            () => new Microsoft.UI.Xaml.Media.Animation.TransitionCollection
+            {
+                new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition { VerticalOffset = 12 },
+            });
         _categoryScroll = new ScrollViewer
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -636,6 +645,9 @@ public sealed partial class SettingsView : UserControl
 
         // 字体（F11）：见 SettingsView.Fonts.cs。
         panel.Children.Add(BuildFontsSection());
+
+        // 动画效果（只能减少）：见 SettingsView.Motion.cs。
+        panel.Children.Add(BuildMotionSection());
 
         return panel;
     }

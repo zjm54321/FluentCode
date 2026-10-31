@@ -37,6 +37,8 @@ $native += Get-ChildItem "$nuget/winuiex/2.5.1/lib" -Filter WinUIEx.dll -Recurse
 $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
+# Shared Fluent motion layer used by the card / ☰ list / chips (production files, compiled as-is).
+$rendererSources += @("$repo/src/AIFrontend/Motion/FluentMotion.cs", "$repo/src/AIFrontend/Motion/FluentMotionPolicy.cs", "$repo/src/AIFrontend/Motion/OverlayCardMotion.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)

@@ -429,7 +429,7 @@ public sealed partial class OpenCodePage
         owner.Adapter.Dispose(); owner.View.Renderer.SuspendInput();
         if (owner.Controller.State.InputOutcomeUncertain) _persistentInputUncertainty.Add((owner.Origin.Source.Identity, owner.Origin.SessionId, owner.Context.PtyId));
         _ = DisposePersistentPtyAsync(owner);
-        HidePersistentPtyOverlay(owner.View); owner.View.Renderer.Dispose();
+        HidePersistentPtyOverlay(owner.View, animate: restoreFocus); owner.View.Renderer.Dispose();
         if (restoreFocus && _persistentPtyReturnFocus?.Focus(FocusState.Programmatic) != true && !Composer.Focus(FocusState.Programmatic))
             MessageScroll.Focus(FocusState.Programmatic);
         _persistentPtyReturnFocus = null;

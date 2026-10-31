@@ -1299,6 +1299,11 @@ public sealed class OpenCodeConversationView : StackPanel
         _subagentTaskTitles = OpenCodeSubagentTaskTitles.Build(messages);
 
         var newEntries = new List<Entry>(messages.Count);
+        // Live-entrance bookkeeping: only entries for keys never seen before AND after the last already-known message
+        // (i.e. appended live, not history pages, windowing re-realization or the first bind after a clear).
+        var hadEntries = _entries.Count > 0;
+        var lastKnownIndex = -1;
+        List<(int Index, Entry Entry)>? created = null;
         var seenKeys = new HashSet<string>(StringComparer.Ordinal);
         var renderedUserIds = new HashSet<string>(StringComparer.Ordinal);
 
@@ -1341,6 +1346,7 @@ public sealed class OpenCodeConversationView : StackPanel
             var isAsync = !isNotice && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out _);
             var isManual = !isNotice && !isAsync && OpenCodeManualBackgroundIndex.TryReadNotice(message, out _);
             var isInitiator = !isNotice && !isAsync && !isManual && OpenCodeStepRunPresentation.IsInternalInitiator(message);
+            if (_byKey.ContainsKey(key)) lastKnownIndex = i;
             var retainedVisual = _byKey.TryGetValue(key, out var prior) && prior.Realized;
             var realize = i >= range.Start && i < range.End && (_window.Height(key) > 0 || retainedVisual)
                 || _byKey.TryGetValue(key, out var pinned) && KeepVisual(pinned);
@@ -1385,6 +1391,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 entry.RecoverySignature = recoverySignature;
                 _byKey[key] = entry;
                 newEntries.Add(entry);
+                if (hadEntries && realize) (created ??= new()).Add((i, entry));
             }
             newEntries[^1].IdleMessageId = message.Id;
             newEntries[^1].Snapshot = message;
@@ -1412,9 +1419,33 @@ public sealed class OpenCodeConversationView : StackPanel
         _renderedUserMessageIds.UnionWith(renderedUserIds);
         ApplyStepChains();
         AlignWindow();
+        if (created is not null) PlayLiveEntrances(created, lastKnownIndex);
         QueueWindowUpdate();
         RaiseQuestionAnchorsChangedIfNeeded();
         RefreshTurnOutline();
+    }
+
+    private const int MaxLiveEntrances = 6;
+
+    /// <summary>
+    /// One-shot entrance for a row that arrived live (element, isUserMessage). Installed by the app (AIFrontend.Motion);
+    /// null in headless hosts. Only the row's root Visual may animate — never its text — so later streaming growth is
+    /// plain layout with no running animation.
+    /// </summary>
+    internal static Action<FrameworkElement, bool>? LiveEntranceAnimator { get; set; }
+
+    // At most six per apply (newest first); history pages, re-realized rows and the first bind never qualify.
+    private static void PlayLiveEntrances(List<(int Index, Entry Entry)> created, int lastKnownIndex)
+    {
+        if (LiveEntranceAnimator is not { } animate) return;
+        var played = 0;
+        for (var i = created.Count - 1; i >= 0 && played < MaxLiveEntrances; i--)
+        {
+            var (index, entry) = created[i];
+            if (index <= lastKnownIndex || !entry.Realized) continue;
+            played++;
+            animate(entry.Element, entry.MessageType == OpenCodeMessageTypes.User);
+        }
     }
 
     /// <summary>

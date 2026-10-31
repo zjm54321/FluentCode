@@ -248,6 +248,9 @@ namespace AIFrontend.Pages
         internal bool TestResetSurface => !_sessionProtectionHint && !_interactionBusy && !_deliveredNoticeShown && _recoveryOrigin is null;
         private void ConfigureAgentSelectorForSession(string sessionId) { }
         private void UpdateWaitingText() { }
+        // Fluent motion (OpenCodePage.Motion.cs) is presentation-only; the transcript reveal is inert here.
+        private void BeginTranscriptSwitchMotion() { }
+        private void RevealTranscript() { }
         private void UpdateInteractionsSection() { }
         private void RaiseSessionTracked(string sessionId, OpenCodeSessionTrackReason reason) { }
         internal object TestPrepareHomeClick(string id, string directory)

@@ -294,6 +294,14 @@ internal sealed class OpenCodePersistentPtyRenderer : Grid, IDisposable, IOpenCo
         }
         catch (Exception) { _snapshot = null; }
     }
+    /// <summary>Last frame of the visible HWND (or the frozen snapshot) for the card's exit motion; null when nothing is shown.</summary>
+    internal Microsoft.UI.Xaml.Media.ImageSource? CaptureFrame()
+    {
+        if (_snapshot?.Source is { } frozen) return frozen;
+        if (!NativeHostVisible || _terminal is not { } terminal) return null;
+        try { return OpenCodeTerminalSnapshot.Capture(terminal.NativeWindowHandle); }
+        catch (Exception) { return null; }
+    }
     private void HideSnapshot() { if (_snapshot is { } image) { Children.Remove(image); _snapshot = null; } }
     private bool Blocked()
     {

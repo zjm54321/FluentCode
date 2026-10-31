@@ -122,7 +122,13 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         _fullPhrase = phrase ?? string.Empty;
         var stem = decorative ? OpenCodeWorkingPhrases.Stem(_fullPhrase) : _fullPhrase;
         _dots.Visibility = decorative ? Visibility.Visible : Visibility.Collapsed;
-        if (!string.Equals(_phrase.Text, stem, StringComparison.Ordinal)) _phrase.Text = stem;
+        if (!string.Equals(_phrase.Text, stem, StringComparison.Ordinal))
+        {
+            var rotating = _phrase.Text.Length > 0 && _active;
+            _phrase.Text = stem;
+            // A new phrase (every few seconds, not per token) rises 6px with a 250ms fade; the first one just appears.
+            if (rotating) AIFrontend.Motion.FluentMotion.SlideFadeIn(_phrase, new System.Numerics.Vector3(0, 6, 0));
+        }
         if (!string.Equals(_elapsed.Text, elapsed, StringComparison.Ordinal)) _elapsed.Text = elapsed ?? string.Empty;
         _elapsed.Visibility = string.IsNullOrEmpty(elapsed) ? Visibility.Collapsed : Visibility.Visible;
         AutomationProperties.SetName(_label, string.IsNullOrEmpty(elapsed) ? _fullPhrase : _fullPhrase + " " + elapsed);

@@ -20,6 +20,7 @@ internal sealed class OpenCodeComposerEffortGauge : Canvas
 
     private IReadOnlyList<OpenCodeEffortTick> _ticks = Array.Empty<OpenCodeEffortTick>();
     private bool _dimmed;
+    private double? _needleAngle;
 
     internal OpenCodeComposerEffortGauge()
     {
@@ -49,7 +50,17 @@ internal sealed class OpenCodeComposerEffortGauge : Canvas
         for (var i = 0; i < _ticks.Count; i++) if (_ticks[i].Selected) { selectedIndex = i; break; }
         for (var i = 0; i < _ticks.Count; i++)
             Children.Add(Ray(_ticks[i].Angle, TickInner, TickOuter, Tick, selectedIndex >= 0 && i <= selectedIndex ? accent : quiet));
-        if (selectedIndex >= 0) Children.Add(Ray(_ticks[selectedIndex].Angle, 0, Needle, NeedleThickness, accent));
+        if (selectedIndex >= 0)
+        {
+            var needle = Ray(_ticks[selectedIndex].Angle, 0, Needle, NeedleThickness, accent);
+            Children.Add(needle);
+            // Level change: the needle swings from its previous angle about the pivot (250ms Point-to-point).
+            var angle = _ticks[selectedIndex].Angle;
+            if (_needleAngle is { } previous && previous != angle)
+                AIFrontend.Motion.FluentMotion.RotateIn(needle, (float)(previous - angle), new System.Numerics.Vector2((float)PivotX, (float)PivotY));
+            _needleAngle = angle;
+        }
+        else _needleAngle = null;
         // Pivot: accent when a level is chosen, quiet when the model default (no explicit level) applies.
         var pivot = new Ellipse { Width = Pivot, Height = Pivot, Style = OpenCodeThemedXaml.BrushStyle("Ellipse", ("Fill", selectedIndex < 0 ? quiet : accent)) };
         SetLeft(pivot, PivotX - Pivot / 2);

@@ -29,6 +29,7 @@ public sealed partial class OpenCodePage
         _agentSelector.DisplayChanged += (_, _) => { EnsureBrowserPeers(); RefreshBrowserPanel(); RefreshChildBrowserButton(); };
         _browserStrip.SetHostVisible(_hostWindowVisible);
         BrowserButtonSlot.Children.Add(_browserButton); BrowserStripSlot.Children.Add(_browserStrip);
+        Motion.FluentMotion.PressScale(_browserButton); // Quick-access tile: Fluent press 0.97, render-only.
         _browserAdd = BrowserCommand("\uE710", "新建浏览器页面");
         _browserMore = BrowserCommand("\uE712", "更多浏览器操作");
         BrowserCommandsSlot.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { _browserAdd, _browserMore } });

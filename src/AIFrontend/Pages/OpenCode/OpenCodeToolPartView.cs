@@ -41,6 +41,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     private readonly Border _rowChrome;
     private readonly Button _row;
     private readonly FontIcon _statusIcon;
+    private bool? _lastActive;
     private readonly ProgressRing _progress;
     private readonly FontIcon _kindIcon;
     private readonly OpenCodeTerminalGlyphIcon _kindIconVisual;
@@ -555,11 +556,18 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         ApplyAgentColor(model);
 
         var active = model.IsActive;
+        var wasActive = _lastActive;
+        var iconWasVisible = _statusIcon.Visibility == Visibility.Visible;
+        _lastActive = active;
         _progress.IsActive = active;
         _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
         // PG2: successful child rows need no green check; group totals still carry success counts.
         _statusIcon.Visibility = active || model.Status == OpenCodeToolRowStatus.Completed || !chrome.ShowsStatusIcon
             ? Visibility.Collapsed : Visibility.Visible;
+        // Live state change only (never on first bind/history): the settled status glyph pops in where the ring was
+        // (Scale 0.8→1 plus fade, 167ms) — a 16px icon, composition-only.
+        if (wasActive == true && !active && !iconWasVisible && _statusIcon.Visibility == Visibility.Visible)
+            AIFrontend.Motion.FluentMotion.ScaleFadeIn(_statusIcon, 0.8f);
         switch (model.Status)
         {
             case OpenCodeToolRowStatus.Error:

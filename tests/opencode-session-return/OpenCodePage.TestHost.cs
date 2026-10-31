@@ -241,6 +241,9 @@ namespace AIFrontend.Pages
         private void ResetSessionPaginationState() { }
         private void UpdateWaitingText() { }
         private void UpdateEmptyState() { }
+        // Fluent motion (OpenCodePage.Motion.cs) is presentation-only; the transcript reveal is inert here.
+        private void BeginTranscriptSwitchMotion() { }
+        private void RevealTranscript() { }
         private void UpdateComposerButtons() { }
         // No composer is constructed by this return-navigation host. Current extracted lifecycle methods
         // notify its binding boundary; composer/continuation behavior remains outside this harness's proof.

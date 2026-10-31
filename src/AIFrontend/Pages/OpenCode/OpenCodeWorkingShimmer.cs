@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
-using Windows.UI.ViewManagement;
 
 namespace AIFrontend.Pages.OpenCode;
 
@@ -21,7 +20,6 @@ internal static class OpenCodeWorkingClockComposition
     private const string PhaseProperty = "Phase";
     private static readonly Dictionary<Compositor, CompositionPropertySet> PhaseSets = new();
     private static bool _hooked;
-    private static UISettings? _uiSettings;
     private static DispatcherQueue? _dispatcher;
     private static DispatcherQueueTimer? _secondsTimer;
 
@@ -36,22 +34,13 @@ internal static class OpenCodeWorkingClockComposition
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         Clock.SecondsRunningChanged += OnSecondsRunningChanged;
         OnSecondsRunningChanged(Clock.SecondsRunning);
-        try
+        // 系统“动画效果”与应用内“减少动画”统一由 FluentMotion 判定（单一 UISettings 实例），事件已在 UI 线程。
+        Clock.SetMotionEnabled(AIFrontend.Motion.FluentMotion.Enabled);
+        AIFrontend.Motion.FluentMotion.EnabledChanged += (_, _) =>
         {
-            _uiSettings = new UISettings();
-            Clock.SetMotionEnabled(_uiSettings.AnimationsEnabled);
-            if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041)) return;
-            _uiSettings.AnimationsEnabledChanged += (_, _) =>
-                _dispatcher?.TryEnqueue(() =>
-                {
-                    try { Clock.SetMotionEnabled(_uiSettings?.AnimationsEnabled ?? true); }
-                    catch { }
-                });
-        }
-        catch
-        {
-            // 读取失败时保持默认（允许动画），与 MainWindow.SystemAnimationsEnabled 的回退一致。
-        }
+            try { Clock.SetMotionEnabled(AIFrontend.Motion.FluentMotion.Enabled); }
+            catch { }
+        };
     }
 
     /// <summary>取得（必要时创建）该 Compositor 上的共享相位属性集；时钟运行中则立即在当前全局相位上接续。</summary>

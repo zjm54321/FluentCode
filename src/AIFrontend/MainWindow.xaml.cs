@@ -103,7 +103,7 @@ public sealed partial class MainWindow : Window
         NavView.SelectedItem = NavNormal;
         if (ContentFrame.CurrentSourcePageType != typeof(Pages.NormalPage))
         {
-            ContentFrame.Navigate(typeof(Pages.NormalPage));
+            ContentFrame.Navigate(typeof(Pages.NormalPage), null, new SuppressNavigationTransitionInfo());
         }
 
         // 初始无导航历史：确保返回按钮为禁用态
@@ -374,7 +374,7 @@ public sealed partial class MainWindow : Window
         };
         if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)
         {
-            ContentFrame.Navigate(pageType);
+            ContentFrame.Navigate(pageType, null, Motion.FluentMotion.PageEntrance());
         }
     }
 
@@ -411,50 +411,30 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 齿轮旋转一圈（0→360°）。系统关闭动画偏好时跳过动画（直接打开设置，不阻塞）。
-    /// 每次点击重建 RotateTransform，避免上一轮动画的结束值残留导致无法重播。
+    /// 齿轮旋转一圈（0→360°，333ms Point-to-point）。走合成层 RotationAngleInDegrees，不触发布局；
+    /// 减少动画时跳过（直接打开设置，不阻塞）。
     /// </summary>
     private void AnimateSettingsGear()
     {
-        if (!SystemAnimationsEnabled())
+        if (!Motion.FluentMotion.Enabled)
         {
             return;
         }
 
         try
         {
-            SettingsGearIcon.RenderTransform = new RotateTransform();
-            var animation = new DoubleAnimation
-            {
-                From = 0,
-                To = 360,
-                Duration = new Duration(TimeSpan.FromMilliseconds(400)),
-                EnableDependentAnimation = true,
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
-            };
-            Storyboard.SetTarget(animation, SettingsGearIcon);
-            Storyboard.SetTargetProperty(animation, "(UIElement.RenderTransform).(RotateTransform.Angle)");
-
-            var storyboard = new Storyboard();
-            storyboard.Children.Add(animation);
-            storyboard.Begin();
+            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(SettingsGearIcon);
+            var compositor = visual.Compositor;
+            visual.CenterPoint = new System.Numerics.Vector3((float)SettingsGearIcon.ActualWidth / 2, (float)SettingsGearIcon.ActualHeight / 2, 0);
+            var spin = compositor.CreateScalarKeyFrameAnimation();
+            spin.InsertKeyFrame(0f, 0f);
+            spin.InsertKeyFrame(1f, 360f, Motion.FluentMotion.Ease(compositor, Motion.FluentMotionTokens.PointToPoint));
+            spin.Duration = Motion.FluentMotion.Duration(Motion.FluentMotion.Slow);
+            visual.StartAnimation("RotationAngleInDegrees", spin);
         }
         catch
         {
             // 动画异常不影响设置打开（不向外抛出）
-        }
-    }
-
-    /// <summary>读取系统“动画效果”偏好（关闭时返回 false）。读取失败时按“允许动画”处理。</summary>
-    private static bool SystemAnimationsEnabled()
-    {
-        try
-        {
-            return new Windows.UI.ViewManagement.UISettings().AnimationsEnabled;
-        }
-        catch
-        {
-            return true;
         }
     }
 
@@ -498,7 +478,7 @@ public sealed partial class MainWindow : Window
             // 已在目标页时不重复 Navigate，保证返回栈不产生重复项
             if (targetPageType != null && ContentFrame.CurrentSourcePageType != targetPageType)
             {
-                ContentFrame.Navigate(targetPageType);
+                ContentFrame.Navigate(targetPageType, null, Motion.FluentMotion.PageEntrance());
             }
             return;
         }
@@ -530,9 +510,15 @@ public sealed partial class MainWindow : Window
         // 仅在有历史时可后退（按钮禁用态由 UpdateBackButtonState 保证）
         if (ContentFrame.CanGoBack)
         {
-            ContentFrame.GoBack();
+            ContentFrame.GoBack(BackTransition());
         }
     }
+
+    /// <summary>返回：离开设置页时与进入方向相反（从左侧滑回）；其余平级页面用页面刷新式入场。</summary>
+    private NavigationTransitionInfo BackTransition()
+        => ContentFrame.Content is Pages.Settings.SettingsPage
+            ? Motion.FluentMotion.PageSlide(fromRight: false)
+            : Motion.FluentMotion.PageEntrance();
 
     private void UpdateBackButtonState()
     {
@@ -791,7 +777,8 @@ public sealed partial class MainWindow : Window
         // 期间该页已卸载），只清 cookie、不删除用户数据目录、不对已卸载的 WebView2 调用。回调在 UI 线程执行。
         ContentFrame.Navigate(
             typeof(Pages.Settings.SettingsPage),
-            (Func<WebProvider, Task>)ClearCookiesForProviderAsync);
+            (Func<WebProvider, Task>)ClearCookiesForProviderAsync,
+            Motion.FluentMotion.PageSlide(fromRight: true));
     }
 
     // ------------------------------------------------------------------
@@ -875,12 +862,12 @@ public sealed partial class MainWindow : Window
             {
                 if (ContentFrame.CanGoBack)
                 {
-                    ContentFrame.GoBack();
+                    ContentFrame.GoBack(BackTransition());
                 }
             }
             else if (_pendingLeavePageType is not null)
             {
-                ContentFrame.Navigate(_pendingLeavePageType, _pendingLeaveParameter);
+                ContentFrame.Navigate(_pendingLeavePageType, _pendingLeaveParameter, Motion.FluentMotion.PageEntrance());
             }
         }
         finally

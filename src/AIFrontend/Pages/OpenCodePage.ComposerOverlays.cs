@@ -69,6 +69,9 @@ public sealed partial class OpenCodePage
         content.Children.Add(icon);
         AutomationProperties.SetAccessibilityView(_sendWorkingRing, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         SendStopButton.Content = content;
+        // Press feedback on the primary action only (Fluent scales large/primary buttons, 0.96); composition Scale only —
+        // the 32×32 hit area and click/touch routing are untouched.
+        Motion.FluentMotion.PressScale(content, 0.96f);
 
         if (_composerView is not null)
         {
@@ -185,9 +188,12 @@ public sealed partial class OpenCodePage
         var ring = OpenCodeComposerSendPresentation.ShowsProgress(mode);
         _sendWorkingRing.IsActive = ring;
         _sendWorkingRing.Visibility = ring ? Visibility.Visible : Visibility.Collapsed;
+        var glyphChanged = glyph is not null && SendStopIcon.Visibility == Visibility.Visible && SendStopIcon.Glyph != glyph;
         SendStopIcon.Glyph = glyph ?? "\uE724";
         SendStopIcon.FontSize = OpenCodeComposerSendPresentation.GlyphSize(mode);
         SendStopIcon.Visibility = glyph is null ? Visibility.Collapsed : Visibility.Visible;
+        // Send ↔ stop: the new glyph pops in from 0.6 with a 167ms fade instead of swapping abruptly.
+        if (glyphChanged) Motion.FluentMotion.ScaleFadeIn(SendStopIcon, 0.6f);
 
         AutomationProperties.SetName(SendStopButton, OpenCodeComposerSendPresentation.Name(mode));
         var tip = OpenCodeComposerSendPresentation.ToolTip(mode, hasDraft);

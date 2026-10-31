@@ -107,6 +107,10 @@ public sealed record AppSettings
     /// <summary>关闭主窗口时保留托盘、OpenCode 连接与通知；旧设置默认开启。</summary>
     public bool RunInBackground { get; init; } = true;
 
+    /// <summary>应用内“减少动画”：只能在系统“动画效果”开启时进一步关闭动效，不能强制开启；默认关闭（跟随系统）。</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ReduceMotion { get; init; }
+
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public AppCodeTheme CodeTheme { get; init; } = AppCodeTheme.Fluent;
 

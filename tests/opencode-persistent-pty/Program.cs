@@ -113,7 +113,7 @@ internal static class Program
         Check(lifecycle.Contains("if (request.IsTerminalResponse)") && !lifecycle.Contains("SendTerminalResponseAsync"),
             "persistent daemon owns DSR/CPR replies; native live/checkpoint query responses never become duplicate PTY input");
         Check(!lifecycle.Contains("TerminalViewHost") && !lifecycle.Contains("ConversationSurface")
-            && lifecycle.Contains("ShowPersistentPtyOverlay(view, ptyId);") && lifecycle.Contains("HidePersistentPtyOverlay(owner.View); owner.View.Renderer.Dispose();"),
+            && lifecycle.Contains("ShowPersistentPtyOverlay(view, ptyId);") && lifecycle.Contains("HidePersistentPtyOverlay(owner.View, animate: restoreFocus); owner.View.Renderer.Dispose();"),
              "persistent terminal uses the shared floating card without replacing conversation");
         var glue = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPtyOverlay.cs"));
         Check(glue.Contains("OpenCodeBrowserOverlayLayout.Place(") && glue.Contains("workspace.HideOverlay();")

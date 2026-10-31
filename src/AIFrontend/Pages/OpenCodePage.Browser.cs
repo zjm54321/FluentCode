@@ -184,9 +184,41 @@ public sealed partial class OpenCodePage
             _browserOverlayWorkspace = workspace;
         }
         else if (workspace is null || ReferenceEquals(_browserOverlayWorkspace, workspace)) _browserOverlayWorkspace = null;
-        _browserOverlay?.Bind(_browserOverlayWorkspace);
-        BrowserOverlayHost.Visibility = _browserOverlayWorkspace?.Shown is null ? Visibility.Collapsed : Visibility.Visible;
+        SetBrowserOverlayVisible(_browserOverlayWorkspace?.Shown is not null);
         SizeBrowserHosts();
+    }
+
+    /// <summary>
+    /// Shows the card “from origin” (the right-panel browser button) with a smoke fade, or plays the 167ms exit before the
+    /// host collapses. Re-opening during the exit snaps back instead of replaying the entrance.
+    /// </summary>
+    private void SetBrowserOverlayVisible(bool visible)
+    {
+        if (_browserOverlay is not { } overlay) { BrowserOverlayHost.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; return; }
+        var hostVisible = BrowserOverlayHost.Visibility == Visibility.Visible;
+        if (visible)
+        {
+            overlay.Bind(_browserOverlayWorkspace);
+            if (hostVisible) { if (overlay.Motion.IsClosing) overlay.Motion.Reset(); return; }
+            var fromTerminal = PersistentPtyOverlayHost.Visibility == Visibility.Visible;
+            BrowserOverlayHost.Visibility = Visibility.Visible;
+            overlay.Motion.Open(_browserButton, quick: fromTerminal, null);
+            return;
+        }
+        if (!hostVisible || BrowserOverlayInstantClose || !Motion.FluentMotion.Enabled)
+        {
+            overlay.Motion.Reset();
+            overlay.Bind(_browserOverlayWorkspace);
+            BrowserOverlayHost.Visibility = Visibility.Collapsed;
+            return;
+        }
+        if (overlay.Motion.IsClosing) return;
+        overlay.Motion.Close(() =>
+        {
+            if (_browserOverlayWorkspace?.Shown is not null) return;
+            overlay.Bind(_browserOverlayWorkspace);
+            BrowserOverlayHost.Visibility = Visibility.Collapsed;
+        });
     }
     private void SizeBrowserHosts()
     {

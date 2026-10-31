@@ -11,7 +11,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
 
@@ -32,13 +31,13 @@ internal sealed class OpenCodeBrowserStrip : Grid
     private IReadOnlyList<OpenCodeBrowserStripGroup> _groups = Array.Empty<OpenCodeBrowserStripGroup>();
     private readonly Dictionary<IOpenCodeBrowserWorkspace, TextBlock> _labels = new();
     public event Action<IOpenCodeBrowserWorkspace, IOpenCodeBrowserPage>? PageRequested;
-    private Storyboard? _transition;
+    private bool _siblingMotion;
     private bool _expanded;
     private bool _hostVisible = true;
 
     public OpenCodeBrowserStrip()
     {
-        Height = 0; Opacity = 0; Visibility = Visibility.Collapsed;
+        Height = 0; Visibility = Visibility.Collapsed;
         Margin = new Thickness(-8, 0, -8, 0);
         ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
@@ -71,10 +70,9 @@ internal sealed class OpenCodeBrowserStrip : Grid
             if (IsLoaded) return;
             _capture.Stop();
             foreach (var tile in _tiles.Values) tile.SetCaptureEnabled(false);
-            _transition?.Stop(); _transition = null;
             Height = _expanded ? ExpandedHeight : 0d;
-            Opacity = _expanded ? 1 : 0;
             Visibility = _expanded ? Visibility.Visible : Visibility.Collapsed;
+            AIFrontend.Motion.FluentMotion.Settle(this);
             // Keep the workspace/tiles (and horizontal reading position) while the page is cached.
             // The page's final-release path calls Bind(null) to detach and dispose them.
         };
@@ -166,31 +164,44 @@ internal sealed class OpenCodeBrowserStrip : Grid
         Refresh();
         if (_tiles.TryGetValue(page, out var tile)) tile.Flash();
     }
+    /// <summary>
+    /// 展开/收起：不再对 Height 做逐帧布局动画。展开时一次性给出最终高度，内容在合成层从上方 8px 滑入淡入（250ms 减速）；
+    /// 收起时先在合成层淡出上移（167ms 加速），结束后才归零高度并折叠。下方兄弟元素的位移由隐式 Offset 动画补间。
+    /// </summary>
     public void SetExpanded(bool expanded)
     {
         if (_expanded == expanded) return;
         _expanded = expanded;
-        _transition?.Stop(); _transition = null;
-        if (expanded) Visibility = Visibility.Visible;
+        EnableSiblingMotion();
         UpdateCapture();
-        var height = expanded ? ExpandedHeight : 0d;
-        if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+        var motion = AIFrontend.Motion.FluentMotion.Enabled;
+        if (expanded)
         {
-            Height = height; Opacity = expanded ? 1 : 0; Visibility = expanded ? Visibility.Visible : Visibility.Collapsed; return;
+            Height = ExpandedHeight; Visibility = Visibility.Visible;
+            if (motion) AIFrontend.Motion.FluentMotion.SlideFadeIn(this, new System.Numerics.Vector3(0, -8, 0));
+            else AIFrontend.Motion.FluentMotion.Settle(this);
+            return;
         }
-        var storyboard = new Storyboard();
-        var size = new DoubleAnimation { From = ActualHeight, To = height, Duration = TimeSpan.FromMilliseconds(200), EnableDependentAnimation = true };
-        var fade = new DoubleAnimation { From = Opacity, To = expanded ? 1 : 0, Duration = TimeSpan.FromMilliseconds(200) };
-        Storyboard.SetTarget(size, this); Storyboard.SetTargetProperty(size, "Height");
-        Storyboard.SetTarget(fade, this); Storyboard.SetTargetProperty(fade, "Opacity");
-        storyboard.Children.Add(size); storyboard.Children.Add(fade); _transition = storyboard;
-        storyboard.Completed += (_, _) =>
+        AIFrontend.Motion.FluentMotion.SlideFadeOut(this, new System.Numerics.Vector3(0, -8, 0), completed: () =>
         {
-            if (!ReferenceEquals(_transition, storyboard)) return;
-            Height = height; Opacity = expanded ? 1 : 0; storyboard.Stop(); _transition = null;
-            if (!expanded) Visibility = Visibility.Collapsed;
-        };
-        storyboard.Begin();
+            if (_expanded) return;
+            Height = 0; Visibility = Visibility.Collapsed;
+            AIFrontend.Motion.FluentMotion.Settle(this);
+        });
+    }
+
+    // 首次展开时（已完成首次布局）才给同一 StackPanel 中位于本条下方的兄弟元素挂隐式 Offset，避免首帧从原点飞入。
+    private void EnableSiblingMotion()
+    {
+        if (_siblingMotion || Parent is not FrameworkElement slot || slot.Parent is not Panel panel) return;
+        _siblingMotion = true;
+        var index = panel.Children.IndexOf(slot);
+        for (var i = index + 1; i < panel.Children.Count; i++) AIFrontend.Motion.FluentMotion.EnableImplicitOffset(panel.Children[i]);
+        if (panel.Parent is Panel outer)
+        {
+            var outerIndex = outer.Children.IndexOf(panel);
+            for (var i = outerIndex + 1; i < outer.Children.Count; i++) AIFrontend.Motion.FluentMotion.EnableImplicitOffset(outer.Children[i]);
+        }
     }
 
     private sealed class TileFactory : IElementFactory
@@ -227,6 +238,8 @@ internal sealed class OpenCodeBrowserStrip : Grid
         public Tile(IOpenCodeBrowserPage page, Action show)
         {
             _page = page; Width = 96; Height = 60; VerticalAlignment = VerticalAlignment.Top;
+            AIFrontend.Motion.FluentMotion.ChipEntrance(this);
+            AIFrontend.Motion.FluentMotion.PressScale(this);
             _show = new Button { Padding = new Thickness(0), BorderThickness = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch,
                 Content = _image, CornerRadius = new CornerRadius(5) };
@@ -312,7 +325,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
         public void Flash()
         {
             if (!_captureEnabled) return;
-            if (!new Windows.UI.ViewManagement.UISettings().AnimationsEnabled) return;
+            if (!AIFrontend.Motion.FluentMotion.Enabled) return;
             _flashFrame = 0; _flashOn = true; Render(); _flash.Start();
         }
         public async Task CaptureAsync()

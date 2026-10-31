@@ -17,6 +17,7 @@ public sealed partial class OpenCodePage
         InitializeShellTerminal();
         InitializeTerminalAppearance();
         PersistentPtyButtonSlot.Children.Add(_persistentPtyInventoryView.Button);
+        Motion.FluentMotion.PressScale(_persistentPtyInventoryView.Button); // Quick-access tile: press 0.97, render-only.
         PersistentPtyStripSlot.Children.Add(_persistentPtyInventoryView);
         _persistentPtyInventoryView.Button.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => UpdateRightQuickAccessRow());
         var overlay = _persistentPtyOverlay = new OpenCodePersistentPtyOverlay();
@@ -56,26 +57,73 @@ public sealed partial class OpenCodePage
         else ClosePersistentPtyView(restoreFocus);
     }
 
+    // Held from Show until the card's entrance completes: the native terminal HWND cannot scale/fade or sit under XAML,
+    // so it stays hidden while the card animates (the card surface already carries the terminal background colour).
+    private IDisposable? _persistentPtyEntranceLease;
+    // Set while the terminal card takes over: the browser card then disappears instantly (read in OpenCodePage.Browser.cs).
+    private bool BrowserOverlayInstantClose { get; set; }
+
     private void ShowPersistentPtyOverlay(OpenCodePersistentPtyView view, string ptyId)
     {
         if (_persistentPtyOverlay is not { } overlay) return;
-        foreach (var workspace in _browserWorkspaces.Values) workspace.HideOverlay();
+        // Between floating cards the old one goes instantly and the new one uses the shortened entrance.
+        var fromBrowser = BrowserOverlayHost.Visibility == Visibility.Visible;
+        BrowserOverlayInstantClose = true;
+        try { foreach (var workspace in _browserWorkspaces.Values) workspace.HideOverlay(); }
+        finally { BrowserOverlayInstantClose = false; }
+        // Already on screen (switching terminals, or re-opened during the exit): swap content without replaying the entrance.
+        var swap = PersistentPtyOverlayHost.Visibility == Visibility.Visible;
         overlay.Content = view;
         if (_terminalSwitcher is { } switcher) view.SetSwitcher(switcher);
         view.StepRequested += _persistentPtyInventoryView.Step;
         view.Renderer.SetAirspaceLayers(PermissionOverlayHost, QuestionOverlayHost, BrowserOverlayHost);
+        ReleasePersistentPtyEntranceLease();
+        var lease = swap ? null : _persistentPtyEntranceLease = view.Renderer.SuppressAirspace();
         view.Renderer.SetPresentationVisible(true);
         _persistentPtyInventoryView.SetOpen(ptyId);
         PersistentPtyOverlayHost.Visibility = Visibility.Visible;
         SizePersistentPtyOverlay();
+        if (swap) { overlay.Motion.Reset(); return; }
+        overlay.Motion.Open(_persistentPtyInventoryView.Button, quick: fromBrowser, () =>
+        {
+            if (ReferenceEquals(_persistentPtyEntranceLease, lease)) _persistentPtyEntranceLease = null;
+            lease?.Dispose(); // HWND may now show (after the airspace's stable-bounds frames).
+        });
     }
 
-    private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view)
+    private void ReleasePersistentPtyEntranceLease()
     {
+        var lease = _persistentPtyEntranceLease;
+        _persistentPtyEntranceLease = null;
+        lease?.Dispose();
+    }
+
+    /// <summary>
+    /// <paramref name="animate"/> is used for explicit user dismissals: the HWND is hidden first, its last frame is laid over
+    /// the card, and the card shrinks/fades out before the host collapses. Programmatic closes (swaps, scope resets) are instant.
+    /// </summary>
+    private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view, bool animate = false)
+    {
+        var overlay = _persistentPtyOverlay;
+        var shown = overlay is not null && ReferenceEquals(overlay.Content, view);
+        var frame = animate && shown && Motion.FluentMotion.Enabled ? view.Renderer.CaptureFrame() : null;
         view.Renderer.SetPresentationVisible(false);
-        if (_persistentPtyOverlay is { } overlay && ReferenceEquals(overlay.Content, view)) overlay.Content = null;
+        ReleasePersistentPtyEntranceLease();
         _persistentPtyInventoryView.SetOpen(null);
-        PersistentPtyOverlayHost.Visibility = Visibility.Collapsed;
+        if (overlay is null) { PersistentPtyOverlayHost.Visibility = Visibility.Collapsed; return; }
+        if (!animate || !shown || PersistentPtyOverlayHost.Visibility != Visibility.Visible)
+        {
+            overlay.Motion.Reset();
+            if (shown) overlay.Content = null;
+            PersistentPtyOverlayHost.Visibility = Visibility.Collapsed;
+            return;
+        }
+        if (frame is not null) overlay.Freeze(frame, view.Renderer);
+        overlay.Motion.Close(() =>
+        {
+            if (ReferenceEquals(overlay.Content, view)) overlay.Content = null;
+            PersistentPtyOverlayHost.Visibility = Visibility.Collapsed;
+        });
     }
 
     private void SizePersistentPtyOverlay()

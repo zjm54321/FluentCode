@@ -30,6 +30,7 @@ public sealed partial class OpenCodePage
     {
         _wslQuickAccessView = new();
         WslQuickAccessSlot.Children.Add(_wslQuickAccessView);
+        Motion.FluentMotion.PressScale(_wslQuickAccessView); // Quick-access tile: press 0.97, render-only.
         WslQuickAccessNoteSlot.Children.Add(_wslQuickAccessView.Note);
         _selectedWslEditor = _wslEditorPreference.Load();
         _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(null);

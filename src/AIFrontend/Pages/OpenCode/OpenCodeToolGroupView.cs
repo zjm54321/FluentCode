@@ -192,6 +192,16 @@ internal sealed class OpenCodeToolGroupVisual
         OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
         AutomationProperties.SetAutomationId(_expander, "OpenCodeToolGroup." + groupId);
         _expander.Loaded += (_, _) => NormalizeTemplateInsets();
+        // Fluent hover: fills cross-fade in 83ms; the chevron fades in 83ms and turns 0→90° in 167ms (Point-to-point
+        // feel via the system scalar transition). Composition-driven; the native Expander keeps its own expand animation.
+        AIFrontend.Motion.FluentMotion.Bind(_root, enabled =>
+        {
+            _outline.BackgroundTransition = enabled ? AIFrontend.Motion.FluentMotion.HoverFill() : null;
+            _headerSurface.BackgroundTransition = enabled ? AIFrontend.Motion.FluentMotion.HoverFill() : null;
+            _chevron.OpacityTransition = enabled ? new ScalarTransition { Duration = AIFrontend.Motion.FluentMotion.Duration(AIFrontend.Motion.FluentMotion.Faster) } : null;
+            _chevron.RotationTransition = enabled ? new ScalarTransition { Duration = AIFrontend.Motion.FluentMotion.Duration(AIFrontend.Motion.FluentMotion.Fast) } : null;
+        });
+        _chevron.SizeChanged += (_, args) => _chevron.CenterPoint = new System.Numerics.Vector3((float)args.NewSize.Width / 2, (float)args.NewSize.Height / 2, 0);
         _expander.Expanding += (_, _) => ExpansionChanged(true);
         _expander.Collapsed += (_, _) => ExpansionChanged(false);
         _root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };
@@ -266,6 +276,13 @@ internal sealed class OpenCodeToolGroupVisual
         return false;
     }
 
+    // One right-pointing glyph turned 90° when expanded (instead of swapping glyphs) so the change can rotate.
+    private void SetChevron(bool expanded)
+    {
+        _chevron.Glyph = "\uE76C";
+        _chevron.Rotation = expanded ? 90f : 0f;
+    }
+
     private void UpdateChevronAffordance()
     {
         var highlighted = _summary.IsActive ? _pointerOver || _focusVisible : _headerPointerOver || _headerFocusVisible;
@@ -331,7 +348,7 @@ internal sealed class OpenCodeToolGroupVisual
         _summary = summary;
         _headerVisible = headerVisible;
         _expanded = expanded;
-        _chevron.Glyph = _expanded ? "\uE70D" : "\uE76C";
+        SetChevron(_expanded);
         _headerText.Text = summary.HeaderText;
         var textKey = OpenCodeProcessedSummaryStyle.GroupHeaderTextKey(summary.IsActive, summary.ErrorCount, null);
         OpenCodeToolTheme.Apply(_headerText, textKey is null
@@ -376,7 +393,7 @@ internal sealed class OpenCodeToolGroupVisual
     {
         if (_updating || _disposed) return;
         _expanded = expanded;
-        _chevron.Glyph = expanded ? "\uE70D" : "\uE76C";
+        SetChevron(expanded);
         ConfigureContainer();
         UpdateAutomation();
         _toggled(_groupId, expanded);

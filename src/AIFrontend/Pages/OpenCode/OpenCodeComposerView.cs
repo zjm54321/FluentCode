@@ -356,7 +356,8 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetLiveSetting(_intentHint, AutomationLiveSetting.Polite);
 
         _chipPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        _chipPanel.ChildrenTransitions = new TransitionCollection { new AddDeleteThemeTransition() };
+        // Chips and attachment tiles: system add/delete (scale+fade in, fade out, neighbours slide); cleared under reduce-motion.
+        AIFrontend.Motion.FluentMotion.BindChildrenTransitions(_chipPanel, () => new TransitionCollection { new AddDeleteThemeTransition() });
         _chipPanel.Children.Add(_commandChip);
         _chipPanel.Children.Add(_intentChip);
         _chipScroll = new ScrollViewer
@@ -469,7 +470,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetAutomationId(_menu, "OpenCodeComposerCatalog");
         AutomationProperties.SetName(_menu, "命令目录");
         _menuSlot = new Grid { Visibility = Visibility.Collapsed };
-        _menuSlot.ChildrenTransitions = new TransitionCollection { new EntranceThemeTransition { FromVerticalOffset = 8 } };
+        AIFrontend.Motion.FluentMotion.BindChildrenTransitions(_menuSlot, () => new TransitionCollection { new EntranceThemeTransition { FromVerticalOffset = 8 } });
 
         Children.Add(_chipRow);
         Children.Add(_intentHint);
@@ -1096,8 +1097,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         {
             if (_menuShown)
             {
-                _menuSlot.Children.Clear();
-                _menuSlot.Visibility = Visibility.Collapsed;
+                RetireListSlot(_menuSlot);
                 _menuShown = false;
                 if (_editor is not null) AutomationProperties.GetControlledPeers(_editor).Remove(_menuList);
             }
@@ -1110,8 +1110,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         if (!_menuShown)
         {
             CloseMention(); // The command catalog and the "@" candidates are mutually exclusive.
-            _menuSlot.Visibility = Visibility.Visible;
-            _menuSlot.Children.Add(_menu);
+            ReviveListSlot(_menuSlot, _menu);
             _menuShown = true;
             if (_editor is not null && !AutomationProperties.GetControlledPeers(_editor).Contains(_menuList))
                 AutomationProperties.GetControlledPeers(_editor).Add(_menuList);
@@ -1271,7 +1270,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         AutomationProperties.SetAutomationId(_mentionPanel, "OpenCodeComposerMention");
         AutomationProperties.SetName(_mentionPanel, "上下文文件候选");
         var slot = new Grid { Visibility = Visibility.Collapsed };
-        slot.ChildrenTransitions = new TransitionCollection { new EntranceThemeTransition { FromVerticalOffset = 8 } };
+        AIFrontend.Motion.FluentMotion.BindChildrenTransitions(slot, () => new TransitionCollection { new EntranceThemeTransition { FromVerticalOffset = 8 } });
         return slot;
     }
 
@@ -1333,8 +1332,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _mentionQueryText.Text = "@" + OpenCodeComposerInputPolicy.Bound(_mentionTrigger.Query, 48);
         if (_mentionShown) return;
         _mentionShown = true;
-        _mentionSlot.Visibility = Visibility.Visible;
-        _mentionSlot.Children.Add(_mentionPanel);
+        ReviveListSlot(_mentionSlot, _mentionPanel);
         if (_editor is not null && !AutomationProperties.GetControlledPeers(_editor).Contains(_mentionList))
             AutomationProperties.GetControlledPeers(_editor).Add(_mentionList);
         RequestRender(); // Margin/eligibility follow the visible list.
@@ -1348,8 +1346,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _mentionTrigger = OpenCodeComposerMentionTrigger.None;
         if (!_mentionShown) return;
         _mentionShown = false;
-        _mentionSlot.Children.Clear();
-        _mentionSlot.Visibility = Visibility.Collapsed;
+        RetireListSlot(_mentionSlot);
         _mentionList.Items.Clear();
         if (_editor is not null) AutomationProperties.GetControlledPeers(_editor).Remove(_mentionList);
         RequestRender();
@@ -1967,7 +1964,32 @@ internal sealed class OpenCodeComposerView : StackPanel
         remove.HorizontalAlignment = HorizontalAlignment.Right;
         remove.VerticalAlignment = VerticalAlignment.Top;
         if (remove.Content is FontIcon glyph) glyph.FontSize = 9;
-        remove.OpacityTransition = new ScalarTransition { Duration = TimeSpan.FromMilliseconds(120) };
+        AIFrontend.Motion.FluentMotion.Bind(remove, enabled => remove.OpacityTransition = enabled
+            ? new ScalarTransition { Duration = AIFrontend.Motion.FluentMotion.Duration(AIFrontend.Motion.FluentMotion.Faster) } : null);
+    }
+
+    /// <summary>
+    /// "/" and "@" lists leave with a 83ms fade sinking 4px, then the slot empties and collapses. The entrance stays the
+    /// slot's EntranceThemeTransition (167ms rise from 8px) and plays when <see cref="ReviveListSlot"/> re-adds the panel.
+    /// </summary>
+    private static void RetireListSlot(Grid slot)
+        => AIFrontend.Motion.FluentMotion.SlideFadeOut(slot, new System.Numerics.Vector3(0, 4, 0), AIFrontend.Motion.FluentMotion.Faster, () =>
+        {
+            slot.Children.Clear();
+            slot.Visibility = Visibility.Collapsed;
+            AIFrontend.Motion.FluentMotion.Settle(slot);
+        });
+
+    /// <summary>Shows a list slot again; cancels a pending exit (the panel may still be attached) without a double add.</summary>
+    private static void ReviveListSlot(Grid slot, UIElement panel)
+    {
+        AIFrontend.Motion.FluentMotion.Settle(slot);
+        slot.Visibility = Visibility.Visible;
+        if (!slot.Children.Contains(panel))
+        {
+            slot.Children.Clear();
+            slot.Children.Add(panel);
+        }
     }
 
     /// <summary>Decodes at display size (logical px): <paramref name="fill"/> sizes the shorter side, else the longer; never upscales.</summary>

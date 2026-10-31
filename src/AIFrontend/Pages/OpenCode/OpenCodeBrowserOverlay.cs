@@ -170,7 +170,11 @@ public sealed class OpenCodeBrowserOverlay : Grid
             "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ScrollViewer\" BasedOn=\"{StaticResource DefaultScrollViewerStyle}\"><Setter Property=\"HorizontalContentAlignment\" Value=\"Stretch\"/><Setter Property=\"VerticalContentAlignment\" Value=\"Stretch\"/></Style></ResourceDictionary>");
         _presenter.CornerRadius = new(8); _presenter.BorderThickness = new(OpenCodeBrowserOverlayLayout.BorderWidth);
         Theme(_presenter, Control.BackgroundProperty, "SolidBackgroundFillColorTertiaryBrush");
-        Children.Add(_presenter);
+        // 外层卡片容器只承载“从原位置展开”的合成层动画；presenter 的 Translation(Z=128) 留给阴影，二者不混用。
+        var card = new Grid { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        card.Children.Add(_presenter);
+        Children.Add(card);
+        Motion = new AIFrontend.Motion.OverlayCardMotion(smoke, card);
         AutomationProperties.SetAutomationId(this, "OpenCodeBrowserOverlay");
         KeyDown += (_, key) => { if (key.Key == VirtualKey.Escape) { if (ExitPageTool?.Invoke() != true) _workspace?.HideOverlay(); key.Handled = true; } };
         _body.SizeChanged += (_, _) => { _agentPill.MaxWidth = Math.Max(0, Math.Min(900, _body.ActualWidth - 28)); ContentSizeChanged?.Invoke(this, EventArgs.Empty); };
@@ -178,6 +182,8 @@ public sealed class OpenCodeBrowserOverlay : Grid
     }
 
     public Grid RightPanelSlot { get; }
+
+    internal AIFrontend.Motion.OverlayCardMotion Motion { get; }
     internal void SetSurfaceSize(double width, double height) { _presenter.Width = width; _presenter.Height = height; }
     private void RefreshTheme()
     {
@@ -274,13 +280,15 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _agentPill.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
         if (!active) _pointer.Visibility = Visibility.Collapsed;
         if (active) { _outlineFade?.Stop(); _agentOutline.Opacity = 1; }
-        else if (_wasAgentActive && new Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+        else if (_wasAgentActive && AIFrontend.Motion.FluentMotion.Enabled)
         {
-            var animation = new DoubleAnimation { To = 0, Duration = new Duration(TimeSpan.FromMilliseconds(180)) };
+            // Opacity 是独立动画（不触发布局）；时长/缓动走统一 token：167ms 退场加速。
+            var animation = new DoubleAnimation { To = 0, Duration = new Duration(AIFrontend.Motion.FluentMotion.Duration(AIFrontend.Motion.FluentMotion.Fast)),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
             Storyboard.SetTarget(animation, _agentOutline); Storyboard.SetTargetProperty(animation, "Opacity");
             _outlineFade = new Storyboard(); _outlineFade.Children.Add(animation); _outlineFade.Begin();
         }
-        else if (!_wasAgentActive) _agentOutline.Opacity = 0;
+        else _agentOutline.Opacity = 0; // A running fade keeps animating toward the same 0.
         _wasAgentActive = active;
     }
     private async void AgentPointerMoved(object? sender, OpenCodeBrowserPointer pointer)

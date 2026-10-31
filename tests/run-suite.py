@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the 25 critical suite entries sequentially with immutable-candidate logs."""
+"""Run the 26 critical suite entries sequentially with immutable-candidate logs."""
 import argparse
 import hashlib
 import json
@@ -28,6 +28,7 @@ RUNNERS = (
     'opencode-plugin-mutations/run.ps1',
     'opencode-session-controls/run.ps1',
     'opencode-session-ui-state/run.ps1',
+    'fluent-motion/run.ps1',
     'opencode-session-return/run.ps1',
     'opencode-capabilities/run.ps1',
     'opencode-browser-engine/run.ps1',

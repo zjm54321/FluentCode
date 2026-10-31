@@ -16,7 +16,7 @@ namespace AIFrontend.Pages
         internal OpenCodePersistentPtyView? OverlayView { get; private set; }
         internal string? OverlayPtyId { get; private set; }
         private void ShowPersistentPtyOverlay(OpenCodePersistentPtyView view, string ptyId) { OverlayView = view; OverlayPtyId = ptyId; }
-        private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view) { if (ReferenceEquals(OverlayView, view)) { OverlayView = null; OverlayPtyId = null; } }
+        private void HidePersistentPtyOverlay(OpenCodePersistentPtyView view, bool animate = false) { if (ReferenceEquals(OverlayView, view)) { OverlayView = null; OverlayPtyId = null; } }
         private readonly Control Composer = new Button();
         private readonly Control MessageScroll = new Button();
         private void BindTerminalAppearance(OpenCodePersistentPtyView view) { }

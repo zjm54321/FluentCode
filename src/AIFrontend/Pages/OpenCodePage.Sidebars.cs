@@ -10,7 +10,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
 using Windows.System;
-using Windows.UI.ViewManagement;
 
 namespace AIFrontend.Pages;
 
@@ -24,7 +23,7 @@ public sealed partial class OpenCodePage
 {
     private OpenCodeSidebarLayout _sidebarLayout;
     private bool _sidebarApplying;
-    private UISettings? _sidebarSettings;
+    private bool _sidebarMotionSubscribed;
     private readonly Dictionary<SplitView, (VisualStateGroup Group, VisualTransition[] Transitions)> _sidebarTransitions = new();
     private Storyboard? _dockMotion;
     private bool _dockFolding;
@@ -73,28 +72,26 @@ public sealed partial class OpenCodePage
         {
             if (IsLoaded) return;
             StopDockMotion();
-            if (_sidebarSettings is not null && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
-                _sidebarSettings.AnimationsEnabledChanged -= Sidebars_AnimationsEnabledChanged;
-            _sidebarSettings = null;
+            if (_sidebarMotionSubscribed) Motion.FluentMotion.EnabledChanged -= Sidebars_MotionEnabledChanged;
+            _sidebarMotionSubscribed = false;
             _sidebarLayout = _sidebarLayout.Escape();
         };
     }
 
     private void Sidebars_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_sidebarSettings is not null) return;
-        _sidebarSettings = new UISettings();
-        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
-            _sidebarSettings.AnimationsEnabledChanged += Sidebars_AnimationsEnabledChanged;
+        if (_sidebarMotionSubscribed) return;
+        _sidebarMotionSubscribed = true;
+        Motion.FluentMotion.EnabledChanged += Sidebars_MotionEnabledChanged;
         _sidebarLayout = _sidebarLayout.Resize(PageRoot.ActualWidth);
         ApplySidebarLayout();
     }
 
-    private void Sidebars_AnimationsEnabledChanged(UISettings sender, object args)
-        => DispatcherQueue.TryEnqueue(() =>
-        {
-            if (ReferenceEquals(sender, _sidebarSettings)) ApplySidebarLayout();
-        });
+    // FluentMotion raises on the UI thread (system 动画效果 or the in-app 减少动画 setting).
+    private void Sidebars_MotionEnabledChanged(object? sender, EventArgs args)
+    {
+        if (_sidebarMotionSubscribed) ApplySidebarLayout();
+    }
 
     private void QueueSidebarLayout() => DispatcherQueue.TryEnqueue(ApplySidebarLayout);
 
@@ -105,7 +102,7 @@ public sealed partial class OpenCodePage
         var previous = _sidebarLayout;
         var next = previous.Resize(width);
         var cardsShown = SessionPane.IsPaneOpen || InsightsPane.IsPaneOpen;
-        var animate = OpenCodeSidebarLayout.AnimateModeSwitch(previous, next, _sidebarSettings?.AnimationsEnabled ?? false);
+        var animate = OpenCodeSidebarLayout.AnimateModeSwitch(previous, next, Motion.FluentMotion.Enabled);
         if (animate && previous.IsWide && cardsShown)
         {
             // Wide → narrow: fold the resident cards toward their edges, then hand over to the narrow layout.
@@ -130,12 +127,16 @@ public sealed partial class OpenCodePage
     private void PlayDockMotion(bool fold, Action? completed)
     {
         StopDockMotion();
-        var duration = new Duration(TimeSpan.FromMilliseconds(fold ? 160 : 240));
-        EasingFunctionBase ease = new ExponentialEase { Exponent = 6, EasingMode = fold ? EasingMode.EaseIn : EasingMode.EaseOut };
+        // Fluent tokens: fold = 167ms accelerate (exit), unfold = 250ms decelerate (entrance). Independent animations
+        // (Opacity / RenderTransform) on two dock roots only — no layout per frame.
+        var duration = new Duration(Motion.FluentMotion.Duration(fold ? Motion.FluentMotion.Fast : Motion.FluentMotion.Normal));
+        var curve = fold ? Motion.FluentMotionTokens.Accelerate : Motion.FluentMotionTokens.Decelerate;
         var story = new Storyboard();
         void Add(DependencyObject target, string property, double from, double to)
         {
-            var animation = new DoubleAnimation { From = from, To = to, Duration = duration, EasingFunction = ease };
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new DiscreteDoubleKeyFrame { KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero), Value = from });
+            animation.KeyFrames.Add(new SplineDoubleKeyFrame { KeyTime = KeyTime.FromTimeSpan(duration.TimeSpan), Value = to, KeySpline = Motion.FluentMotion.Spline(curve) });
             Storyboard.SetTarget(animation, target);
             Storyboard.SetTargetProperty(animation, property);
             story.Children.Add(animation);
@@ -218,7 +219,7 @@ public sealed partial class OpenCodePage
             var workspaceVisible = WorkspaceGrid.Visibility == Visibility.Visible;
             var rightResident = wide && workspaceVisible;
             var mode = wide ? SplitViewDisplayMode.Inline : SplitViewDisplayMode.Overlay;
-            var animate = !_sidebarSuppressSlide && _sidebarLayout.AnimateDrawers(_sidebarSettings?.AnimationsEnabled ?? false);
+            var animate = !_sidebarSuppressSlide && _sidebarLayout.AnimateDrawers(Motion.FluentMotion.Enabled);
             ConfigureSidebarMotion(SessionPane, animate);
             ConfigureSidebarMotion(InsightsPane, animate);
             SessionPane.DisplayMode = mode;

@@ -168,6 +168,7 @@ public sealed partial class OpenCodePage : Page
         AutomationProperties.SetAutomationId(_conversationView, "OpenCodeMessageList");
         AutomationProperties.SetName(_conversationView, "消息时间线");
         MessageHost.Children.Add(_conversationView);
+        InitializePageMotion();
         InitializeAgentSelector();
         InitializeComposer();
         InitializeSessionControlCard();
@@ -393,9 +394,8 @@ public sealed partial class OpenCodePage : Page
         ResetAgentTree();
         ClearRightPanelCopyHint();
         StopDockMotion();
-        if (_sidebarSettings is not null && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
-            _sidebarSettings.AnimationsEnabledChanged -= Sidebars_AnimationsEnabledChanged;
-        _sidebarSettings = null;
+        if (_sidebarMotionSubscribed) Motion.FluentMotion.EnabledChanged -= Sidebars_MotionEnabledChanged;
+        _sidebarMotionSubscribed = false;
         if (_wslQuickAccessSubscribed) _homeSettings.Changed -= WslQuickAccessSettingsChanged;
         _wslQuickAccessSubscribed = false;
         ResetWslQuickAccessHome();
@@ -815,7 +815,9 @@ public sealed partial class OpenCodePage : Page
         _selectedSessionId = sessionId;
         _sessionMissing = false;
         _sessionGeneration++;
+        BeginTranscriptSwitchMotion();
         BeginSessionMessageBinding(sessionId, directory);
+        if (_conversationView.Children.Count > 0) RevealTranscript(); // Retained window restored synchronously.
         BindComposer();
         onBound?.Invoke(); // Capture the new binding before refresh or externally observable callbacks.
 
@@ -846,6 +848,7 @@ public sealed partial class OpenCodePage : Page
 
         RaiseSessionTracked(sessionId, OpenCodeSessionTrackReason.Selected);
         await RefreshMessagesAsync(initial: true);
+        if (!_firstMessagesLoading) RevealTranscript(); // Loaded, failed or empty; a queued refresh reveals on accept.
     }
 
     private void CancelSessionOperations()
@@ -1051,6 +1054,7 @@ public sealed partial class OpenCodePage : Page
             _messagesResponseEmpty = response.Data is { Count: 0 } && orderedMessages.Count == 0;
             _messageWindowAccepted = true;
             _messagesLoadError = null;
+            RevealTranscript();
             RetainHistoryChildEvidence(sessionId, MergeMessageHistory());
             var projectedWindow = ProjectMessageHistory(orderedMessages);
             ObserveExecutionState(sessionId, projectedWindow);
@@ -3647,12 +3651,12 @@ public sealed partial class OpenCodePage : Page
     {
         var hasContent = _conversationView.Children.Count > 0;
         var atBottom = IsScrolledToBottom();
-        ScrollToBottomButton.Visibility = hasContent && !atBottom ? Visibility.Visible : Visibility.Collapsed;
+        SetScrollToBottomVisible(hasContent && !atBottom);
     }
 
     private void ScrollToBottomButton_Click(object sender, RoutedEventArgs e)
     {
-        ScrollToBottom(animated: false);
+        ScrollToBottom(animated: ShouldAnimateJumpToBottom());
     }
 
     // ------------------------------------------------------------------

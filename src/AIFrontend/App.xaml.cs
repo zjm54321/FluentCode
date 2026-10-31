@@ -48,6 +48,7 @@ public partial class App : Application
             try { await Services.Appearance.AppFonts.InitializeAsync(Pages.NormalPage.SharedSettingsService); }
             catch (Exception ex) { RecordDiagnostic("app-fonts-initialize-failed", error: ex); }
             if (_closing) return;
+            InitializeMotion();
             var window = new MainWindow();
             _window = window;
             _appDispatcher = window.DispatcherQueue;
