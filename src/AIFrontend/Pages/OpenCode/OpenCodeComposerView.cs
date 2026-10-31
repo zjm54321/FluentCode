@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AIFrontend.Services.Appearance;
 using AIFrontend.Services.OpenCode;
 using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 using Microsoft.UI.Input;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -134,7 +135,8 @@ internal sealed class OpenCodeComposerView : StackPanel
 
     private OpenCodeComposerSnapshot? _snapshot;
     private OpenCodeComposerEditorSync? _sync;
-    private bool _composing;
+    private readonly OpenCodeComposerComposition _composition = new();
+    private bool _composing => _composition.IsActive;
     private readonly OpenCodeComposerCommandMenuSession _menuSession;
     private readonly OpenCodeComposerInputEvidenceSource _inputEvidence;
     private readonly Func<OpenCodeComposerCatalogLifetime> _beginCatalogLifetime;
@@ -182,6 +184,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
     /// <summary>Raised on the UI thread after a render whose visible/eligibility state changed (page refreshes Send/Stop).</summary>
     internal event EventHandler? StateChanged;
+    /// <summary>The native composition's final text/selection callbacks have drained; page overlays may resume.</summary>
+    internal event EventHandler? CompositionSettled;
 
     /// <param name="snapshotSource">Read-only accessor for the controller's current snapshot (e.g. <c>() =&gt; controller.Snapshot</c>).</param>
     /// <param name="beginCatalogLifetime"><c>controller.BeginCatalogLifetime</c>: called once per attached, loaded editor lifetime.</param>
@@ -523,7 +527,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         _mentionArmed = false;
         _editor = editor;
         _editorPlaceholder = editor.PlaceholderText;
-        _composing = false;
+        _composition.Reset();
         // The ONLY application writer of editor.Text: guarded assign + actual read-back inside the sync.
         _sync = new OpenCodeComposerEditorSync(_source, () => editor.Text, text =>
             {
@@ -531,8 +535,11 @@ internal sealed class OpenCodeComposerView : StackPanel
                 _mentionArmed = false;
                 try
                 {
-                    editor.Text = text;
-                    editor.SelectionStart = (editor.Text ?? string.Empty).Length;
+                    if (!string.Equals(editor.Text, text, StringComparison.Ordinal))
+                    {
+                        editor.Text = text;
+                        editor.SelectionStart = (editor.Text ?? string.Empty).Length;
+                    }
                 }
                 finally { _guardedWrite = false; }
             }, () => _composing, ApplyEditorInput);
@@ -580,7 +587,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     private void OnEditorCompositionStarted(TextBox sender, TextCompositionStartedEventArgs args)
     {
         if (!ReferenceEquals(sender, _editor)) return;
-        _composing = true;
+        _composition.Start();
         _inputEvidence.CompositionChanged();
     }
 
@@ -588,17 +595,35 @@ internal sealed class OpenCodeComposerView : StackPanel
     private void OnEditorCompositionEnded(TextBox sender, TextCompositionEndedEventArgs args)
     {
         if (!ReferenceEquals(sender, _editor)) return;
-        _composing = false;
+        var version = _composition.End();
         _inputEvidence.CompositionChanged();
-        WakeAfterComposition();
+        CompleteCompositionAfterCommit(version);
     }
 
     private void OnEditorLostFocus(object sender, RoutedEventArgs e)
     {
         if (!ReferenceEquals(sender, _editor) || !_composing) return;
-        _composing = false;
+        var version = _composition.End();
         _inputEvidence.CompositionChanged();
-        WakeAfterComposition();
+        CompleteCompositionAfterCommit(version);
+    }
+
+    private void CompleteCompositionAfterCommit(long version)
+    {
+        var generation = _lifetime.Generation;
+        // TextCompositionEnded can precede the final TextChanging/TextChanged/SelectionChanged.
+        // Keep their reconciliation and mention caret snapping away from TSF's commit stack.
+        _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (!_composition.TryComplete(version)) return;
+            _inputEvidence.Refresh();
+            if (_lifetime.IsCurrent(generation))
+            {
+                NotifyEditorTextChanged(); // Flush the final native text, then evaluate @ and / once.
+                WakeAfterComposition();
+            }
+            CompositionSettled?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     private void WakeAfterComposition()
@@ -830,6 +855,8 @@ internal sealed class OpenCodeComposerView : StackPanel
     private void ReconcileEditor(OpenCodeComposerSnapshot s, bool inactiveBound)
     {
         if (_editor is null || _sync is null) return;
+        // Neither text/selection nor read-only transitions may interrupt the native composition.
+        if (_composing) return;
         // Ledger reconciliation (phase3-sync-protocol §3): flush recorded input with its own token; only when no
         // unresolved input remains, adopt the current token or write controller text through the guard. A write
         // deferred by an active composition is retried by the composition-end wake-up (no timer).
@@ -856,6 +883,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     {
         // Flushes RECORDED input only (TextChanging ledger); an echo of our own guarded write finds nothing.
         if (_sync is null || !_lifetime.IsLive) return;
+        if (_composing) { RequestRender(); return; }
         var flushed = _sync.Flush();
         _inputEvidence.Refresh();
         if (flushed != OpenCodeComposerInputState.Clean) { CloseMention(); RequestRender(); return; } // Show held status.
@@ -877,6 +905,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     /// <summary>Flush before any token-bearing intent so recorded input is not stranded on an older token.</summary>
     private bool FlushForIntent()
     {
+        if (_composing) return false;
         if (_sync is null) return true;
         var clean = _sync.Flush() == OpenCodeComposerInputState.Clean;
         _inputEvidence.Refresh();
@@ -902,6 +931,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         TimeSpan sinceCompositionEnded, bool enterLatched, bool pageBusy)
     {
         ArgumentNullException.ThrowIfNull(e);
+        if (isComposing || _composing) return OpenCodeComposerKeyDecision.Pass;
         if (e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && TryDeleteMentionToken(e.Key == VirtualKey.Back))
         {
             e.Handled = true;

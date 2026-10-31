@@ -50,6 +50,12 @@ public sealed partial class OpenCodePage
         ComposerCompanionHost.Visibility = Visibility.Visible;
         // Subscribed once for this page's lifetime, not once per load/session. Both ends are page-owned.
         _composerController.SnapshotChanged += OnComposerSnapshotChanged;
+        _composerView.CompositionSettled += (_, _) =>
+        {
+            if (!FullScreenComposerActive) _isComposing = false;
+            QueueDeferredComposerOverlayRefresh();
+            QueueComposerLayout();
+        };
         _composerController.SubmitRequested += OnComposerSubmitRequested;
         _composerController.UnboundSubmitRequested += (_, e) => OnUnboundComposerSubmitRequested(e.Token);
         _composerView.StateChanged += (_, _) => { if (_pageActive) { UpdateComposerButtons(); TryRestoreExpandedComposerSelection(); } };

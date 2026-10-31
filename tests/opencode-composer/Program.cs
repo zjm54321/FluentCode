@@ -122,6 +122,7 @@ internal static partial class Program
         await ClipboardAttachments();
         var originalChecks = checks;
         await SyncProtocol();
+        await ImeComposition();
         var syncChecks = checks - originalChecks;
         await LegacyFinalization();
         var legacyChecks = checks - originalChecks - syncChecks;

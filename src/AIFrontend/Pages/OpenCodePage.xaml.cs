@@ -3551,7 +3551,8 @@ public sealed partial class OpenCodePage : Page
     /// </summary>
     private void Composer_LostFocus(object sender, RoutedEventArgs e)
     {
-        _isComposing = false;
+        // The view releases composition only after native commit callbacks have drained.
+        _isComposing = _composerView?.InputEvidence.Composing == true;
         _shiftDown = false;
         _enterDown = false;
         QueueDeferredComposerOverlayRefresh();
@@ -3578,9 +3579,9 @@ public sealed partial class OpenCodePage : Page
 
     private void Composer_TextCompositionEnded(TextBox sender, TextCompositionEndedEventArgs args)
     {
-        _isComposing = false;
         _lastCompositionEndedAt = DateTimeOffset.UtcNow;
-        QueueDeferredComposerOverlayRefresh();
+        // CompositionSettled resumes overlays/layout. Disabling/focusing here can terminate TSF's
+        // still-pending final commit and leave the next Chinese composition unable to start.
     }
 
     private bool IsShiftDown()

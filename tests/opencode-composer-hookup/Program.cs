@@ -1216,6 +1216,7 @@ namespace AIFrontend.Pages.OpenCode
         // View/native scheduler double around REAL ledger/handoff/lifetime helpers. It does not emulate
         // WinUI event delivery or rendering. Immediate scheduling is deliberate, with a hold seam below.
         internal event EventHandler? StateChanged;
+        internal event EventHandler? CompositionSettled;
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
         internal Func<string?>? SplashModelIdProvider { get; set; }
         internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;

@@ -218,6 +218,7 @@ internal sealed class OpenCodeComposerEditorSync
     /// </summary>
     internal bool Reconcile()
     {
+        if (_isComposing()) return true;
         if (Flush() != OpenCodeComposerInputState.Clean) return false;
         var snapshot = _source();
         if (snapshot.Text == _controllerText)
@@ -234,7 +235,9 @@ internal sealed class OpenCodeComposerEditorSync
     /// <summary>The single guarded application write: depth guard, assign, actual read-back, token association.</summary>
     internal void WriteSnapshot(OpenCodeComposerSnapshot snapshot)
     {
-        if (_suspendedForRecovery) return;
+        // Enforce this at the writer, not only at Reconcile/Prepare: activation and accepted-draft
+        // handoffs use this entry too. Even an identical Text assignment resets native IME state.
+        if (_suspendedForRecovery || _isComposing()) return;
         _writeDepth++;
         try { _assignEditor(snapshot.Text); }
         finally { _writeDepth--; }
