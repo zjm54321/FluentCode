@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -8,9 +9,9 @@ using Windows.ApplicationModel.DataTransfer;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// Transcript message context menu (right-click, Shift+F10 / menu key, and touch press-and-hold all raise
-/// ContextRequested, so this ONE MenuFlyout serves every input): 复制 / 全选 for the selection, 复制整段 /
-/// 复制代码, then 撤回 / 恢复. Items are rebuilt on Opening so state is never stale.
+/// Transcript message context menu in the app's shared shape (<see cref="OpenCodeContextMenu"/>): icon row
+/// 复制 · 全选, then the list 复制整段 · 复制代码 | 撤回 · 恢复撤回. Right-click, menu key and touch press-and-hold all
+/// open this one flyout; it is rebuilt on Opening so selection and undo state are never stale.
 /// </summary>
 internal static class OpenCodeMessageContextMenu
 {
@@ -19,13 +20,21 @@ internal static class OpenCodeMessageContextMenu
     /// <summary>Marks a rendered code-block text so the menu offers 复制代码 with its exact source.</summary>
     internal static void MarkCode(TextBlock code, string source) => CodeSources.AddOrUpdate(code, source);
 
-    internal static MenuFlyout Create(Func<string?> wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
-        Action<bool>? rollbackRequested = null)
-    {
-        var menu = new MenuFlyout();
-        menu.Opening += (_, _) => Populate(menu, wholeText, rollback, rollbackRequested);
-        return menu;
-    }
+    /// <summary>
+    /// 复制 · 全选 (+ 复制代码) for rendered Markdown that is not a transcript message (reasoning, tool details).
+    /// Replaces the platform TextCommandBarFlyout so every text menu looks the same. One per presenter: a flyout
+    /// must not be shared across windows (XamlRoots).
+    /// </summary>
+    internal static CommandBarFlyout CreateTextOnly() => Create(null);
+
+    internal static CommandBarFlyout Create(Func<string?>? wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
+        Action<bool>? rollbackRequested = null, Func<IEnumerable<OpenCodeContextCommand>>? actions = null)
+        => OpenCodeContextMenu.Create(flyout =>
+        {
+            var commands = Commands(flyout.Target, wholeText, rollback, rollbackRequested);
+            if (actions?.Invoke() is { } extra) { commands.Add(null); commands.AddRange(extra); }
+            return commands;
+        });
 
     /// <summary>
     /// Replaces the default TextCommandBarFlyout of every selectable text in <paramref name="root"/> with
@@ -36,9 +45,11 @@ internal static class OpenCodeMessageContextMenu
         switch (root)
         {
             case null: return;
-            case TextBlock { IsTextSelectionEnabled: true } text: text.ContextFlyout = menu; return;
+            // One menu per gesture: the platform selection bar (TextCommandBarFlyout) would otherwise appear next to
+            // this menu on touch/pen press-and-hold. 复制 / 全选 live in the menu, so the bar is redundant.
+            case TextBlock { IsTextSelectionEnabled: true } text: text.ContextFlyout = menu; text.SelectionFlyout = null; return;
             case RichTextBlock rich:
-                if (rich.IsTextSelectionEnabled) rich.ContextFlyout = menu;
+                if (rich.IsTextSelectionEnabled) { rich.ContextFlyout = menu; rich.SelectionFlyout = null; }
                 return;
             case Panel panel:
                 foreach (var child in panel.Children) Apply(child, menu);
@@ -66,64 +77,54 @@ internal static class OpenCodeMessageContextMenu
         catch (Exception) { /* Clipboard owned by another process: menu copy is best effort. */ }
     }
 
-    private static void Populate(MenuFlyout menu, Func<string?> wholeText, Func<OpenCodeRollbackMenuState?>? rollback,
-        Action<bool>? rollbackRequested)
+    private static FrameworkElement? FirstText(DependencyObject? root)
     {
-        menu.Items.Clear();
-        var target = menu.Target;
-        string? selected = target switch
+        switch (root)
         {
-            TextBlock t => t.SelectedText,
-            RichTextBlock r => r.SelectedText,
-            _ => null,
-        };
-        var selectable = target is TextBlock { IsTextSelectionEnabled: true } or RichTextBlock { IsTextSelectionEnabled: true };
+            case TextBlock { IsTextSelectionEnabled: true } text: return text;
+            case RichTextBlock { IsTextSelectionEnabled: true } rich: return rich;
+            case null: return null;
+        }
+        for (var i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            if (FirstText(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i)) is { } found) return found;
+        return null;
+    }
 
-        if (selectable)
+    internal static List<OpenCodeContextCommand?> Commands(FrameworkElement? target, Func<string?>? wholeText,
+        Func<OpenCodeRollbackMenuState?>? rollback, Action<bool>? rollbackRequested)
+    {
+        var commands = new List<OpenCodeContextCommand?>();
+        // Opened on the bubble/card padding: the row still acts on that message's text, so every message menu
+        // has the same icon row (a CommandBarFlyout without row commands would render an empty bar).
+        if (target is not (TextBlock or RichTextBlock)) target = FirstText(target) ?? target;
+        string? selected = target switch { TextBlock t => t.SelectedText, RichTextBlock r => r.SelectedText, _ => null };
+        if (target is TextBlock { IsTextSelectionEnabled: true } or RichTextBlock { IsTextSelectionEnabled: true })
         {
-            var copy = Item("复制", "\uE8C8", "Ctrl+C", () => Copy(selected!));
-            copy.IsEnabled = !string.IsNullOrEmpty(selected);
-            menu.Items.Add(copy);
-            menu.Items.Add(Item("全选", "\uE8B3", "Ctrl+A", () =>
+            commands.Add(new("复制", "\uE8C8", () => Copy(selected!))
+                { Row = true, Accelerator = "Ctrl+C", Enabled = !string.IsNullOrEmpty(selected), Description = "先选中文字" });
+            commands.Add(new("全选", "\uE8B3", () =>
             {
                 if (target is TextBlock t) t.SelectAll();
                 else if (target is RichTextBlock r) r.SelectAll();
-            }));
-            menu.Items.Add(new MenuFlyoutSeparator());
+            }) { Row = true, Accelerator = "Ctrl+A" });
         }
-
-        var whole = wholeText();
-        var copyWhole = Item("复制整段", "\uE8A5", null, () => Copy(whole!));
-        copyWhole.IsEnabled = !string.IsNullOrEmpty(whole);
-        menu.Items.Add(copyWhole);
+        if (wholeText?.Invoke() is var whole && wholeText is not null)
+            commands.Add(new("复制整段", "\uE8A5", () => Copy(whole!)) { Enabled = !string.IsNullOrEmpty(whole) });
         if (target is TextBlock code && CodeSources.TryGetValue(code, out var source))
-            menu.Items.Add(Item("复制代码", "\uE943", null, () => Copy(source)));
-
-        if (rollback?.Invoke() is { } state && rollbackRequested is not null && (state.UndoVisible || state.RedoVisible))
+            commands.Add(new("复制代码", "\uE943", () => Copy(source)));
+        if (rollback?.Invoke() is { } state && rollbackRequested is not null)
         {
-            menu.Items.Add(new MenuFlyoutSeparator());
+            commands.Add(null);
             if (state.UndoVisible)
-            {
-                var undo = Item(state.UndoEnabled || state.UndoHint is null ? "撤回" : "撤回（" + state.UndoHint + "）",
-                    "\uE7A7", "/undo", () => rollbackRequested(true));
-                undo.IsEnabled = state.UndoEnabled;
-                ToolTipService.SetToolTip(undo, "撤回这条消息及之后的回答，并把它放回输入框");
-                menu.Items.Add(undo);
-            }
+                commands.Add(new("撤回", "\uE7A7", () => rollbackRequested(true))
+                {
+                    Enabled = state.UndoEnabled,
+                    Description = state.UndoEnabled || state.UndoHint is null
+                        ? "撤回这条消息及之后的回答，并把它放回输入框" : "暂不可用：" + state.UndoHint,
+                });
             if (state.RedoVisible)
-            {
-                var redo = Item("恢复撤回的消息", "\uE7A6", "/redo", () => rollbackRequested(false));
-                redo.IsEnabled = state.RedoEnabled;
-                menu.Items.Add(redo);
-            }
+                commands.Add(new("恢复撤回", "\uE7A7", () => rollbackRequested(false)) { Enabled = state.RedoEnabled, Mirrored = true });
         }
-    }
-
-    private static MenuFlyoutItem Item(string text, string glyph, string? accelerator, Action invoke)
-    {
-        var item = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } };
-        if (accelerator is not null) item.KeyboardAcceleratorTextOverride = accelerator;
-        item.Click += (_, _) => invoke();
-        return item;
+        return commands;
     }
 }

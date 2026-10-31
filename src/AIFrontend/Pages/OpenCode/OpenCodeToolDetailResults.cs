@@ -147,13 +147,9 @@ internal static partial class OpenCodeToolDetailContent
         void PathMenu(FrameworkElement element, string path)
         {
             if (options.PathActionUnavailableReason?.Invoke(path, false) is { } reason) ToolTipService.SetToolTip(element, reason);
-            var copy = new MenuFlyoutItem { Text = "复制路径" };
-            copy.Click += (_, _) =>
-            {
-                var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(path);
-                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
-            };
-            var flyout = new MenuFlyout(); flyout.Items.Add(copy); element.ContextFlyout = flyout;
+            // Labeled list item, as File Explorer's own 复制路径.
+            element.ContextFlyout = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
+                { new("复制路径", "\uE8C8", () => OpenCodeMessageContextMenu.Copy(path)) });
         }
         void Populate()
         {

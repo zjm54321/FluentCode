@@ -89,9 +89,13 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
             var note = new TextBox { PlaceholderText = "添加批注（可选）", Text = item.Note, MaxLength = 4000 };
             AutomationProperties.SetName(note, $"第 {item.Number} 项批注");
             note.TextChanged += (_, _) => NoteChanged?.Invoke(item.Id, note.Text); row.Children.Add(note);
-            var menu = new MenuFlyout();
-            var copy = new MenuFlyoutItem { Text = "复制图片", Icon = new FontIcon { Glyph = "\uE8C8" } }; copy.Click += (_, _) => CopyRequested?.Invoke(item.Image); menu.Items.Add(copy);
-            var save = new MenuFlyoutItem { Text = "另存为图片", Icon = new FontIcon { Glyph = "\uE74E" } }; save.Click += (_, _) => SaveRequested?.Invoke(item.Image); menu.Items.Add(save);
+            // Shared context-menu shape: icon row 复制图片; list 另存为图片.
+            var image = item.Image;
+            var menu = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
+            {
+                new("复制图片", "\uE8C8", () => CopyRequested?.Invoke(image)) { Row = true },
+                new("另存为图片", "\uE74E", () => SaveRequested?.Invoke(image)),
+            });
             var card = new Border { Padding = new(12, 10, 12, 12), CornerRadius = new(8), BorderThickness = new(1), Child = row, ContextFlyout = menu };
             Themed(card, "Background", "CardBackgroundFillColorDefaultBrush"); Themed(card, "BorderBrush", "CardStrokeColorDefaultBrush");
             _items.Children.Add(card);

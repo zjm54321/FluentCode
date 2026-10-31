@@ -147,9 +147,8 @@ internal sealed class OpenCodeContextRing
             VerticalAlignment = VerticalAlignment.Center,
         };
         OpenCodeToolStyle(_button);
-        var setup = new MenuFlyoutItem { Text = "Billion 设置" };
-        setup.Click += (_, _) => BillionSetupRequested?.Invoke(this, EventArgs.Empty);
-        _button.ContextFlyout = new MenuFlyout { Items = { setup } };
+        _button.ContextFlyout = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
+            { new("Billion 设置", "\uE713", () => BillionSetupRequested?.Invoke(this, EventArgs.Empty)) });
         AutomationProperties.SetAutomationId(_button, "OpenCodeInsightsContextRingButton");
 
         _root = new Grid { VerticalAlignment = VerticalAlignment.Center };

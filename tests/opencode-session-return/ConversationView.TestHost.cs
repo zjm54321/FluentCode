@@ -60,13 +60,25 @@ namespace AIFrontend.Pages.OpenCode
         internal Func<string?> WholeText { get; init; } = () => null;
         internal Func<OpenCodeRollbackMenuState?>? Rollback { get; init; }
         internal Action<bool>? RollbackRequested { get; init; }
+        internal Func<IEnumerable<OpenCodeContextCommand>>? Actions { get; init; }
+    }
+    // Inert copy of the production command record (OpenCodeContextMenu.cs) — data only.
+    internal sealed record OpenCodeContextCommand(string Label, string Glyph, Action Invoke)
+    {
+        public bool Row { get; init; }
+        public bool Enabled { get; init; } = true;
+        public string? Accelerator { get; init; }
+        public string? Description { get; init; }
+        public bool Critical { get; init; }
+        public bool Mirrored { get; init; }
+        public string? AutomationId { get; init; }
     }
     internal static class OpenCodeMessageContextMenu
     {
-        internal static OpenCodeMessageMenuProbe Create(Func<string?> wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
-            Action<bool>? rollbackRequested = null)
+        internal static OpenCodeMessageMenuProbe Create(Func<string?>? wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
+            Action<bool>? rollbackRequested = null, Func<IEnumerable<OpenCodeContextCommand>>? actions = null)
         {
-            var menu = new OpenCodeMessageMenuProbe { WholeText = wholeText, Rollback = rollback, RollbackRequested = rollbackRequested };
+            var menu = new OpenCodeMessageMenuProbe { WholeText = wholeText ?? (() => null), Rollback = rollback, RollbackRequested = rollbackRequested, Actions = actions };
             ConversationViewTestProbe.Record("Construct", menu);
             return menu;
         }

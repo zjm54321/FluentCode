@@ -275,11 +275,12 @@ internal sealed class OpenCodeBrowserStrip : Grid
             };
             GotFocus += (_, _) => _hover.Start();
             LostFocus += (_, _) => { _hover.Stop(); _leave.Start(); };
-            var showItem = new MenuFlyoutItem { Text = "显示页面", Icon = new FontIcon { Glyph = "\uE8A7" } };
-            showItem.Click += (_, _) => show();
-            var closeItem = new MenuFlyoutItem { Text = "关闭页面", Icon = new FontIcon { Glyph = "\uE8BB" } };
-            closeItem.Click += (_, _) => page.Close();
-            ContextFlyout = new MenuFlyout { Items = { showItem, closeItem } };
+            // Shared context-menu shape: icon row 关闭页面; list 显示页面.
+            ContextFlyout = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
+            {
+                new("关闭页面", "\uE711", page.Close) { Row = true },
+                new("显示页面", "\uE8A7", show),
+            });
             AddHandler(PointerPressedEvent, new PointerEventHandler((_, e) =>
             {
                 if (!e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed) return;

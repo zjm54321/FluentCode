@@ -1,6 +1,7 @@
 using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using AIFrontend.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
@@ -20,41 +21,31 @@ public sealed partial class OpenCodePage
             editable && clipboardHasContent, !composing && textLength > 0);
     }
 
-    private MenuFlyoutItem? _composerUndoItem, _composerCutItem, _composerCopyItem, _composerPasteItem, _composerSelectAllItem;
-
-    // Replaces the native text flyout (which hid 撤销 unless it could prove an undo step) with the full edit menu.
+    // Replaces the native text flyout (which hid 撤销 unless it could prove an undo step) with the app's shared
+    // context-menu shape: icon row 剪切 · 复制 · 粘贴 · 全选 (File Explorer style), list 撤销.
     // Every action is the TextBox's own: Undo/Cut/Copy/SelectAll, and PasteFromClipboard raises the existing Paste
     // handler (OpenCodePage.ComposerPaste.cs), so draft sync, IME and attachment paste keep their single paths.
+    // Items stay visible and are disabled when unavailable, so 撤销 is always discoverable.
     private void InitializeComposerContextMenu()
     {
-        MenuFlyoutItem Item(string text, Symbol symbol, VirtualKey key, Action action)
+        Composer.ContextFlyout = OpenCodeContextMenu.Create(_ =>
         {
-            var item = new MenuFlyoutItem { Text = text, Icon = new SymbolIcon(symbol) };
-            item.KeyboardAccelerators.Add(new Microsoft.UI.Xaml.Input.KeyboardAccelerator
-                { Key = key, Modifiers = VirtualKeyModifiers.Control, IsEnabled = false }); // Shown only; the TextBox owns the keys.
-            item.Click += (_, _) => action();
-            return item;
-        }
-        _composerUndoItem = Item("撤销", Symbol.Undo, VirtualKey.Z, () => { if (Composer.CanUndo) Composer.Undo(); });
-        _composerCutItem = Item("剪切", Symbol.Cut, VirtualKey.X, Composer.CutSelectionToClipboard);
-        _composerCopyItem = Item("复制", Symbol.Copy, VirtualKey.C, Composer.CopySelectionToClipboard);
-        _composerPasteItem = Item("粘贴", Symbol.Paste, VirtualKey.V, Composer.PasteFromClipboard);
-        _composerSelectAllItem = Item("全选", Symbol.SelectAll, VirtualKey.A, Composer.SelectAll);
-        var menu = new MenuFlyout();
-        menu.Items.Add(_composerUndoItem);
-        menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(_composerCutItem);
-        menu.Items.Add(_composerCopyItem);
-        menu.Items.Add(_composerPasteItem);
-        menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(_composerSelectAllItem);
-        menu.Opening += (_, _) => RefreshComposerContextMenu();
-        Composer.ContextFlyout = menu;
+            var state = CurrentComposerEditState();
+            return new OpenCodeContextCommand?[]
+            {
+                new("剪切", "\uE8C6", Composer.CutSelectionToClipboard) { Row = true, Accelerator = "Ctrl+X", Enabled = state.Cut },
+                new("复制", "\uE8C8", Composer.CopySelectionToClipboard) { Row = true, Accelerator = "Ctrl+C", Enabled = state.Copy },
+                new("粘贴", "\uE77F", Composer.PasteFromClipboard) { Row = true, Accelerator = "Ctrl+V", Enabled = state.Paste },
+                new("全选", "\uE8B3", Composer.SelectAll) { Row = true, Accelerator = "Ctrl+A", Enabled = state.SelectAll },
+                new("撤销", "\uE7A7", () => { if (Composer.CanUndo) Composer.Undo(); }) { Accelerator = "Ctrl+Z", Enabled = state.Undo },
+            };
+        });
+        // One menu per gesture: without this the touch selection bar (cut/copy/paste) can open beside the edit menu.
+        Composer.SelectionFlyout = null;
     }
 
-    private void RefreshComposerContextMenu()
+    private ComposerEditState CurrentComposerEditState()
     {
-        if (_composerUndoItem is null) return;
         bool clipboardText;
         try
         {
@@ -63,12 +54,7 @@ public sealed partial class OpenCodePage
                 || content.Contains(StandardDataFormats.StorageItems);
         }
         catch (Exception) { clipboardText = false; } // Clipboard busy/unavailable: paste stays disabled.
-        var state = ComposerEditCommands(Composer.CanUndo, Composer.SelectionLength, (Composer.Text ?? string.Empty).Length,
+        return ComposerEditCommands(Composer.CanUndo, Composer.SelectionLength, (Composer.Text ?? string.Empty).Length,
             clipboardText, _isComposing, Composer.IsReadOnly);
-        _composerUndoItem.IsEnabled = state.Undo;
-        _composerCutItem!.IsEnabled = state.Cut;
-        _composerCopyItem!.IsEnabled = state.Copy;
-        _composerPasteItem!.IsEnabled = state.Paste;
-        _composerSelectAllItem!.IsEnabled = state.SelectAll;
     }
 }

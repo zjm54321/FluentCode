@@ -197,9 +197,8 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             ShowBillionSection();
             BillionSetupRequested?.Invoke(this, EventArgs.Empty);
         };
-        var setup = new MenuFlyoutItem { Text = "Billion 设置" };
-        setup.Click += (_, _) => { ShowBillionSection(); BillionSetupRequested?.Invoke(this, EventArgs.Empty); };
-        _usageHost.ContextFlyout = new MenuFlyout { Items = { setup } };
+        _usageHost.ContextFlyout = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
+            { new("Billion 设置", "\uE713", () => { ShowBillionSection(); BillionSetupRequested?.Invoke(this, EventArgs.Empty); }) });
 
         var root = new Grid();
         // The context title is the first row, never preceded by a hidden selector/status placeholder.

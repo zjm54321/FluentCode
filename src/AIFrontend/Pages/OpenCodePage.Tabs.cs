@@ -265,15 +265,17 @@ public sealed partial class OpenCodePage
         OnBrowserSessionTabOpened(sessionId);
     }
 
-    private MenuFlyout CreateSessionTabMenu(SessionTabEntry entry)
+    // Shared context-menu shape: icon row 关闭; list 在首页查看会话 | 关闭其他标签.
+    private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase CreateSessionTabMenu(SessionTabEntry entry)
     {
-        var close = new MenuFlyoutItem { Text = "关闭", Icon = new FontIcon { Glyph = "\uE711" } };
-        close.Click += (_, _) => CloseSessionTabActor(entry);
-        var closeOthers = new MenuFlyoutItem { Text = "关闭其他标签" };
-        closeOthers.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) CloseOtherSessionTabs(entry.SessionId); };
-        var locate = new MenuFlyoutItem { Text = "在首页查看会话", Icon = new FontIcon { Glyph = "\uE8A4" } };
-        locate.Click += (_, _) => { if (_sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry)) LocateSessionInPane(); };
-        return new MenuFlyout { Items = { close, closeOthers, new MenuFlyoutSeparator(), locate } };
+        bool Current() => _sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry);
+        return OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
+        {
+            new("关闭", "\uE711", () => CloseSessionTabActor(entry)) { Row = true },
+            new("在首页查看会话", "\uE8A4", () => { if (Current()) LocateSessionInPane(); }),
+            null,
+            new("关闭其他标签", "\uE711", () => { if (Current()) CloseOtherSessionTabs(entry.SessionId); }),
+        });
     }
 
     private void SelectSessionTabSilently(string? sessionId)

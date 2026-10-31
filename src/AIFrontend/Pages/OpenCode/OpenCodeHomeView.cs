@@ -714,50 +714,37 @@ public sealed class OpenCodeHomeView : UserControl
         return item;
     }
 
-    private MenuFlyout CreateSessionMenu(ListViewItem owner)
+    // Shared context-menu shape (File Explorer style): icon row 重命名 · 复制 session ID · 删除; list 归档此会话.
+    // Fluent order confirmed by the user: edit actions first, destructive delete last (rightmost in the row).
+    private CommandBarFlyout CreateSessionMenu(ListViewItem owner)
     {
-        var menu = new MenuFlyout();
-        OpenCodeHomeSession? target = null;
-        long revision = 0;
-        // Fluent order (confirmed by the user): edit actions, separator, then archive and the destructive delete last.
-        foreach (var (choice, label, glyph) in new (OpenCodeHomeSessionAction?, string, string)[]
-        {
-            (OpenCodeHomeSessionAction.Rename, "修改名称", "\uE8AC"), (OpenCodeHomeSessionAction.CopyId, "复制 session ID", "\uE8C8"),
-            (null, string.Empty, string.Empty),
-            (OpenCodeHomeSessionAction.Archive, "归档此会话", "\uE7B8"), (OpenCodeHomeSessionAction.Delete, "删除此会话", "\uE74D"),
-        })
-        {
-            if (choice is not { } action) { menu.Items.Add(new MenuFlyoutSeparator()); continue; }
-            var icon = new FontIcon { Glyph = glyph };
-            var entry = new MenuFlyoutItem { Text = label, Tag = action, Icon = icon };
-            entry.KeyboardAcceleratorTextOverride = action switch { OpenCodeHomeSessionAction.Rename => "F2", OpenCodeHomeSessionAction.Delete => "Del", _ => string.Empty };
-            AutomationProperties.SetAutomationId(entry, "OpenCodeHomeMenu" + action);
-            if (action == OpenCodeHomeSessionAction.Delete)
-            {
-                entry.Style = ThemeStyle("MenuFlyoutItem", ("Foreground", OpenCodeToolTheme.Critical));
-                OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.Critical));
-            }
-            entry.Click += (_, _) =>
-            {
-                if (target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true)
-                    SessionActionRequested?.Invoke(this, new(revision, target, action));
-            };
-            menu.Items.Add(entry);
-        }
-        menu.Opening += (_, _) =>
+        return OpenCodeContextMenu.Create(_ =>
         {
             // Native context flyout does not activate/select the row. Resolve its reconciled current Tag,
             // not a previously captured row or hidden SessionList selection, and make no reads here.
-            target = (owner.Tag as OpenCodeHomeSessionRow)?.Session;
-            revision = _snapshot.Revision;
-            foreach (var entry in menu.Items.OfType<MenuFlyoutItem>())
+            var target = (owner.Tag as OpenCodeHomeSessionRow)?.Session;
+            var revision = _snapshot.Revision;
+            OpenCodeContextCommand Command(OpenCodeHomeSessionAction action, string label, string glyph)
             {
-                var action = (OpenCodeHomeSessionAction)entry.Tag;
-                entry.IsEnabled = target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true;
-                ToolTipService.SetToolTip(entry, entry.IsEnabled ? null : "此会话正在进行其他操作，或列表已变化；请稍后重试。");
+                var enabled = target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true;
+                return new(label, glyph, () =>
+                {
+                    if (target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true)
+                        SessionActionRequested?.Invoke(this, new(revision, target, action));
+                })
+                {
+                    Enabled = enabled, AutomationId = "OpenCodeHomeMenu" + action,
+                    Description = enabled ? null : "此会话正在进行其他操作，或列表已变化；请稍后重试。",
+                };
             }
-        };
-        return menu;
+            return new OpenCodeContextCommand?[]
+            {
+                Command(OpenCodeHomeSessionAction.Rename, "修改名称", "\uE8AC") with { Row = true, Accelerator = "F2" },
+                Command(OpenCodeHomeSessionAction.CopyId, "复制 session ID", "\uE8C8") with { Row = true },
+                Command(OpenCodeHomeSessionAction.Delete, "删除此会话", "\uE74D") with { Row = true, Accelerator = "Del", Critical = true },
+                Command(OpenCodeHomeSessionAction.Archive, "归档此会话", "\uE7B8"),
+            };
+        });
     }
 
     private static string GroupLabel(object key) => key switch

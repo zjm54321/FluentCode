@@ -115,6 +115,7 @@ public sealed class OpenCodeRichTextPresenter
         set { _textContextFlyout = value; if (value is not null) OpenCodeMessageContextMenu.Apply(_root, value); }
     }
     private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase? _textContextFlyout;
+    private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase? _textOnlyFlyout;
 
     /// <summary>创建空的呈现器；通过 <see cref="Render"/> 填充内容。</summary>
     public OpenCodeRichTextPresenter()
@@ -201,7 +202,7 @@ public sealed class OpenCodeRichTextPresenter
         {
             _root.Children.Add(block);
         }
-        if (_textContextFlyout is { } menu) OpenCodeMessageContextMenu.Apply(_root, menu);
+        OpenCodeMessageContextMenu.Apply(_root, _textContextFlyout ?? (_textOnlyFlyout ??= OpenCodeMessageContextMenu.CreateTextOnly()));
         ConstrainBlocks();
     }
 
