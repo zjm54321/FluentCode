@@ -225,6 +225,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
     public void SetHostVisible(bool visible)
     {
         if (_hostVisible == visible) return;
+        if (!visible) CancelTouch();
         _hostVisible = visible;
         if (!CanUseTerminal) return;
         if (_terminalHostWindow != 0) NativeMethods.ShowWindow(_terminalHostWindow, visible ? NativeMethods.ShowWindowNoActivate : 0);
@@ -291,6 +292,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
     /// <summary>Scrolls local history only; never writes to or resizes the connection.</summary>
     public void ScrollTo(int viewTop)
     {
+        StopTouchInertia();
         if (!CanUseTerminal) return;
         _terminalScrollBar.Value = Math.Clamp(viewTop, 0, Math.Max(0, (int)_terminalScrollBar.Maximum));
     }
@@ -309,6 +311,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
             return;
         }
 
+        CancelTouch();
         _disposed = true;
         if (_subscribedRoot is not null) { _subscribedRoot.Changed -= OnXamlRootChanged; _subscribedRoot = null; }
         LayoutUpdated -= OnLayoutUpdated;
@@ -861,7 +864,16 @@ public sealed partial class TerminalControl : UserControl, IDisposable
         var message = args.Message;
         switch (message.MessageId)
         {
+            case TouchPointerDown:
+            case TouchPointerUpdate:
+            case TouchPointerUp:
+            case TouchPointerCaptureChanged:
+                if (HandleNativeTouch(message.MessageId, message.WParam, message.LParam))
+                { args.Handled = true; args.Result = nint.Zero; }
+                break;
+
             case NativeMethods.WmMouseWheel:
+                StopTouchInertia();
                 if (ScrollViewportWithMouseWheel(message.WParam))
                 { args.Handled = true; args.Result = nint.Zero; }
                 break;
@@ -871,6 +883,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
                 break;
 
             case NativeMethods.WmKillFocus:
+                CancelTouch();
                 SetTerminalFocused(false);
                 break;
 
@@ -882,7 +895,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
             case NativeMethods.WmLeftButtonDown:
             case NativeMethods.WmLeftButtonDoubleClick:
             case NativeMethods.WmLeftButtonUp:
-                if (NativeLeftButton(message.MessageId, message.LParam)) { args.Handled = true; args.Result = nint.Zero; }
+                if (!_touchSelectionMessage && NativeLeftButton(message.MessageId, message.LParam)) { args.Handled = true; args.Result = nint.Zero; }
                 break;
 
             case NativeMethods.WmKeyDown:
@@ -991,12 +1004,14 @@ public sealed partial class TerminalControl : UserControl, IDisposable
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (HandleXamlTouch(TouchPointerUpdate, e)) return;
         SendPointerMessage(NativeMethods.WmMouseMove, e.GetCurrentPoint(_presenter));
         e.Handled = true;
     }
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        if (HandleXamlTouch(TouchPointerDown, e)) return;
         var point = e.GetCurrentPoint(_presenter);
         var message = GetButtonMessage(point.Properties.PointerUpdateKind, true, point.Position);
         if (message == 0)
@@ -1013,6 +1028,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (HandleXamlTouch(TouchPointerUp, e)) return;
         var point = e.GetCurrentPoint(_presenter);
         var message = GetButtonMessage(point.Properties.PointerUpdateKind, false, point.Position);
         if (message != 0)
@@ -1044,11 +1060,13 @@ public sealed partial class TerminalControl : UserControl, IDisposable
 
     private void OnPointerCanceled(object sender, PointerRoutedEventArgs e)
     {
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch) { CancelTouch(); e.Handled = true; return; }
         ReleasePressedMouseButtons(e.GetCurrentPoint(_presenter));
     }
 
     private void OnPointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch) { CancelTouch(); return; }
         ReleasePressedMouseButtons(e.GetCurrentPoint(_presenter));
     }
 
@@ -1272,7 +1290,7 @@ public sealed partial class TerminalControl : UserControl, IDisposable
         }
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
         private const string TerminalControlLibrary = "Microsoft.Terminal.Control.dll";
 

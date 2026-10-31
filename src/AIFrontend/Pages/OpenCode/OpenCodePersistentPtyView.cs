@@ -37,7 +37,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
     private readonly TextBlock _status = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
     private readonly Border _statusPill = new() { Height = 26, Padding = new Thickness(10, 0, 10, 0), CornerRadius = new CornerRadius(13), VerticalAlignment = VerticalAlignment.Center };
     private readonly Border _readOnly = new() { Height = 22, Padding = new Thickness(8, 0, 8, 0), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
-    private readonly Button _jump = new() { Height = 26, Padding = new Thickness(10, 0, 10, 0), CornerRadius = new CornerRadius(13), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+    private readonly Button _jump = new() { Height = 40, MinWidth = 40, Padding = new Thickness(10, 0, 10, 0), CornerRadius = new CornerRadius(13), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
     private readonly TextBlock _jumpText = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _find = OpenCodeTerminalUi.IconButton("\uE721", "查找 · Ctrl+Shift+F");
     private readonly Button _copy = OpenCodeTerminalUi.IconButton("\uE8C8", "复制 · Ctrl+Shift+C");
@@ -47,19 +47,19 @@ internal sealed class OpenCodePersistentPtyView : Grid
     private readonly Grid _confirm = new() { Padding = new Thickness(16, 0, 12, 0), ColumnSpacing = 12, Visibility = Visibility.Collapsed };
     private readonly TextBlock _confirmTitle = new() { FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _confirmDetail = new() { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly Button _confirmEnd = new() { Content = "结束终端", MinWidth = 96, Height = 32 };
-    private readonly Button _confirmCancel = new() { Content = "取消", MinWidth = 96, Height = 32 };
+    private readonly Button _confirmEnd = new() { Content = "结束终端", MinWidth = 96, Height = 40 };
+    private readonly Button _confirmCancel = new() { Content = "取消", MinWidth = 96, Height = 40 };
     private readonly InfoBar _notice = new() { IsClosable = false, IsOpen = false, Severity = InfoBarSeverity.Warning, CornerRadius = new CornerRadius(4), Margin = new Thickness(12, 0, 12, 8) };
-    private readonly Button _reconnect = new() { Content = "重新连接" };
+    private readonly Button _reconnect = new() { Content = "重新连接", MinHeight = 40 };
     private readonly ColumnDefinition _listColumn = new() { Width = new GridLength(0) };
     private readonly Border _listHost = new();
     private readonly Border _well = new() { CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1) };
     private readonly Grid _findBar = new() { ColumnSpacing = 2, Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0) };
     private readonly StackPanel _titles = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0) };
-    private readonly TextBox _findBox = new() { Width = 300, PlaceholderText = "查找", VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBox _findBox = new() { Width = 300, MinHeight = 40, PlaceholderText = "查找", VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _findCount = new() { FontSize = 12, MinWidth = 44, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Right };
-    private readonly ToggleButton _findCase = new() { Content = "Aa", Width = 32, Height = 32, MinWidth = 0, Padding = new Thickness(0), FontSize = 12 };
-    private readonly ToggleButton _findRegex = new() { Content = ".*", Width = 32, Height = 32, MinWidth = 0, Padding = new Thickness(0), FontSize = 12 };
+    private readonly ToggleButton _findCase = new() { Content = "Aa", Width = 40, Height = 40, MinWidth = 0, Padding = new Thickness(0), FontSize = 12 };
+    private readonly ToggleButton _findRegex = new() { Content = ".*", Width = 40, Height = 40, MinWidth = 0, Padding = new Thickness(0), FontSize = 12 };
     private readonly Canvas _markers = new() { IsHitTestVisible = false };
     private readonly Border _marker = new() { Width = 3, CornerRadius = new CornerRadius(1.5), Visibility = Visibility.Collapsed };
     private readonly OpenCodeTerminalScrollBar _scrollBar;
@@ -200,6 +200,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         _moreMenu.Items.Add(_createItem); _moreMenu.Items.Add(_copyAllItem); _moreMenu.Items.Add(_appearanceItem);
         _moreMenu.Items.Add(new MenuFlyoutSeparator()); _moreMenu.Items.Add(_activateItem); _moreMenu.Items.Add(_releaseItem);
         _moreMenu.Items.Add(new MenuFlyoutSeparator()); _moreMenu.Items.Add(_terminate);
+        foreach (var item in _moreMenu.Items.OfType<MenuFlyoutItem>()) item.MinHeight = 40;
         _moreMenu.Placement = FlyoutPlacementMode.BottomEdgeAlignedRight;
         _more.Flyout = _moreMenu;
         // Menus may cover the terminal: keep its last frame in place instead of blanking it while the HWND hides.
@@ -565,7 +566,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
 /// </summary>
 internal sealed class OpenCodeTerminalScrollBar : Grid
 {
-    internal const double GutterWidth = 16;
+    internal const double GutterWidth = 40;
     private readonly OpenCodePersistentPtyRenderer _renderer;
     private readonly Border _track = new() { Width = 8, CornerRadius = new CornerRadius(4), HorizontalAlignment = HorizontalAlignment.Center, Opacity = 0 };
     private readonly Border _thumb = new() { Width = 3, CornerRadius = new CornerRadius(1.5), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
@@ -576,6 +577,7 @@ internal sealed class OpenCodeTerminalScrollBar : Grid
     internal OpenCodeTerminalScrollBar(OpenCodePersistentPtyRenderer renderer)
     {
         _renderer = renderer; Width = GutterWidth;
+        ManipulationMode = ManipulationModes.None; // Keep touch drags here, not in an ancestor ScrollViewer.
         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         Children.Add(_track); Children.Add(_thumb);
         AutomationProperties.SetName(this, "终端滚动条");
@@ -584,20 +586,26 @@ internal sealed class OpenCodeTerminalScrollBar : Grid
         PointerExited += (_, _) => { _hover = false; Paint(); };
         PointerPressed += (_, args) =>
         {
+            if (_state.MaximumTop <= 0) return;
             var y = args.GetCurrentPoint(this).Position.Y;
             if (y >= _thumb.Margin.Top && y <= _thumb.Margin.Top + _thumb.Height) { _dragging = true; _dragOffset = y - _thumb.Margin.Top; CapturePointer(args.Pointer); }
+            else if (args.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch)
+            {
+                _dragging = true; _dragOffset = _thumb.Height / 2; CapturePointer(args.Pointer);
+                DragTo(y);
+            }
             else _renderer.ScrollTo(_state.ViewTop + (y < _thumb.Margin.Top ? -1 : 1) * Math.Max(1, _state.ViewHeight - 1));
+            Paint();
             args.Handled = true;
         };
         PointerMoved += (_, args) =>
         {
             if (!_dragging) return;
-            var free = ActualHeight - _thumb.Height;
-            if (free <= 0) return;
-            var y = args.GetCurrentPoint(this).Position.Y - _dragOffset;
-            _renderer.ScrollTo((int)Math.Round(Math.Clamp(y / free, 0, 1) * _state.MaximumTop));
+            DragTo(args.GetCurrentPoint(this).Position.Y);
+            args.Handled = true;
         };
-        PointerReleased += (_, args) => { _dragging = false; ReleasePointerCapture(args.Pointer); Paint(); };
+        PointerReleased += (_, args) => { _dragging = false; ReleasePointerCapture(args.Pointer); Paint(); args.Handled = true; };
+        PointerCanceled += (_, args) => { _dragging = false; ReleasePointerCapture(args.Pointer); Paint(); };
         PointerCaptureLost += (_, _) => { _dragging = false; Paint(); };
         PointerWheelChanged += (_, args) =>
         {
@@ -612,11 +620,19 @@ internal sealed class OpenCodeTerminalScrollBar : Grid
 
     internal void Update(TerminalScrollState state) { _state = state; Layout(); }
 
+    private void DragTo(double y)
+    {
+        var free = ActualHeight - _thumb.Height;
+        if (free > 0) _renderer.ScrollTo((int)Math.Round(Math.Clamp((y - _dragOffset) / free, 0, 1) * _state.MaximumTop));
+    }
+
     private void Layout()
     {
-        var visible = _state.MaximumTop > 0 && _state.BufferSize > 0 && ActualHeight > 0;
+        // A collapsed element measures to zero. Show from buffer state first, then
+        // SizeChanged supplies geometry; testing ActualHeight here kept it collapsed forever.
+        var visible = _state.MaximumTop > 0 && _state.BufferSize > 0;
         Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        if (!visible) return;
+        if (!visible || ActualHeight <= 0) return;
         var height = Math.Max(24, ActualHeight * _state.ViewHeight / Math.Max(1, _state.BufferSize));
         _thumb.Height = Math.Min(ActualHeight, height);
         _thumb.Margin = new Thickness(0, (ActualHeight - _thumb.Height) * _state.ViewTop / Math.Max(1, _state.MaximumTop), 0, 0);

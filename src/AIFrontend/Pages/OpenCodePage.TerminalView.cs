@@ -58,6 +58,8 @@ public sealed partial class OpenCodePage
 
     private void OpenTerminalView(string shellId)
     {
+        // The selected tool-only item has no /shell route and is absent from the live tree.
+        if (_terminalState.ShellId == shellId && _shellTerminalRequest is { } request) { OpenTerminalView(request); return; }
         var binding = CaptureTreeBinding();
         if (binding is null || _treeDirectory is null || !_treeShells.TryGetValue(shellId, out var shell)) return;
         OpenShellTerminal(binding, shell, null);
@@ -67,9 +69,13 @@ public sealed partial class OpenCodePage
     {
         var binding = CaptureTreeBinding();
         if (binding is null || _treeDirectory is null) return;
+        request = OpenCodeShellTerminalState.ResolveRequest(request, _olderMessages.Concat(_latestMessages));
         var shell = request.ShellId is { } id && _treeShells.TryGetValue(id, out var known) ? known
             : new OpenCodeTreeShell(request.ShellId ?? "recorded:" + Guid.NewGuid().ToString("N"), request.Command, _treeDirectory,
-                OpenCodeTreeShellKind.Foreground, request.Running ? OpenCodeTreeStatus.Running : OpenCodeTreeStatus.Unknown, null, request.Output);
+                OpenCodeTreeShellKind.Foreground, request.Running ? OpenCodeTreeStatus.Running : request.Failed ? OpenCodeTreeStatus.Failed
+                    : request.Completed ? OpenCodeTreeStatus.Succeeded : OpenCodeTreeStatus.Unknown, request.Exit, request.Output, request.Completed);
+        if (!shell.Completed && request.Completed)
+            shell = shell with { Status = request.Failed ? OpenCodeTreeStatus.Failed : OpenCodeTreeStatus.Succeeded, Completed = true, Exit = request.Exit, Output = request.Output };
         shell = shell with { Command = request.Command, Output = shell.Completed ? shell.Output : request.Output };
         OpenShellTerminal(binding, shell, request);
     }
@@ -84,7 +90,7 @@ public sealed partial class OpenCodePage
         _shellTerminalRequest = request;
         _shellOutputApiId = request is null ? shell.Id : request.ShellId;
         _terminalCts = CancellationTokenSource.CreateLinkedTokenSource(_pageCts!.Token, binding.Source.RevocationToken);
-        _terminalState.Open(shell);
+        _terminalState.Open(shell, readOutput: _shellOutputApiId is not null);
         var view = _terminalView = new OpenCodePersistentPtyView();
         var context = _shellTerminalContext = new(Guid.NewGuid(), _terminalVersion, binding.SessionId, shell.Id);
         view.Renderer.UseShellViewport();
@@ -171,10 +177,16 @@ public sealed partial class OpenCodePage
             if (part is null) return;
             var model = OpenCodeToolRowPresentation.Build(part);
             if (model.Kind != OpenCodeToolKind.Shell) return;
-            _terminalState.UpdateRecordedOutput(model.Command ?? model.Target, model.OutputText ?? string.Empty, model.IsActive, _shellOutputApiId is null);
+            var recorded = OpenCodeShellTerminalState.ResolveRequest(request, messages);
+            _terminalState.UpdateRecordedOutput(model.Command ?? model.Target, model.OutputText ?? model.ErrorText ?? string.Empty,
+                recorded.Running, _shellOutputApiId is null, recorded.Completed, recorded.Exit, recorded.Failed);
         }
-        else _terminalState.UpdateRecordedOutput(message.Command ?? request.Command, message.Output?.Output ?? request.Output,
-            message.Status == OpenCodeShellStatuses.Running, _shellOutputApiId is null);
+        else
+        {
+            var recorded = OpenCodeShellTerminalState.ResolveRequest(request, messages);
+            _terminalState.UpdateRecordedOutput(message.Command ?? request.Command, message.Output?.Output ?? request.Output,
+                recorded.Running, _shellOutputApiId is null, recorded.Completed, recorded.Exit, recorded.Failed);
+        }
         _ = RenderShellTerminalAsync(_terminalCts.Token);
     }
 

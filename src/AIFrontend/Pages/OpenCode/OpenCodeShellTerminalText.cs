@@ -6,7 +6,8 @@ using System.Text.RegularExpressions;
 namespace AIFrontend.Pages.OpenCode;
 
 public sealed record OpenCodeShellTerminalRequest(string? ShellId, string Command, string Output,
-    string? MessageId = null, string? PartId = null, bool Running = false);
+    string? MessageId = null, string? PartId = null, bool Running = false,
+    bool Completed = false, bool Failed = false, string? Exit = null);
 
 internal static class OpenCodeShellTerminalText
 {

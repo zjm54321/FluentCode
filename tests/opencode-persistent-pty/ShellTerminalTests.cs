@@ -68,6 +68,7 @@ internal static class ShellTerminalTests
         }
         Check(!state.HasMore && state.Cursor == size && state.Output == output,
             "shell-output API byte-cursor pages retain every record, interior blank line and mixed newline to completion");
+        HistoricalTools(output);
         await BackgroundOutput();
         var cursorSurface = new Surface();
         var cursorAdapter = new OpenCodeShellTerminalAdapter(cursorSurface, new(Guid.NewGuid(), 1, "session", "shell"));
@@ -76,6 +77,56 @@ internal static class ShellTerminalTests
         Check(cursorSurface.Resets == 0 && cursorSurface.Text.Contains("\x1b[?1;25h" + OpenCodeShellTerminalText.HideCursor)
             && cursorSurface.Text.Contains("\x1b" + "c" + OpenCodeShellTerminalText.HideCursor),
             "read-only caret stays hidden after fragmented DECSET/RIS without injecting escapes into partial CSI or replacing output");
+    }
+
+    private static void HistoricalTools(string output)
+    {
+        OpenCodeMessage Message(string status, int? exit, string? serviceStatus = null, bool shellId = false) => new()
+        {
+            Id = "msg_history", Type = "assistant", Content = new()
+            {
+                new() { Id = "part_shell", Type = "tool", Name = "shell", State = JsonSerializer.SerializeToElement(new
+                {
+                    status, input = new { command = "history command", background = serviceStatus == "running" },
+                    metadata = new { exit, status = serviceStatus, shellID = shellId ? "sh_history" : null },
+                    content = new[] { new { type = "text", text = output } },
+                    error = status == "error" ? new { type = "ToolError", message = "launch failed" } : null
+                }) }
+            }
+        };
+        var hint = new OpenCodeShellTerminalRequest(null, "history command", output, "msg_history", "part_shell");
+        var resolved = OpenCodeShellTerminalState.ResolveRequest(hint, new[] { Message("completed", 0) });
+        Check(resolved is { Completed: true, Running: false, Failed: false, Exit: "0" } && resolved.Output == output,
+            "processed-group foreground request recovers completed state, numeric exit and full accepted part output without a shell ID");
+        var state = new OpenCodeShellTerminalState();
+        state.Open(new("recorded:history", resolved.Command, "/work", OpenCodeTreeShellKind.Foreground,
+            OpenCodeTreeStatus.Succeeded, resolved.Exit, resolved.Output, resolved.Completed), readOutput: false);
+        Check(state.StatusText == "已完成 · 退出码 0" && state.Notice is null && !state.Running && state.Output.Contains("0239"),
+            "historical foreground shell starts settled immediately, never leaves the no-REST output loading notice");
+        var failure = OpenCodeShellTerminalState.ResolveRequest(hint, new[] { Message("completed", 23) });
+        state.Open(new("recorded:failed", failure.Command, "/work", OpenCodeTreeShellKind.Foreground,
+            OpenCodeTreeStatus.Failed, failure.Exit, failure.Output, failure.Completed), readOutput: false);
+        Check(state.StatusText == "失败 · 退出码 23" && state.Failed && state.Notice is null, "nonzero completed tool uses the same failed terminal status");
+        var error = OpenCodeShellTerminalState.ResolveRequest(hint, new[] { Message("error", null) });
+        state.Open(new("recorded:error", error.Command, "/work", OpenCodeTreeShellKind.Foreground,
+            OpenCodeTreeStatus.Failed, error.Exit, error.Output, error.Completed), readOutput: false);
+        Check(state.StatusText == "失败" && state.Failed, "tool errors remain failed even without a process exit code");
+        var live = OpenCodeShellTerminalState.ResolveRequest(hint, new[] { Message("running", null) });
+        state.Open(new("recorded:live", live.Command, "/work", OpenCodeTreeShellKind.Foreground, OpenCodeTreeStatus.Running, null, live.Output), readOutput: false);
+        Check(state.StatusText == "运行中" && state.Notice is null, "live foreground tool-only output is transcript-backed, not waiting for a nonexistent REST read");
+        state.UpdateRecordedOutput(failure.Command, failure.Output, failure.Running, true, failure.Completed, failure.Exit, failure.Failed);
+        Check(state.StatusText == "失败 · 退出码 23" && state.Failed && state.Output == output && state.Notice is null,
+            "accepted tool snapshot finishes live foreground output with its exact exit code");
+        var detached = OpenCodeShellTerminalState.ResolveRequest(hint, new[] { Message("completed", 0, "running", true) });
+        Check(detached is { Running: true, Completed: false }, "background launch acknowledgement is not terminal completion");
+        var projected = OpenCodeAgentTreeProjection.Shell(Message("completed", null, shellId: true).Content![0]);
+        Check(projected is { Completed: true, Status: OpenCodeTreeStatus.Succeeded },
+            "agent-tree history recognizes completed shell parts even when metadata omits status and exit");
+        projected = OpenCodeAgentTreeProjection.Shell(Message("error", null, shellId: true).Content![0]);
+        Check(projected is { Completed: true, Status: OpenCodeTreeStatus.Failed }, "agent-tree history preserves tool failure without numeric exit");
+        projected = OpenCodeAgentTreeProjection.Shell(Message("completed", 0, "running", true).Content![0]);
+        Check(projected is { Completed: false, Status: OpenCodeTreeStatus.Running, Kind: OpenCodeTreeShellKind.Background },
+            "agent-tree and strip keep detached background launches running until real completion");
     }
 
     private static async Task BackgroundOutput()

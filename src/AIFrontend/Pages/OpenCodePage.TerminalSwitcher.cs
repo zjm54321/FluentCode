@@ -52,7 +52,7 @@ public sealed partial class OpenCodePage
     private void SyncShellTerminalEntries()
     {
         var entries = new List<OpenCodeTerminalEntry>();
-        foreach (var shell in _treeShells.Values.Where(shell => shell.Kind == OpenCodeTreeShellKind.Background && shell.Status == OpenCodeTreeStatus.Running))
+        foreach (var shell in _treeShells.Values.Where(shell => shell.Id != _terminalState.ShellId && shell.Kind == OpenCodeTreeShellKind.Background && shell.Status == OpenCodeTreeStatus.Running))
             entries.Add(new(OpenCodeTerminalEntryKind.Shell, shell.Id, shell.Command, "后台命令", shell.Cwd, OpenCodeTerminalState.Running, "运行中", false));
         if (_terminalState.ShellId is { } id && entries.All(entry => entry.Id != id))
         {

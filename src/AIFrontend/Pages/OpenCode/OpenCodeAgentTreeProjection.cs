@@ -116,13 +116,17 @@ internal static class OpenCodeAgentTreeProjection
         var kind = background == true || detached ? OpenCodeTreeShellKind.Background
             : background == false || part.Name == "shell" ? OpenCodeTreeShellKind.Foreground : OpenCodeTreeShellKind.Unknown;
         var exit = Number(state.Metadata, "exit");
+        var running = status == "running" || state.Status is "running" or "streaming";
+        var completed = !running && (state.Status is "completed" or "error" || status is "exited" or "killed" or "timeout");
         return new(id, String(state.Input, "command") ?? id, String(state.Input, "workdir"), kind,
-            Boolean(state.Metadata, "timeout") == true ? OpenCodeTreeStatus.Failed
-                : ShellStatus(status == "running" ? "running" : "exited", exit),
+            Boolean(state.Metadata, "timeout") == true || state.Status == "error" ? OpenCodeTreeStatus.Failed
+                : running ? OpenCodeTreeStatus.Running : status == "killed" ? OpenCodeTreeStatus.Interrupted
+                : status == "timeout" || exit.HasValue && exit != 0 ? OpenCodeTreeStatus.Failed
+                : completed ? OpenCodeTreeStatus.Succeeded : OpenCodeTreeStatus.Unknown,
             exit?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             state.Content is { Count: > 0 } content
                 ? string.Join("\n", content.Where(c => c.Type == "text").Select(c => c.Text)) : null,
-            status is "exited" or "killed" or "timeout");
+            completed);
     }
 
     private static double? Number(JsonElement? element, string name)

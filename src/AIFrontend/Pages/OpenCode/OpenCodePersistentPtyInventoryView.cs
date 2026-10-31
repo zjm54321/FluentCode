@@ -19,7 +19,7 @@ namespace AIFrontend.Pages.OpenCode;
 /// </summary>
 internal sealed class OpenCodePersistentPtyInventoryView : Grid
 {
-    private const double StripHeight = 40;
+    private const double StripHeight = 44;
     private readonly StackPanel _row = new() { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(6, 0, 6, 0) };
     private readonly ScrollViewer _scroll;
     private readonly Button _previous, _next;
@@ -27,7 +27,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
     private readonly Button _create;
     private bool _creating;
     private string? _createError;
-    private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
+    private readonly ToggleButton _toggle = new() { Width = 40, Height = 40, MinWidth = 0, Padding = new Thickness(0) };
     private readonly Border _live = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Margin = OpenCodeQuickAccessStyle.StatusDotMargin,
         HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private OpenCodePersistentPtyInventoryContext? _context;
@@ -247,7 +247,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
     private sealed class Chip : Grid
     {
         private readonly OpenCodePersistentPtyInventoryView _owner;
-        private readonly Button _open = new() { Height = 32, MinWidth = 0, Padding = new Thickness(8, 0, 4, 0), CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
+        private readonly Button _open = new() { Height = 40, MinWidth = 40, Padding = new Thickness(8, 0, 4, 0), CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _title = new() { FontSize = 12, MaxWidth = 104, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         private readonly FrameworkElement _icon = OpenCodeQuickAccessStyle.TerminalIcon(14);
         private readonly Border _dot = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Margin = new Thickness(2, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -259,10 +259,10 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
 
         internal Chip(OpenCodePersistentPtyInventoryView owner)
         {
-            _owner = owner; Height = 32; VerticalAlignment = VerticalAlignment.Center;
+            _owner = owner; Height = 44; VerticalAlignment = VerticalAlignment.Center;
             _end.Visibility = Visibility.Collapsed; _end.VerticalAlignment = VerticalAlignment.Center;
             _open.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
-                Children = { _icon, _title, new Grid { Width = 20, Children = { _dot, _end } } } };
+                Children = { _icon, _title, new Grid { Width = 40, Children = { _dot, _end } } } };
             _dot.HorizontalAlignment = HorizontalAlignment.Center; _dot.Margin = new Thickness(0);
             _open.Click += (_, _) => { if (Entry is { } entry) { if (entry.Id == _owner._openId) _owner.CloseRequested?.Invoke(); else _owner.Open(entry); } };
             _end.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
@@ -345,7 +345,7 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         var heading = new TextBlock { Text = "终端", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeTerminalUi.Themed(heading, "Foreground", "TextFillColorSecondaryBrush");
         OpenCodeTerminalUi.Themed(_count, "Foreground", "TextFillColorTertiaryBrush");
-        var header = new Grid { Height = 32, Margin = new Thickness(0, 0, 0, 2) };
+        var header = new Grid { Height = 44, Margin = new Thickness(0, 0, 0, 2) };
         header.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(10, 0, 0, 0), Children = { heading, _count } });
         _create.HorizontalAlignment = HorizontalAlignment.Right; ToolTipService.SetToolTip(_create, "新建终端 · Ctrl+Shift+T");
         _create.Click += (_, _) => _inventory.RequestCreate();
@@ -376,7 +376,7 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
     private sealed class Row : Grid
     {
         private readonly OpenCodePersistentPtyInventoryView _inventory;
-        private readonly Button _open = new() { Height = 40, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        private readonly Button _open = new() { Height = 44, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(10, 0, 6, 0), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(0) };
         private readonly Border _selected = new() { CornerRadius = new CornerRadius(4), IsHitTestVisible = false };
         private readonly Border _bar = new() { Width = 3, Height = 16, CornerRadius = new CornerRadius(1.5), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
@@ -392,12 +392,12 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         {
             _inventory = inventory;
             if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) _open.Style = quiet;
-            _open.Height = 40; _open.HorizontalAlignment = HorizontalAlignment.Stretch; _open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            _open.Height = 44; _open.HorizontalAlignment = HorizontalAlignment.Stretch; _open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
             _open.Padding = new Thickness(10, 0, 6, 0);
             var content = new Grid { ColumnSpacing = 10 };
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
             content.Children.Add(_icon);
             var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { _title, _state } };
             Grid.SetColumn(text, 1); content.Children.Add(text);
@@ -491,6 +491,8 @@ internal static class OpenCodeTerminalUi
 
     internal static Button IconButton(string glyph, string name, double width = 32, double height = 32, double size = 14)
     {
+        // Terminal-only hit targets. Glyphs stay small; their transparent button area is touch-sized.
+        width = Math.Max(40, width); height = Math.Max(40, height);
         var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = size },
             Width = width, Height = height, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
