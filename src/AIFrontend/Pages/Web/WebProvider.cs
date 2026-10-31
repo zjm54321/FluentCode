@@ -80,6 +80,8 @@ public static class WebProviderInfo
     /// <summary>WebView2 用户数据根目录：<c>%LOCALAPPDATA%\AIFrontend\WebView2</c>（绝对路径）。</summary>
     public static string GetWebView2RootDirectory()
     {
+        if (Environment.GetEnvironmentVariable("AIF_STARTUP_SMOKE_ROOT") is { Length: > 0 } smokeRoot)
+            return Path.Combine(Path.GetFullPath(smokeRoot), WebView2FolderName);
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(localAppData))
         {

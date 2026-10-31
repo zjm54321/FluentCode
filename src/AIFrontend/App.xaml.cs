@@ -27,6 +27,8 @@ public partial class App : Application
                 File.AppendAllText(Path.Combine(directory, "crash.log"),
                     $"{DateTime.Now:O}: {e.Exception.GetType().FullName}; HRESULT=0x{e.Exception.HResult:X8}\r\n" +
                     $"XAML: {e.Message}\r\n{e.Exception}\r\n");
+                if (StartupSmokeRoot is { } root)
+                    File.AppendAllText(Path.Combine(root, "failed.txt"), $"{e.Message}\r\n{e.Exception}\r\n");
             }
             catch { }
             // 任何界面操作出错都不应让整个程序闪退：记录后标记已处理，并在顶部提示条告知用户。
@@ -55,6 +57,7 @@ public partial class App : Application
             window.AppWindow.Closing += OnAppWindowClosing;
             window.Closed += OnNotificationWindowClosed;
             window.Activate();
+            if (StartupSmokeRoot is not null) { StartStartupSmoke(window); return; }
             InitializeBackgroundMode(window);
             RecordDiagnostic("taskbar-initialize", taskbar: InitializeTaskbar(WinRT.Interop.WindowNative.GetWindowHandle(window)));
             StartCompletionNotifications(window);
@@ -63,6 +66,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            if (StartupSmokeRoot is { } root)
+                File.AppendAllText(Path.Combine(root, "failed.txt"), ex.ToString());
             RecordDiagnostic("app-launch-failed", error: ex);
             if (_window is null) { _closing = true; StopActivationOwnership(); Exit(); }
         }

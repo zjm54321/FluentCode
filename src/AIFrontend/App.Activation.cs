@@ -17,7 +17,11 @@ public partial class App
     {
         // Keep the SDK-generated Main: its STA, ComWrappersSupport and DispatcherQueueSynchronizationContext
         // remain intact. OnLaunched has a pumping dispatcher before an asynchronous redirect is awaited.
-        var instance = AppInstance.FindOrRegisterForKey("AIFrontend.Main");
+        var key = "AIFrontend.Main";
+        if (StartupSmokeRoot is { } smokeRoot)
+            key += ".Smoke." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(smokeRoot)));
+        var instance = AppInstance.FindOrRegisterForKey(key);
         if (instance.IsCurrent)
         {
             _primaryInstance = instance;

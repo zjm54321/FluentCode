@@ -21,6 +21,8 @@ internal static class AppDataPaths
     /// <summary>解析数据根目录；<paramref name="overrideRoot"/> 为 null/空白时使用默认根。</summary>
     internal static string GetRootDirectory(string? overrideRoot)
     {
+        // Explicit native smoke runs must never open the user's settings/secrets/sessions.
+        overrideRoot ??= Environment.GetEnvironmentVariable("AIF_STARTUP_SMOKE_ROOT");
         if (!string.IsNullOrWhiteSpace(overrideRoot))
         {
             return Path.GetFullPath(overrideRoot);

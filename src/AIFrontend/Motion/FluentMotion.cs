@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -30,6 +29,7 @@ internal static class FluentMotion
         Environment.GetEnvironmentVariable(FluentMotionTokens.SlowMotionVariable));
     private static readonly ConditionalWeakTable<UIElement, MotionGeneration> Generations = new();
     private static readonly ConditionalWeakTable<Compositor, Dictionary<MotionCurve, CompositionEasingFunction>> Easings = new();
+    private static readonly ConditionalWeakTable<UIElement, Dictionary<string, CompositionAnimation>> Animations = new();
     private static readonly List<(WeakReference<DependencyObject> Owner, Action<bool> Apply)> Bindings = new();
 
     private static UISettings? _uiSettings;
@@ -167,7 +167,8 @@ internal static class FluentMotion
 
     /// <summary>
     /// 统一的进出场：从 (fromOpacity, fromTranslation, fromScale) 动到 (toOpacity, toTranslation, toScale)。
-    /// 只动合成层 Visual；同一元素上较新的调用会取代旧调用，旧调用的 <paramref name="completed"/> 不会再触发。
+    /// 只动 XAML 合成外观属性；不取得 handout Visual，避免与控件/主题的 Scale 等外观属性冲突。
+    /// 同一元素上较新的调用会取代旧调用，旧调用的 <paramref name="completed"/> 不会再触发。
     /// 未启用动画时同步设置最终值并调用 <paramref name="completed"/>。
     /// </summary>
     public static void Animate(
@@ -182,7 +183,6 @@ internal static class FluentMotion
     {
         var generation = Generations.GetOrCreateValue(element);
         int token = generation.Next();
-        Visual? visual = null;
         void Finish()
         {
             if (!generation.IsCurrent(token)) return;
@@ -193,16 +193,14 @@ internal static class FluentMotion
         {
             try
             {
-                visual ??= ElementCompositionPreview.GetElementVisual(element);
-                visual.StopAnimation("Opacity");
-                visual.StopAnimation("Scale");
-                visual.Opacity = toOpacity;
-                visual.Scale = new Vector3(toScale, toScale, 1);
+                Stop(element, "Opacity");
+                Stop(element, "Scale");
+                element.Opacity = toOpacity;
+                element.Scale = new Vector3(toScale, toScale, 1);
                 if (fromTranslation is not null || toTranslation != Vector3.Zero || HasTranslation(element))
                 {
-                    EnableTranslation(element);
-                    visual.StopAnimation("Translation");
-                    visual.Properties.InsertVector3("Translation", toTranslation);
+                    Stop(element, "Translation");
+                    element.Translation = toTranslation;
                 }
             }
             catch { }
@@ -211,54 +209,54 @@ internal static class FluentMotion
 
         FluentMotionPolicy.Run(Enabled, Instant, () =>
         {
-            var target = ElementCompositionPreview.GetElementVisual(element);
-            visual = target;
-            var compositor = target.Compositor;
+            var compositor = CompositionTarget.GetCompositorForCurrentThread();
             var easing = Ease(compositor, curve);
             var length = Duration(duration);
             var wait = delay is { } d && d > TimeSpan.Zero ? Duration(d) : TimeSpan.Zero;
             var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
 
             var opacity = compositor.CreateScalarKeyFrameAnimation();
+            opacity.Target = "Opacity";
             if (fromOpacity is { } fo) opacity.InsertKeyFrame(0f, fo);
             opacity.InsertKeyFrame(1f, toOpacity, easing);
             Configure(opacity, length, wait);
-            target.StartAnimation("Opacity", opacity);
+            Start(element, opacity);
 
             if (fromTranslation is not null || toTranslation != Vector3.Zero || HasTranslation(element))
             {
-                EnableTranslation(element);
                 var translation = compositor.CreateVector3KeyFrameAnimation();
+                translation.Target = "Translation";
                 if (fromTranslation is { } ft) translation.InsertKeyFrame(0f, ft);
                 translation.InsertKeyFrame(1f, toTranslation, easing);
                 Configure(translation, length, wait);
-                target.StartAnimation("Translation", translation);
+                Start(element, translation);
             }
 
-            if (fromScale is not null || toScale != 1f || target.Scale != Vector3.One)
+            if (fromScale is not null || toScale != 1f || element.Scale != Vector3.One)
             {
                 var origin = scaleOrigin ?? new Vector2(0.5f, 0.5f);
                 var size = element is FrameworkElement fe ? new Vector2((float)fe.ActualWidth, (float)fe.ActualHeight) : element.ActualSize;
-                target.CenterPoint = new Vector3(size.X * origin.X, size.Y * origin.Y, 0);
+                element.CenterPoint = new Vector3(size.X * origin.X, size.Y * origin.Y, 0);
                 if ((size.X <= 0 || size.Y <= 0) && element is FrameworkElement pending)
                 {
                     // 刚插入、尚未布局的元素：首次得到尺寸时再定缩放原点（同一帧内完成，不影响动画）。
                     void Sized(object sender, SizeChangedEventArgs args)
                     {
                         pending.SizeChanged -= Sized;
-                        target.CenterPoint = new Vector3((float)args.NewSize.Width * origin.X, (float)args.NewSize.Height * origin.Y, 0);
+                        element.CenterPoint = new Vector3((float)args.NewSize.Width * origin.X, (float)args.NewSize.Height * origin.Y, 0);
                     }
                     pending.SizeChanged += Sized;
                 }
                 var scale = compositor.CreateVector3KeyFrameAnimation();
+                scale.Target = "Scale";
                 if (fromScale is { } fs) scale.InsertKeyFrame(0f, new Vector3(fs, fs, 1));
                 scale.InsertKeyFrame(1f, new Vector3(toScale, toScale, 1), easing);
                 Configure(scale, length, wait);
-                target.StartAnimation("Scale", scale);
+                Start(element, scale);
             }
 
-            batch.End();
             batch.Completed += (_, _) => Finish();
+            batch.End();
         });
     }
 
@@ -272,16 +270,20 @@ internal static class FluentMotion
         }
     }
 
-    private static readonly ConditionalWeakTable<UIElement, object> TranslationEnabled = new();
-
-    private static bool HasTranslation(UIElement element) => TranslationEnabled.TryGetValue(element, out _);
-
-    private static void EnableTranslation(UIElement element)
+    private static void Start(UIElement element, CompositionAnimation animation)
     {
-        if (HasTranslation(element)) return;
-        ElementCompositionPreview.SetIsTranslationEnabled(element, true);
-        TranslationEnabled.AddOrUpdate(element, new object());
+        Stop(element, animation.Target);
+        element.StartAnimation(animation);
+        Animations.GetOrCreateValue(element)[animation.Target] = animation;
     }
+
+    private static void Stop(UIElement element, string property)
+    {
+        if (Animations.TryGetValue(element, out var animations) && animations.Remove(property, out var animation))
+            element.StopAnimation(animation);
+    }
+
+    private static bool HasTranslation(UIElement element) => element.Translation != Vector3.Zero;
 
     /// <summary>取消正在进行的动画并把元素放回静止状态（不透明、无偏移、原尺寸），同步完成。</summary>
     public static void Settle(UIElement element) => Snap(element, 1f);
@@ -292,16 +294,12 @@ internal static class FluentMotion
         Generations.GetOrCreateValue(element).Next();
         try
         {
-            var visual = ElementCompositionPreview.GetElementVisual(element);
-            visual.StopAnimation("Opacity");
-            visual.StopAnimation("Scale");
-            visual.Opacity = opacity;
-            visual.Scale = Vector3.One;
-            if (HasTranslation(element))
-            {
-                visual.StopAnimation("Translation");
-                visual.Properties.InsertVector3("Translation", Vector3.Zero);
-            }
+            Stop(element, "Opacity");
+            Stop(element, "Scale");
+            Stop(element, "Translation");
+            element.Opacity = opacity;
+            element.Scale = Vector3.One;
+            element.Translation = Vector3.Zero;
         }
         catch { }
     }
@@ -397,21 +395,21 @@ internal static class FluentMotion
 
     /// <summary>
     /// 绕 <paramref name="center"/>（元素坐标）从 <paramref name="fromDegrees"/> 转回 0°（默认 250ms Point-to-point），
-    /// 用于指针/表盘这类“位置在屏内移动”的小图形。只动合成层 RotationAngleInDegrees；减少动画时直接落定。
+    /// 用于指针/表盘这类“位置在屏内移动”的小图形。只动合成外观属性 Rotation；减少动画时直接落定。
     /// </summary>
     public static void RotateIn(UIElement element, float fromDegrees, Vector2 center, TimeSpan? duration = null)
     {
         if (!Enabled || Math.Abs(fromDegrees) < 0.01f) return;
         try
         {
-            var visual = ElementCompositionPreview.GetElementVisual(element);
-            var compositor = visual.Compositor;
-            visual.CenterPoint = new Vector3(center, 0);
+            var compositor = CompositionTarget.GetCompositorForCurrentThread();
+            element.CenterPoint = new Vector3(center, 0);
             var turn = compositor.CreateScalarKeyFrameAnimation();
+            turn.Target = "Rotation";
             turn.InsertKeyFrame(0f, fromDegrees);
             turn.InsertKeyFrame(1f, 0f, Ease(compositor, FluentMotionTokens.PointToPoint));
             turn.Duration = Duration(duration ?? Normal);
-            visual.StartAnimation("RotationAngleInDegrees", turn);
+            Start(element, turn);
         }
         catch { }
     }
@@ -443,31 +441,22 @@ internal static class FluentMotion
     }
 
     /// <summary>
-    /// 布局位置变化时由合成层补间（RepositionThemeTransition 的合成层替代，250ms Point-to-point）：
-    /// 只作用在 Visual.Offset 上，不额外触发布局；减少动画时移除隐式动画。应在元素首次布局之后调用，避免首帧从原点飞入。
+    /// 由 XAML 的合成层重定位过渡补间布局位置变化；不取得元素 Visual，保留 chip 的 Scale/Translation 外观属性。
+    /// 减少动画时移除过渡。应在元素首次布局之后调用，避免首帧从原点飞入。
     /// </summary>
-    public static void EnableImplicitOffset(UIElement element, TimeSpan? duration = null)
+    public static void EnableImplicitOffset(UIElement element)
     {
-        Visual visual;
-        try { visual = ElementCompositionPreview.GetElementVisual(element); }
-        catch { return; }
+        if (RepositionBound.TryGetValue(element, out _)) return;
+        RepositionBound.Add(element, new object());
         Bind(element, enabled =>
         {
-            if (!enabled)
-            {
-                visual.ImplicitAnimations = null;
-                return;
-            }
-            var compositor = visual.Compositor;
-            var offset = compositor.CreateVector3KeyFrameAnimation();
-            offset.Target = "Offset";
-            offset.InsertExpressionKeyFrame(1f, "this.FinalValue", Ease(compositor, FluentMotionTokens.PointToPoint));
-            offset.Duration = Duration(duration ?? Normal);
-            var implicitAnimations = compositor.CreateImplicitAnimationCollection();
-            implicitAnimations["Offset"] = offset;
-            visual.ImplicitAnimations = implicitAnimations;
+            element.Transitions = enabled
+                ? new TransitionCollection { new RepositionThemeTransition() }
+                : new TransitionCollection();
         });
     }
+
+    private static readonly ConditionalWeakTable<UIElement, object> RepositionBound = new();
 
     /// <summary>
     /// 给元素设置会跟随“减少动画”的 ThemeTransition 集合：启用时用 <paramref name="factory"/> 的集合，减少时清空。

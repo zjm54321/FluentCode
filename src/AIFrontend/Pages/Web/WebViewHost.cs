@@ -63,7 +63,8 @@ public sealed class WebViewHost : UserControl
     public WebViewHost(WebProvider provider)
     {
         _provider = provider;
-        _homeUri = WebProviderInfo.GetHomeUri(provider);
+        _homeUri = Environment.GetEnvironmentVariable("AIF_STARTUP_SMOKE_ROOT") is { Length: > 0 }
+            ? new Uri("about:blank") : WebProviderInfo.GetHomeUri(provider);
         _userDataFolder = WebProviderInfo.GetUserDataFolder(provider);
 
         HorizontalAlignment = HorizontalAlignment.Stretch;

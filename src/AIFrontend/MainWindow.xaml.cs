@@ -411,7 +411,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 齿轮旋转一圈（0→360°，333ms Point-to-point）。走合成层 RotationAngleInDegrees，不触发布局；
+    /// 齿轮旋转一圈（0→360°，333ms Point-to-point）。走合成外观属性 Rotation，不触发布局；
     /// 减少动画时跳过（直接打开设置，不阻塞）。
     /// </summary>
     private void AnimateSettingsGear()
@@ -423,14 +423,14 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(SettingsGearIcon);
-            var compositor = visual.Compositor;
-            visual.CenterPoint = new System.Numerics.Vector3((float)SettingsGearIcon.ActualWidth / 2, (float)SettingsGearIcon.ActualHeight / 2, 0);
+            var compositor = CompositionTarget.GetCompositorForCurrentThread();
+            SettingsGearIcon.CenterPoint = new System.Numerics.Vector3((float)SettingsGearIcon.ActualWidth / 2, (float)SettingsGearIcon.ActualHeight / 2, 0);
             var spin = compositor.CreateScalarKeyFrameAnimation();
+            spin.Target = "Rotation";
             spin.InsertKeyFrame(0f, 0f);
             spin.InsertKeyFrame(1f, 360f, Motion.FluentMotion.Ease(compositor, Motion.FluentMotionTokens.PointToPoint));
             spin.Duration = Motion.FluentMotion.Duration(Motion.FluentMotion.Slow);
-            visual.StartAnimation("RotationAngleInDegrees", spin);
+            SettingsGearIcon.StartAnimation(spin);
         }
         catch
         {
