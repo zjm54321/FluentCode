@@ -265,7 +265,7 @@ public sealed partial class OpenCodePage
         OnBrowserSessionTabOpened(sessionId);
     }
 
-    // Shared context-menu shape: icon row 关闭; list 在首页查看会话 | 关闭其他标签.
+    // Shared context-menu shape: list 在首页查看会话 | 关闭其他标签; bottom row 关闭.
     private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase CreateSessionTabMenu(SessionTabEntry entry)
     {
         bool Current() => _sessionTabs.TryGetValue(entry.SessionId, out var current) && ReferenceEquals(current, entry);

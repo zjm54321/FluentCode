@@ -22,7 +22,7 @@ public sealed partial class OpenCodePage
     }
 
     // Replaces the native text flyout (which hid 撤销 unless it could prove an undo step) with the app's shared
-    // context-menu shape: icon row 剪切 · 复制 · 粘贴 · 全选 (File Explorer style), list 撤销.
+    // context-menu shape (Windows 11 text menu): list 撤销; bottom row 剪切 · 复制 · 粘贴 · 全选.
     // Every action is the TextBox's own: Undo/Cut/Copy/SelectAll, and PasteFromClipboard raises the existing Paste
     // handler (OpenCodePage.ComposerPaste.cs), so draft sync, IME and attachment paste keep their single paths.
     // Items stay visible and are disabled when unavailable, so 撤销 is always discoverable.

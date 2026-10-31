@@ -9,8 +9,8 @@ using Windows.ApplicationModel.DataTransfer;
 namespace AIFrontend.Pages.OpenCode;
 
 /// <summary>
-/// Transcript message context menu in the app's shared shape (<see cref="OpenCodeContextMenu"/>): icon row
-/// 复制 · 全选, then the list 复制整段 · 复制代码 | 撤回 · 恢复撤回. Right-click, menu key and touch press-and-hold all
+/// Transcript message context menu in the app's shared shape (<see cref="OpenCodeContextMenu"/>): list
+/// 复制整段 · 复制代码 | 撤回 · 恢复撤回, bottom row 复制 · 全选. Right-click, menu key and touch press-and-hold all
 /// open this one flyout; it is rebuilt on Opening so selection and undo state are never stale.
 /// </summary>
 internal static class OpenCodeMessageContextMenu
@@ -25,9 +25,9 @@ internal static class OpenCodeMessageContextMenu
     /// Replaces the platform TextCommandBarFlyout so every text menu looks the same. One per presenter: a flyout
     /// must not be shared across windows (XamlRoots).
     /// </summary>
-    internal static CommandBarFlyout CreateTextOnly() => Create(null);
+    internal static Flyout CreateTextOnly() => Create(null);
 
-    internal static CommandBarFlyout Create(Func<string?>? wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
+    internal static Flyout Create(Func<string?>? wholeText, Func<OpenCodeRollbackMenuState?>? rollback = null,
         Action<bool>? rollbackRequested = null, Func<IEnumerable<OpenCodeContextCommand>>? actions = null)
         => OpenCodeContextMenu.Create(flyout =>
         {
@@ -95,7 +95,7 @@ internal static class OpenCodeMessageContextMenu
     {
         var commands = new List<OpenCodeContextCommand?>();
         // Opened on the bubble/card padding: the row still acts on that message's text, so every message menu
-        // has the same icon row (a CommandBarFlyout without row commands would render an empty bar).
+        // has the same bottom row.
         if (target is not (TextBlock or RichTextBlock)) target = FirstText(target) ?? target;
         string? selected = target switch { TextBlock t => t.SelectedText, RichTextBlock r => r.SelectedText, _ => null };
         if (target is TextBlock { IsTextSelectionEnabled: true } or RichTextBlock { IsTextSelectionEnabled: true })
