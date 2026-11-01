@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 if (!$EvidenceRoot) { $EvidenceRoot = Join-Path ([IO.Path]::GetTempPath()) ('fc-startup-' + [guid]::NewGuid().ToString('N')) }
+elseif (![IO.Path]::IsPathRooted($EvidenceRoot)) { $EvidenceRoot = Join-Path $repo $EvidenceRoot }
 $EvidenceRoot = [IO.Path]::GetFullPath($EvidenceRoot)
 if (Test-Path $EvidenceRoot) { throw 'Startup smoke requires a new evidence directory.' }
 New-Item -ItemType Directory -Path $EvidenceRoot | Out-Null
@@ -17,6 +18,7 @@ if (!$PublishDirectory) {
     if ($LASTEXITCODE) { throw "Release build/publish failed: $LASTEXITCODE" }
     $PublishDirectory = Join-Path $native 'publish'
 }
+if (![IO.Path]::IsPathRooted($PublishDirectory)) { $PublishDirectory = Join-Path $repo $PublishDirectory }
 $PublishDirectory = [IO.Path]::GetFullPath($PublishDirectory)
 $exe = (Resolve-Path (Join-Path $PublishDirectory 'FluentCode.exe')).Path
 $profile = Join-Path $EvidenceRoot 'profile'

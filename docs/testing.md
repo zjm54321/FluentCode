@@ -42,6 +42,8 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 
 随后单独运行 Release 发布和 `tests/startup-smoke/run.ps1 -PublishDirectory <本次发布目录>`，避免冒烟测试重复发布。工作流上传完整、未签名的发布目录及测试证据，仅 `fluentcode-v*` 标签触发 Windows Release ZIP。Linux 的 `v*` 发布工作流保持独立；CI 不执行证书签名或 MSIX 打包。
 
+原生构建和启动冒烟脚本的相对 `-EvidenceRoot`、`-PublishDirectory` 均以客户端根目录（`clients/windows`）为基准，不依赖 PowerShell 启动时的进程工作目录。
+
 ---
 
 ## 3. 核心测试清单（27 项关键测试）
