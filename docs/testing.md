@@ -19,15 +19,28 @@ FluentCode 采用严格的自动化测试策略，确保在快速重构与协议
 
 ## 2. 运行完整测试套件
 
-推荐在 WSL（Linux）环境下或通过 Windows 终端发起完整套件运行：
+所有命令都从 `clients/windows` 执行。在 WSL（Linux）环境下，保留原有 Windows PowerShell / `wslpath` 调用方式：
 
 ```bash
 # 规划并依次执行所有 27 个测试用例（需要指定一个全新的产物输出目录）
-python3 tests/run-suite.py --root "artifacts/scripts-move-suite-$(date -u +%Y%m%dT%H%M%SZ)" --execute
+python3 tests/run-suite.py --root "artifacts/fluentcode-import-suite-$(date -u +%Y%m%dT%H%M%SZ)" --execute
+```
+
+在原生 Windows Python 3.12+ 和 PowerShell 7 环境下，加 `--windows`，无需安装 WSL。`pwsh` 和 .NET 10 SDK 必须在 PATH 中：
+
+```powershell
+python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Date -Format yyyyMMddTHHmmss)" --execute
 ```
 
 - 若省略 `--execute`，驱动脚本仅打印执行计划与各个 Runner 的参数配置。
+- 输出目录必须是客户端 `artifacts/` 下的全新目录；旧有 `scripts-move-suite-*` 等命名仍可使用。候选哈希限定为 `clients/windows` 的输入文件，不包含 monorepo 的 Linux 内核文件。
 - 测试过程中会输出每个 Runner 的耗时与执行状态，并在指定的证据目录下输出每个用例的日志（`results.json`、编译日志与执行快照）。
+
+### Windows CI
+
+根目录的 `.github/workflows/windows-client.yml` 使用短路径 Windows 克隆、.NET 10 SDK 和原生 `--windows` 模式。先准备 BrowserRuntime，再运行 Debug 构建以恢复 NuGet 依赖。套件用 `--exclude startup-smoke` 运行其余 **26 项**；这些默认入口不启用 `-RealWsl`、`-PanelFeedback` 或现场 OpenCode 后端。浏览器审计使用自建回环夹具；若未安装 Chrome，现有 Chrome 专项用例会明确跳过。
+
+随后单独运行 Release 发布和 `tests/startup-smoke/run.ps1 -PublishDirectory <本次发布目录>`，避免冒烟测试重复发布。工作流上传完整、未签名的发布目录及测试证据，仅 `fluentcode-v*` 标签触发 Windows Release ZIP。Linux 的 `v*` 发布工作流保持独立；CI 不执行证书签名或 MSIX 打包。
 
 ---
 

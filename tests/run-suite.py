@@ -12,6 +12,15 @@ import time
 REPO = Path(__file__).resolve().parents[1]
 PWSH = '/mnt/c/Program Files/PowerShell/7/pwsh.exe'
 BASE_ROOTS = {'opencode-composer'}
+ROOT_PREFIXES = (
+    'prune-verify-',
+    'restoration-suite-',
+    'fluentcode-step1-suite-',
+    'fluentcode-step2-suite-',
+    'scripts-move-suite-',
+    'fluentcode-import-suite-',
+    'windows-ci-suite-',
+)
 RUNNERS = (
     'opencode-auth/run.ps1',
     'opencode-connection/run.ps1',
@@ -42,15 +51,16 @@ RUNNERS = (
 NODE_TESTS = ('runtime.test.mjs', 'audit.test.mjs')
 
 
-def windows(path):
+def windows(path: Path) -> str:
+    """Convert a WSL path for the Windows PowerShell child process."""
     return subprocess.check_output(['wslpath', '-w', str(path)], text=True).strip()
 
 
-def quote(value):
+def quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def parameter_block(text):
+def parameter_block(text: str) -> str:
     match = re.search(r'(?im)^param\s*\(', text)
     if not match:
         return ''
@@ -71,9 +81,10 @@ def parameter_block(text):
     raise ValueError('Unterminated runner parameter block')
 
 
-def candidate():
+def candidate() -> dict[str, str]:
+    """Hash only client files, including untracked non-ignored inputs."""
     names = subprocess.check_output(
-        ['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd=REPO
+        ['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.'], cwd=REPO
     ).split(b'\0')
     result = {}
     for name in set(filter(None, names)):
@@ -84,7 +95,12 @@ def candidate():
     return result
 
 
-def plan(root):
+def plan(root: Path, *, native_windows: bool = False) -> list[dict[str, object]]:
+    """Plan native Windows commands or the existing WSL-to-Windows route."""
+    to_windows = str if native_windows else windows
+    pwsh = 'pwsh' if native_windows else PWSH
+    # Native CI uses setup-dotnet's PATH; preserve the installed SDK route in WSL.
+    dotnet_path = '' if native_windows else "$env:Path='C:\\Program Files\\dotnet;'+$env:Path; "
     entries = []
     for relative in RUNNERS:
         path = REPO / 'tests' / relative
@@ -94,43 +110,51 @@ def plan(root):
         has_evidence = 'EvidenceRoot' in names or "Alias('EvidenceRoot')" in block
         identifier = path.parent.name + ('' if path.stem == 'run' else '-' + path.stem.removeprefix('run-'))
         leaf = root / 'evidence' / identifier
-        args = '-EvidenceRoot ' + quote(windows(leaf)) if has_evidence else ''
+        args = '-EvidenceRoot ' + quote(to_windows(leaf)) if has_evidence else ''
         temporary = root / 'temp' / identifier
         command = ("$ErrorActionPreference='Stop'; "
-                   "$env:Path='C:\\Program Files\\dotnet;'+$env:Path; "
-                   "$env:TEMP=" + quote(windows(temporary)) + '; $env:TMP=$env:TEMP; '
-                   'try { & ' + quote(windows(path)) + ' ' + args
+                   + dotnet_path
+                   + "$env:TEMP=" + quote(to_windows(temporary)) + '; $env:TMP=$env:TEMP; '
+                   'try { & ' + quote(to_windows(path)) + ' ' + args
                    + '; if (!$?) { exit 1 }; exit 0 } catch { Write-Error $_ -ErrorAction Continue; exit 1 }')
         entries.append({'id': identifier, 'runner': str(path.relative_to(REPO)),
                         'parameters': names, 'evidence': str(leaf), 'temp': str(temporary),
                         'precreate_evidence_base': path.parent.name in BASE_ROOTS,
-                        'argv': [PWSH, '-NoProfile', '-NonInteractive', '-Command', command]})
+                         'argv': [pwsh, '-NoProfile', '-NonInteractive', '-Command', command]})
     for name in NODE_TESTS:
         path = REPO / 'tests' / 'browser-runtime' / name
         if not path.exists():
             raise FileNotFoundError(path)
         identifier = 'browser-runtime-node-' + name.removesuffix('.test.mjs')
         temporary = root / 'temp' / identifier
-        command = ("$ErrorActionPreference='Stop'; $env:TEMP=" + quote(windows(temporary))
+        command = ("$ErrorActionPreference='Stop'; $env:TEMP=" + quote(to_windows(temporary))
                    + '; $env:TMP=$env:TEMP; & '
-                   + quote(windows(REPO / 'artifacts/browser-runtime/node.exe'))
-                   + ' --test ' + quote(windows(path)) + '; exit $LASTEXITCODE')
+                   + quote(to_windows(REPO / 'artifacts/browser-runtime/node.exe'))
+                   + ' --test ' + quote(to_windows(path)) + '; exit $LASTEXITCODE')
         entries.append({'id': identifier, 'runner': str(path.relative_to(REPO)),
                         'parameters': [], 'evidence': str(root / 'evidence' / identifier),
                         'temp': str(temporary), 'precreate_evidence_base': False,
-                        'argv': [PWSH, '-NoProfile', '-NonInteractive', '-Command', command]})
+                         'argv': [pwsh, '-NoProfile', '-NonInteractive', '-Command', command]})
     return entries
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--windows', action='store_true',
+                        help='Use native Windows Python paths and pwsh from PATH, without wslpath.')
+    parser.add_argument('--exclude', nargs='+', default=(), metavar='RUNNER_ID',
+                        help='Exclude runner IDs; CI runs startup-smoke separately after publishing.')
     args = parser.parse_args()
     root = args.root.resolve()
-    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-', 'fluentcode-step1-suite-', 'fluentcode-step2-suite-', 'scripts-move-suite-')):
-        parser.error('Use a NEW artifacts/scripts-move-suite-* directory')
-    entries = plan(root)
+    if root.parent != REPO / 'artifacts' or not root.name.startswith(ROOT_PREFIXES):
+        parser.error('Use a NEW artifacts/fluentcode-import-suite-* or artifacts/windows-ci-suite-* directory')
+    entries = plan(root, native_windows=args.windows)
+    unknown = set(args.exclude) - {entry['id'] for entry in entries}
+    if unknown:
+        parser.error('Unknown runner IDs: ' + ', '.join(sorted(unknown)))
+    entries = [entry for entry in entries if entry['id'] not in args.exclude]
     if not args.execute:
         print(json.dumps(entries, ensure_ascii=False, indent=2))
         return 0
@@ -138,8 +162,8 @@ def main():
     (root / 'logs').mkdir()
     (root / 'evidence').mkdir()
     before = candidate()
-    (root / 'candidate.json').write_text(json.dumps(before, indent=2))
-    (root / 'plan.json').write_text(json.dumps(entries, ensure_ascii=False, indent=2))
+    (root / 'candidate.json').write_text(json.dumps(before, indent=2), encoding='utf-8')
+    (root / 'plan.json').write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding='utf-8')
     results = []
     for entry in entries:
         Path(entry['temp']).mkdir(parents=True)
@@ -152,12 +176,12 @@ def main():
             completed = subprocess.run(entry['argv'], cwd=REPO, stdout=output, stderr=subprocess.STDOUT)
         results.append({'id': entry['id'], 'exit_code': completed.returncode,
                         'seconds': round(time.monotonic() - start, 2), 'log': str(log)})
-        (root / 'results.json').write_text(json.dumps(results, indent=2))
+        (root / 'results.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
         print('RESULT', entry['id'], completed.returncode, flush=True)
         after = candidate()
         if before != after:
             changes = sorted(key for key in before.keys() | after.keys() if before.get(key) != after.get(key))
-            (root / 'candidate-changes.json').write_text(json.dumps(changes, indent=2))
+            (root / 'candidate-changes.json').write_text(json.dumps(changes, indent=2), encoding='utf-8')
             print('STOP: candidate changed during suite:', changes, file=sys.stderr)
             return 2
     failures = [entry['id'] for entry in results if entry['exit_code']]

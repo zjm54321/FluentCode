@@ -107,6 +107,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-releas
 python3 tests/run-suite.py --root "artifacts/scripts-move-suite-$(date -u +%Y%m%dT%H%M%SZ)" --execute
 ```
 
+原生 Windows Python 可通过 `--windows` 直接调用 PATH 中的 PowerShell 7，无需 WSL：
+
+```powershell
+python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Date -Format yyyyMMddTHHmmss)" --execute
+```
+
 测试覆盖范围与独立运行方法参见 [测试文档](docs/testing.md)。
 
 ---
