@@ -67,6 +67,8 @@ internal sealed class OpenCodePersistentPtyView : Grid
     private readonly MenuFlyoutItem _createItem = new() { Text = "新建终端", Icon = new FontIcon { Glyph = "\uE710" } };
     private readonly MenuFlyoutItem _copyAllItem = new() { Text = "复制全部输出", Icon = new FontIcon { Glyph = "\uE8C8" } };
     private readonly MenuFlyoutItem _appearanceItem = new() { Text = "终端外观", Icon = new FontIcon { Glyph = "\uE790" } };
+    private readonly MenuFlyoutItem _renameItem = new() { Text = "重命名…", KeyboardAcceleratorTextOverride = "F2", Icon = new FontIcon { Glyph = "\uE8AC" } };
+    private readonly OpenCodeTerminalRenameBox _rename = new() { Margin = new Thickness(4, 0, 0, 0) };
     private readonly MenuFlyoutItem _activateItem = new() { Text = "在此输入", Icon = new FontIcon { Glyph = "\uE765" } };
     private readonly MenuFlyoutItem _releaseItem = new() { Text = "停止在此输入", Icon = new FontIcon { Glyph = "\uE72E" } };
     private readonly MenuFlyoutItem _terminate = new() { Text = "结束终端", Icon = new FontIcon { Glyph = "\uE7E8" } };
@@ -83,6 +85,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
     internal event Action<OpenCodePersistentPtyViewContext>? DetachRequested;
     internal event Action<OpenCodePersistentPtyViewContext>? ReconnectRequested;
     internal event Action<OpenCodePersistentPtyViewContext>? TerminateRequested;
+    internal event Func<OpenCodePersistentPtyViewContext, string?, Task<bool>>? RenameRequested;
     internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
     internal event Action? AppearanceRequested;
     internal event Action? NewTerminalRequested;
@@ -90,7 +93,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
     internal event Action<int>? StepRequested;
 
     /// <summary>Esc belongs to the find bar or confirmation while either is open, not to the overlay.</summary>
-    internal bool ConsumesEscape => _findBar.Visibility == Visibility.Visible || _confirm.Visibility == Visibility.Visible;
+    internal bool ConsumesEscape => _rename.IsEditing || _switcher?.IsRenaming == true || _findBar.Visibility == Visibility.Visible || _confirm.Visibility == Visibility.Visible;
 
     internal OpenCodePersistentPtyView()
     {
@@ -124,6 +127,10 @@ internal sealed class OpenCodePersistentPtyView : Grid
         Renderer.Accelerator = Accelerator;
         PreviewKeyDown += (_, args) =>
         {
+            if (args.OriginalSource is OpenCodeTerminalRenameBox) return; // Enter/Esc belong to that inline editor.
+            if (args.Key == VirtualKey.F2)
+                for (var target = args.OriginalSource as DependencyObject; target is not null; target = VisualTreeHelper.GetParent(target))
+                    if (ReferenceEquals(target, _switcher)) return; // F2 on a list row renames that row, not the open terminal.
             var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
             var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
             if (args.Key == VirtualKey.Escape && _confirm.Visibility == Visibility.Visible) { HideConfirm(); args.Handled = true; }
@@ -154,6 +161,8 @@ internal sealed class OpenCodePersistentPtyView : Grid
         // Find takes the title's place in the header, so opening it never resizes (and so never rebuilds) the native terminal.
         BuildFindBar();
         Grid.SetColumn(_findBar, 1); _header.Children.Add(_findBar);
+        Grid.SetColumn(_rename, 1); _header.Children.Add(_rename);
+        _rename.Finished += () => Renderer.FocusTerminal();
         _statusPill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Children = { _statusDot, _status } };
         OpenCodeTerminalUi.Themed(_statusPill, "Background", "SubtleFillColorSecondaryBrush");
         var readOnlyText = new TextBlock { Text = "只读", FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
@@ -194,11 +203,12 @@ internal sealed class OpenCodePersistentPtyView : Grid
             if (text.Length > 0 && _model == model) CopySelectionRequested?.Invoke(new(model.Context, text));
         };
         _appearanceItem.Click += (_, _) => AppearanceRequested?.Invoke();
+        _renameItem.Click += (_, _) => BeginRename();
         _activateItem.Click += (_, _) => { if (_model is { CanActivate: true } model) TakeControlRequested?.Invoke(model.Context); };
         _releaseItem.Click += (_, _) => { if (_model is { } model) ReleaseControlRequested?.Invoke(model.Context); };
         _terminate.KeyboardAcceleratorTextOverride = "Ctrl+Shift+W";
         _terminate.Click += (_, _) => RequestEnd();
-        _moreMenu.Items.Add(_createItem); _moreMenu.Items.Add(_copyAllItem); _moreMenu.Items.Add(_appearanceItem);
+        _moreMenu.Items.Add(_createItem); _moreMenu.Items.Add(_copyAllItem); _moreMenu.Items.Add(_renameItem); _moreMenu.Items.Add(_appearanceItem);
         _moreMenu.Items.Add(new MenuFlyoutSeparator()); _moreMenu.Items.Add(_activateItem); _moreMenu.Items.Add(_releaseItem);
         _moreMenu.Items.Add(new MenuFlyoutSeparator()); _moreMenu.Items.Add(_terminate);
         foreach (var item in _moreMenu.Items.OfType<MenuFlyoutItem>()) item.MinHeight = 40;
@@ -356,7 +366,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         if (_model?.Context != model?.Context || model?.Phase is OpenCodePersistentPtyPhase.Connecting or OpenCodePersistentPtyPhase.Replaying)
         { _selection = string.Empty; _copy.IsEnabled = false; }
         if (_model?.Context != model?.Context || model?.Writable != true) Renderer.SuspendInput();
-        if (_model?.Context.PtyId != model?.Context.PtyId) { HideConfirm(focusTerminal: false); _fresh = -1; _jump.Visibility = Visibility.Collapsed; }
+        if (_model?.Context.PtyId != model?.Context.PtyId) { _rename.Cancel(restoreFocus: false); HideConfirm(focusTerminal: false); _fresh = -1; _jump.Visibility = Visibility.Collapsed; }
         _model = model; Visibility = model is null ? Visibility.Collapsed : Visibility.Visible;
         Renderer.SetActivatable(model?.CanActivate == true);
         _title.Text = model?.Title ?? string.Empty;
@@ -421,6 +431,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         else OpenCodeTerminalUi.Themed(_terminate, "Foreground", "SystemFillColorCriticalBrush");
         _createItem.Visibility = NewTerminalRequested is not null ? Visibility.Visible : Visibility.Collapsed;
         _appearanceItem.Visibility = AppearanceRequested is not null ? Visibility.Visible : Visibility.Collapsed;
+        _renameItem.Visibility = model is not null && RenameRequested is not null ? Visibility.Visible : Visibility.Collapsed;
         _activateItem.Visibility = model?.CanActivate == true && TakeControlRequested is not null ? Visibility.Visible : Visibility.Collapsed;
         _activateItem.Text = model?.ControlConflict == true ? "接管并在此输入" : "在此输入";
         _releaseItem.Visibility = model is { Writable: true, Role: OpenCodePersistentPtyRole.Controller } && ReleaseControlRequested is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -436,6 +447,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
     internal void RequestEnd()
     {
         if (_model is not { } model || TerminateRequested is null) return;
+        _rename.Cancel(restoreFocus: false);
         if (model.Phase == OpenCodePersistentPtyPhase.Exited) { TerminateRequested.Invoke(model.Context); return; }
         _confirmTitle.Text = $"结束「{model.Title}」？";
         _confirmDetail.Text = (model.ControllerLabel is { Length: > 0 } process ? process + " 仍在运行，" : "终端仍在运行，")
@@ -453,6 +465,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
 
     private bool Accelerator(VirtualKey key, bool ctrl, bool shift)
     {
+        if (key == VirtualKey.F2 && !ctrl && !shift) return BeginRename();
         if (_model is null || !ctrl) return false;
         switch (key)
         {
@@ -511,10 +524,19 @@ internal sealed class OpenCodePersistentPtyView : Grid
     private void OpenFind()
     {
         if (_model is null) return;
+        _rename.Cancel(restoreFocus: false);
         _findBar.Visibility = Visibility.Visible; _titles.Visibility = Visibility.Collapsed;
         _findBox.Focus(FocusState.Keyboard);
         _findBox.SelectAll();
         if (_findBox.Text.Length > 0) _ = SearchAsync(keepPosition: true);
+    }
+
+    private bool BeginRename()
+    {
+        if (_model is not { } model || RenameRequested is not { } rename) return false;
+        if (_findBar.Visibility == Visibility.Visible) CloseFind();
+        _rename.Begin(model.Title, title => rename(model.Context, title));
+        return true;
     }
 
     private void CloseFind()

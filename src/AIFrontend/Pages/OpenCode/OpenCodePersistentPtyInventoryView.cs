@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using AIFrontend.Services.OpenCode;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
@@ -39,6 +40,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
     internal event Action<OpenCodePersistentPtyInventoryRequest>? TerminalRequested;
     internal event Action<OpenCodePersistentPtyInventoryContext>? RefreshRequested;
     internal event Action<OpenCodePersistentPtyInventoryContext>? CreateRequested;
+    internal event Func<OpenCodePersistentPtyInventoryContext, string, string?, Task<bool>>? RenameRequested;
     /// <summary>An agent command (shell tool) entry was chosen; opened read-only in the same overlay.</summary>
     internal event Action<string>? ShellRequested;
     /// <summary>× / middle click / menu: end a running PTY (after confirmation in the overlay) or remove an exited one.</summary>
@@ -208,6 +210,12 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
     }
 
     internal void End(OpenCodeTerminalEntry entry) { if (entry.CanEnd) EndRequested?.Invoke(entry); }
+    internal Func<string?, Task<bool>> RenameAction(OpenCodeTerminalEntry entry)
+    {
+        var context = _context; // Capture the scope when editing begins, not when Enter is eventually pressed.
+        return title => entry.Kind == OpenCodeTerminalEntryKind.Pty && context is not null && context == _context && RenameRequested is { } rename
+            ? rename(context, entry.Id, title) : Task.FromResult(false);
+    }
 
     /// <summary>Ctrl+Tab order shared by the strip and the overlay list.</summary>
     internal void Step(int direction)
@@ -255,6 +263,8 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         private readonly Button _end = OpenCodeTerminalUi.IconButton("\uE711", "结束终端", 20, 20, 10);
         private readonly Border _outline = new() { CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(2), IsHitTestVisible = false, Visibility = Visibility.Collapsed };
         private readonly MenuFlyoutItem _endItem = new() { Text = "结束终端", Icon = new FontIcon { Glyph = "\uE7E8" } };
+        private readonly MenuFlyoutItem _renameItem = new() { Text = "重命名…", KeyboardAcceleratorTextOverride = "F2", Icon = new FontIcon { Glyph = "\uE8AC" } };
+        private readonly OpenCodeTerminalRenameBox _rename = new() { MinWidth = 144, Margin = new Thickness(4, 2, 4, 2) };
         private bool _hover;
         internal OpenCodeTerminalEntry? Entry { get; private set; }
 
@@ -271,6 +281,10 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
             _open.Click += (_, _) => { if (Entry is { } entry) { if (entry.Id == _owner._openId) _owner.CloseRequested?.Invoke(); else _owner.Open(entry); } };
             _end.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
             Children.Add(_open); Children.Add(_outline);
+            Children.Add(_rename);
+            _rename.Finished += () => _open.Focus(FocusState.Programmatic);
+            _renameItem.Click += (_, _) => BeginRename();
+            _open.KeyDown += (_, args) => { if (args.Key == Windows.System.VirtualKey.F2 && BeginRename()) args.Handled = true; };
             var tip = new ToolTip { Placement = PlacementMode.Bottom };
             ToolTipService.SetToolTip(_open, tip);
             var menu = new MenuFlyout();
@@ -284,7 +298,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
                 catch (Exception) { }
             };
             _endItem.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
-            menu.Items.Add(open); menu.Items.Add(copy); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(_endItem);
+            menu.Items.Add(open); menu.Items.Add(_renameItem); menu.Items.Add(copy); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(_endItem);
             _open.ContextFlyout = menu;
             PointerEntered += (_, _) => { _hover = true; Paint(); };
             PointerExited += (_, _) => { _hover = false; Paint(); };
@@ -301,7 +315,9 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
 
         internal void Update(OpenCodeTerminalEntry entry, bool shown)
         {
+            if (Entry?.Id != entry.Id) _rename.Cancel();
             Entry = entry;
+            _renameItem.Visibility = entry.Kind == OpenCodeTerminalEntryKind.Pty ? Visibility.Visible : Visibility.Collapsed;
             _title.Text = entry.Title;
             var name = entry.Title + " · " + entry.Source + " · " + entry.StateText;
             AutomationProperties.SetName(_open, name);
@@ -313,6 +329,13 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         }
 
         internal void SetShown(bool shown) { _outline.Visibility = shown ? Visibility.Visible : Visibility.Collapsed; Paint(); }
+
+        private bool BeginRename()
+        {
+            if (Entry is not { Kind: OpenCodeTerminalEntryKind.Pty } entry) return false;
+            _rename.Begin(entry.Title, _owner.RenameAction(entry));
+            return true;
+        }
 
         private void Paint()
         {
@@ -338,6 +361,7 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
     private readonly Button _create = OpenCodeTerminalUi.IconButton("\uE710", "新建终端", 28, 28, 12);
     internal event Action? CountChanged;
     internal int Count => _inventory.Entries.Count;
+    internal bool IsRenaming => _rows.Children.OfType<Row>().Any(row => row.IsRenaming);
     /// <summary>The view border currently hosting this single list instance.</summary>
     internal Border? Host { get; set; }
 
@@ -389,6 +413,9 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         private readonly Border _dot = new() { Width = 7, Height = 7, CornerRadius = new CornerRadius(3.5), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         private readonly Button _end = OpenCodeTerminalUi.IconButton("\uE711", "结束终端", 24, 24, 10);
         private readonly FrameworkElement _icon = OpenCodeQuickAccessStyle.TerminalIcon(16);
+        private readonly OpenCodeTerminalRenameBox _rename = new() { Margin = new Thickness(28, 2, 4, 2) };
+        private readonly MenuFlyoutItem _renameItem = new() { Text = "重命名…", KeyboardAcceleratorTextOverride = "F2", Icon = new FontIcon { Glyph = "\uE8AC" } };
+        internal bool IsRenaming => _rename.IsEditing;
         private bool _hover, _isSelected;
         private OpenCodeTerminalEntry? _entry;
 
@@ -412,6 +439,17 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
             _open.Click += (_, _) => { if (_entry is { } entry && entry.Id != _inventory.OpenId) _inventory.Open(entry); };
             _end.Click += (_, _) => { if (_entry is { } entry) _inventory.End(entry); };
             Children.Add(_selected); Children.Add(_open); Children.Add(_bar);
+            Children.Add(_rename);
+            _rename.Finished += () => _open.Focus(FocusState.Programmatic);
+            _renameItem.Click += (_, _) => BeginRename();
+            _open.KeyDown += (_, args) => { if (args.Key == Windows.System.VirtualKey.F2 && BeginRename()) args.Handled = true; };
+            var menu = new MenuFlyout();
+            var openItem = new MenuFlyoutItem { Text = "在浮窗中打开", Icon = new FontIcon { Glyph = "\uE8A7" } };
+            openItem.Click += (_, _) => { if (_entry is { } entry) _inventory.Open(entry); };
+            var endItem = new MenuFlyoutItem { Text = "结束 / 移除终端", Icon = new FontIcon { Glyph = "\uE7E8" } };
+            endItem.Click += (_, _) => { if (_entry is { } entry) _inventory.End(entry); };
+            menu.Items.Add(openItem); menu.Items.Add(_renameItem); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(endItem);
+            _open.ContextFlyout = menu;
             OpenCodeTerminalUi.Themed(_state, "Foreground", "TextFillColorTertiaryBrush");
             PointerEntered += (_, _) => { _hover = true; Paint(); };
             PointerExited += (_, _) => { _hover = false; Paint(); };
@@ -422,7 +460,9 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
 
         internal void Update(OpenCodeTerminalEntry entry, bool selected)
         {
+            if (_entry?.Id != entry.Id) _rename.Cancel();
             _entry = entry; _isSelected = selected;
+            _renameItem.Visibility = entry.Kind == OpenCodeTerminalEntryKind.Pty ? Visibility.Visible : Visibility.Collapsed;
             _title.Text = entry.Title;
             _state.Text = entry.StateText;
             AutomationProperties.SetName(_open, entry.Title + " · " + entry.StateText);
@@ -430,6 +470,13 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
             var ending = entry.State is OpenCodeTerminalState.Done or OpenCodeTerminalState.Failed ? "移除终端" : "结束终端";
             AutomationProperties.SetName(_end, ending); ToolTipService.SetToolTip(_end, ending);
             Paint();
+        }
+
+        private bool BeginRename()
+        {
+            if (_entry is not { Kind: OpenCodeTerminalEntryKind.Pty } entry) return false;
+            _rename.Begin(entry.Title, _inventory.RenameAction(entry));
+            return true;
         }
 
         private void Paint()
@@ -459,7 +506,7 @@ internal static class OpenCodeTerminalUi
         var failed = exited && row.ExitCode is { } code && code != 0;
         var state = !exited ? OpenCodeTerminalState.Running : failed ? OpenCodeTerminalState.Failed : OpenCodeTerminalState.Done;
         var text = !exited ? "运行中" : OpenCodeTerminalNames.ExitText(row.ExitCode);
-        return new(OpenCodeTerminalEntryKind.Pty, row.Id, OpenCodeTerminalNames.Title(row.Title, row.Command), "终端", row.Cwd, state, text, true);
+        return new(OpenCodeTerminalEntryKind.Pty, row.Id, OpenCodeTerminalNames.Title(row.Title, row.Command, row.UserTitle), "终端", row.Cwd, state, text, true);
     }
 
     internal static string BrushKey(OpenCodeTerminalState state) => state switch
@@ -505,5 +552,61 @@ internal static class OpenCodeTerminalUi
         AutomationProperties.SetName(button, name);
         ToolTipService.SetToolTip(button, name);
         return button;
+    }
+}
+
+/// <summary>Inline editor outside the terminal HWND. Enter saves, Esc/focus loss cancels; empty clears userTitle.</summary>
+internal sealed class OpenCodeTerminalRenameBox : TextBox
+{
+    private Func<string?, Task<bool>>? _save;
+    private bool _saving;
+    internal bool IsEditing => Visibility == Visibility.Visible;
+    internal event Action? Finished;
+
+    internal OpenCodeTerminalRenameBox()
+    {
+        Visibility = Visibility.Collapsed; MinHeight = 36; VerticalAlignment = VerticalAlignment.Center;
+        PlaceholderText = "终端名称（留空恢复默认）";
+        AutomationProperties.SetName(this, "重命名终端");
+        AutomationProperties.SetAutomationId(this, "OpenCodeTerminalRenameBox");
+        KeyDown += async (_, args) =>
+        {
+            if (args.Key == Windows.System.VirtualKey.Escape) { args.Handled = true; Cancel(); }
+            else if (args.Key == Windows.System.VirtualKey.Enter)
+            {
+                args.Handled = true;
+                if (_saving || _save is not { } save) return;
+                _saving = true; IsReadOnly = true;
+                var succeeded = false;
+                var message = "重命名失败，请重试";
+                try { succeeded = await save(string.IsNullOrWhiteSpace(Text) ? null : Text.Trim()); }
+                catch (PersistentPtyException error) when (error.Code == "rename-unsupported") { message = "当前终端服务需重启后才能重命名"; }
+                _saving = false; IsReadOnly = false;
+                if (succeeded) Cancel();
+                else if (IsEditing)
+                {
+                    ToolTipService.SetToolTip(this, new ToolTip { Content = message, Placement = PlacementMode.Top, IsOpen = true });
+                    AutomationProperties.SetHelpText(this, message); Focus(FocusState.Programmatic);
+                }
+            }
+        };
+        LostFocus += (_, _) => { if (!_saving) Cancel(restoreFocus: false); };
+        Unloaded += (_, _) => Cancel(restoreFocus: false);
+    }
+
+    internal void Begin(string title, Func<string?, Task<bool>> save)
+    {
+        if (_saving) return;
+        _save = save; Text = title; ToolTipService.SetToolTip(this, "Enter 保存 · Esc 取消 · 留空恢复默认名称");
+        Visibility = Visibility.Visible;
+        DispatcherQueue.TryEnqueue(() => { if (IsEditing) { Focus(FocusState.Programmatic); SelectAll(); } });
+    }
+
+    internal void Cancel(bool restoreFocus = true)
+    {
+        if (!IsEditing) return;
+        if (ToolTipService.GetToolTip(this) is ToolTip tip) tip.IsOpen = false;
+        Visibility = Visibility.Collapsed; _save = null;
+        if (restoreFocus) Finished?.Invoke();
     }
 }

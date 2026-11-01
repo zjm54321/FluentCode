@@ -18,6 +18,8 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
     private readonly object _sync = new();
     private readonly HashSet<string> _removed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int?> _exited = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (long Version, PersistentPtyInfo Info)> _updates = new(StringComparer.Ordinal);
+    private long _metadataVersion;
     private Task? _running;
     private bool _again, _recheck, _capabilityRead;
     private bool? _capability;
@@ -39,11 +41,18 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
 
     // An explicit create response is authoritative for this exact session, even before SSE/list catches up.
     internal void AcceptCreated(PersistentPtyInfo info)
+        => AcceptUpdated(info);
+    internal void AcceptUpdated(PersistentPtyInfo info)
     {
         if (!Current()) return;
         PersistentPtyValidation.Info(info, _origin.SessionId);
-        Publish(new(OpenCodePersistentPtyInventoryPhase.Ready,
-            ImmutableArray.CreateRange(State.Rows.RemoveAll(row => row.Id == info.Id).Add(info))));
+        lock (_sync)
+        {
+            _updates[info.Id] = (++_metadataVersion, info);
+            var index = Array.FindIndex(State.Rows.ToArray(), row => row.Id == info.Id);
+            Publish(new(OpenCodePersistentPtyInventoryPhase.Ready,
+                index < 0 ? State.Rows.Add(info) : State.Rows.SetItem(index, info)));
+        }
     }
     internal void AcceptRemoved(string id)
     {
@@ -88,8 +97,10 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
                     ImmutableArray<PersistentPtyInfo>.Empty));
                 else
                 {
+                    long version;
+                    lock (_sync) version = _metadataVersion;
                     var rows = await ReadAsync(() => _client.ListPersistentPtysAsync(_origin.SessionId, _stop.Token)).ConfigureAwait(false);
-                    if (Current()) Publish(new(OpenCodePersistentPtyInventoryPhase.Ready, ImmutableArray.CreateRange(rows)));
+                    if (Current()) Publish(new(OpenCodePersistentPtyInventoryPhase.Ready, ImmutableArray.CreateRange(rows)), version);
                 }
             }
             catch (OperationCanceledException) when (!Current()) { break; }
@@ -98,11 +109,18 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
         }
         lock (_sync) _running = null;
     }
-    private void Publish(OpenCodePersistentPtyInventoryState state)
+    private void Publish(OpenCodePersistentPtyInventoryState state, long? readVersion = null)
     {
         if (!Current()) return;
         lock (_sync)
         {
+            // An in-flight list cannot roll back a more recent SSE update or rename response.
+            if (readVersion is { } version)
+                foreach (var update in _updates.Values.Where(update => update.Version > version))
+                {
+                    var index = Array.FindIndex(state.Rows.ToArray(), row => row.Id == update.Info.Id);
+                    state = state with { Rows = index < 0 ? state.Rows.Add(update.Info) : state.Rows.SetItem(index, update.Info) };
+                }
             // A list request already in flight cannot resurrect a confirmed removal or exit.
             state = state with { Rows = ImmutableArray.CreateRange(state.Rows.Where(row => !_removed.Contains(row.Id))
                 .Select(row => _exited.TryGetValue(row.Id, out var code) ? row with { Status = "exited", ExitCode = code } : row)) };

@@ -49,11 +49,12 @@ internal sealed record OpenCodePersistentPtySelection(OpenCodePersistentPtyViewC
 internal static class OpenCodeTerminalNames
 {
     /// <summary>
-    /// Display title: an explicit title, else the shell's file name. Shell-reported paths (OSC 0/2) are skipped — the path is
+    /// Display title: userTitle, then an explicit title, else the shell's file name. Shell-reported paths (OSC 0/2) are skipped — the path is
     /// already the subtitle — and so is the foreground process, which flips to prompt helpers (starship) on every prompt.
     /// </summary>
-    internal static string Title(string? title, string? command)
+    internal static string Title(string? title, string? command, string? userTitle = null)
     {
+        if (!string.IsNullOrWhiteSpace(userTitle)) return userTitle;
         var pathLike = title is { } t && (t.StartsWith('/') || t.StartsWith('~') || t.Contains(":\\", StringComparison.Ordinal));
         if (!string.IsNullOrWhiteSpace(title) && title != "终端" && !pathLike) return title;
         var name = (command ?? string.Empty).Replace('\\', '/');

@@ -48,6 +48,9 @@ internal static class Program
             && (promoted with { Phase = OpenCodePersistentPtyPhase.Exited, Failed = true }).TerminalState == OpenCodeTerminalState.Failed
             && !(promoted with { Phase = OpenCodePersistentPtyPhase.Exited }).CanActivate && !(promoted with { CanTakeControl = false }).CanActivate,
             "one status component: running / elsewhere ring / failed; recorded or exited output can never be activated");
+        Check(OpenCodeTerminalNames.Title("explicit", "nu", "/user name") == "/user name"
+            && OpenCodeTerminalNames.Title("explicit", "nu", " ") == "explicit"
+            && OpenCodeTerminalNames.Title("", "nu", null) == "nu", "userTitle > explicit title > shell, with user paths preserved and empty overrides ignored");
         Check(OpenCodeTerminalNames.Title("终端", "/etc/profiles/per-user/ming/bin/nu") == "nu" && OpenCodeTerminalNames.Title("dev server", "nu") == "dev server"
             && OpenCodeTerminalNames.Title("/mnt/c/repo", "nu") == "nu" && OpenCodeTerminalNames.Title(@"C:\repo", @"C:\Program Files\PowerShell\7\pwsh.exe") == "pwsh"
             && OpenCodeTerminalNames.Title("", @"C:\x\pwsh.exe") == "pwsh"
@@ -103,6 +106,8 @@ internal static class Program
         Check(tree.Contains("LeftAgentTreeSlot.Children.Add(_agentTree);") && !tree.Contains("_persistentPtyInventoryView"),
             "left pane holds only the agent tree");
         var lifecycle = File.ReadAllText(Path.Combine(pages, "OpenCodePage.PersistentPty.cs"));
+        Check(File.ReadAllText(Path.Combine(pages, "OpenCodePage.EventSync.cs")).Contains("or \"persistent-pty.updated\""),
+            "updated SSE is forwarded before message-workflow filtering");
         var inventoryView = File.ReadAllText(Path.Combine(pages, "OpenCode/OpenCodePersistentPtyInventoryView.cs"));
         Check(inventoryView.Contains("rows.Select(OpenCodeTerminalUi.Entry).Concat(_shellEntries") && inventoryView.Contains("if (!changed) return;")
             && inventoryView.Contains("Reconcile in place") && inventoryView.Contains("class OpenCodeTerminalSwitcher"),

@@ -73,6 +73,17 @@ public sealed partial class OpenCodeClient
         return PersistentPtyValidation.Info(PersistentData<PersistentPtyInfo>(doc), sessionId, ptyId);
     }
 
+    public async Task<PersistentPtyInfo> RenamePersistentPtyAsync(string sessionId, string ptyId, string? title,
+        CancellationToken cancellationToken = default)
+    {
+        // Rename is server-scoped too: verify session ownership before dispatching the mutation.
+        await GetPersistentPtyAsync(sessionId, ptyId, cancellationToken).ConfigureAwait(false);
+        // The regular JSON writer omits null properties; this endpoint requires explicit null to clear a name.
+        using var content = new StringContent(JsonSerializer.Serialize(new { title }), System.Text.Encoding.UTF8, "application/json");
+        using var doc = await PersistentPtyJsonAsync(HttpMethod.Put, PersistentPath(ptyId), content, false, cancellationToken, unsupportedFeature: "rename").ConfigureAwait(false);
+        return PersistentPtyValidation.Info(PersistentData<PersistentPtyInfo>(doc), sessionId, ptyId);
+    }
+
     /// <summary>Explicit terminal termination only. Closing a view disposes its connection instead.</summary>
     public async Task RemovePersistentPtyAsync(string sessionId, string ptyId, CancellationToken cancellationToken = default)
     {
@@ -159,7 +170,7 @@ public sealed partial class OpenCodeClient
     private static readonly JsonSerializerOptions PersistentJsonOptions = new() { PropertyNameCaseInsensitive = false };
 
     private async Task<JsonDocument> PersistentPtyJsonAsync(HttpMethod method, string path, HttpContent? content,
-        bool ticketRequest, CancellationToken cancellationToken)
+        bool ticketRequest, CancellationToken cancellationToken, string? unsupportedFeature = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -176,7 +187,8 @@ public sealed partial class OpenCodeClient
             if ((int)response.StatusCode is >= 300 and < 400) throw new PersistentPtyException("redirect-rejected");
             if (!response.IsSuccessStatusCode) throw new PersistentPtyException(response.StatusCode switch
             {
-                HttpStatusCode.NotFound => "not-found", HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized => "unauthorized", _ => "http-failure",
+                HttpStatusCode.NotFound => "not-found", HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized => "unauthorized",
+                HttpStatusCode.NotImplemented when unsupportedFeature is not null => unsupportedFeature + "-unsupported", _ => "http-failure",
             });
             if (method == HttpMethod.Delete)
             {

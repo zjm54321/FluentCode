@@ -61,6 +61,7 @@ internal static class BackendTests
     private static async Task HttpContract()
     {
         var version = "true";
+        var renameUnsupported = false;
         var requests = new List<string>();
         using var http = new HttpClient(new Handler(async request =>
         {
@@ -86,6 +87,13 @@ internal static class BackendTests
             if (request.Method == HttpMethod.Put)
             {
                 using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
+                if (body.RootElement.TryGetProperty("title", out var title))
+                {
+                    if (renameUnsupported) return new(HttpStatusCode.NotImplemented);
+                    Check(body.RootElement.EnumerateObject().Count() == 1 && title.ValueKind is JsonValueKind.String or JsonValueKind.Null,
+                        "rename sends title only, including explicit null to clear; no attachment or size");
+                    return Json(new { data = Info with { UserTitle = title.GetString() } });
+                }
                 Check(body.RootElement.GetProperty("attachmentID").GetString() == "attachment" && body.RootElement.GetProperty("size").GetProperty("cols").GetInt32() == 100, "resize exact attachmentID/size");
                 return Json(new { data = Info });
             }
@@ -106,6 +114,14 @@ internal static class BackendTests
         Check(Encoding.UTF8.GetString(snapshot.Checkpoint.AsSpan()) == "\u001b[2J", "checkpoint base64 decoded as VT bytes");
         await client.CreatePersistentPtyAsync("ses_captured", new(ImmutableArray<string>.Empty, "title", new Dictionary<string,string>(), Cwd: "/arbitrary"));
         await client.ResizePersistentPtyAsync("ses_captured", Info.Id, "attachment", new(100, 30));
+        Check((await client.RenamePersistentPtyAsync("ses_captured", Info.Id, "my title")).UserTitle == "my title", "userTitle round-trips in rename response");
+        Check((await client.RenamePersistentPtyAsync("ses_captured", Info.Id, null)).UserTitle is null, "explicit null clears userTitle");
+        var puts = requests.Count(request => request.StartsWith("PUT", StringComparison.Ordinal));
+        await Fails(async () => { await client.RenamePersistentPtyAsync("ses_other", Info.Id, "foreign"); }, "identity-mismatch");
+        Check(requests.Count(request => request.StartsWith("PUT", StringComparison.Ordinal)) == puts, "foreign-session rename blocked before PUT");
+        renameUnsupported = true;
+        await Fails(async () => { await client.RenamePersistentPtyAsync("ses_captured", Info.Id, "needs restart"); }, "rename-unsupported");
+        renameUnsupported = false;
         Check(await client.ReadPersistentPtyAsync("ses_captured", 65535) is null, "nullable read envelope and max lines");
         await client.RemovePersistentPtyAsync("ses_captured", Info.Id);
         var error = await Fails(async () => { await client.ConnectPersistentPtyAsync("ses_captured", Info.Id, 4); }, "redirect-rejected");

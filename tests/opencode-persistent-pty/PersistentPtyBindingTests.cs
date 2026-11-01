@@ -32,7 +32,7 @@ internal static class PersistentPtyBindingTests
         internal TaskCompletionSource<bool>? CreateEntered, HoldCreate;
         internal TaskCompletionSource<bool>? ListEntered, HoldList;
         internal readonly byte[] Checkpoint = System.Text.Encoding.UTF8.GetBytes("\u001b[2J\u001b[H真实 VT");
-        internal readonly PersistentPtyInfo Info = new("pty_fixture", "agent terminal", "bash", ImmutableArray<string>.Empty,
+        internal PersistentPtyInfo Info = new("pty_fixture", "agent terminal", "bash", ImmutableArray<string>.Empty,
             "/independent/cwd", "running", 42, null, "ses_plugin", "vim", new(80, 24), new(0, 123));
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -44,6 +44,13 @@ internal static class PersistentPtyBindingTests
                 Check(uri.Query.Length == 0, "server-scoped PTY routes contain no invented location query");
                 if (request.Method != HttpMethod.Get)
                 {
+                    if (request.Method == HttpMethod.Put)
+                    {
+                        Writes++;
+                        using var rename = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+                        Info = Info with { UserTitle = rename.RootElement.GetProperty("title").GetString() };
+                        return Json(new { data = Info });
+                    }
                     if (request.Method == HttpMethod.Delete)
                     { Removes++; Writes++; return new(FailRemove ? HttpStatusCode.InternalServerError : HttpStatusCode.NoContent); }
                     if (request.Method == HttpMethod.Post && uri.AbsolutePath.EndsWith("/terminal", StringComparison.Ordinal))
@@ -112,8 +119,35 @@ internal static class PersistentPtyBindingTests
     }
     internal static async Task Run()
     {
-        await Adapter(); await Inventory(); await PageLifecycle(); await Creation(); await Termination(); await ShellTerminalTests.Run();
+        await Adapter(); await Inventory(); await PageLifecycle(); await Metadata(); await Creation(); await Termination(); await ShellTerminalTests.Run();
         Console.WriteLine($"PASS {_checks} PTY Page/renderer-adapter/inventory checks; real typed HTTP/controller and adapter barriers, inert native surface/state projection; no live socket/process/window.");
+    }
+    private static async Task Metadata()
+    {
+        var f = Fixture(); await f.Page.PrepareAsync();
+        await Until(() => f.Page.PtyInventory?.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready);
+        f.Page.OpenPty("pty_fixture"); await f.Page.PtyView!.Renderer.ResetEntered.Task;
+        var updated = f.Wire.Info with { UserTitle = "/my chosen title", Cwd = "/updated", ForegroundProcess = "nu" };
+        var lists = f.Wire.Lists;
+        f.Page.PtyEvent(JsonSerializer.Serialize(new { type = "persistent-pty.updated", data = new { sessionID = "ses_plugin", terminal = updated } }));
+        Check(f.Page.PtyInventory!.State.Rows.Single() == updated && f.Page.PtyView.Model is { Title: "/my chosen title", Directory: "/updated", ControllerLabel: "nu" }
+            && f.Wire.Lists == lists && f.Wire.Writes == 0, "updated SSE refreshes inventory and overlay metadata immediately without a read/control/resize");
+        f.Page.PtyEvent(JsonSerializer.Serialize(new { type = "persistent-pty.updated", data = new { sessionID = "foreign", terminal = updated with { UserTitle = "foreign" } } }));
+        f.Page.PtyEvent(JsonSerializer.Serialize(new { type = "persistent-pty.updated", data = new { sessionID = "ses_plugin", terminal = updated with { SessionId = "foreign" } } }));
+        f.Page.PtyEvent("{\"type\":\"persistent-pty.updated\",\"data\":{\"sessionID\":\"ses_plugin\",\"terminal\":{}}}");
+        Check(f.Page.PtyInventory.State.Rows.Single() == updated, "foreign/malformed updated terminal cannot replace current session metadata");
+        f.Wire.ListEntered = new(TaskCreationOptions.RunContinuationsAsynchronously); f.Wire.HoldList = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stale = f.Page.PtyInventory.RefreshAsync(); await f.Wire.ListEntered.Task;
+        f.Page.PtyEvent(JsonSerializer.Serialize(new { type = "persistent-pty.updated", data = new { sessionID = "ses_plugin", terminal = updated with { UserTitle = "latest SSE" } } }));
+        f.Wire.HoldList.SetResult(true); await stale;
+        Check(f.Page.PtyInventory.State.Rows.Single().UserTitle == "latest SSE", "in-flight old list cannot roll back a newer updated SSE title");
+        Check(await f.Page.RenamePty("chosen") && f.Page.PtyView.Model?.Title == "chosen" && f.Page.PtyInventory.State.Rows.Single().UserTitle == "chosen",
+            "explicit rename updates active header and inventory from the returned userTitle without reconnecting");
+        Check(await f.Page.RenamePty(null) && f.Page.PtyView.Model?.Title == "agent terminal" && f.Wire.Info.UserTitle is null,
+            "null rename clears override and restores explicit title");
+        var writes = f.Wire.Writes; f.Page.ExpirePtyScope();
+        Check(!await f.Page.RenamePty("stale") && f.Wire.Writes == writes, "expired page/source cannot rename a terminal");
+        f.Page.PausePty();
     }
     private static async Task Adapter()
     {

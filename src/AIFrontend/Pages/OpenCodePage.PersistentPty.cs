@@ -59,6 +59,7 @@ public sealed partial class OpenCodePage
             if (_persistentInventoryOwner is { } owner && owner.Context == request.Context) OpenPersistentPty(owner, request.PtyId);
         };
         _persistentPtyInventoryView.CreateRequested += context => _ = CreatePersistentTerminalAsync(context);
+        _persistentPtyInventoryView.RenameRequested += RenamePersistentPtyAsync;
     }
 
     private async Task CreatePersistentTerminalAsync(OpenCodePersistentPtyInventoryContext context)
@@ -142,6 +143,8 @@ public sealed partial class OpenCodePage
         if (!IsPersistentInventoryCurrent(owner.Origin)) return;
         var state = owner.Inventory.State;
         _persistentPtyInventoryView.Render(owner.Context, state);
+        if (_persistentAttachmentOwner is { } displayed && IsPersistentAttachmentCurrent(displayed.Origin))
+            displayed.View.Render(PersistentPresentation(displayed, displayed.Controller.State));
         if (state.Rows.Any(row => row.Status != "exited"))
         {
             if (_persistentInventoryTimer is null)
@@ -173,7 +176,7 @@ public sealed partial class OpenCodePage
     // Native SSE decoder preserves all object envelopes; no wire DTO or private event API is needed.
     private void OnPersistentPtyEvent(OpenCodeEvent item)
     {
-        if (item.Type is not ("persistent-pty.added" or "persistent-pty.removed") || _persistentInventoryOwner is not { } owner
+        if (item.Type is not ("persistent-pty.added" or "persistent-pty.removed" or "persistent-pty.updated") || _persistentInventoryOwner is not { } owner
             || !IsPersistentInventoryCurrent(owner.Origin) || !item.Data.TryGetProperty("sessionID", out var session)
             || session.ValueKind != System.Text.Json.JsonValueKind.String || session.GetString() != owner.Origin.SessionId) return;
         if (item.Type == "persistent-pty.removed" && item.Data.TryGetProperty("ptyID", out var id)
@@ -182,6 +185,13 @@ public sealed partial class OpenCodePage
             try { owner.Inventory.AcceptRemoved(removed); }
             catch (PersistentPtyException) { return; }
             if (removed == _persistentAttachmentOwner?.Context.PtyId) ClosePersistentPtyView(restoreFocus: false);
+        }
+        if (item.Type == "persistent-pty.updated" && item.Data.TryGetProperty("terminal", out var terminal))
+        {
+            try { owner.Inventory.AcceptUpdated(OpenCodeClient.PersistentDeserialize<PersistentPtyInfo>(terminal)); }
+            catch (PersistentPtyException) { return; }
+            PaintPersistentInventory(owner);
+            return; // This envelope already contains the authoritative terminal; no extra list request is needed.
         }
         _ = owner.Inventory.RefreshAsync();
     }
@@ -219,6 +229,8 @@ public sealed partial class OpenCodePage
             if (SamePersistentPane(owner, request) && owner.Run?.IsCompleted == true) OpenPersistentPty(inventory, ptyId);
         };
         view.TerminateRequested += request => _ = TerminatePersistentPtyAsync(owner, request);
+        view.RenameRequested += (request, title) => SamePersistentPane(owner, request)
+            ? RenamePersistentPtyAsync(inventory.Context, request.PtyId, title) : Task.FromResult(false);
         view.Renderer.InputRequested += request => _ = SendPersistentInputAsync(owner, request);
         view.Renderer.ActivationRequested += request => _ = ActivatePersistentInputAsync(owner, request); // double-click on the terminal
         view.Renderer.ResizeRequested += request => _ = ResizePersistentInputAsync(owner, request);
@@ -307,12 +319,36 @@ public sealed partial class OpenCodePage
         if (conflict) reason = "另一客户端正在控制此终端";
         if (owner.TerminationError is { } terminationError) reason = reason is null ? terminationError : reason + " " + terminationError;
         var exitCode = state.Info?.ExitCode;
-        return new(owner.Adapter.ViewContext(state.Epoch), OpenCodeTerminalNames.Title(state.Info?.Title, state.Info?.Command),
-            state.Info?.Cwd, phase,
+        var metadata = _persistentInventoryOwner?.Inventory.State.Rows.FirstOrDefault(row => row.Id == owner.Context.PtyId) ?? state.Info;
+        return new(owner.Adapter.ViewContext(state.Epoch), OpenCodeTerminalNames.Title(metadata?.Title, metadata?.Command, metadata?.UserTitle),
+            metadata?.Cwd, phase,
             state.Role == PersistentPtyRole.Controller ? OpenCodePersistentPtyRole.Controller : OpenCodePersistentPtyRole.Observer,
-            state.Info?.ForegroundProcess, state.Phase == PersistentPtyPhase.Ready, state.InputArmed, reason,
+            metadata?.ForegroundProcess, state.Phase == PersistentPtyPhase.Ready, state.InputArmed, reason,
             phase == OpenCodePersistentPtyPhase.Exited ? OpenCodeTerminalNames.ExitText(exitCode) : null, conflict,
             "终端", phase == OpenCodePersistentPtyPhase.Exited && exitCode is { } code && code != 0);
+    }
+
+    private async Task<bool> RenamePersistentPtyAsync(OpenCodePersistentPtyInventoryContext context, string ptyId, string? title)
+    {
+        if (_persistentInventoryOwner is not { } owner || owner.Context != context || !IsPersistentInventoryCurrent(owner.Origin)
+            || !owner.Inventory.State.Rows.Any(row => row.Id == ptyId)) return false;
+        try
+        {
+            Task<PersistentPtyInfo>? pending = null;
+            owner.Origin.Source.TryExecute(owner.Origin.Source.RevocationToken, () =>
+            {
+                if (IsPersistentInventoryCurrent(owner.Origin))
+                    pending = owner.Binding.Client.RenamePersistentPtyAsync(owner.Origin.SessionId, ptyId, title, owner.Origin.Source.RevocationToken);
+            });
+            if (pending is null) return false;
+            var info = await pending;
+            if (!IsPersistentInventoryCurrent(owner.Origin)) return false;
+            owner.Inventory.AcceptUpdated(info);
+            PaintPersistentInventory(owner);
+            return true;
+        }
+        catch (PersistentPtyException error) when (error.Code == "rename-unsupported") { throw; }
+        catch (Exception error) when (error is PersistentPtyException or OperationCanceledException or ObjectDisposedException) { return false; }
     }
 
     private async Task ReleasePersistentControlAsync(PersistentAttachmentOwner owner, OpenCodePersistentPtyViewContext context)
@@ -330,9 +366,9 @@ public sealed partial class OpenCodePage
     {
         if (request.IsTerminalResponse)
         {
-            // The persistent-PTY daemon's Ghostty emulator already answers terminal queries.
-            // A second native CPR reaches reedline's next read and clears valid nushell output.
-            // This also keeps historical checkpoint/replay queries from becoming fresh input.
+            // Native replies must not become fresh human input, especially when replaying historical queries.
+            // A stale CPR can reach reedline's next read and clear valid nushell output.
+            // Live 2.2.5 nushell ls/table/reconnect remains stable with these replies suppressed.
             return;
         }
         if (!CurrentPersistentInput(owner, request.Context) || owner.Controller.State.Info is not { } info) return;

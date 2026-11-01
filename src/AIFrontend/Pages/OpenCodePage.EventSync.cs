@@ -235,7 +235,7 @@ public sealed partial class OpenCodePage
         {
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
-            if (item.Type is "persistent-pty.added" or "persistent-pty.removed")
+            if (item.Type is "persistent-pty.added" or "persistent-pty.removed" or "persistent-pty.updated")
             {
                 OnPersistentPtyEvent(item); // Separate server-scoped inventory, including during message workflows.
                 continue;

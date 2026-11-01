@@ -29,7 +29,8 @@ public sealed record PersistentPtyInfo(
     [property: JsonPropertyName("sessionID"), JsonRequired] string SessionId,
     [property: JsonPropertyName("foregroundProcess"), JsonRequired] string? ForegroundProcess,
     [property: JsonPropertyName("size"), JsonRequired] PersistentPtySize Size,
-    [property: JsonPropertyName("output"), JsonRequired] PersistentPtyOutput Output);
+    [property: JsonPropertyName("output"), JsonRequired] PersistentPtyOutput Output,
+    [property: JsonPropertyName("userTitle")] string? UserTitle = null);
 
 public sealed record PersistentPtySnapshot(PersistentPtyInfo Info, string Text,
     ImmutableArray<byte> Checkpoint, PersistentPtyCursor Cursor);

@@ -31,6 +31,8 @@ namespace AIFrontend.Pages
         internal OpenCodePersistentPtyView? PtyView => _persistentAttachmentOwner?.View;
         internal void OpenPty(string id) { if (_persistentInventoryOwner is { } owner) OpenPersistentPty(owner, id); }
         internal Task CreatePty() => _persistentInventoryOwner is { } owner ? CreatePersistentTerminalAsync(owner.Context) : Task.CompletedTask;
+        internal Task<bool> RenamePty(string? title) => _persistentInventoryOwner is { } owner
+            ? RenamePersistentPtyAsync(owner.Context, "pty_fixture", title) : Task.FromResult(false);
         internal bool HasCreationConsent => _persistentAttachmentOwner?.CreationConsent == 1;
         internal void ClosePty() => ClosePersistentPtyView(restoreFocus: false);
 #if !NATIVE_UI
@@ -100,19 +102,21 @@ namespace AIFrontend.Pages.OpenCode
         internal event Action<OpenCodePersistentPtyInventoryContext>? RefreshRequested;
         internal event Action<OpenCodePersistentPtyInventoryContext>? CreateRequested;
         internal event Action<OpenCodePersistentPtyInventoryRequest>? TerminalRequested;
+        internal event Func<OpenCodePersistentPtyInventoryContext, string, string?, Task<bool>>? RenameRequested;
         internal void Render(OpenCodePersistentPtyInventoryContext? context, OpenCodePersistentPtyInventoryState? state) { }
         internal void SetCreationState(bool creating, string? error = null) { }
-        internal void TouchEvents() { RefreshRequested?.Invoke(null!); TerminalRequested?.Invoke(null!); CreateRequested?.Invoke(null!); }
+        internal void TouchEvents() { RefreshRequested?.Invoke(null!); TerminalRequested?.Invoke(null!); CreateRequested?.Invoke(null!); _ = RenameRequested?.Invoke(null!, "", null); }
     }
     internal sealed class OpenCodePersistentPtyView
     {
         internal OpenCodePersistentPtyRenderer Renderer { get; } = new();
         internal OpenCodePersistentPtyPresentation? Model;
         internal event Action<OpenCodePersistentPtyViewContext>? DetachRequested, TakeControlRequested, ReleaseControlRequested, ReconnectRequested, TerminateRequested;
+        internal event Func<OpenCodePersistentPtyViewContext, string?, Task<bool>>? RenameRequested;
         internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
         internal void Render(OpenCodePersistentPtyPresentation? model) => Model = model;
         internal void EmitDetach(OpenCodePersistentPtyViewContext context) => DetachRequested?.Invoke(context);
-        internal void TouchEvents() { DetachRequested?.Invoke(null!); TakeControlRequested?.Invoke(null!); ReleaseControlRequested?.Invoke(null!); ReconnectRequested?.Invoke(null!); TerminateRequested?.Invoke(null!); CopySelectionRequested?.Invoke(null!); }
+        internal void TouchEvents() { DetachRequested?.Invoke(null!); TakeControlRequested?.Invoke(null!); ReleaseControlRequested?.Invoke(null!); ReconnectRequested?.Invoke(null!); TerminateRequested?.Invoke(null!); CopySelectionRequested?.Invoke(null!); _ = RenameRequested?.Invoke(null!, null); }
     }
     internal sealed class OpenCodePersistentPtyRenderer : IOpenCodePersistentPtySurface
     {
