@@ -2568,6 +2568,9 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         var chains = new List<List<StepRun>>();
         List<StepRun>? open = null;
+        // Only the newest chain with nothing visible after it may stay live. Any later text / boundary / chain
+        // means the model has moved on: earlier groups finalize ("已处理", frozen duration) and collapse by default.
+        List<StepRun>? trailing = null;
         for (var index = 0; index < _entries.Count; index++)
         {
             var state = _entries[index].Assistant;
@@ -2582,6 +2585,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 if (state.HasBoundary || state.CompletionShown)
                 {
                     open = null;
+                    trailing = null;
                 }
                 else if (open is not null)
                 {
@@ -2603,12 +2607,14 @@ public sealed class OpenCodeConversationView : StackPanel
                     open = new List<StepRun> { run };
                     chains.Add(open);
                 }
+                trailing = open;
 
             }
 
             if (!state.Runs[^1].EndsMessage)
             {
                 open = null;
+                trailing = null;
             }
         }
 
@@ -2648,7 +2654,8 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             var leader = chain[0];
             bool? expansionChoice = _groupExpansion.TryGetValue(leader.Group.GroupId, out var chosen) ? chosen : null;
-            var activeTurn = wholeTurnActive && currentOwners.Contains(leader.Owner);
+            // Live only while the turn runs AND this chain is still the trailing segment of the transcript.
+            var activeTurn = wholeTurnActive && ReferenceEquals(chain, trailing) && currentOwners.Contains(leader.Owner);
             var sameRevision = !activeTurn && !leader.AppliedActive && leader.AppliedConfiguration == _stepConfiguration
                 && leader.AppliedExpansion == expansionChoice && leader.AppliedRuns?.Length == chain.Count;
             for (var i = 0; sameRevision && i < chain.Count; i++)
@@ -2676,7 +2683,7 @@ public sealed class OpenCodeConversationView : StackPanel
                         // TH1: use one signal for the label and inline default, including authoritative turn end.
                         var running = OpenCodeReasoningExpansionState.IsRunning(
                             run.Owner.Message?.Time is { Completed: null }, part.ReasoningOpen,
-                            wholeTurnActive && currentOwners.Contains(run.Owner));
+                            activeTurn && currentOwners.Contains(run.Owner));
                         part.ReasoningStatus = running ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
                         part.RefreshVisual?.Invoke();
                         if (run.Owner.Message is { } message)
@@ -2720,7 +2727,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 reasoningRows,
                 startedAt,
                 endedAt,
-                wholeTurnActive && currentOwners.Contains(chain[0].Owner),
+                activeTurn,
                 now, authoritativeTurnState: true);
             var leaderId = chain[0].Group.GroupId;
             var expanded = ResolveExpansion(leaderId, summary.IsActive, nowActive);
