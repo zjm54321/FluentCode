@@ -200,7 +200,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         {
             if (_model is not { } model) return;
             var text = (await Renderer.ReadDocumentAsync()).TrimEnd();
-            if (text.Length > 0 && _model == model) CopySelectionRequested?.Invoke(new(model.Context, text));
+            if (text.Length > 0 && _model == model) CopySelectionRequested?.Invoke(new(model.Context, text, FromMenu: true));
         };
         _appearanceItem.Click += (_, _) => AppearanceRequested?.Invoke();
         _renameItem.Click += (_, _) => BeginRename();
@@ -491,6 +491,14 @@ internal sealed class OpenCodePersistentPtyView : Grid
         if (_model is { } model && _selection.Length > 0) CopySelectionRequested?.Invoke(new(model.Context, _selection));
     }
 
+    internal void ShowCopyResult(OpenCodePersistentPtySelection request, bool succeeded)
+    {
+        if (_model?.Context != request.Context) return;
+        if (request.FromMenu) FluentCode.Motion.ActionFeedback.Announce(this, succeeded ? "已复制终端输出" : "复制失败，请重试");
+        else if (succeeded) FluentCode.Motion.ActionFeedback.Success(_copy, "已复制终端选区");
+        else FluentCode.Motion.ActionFeedback.Failure(_copy, "复制失败", "剪贴板暂不可用，请重试");
+    }
+
     private async Task PasteAsync()
     {
         if (_model?.Writable != true) return;
@@ -535,7 +543,12 @@ internal sealed class OpenCodePersistentPtyView : Grid
     {
         if (_model is not { } model || RenameRequested is not { } rename) return false;
         if (_findBar.Visibility == Visibility.Visible) CloseFind();
-        _rename.Begin(model.Title, title => rename(model.Context, title));
+        _rename.Begin(model.Title, async title =>
+        {
+            var saved = await rename(model.Context, title);
+            if (saved && _model?.Context == model.Context) FluentCode.Motion.ActionFeedback.Success(_more, "已保存终端名称");
+            return saved;
+        });
         return true;
     }
 

@@ -105,6 +105,8 @@ public sealed partial class OpenCodePage
             SetHomeActionStatus(owner, result.Status, result.Error);
             if (result.AcceptanceKnown || result.MutationStarted && result.Status == SessionControlStatus.OutcomeUnknown)
                 await RefreshHomeActionMetadataAsync(owner, ct); // Read-only; never replay or release unknown protection.
+            if (result.AcceptanceKnown && kind == SessionControlKind.RenameRoot && OwnsHomeAction(owner, origin))
+                _homeView.ShowRenameSuccess(owner.SessionId);
         }
         catch (OperationCanceledException) { }
         catch (Exception)
@@ -158,7 +160,7 @@ public sealed partial class OpenCodePage
         if (!OwnsHomeAction(owner, owner.Origin) || owner.Origin.Source.IsRevoked) return;
         _homeMessage = status switch
         {
-            SessionControlStatus.Accepted => "服务器已接纳操作；正在重新读取会话列表。",
+            SessionControlStatus.Accepted => null, // Row exit or name/check feedback owns successful actions.
             SessionControlStatus.OutcomeUnknown => "操作结果未知，保护已保留；不会自动重试。仅刷新会话元数据，请先核对服务端状态。",
             SessionControlStatus.DefinitivelyRejected => error switch
             {

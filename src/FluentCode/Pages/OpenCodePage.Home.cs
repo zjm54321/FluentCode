@@ -175,6 +175,7 @@ public sealed partial class OpenCodePage
         try
         {
             var data = new DataPackage(); data.SetText(sessionId!); Clipboard.SetContent(data);
+            Motion.ActionFeedback.Announce(_homeView, "已复制会话 ID");
         }
         catch (Exception)
         {
@@ -223,6 +224,7 @@ public sealed partial class OpenCodePage
 
     private void ResetHomeSource()
     {
+        _homeView.AllowRowExits(false);
         _homeActionOwner = null;
         _homeCancellation?.Cancel();
         _homeCancellation?.Dispose();
@@ -320,6 +322,7 @@ public sealed partial class OpenCodePage
 
     private void RefreshHomeProjection()
     {
+        _homeView.AllowRowExits(_homeActive);
         var rows = new List<OpenCodeHomeSession>();
         if (SourceReady)
             foreach (var info in _sessionItems.Values)

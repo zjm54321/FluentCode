@@ -43,6 +43,8 @@ public sealed partial class OpenCodePage
 
         _queuedWithdrawInFlight = true;
         _queuedPromptsView.IsWithdrawBusy = true;
+        var feedback = _queuedPromptsView.WithdrawButton(inboxId);
+        if (feedback is not null) Motion.ActionFeedback.Busy(feedback);
         OpenCodeQueuedWithdrawResult result;
         try
         {
@@ -61,7 +63,22 @@ public sealed partial class OpenCodePage
         }
 
         var same = StillSame();
-        if (!same) return; // Never publish old-source/session results into a replacement page.
+        if (!same)
+        {
+            if (feedback is not null) Motion.ActionFeedback.Reset(feedback);
+            return; // Never publish old-source/session results into a replacement page.
+        }
+        if (result.Outcome == OpenCodeQueuedWithdrawOutcome.Withdrawn)
+        {
+            if (feedback is not null)
+            {
+                Motion.ActionFeedback.Success(feedback, "消息已撤回，未发送");
+                if (feedback.IsLoaded) await System.Threading.Tasks.Task.Delay(Motion.FluentMotion.Duration(Motion.FluentMotion.Fast));
+                if (!StillSame()) return;
+            }
+            else Motion.ActionFeedback.Announce(_queuedPromptsView, "消息已撤回，未发送");
+        }
+        else if (feedback is not null) Motion.ActionFeedback.Failure(feedback, "撤回未确认", "请查看提示并核对对话记录");
         if (same && result.FreshInbox is { } fresh)
         {
             // 复用新鲜 inbox：已不在的条目不再跟踪（与轮询的“已不在 = 不再待投递”一致）。
@@ -103,13 +120,13 @@ public sealed partial class OpenCodePage
         var attachmentNote = hadAttachments ? "原消息中的附件未恢复，如需请重新添加。" : string.Empty;
         if (samePage && TryRestoreWithdrawnText(text))
         {
-            ShowMessage(InfoBarSeverity.Success, "已撤回", "消息未发送，内容已放回输入框。" + attachmentNote);
+            if (hadAttachments) ShowMessage(InfoBarSeverity.Warning, "附件需要重新添加", attachmentNote);
             return;
         }
 
         // 输入框已有内容（或已切换会话/正在输入法组合）：不覆盖，提供复制。
-        ShowMessage(InfoBarSeverity.Informational, "已撤回",
-            (samePage ? "消息未发送。输入框中已有内容，未覆盖；" : "消息未发送。已切换会话，未放回输入框；")
+        ShowMessage(InfoBarSeverity.Warning, "撤回内容尚未恢复",
+            (samePage ? "输入框中已有内容，未覆盖；" : "已切换会话，未放回输入框；")
             + "可复制撤回的内容。" + attachmentNote);
         var copy = new Button { Content = "复制内容" };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(copy, "OpenCodeQueuedWithdrawCopy");
@@ -120,11 +137,11 @@ public sealed partial class OpenCodePage
                 var package = new DataPackage();
                 package.SetText(text);
                 Clipboard.SetContent(package);
-                copy.Content = "已复制";
+                Motion.ActionFeedback.Success(copy, "已复制撤回的内容");
             }
             catch (Exception)
             {
-                copy.Content = "复制失败";
+                Motion.ActionFeedback.Failure(copy, "复制失败", "请稍后重试");
             }
         };
         MessageBar.ActionButton = copy;

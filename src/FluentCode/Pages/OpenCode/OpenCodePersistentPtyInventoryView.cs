@@ -58,7 +58,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
     internal OpenCodePersistentPtyInventoryView()
     {
         Height = StripHeight; Visibility = Visibility.Collapsed;
-        Margin = new Thickness(-6, 8, -6, 0);
+        Margin = new Thickness(-6, 0, -6, 0); // The optional strip host owns the 8-DIP top gap.
         foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
             ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         _scroll = new ScrollViewer { Content = _row, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
@@ -259,6 +259,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         private readonly Button _open = new() { Height = 40, MinWidth = 40, Padding = new Thickness(8, 0, 4, 0), CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _title = new() { FontSize = 12, MaxWidth = 104, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         private readonly FrameworkElement _icon = OpenCodeQuickAccessStyle.TerminalIcon(14);
+        private readonly ContentControl _renameFeedback = new() { Width = 14, Height = 16, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly Border _dot = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Margin = new Thickness(2, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         private readonly Button _end = OpenCodeTerminalUi.IconButton("\uE711", "结束终端", 20, 20, 10);
         private readonly Border _outline = new() { CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(2), IsHitTestVisible = false, Visibility = Visibility.Collapsed };
@@ -275,8 +276,9 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
             FluentCode.Motion.FluentMotion.ChipEntrance(this);
             FluentCode.Motion.FluentMotion.PressScale(this);
             _end.Visibility = Visibility.Collapsed; _end.VerticalAlignment = VerticalAlignment.Center;
+            _renameFeedback.Content = _icon;
             _open.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
-                Children = { _icon, _title, new Grid { Width = 40, Children = { _dot, _end } } } };
+                Children = { _renameFeedback, _title, new Grid { Width = 40, Children = { _dot, _end } } } };
             _dot.HorizontalAlignment = HorizontalAlignment.Center; _dot.Margin = new Thickness(0);
             _open.Click += (_, _) => { if (Entry is { } entry) { if (entry.Id == _owner._openId) _owner.CloseRequested?.Invoke(); else _owner.Open(entry); } };
             _end.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
@@ -294,8 +296,12 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
             copy.Click += (_, _) =>
             {
                 if (Entry is not { } entry) return;
-                try { var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(entry.Title); Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data); }
-                catch (Exception) { }
+                try
+                {
+                    var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(entry.Title); Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+                    FluentCode.Motion.ActionFeedback.Announce(_open, "已复制终端命令");
+                }
+                catch (Exception) { FluentCode.Motion.ActionFeedback.Announce(_open, "复制失败，请重试"); }
             };
             _endItem.Click += (_, _) => { if (Entry is { } entry) _owner.End(entry); };
             menu.Items.Add(open); menu.Items.Add(_renameItem); menu.Items.Add(copy); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(_endItem);
@@ -333,7 +339,13 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         private bool BeginRename()
         {
             if (Entry is not { Kind: OpenCodeTerminalEntryKind.Pty } entry) return false;
-            _rename.Begin(entry.Title, _owner.RenameAction(entry));
+            var save = _owner.RenameAction(entry);
+            _rename.Begin(entry.Title, async title =>
+            {
+                var saved = await save(title);
+                if (saved && Entry?.Id == entry.Id) FluentCode.Motion.ActionFeedback.Success(_renameFeedback, "已保存终端名称");
+                return saved;
+            });
             return true;
         }
 
@@ -413,6 +425,7 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         private readonly Border _dot = new() { Width = 7, Height = 7, CornerRadius = new CornerRadius(3.5), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         private readonly Button _end = OpenCodeTerminalUi.IconButton("\uE711", "结束终端", 24, 24, 10);
         private readonly FrameworkElement _icon = OpenCodeQuickAccessStyle.TerminalIcon(16);
+        private readonly ContentControl _renameFeedback = new() { Width = 16, Height = 18, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center };
         private readonly OpenCodeTerminalRenameBox _rename = new() { Margin = new Thickness(28, 2, 4, 2) };
         private readonly MenuFlyoutItem _renameItem = new() { Text = "重命名…", KeyboardAcceleratorTextOverride = "F2", Icon = new FontIcon { Glyph = "\uE8AC" } };
         internal bool IsRenaming => _rename.IsEditing;
@@ -429,7 +442,8 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
-            content.Children.Add(_icon);
+            _renameFeedback.Content = _icon;
+            content.Children.Add(_renameFeedback);
             var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { _title, _state } };
             Grid.SetColumn(text, 1); content.Children.Add(text);
             _end.Visibility = Visibility.Collapsed;
@@ -475,7 +489,13 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         private bool BeginRename()
         {
             if (_entry is not { Kind: OpenCodeTerminalEntryKind.Pty } entry) return false;
-            _rename.Begin(entry.Title, _inventory.RenameAction(entry));
+            var save = _inventory.RenameAction(entry);
+            _rename.Begin(entry.Title, async title =>
+            {
+                var saved = await save(title);
+                if (saved && _entry?.Id == entry.Id) FluentCode.Motion.ActionFeedback.Success(_renameFeedback, "已保存终端名称");
+                return saved;
+            });
             return true;
         }
 

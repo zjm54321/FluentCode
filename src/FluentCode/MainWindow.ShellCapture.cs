@@ -30,6 +30,12 @@ public sealed partial class MainWindow
         string output = Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_OUT") is { Length: > 0 } o ? o : evidence;
         Directory.CreateDirectory(output);
 
+        if (Environment.GetEnvironmentVariable("FC_PANEL_FEEDBACK_TEST") == "1")
+        {
+            await RunPanelFeedbackCaptureAsync(evidence, output);
+            return;
+        }
+
         async Task<bool> Until(Func<bool> condition, double seconds)
         {
             var until = DateTime.UtcNow.AddSeconds(seconds);
@@ -121,6 +127,7 @@ public sealed partial class MainWindow
             OpenSettingsPage();
             await Task.Delay(2500);
             await Shot("40-settings-account");
+            await CaptureSettingsCategoriesAsync(Shot, Log);
             Log("DONE");
         }
         catch (Exception ex)

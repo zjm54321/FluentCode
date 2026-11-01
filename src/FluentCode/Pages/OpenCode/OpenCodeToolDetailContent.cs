@@ -130,6 +130,7 @@ internal sealed class OpenCodeToolDetailOptions
     internal OpenCodeMarkdownImageScope? BrowserImageScope { get; set; }
     internal OpenCodeBrowserCaptureImage? BrowserCaptureImage { get; set; }
     public Action<string>? OpenDirectory { get; set; }
+    internal Func<string, bool, bool, int?, ContentControl, System.Threading.Tasks.Task>? OpenPathWithFeedback { get; set; }
     public Func<string, bool, string?>? PathActionUnavailableReason { get; set; }
     internal string? PreviewHint { get; set; }
     public Dictionary<string, int> FoldVisibleLines { get; } = new(StringComparer.Ordinal);
@@ -999,12 +1000,11 @@ internal static partial class OpenCodeToolDetailContent
                 var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 data.SetText(source);
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
-                ToolTipService.SetToolTip(copy, "已复制完整代码");
+                FluentCode.Motion.ActionFeedback.Success(copy, "已复制完整代码");
             }
             catch (Exception)
             {
-                ToolTipService.SetToolTip(copy, "复制失败，请选择代码复制");
-                AutomationProperties.SetHelpText(copy, "复制失败，请选择代码复制");
+                FluentCode.Motion.ActionFeedback.Failure(copy, "复制失败", "请选择代码复制");
             }
         };
         copy.Tapped += (_, args) => args.Handled = true;

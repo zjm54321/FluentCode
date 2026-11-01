@@ -44,7 +44,7 @@ internal sealed record OpenCodeTerminalEntry(OpenCodeTerminalEntryKind Kind, str
     OpenCodeTerminalState State, string StateText, bool CanEnd);
 internal sealed record OpenCodePersistentPtyInput(OpenCodePersistentPtyViewContext Context, ReadOnlyMemory<byte> Bytes, bool IsTerminalResponse = false);
 internal sealed record OpenCodePersistentPtyResize(OpenCodePersistentPtyViewContext Context, int Columns, int Rows);
-internal sealed record OpenCodePersistentPtySelection(OpenCodePersistentPtyViewContext Context, string Text);
+internal sealed record OpenCodePersistentPtySelection(OpenCodePersistentPtyViewContext Context, string Text, bool FromMenu = false);
 
 internal static class OpenCodeTerminalNames
 {

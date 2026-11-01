@@ -259,7 +259,7 @@ public sealed partial class OpenCodePage
             if (pending is null) return;
             var interrupted = await pending;
             binding.Source.TryExecute(CancellationToken.None, () => lease.CompleteSessionControl(operationId, NotificationInteractionStatus.Succeeded));
-            if (Owns()) ShowMessage(InfoBarSeverity.Informational, interrupted ? "已中断" : "无可中断的执行", interrupted ? "服务端确认已中断当前执行。" : "服务端报告当前空闲。");
+            if (Owns()) Motion.ActionFeedback.Announce(this, interrupted ? "服务端确认已中断当前执行" : "服务端报告当前空闲");
         }
         catch (OpenCodeSessionControlException ex) when (ex.VerifiedPreEffect)
         {

@@ -251,8 +251,9 @@
                                         <ThemeShadow />
                                     </Border.Shadow>
                                     <!-- Only To Do owns a vertical ScrollViewer. Star rows carry the dock's finite height to it. -->
-                                    <Grid x:Name="RightSessionContent" Padding="16" RowSpacing="16" RowDefinitions="Auto,*">
-                                        <StackPanel Spacing="16">
+                                    <Grid x:Name="RightSessionContent" Padding="16" RowDefinitions="Auto,*">
+                                        <!-- Optional blocks own their margins; collapsed hosts must not leave StackPanel spacing behind. -->
+                                        <StackPanel Spacing="0">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                                                 <StackPanel x:Name="RightPanelHeaderSlot" Spacing="12" Visibility="Collapsed" />
                                                 <!-- Compatibility hosts; the ring is shown only in the narrow header. -->
@@ -263,25 +264,27 @@
                                                 </StackPanel>
                                             </Grid>
                                             <StackPanel x:Name="WslQuickAccessSection" Visibility="Collapsed" Spacing="0">
-                                                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                                <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="4" Margin="0,12,0,0">
+                                                <Border x:Name="RightQuickAccessDivider" Height="1" Margin="0,16,0,16"
+                                                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                                <Grid x:Name="RightQuickAccessButtons" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="4">
                                                     <Grid x:Name="WslQuickAccessSlot" Visibility="Collapsed" HorizontalAlignment="Left" />
                                                     <Grid x:Name="BrowserButtonSlot" Grid.Column="1" Visibility="Collapsed" />
                                                     <Grid x:Name="PersistentPtyButtonSlot" Grid.Column="2" />
                                                     <Grid x:Name="BrowserCommandsSlot" Grid.Column="3" HorizontalAlignment="Right" Visibility="Collapsed" />
                                                 </Grid>
-                                                <Grid x:Name="BrowserStripSlot" />
-                                                <Grid x:Name="PersistentPtyStripSlot" />
+                                                <Grid x:Name="BrowserStripSlot" Visibility="Collapsed" Margin="0,8,0,0" />
+                                                <Grid x:Name="PersistentPtyStripSlot" Visibility="Collapsed" Margin="0,8,0,0" />
                                                 <Grid x:Name="WslQuickAccessNoteSlot" Visibility="Collapsed" Margin="0,12,0,0" />
                                             </StackPanel>
-                                            <Border x:Name="RightContextDivider" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                            <StackPanel x:Name="RightSessionDiagnostics" Spacing="8">
+                                            <StackPanel x:Name="RightSessionDiagnostics" Visibility="Collapsed" Margin="0,16,0,0" Spacing="0">
                                                 <!-- Preserve switch diagnostics and explicit unknown-outcome recovery, not the retired identity row. -->
                                                 <StackPanel x:Name="AgentSelectorHost" AutomationProperties.AutomationId="OpenCodeAgentSelectorHost" />
                                                 <TextBlock x:Name="WaitingText" Visibility="Collapsed" TextWrapping="Wrap"
                                                            Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                            AutomationProperties.AutomationId="OpenCodeWaitingText" />
                                             </StackPanel>
+                                            <Border x:Name="RightContextDivider" Height="1" Margin="0,16,0,16"
+                                                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                                         </StackPanel>
                                         <Border x:Name="InsightsPaneHost" Grid.Row="1" />
                                     </Grid>

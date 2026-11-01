@@ -17,11 +17,14 @@ internal static class OpenCodeBrowserSelectionFiles
         stream.Seek(0); var package = new DataPackage(); package.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
         Clipboard.SetContent(package); Clipboard.Flush();
     }
-    internal static async Task SaveAsync(byte[] bytes, XamlRoot root)
+    internal static async Task<bool> SaveAsync(byte[] bytes, XamlRoot root)
     {
         if ((Application.Current as App)?.OpenCodeOwnerWindow is not { } owner) throw new InvalidOperationException("无法取得保存窗口。");
         var picker = new FileSavePicker { SuggestedFileName = "浏览器截图" }; picker.FileTypeChoices.Add("PNG 图片", new[] { ".png" });
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(owner));
-        var file = await picker.PickSaveFileAsync(); if (file is not null) await FileIO.WriteBytesAsync(file, bytes);
+        var file = await picker.PickSaveFileAsync();
+        if (file is null) return false;
+        await FileIO.WriteBytesAsync(file, bytes);
+        return true;
     }
 }

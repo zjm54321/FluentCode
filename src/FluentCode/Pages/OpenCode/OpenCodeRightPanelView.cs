@@ -22,7 +22,8 @@ internal sealed class OpenCodeRightPanelView
     private readonly TextBlock _title = new() { FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _id = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _directory = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _hint = new() { FontSize = 12, Visibility = Visibility.Collapsed };
+    /// <summary>复制图标：复制后原位变成 ✓（ActionFeedback），不再显示“已复制”文字。</summary>
+    internal FontIcon CopyGlyph { get; } = new() { Glyph = "\uE8C8", FontSize = 12, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
     private readonly TextBlock _version = new() { VerticalAlignment = VerticalAlignment.Center, FontSize = 12, TextLineBounds = TextLineBounds.Tight };
     private readonly Image _logo = new() { Width = 72, Height = 14, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center };
     private readonly Ellipse _dot = new() { Width = 6, Height = 6, VerticalAlignment = VerticalAlignment.Center };
@@ -36,14 +37,13 @@ internal sealed class OpenCodeRightPanelView
             Content = new Grid
             {
                 ColumnDefinitions = { new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }, new ColumnDefinition { Width = GridLength.Auto } },
-                Children = { _id, new FontIcon { Glyph = "\uE8C8", FontSize = 12, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) } },
+                Children = { _id, CopyGlyph },
             },
         };
         Grid.SetColumn((FrameworkElement)((Grid)CopyButton.Content).Children[1], 1);
         AutomationProperties.SetAutomationId(CopyButton, "OpenCodeRightPanelCopySessionId");
         AutomationProperties.SetName(CopyButton, "复制会话 ID");
         AutomationProperties.SetName(_directory, "工作目录（只读）");
-        _hint.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         // Hierarchy: title (Subtitle ramp) → session ID (quiet monospace copy row) → cwd (label + readable path).
         _title.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.SubtitleStyleKey);
         _id.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
@@ -52,7 +52,7 @@ internal sealed class OpenCodeRightPanelView
         // Native inset copy row: monospace ID and a copy glyph, with the full value in its tooltip.
         CopyButton.Padding = new Thickness(8, 4, 8, 4);
         // The containing card supplies padding; only the separate To Do viewport scrolls.
-        Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton, _hint } };
+        Header = new StackPanel { Spacing = 8, Children = { _title, CopyButton } };
         // Read-only directory in a quiet inset box: folder glyph + one-line path (full path in the tooltip; selectable).
         var folder = new FontIcon { Glyph = "\uE8B7", FontSize = 14, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
         var directoryRow = new Grid
@@ -113,12 +113,6 @@ internal sealed class OpenCodeRightPanelView
 
     internal string DirectoryText => _directory.Text;
     internal string VersionText => _version.Text;
-
-    public void ShowCopyHint(string? text)
-    {
-        _hint.Text = text ?? string.Empty;
-        _hint.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
-    }
 
     public void RenderConnection(string? version, bool connected)
     {

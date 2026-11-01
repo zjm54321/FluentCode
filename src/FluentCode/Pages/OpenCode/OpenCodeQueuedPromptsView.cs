@@ -72,6 +72,9 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     /// <summary>是否有可显示的排队条目。</summary>
     internal bool HasItems => _hasItems;
 
+    internal Button? WithdrawButton(string id) => _withdrawButtons.Find(button =>
+        AutomationProperties.GetAutomationId(button) == "OpenCodeQueuedPromptWithdraw." + id);
+
     /// <summary>撤回进行中：禁用全部“撤回”按钮（单飞；结果出来前不能再点）。</summary>
     internal bool IsWithdrawBusy
     {
@@ -181,7 +184,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
 
         if (withdrawable)
         {
-            // 原生默认按钮样式（不自绘）；结果由页面新鲜复查后以 InfoBar 告知。
+            // The page morphs this acting button only after its fresh inbox/message read confirms withdrawal.
             var withdraw = new Button
             {
                 Content = "撤回",

@@ -126,7 +126,9 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var errorActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var retry = TextButton("重试", () => _page?.Reload(), "\uE72C"); retry.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle"); errorActions.Children.Add(retry);
         errorActions.Children.Add(TextButton("把错误发给智能体", () => { if (_page is not null) SendErrorRequested?.Invoke(this, _page); }, "\uE724"));
-        errorActions.Children.Add(TextButton("复制错误", () => Copy(ErrorText()), "\uE8C8"));
+        Button? copyError = null;
+        copyError = TextButton("复制错误", () => Copy(ErrorText(), copyError), "\uE8C8");
+        errorActions.Children.Add(copyError);
         _error.Children.Add(errorActions);
         var errorSurface = new Grid(); Theme(errorSurface, Panel.BackgroundProperty, "SolidBackgroundFillColorTertiaryBrush"); errorSurface.Children.Add(_error);
         ErrorSurface = errorSurface; _body.Children.Add(errorSurface);
@@ -373,7 +375,12 @@ public sealed class OpenCodeBrowserOverlay : Grid
             new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 12 }, new TextBlock { Text = text } } } };
         AutomationProperties.SetName(button, text); button.Click += (_, _) => click(); return button;
     }
-    private static void Copy(string text) { var package = new DataPackage(); package.SetText(text); Clipboard.SetContent(package); }
+    private void Copy(string text, Button? button = null)
+    {
+        if (button is null) { OpenCodeMessageContextMenu.Copy(text, this); return; }
+        if (OpenCodeMessageContextMenu.Copy(text)) FluentCode.Motion.ActionFeedback.Success(button, "已复制页面错误");
+        else FluentCode.Motion.ActionFeedback.Failure(button, "复制失败", "请重试");
+    }
     private static void Theme(DependencyObject target, DependencyProperty property, string key)
     {
         var name = property == Microsoft.UI.Xaml.Shapes.Shape.StrokeProperty ? "Stroke"

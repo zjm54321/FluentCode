@@ -22,6 +22,22 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
+// Action-result visuals are a native presentation boundary, not an alternate command/mutation path.
+namespace FluentCode.Motion
+{
+    internal static class ActionFeedback
+    {
+        internal static object? LastSuccessControl;
+        internal static string? LastSuccessAnnouncement;
+        internal static void Success(object control, string announcement)
+        {
+            LastSuccessControl = control;
+            LastSuccessAnnouncement = announcement;
+        }
+        internal static void Announce(object anchor, string announcement) { }
+    }
+}
+
 internal static class Program
 {
     private static int checks;
@@ -601,7 +617,11 @@ internal static class Program
         {
             await f.Page.Command(""); await f.Page.Send();
             Check(f.Page.Receipts == 0 && f.Page.Tracked == 0 && f.Page.Working == 0 && f.Page.Refreshes == 1 && f.Page.WaitingUpdates == 0, "204 acknowledgement creates no receipt/delivery/PromptSent/Working; exactly one read-only refresh");
-            Check(f.Page.Messages.Last().Contains("204", StringComparison.Ordinal) && !f.Page.Missing, "204 acknowledgement message is distinct, not completion");
+            Check(f.Page.Messages.Count == 0 && !f.Page.Missing
+                && ReferenceEquals(FluentCode.Motion.ActionFeedback.LastSuccessControl, f.Page.SendStopButton)
+                && FluentCode.Motion.ActionFeedback.LastSuccessAnnouncement is { } acknowledgement
+                && acknowledgement.Contains("命令回调", StringComparison.Ordinal) && acknowledgement.Contains("不代表模型执行完成", StringComparison.Ordinal),
+                "204 acknowledgement is acting-button feedback with exact non-completion semantics, never a banner");
         }
         using (var f = new Fixture())
         {

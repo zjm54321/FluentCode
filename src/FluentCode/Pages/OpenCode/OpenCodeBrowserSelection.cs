@@ -63,8 +63,15 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         _list.Removed += id => { State?.List.Remove(id); State?.Viewports.Remove(id); Render(); Run(SyncSelectedAsync); };
         _list.NoteChanged += (id, text) => State?.List.SetNote(id, text);
         _list.AddRequested += () => Run(AddToConversationAsync);
-        _list.CopyRequested += bytes => Run(() => OpenCodeBrowserSelectionFiles.CopyAsync(bytes));
-        _list.SaveRequested += bytes => Run(() => OpenCodeBrowserSelectionFiles.SaveAsync(bytes, overlay.XamlRoot));
+        _list.CopyRequested += bytes => Run(async () =>
+        {
+            await OpenCodeBrowserSelectionFiles.CopyAsync(bytes);
+            FluentCode.Motion.ActionFeedback.Announce(overlay, "已复制图片"); // Context menu: no visible acknowledgement.
+        });
+        _list.SaveRequested += bytes => Run(async () =>
+        {
+            if (await OpenCodeBrowserSelectionFiles.SaveAsync(bytes, overlay.XamlRoot)) FluentCode.Motion.ActionFeedback.Announce(overlay, "已保存截图");
+        });
         // Same floating-pill language as the agent activity pill: acrylic, hairline, elevation.
         var pillRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center };
         _modeIcon.VerticalAlignment = VerticalAlignment.Center;

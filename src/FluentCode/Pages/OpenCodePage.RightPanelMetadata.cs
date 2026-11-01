@@ -13,7 +13,6 @@ public sealed partial class OpenCodePage
     private OpenCodeInsightsBinding? _rightPanelMetadataOwner;
     private SessionControlState? _rightPanelSessionState;
     private OpenCodeInsightsBinding? _rightPanelDisplayedOwner;
-    private DispatcherQueueTimer? _rightPanelCopyHintTimer;
 
     private void InitializeRightPanelMetadata()
     {
@@ -102,35 +101,22 @@ public sealed partial class OpenCodePage
     private void CopyRightPanelSessionId()
     {
         if (_rightPanelDisplayedOwner is not { } owner || !IsCurrentInsightsBinding(owner)
-            || _homeActive || _newSessionDraftActive || _sessionMissing) return;
-        ClearRightPanelCopyHint();
+            || _homeActive || _newSessionDraftActive || _sessionMissing || _rightPanelMetadata is not { } view) return;
         try
         {
             var data = new DataPackage();
             data.SetText(owner.SessionId);
             Clipboard.SetContent(data);
-            _rightPanelMetadata!.ShowCopyHint("已复制");
+            Motion.ActionFeedback.Success(view.CopyGlyph, view.CopyButton, "已复制会话 ID");
         }
         catch (Exception)
         {
-            _rightPanelMetadata!.ShowCopyHint("复制失败，请重试");
+            Motion.ActionFeedback.Failure(view.CopyGlyph, view.CopyButton, "复制失败，请重试");
         }
-        _rightPanelCopyHintTimer ??= CreateRightPanelCopyHintTimer();
-        _rightPanelCopyHintTimer.Start();
-    }
-
-    private DispatcherQueueTimer CreateRightPanelCopyHintTimer()
-    {
-        var timer = DispatcherQueue.CreateTimer();
-        timer.Interval = TimeSpan.FromSeconds(2);
-        timer.IsRepeating = false;
-        timer.Tick += (_, _) => ClearRightPanelCopyHint();
-        return timer;
     }
 
     private void ClearRightPanelCopyHint()
     {
-        _rightPanelCopyHintTimer?.Stop();
-        _rightPanelMetadata?.ShowCopyHint(null);
+        if (_rightPanelMetadata is { } view) Motion.ActionFeedback.Reset(view.CopyGlyph);
     }
 }

@@ -1310,14 +1310,8 @@ public sealed partial class OpenCodePage : Page
             SetConnectionState(ConnectionState.Connected);
 
             // 只转述服务端已核实的返回语义，不推断执行状态。
-            if (interrupted)
-            {
-                ShowMessage(InfoBarSeverity.Informational, "已中断", "服务端确认已中断当前执行（interrupted=true）。");
-            }
-            else
-            {
-                ShowMessage(InfoBarSeverity.Informational, "无可中断的执行", "服务端报告当前空闲（interrupted=false）。");
-            }
+            if (childStop) Motion.ActionFeedback.Success(ChildStopButton, interrupted ? "服务端确认已中断当前执行" : "服务端报告当前空闲");
+            else Motion.ActionFeedback.Success(SendStopButton, interrupted ? "服务端确认已中断当前执行" : "服务端报告当前空闲");
 
             await RefreshMessagesAsync();
         }
@@ -2746,10 +2740,8 @@ public sealed partial class OpenCodePage : Page
             }
 
             var changed = _interactionsView.ApplyRecheckedPermission(fresh);
-            ShowMessage(InfoBarSeverity.Informational, "重新查询完成",
-                changed
-                    ? "该权限请求仍待处理，但范围已变化；已刷新卡片，请核对后重新决定。"
-                    : "该权限请求仍待处理；已重新核实，请核对后重新决定（本页不会自动重发）。");
+            if (changed) ShowMessage(InfoBarSeverity.Warning, "权限范围已变化", "该权限请求仍待处理；请核对刷新后的卡片再重新决定。");
+            else Motion.ActionFeedback.Announce(_interactionsView, "已重新核实权限请求，可继续处理");
             _ = RefreshMessagesAsync();
             return false;
         }
@@ -2917,10 +2909,8 @@ public sealed partial class OpenCodePage : Page
             }
 
             var changed = _interactionsView.ApplyRecheckedForm(fresh);
-            ShowMessage(InfoBarSeverity.Informational, "重新查询完成",
-                changed
-                    ? "该表单仍待处理，但内容已变化；已重置输入，请重新填写确认后再提交。"
-                    : "该表单仍待处理；已重新核实，可继续填写或提交。");
+            if (changed) ShowMessage(InfoBarSeverity.Warning, "表单内容已变化", "输入已重置，请重新填写确认后再提交。");
+            else Motion.ActionFeedback.Announce(_interactionsView, "已重新核实表单，可继续填写或提交");
             _ = RefreshMessagesAsync();
             return false;
         }
@@ -3194,8 +3184,7 @@ public sealed partial class OpenCodePage : Page
                     _interactionsView.ApplyRecheckedPermission(freshPermission);
                 }
 
-                ShowMessage(InfoBarSeverity.Informational, "重新查询完成",
-                    "该请求仍待处理；已重新核实，可继续处理（本页不会自动重发）。");
+                Motion.ActionFeedback.Announce(_interactionsView, "已重新核实请求，可继续处理");
             }
             else
             {

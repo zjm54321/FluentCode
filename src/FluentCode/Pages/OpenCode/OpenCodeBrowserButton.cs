@@ -20,7 +20,6 @@ internal sealed class OpenCodeBrowserButton : Grid
     private readonly FrameworkElement _coloredBrowser = OpenCodeBrowserColorIcon.Create();
     private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
     private readonly Button _statusButton = new() { Width = 12, Height = 12, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new(0), Margin = new(0, 2, 2, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
-    private readonly TextBlock _new = new() { Text = "NEW", FontSize = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
     private readonly TextBlock _tipTitle = new();
     private readonly TextBlock _tipStatus = new();
     private readonly Border _dot = new() { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Center };
@@ -33,7 +32,6 @@ internal sealed class OpenCodeBrowserButton : Grid
 
     public OpenCodeBrowserButton()
     {
-        ColumnDefinitions.Add(new() { Width = GridLength.Auto }); ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         var icon = new Grid { Width = 36, Height = 32, Children = { _globe, _coloredBrowser, _count } };
         _toggle.Content = icon;
         // The WSL explorer uses DefaultButtonStyle + transparent background. Keep that same
@@ -53,7 +51,7 @@ internal sealed class OpenCodeBrowserButton : Grid
             ("ToggleButtonBorderBrushCheckedPressed", "ButtonBorderBrushPressed"));
         _statusButton.Content = _statusDot;
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) _statusButton.Style = quiet;
-        Children.Add(_toggle); Children.Add(_statusButton); Children.Add(_new); Grid.SetColumn(_new, 1);
+        Children.Add(_toggle); Children.Add(_statusButton);
         AutomationProperties.SetName(_toggle, "浏览器"); AutomationProperties.SetAutomationId(_toggle, "OpenCodeBrowserButton");
         _toggle.Click += (_, _) =>
         {
@@ -89,13 +87,12 @@ internal sealed class OpenCodeBrowserButton : Grid
             OpenCodeBrowserPanelState.StatusBrushKey(_availability));
     }
 
-    public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, bool seen, int? pageCount = null)
+    public void Render(IOpenCodeBrowserWorkspace? workspace, OpenCodeBrowserPanelState? state, int? pageCount = null)
     {
         _pages = pageCount ?? workspace?.Pages.Count ?? 0; _availability = workspace?.Availability ?? OpenCodeBrowserAvailability.Detached;
         _toggle.IsEnabled = workspace is not null;
         _toggle.IsChecked = state?.ShowCommands(_pages) == true;
         _count.Value = _pages; _count.Visibility = OpenCodeBrowserPanelState.ShowCount(_pages) ? Visibility.Visible : Visibility.Collapsed;
-        _new.Visibility = seen ? Visibility.Collapsed : Visibility.Visible;
         _statusButton.Visibility = workspace is not null ? Visibility.Visible : Visibility.Collapsed;
         _tipTitle.Text = OpenCodeBrowserPanelState.TooltipTitle(_pages);
         _tipStatus.Text = OpenCodeBrowserPanelState.TooltipStatus(workspace?.Availability ?? OpenCodeBrowserAvailability.Detached, workspace?.AvailabilityReason);

@@ -34,7 +34,11 @@ public sealed partial class OpenCodePage
             return new OpenCodeContextCommand?[]
             {
                 new("剪切", "\uE8C6", Composer.CutSelectionToClipboard) { Row = true, Accelerator = "Ctrl+X", Enabled = state.Cut },
-                new("复制", "\uE8C8", Composer.CopySelectionToClipboard) { Row = true, Accelerator = "Ctrl+C", Enabled = state.Copy },
+                new("复制", "\uE8C8", () =>
+                {
+                    try { Composer.CopySelectionToClipboard(); Motion.ActionFeedback.Announce(Composer, "已复制"); }
+                    catch (Exception) { Motion.ActionFeedback.Announce(Composer, "复制失败，请重试"); }
+                }) { Row = true, Accelerator = "Ctrl+C", Enabled = state.Copy },
                 new("粘贴", "\uE77F", Composer.PasteFromClipboard) { Row = true, Accelerator = "Ctrl+V", Enabled = state.Paste },
                 new("全选", "\uE8B3", Composer.SelectAll) { Row = true, Accelerator = "Ctrl+A", Enabled = state.SelectAll },
                 new("撤销", "\uE7A7", () => { if (Composer.CanUndo) Composer.Undo(); }) { Accelerator = "Ctrl+Z", Enabled = state.Undo },

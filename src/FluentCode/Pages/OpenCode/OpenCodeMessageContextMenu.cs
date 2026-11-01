@@ -65,7 +65,7 @@ internal static class OpenCodeMessageContextMenu
         }
     }
 
-    internal static void Copy(string text)
+    internal static bool Copy(string text, UIElement? announcementAnchor = null)
     {
         try
         {
@@ -73,8 +73,14 @@ internal static class OpenCodeMessageContextMenu
             package.SetText(text);
             Clipboard.SetContent(package);
             Clipboard.Flush();
+            if (announcementAnchor is not null) FluentCode.Motion.ActionFeedback.Announce(announcementAnchor, "已复制");
+            return true;
         }
-        catch (Exception) { /* Clipboard owned by another process: menu copy is best effort. */ }
+        catch (Exception)
+        {
+            if (announcementAnchor is not null) FluentCode.Motion.ActionFeedback.Announce(announcementAnchor, "复制失败，请重试");
+            return false;
+        }
     }
 
     private static FrameworkElement? FirstText(DependencyObject? root)
@@ -103,7 +109,7 @@ internal static class OpenCodeMessageContextMenu
         {
             // 复制 copies the selection; with nothing selected it copies the whole message (like 复制整段).
             var copyText = !string.IsNullOrEmpty(selected) ? selected : whole;
-            commands.Add(new("复制", "\uE8C8", () => Copy(copyText!))
+            commands.Add(new("复制", "\uE8C8", () => Copy(copyText!, target))
                 { Row = true, Accelerator = "Ctrl+C", Enabled = !string.IsNullOrEmpty(copyText), Description = "先选中文字" });
             commands.Add(new("全选", "\uE8B3", () =>
             {
@@ -112,9 +118,9 @@ internal static class OpenCodeMessageContextMenu
             }) { Row = true, Accelerator = "Ctrl+A" });
         }
         if (wholeText is not null)
-            commands.Add(new("复制整段", "\uE8A5", () => Copy(whole!)) { Enabled = !string.IsNullOrEmpty(whole) });
+            commands.Add(new("复制整段", "\uE8A5", () => Copy(whole!, target)) { Enabled = !string.IsNullOrEmpty(whole) });
         if (target is TextBlock code && CodeSources.TryGetValue(code, out var source))
-            commands.Add(new("复制代码", "\uE943", () => Copy(source)));
+            commands.Add(new("复制代码", "\uE943", () => Copy(source, target)));
         if (rollback?.Invoke() is { } state && rollbackRequested is not null)
         {
             commands.Add(null);

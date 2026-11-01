@@ -32,6 +32,9 @@ public sealed partial class OpenCodePage
         WslQuickAccessSlot.Children.Add(_wslQuickAccessView);
         Motion.FluentMotion.PressScale(_wslQuickAccessView); // Quick-access tile: press 0.97, render-only.
         WslQuickAccessNoteSlot.Children.Add(_wslQuickAccessView.Note);
+        _wslQuickAccessView.Note.RegisterPropertyChangedCallback(VisibilityProperty, (_, _) =>
+            WslQuickAccessNoteSlot.Visibility = WslQuickAccessSlot.Visibility == Visibility.Visible
+                ? _wslQuickAccessView.Note.Visibility : Visibility.Collapsed);
         _selectedWslEditor = _wslEditorPreference.Load();
         _wslQuickAccessView.ExplorerRequested += async (_, _) => await LaunchWslQuickAccessAsync(null);
         _wslQuickAccessView.EditorRequested += async (_, e) => await LaunchWslQuickAccessAsync(e.Name, e.SelectDefault);
@@ -101,8 +104,8 @@ public sealed partial class OpenCodePage
         }
         WslQuickAccessSlot.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
         UpdateRightQuickAccessRow();
-        WslQuickAccessNoteSlot.Visibility = WslQuickAccessSlot.Visibility;
         _wslQuickAccessView.Render(state, _wslEditors, _selectedWslEditor);
+        WslQuickAccessNoteSlot.Visibility = state.Visible ? _wslQuickAccessView.Note.Visibility : Visibility.Collapsed;
         RefreshBrowserPanel();
     }
 
@@ -135,6 +138,10 @@ public sealed partial class OpenCodePage
         // Re-read live state at invocation; a menu may outlive a directory or connection change.
         var state = CurrentWslQuickAccess();
         if (!state.Visible || state.Target is not { } target) { RefreshWslQuickAccess(); return; }
+        var view = _wslQuickAccessView;
+        var editorAction = editorName is not null;
+        if (view is null || Motion.ActionFeedback.Current(view.ActionControl(editorAction)) == Motion.ActionFeedback.State.Busy) return;
+        Motion.ActionFeedback.Busy(view.ActionControl(editorAction));
         try
         {
             var mapped = await _wslHostPaths.MapAsync(target);
@@ -154,8 +161,20 @@ public sealed partial class OpenCodePage
                 RefreshWslQuickAccess();
             }
             else await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher);
+            if (CurrentWslQuickAccess().Target == target) view.ShowActionSuccess(editorAction);
         }
-        catch (Exception) { _wslQuickAccessView?.ShowFailure(); }
+        catch (Exception)
+        {
+            if (CurrentWslQuickAccess().Target == target)
+            {
+                view.ShowFailure();
+                Motion.ActionFeedback.Failure(view.ActionControl(editorAction), "无法打开主机应用", "请检查安装与目录访问权限");
+            }
+        }
+        finally
+        {
+            if (Motion.ActionFeedback.Current(view.ActionControl(editorAction)) == Motion.ActionFeedback.State.Busy) view.ResetAction(editorAction);
+        }
     }
 
     private WslQuickAccessState ResolveDetailPath(MessageHistoryRead read, string path)
@@ -182,10 +201,17 @@ public sealed partial class OpenCodePage
             : !directory && DetailPathEditor() is null ? "未检测到可用于打开此 WSL 文件的主机编辑器" : null;
     }
 
-    private async Task LaunchDetailPathAsync(MessageHistoryRead read, string path, bool directory, bool reveal, int? line)
+    private async Task LaunchDetailPathAsync(MessageHistoryRead read, string path, bool directory, bool reveal, int? line,
+        Microsoft.UI.Xaml.Controls.ContentControl? feedback = null)
     {
         var state = ResolveDetailPath(read, path);
         if (state.Target is not { } target || DetailPathUnavailableReason(read, path, directory) is not null) return;
+        if (feedback is not null)
+        {
+            if (Motion.ActionFeedback.Current(feedback) == Motion.ActionFeedback.State.Busy) return;
+            Motion.ActionFeedback.Busy(feedback);
+        }
+        var launched = false;
         try
         {
             if (directory)
@@ -197,7 +223,7 @@ public sealed partial class OpenCodePage
                 }
                 if (state.Target is not { } folder) return;
                 state = state with { Target = await _wslHostPaths.MapAsync(folder) };
-                if (IsCurrentMessageHistoryRead(read)) await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher);
+                if (IsCurrentMessageHistoryRead(read)) { await OpenCodeWslQuickAccess.LaunchAsync(state, null, _wslQuickAccessLauncher); launched = true; }
             }
             else if (DetailPathEditor() is { } editor && IsCurrentMessageHistoryRead(read))
             {
@@ -207,11 +233,22 @@ public sealed partial class OpenCodePage
                 if (line is > 0 && editor.OpenMode == WslEditorOpenMode.RemoteWsl)
                     launch = new(launch.Executable, new[] { "--remote", "wsl+" + target.Distribution, "--goto", target.LinuxDirectory + ":" + line.Value });
                 await _wslQuickAccessLauncher.OpenEditorAsync(launch);
+                launched = true;
+            }
+            if (launched && IsCurrentMessageHistoryRead(read))
+            {
+                if (feedback is not null) Motion.ActionFeedback.Success(feedback, directory ? "已打开文件夹" : "已在编辑器中打开");
+                else Motion.ActionFeedback.Announce(this, directory ? "已打开文件夹" : "已在编辑器中打开");
             }
         }
         catch (Exception)
         {
-            if (IsCurrentMessageHistoryRead(read)) ShowMessage(Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning, "无法打开路径", "主机未能打开该路径；请复制路径后手动打开。");
+            if (IsCurrentMessageHistoryRead(read))
+            {
+                if (feedback is not null) Motion.ActionFeedback.Failure(feedback, "无法打开路径");
+                ShowMessage(Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning, "无法打开路径", "主机未能打开该路径；请复制路径后手动打开。");
+            }
         }
+        finally { if (feedback is not null && Motion.ActionFeedback.Current(feedback) == Motion.ActionFeedback.State.Busy) Motion.ActionFeedback.Reset(feedback); }
     }
 }

@@ -115,6 +115,7 @@ namespace FluentCode.Pages.OpenCode
         internal event Func<OpenCodePersistentPtyViewContext, string?, Task<bool>>? RenameRequested;
         internal event Action<OpenCodePersistentPtySelection>? CopySelectionRequested;
         internal void Render(OpenCodePersistentPtyPresentation? model) => Model = model;
+        internal void ShowCopyResult(OpenCodePersistentPtySelection request, bool succeeded) { }
         internal void EmitDetach(OpenCodePersistentPtyViewContext context) => DetachRequested?.Invoke(context);
         internal void TouchEvents() { DetachRequested?.Invoke(null!); TakeControlRequested?.Invoke(null!); ReleaseControlRequested?.Invoke(null!); ReconnectRequested?.Invoke(null!); TerminateRequested?.Invoke(null!); CopySelectionRequested?.Invoke(null!); _ = RenameRequested?.Invoke(null!, null); }
     }

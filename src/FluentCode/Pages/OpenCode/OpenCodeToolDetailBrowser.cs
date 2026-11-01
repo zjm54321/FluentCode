@@ -109,6 +109,7 @@ internal static partial class OpenCodeToolDetailContent
                 button.Click += async (_, _) =>
                 {
                     button.IsEnabled = false;
+                    FluentCode.Motion.ActionFeedback.Busy(button);
                     using var lifetime = new CancellationTokenSource();
                     void Unloaded(object sender, RoutedEventArgs args) => lifetime.Cancel();
                     button.Unloaded += Unloaded;
@@ -135,10 +136,20 @@ internal static partial class OpenCodeToolDetailContent
                             Clipboard.SetContent(package);
                             Clipboard.Flush();
                         }
+                        errorBar.IsOpen = false;
+                        FluentCode.Motion.ActionFeedback.Success(button, save ? "已保存截图" : "已复制图片");
                     }
                     catch (OperationCanceledException) { }
-                    catch (Exception error) { errorBar.Title = save ? "另存为失败" : "复制图片失败"; errorBar.Message = error.Message; errorBar.IsOpen = true; }
-                    finally { button.Unloaded -= Unloaded; button.IsEnabled = true; }
+                    catch (Exception error)
+                    {
+                        FluentCode.Motion.ActionFeedback.Failure(button, save ? "另存为失败" : "复制图片失败");
+                        errorBar.Title = save ? "另存为失败" : "复制图片失败"; errorBar.Message = error.Message; errorBar.IsOpen = true;
+                    }
+                    finally
+                    {
+                        button.Unloaded -= Unloaded; button.IsEnabled = true;
+                        if (FluentCode.Motion.ActionFeedback.Current(button) == FluentCode.Motion.ActionFeedback.State.Busy) FluentCode.Motion.ActionFeedback.Reset(button);
+                    }
                 };
                 var host = new StackPanel { Spacing = 4 };
                 host.Children.Add(button);

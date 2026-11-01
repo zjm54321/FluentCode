@@ -247,7 +247,8 @@ public sealed partial class OpenCodePage
             AgentSwitchStatus.OutcomeUnknown or AgentSwitchStatus.ReconciliationRequired => InfoBarSeverity.Warning,
             _ => InfoBarSeverity.Warning,
         };
-        ShowMessage(severity, "Agent 切换", e.Message);
+        if (severity == InfoBarSeverity.Success) Motion.ActionFeedback.Announce(_agentSelector, e.Message);
+        else ShowMessage(severity, "Agent 切换", e.Message);
         RefreshComposerView();
 
         if (e.Status is AgentSwitchStatus.OutcomeUnknown or AgentSwitchStatus.ReconciliationRequired)

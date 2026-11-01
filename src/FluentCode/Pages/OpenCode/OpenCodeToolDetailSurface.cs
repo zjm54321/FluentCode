@@ -175,13 +175,17 @@ internal static partial class OpenCodeToolDetailContent
             AddBrowserActions(actions, model, options);
             return;
         }
-        void PathAction(string label, string path, bool directory, Action? action)
+        void PathAction(string label, string path, bool directory, Action? action, bool reveal = false, int? line = null)
         {
             var reason = options.PathActionUnavailableReason?.Invoke(path, directory)
                 ?? (action is null ? "当前连接未提供已授权的路径打开方式" : null);
             var button = new Button { Content = label, IsEnabled = reason is null };
             if (reason is not null) ToolTipService.SetToolTip(button, reason);
-            else button.Click += (_, _) => action?.Invoke();
+            else button.Click += async (_, _) =>
+            {
+                if (options.OpenPathWithFeedback is { } launch) await launch(path, directory, reveal, line, button);
+                else action?.Invoke();
+            };
             actions.Children.Add(button);
         }
         if (model.ToolName == "skill" && OpenCodeToolDetailBuiltinData.Skill(model).Directory is { Length: > 0 } directory)
@@ -211,9 +215,9 @@ internal static partial class OpenCodeToolDetailContent
         {
             var path = model.DiffFiles.Count > 0 ? model.DiffFiles[Math.Clamp(options.SelectedFile, 0, model.DiffFiles.Count - 1)].Path : model.Target;
             var offset = int.TryParse(Field(StateObject(model, "input"), "offset"), out var line) ? line : (int?)null;
-            PathAction("在资源管理器中显示", path, true, options.RevealFile is { } reveal ? () => reveal(path) : null);
+            PathAction("在资源管理器中显示", path, true, options.RevealFile is { } reveal ? () => reveal(path) : null, reveal: true);
             PathAction(offset is { } number ? $"在编辑器中打开（第 {number} 行）" : "在编辑器中打开", path, false,
-                options.OpenFile is { } open ? () => open(path, offset) : null);
+                options.OpenFile is { } open ? () => open(path, offset) : null, line: offset);
         }
         if (model.Kind == OpenCodeToolKind.Shell && options.OpenTerminal is { } terminal)
         {
@@ -289,9 +293,9 @@ internal static partial class OpenCodeToolDetailContent
                 var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 data.SetText(source);
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
-                ToolTipService.SetToolTip(button, "已复制");
+                FluentCode.Motion.ActionFeedback.Success(button, "已" + label);
             }
-            catch (Exception) { ToolTipService.SetToolTip(button, "复制失败，请选择文本复制"); }
+            catch (Exception) { FluentCode.Motion.ActionFeedback.Failure(button, "复制失败", "请选择文本复制"); }
         };
         return button;
     }

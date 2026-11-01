@@ -141,5 +141,15 @@ internal static class Program
         Check(view.Contains("_listMotionLease = Renderer.SuppressAirspace()"), "STATIC terminal HWND hidden during the ☰ list slide");
         var conversation = Read("Pages/OpenCode/OpenCodeConversationView.cs");
         Check(!conversation.Contains("ChildrenTransitions") && conversation.Contains("MaxLiveEntrances = 6"), "STATIC transcript has no children transitions; live entrances capped");
+        var feedback = Read("Motion/ActionFeedback.cs");
+        Check(feedback.Contains("SuccessGlyph = \"\\uE73E\"") && feedback.Contains("FluentMotion.ScaleFadeIn(overlay, 0.6f, Center, FluentMotion.Fast)")
+            && feedback.Contains("RaiseNotificationEvent(AutomationNotificationKind.ActionCompleted"),
+            "STATIC ActionFeedback: ✓ E73E, 167ms FluentMotion (reduce-motion aware), screen-reader notification");
+        Check(feedback.Contains("slot.Host.Children[0].Opacity = 0") && !feedback.Contains("Visibility.Collapsed"),
+            "STATIC ActionFeedback overlays the result on the transparent original content (no layout shift)");
+        var settings = string.Concat(Directory.GetFiles(Path.Combine(repo, "src/FluentCode/Pages/Settings"), "*.cs").Select(File.ReadAllText));
+        Check(Read("Pages/Settings/SettingsCards.cs").Contains("IsEditable = true") && settings.Contains("ActionFeedback.Success(_browserSave")
+            && !settings.Contains("InfoBarSeverity.Success") && !settings.Contains("已保存\""),
+            "STATIC settings: editable font boxes, in-place save feedback, no success text/InfoBars");
     }
 }

@@ -1,7 +1,9 @@
 param(
     [string]$EvidenceRoot,
     [string]$PublishDirectory,
-    [ValidateRange(15, 120)][int]$Seconds = 15
+    [ValidateRange(15, 120)][int]$Seconds = 15,
+    [switch]$PanelFeedback,
+    [switch]$Wsl
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -24,6 +26,13 @@ $start = [Diagnostics.ProcessStartInfo]::new($exe)
 $start.UseShellExecute = $false
 $start.WorkingDirectory = Split-Path $exe
 $start.EnvironmentVariables['FC_STARTUP_SMOKE_ROOT'] = $profile
+if ($PanelFeedback) {
+    if (!$Wsl) { throw '-PanelFeedback requires -Wsl (read-only live OpenCode connection).' }
+    $start.EnvironmentVariables['FC_SHELL_CAPTURE_TEST'] = '1'
+    $start.EnvironmentVariables['FC_SHELL_CAPTURE_WSL'] = '1'
+    $start.EnvironmentVariables['FC_SHELL_CAPTURE_OUT'] = $EvidenceRoot
+    $start.EnvironmentVariables['FC_PANEL_FEEDBACK_TEST'] = '1'
+}
 $process = $null
 $result = @{ Executable = $exe; Profile = $profile; Passed = $false; RequiredSeconds = $Seconds }
 try {
@@ -34,6 +43,26 @@ try {
         if ($process.WaitForExit(250)) { throw "Published process exited early: $($process.ExitCode)" }
         if (Test-Path (Join-Path $profile 'failed.txt')) { throw ([IO.File]::ReadAllText((Join-Path $profile 'failed.txt'))) }
     }
+    if ($PanelFeedback) {
+        while (!(Test-Path (Join-Path $profile 'ready.txt'))) {
+            if ($process.WaitForExit(100)) { throw "Panel fixture exited early: $($process.ExitCode)" }
+            if (Test-Path (Join-Path $profile 'failed.txt')) { throw ([IO.File]::ReadAllText((Join-Path $profile 'failed.txt'))) }
+            if ($watch.Elapsed.TotalSeconds -gt 180) { throw 'Panel feedback fixture timed out.' }
+        }
+        $layout = Get-Content -Raw (Join-Path $EvidenceRoot 'panel-layout.json') | ConvertFrom-Json
+        if (@($layout).Count -ne 4) { throw 'Expected four real WinUI layout states.' }
+        foreach ($state in $layout) {
+            foreach ($gap in $state.Gaps) {
+                if ([Math]::Abs($gap.BeforeDip - 16) -gt 0.5 -or [Math]::Abs($gap.AfterDip - 16) -gt 0.5) { throw "Unequal separator gaps: $($state.State)/$($gap.Name)" }
+                Write-Output "PASS $($state.State) $($gap.Name): $($gap.BeforePixels)/$($gap.AfterPixels) physical pixels ($($gap.BeforeDip)/$($gap.AfterDip) DIP)"
+            }
+        }
+        $feedback = Get-Content -Raw (Join-Path $EvidenceRoot 'panel-feedback.json') | ConvertFrom-Json
+        if (!$feedback.Passed -or !$feedback.NoLayoutShift -or !$feedback.NoVisibleSuccessText) { throw 'Copy feedback assertion failed.' }
+        foreach ($name in @('40-panel-no-strip', '41-panel-browser-strip', '42-panel-terminal-strip', '43-panel-both-strips', '50-copy-feedback')) {
+            if (!(Test-Path (Join-Path $EvidenceRoot ($name + '.png')))) { throw "Missing real-app capture: $name" }
+        }
+    }
     $ready = [IO.File]::ReadAllText((Join-Path $profile 'ready.txt'))
     if ($ready -notmatch "PID=$($process.Id); HWND=(\d+);") { throw "Ready marker belongs to a different process: $ready" }
     $handle = [IntPtr]::new([long]$Matches[1])
@@ -43,7 +72,7 @@ try {
     $result.AliveSeconds = $watch.Elapsed.TotalSeconds
     $result.WindowHandle = $handle.ToInt64()
     $result.Passed = $true
-    Write-Output "PASS Release startup: PID $($process.Id), live HWND $handle, alive $($result.AliveSeconds)s"
+    Write-Output "PASS startup/native panel checks: PID $($process.Id), live HWND $handle, alive $($result.AliveSeconds)s"
 } catch {
     $result.Error = $_.Exception.Message
     throw
@@ -53,7 +82,15 @@ try {
         [void][SmokeWindow]::PostMessage($process.MainWindowHandle, 0x10, [IntPtr]::Zero, [IntPtr]::Zero)
         if (!$process.WaitForExit(5000)) { $process.Kill(); $process.WaitForExit() }
     }
+    if ($process -and $process.HasExited) {
+        $result.ExitCode = $process.ExitCode
+        if ($PanelFeedback -and $process.ExitCode -ne 0) {
+            $result.Passed = $false
+            $result.Error = "Panel fixture shutdown failed: $($process.ExitCode)"
+        }
+    }
     $result | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'results.json')
     Get-FileHash -Algorithm SHA256 -LiteralPath $exe, (Join-Path $PublishDirectory 'FluentCode.dll'), (Join-Path $PublishDirectory 'FluentCode.pri') |
         Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'publish-hashes.json')
+    if ($PanelFeedback -and $result.ExitCode -ne 0) { throw $result.Error }
 }

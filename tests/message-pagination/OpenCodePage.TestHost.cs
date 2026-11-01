@@ -12,6 +12,12 @@ using FluentCode.Pages.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
+// Presentation-only feedback is an explicit native boundary; Home mutation transport remains production code.
+namespace FluentCode.Motion
+{
+    internal static class ActionFeedback { internal static void Announce(object anchor, string text) { } }
+}
+
 namespace Windows.ApplicationModel.DataTransfer
 {
     public sealed class DataPackage { internal string? Text; public void SetText(string text) => Text = text; }
@@ -158,6 +164,8 @@ namespace FluentCode.Pages
         internal void TestReplaceHomeSource() { _homeRuntimeSource = "runtime-b"; _homeRevision++; }
         // The extracted Home router calls the guarded switch directly from accepted DTO metadata.
         private string? _homeMessage;
+        private readonly HomeFeedbackBoundary _homeView = new();
+        private sealed class HomeFeedbackBoundary { internal void ShowRenameSuccess(string id) { } }
         private readonly System.Collections.Generic.HashSet<string> _homeArchivedSessions = new(System.StringComparer.Ordinal);
         internal readonly List<string> HomeSwitchRequests = new();
         internal int HomeMirrors, HomeProjectionRequests;

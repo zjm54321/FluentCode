@@ -17,8 +17,6 @@ public sealed partial class OpenCodePage
     private OpenCodeBrowserStrip? _browserStrip;
     private OpenCodeBrowserWorkspace? _browserPanelWorkspace;
     private readonly Dictionary<OpenCodeBrowserWorkspace, OpenCodeBrowserPanelState> _browserPanelStates = new();
-    private readonly OpenCodeBrowserDiscoveryPreference _browserDiscovery = new(Path.Combine(AppDataPaths.GetRootDirectory(null), "opencode-browser-discovery.txt"));
-    private bool _browserDiscovered;
     private Button? _browserAdd;
     private Button? _browserMore;
 
@@ -29,14 +27,15 @@ public sealed partial class OpenCodePage
         _agentSelector.DisplayChanged += (_, _) => { EnsureBrowserPeers(); RefreshBrowserPanel(); RefreshChildBrowserButton(); };
         _browserStrip.SetHostVisible(_hostWindowVisible);
         BrowserButtonSlot.Children.Add(_browserButton); BrowserStripSlot.Children.Add(_browserStrip);
+        // Collapse the host too: a visible Grid can still reserve its margin when the strip is collapsed.
+        _browserStrip.RegisterPropertyChangedCallback(VisibilityProperty, (_, _) => BrowserStripSlot.Visibility = _browserStrip.Visibility);
+        BrowserStripSlot.Visibility = _browserStrip.Visibility;
         Motion.FluentMotion.PressScale(_browserButton); // Quick-access tile: Fluent press 0.97, render-only.
         _browserAdd = BrowserCommand("\uE710", "新建浏览器页面");
         _browserMore = BrowserCommand("\uE712", "更多浏览器操作");
         BrowserCommandsSlot.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { _browserAdd, _browserMore } });
-        _browserDiscovered = _browserDiscovery.Seen();
         _browserButton.Invoked += (_, _) =>
         {
-            MarkBrowserDiscovered();
             if (_browserPanelWorkspace is not { } workspace) return;
             var state = _browserPanelStates[workspace];
             if (BrowserPanelGroups().All(group => group.Workspace.Pages.Count == 0)) OpenBrowserPanelPage(); else { state.Toggle(); RenderBrowserPanel(); }
@@ -97,17 +96,8 @@ public sealed partial class OpenCodePage
     {
         if (sender is OpenCodeBrowserWorkspace workspace && IsBrowserPanelWorkspace(workspace)) RenderBrowserPanel();
     }
-    private void MarkBrowserDiscovered()
-    {
-        if (_browserDiscovered) return;
-        _browserDiscovered = true;
-        try { _browserDiscovery.MarkSeen(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        { ShowMessage(InfoBarSeverity.Warning, "浏览器偏好未保存", "无法保存首次使用标记，下次启动可能仍显示 NEW。"); }
-    }
     private void OpenBrowserPanelPage()
     {
-        MarkBrowserDiscovered();
         if (_browserPanelWorkspace is not { } workspace) return;
         _browserPanelStates[workspace].Expand(); workspace.OpenPage("about:blank"); RenderBrowserPanel();
     }
@@ -166,12 +156,14 @@ public sealed partial class OpenCodePage
     }
     private void RenderBrowserPanel()
     {
+        // Disposable native layout fixture: retain the real controls while read-only backend events continue.
+        if (Environment.GetEnvironmentVariable("FC_PANEL_FEEDBACK_FIXTURE") == "1") return;
         var groups = BrowserPanelGroups();
         _browserStrip?.BindGroups(groups);
         var state = _browserPanelWorkspace is { } workspace && _browserPanelStates.TryGetValue(workspace, out var current) ? current : null;
         var pages = groups.Sum(group => group.Workspace.Pages.Count);
         var expanded = state?.ShowCommands(pages) == true;
-        _browserButton?.Render(_browserPanelWorkspace, state, _browserDiscovered, pages);
+        _browserButton?.Render(_browserPanelWorkspace, state, pages);
         BrowserCommandsSlot.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
         _browserStrip?.SetExpanded(expanded);
     }

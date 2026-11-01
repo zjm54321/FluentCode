@@ -126,9 +126,15 @@ internal static class OpenCodeSideQuestionDialog
                 var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 data.SetText(answer.Answer);
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
-                dialog.PrimaryButtonText = "✓ 已复制";
+                // The copy button itself morphs into ✓ (no "已复制" text; width unchanged).
+                if (PrimaryButton(dialog) is { } copied) FluentCode.Motion.ActionFeedback.Success(copied, "已复制回答");
+                else FluentCode.Motion.ActionFeedback.Announce(dialog, "已复制回答");
             }
-            catch (Exception) { dialog.PrimaryButtonText = "复制失败，请选中文字复制"; }
+            catch (Exception)
+            {
+                if (PrimaryButton(dialog) is { } failed) FluentCode.Motion.ActionFeedback.Failure(failed, "复制失败", "请选中文字复制");
+                else FluentCode.Motion.ActionFeedback.Announce(dialog, "复制失败，请选中文字复制");
+            }
         };
         dialog.Opened += (_, _) =>
         {
@@ -144,4 +150,15 @@ internal static class OpenCodeSideQuestionDialog
 
     // Official overlay: answer body ≈ 60% of the available height.
     private static double AnswerMaxHeight(XamlRoot? owner) => Math.Clamp((owner?.Size.Height ?? 760) * 0.6 - 120, 160, 640);
+
+    private static Button? PrimaryButton(DependencyObject root)
+    {
+        for (int i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is Button { Name: "PrimaryButton" } button) return button;
+            if (PrimaryButton(child) is { } found) return found;
+        }
+        return null;
+    }
 }

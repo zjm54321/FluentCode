@@ -19,6 +19,9 @@ public sealed partial class OpenCodePage
         PersistentPtyButtonSlot.Children.Add(_persistentPtyInventoryView.Button);
         Motion.FluentMotion.PressScale(_persistentPtyInventoryView.Button); // Quick-access tile: press 0.97, render-only.
         PersistentPtyStripSlot.Children.Add(_persistentPtyInventoryView);
+        _persistentPtyInventoryView.RegisterPropertyChangedCallback(UIElement.VisibilityProperty,
+            (_, _) => PersistentPtyStripSlot.Visibility = _persistentPtyInventoryView.Visibility);
+        PersistentPtyStripSlot.Visibility = _persistentPtyInventoryView.Visibility;
         _persistentPtyInventoryView.Button.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => UpdateRightQuickAccessRow());
         var overlay = _persistentPtyOverlay = new OpenCodePersistentPtyOverlay();
         PersistentPtyOverlayHost.Children.Add(overlay);

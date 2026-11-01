@@ -140,6 +140,7 @@ public sealed partial class OpenCodePage
     }
     private void PaintPersistentInventory(PersistentInventoryOwner owner)
     {
+        if (Environment.GetEnvironmentVariable("FC_PANEL_FEEDBACK_FIXTURE") == "1") return;
         if (!IsPersistentInventoryCurrent(owner.Origin)) return;
         var state = owner.Inventory.State;
         _persistentPtyInventoryView.Render(owner.Context, state);
@@ -237,8 +238,8 @@ public sealed partial class OpenCodePage
         view.CopySelectionRequested += request =>
         {
             if (!SamePersistentPane(owner, request.Context) || request.Context != owner.Adapter.ViewContext(owner.Controller.State.Epoch)) return;
-            try { var data = new DataPackage(); data.SetText(request.Text); Clipboard.SetContent(data); }
-            catch (Exception) { /* Explicit clipboard action failed; never send it to the terminal as input. */ }
+            try { var data = new DataPackage(); data.SetText(request.Text); Clipboard.SetContent(data); view.ShowCopyResult(request, true); }
+            catch (Exception) { view.ShowCopyResult(request, false); /* Never send a failed clipboard action as terminal input. */ }
         };
         ShowPersistentPtyOverlay(view, ptyId);
         DismissSidebarDrawers();

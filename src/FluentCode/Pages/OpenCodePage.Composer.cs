@@ -407,7 +407,7 @@ public sealed partial class OpenCodePage
                     PublishComposerReceipt(binding.SessionId, accepted.Receipt);
                     break;
                 case OpenCodeComposerSubmitOutcome.CommandAcknowledged:
-                    ShowMessage(InfoBarSeverity.Informational, "命令回调已确认", "服务器已确认命令回调（204）；不代表模型执行完成，不创建消息投递跟踪。");
+                    Motion.ActionFeedback.Success(SendStopButton, "服务器已确认命令回调；不代表模型执行完成");
                     break;
                 case OpenCodeComposerSubmitOutcome.Rejected:
                     ShowMessage(InfoBarSeverity.Warning, "提交未被接纳", "服务器拒绝了此次提交；草稿已保留。");

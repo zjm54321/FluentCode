@@ -259,9 +259,8 @@ public sealed partial class OpenCodePage
         if (!CanPublishNativeOperation(owner)) return;
         if (result.AcceptanceKnown)
         {
-            ShowMessage(InfoBarSeverity.Success, variantOnly ? "推理强度选择已接纳" : "模型选择已接纳",
-                (variantOnly ? "仅影响之后的回合。" : "仅影响之后的回合，不代表模型正在执行。") +
-                (result.Observed is null ? "当前显示状态未能重新读取。" : string.Empty));
+            Motion.ActionFeedback.Announce(_agentSelector, variantOnly ? "推理强度选择已接纳，仅影响之后的回合" : "模型选择已接纳，仅影响之后的回合");
+            if (result.Observed is null) ShowMessage(InfoBarSeverity.Warning, "当前状态尚未读取", "选择已接纳，但当前显示状态未能重新读取；请检查连接后刷新。");
             _agentSelector.RefreshDisplay(); // Read-only status line re-reads the real session state.
         }
         else ReportNativeControlStatus(result.Status);
@@ -332,7 +331,7 @@ public sealed partial class OpenCodePage
             // Acceptance without a matched observed boundary does not authorize automatic restoration.
             ShowNativeTextCandidate(preview.Target!.Text ?? string.Empty);
         }
-        else ShowMessage(InfoBarSeverity.Success, "撤回状态已清除", "整个撤回状态已清除；输入框内容保持不变。");
+        else Motion.ActionFeedback.Announce(Composer, "撤回状态已清除，输入框内容保持不变");
         await RefreshMessagesAsync(explicitRefresh: true);
     }
 

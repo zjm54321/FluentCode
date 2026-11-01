@@ -99,8 +99,8 @@ public sealed partial class OpenCodePage
         view.CopySelectionRequested += selection =>
         {
             if (_shellTerminalContext != selection.Context) return;
-            try { var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(selection.Text); Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data); }
-            catch (Exception) { }
+            try { var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(selection.Text); Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data); view.ShowCopyResult(selection, true); }
+            catch (Exception) { view.ShowCopyResult(selection, false); }
         };
         BindTerminalAppearance(view);
         ShowPersistentPtyOverlay(view, shell.Id);

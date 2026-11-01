@@ -63,14 +63,3 @@ internal sealed class OpenCodeBrowserPreviewThrottle
         if (completedAt is { } time) _lastAttempt = time;
     }
 }
-
-/// <summary>Like the quick-access preference, stored beside app settings (works unpackaged too).</summary>
-internal sealed class OpenCodeBrowserDiscoveryPreference(string path)
-{
-    public bool Seen() => File.Exists(path);
-    public void MarkSeen()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, "seen");
-    }
-}

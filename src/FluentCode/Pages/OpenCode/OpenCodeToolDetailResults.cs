@@ -68,7 +68,11 @@ internal static partial class OpenCodeToolDetailContent
             var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 8, 4),
                 Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle") };
-            if (!options.Compact && options.OpenFile is { } open) button.Click += (_, _) => open(file.Path, match.Line);
+            if (!options.Compact && options.OpenFile is { } open) button.Click += async (_, _) =>
+            {
+                if (options.OpenPathWithFeedback is { } launch) await launch(file.Path, false, false, match.Line, button);
+                else open(file.Path, match.Line);
+            };
             if (!options.Compact)
             {
                 var reason = options.PathActionUnavailableReason?.Invoke(file.Path, false)
@@ -149,7 +153,7 @@ internal static partial class OpenCodeToolDetailContent
             if (options.PathActionUnavailableReason?.Invoke(path, false) is { } reason) ToolTipService.SetToolTip(element, reason);
             // Labeled list item, as File Explorer's own 复制路径.
             element.ContextFlyout = OpenCodeContextMenu.Create(new OpenCodeContextCommand?[]
-                { new("复制路径", "\uE8C8", () => OpenCodeMessageContextMenu.Copy(path)) });
+                { new("复制路径", "\uE8C8", () => OpenCodeMessageContextMenu.Copy(path, element)) });
         }
         void Populate()
         {

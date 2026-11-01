@@ -89,6 +89,22 @@ public sealed class OpenCodeHomeView : UserControl
     private TextBlock? _allProjectsCount;
     private bool _refreshing;
     private bool _narrow;
+    private readonly HashSet<ListViewItem> _removingSessions = new();
+    private bool _allowRowExits;
+    private int _rowExitGeneration;
+
+    internal void AllowRowExits(bool allow)
+    {
+        _allowRowExits = allow;
+        if (allow) return;
+        _rowExitGeneration++;
+        foreach (var item in _removingSessions)
+        {
+            FluentCode.Motion.FluentMotion.Settle(item); // Invalidate late Composition completion before native teardown.
+            item.IsHitTestVisible = true;
+        }
+        _removingSessions.Clear();
+    }
     private ScrollViewer? _listScroller;
     private (double Offset, double Viewport, double Extent) _scroll;
     /// <summary>Revision of the snapshot that produced the last automatic request, or -1. Blocks repeat requests
@@ -245,6 +261,7 @@ public sealed class OpenCodeHomeView : UserControl
         SetConnection(null, false, null);
         SizeChanged += (_, _) => ApplyLayout();
         Loaded += (_, _) => { ApplyLayout(); RefreshSessions(); }; // Recompute local calendar groups after a cached view returns.
+        Unloaded += (_, _) => AllowRowExits(false);
         RebuildProjects();
         RefreshSessions();
         ApplyLayout();
@@ -501,6 +518,23 @@ public sealed class OpenCodeHomeView : UserControl
     {
         var zone = TimeZoneInfo.Local;
         var rows = OpenCodeHomeProjection.Rows(_snapshot, SelectedProject, _search.Text, DateTimeOffset.Now, zone);
+        // Real deletion/archive leaves the source snapshot; filters and search do not animate as deletions.
+        // Reconcile only after the exit, so a concurrent SSE snapshot cannot pull the row out mid-animation.
+        if (_removingSessions.Count > 0) return;
+        var removed = _allowRowExits && IsLoaded ? _sessions.Items.OfType<ListViewItem>().Where(item => item.Tag is OpenCodeHomeSessionRow old
+            && !_snapshot.Sessions.Any(session => session.Project == old.Session.Project && session.Info.Id == old.Session.Info.Id)).ToArray()
+            : Array.Empty<ListViewItem>();
+        var exitGeneration = _rowExitGeneration;
+        foreach (var item in removed) _removingSessions.Add(item);
+        foreach (var item in removed)
+            FluentCode.Motion.ActionFeedback.AnimateOut(item, () =>
+            {
+                if (exitGeneration != _rowExitGeneration || !_allowRowExits) return;
+                _sessions.Items.Remove(item);
+                _removingSessions.Remove(item);
+                if (_removingSessions.Count == 0) RefreshSessions();
+            });
+        if (removed.Length > 0) return;
         // Reconcile native item containers instead of clearing them on every SSE/status snapshot.
         // Equal rows retain their content/focus; pagination appends without resetting the list scroll.
         var desired = new List<(object Key, OpenCodeHomeSessionRow? Row)>();
@@ -662,7 +696,8 @@ public sealed class OpenCodeHomeView : UserControl
         badges.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
         indicator.HorizontalAlignment = HorizontalAlignment.Center;
         AutomationProperties.SetAutomationId(indicator, "OpenCodeHomeStatus");
-        badges.Children.Add(indicator);
+        badges.Children.Add(new ContentControl { Content = indicator, Tag = "session-action-feedback", Width = 20, Height = 20,
+            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center });
         var unread = Dot(OpenCodeToolTheme.Accent, 6);
         unread.HorizontalAlignment = HorizontalAlignment.Center;
         unread.Visibility = row.IsUnread ? Visibility.Visible : Visibility.Collapsed;
@@ -715,6 +750,15 @@ public sealed class OpenCodeHomeView : UserControl
     }
 
     // Shared context-menu shape: list 归档此会话; bottom row 重命名 · 复制 ID · 删除 (short cell labels).
+    internal void ShowRenameSuccess(string id)
+    {
+        var row = _sessions.Items.OfType<ListViewItem>().FirstOrDefault(item => item.Tag is OpenCodeHomeSessionRow session && session.Session.Info.Id == id);
+        if (row?.Content is Grid grid && grid.Children.OfType<Grid>().FirstOrDefault() is { } badges
+            && badges.Children.OfType<ContentControl>().FirstOrDefault(control => control.Tag is "session-action-feedback") is { } feedback)
+            FluentCode.Motion.ActionFeedback.Success(feedback, "已保存会话名称");
+        else FluentCode.Motion.ActionFeedback.Announce(this, "已保存会话名称");
+    }
+
     // Fluent order confirmed by the user: edit actions first, destructive delete last (rightmost in the row).
     private FlyoutBase CreateSessionMenu(ListViewItem owner)
     {

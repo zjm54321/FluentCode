@@ -16,6 +16,9 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     {
         Width = EditorSplitWidth, Height = 36, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0),
     };
+    private readonly Grid _editorIcon = new() { Width = 16, Height = 16 };
+    private readonly ContentControl _editorFeedback = new() { HorizontalContentAlignment = HorizontalAlignment.Center,
+        VerticalContentAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
     private WslHostEditor? _currentEditor;
     private int _renderVersion;
     private const string ExplorerText = "在资源管理器中打开";
@@ -37,6 +40,9 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _note.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         Children.Add(_explorer);
         Children.Add(_editor);
+        // Keep a stable icon host: async editor-icon refreshes must not replace an active feedback overlay.
+        _editorFeedback.Content = _editorIcon;
+        _editor.Content = _editorFeedback;
         _editor.Resources["SplitButtonSecondaryButtonSize"] = EditorChevronWidth;
         // Same transparent rest state as the explorer/browser/terminal tiles (stock SplitButton is control-filled);
         // hover/pressed fills and the elevation border stay native.
@@ -64,7 +70,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         var choices = WslEditorChoices.Resolve(editors, selectedEditor);
         _currentEditor = choices.Current;
         var version = ++_renderVersion;
-        _editor.Content = OpenCodeWslQuickAccessIcons.Fallback();
+        SetEditorIcon(OpenCodeWslQuickAccessIcons.Fallback());
         if (_currentEditor is { } currentEditor) _ = SetPrimaryIconAsync(currentEditor, version);
         var supported = state.Target is not null && _currentEditor is not null;
         _editors.Items.Clear();
@@ -89,8 +95,16 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
     private async System.Threading.Tasks.Task SetPrimaryIconAsync(WslHostEditor editor, int version)
     {
         var icon = await OpenCodeWslQuickAccessIcons.CreateAsync(editor);
-        if (version == _renderVersion) _editor.Content = icon;
+        if (version == _renderVersion) SetEditorIcon(icon);
     }
+
+    private void SetEditorIcon(UIElement icon) { _editorIcon.Children.Clear(); _editorIcon.Children.Add(icon); }
+
+    internal ContentControl ActionControl(bool editor) => editor ? _editorFeedback : _explorer;
+
+    internal void ResetAction(bool editor) => FluentCode.Motion.ActionFeedback.Reset(ActionControl(editor));
+
+    internal void ShowActionSuccess(bool editor) => FluentCode.Motion.ActionFeedback.Success(ActionControl(editor), editor ? "已在编辑器中打开" : "已在资源管理器中打开");
 
     private static async System.Threading.Tasks.Task SetMenuIconAsync(MenuFlyoutItem item, WslHostEditor editor)
         => item.Icon = await OpenCodeWslQuickAccessIcons.CreateAsync(editor);

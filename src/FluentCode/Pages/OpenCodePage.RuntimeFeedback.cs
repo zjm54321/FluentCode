@@ -90,6 +90,8 @@ public sealed partial class OpenCodePage
                     options.OpenDirectory = path => { if (Current()) _ = LaunchDetailPathAsync(read, path, true, false, null); };
                     options.RevealFile = path => { if (Current()) _ = LaunchDetailPathAsync(read, path, true, true, null); };
                     options.OpenFile = (path, line) => { if (Current()) _ = LaunchDetailPathAsync(read, path, false, false, line); };
+                    options.OpenPathWithFeedback = (path, directory, reveal, line, button) => Current()
+                        ? LaunchDetailPathAsync(read, path, directory, reveal, line, button) : Task.CompletedTask;
                 };
             }
             _conversationView.SetBackgroundAction((messageId, part) => _ = BackgroundForegroundToolsAsync(read, messageId, part));
