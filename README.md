@@ -1,115 +1,131 @@
 # FluentCode
 
-原生 C# / WinUI 3 OpenCode 桌面客户端（Windows 10 21H2 / Windows 11 x64），提供 Fluent 风格桌面外壳。OpenCode 是默认且唯一的工作页面；保留设置、账户/连接与任务状态入口。
+> **FluentCode** is a Windows desktop client for [OpenCode](https://opencode.ai) and opencode-qol, built with C#, WinUI 3 (Windows App SDK 1.8), and .NET 10. It provides multi-session chat, native terminal control, an isolated browser runtime, and Windows desktop integration.
 
-> 自动化入口见 [关键测试清单](docs/test-suite.md)；后端协议见 [OpenCode 客户端契约](docs/opencode-client-contract.md)。
-
----
-
-## 核心功能概览
-
-> 说明：以下为源码已包含的功能概览，源码接线存在不代表端到端实机验收已完成。
-
-### 1. 原生窗口外壳
-- 提供 OpenCode 会话、设置、账户/连接与任务状态入口，使用应用级共享设置和凭据服务。
-
-### 2. OpenCode 客户端
-- **V2 后端配置与凭据安全**：支持配置后端根地址及 Basic 认证，凭据由 Windows DPAPI 加密持久化；同页支持一次性 V2 配对链接兑换（须显式保存）。
-- **交互与连通**：源码接入 native chat、原生权限审批与 Form 表单交互；已验证只读位置查询、会话列表读取及单轮 Prompt 往返完成（idle=succeeded）；工具卡片采用组合原生 Expander 架构，隔离渲染验证通过，原生端到端全量交互待验。
-- **QOL 插件整合**：会话预设应用、确认后的加密内容清理、Billion 上下文与缓存账本、独立持久终端已接入。终端默认只读，输入和接管须显式启用；关闭查看不会结束进程。详见 [原生终端集成](docs/native-terminal-integration.md)。
-
-### 3. 系统通知与任务栏
-- **原生状态与通知**：源码对接 Windows 任务栏状态与 Fail-Closed 原生通知服务（跨进程实测待验）。
+[![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2021H2%2B%20%7C%20Windows%2011-0078D4.svg)](#系统要求)
+[![Framework](https://img.shields.io/badge/.NET-10.0%20(x64)-512BD4.svg)](https://dotnet.microsoft.com/)
+[![Windows App SDK](https://img.shields.io/badge/WinAppSDK-1.8-0078D4.svg)](https://learn.microsoft.com/windows/apps/windows-app-sdk/)
 
 ---
 
-## 快速使用指南
+## 项目简介
 
-### 先决条件
-1. **操作系统**：Windows 10 21H2（build 19044）或 Windows 11 (x64)。Mica 不可用时使用同主题的 BaseAlt 实色背景；Windows 10 回退路径仅做代码核对。
-2. **运行时环境**：依赖 .NET 10 Runtime (x64) 与 WebView2 Runtime。Windows App SDK 原生核心组件已随完整输出目录打包自带（`WindowsAppSDKSelfContained=true`），无需单独安装 App SDK。
-   - OpenCode 会话浏览器的代理与 Lighthouse 使用随输出目录提供的独立 Node 运行组件，不依赖系统 Node/npm。选择外部 Chrome 时，需另有已安装的 Chrome；应用不会安装浏览器。
-3. **外部服务依赖**：**本程序不会自动拉起外部服务**。使用前请确保自备的后端服务已启动：
-   - OpenCode 协作：需自行启动 OpenCode 兼容后端服务（如本机测试服务）；
+FluentCode 为 OpenCode 及 opencode-qol 后端提供原生 Windows 桌面界面。应用基于 WinUI 3 开发，使用资源管理器风格的单行标签栏、Windows Terminal 原生控件、离线 Node.js 浏览器运行时以及系统通知与任务栏状态指示。
 
-### 配置与操作步骤
-
-1. **配置 OpenCode 服务**：
-   - 从应用的设置/连接入口打开 OpenCode 服务配置；
-   - 选择手动配置或配对链接：
-     - **手动配置**：在服务地址栏填写服务根地址（示例通用格式：`http://localhost:port`，路径不追加 `/api`），填入 Basic 认证用户名与服务密码，点击 **保存 (Save)**。保存后凭据由 DPAPI 加密持久化；可点击 **测试连接** 校验后端响应；
-     - **配对链接**：在同页下方的配对区域粘贴后端生成的一次性 V2 配对 URL 并点击兑换；**兑换后须显式点击保存**，粘贴或兑换不会自动连接；
-     - *注意*：**保存配置不等于已建立连接**，需测试连接或实际发起请求确认连通。
-
-2. **选择 OpenCode 会话浏览器**：
-   - 在设置的浏览器区域选择内嵌 WebView2 或外部 Chrome。外部 Chrome 使用独立窗口，应用内显示实际截图预览；文件和 Mermaid 仍在应用内预览。
-   - 保存仅影响新建的浏览器工作区。已有会话需关闭会话标签后重新打开；只关闭网页不会重建工作区。
-   - 会话网页经当前 OpenCode 来源的网络隧道访问，网页中的 `localhost` 指服务端。连接中断时停止转发，不切回桌面本地网络。高级附加模式的本机调试端点与必需启动参数见设置页。
+本项目计划作为 `clients/windows` 子树合并入 `opencode-qol` 仓库，后续计划提供 MSIX 安装包（`mingz.SST.OpenCodeDesktop.Fluent`，支持自签名侧载与 `.appinstaller` 自动更新）。
 
 ---
 
-## 运行与构建
+## 功能特性
 
-### 从新克隆构建（Windows PowerShell，工程根目录下执行）
+- **窗口与标签结构**
+  - 单行标签栏：与窗口标题栏合并，最左侧固定首页（Pinned Home Tab），右侧排列会话标签，支持窗口拖拽与常规窗口控制按钮。
+  - 背景材质：在 Windows 11 上透出 Mica 材质，在 Windows 10 上回退为 BaseAlt 实色背景。
+  - 动效与触控：支持物理过渡动效，可响应系统与应用设置中的“减弱动态效果”；支持触摸手势与长按操作。
+  - 主题切换：跟随系统或在设置中手动切换深浅色主题，界面文本、图标、矢量图与终端调色板即时刷新。
 
-构建需要 Visual Studio MSBuild/WinUI 工作负载、.NET 10 SDK 和 Git。
-以下入口全部受版本控制；无需复制 `artifacts/` 或安装系统 Node/npm。
+- **连接向导与凭据存储**
+  - 欢迎页引导：未配置时显示欢迎页，提供 WSL 发行版自动发现、远程地址认证（用户名 + 密码）及配对链接三种连接方式。
+  - 凭据安全：凭据通过 Windows DPAPI（CurrentUser 范围）加密保护，配置文件 `%LOCALAPPDATA%\FluentCode\settings.json` 中仅存储凭据引用，不以明文保存密码或密钥。
+
+- **会话与时间线交互**
+  - 步骤分组：单次回合内的连续思考与工具调用折叠为处理过程组，头部标明成功与失败次数。
+  - 思考过程：支持 Markdown 渲染，进行中时显示思考进度与环形指示器。
+  - 工具调用详情：工具条目悬停可查看参数与输出预览，点击可弹出居中大视图，支持代码自动换行与 Diff 并排/统一视图切换。
+  - 子代理查看与导航：工具行支持唤起独立只读子会话小窗口；切换进入子会话后，底部显示返回按钮以便随时切回父会话。
+  - 消息上下文菜单：右键或长按呼出原生菜单，提供复制整段、复制代码块、单步撤回与恢复撤回。
+  - 输入区（Composer）：
+    - 底部工具栏提供智能体、模型与思考程度（Effort）切换菜单。
+    - 键入 `@` 筛选并插入 Agent 与 Skill。
+    - 键入 `/` 呼出服务端命令与本地动作。
+    - 开头键入 `!` 切入当前目录的 Shell 执行模式。
+    - 支持剪贴板图片粘贴（Ctrl+V）与文件附件拖拽。
+    - 输入法选词保护，避免中文选词时误发送；任务运行中发送按钮切为停止按钮。
+
+- **侧边栏与辅助面板**
+  - 左侧面板：展示子代理会话树与终端列表。
+  - 右侧面板：展示会话标题与 ID、WSL 快速访问入口（在资源管理器中打开、在 VS Code / VSCodium / Zed 中打开）、浏览器与终端快捷入口、上下文 Token 用量与实时 To-Do 待办清单。
+
+- **原生终端集成**
+  - 嵌入 Windows Terminal 原生控件（Child HWND 承载），支持持久 PTY 交互会话与只读 Shell 输出查看。
+  - 默认处于只读保护，双击终端区域接管键盘输入；按 F2 或通过菜单重命名终端。
+  - 关闭终端视图不会终止后台进程，可通过专门的结束按钮终止会话。
+  - 支持调整等宽字体、字号（6–72 pt）、光标形态及预设配色方案。
+
+- **会话浏览器**
+  - 支持会话级 WebView2 引擎或连接外部 Chrome。
+  - 附带离线 Node.js 运行时，提供反向网络隧道与 Lighthouse 审计功能，不修改系统环境变量。
+
+- **系统通知与任务栏**
+  - 原生 Toast 通知：后台任务完成通知、权限审批（单次/始终/拒绝）与交互式输入表单。
+  - 任务栏状态指示：通过任务栏进度条与状态角标反映空闲、运行中、需处理、已完成与失败五种状态。
+  - 系统托盘后台模式：支持关闭窗口时最小化至通知区域，后台继续维持长连接与任务执行。
+
+---
+
+## 系统要求
+
+| 项目 | 要求 | 说明 |
+|---|---|---|
+| **操作系统** | Windows 10 21H2（Build 19044）或更高，推荐 Windows 11 | 仅支持 x64 架构 |
+| **运行时** | .NET 10 Desktop Runtime (x64)<br>Microsoft Edge WebView2 Runtime | 本项目采用依赖框架部署（`SelfContained=false`），需预先安装 .NET 10 桌面运行时。Windows App SDK 1.8 组件已随程序输出目录自带（`WindowsAppSDKSelfContained=true`），无需单独安装 App SDK。 |
+| **外部服务** | OpenCode 兼容后端服务（如 `opencode-qol`） | FluentCode 仅作为前端客户端，不自动启动后端守护进程 |
+
+---
+
+## 构建与运行
+
+在 Windows PowerShell 下执行：
 
 ```powershell
-# 首次构建或更新运行组件后显式准备依赖（下载固定版本并校验；不修改系统 Node/npm）
+# 1. 准备离线浏览器运行时（下载固定版本的官方 Node 并安装锁定依赖，仅首次需联网）
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\browser-runtime\prepare.ps1
 
-# Debug 构建、发布及完整运行组件哈希核对
+# 2. 编译 Debug 版本
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-debug.ps1
 
-# Release 构建、发布及运行组件哈希核对
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-release.ps1
-
-# 运行 Debug 输出（启动脚本包含 20 秒窗口等待，无自动防重复杀进程，启动前请确保无残留的 FluentCode.exe 进程）
+# 3. 运行 Debug 构建输出
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Configuration Debug
+
+# 4. 发布 Release 版本
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-release.ps1
 ```
 
-两个原生构建入口均支持可选 `-EvidenceRoot <新目录>`；省略时在仓库的
-`artifacts/native-<configuration>-<UTC时间>-<随机值>/` 下生成日志、发布目录、
-哈希和文件属性。相对证据路径相对于仓库目录解析，与调用者当前目录无关。
-`scripts/build.ps1 -Configuration Debug|Release` 保留为仅构建的快速入口；
-`scripts/run.ps1` 运行相应构建输出。
-
-`tools/browser-runtime/prepare.ps1` 从受版本控制的版本清单、npm lock、运行源码和
-通知文件重新生成 `artifacts/browser-runtime`；使用独立的新缓存与临时目录，校验
-官方 Node SHA-256 并执行锁定的 `npm ci`。浏览器运行组件仅在该显式准备步骤联网，
-构建、发布及应用启动不会下载或安装它；首次 .NET/NuGet 还原仍需要网络或已填充的
-NuGet 缓存。详见 [运行组件说明](tools/browser-runtime/README.md)。
-
-> **重要部署说明**：
-> 本项目为依赖部署模式（`SelfContained=false`），构建输出位于：
-> `src\FluentCode\bin\x64\<Configuration>\net10.0-windows10.0.26100.0\win-x64\`
-> **必须在完整输出目录中启动**，或完整拷贝整个 `win-x64` 目录，严禁单独拷贝单个 `FluentCode.exe` 运行。
-> `BrowserRuntime` 子目录也必须完整保留。构建与发布在缺少已准备组件时会报错，不会自动下载；应用启动时也不会安装依赖。准备脚本的输出位于忽略跟踪的 `artifacts\browser-runtime`。
-
-### 版本与许可
-
-FluentCode **1.2611.1**，© 2026 mingz。程序集/文件版本为 `1.2611.1.0`，
-每次构建的产品信息版本为 `1.2611.1+<Git short SHA>`。
-
-本项目自有代码采用 [GNU GPL v3.0 或更新版本](LICENSE)（`GPL-3.0-or-later`），
-与 opencode-qol 一致。已有独立许可的依赖、资产和第三方通知保持各自的许可声明；
-浏览器运行组件的 `THIRD-PARTY-NOTICES.md` 不变。
+> **运行说明**：
+> 构建输出位于 `src\FluentCode\bin\x64\<Configuration>\net10.0-windows10.0.26100.0\win-x64\`。
+> 运行应用时必须保留该目录及其下 `BrowserRuntime` 子目录的完整结构，不能单独提取单个 `FluentCode.exe` 运行。
 
 ---
 
-## 凭据安全说明
+## 自动化测试
 
-- 配置文件持久化保存在用户本地目录：`%LOCALAPPDATA%\FluentCode\settings.json`。
-- 敏感凭据（Basic 密码、Token、API Key 等）由 Windows DPAPI 加密保护，配置文件中仅存元数据与 CredentialId，绝不以明文形式保存密码或密钥。
-- FluentCode 只使用自己的配置目录；首次使用时建立新配置，不导入其他应用的数据或凭据。
+运行 27 项自动化测试套件：
+
+```bash
+# 在 WSL 环境下规划并执行完整套件（需要指定一个全新的产物输出目录）
+python3 tests/run-suite.py --root "artifacts/scripts-move-suite-$(date -u +%Y%m%dT%H%M%SZ)" --execute
+```
+
+测试覆盖范围与独立运行方法参见 [测试文档](docs/testing.md)。
 
 ---
 
-## 开发文档
+## 文档索引
 
-- [OpenCode 页面](docs/opencode-ui-contract.md)与[富文本渲染](docs/opencode-rich-content-contract.md)
-- [窗口外壳](docs/shell-ui-contract.md)与[设置](docs/settings-ui-contract.md)
-- [应用集成](docs/app-integration-contract.md)与[通知](docs/notifications-contract.md)
-- [原生终端](docs/native-terminal-integration.md)与[运行期主题刷新](docs/theme-refresh.md)
-- [任务栏状态](docs/taskbar-contract.md)与[关键测试清单](docs/test-suite.md)
+- [用户手册](docs/user-guide.md)：面向最终用户的界面功能说明与操作流程。
+- [系统架构](docs/architecture.md)：组件划分、生命周期、线程模型与存储设计。
+- [OpenCode 协议集成](docs/opencode-integration.md)：REST 端点、SSE 事件流、状态仲裁门与 PTY 传输协议。
+- [界面规范与实现](docs/ui-guidelines.md)：Fluent 设计规范、材质透出、动效策略与富文本渲染管线。
+- [原生终端集成](docs/terminal.md)：Windows Terminal 控件承载、空域遮罩处理与终端外观设置。
+- [通知、任务栏与托盘](docs/notifications-and-tray.md)：Toast 弹窗、任务栏状态角标与托盘后台模式。
+- [开发与构建指南](docs/development.md)：环境搭建、编译打包与故障排除。
+- [自动化测试指南](docs/testing.md)：测试架构、27 个 Runner 清单与真机主题回归测试。
+
+---
+
+## 开源许可与版权
+
+- FluentCode 源码遵循 [GNU General Public License v3.0 或更高版本 (GPL-3.0-or-later)](LICENSE)。
+- 版权所有 © 2026 mingz。
+- 第三方组件与资产许可证见 [tools/browser-runtime/THIRD-PARTY-NOTICES.md](tools/browser-runtime/THIRD-PARTY-NOTICES.md) 与 [ATTRIBUTION.md](src/FluentCode/Assets/Brands/ATTRIBUTION.md)。

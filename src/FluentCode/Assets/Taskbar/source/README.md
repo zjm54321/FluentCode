@@ -22,5 +22,5 @@ attribution only; they are no longer inputs to the shipped overlay art.
 Their MIT license remains at `licenses/fluentui-system-icons-LICENSE.txt`.
 
 Application icons now use `scripts/gen_icons.py` as described in
-`Assets/AppIcon/README.md`. The old `docs/taskbar-icons-source.md` records the
-superseded bare-glyph delivery, including its old hashes and colors.
+`Assets/AppIcon/README.md`. Taskbar overlay integration is documented in
+`docs/notifications-and-tray.md`.

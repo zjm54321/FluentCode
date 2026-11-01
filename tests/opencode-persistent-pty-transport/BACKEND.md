@@ -1,19 +1,28 @@
-# Focused persistent PTY backend checks
+# Persistent PTY Backend Validation
 
-`run-backend.ps1 -EvidenceRoot <directory>` uses the installed .NET 10 compiler/reference pack, warnings as errors, without restore or a main application build. It links the real HTTP transport, native WebSocket connection, renderer-aware controller and revocable page source. `BackendSupport.cs` substitutes only unrelated desktop-bridge storage; no PTY network/controller behavior is substituted.
+This harness tests the low-level transport, WebSocket protocol, and controller state machine for persistent interactive PTY sessions.
 
-Source-bound origin/controller/renderer contracts live in `src/FluentCode/Services/OpenCode/PersistentPty/`, explicitly included by this focused runner and recursively included by the main SDK's default compile glob. Root `Services/OpenCode/*.cs` retains only source-free wire DTOs/HTTP/socket/connection contracts, so flat transport harnesses do not acquire page lifecycle dependencies.
+---
 
-The runner also compiles a source-free wire-only library with `OpenCodePageSource`, PTY lifecycle/controller contracts and `BackendSupport.cs` omitted. Its response file and log are `wire-only.rsp` and `wire-only-compile.log` in the evidence directory.
+## Running the Test
 
-Use a fresh evidence directory per candidate. Compiler logs explicitly record exit code/PASS even when csc succeeds silently. `candidate-inputs.json` records exact compiler source paths, saved input snapshots/SHA-256, compiler/ref-pack identity and both response hashes. `candidate-results.json` records compiler/test exits, unchanged-source verification and assembly hashes. Old failed compile logs must be retained as failed evidence, not cited as later successful builds.
+From Windows PowerShell:
 
-`BackendTests.cs` covers authenticated prefix-preserving server-scoped HTTP, nullable capabilities, exact IDs/envelopes/base64 checkpoints/ticket POST, redirects and redaction, real fragmented WebSocket messages and split UTF-8, replay renderer-consumption barriers, canonical resize/checkpoint ordering, passive observers, explicit control, automatic promotion without consent, controller-loss cancellation of queued input/resize, fresh reconnect without write replay, bounded-queue overflow and source revocation. It also proves unsupported canonical grids at snapshot/attached/live-resize boundaries become terminal `Unavailable` (`unsupported-grid`) without coercion or a reconnect loop, while exact supported boundary sizes 2×1 and 1000×1000 remain usable.
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\opencode-persistent-pty-transport\run-backend.ps1 -EvidenceRoot artifacts\pty-evidence
+```
 
-Assigned-controller consent cases cover both `attached(role=controller)` and observer→automatic promotion: assignment and renderer readiness never imply consent; input is denied until an explicit control request. For a matching already-owned identity and unchanged canonical size, successful native control send arms input without another role event/application ACK. Pre-dispatch cancellation, role loss, queued-control cancellation and later re-promotion remain disarmed; an explicit fresh enable can arm the still-assigned controller again.
+The runner links production sources from `src/FluentCode/Services/OpenCode/PersistentPty/` and executes headless integration tests against simulated WebSocket endpoints using .NET 10.
 
-Fake-renderer resource regressions verify exact authoritative checkpoint bytes on `ResetAsync` (an 8 MiB + 1 byte snapshot) and `ResizeAsync` (an ordered socket checkpoint rejected by the fake renderer). Throwing `PersistentPtyException("unsupported-renderer-state")` ends the run as disarmed `Unavailable`, with one bootstrap, no extra attachment/control/input, proper detach and idempotent controller disposal. The UI adapter owns ≤1 MiB output chunking/ACK order and >8 MiB checkpoint rejection before WebView creation; these tests change no wire limits or native UI code.
+---
 
-The separate live-service launcher was removed when the suite was pruned on 2026-10-30; only `run-backend.ps1` remains an entrypoint. See [the critical suite](../../docs/test-suite.md).
+## Tested Capabilities & Invariants
 
-UI renderer tests remain untouched in the separate `tests/opencode-persistent-pty/` directory. These backend checks do not open a WinUI window or perform combined application acceptance.
+- **Binary WebSocket Streaming**: Validates streaming of VT100 control sequences, fragmented WebSocket frames, split UTF-8 multi-byte sequences, and bounded output queuing.
+- **Server-Authoritative Grid Geometry**: Tests that terminal window resizing follows server confirmation. Valid boundaries (e.g. 2×1 to 1000×1000) are accepted, while unsupported grid sizes transition to terminal `Unavailable` without infinite retry loops.
+- **Controller Consent & Takeover**:
+  - Connection starts in passive observer mode; keyboard input is rejected until explicit user takeover.
+  - Verifies that successful native takeover commands transition the session to controller mode, while connection drops or role revocations disarm input immediately.
+- **Checkpoint Replay & Memory Bounds**: Verifies state snapshots during reconnect, 8 MiB checkpoint thresholds, and clean controller disposal.
+
+For an overview of the full test suite, see [docs/testing.md](../../docs/testing.md).
