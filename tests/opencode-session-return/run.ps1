@@ -93,7 +93,8 @@ $production = @()
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
 $commonHost = Join-Path $PSScriptRoot 'ConversationView.TestHost.cs'
 $commonHostInput = $commonHost
-$commonText = [IO.File]::ReadAllText($commonHostInput)
+# Keep the inert-host shape check identical for LF and Windows CRLF checkouts.
+$commonText = [IO.File]::ReadAllText($commonHostInput).Replace("`r`n", "`n")
 $anchor = '    public class FrameworkElement : UIElement'
 if ([regex]::Matches($commonText, [regex]::Escape($anchor)).Count -ne 1) { throw 'Missing/ambiguous inert FrameworkElement shape.' }
 $commonText = $commonText.Replace($anchor + "`n    {", $anchor + "`n    {`n        public event Action<object, SizeChangedEventArgs>? SizeChanged { add { } remove { } }")
