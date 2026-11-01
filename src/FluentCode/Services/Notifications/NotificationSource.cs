@@ -7,7 +7,7 @@ namespace FluentCode.Services.Notifications;
 /// <remarks>
 /// 本枚举仅覆盖 OpenCode 任务；旧版来源标签不再可激活。
 /// 后续如需新增来源，应同步更新 <see cref="CompletionNotificationService"/> 的
-/// 显示名/参数标签映射，并更新 docs/notifications-contract.md。
+/// 显示名/参数标签映射，并更新 docs/notifications-and-tray.md。
 /// </remarks>
 public enum NotificationSource
 {

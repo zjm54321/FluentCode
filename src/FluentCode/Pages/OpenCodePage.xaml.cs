@@ -38,7 +38,7 @@ namespace FluentCode.Pages;
 /// 把设置入口交给宿主接线。
 /// </para>
 /// <para>
-/// 已核实语义（见 docs/opencode-client-contract.md 第 7 节）在本页的落实：
+/// 已核实语义（见 docs/opencode-integration.md）在本页的落实：
 /// prompt 回执仅表示“已接受并排程”（成功后才清空输入；错误一律保留输入）；
 /// 待投递状态经 inbox 条目跟踪（条目消失 = 已投递，投递 ≠ 完成）；
 /// 停止使用 InterruptAsync 并只转述服务端 interrupted 结果；

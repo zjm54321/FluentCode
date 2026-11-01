@@ -10,7 +10,7 @@ namespace FluentCode.Services.Notifications;
 /// <see cref="AppNotificationManager"/> / <see cref="AppNotificationBuilder"/>）。
 /// </summary>
 /// <remarks>
-/// 契约要点（完整契约见 docs/notifications-contract.md）：
+/// 契约要点（完整契约见 docs/notifications-and-tray.md）：
 /// <list type="bullet">
 /// <item><description>显式生命周期：先 <see cref="Initialize"/>，退出前 <see cref="Dispose"/>；
 /// 二者均幂等且线程安全。初始化/提交失败只返回失败结果，绝不向调用方抛出。</description></item>
@@ -114,7 +114,7 @@ public sealed partial class CompletionNotificationService : IDisposable
                 _registrationOwner = this;
 
                 // 官方要求：先在当前进程订阅 NotificationInvoked，再调用 Register()；
-                // 否则点击通知可能由系统另起新进程处理（见 docs/notifications-contract.md §9）。
+                // 否则点击通知可能由系统另起新进程处理（见 docs/notifications-and-tray.md）。
                 AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
                 _handlerSubscribed = true;
 

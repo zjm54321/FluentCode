@@ -125,7 +125,7 @@ internal readonly record struct OpenCodeFormFieldInput(
 /// </summary>
 /// <remarks>
 /// <para>
-/// 原则与 docs/notifications-contract.md 第 12 节的通知侧矩阵一致：全有或全无，不静默丢题、
+/// 原则与 docs/notifications-and-tray.md 的通知侧矩阵一致：全有或全无，不静默丢题、
 /// 不伪造答案、不猜测未建模约束。应用侧在此之上额外安全支持 number / integer / boolean /
 /// multiselect（通知 SDK 无法表达而本页可以原生表达的类型）；external 与一切无法确证语义的
 /// 字段仍明确不支持，整个表单不可提交（取消表单仍可用）。

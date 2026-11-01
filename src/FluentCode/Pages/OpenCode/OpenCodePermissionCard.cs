@@ -16,7 +16,7 @@ namespace FluentCode.Pages.OpenCode;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 语义严格取自 docs/opencode-client-contract.md 第 13 节与 docs/notifications-contract.md 第 12 节：
+/// 语义严格取自 docs/opencode-integration.md 与 docs/notifications-and-tray.md：
 /// decision 为 once / always / reject；“始终允许”仅保存本请求 save patterns 对应的项目规则
 /// （不是全局或永久授权）；“拒绝”还会同时拒绝本会话其他待处理的权限请求。
 /// 后两者先经一次原地显式确认（不使用 ContentDialog）。

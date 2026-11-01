@@ -13,7 +13,7 @@ namespace FluentCode.Pages;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 已核实契约（docs/opencode-client-contract.md 第 7 / 11 节）：GET api/session 的 cursor 为 opaque，
+/// 已核实契约（docs/opencode-integration.md）：GET api/session 的 cursor 为 opaque，
 /// 不解析内容；cursor 与 order 不可同传（客户端在发请求前拒绝）。首屏由 RefreshSessionsAsync 以
 /// Order=Desc、Limit=50 获取并保存其 cursor.next；续页只发送 Cursor + Limit（不带 Order）。
 /// </para>

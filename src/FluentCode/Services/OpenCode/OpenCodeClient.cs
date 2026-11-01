@@ -18,7 +18,7 @@ namespace FluentCode.Services.OpenCode;
 /// <remarks>
 /// <para>
 /// 契约来源：官方 V2 OpenAPI（openapi.json，3.1.0）与官方客户端/API 文档
-/// （见 docs/opencode-client-contract.md 的“官方来源”一节）。本类不依赖任何共享模型，
+/// （见 docs/opencode-integration.md 的“官方来源”一节）。本类不依赖任何共享模型，
 /// 全部 DTO 位于本命名空间内；后续页面通过本客户端消费。
 /// </para>
 /// <para>安全与行为约定：</para>

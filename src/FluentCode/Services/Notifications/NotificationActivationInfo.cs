@@ -14,7 +14,7 @@ namespace FluentCode.Services.Notifications;
 /// <item><description>不持有原始参数字符串之外的任何外部内容；<see cref="RawArguments"/> 仅为诊断保留，
 /// 调用方不得将其当作可执行输入。</description></item>
 /// <item><description>该信息<strong>不</strong>代表应用已完成冷启动处理。未来 App 接线时
-/// 必须自行区分“通知激活”与“普通启动”，并避免额外窗口（见 docs/notifications-contract.md）。</description></item>
+/// 必须自行区分“通知激活”与“普通启动”，并避免额外窗口（见 docs/notifications-and-tray.md）。</description></item>
 /// </list>
 /// </remarks>
 public sealed class NotificationActivationInfo : EventArgs

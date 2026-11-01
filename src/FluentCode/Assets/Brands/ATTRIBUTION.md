@@ -29,8 +29,7 @@
 （Microsoft Learn「SVG Support」：其“支持元素/属性”表中**没有 `<style>` 元素**，仅支持 `fill`、`fill-rule`
 等表现属性）。因此该官方 SVG 的内嵌 CSS 与 `@media` 媒体查询**不保证**被执行——若原样加载，`path`
 将继承根元素的 `fill="none"`，很可能**渲染为空白**。故本仓库不依赖 CSS：改用几何逐字、显式 `fill`
-的浅/深两版，并按控件 `ActualTheme` 选择。此为**配色适配**（与 `docs/back-icon-source.md` 的既定先例
-同类），**不构成**“CSS 媒体查询在 SvgImageSource 中有效”的声明；几何本身未改绘、未自绘。
+的浅/深两版，并按控件 `ActualTheme` 选择。此为**配色适配**，**不构成**“CSS 媒体查询在 SvgImageSource 中有效”的声明；几何本身未改绘、未自绘。
 
 ## 2. Gemini
 

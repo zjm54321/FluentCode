@@ -16,7 +16,7 @@ namespace FluentCode.Pages;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 已核实契约（docs/opencode-client-contract.md 第 7 / 11 节）：GET api/session/{sessionID}/message
+/// 已核实契约（docs/opencode-integration.md）：GET api/session/{sessionID}/message
 /// 的 cursor 为 opaque，不解析内容；cursor 与 order 不可同传（客户端在发请求前拒绝）。首屏由既有
 /// 的 <c>RefreshMessagesAsync</c> 以 Order=Desc、Limit=100 获取；续页只发送 Cursor + Limit（不带
 /// Order；type 与首屏保持一致——首屏无 type 过滤，续页亦不带）。

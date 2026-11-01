@@ -102,7 +102,7 @@ public sealed class OpenCodeExecutionStateChangedEventArgs : EventArgs
 /// 纯策略：从消息投影读取“回合级”执行终态。无 WinUI / Notifications 依赖，可隔离编译。
 /// </summary>
 /// <remarks>
-/// 依据 docs/opencode-client-contract.md 第 7 节：idle 消息是回合终态边界，
+/// 依据 docs/opencode-integration.md：idle 消息是回合终态边界，
 /// 但不能通过 <c>type=idle</c> 过滤获取；本读取器只识别已核实的 outcome 取值，
 /// 未知/缺失一律返回 null（不猜测成功）。
 /// </remarks>
