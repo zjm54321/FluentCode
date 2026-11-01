@@ -45,3 +45,20 @@ public sealed partial class MainWindow
         RootElement.Children.Add(chip);
     }
 }
+
+public sealed partial class MainWindow
+{
+    // Opt-in (AIF_TRANSCRIPT_INPUT_TEST=1): real OpenCodePage transcript hit-test / selection / menu surface checks.
+    internal async System.Threading.Tasks.Task<int> VerifyTranscriptInputAsync(string evidence)
+    {
+        ContentFrame.Navigate(typeof(Pages.OpenCodePage));
+        var until = System.DateTime.UtcNow.AddSeconds(15);
+        while (ContentFrame.Content is not Pages.OpenCodePage && System.DateTime.UtcNow < until) await System.Threading.Tasks.Task.Delay(100);
+        if (ContentFrame.Content is not Pages.OpenCodePage page)
+        {
+            System.IO.File.WriteAllText(System.IO.Path.Combine(evidence, "transcript-input.txt"), "FAIL OpenCodePage not shown");
+            return 1;
+        }
+        return await page.VerifyTranscriptInputAsync(evidence);
+    }
+}

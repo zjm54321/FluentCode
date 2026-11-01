@@ -37,6 +37,7 @@ internal sealed class OverlayCardMotion
         int generation = ++_generation;
         ReportSuperseded();
         IsClosing = false;
+        SetInteractive(true);
         if (!FluentMotion.Enabled)
         {
             FluentMotion.Settle(_card);
@@ -82,10 +83,15 @@ internal sealed class OverlayCardMotion
         int generation = ++_generation;
         ReportSuperseded();
         IsClosing = true;
+        // A closing card is logically gone: it must never take input while it fades. If the exit's completion is ever
+        // lost (superseded/never-ending batch), an invisible Opacity-0 smoke would otherwise cover the whole page and
+        // swallow every click in the transcript until something else collapsed the host.
+        SetInteractive(false);
         void Done()
         {
-            if (generation != _generation) return;
+            if (generation != _generation || !IsClosing) return;
             IsClosing = false;
+            SetInteractive(true);
             completed();
             FluentMotion.Settle(_card);
             FluentMotion.Settle(_smoke);
@@ -98,6 +104,12 @@ internal sealed class OverlayCardMotion
         var (pivot, _) = Pivot(null);
         FluentMotion.Animate(_smoke, null, 0f, null, Vector3.Zero, null, 1f, FluentMotion.Fast, FluentMotionTokens.Accelerate);
         FluentMotion.Animate(_card, null, 0f, null, Vector3.Zero, null, CloseScale, FluentMotion.Fast, FluentMotionTokens.Accelerate, Done, null, pivot);
+        // Watchdog: finish the close even if the composition batch never reports completion.
+        var watchdog = _card.DispatcherQueue.CreateTimer();
+        watchdog.Interval = FluentMotion.Duration(FluentMotion.Fast) + TimeSpan.FromMilliseconds(400);
+        watchdog.IsRepeating = false;
+        watchdog.Tick += (_, _) => { watchdog.Stop(); Done(); };
+        watchdog.Start();
     }
 
     /// <summary>立即落定（不播放动画），例如浮窗之间直接切换或页面释放。</summary>
@@ -106,8 +118,15 @@ internal sealed class OverlayCardMotion
         ++_generation;
         ReportSuperseded();
         IsClosing = false;
+        SetInteractive(true);
         FluentMotion.Settle(_card);
         FluentMotion.Settle(_smoke);
+    }
+
+    private void SetInteractive(bool interactive)
+    {
+        _smoke.IsHitTestVisible = interactive;
+        _card.IsHitTestVisible = interactive;
     }
 
     private void ReportSuperseded()

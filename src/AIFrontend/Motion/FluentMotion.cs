@@ -335,6 +335,7 @@ internal static class FluentMotion
     {
         bool wasHidden = element.Visibility != Visibility.Visible || IsHiding(element);
         SetHiding(element, false);
+        element.IsHitTestVisible = true;
         element.Visibility = Visibility.Visible;
         if (!wasHidden) return;
         Animate(element, 0f, 1f, from, Vector3.Zero, fromScale == 1f ? null : fromScale, 1f, duration ?? Fast, FluentMotionTokens.Decelerate);
@@ -350,9 +351,11 @@ internal static class FluentMotion
         }
         if (IsHiding(element)) return;
         SetHiding(element, true);
+        element.IsHitTestVisible = false; // Leaving: never catch input while fading (restored by Show / on collapse).
         Animate(element, null, 0f, null, to, null, 1f, duration ?? Faster, FluentMotionTokens.Accelerate, () =>
         {
             SetHiding(element, false);
+            element.IsHitTestVisible = true;
             element.Visibility = Visibility.Collapsed;
             Settle(element);
             completed?.Invoke();

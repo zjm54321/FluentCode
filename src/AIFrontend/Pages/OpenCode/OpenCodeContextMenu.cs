@@ -46,12 +46,18 @@ internal sealed record OpenCodeContextCommand(string Label, string Glyph, Action
 internal static class OpenCodeContextMenu
 {
     internal const string CommandTag = "OpenCodeContextCommand";
-    private const double RowHeight = 56, ListItemHeight = 36, MenuMinWidth = 280, CellMinWidth = 64;
+    // Windows 11 menu metrics at 100% (DIP): 32px mouse items (40px when opened by touch/pen), 4px presenter
+    // padding, 1px separators with 4px vertical margin, 48px icon-over-label cells. Width follows the content.
+    private const double MenuMinWidth = 160, CellWidth = 64;
 
     internal static Flyout Create(Func<FlyoutBase, IReadOnlyList<OpenCodeContextCommand?>> build)
     {
         var flyout = new Flyout { FlyoutPresenterStyle = PresenterStyle(), ShouldConstrainToRootBounds = false };
-        flyout.Opening += (_, _) => flyout.Content = Build(flyout, build(flyout));
+        // The stock MenuFlyoutPresenter background (MenuFlyoutPresenterBackground = DesktopAcrylicTransparentBrush in
+        // WinUI 1.8) is transparent on purpose: stock menus draw their acrylic with a system backdrop on the windowed
+        // popup. Our surface uses the same brushes, so it must also carry the backdrop or it renders see-through.
+        flyout.SystemBackdrop = new DesktopAcrylicBackdrop();
+        flyout.Opening += (_, _) => flyout.Content = Build(flyout, build(flyout), flyout.InputDevicePrefersPrimaryCommands);
         flyout.Closed += (_, _) => flyout.Content = null; // Release the per-open commands and their captured targets.
         return flyout;
     }
@@ -59,11 +65,11 @@ internal static class OpenCodeContextMenu
     internal static Flyout Create(IReadOnlyList<OpenCodeContextCommand?> commands) => Create(_ => commands);
 
     /// <summary>Builds the menu surface; exposed so the fixture can invoke every command through UI Automation.</summary>
-    internal static FrameworkElement Build(FlyoutBase flyout, IReadOnlyList<OpenCodeContextCommand?> commands)
+    internal static FrameworkElement Build(FlyoutBase flyout, IReadOnlyList<OpenCodeContextCommand?> commands, bool touch = false)
     {
         var root = new StackPanel
         {
-            MinWidth = MenuMinWidth, Padding = new Thickness(0, 2, 0, 0),
+            MinWidth = MenuMinWidth, Padding = new Thickness(0, 4, 0, 4), HorizontalAlignment = HorizontalAlignment.Left,
             XYFocusKeyboardNavigation = XYFocusKeyboardNavigationMode.Enabled, // Arrow keys move like a menu.
             TabFocusNavigation = KeyboardNavigationMode.Cycle,
             Resources = ButtonResources(),
@@ -81,21 +87,19 @@ internal static class OpenCodeContextMenu
             if (command is null) { pendingSeparator = listed > 0; continue; }
             if (pendingSeparator) root.Children.Add(Separator());
             pendingSeparator = false;
-            root.Children.Add(ListItem(flyout, command));
+            root.Children.Add(ListItem(flyout, command, touch));
             listed++;
         }
         if (row.Count > 0)
         {
             if (listed > 0) root.Children.Add(Separator());
-            root.MinWidth = Math.Max(MenuMinWidth, row.Count * CellMinWidth + (row.Count - 1) + 8);
-            root.Children.Add(Row(flyout, row));
+            root.Children.Add(Row(flyout, row, touch));
         }
-        else root.Padding = new Thickness(0, 2, 0, 2);
         return root;
     }
 
-    // Same metrics as MenuFlyoutItem: 4,2 margin, 11,8,11,9 padding, 4px corner, 16px icon, 12px gap, caption accelerator.
-    private static Button ListItem(FlyoutBase flyout, OpenCodeContextCommand command)
+    // MenuFlyoutItem metrics: 4,2 margin, 4px corner, 16px icon, 12px gap, caption accelerator; 32px tall (40 for touch).
+    private static Button ListItem(FlyoutBase flyout, OpenCodeContextCommand command, bool touch)
     {
         var grid = new Grid { ColumnSpacing = 12 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
@@ -109,24 +113,27 @@ internal static class OpenCodeContextMenu
         {
             var accelerator = new TextBlock
             {
-                Text = key, FontSize = 12, Margin = new Thickness(24, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                Text = key, FontSize = 12, Margin = new Thickness(20, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
                 Style = Themed("TextBlock", "Foreground", command.Enabled ? "TextFillColorSecondaryBrush" : "TextFillColorDisabledBrush"),
             };
             Grid.SetColumn(accelerator, 2);
             grid.Children.Add(accelerator);
         }
         var button = Cell(flyout, command, grid);
-        button.Margin = new Thickness(4, 2, 4, 2);
-        button.Padding = new Thickness(11, 8, 11, 9);
-        button.MinHeight = ListItemHeight;
+        button.Margin = new Thickness(4, 1, 4, 1);
+        button.Padding = touch ? new Thickness(11, 10, 11, 10) : new Thickness(11, 6, 11, 6);
+        button.MinHeight = touch ? 40 : 32;
         button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         if (command.Description is { } why) ToolTipService.SetToolTip(button, why);
         return button;
     }
 
-    private static Grid Row(FlyoutBase flyout, IReadOnlyList<OpenCodeContextCommand> commands)
+    // Cells keep a fixed width: three or more fill the row like the Windows text menu; one or two stay compact
+    // (left-aligned) instead of stretching across an empty bar.
+    private static Grid Row(FlyoutBase flyout, IReadOnlyList<OpenCodeContextCommand> commands, bool touch)
     {
-        var grid = new Grid { Padding = new Thickness(4, 4, 4, 4) };
+        var stretch = commands.Count >= 3;
+        var grid = new Grid { Padding = new Thickness(4, 0, 4, 0), HorizontalAlignment = stretch ? HorizontalAlignment.Stretch : HorizontalAlignment.Left };
         for (var i = 0; i < commands.Count; i++)
         {
             if (i > 0)
@@ -134,15 +141,17 @@ internal static class OpenCodeContextMenu
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1) });
                 var divider = new Rectangle
                 {
-                    Width = 1, Height = 24, VerticalAlignment = VerticalAlignment.Center,
+                    Width = 1, Height = 20, VerticalAlignment = VerticalAlignment.Center,
                     Style = Themed("Rectangle", "Fill", "DividerStrokeColorDefaultBrush"),
                 };
                 Grid.SetColumn(divider, grid.ColumnDefinitions.Count - 1);
                 grid.Children.Add(divider);
             }
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = CellMinWidth });
+            grid.ColumnDefinitions.Add(stretch
+                ? new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = CellWidth }
+                : new ColumnDefinition { Width = new GridLength(CellWidth) });
             var command = commands[i];
-            var content = new StackPanel { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var content = new StackPanel { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             var icon = Icon(command);
             icon.HorizontalAlignment = HorizontalAlignment.Center;
             content.Children.Add(icon);
@@ -152,9 +161,9 @@ internal static class OpenCodeContextMenu
                 TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1,
             });
             var cell = Cell(flyout, command, content);
-            cell.Margin = new Thickness(2, 0, 2, 0);
-            cell.Padding = new Thickness(4, 6, 4, 6);
-            cell.MinHeight = RowHeight - 8;
+            cell.Margin = new Thickness(1, 0, 1, 0);
+            cell.Padding = new Thickness(4, 6, 4, 5);
+            cell.MinHeight = touch ? 56 : 48;
             cell.HorizontalContentAlignment = HorizontalAlignment.Center;
             var tip = command.Accelerator is { } key ? command.Label + " (" + key + ")" : command.Label;
             if (!command.Enabled && command.Description is { } why) tip += "\n" + why;
@@ -190,7 +199,7 @@ internal static class OpenCodeContextMenu
 
     private static Border Separator() => new()
     {
-        Height = 1, Margin = new Thickness(0, 2, 0, 2),
+        Height = 1, Margin = new Thickness(0, 4, 0, 4),
         Style = Themed("Border", "Background", "DividerStrokeColorDefaultBrush"),
     };
 

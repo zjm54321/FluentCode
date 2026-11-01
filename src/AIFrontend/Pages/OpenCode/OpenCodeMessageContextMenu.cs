@@ -98,17 +98,20 @@ internal static class OpenCodeMessageContextMenu
         // has the same bottom row.
         if (target is not (TextBlock or RichTextBlock)) target = FirstText(target) ?? target;
         string? selected = target switch { TextBlock t => t.SelectedText, RichTextBlock r => r.SelectedText, _ => null };
+        var whole = wholeText?.Invoke();
         if (target is TextBlock { IsTextSelectionEnabled: true } or RichTextBlock { IsTextSelectionEnabled: true })
         {
-            commands.Add(new("复制", "\uE8C8", () => Copy(selected!))
-                { Row = true, Accelerator = "Ctrl+C", Enabled = !string.IsNullOrEmpty(selected), Description = "先选中文字" });
+            // 复制 copies the selection; with nothing selected it copies the whole message (like 复制整段).
+            var copyText = !string.IsNullOrEmpty(selected) ? selected : whole;
+            commands.Add(new("复制", "\uE8C8", () => Copy(copyText!))
+                { Row = true, Accelerator = "Ctrl+C", Enabled = !string.IsNullOrEmpty(copyText), Description = "先选中文字" });
             commands.Add(new("全选", "\uE8B3", () =>
             {
                 if (target is TextBlock t) t.SelectAll();
                 else if (target is RichTextBlock r) r.SelectAll();
             }) { Row = true, Accelerator = "Ctrl+A" });
         }
-        if (wholeText?.Invoke() is var whole && wholeText is not null)
+        if (wholeText is not null)
             commands.Add(new("复制整段", "\uE8A5", () => Copy(whole!)) { Enabled = !string.IsNullOrEmpty(whole) });
         if (target is TextBlock code && CodeSources.TryGetValue(code, out var source))
             commands.Add(new("复制代码", "\uE943", () => Copy(source)));

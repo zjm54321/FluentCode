@@ -87,8 +87,13 @@ public sealed partial class MainWindow
         try
         {
             double scale = AppTitleBar.XamlRoot.RasterizationScale;
-            double rightInset = _appWindowTitleBar.RightInset / scale;
-            double leftInset = _appWindowTitleBar.LeftInset / scale;
+            // Minimized / RDP-reconnect windows can report a zero scale or garbage insets. GridLength rejects
+            // negative/NaN/infinite values, and this runs on every LayoutUpdated: an exception here became an
+            // unhandled-error loop (18k crash.log entries in 2 minutes) that starved the UI thread.
+            if (!(scale > 0) || double.IsInfinity(scale)) return;
+            static double Inset(double value) => double.IsFinite(value) && value > 0 ? value : 0;
+            double rightInset = Inset(_appWindowTitleBar.RightInset / scale);
+            double leftInset = Inset(_appWindowTitleBar.LeftInset / scale);
             bool paddingChanged = RightPaddingColumn.Width.Value != rightInset || LeftPaddingColumn.Width.Value != leftInset;
             if (paddingChanged)
             {
