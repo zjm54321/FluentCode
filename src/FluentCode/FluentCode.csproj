@@ -2,12 +2,21 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <TargetPlatformMinVersion>10.0.19044.0</TargetPlatformMinVersion>
     <RootNamespace>FluentCode</RootNamespace>
     <AssemblyName>FluentCode</AssemblyName>
-    <AssemblyTitle>FluentCode</AssemblyTitle>
+    <AssemblyTitle>OpenCode 的 Fluent 风格 Windows 客户端</AssemblyTitle>
     <Product>FluentCode</Product>
-    <Description>FluentCode — OpenCode desktop client</Description>
+    <Company>mingz</Company>
+    <Publisher>mingz</Publisher>
+    <Authors>mingz</Authors>
+    <Copyright>Copyright © 2026 mingz. Licensed under GPL-3.0-or-later.</Copyright>
+    <Description>OpenCode 的 Fluent 风格 Windows 客户端</Description>
+    <Version>1.2611.1</Version>
+    <AssemblyVersion>1.2611.1.0</AssemblyVersion>
+    <FileVersion>1.2611.1.0</FileVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\AppIcon\app.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
@@ -33,6 +42,7 @@
     <ProjectReference Include="..\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="MainWindow.xaml" />
     <Page Include="Pages\**\*.xaml" />
@@ -52,6 +62,16 @@
     <Content Include="Assets\AppIcon\*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\Taskbar\**\*.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <Target Name="SetFluentCodeInformationalVersion" BeforeTargets="GetAssemblyVersion" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Condition="'$(FluentCodeGitRevision)' == ''" Command="git -C &quot;$(MSBuildProjectDirectory)&quot; rev-parse --short HEAD"
+          ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="FluentCodeGitRevision" />
+    </Exec>
+    <Error Condition="'$(FluentCodeGitRevision)' == ''" Text="Git revision is required. Build a Git checkout or supply /p:FluentCodeGitRevision=&lt;short-sha&gt;." />
+    <PropertyGroup>
+      <InformationalVersion>$(Version)+$(FluentCodeGitRevision)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
   <Target Name="ValidateOpenCodeBrowserRuntime" BeforeTargets="PrepareForBuild;ComputeFilesToPublish" Condition="'$(DesignTimeBuild)' != 'true'">
     <PropertyGroup>
       <_BrowserRuntimeBundleDirectory>$(MSBuildProjectDirectory)\..\..\artifacts\browser-runtime</_BrowserRuntimeBundleDirectory>

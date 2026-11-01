@@ -128,8 +128,8 @@ def main():
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args()
     root = args.root.resolve()
-    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-', 'fluentcode-step1-suite-', 'fluentcode-step2-suite-')):
-        parser.error('Use a NEW artifacts/fluentcode-step1-suite-* or fluentcode-step2-suite-* directory')
+    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-', 'fluentcode-step1-suite-', 'fluentcode-step2-suite-', 'scripts-move-suite-')):
+        parser.error('Use a NEW artifacts/scripts-move-suite-* directory')
     entries = plan(root)
     if not args.execute:
         print(json.dumps(entries, ensure_ascii=False, indent=2))

@@ -1,6 +1,6 @@
 # Offline-deployed browser runtime
 
-This folder owns packaging, not application startup. The app must use its local
+This tracked folder owns runtime preparation, not application startup. The app must use its local
 `BrowserRuntime/node.exe`; it must never run npm, install a runtime, download a
 browser, or fall back to Node on PATH. Proxy credentials remain in C#.
 
@@ -48,14 +48,18 @@ Run preparation again after changing runtime source. Packaging currently verifie
 Node/Lighthouse and required assets; actual callback integration and snapshot
 audits are validated by the runtime owner.
 
-The csproj owner should copy `../../artifacts/browser-runtime/**/*` (relative to
-`src/FluentCode/FluentCode.csproj`) to `BrowserRuntime/%(RecursiveDir)%(Filename)%(Extension)`
-with both `CopyToOutputDirectory` and `CopyToPublishDirectory` set to
-`PreserveNewest`, including hidden files. Missing `node.exe`,
-`node_modules/lighthouse/package.json`, `runtime-manifest.json`, or the eventual
-sidecar entry point must fail build/publish clearly and direct the developer to
-the preparation command. Do not trigger preparation automatically from MSBuild
-or application startup. Do not include the temporary preparation directories.
+`src/FluentCode/FluentCode.csproj` copies the complete prepared tree through the
+tracked `copy-runtime.mjs` after Build/Publish, including hidden files and paths
+too long for the .NET Framework Copy task. Missing `node.exe`,
+`node_modules/lighthouse/package.json`, `runtime-manifest.json` or `sidecar.mjs`
+fails build/publish with the explicit preparation command. Tracked entry points
+`scripts/build-debug.ps1` and `scripts/publish-release.ps1` verify the copied runtime
+hashes. Preparation is never triggered automatically from MSBuild or application
+startup. Temporary preparation directories and the generated bundle are not Git inputs.
+
+Project-owned runtime code is `GPL-3.0-or-later`, matching the repository's
+[license](../../LICENSE). Dependency licenses and `THIRD-PARTY-NOTICES.md` retain
+their independent upstream terms.
 
 ## Focused offline verification
 

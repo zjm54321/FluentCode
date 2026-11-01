@@ -14,6 +14,9 @@
         尚未添加 OpenCode 时由 WelcomeHost 覆盖整窗（首次运行欢迎页）。
     -->
     <Grid x:Name="RootElement">
+        <Border x:Name="SolidBackdropFallback"
+                Background="{ThemeResource SolidBackgroundFillColorBaseAltBrush}"
+                Visibility="Collapsed" />
         <Frame x:Name="ContentFrame" Navigated="ContentFrame_Navigated" />
 
         <Grid x:Name="WelcomeHost" Visibility="Collapsed" />

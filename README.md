@@ -1,6 +1,6 @@
 # FluentCode
 
-原生 C# / WinUI 3 OpenCode 桌面客户端（Windows 11 x64），提供 Fluent 风格桌面外壳。OpenCode 是默认且唯一的工作页面；保留设置、账户/连接与任务状态入口。
+原生 C# / WinUI 3 OpenCode 桌面客户端（Windows 10 21H2 / Windows 11 x64），提供 Fluent 风格桌面外壳。OpenCode 是默认且唯一的工作页面；保留设置、账户/连接与任务状态入口。
 
 > 自动化入口见 [关键测试清单](docs/test-suite.md)；后端协议见 [OpenCode 客户端契约](docs/opencode-client-contract.md)。
 
@@ -26,7 +26,7 @@
 ## 快速使用指南
 
 ### 先决条件
-1. **操作系统**：Windows 11 (x64)（已实际验证，其他版本未声称测试）。
+1. **操作系统**：Windows 10 21H2（build 19044）或 Windows 11 (x64)。Mica 不可用时使用同主题的 BaseAlt 实色背景；Windows 10 回退路径仅做代码核对。
 2. **运行时环境**：依赖 .NET 10 Runtime (x64) 与 WebView2 Runtime。Windows App SDK 原生核心组件已随完整输出目录打包自带（`WindowsAppSDKSelfContained=true`），无需单独安装 App SDK。
    - OpenCode 会话浏览器的代理与 Lighthouse 使用随输出目录提供的独立 Node 运行组件，不依赖系统 Node/npm。选择外部 Chrome 时，需另有已安装的 Chrome；应用不会安装浏览器。
 3. **外部服务依赖**：**本程序不会自动拉起外部服务**。使用前请确保自备的后端服务已启动：
@@ -50,23 +50,51 @@
 
 ## 运行与构建
 
-### 常用命令（PowerShell，工程根目录下执行）
+### 从新克隆构建（Windows PowerShell，工程根目录下执行）
+
+构建需要 Visual Studio MSBuild/WinUI 工作负载、.NET 10 SDK 和 Git。
+以下入口全部受版本控制；无需复制 `artifacts/` 或安装系统 Node/npm。
+
 ```powershell
 # 首次构建或更新运行组件后显式准备依赖（下载固定版本并校验；不修改系统 Node/npm）
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\browser-runtime\prepare.ps1
 
-# 编译 Debug 配置
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Debug
+# Debug 构建、发布及完整运行组件哈希核对
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-debug.ps1
+
+# Release 构建、发布及运行组件哈希核对
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-release.ps1
 
 # 运行 Debug 输出（启动脚本包含 20 秒窗口等待，无自动防重复杀进程，启动前请确保无残留的 FluentCode.exe 进程）
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Configuration Debug
 ```
+
+两个原生构建入口均支持可选 `-EvidenceRoot <新目录>`；省略时在仓库的
+`artifacts/native-<configuration>-<UTC时间>-<随机值>/` 下生成日志、发布目录、
+哈希和文件属性。相对证据路径相对于仓库目录解析，与调用者当前目录无关。
+`scripts/build.ps1 -Configuration Debug|Release` 保留为仅构建的快速入口；
+`scripts/run.ps1` 运行相应构建输出。
+
+`tools/browser-runtime/prepare.ps1` 从受版本控制的版本清单、npm lock、运行源码和
+通知文件重新生成 `artifacts/browser-runtime`；使用独立的新缓存与临时目录，校验
+官方 Node SHA-256 并执行锁定的 `npm ci`。浏览器运行组件仅在该显式准备步骤联网，
+构建、发布及应用启动不会下载或安装它；首次 .NET/NuGet 还原仍需要网络或已填充的
+NuGet 缓存。详见 [运行组件说明](tools/browser-runtime/README.md)。
 
 > **重要部署说明**：
 > 本项目为依赖部署模式（`SelfContained=false`），构建输出位于：
 > `src\FluentCode\bin\x64\<Configuration>\net10.0-windows10.0.26100.0\win-x64\`
 > **必须在完整输出目录中启动**，或完整拷贝整个 `win-x64` 目录，严禁单独拷贝单个 `FluentCode.exe` 运行。
 > `BrowserRuntime` 子目录也必须完整保留。构建与发布在缺少已准备组件时会报错，不会自动下载；应用启动时也不会安装依赖。准备脚本的输出位于忽略跟踪的 `artifacts\browser-runtime`。
+
+### 版本与许可
+
+FluentCode **1.2611.1**，© 2026 mingz。程序集/文件版本为 `1.2611.1.0`，
+每次构建的产品信息版本为 `1.2611.1+<Git short SHA>`。
+
+本项目自有代码采用 [GNU GPL v3.0 或更新版本](LICENSE)（`GPL-3.0-or-later`），
+与 opencode-qol 一致。已有独立许可的依赖、资产和第三方通知保持各自的许可声明；
+浏览器运行组件的 `THIRD-PARTY-NOTICES.md` 不变。
 
 ---
 

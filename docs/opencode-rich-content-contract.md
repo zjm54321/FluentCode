@@ -255,7 +255,7 @@ dd blockquote pre code table thead tbody tfoot tr th td em strong b i u`；落�
 1. **未构建主工程、未运行、未做任何 UI 操作/截图、未对真实后端发起请求、未读取凭据、未 git**；
    本环境无 C# 编译器，§6 为静态核对，**不是编译/运行**。
 2. 未在 Windows 编译验证：`AngleSharp` 传递依赖的直接引用、`Microsoft.UI.Xaml.Documents` 富文本 API 的
-   实际可用性、C# 语法/可空性——均由父会话构建验收（`scripts/build.ps1`，MSBuild）。
+   实际可用性、C# 语法/可空性——均由父会话构建验收（`scripts/build-debug.ps1`，MSBuild）。
 3. 未运行验证：Markdown/HTML 实际渲染效果、标题/列表/表格/代码块的排版与滚动、
    高对比/屏幕阅读器/文字选择、超长文本与深层嵌套的实际表现。
 4. 未运行验证：`IsPlainFallback` 降级路径（超长输入、仅含被移除元素）在真实消息流下的行为。

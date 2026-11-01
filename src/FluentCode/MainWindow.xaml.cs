@@ -89,7 +89,7 @@ public sealed partial class MainWindow : Window
     /// BG1 (user choice B): Mica BaseAlt window material outside (the tab/title-bar row); the content layer
     /// (LayerFillColorDefaultBrush, see OpenCodePage ContentLayer) sits over it inside, so the shell and the content
     /// area differ as in stock WinUI. The material stays active when the window is unfocused. Unsupported systems
-    /// fall back to desktop acrylic, then the default window background.
+    /// fall back to the same theme-aware BaseAlt solid tone used by shell captures.
     /// </summary>
     private void TrySetMicaBackdrop()
     {
@@ -102,9 +102,9 @@ public sealed partial class MainWindow : Window
             _micaController.SetSystemBackdropConfiguration(_backdropConfiguration);
             _micaController.AddSystemBackdropTarget(this.As<ICompositionSupportsSystemBackdrop>());
         }
-        else if (DesktopAcrylicController.IsSupported())
+        else
         {
-            SystemBackdrop = new DesktopAcrylicBackdrop();
+            SolidBackdropFallback.Visibility = Visibility.Visible;
         }
     }
 

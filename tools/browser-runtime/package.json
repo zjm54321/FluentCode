@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Workspace-local dependencies for the FluentCode browser sidecar.",
-  "license": "UNLICENSED",
+  "license": "GPL-3.0-or-later",
   "engines": {
     "node": "24.22.1"
   },

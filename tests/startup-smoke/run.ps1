@@ -10,14 +10,10 @@ $EvidenceRoot = [IO.Path]::GetFullPath($EvidenceRoot)
 if (Test-Path $EvidenceRoot) { throw 'Startup smoke requires a new evidence directory.' }
 New-Item -ItemType Directory -Path $EvidenceRoot | Out-Null
 if (!$PublishDirectory) {
-    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-    $msbuild = & $vswhere -latest -products '*' -requires Microsoft.Component.MSBuild -find 'MSBuild/Current/Bin/MSBuild.exe' | Select-Object -First 1
-    if (!$msbuild) { throw 'Visual Studio MSBuild is required.' }
-    & $msbuild (Join-Path $repo 'FluentCode.sln') /restore /t:Build /m /nologo /verbosity:minimal /p:Configuration=Release /p:Platform=x64 2>&1 | Tee-Object (Join-Path $EvidenceRoot 'build.log')
-    if ($LASTEXITCODE) { throw "Release build failed: $LASTEXITCODE" }
-    $PublishDirectory = Join-Path $EvidenceRoot 'publish'
-    & $msbuild (Join-Path $repo 'src/FluentCode/FluentCode.csproj') /t:Publish /m /nologo /verbosity:minimal /p:Configuration=Release /p:Platform=x64 "/p:PublishDir=$PublishDirectory\" 2>&1 | Tee-Object (Join-Path $EvidenceRoot 'publish.log')
-    if ($LASTEXITCODE) { throw "Release publish failed: $LASTEXITCODE" }
+    $native = Join-Path $EvidenceRoot 'native'
+    & (Join-Path $repo 'scripts/publish-release.ps1') -EvidenceRoot $native
+    if ($LASTEXITCODE) { throw "Release build/publish failed: $LASTEXITCODE" }
+    $PublishDirectory = Join-Path $native 'publish'
 }
 $PublishDirectory = [IO.Path]::GetFullPath($PublishDirectory)
 $exe = (Resolve-Path (Join-Path $PublishDirectory 'FluentCode.exe')).Path
