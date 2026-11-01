@@ -3,8 +3,8 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 
 internal static partial class Program
 {

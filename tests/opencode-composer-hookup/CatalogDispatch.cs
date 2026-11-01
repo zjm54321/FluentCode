@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 internal static class CatalogDispatchTests
 {
@@ -82,7 +82,7 @@ internal static class CatalogDispatchTests
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {

@@ -2,7 +2,7 @@
 
 ## 范围与结论
 
-- 本次仅修改 `src/AIFrontend/Services/Protocols/ProtocolChatClient.cs`、`src/AIFrontend/Services/Protocols/ProtocolStreamDecoder.cs` 和本文档。共享 Models / Contracts / Configuration、所有 UI、工程文件均未修改。
+- 本次仅修改 `src/FluentCode/Services/Protocols/ProtocolChatClient.cs`、`src/FluentCode/Services/Protocols/ProtocolStreamDecoder.cs` 和本文档。共享 Models / Contracts / Configuration、所有 UI、工程文件均未修改。
 - 三协议已有实现，保持现有接口和协议选型；修复的是**工具输出在截断/EOF 后被误分类**，不是新增工具执行支持。修复前也没有把这些场景报为 Completed，但丢失了应保留的 ToolCalls 终止原因。
 - 依据 `docs/protocol-client-contract.md` 的“观察到工具调用 → Incomplete(ToolCalls)”规则。EOF 的 Unknown 仅适用于尚未观察到工具的情况；取消、传输失败、服务端错误仍保持各自原有语义。
 - **headless mock 通过不等于 Local UI 完成或真实 API 兼容性已验证。** 没有真实 HTTP 请求、GUI 启停、软件安装、主工程构建或 git 提交。
@@ -24,19 +24,19 @@
 
 ## 已复现并修复
 
-1. `src/AIFrontend/Services/Protocols/ProtocolStreamDecoder.cs:97`：Responses `response.incomplete` 原先不检查最终 `output`，且直接把 `max_output_tokens` 映射为 Length，忽略之前观察到的工具。现在检查可选的最终 output 数组，并优先保留 ToolCalls；无工具的长度截断仍为 Length。
-2. `src/AIFrontend/Services/Protocols/ProtocolStreamDecoder.cs:21` 与 `src/AIFrontend/Services/Protocols/ProtocolChatClient.cs:119`：EOF 原先无条件生成 Unknown。现在由每请求 decoder 的 `EndOfStream()` 保留已观察到的工具状态；普通 EOF 仍 Unknown。取消检查仍先于 EOF 终态，不会把取消改报 ToolCalls。
+1. `src/FluentCode/Services/Protocols/ProtocolStreamDecoder.cs:97`：Responses `response.incomplete` 原先不检查最终 `output`，且直接把 `max_output_tokens` 映射为 Length，忽略之前观察到的工具。现在检查可选的最终 output 数组，并优先保留 ToolCalls；无工具的长度截断仍为 Length。
+2. `src/FluentCode/Services/Protocols/ProtocolStreamDecoder.cs:21` 与 `src/FluentCode/Services/Protocols/ProtocolChatClient.cs:119`：EOF 原先无条件生成 Unknown。现在由每请求 decoder 的 `EndOfStream()` 保留已观察到的工具状态；普通 EOF 仍 Unknown。取消检查仍先于 EOF 终态，不会把取消改报 ToolCalls。
 
 修复前五个定向场景均复现：Responses 已观察工具后长度截断、仅最终 incomplete.output 包含工具，均为 Incomplete/Length；Responses / Chat / Anthropic 观察到工具后 EOF，均为 Incomplete/Unknown。修复后五者均为 Incomplete/ToolCalls，保留已有正文，恰好一个 terminal。额外保留无工具 Responses 长度截断控制场景。
 
 ## 证据、复用与源码一致性
 
-旧证据目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-protocol-validation-20261006T151251Z`。
+旧证据目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-protocol-validation-20261006T151251Z`。
 
 - 先核对该目录 `final-hashes.json`：当前 18 个 Models / Contracts / Protocols 文件与已验证快照全部匹配，旧结果为三组 251 断言通过。
 - 未重复运行未修改源码的旧矩阵；先只运行新发现的五个定向回归，确认五者失败。修改两份协议源码后，才复用旧 harness 并把定向回归合入原第三组，统一回归三组。
 
-本次隔离目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-local-protocol-validation-20261006`（项目外，无源项目引用，只有 18 个源文件副本）。
+本次隔离目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-local-protocol-validation-20261006`（项目外，无源项目引用，只有 18 个源文件副本）。
 
 | 证据文件（均在本次隔离目录） | 内容 |
 |---|---|
@@ -61,8 +61,8 @@ bash ./run-dotnet.sh run --project Validation.csproj --configuration Release --n
 
 修复后两文件 SHA-256：
 
-- `src/AIFrontend/Services/Protocols/ProtocolChatClient.cs`：`1605e247d4ee4db58c87a62f8ceee69c6fb1d2a607bb9715607eed1fbbf7801f`
-- `src/AIFrontend/Services/Protocols/ProtocolStreamDecoder.cs`：`43f6ec11e1291091f7548124458f25aa685fb0af22088976d52647b75b0fe908`
+- `src/FluentCode/Services/Protocols/ProtocolChatClient.cs`：`1605e247d4ee4db58c87a62f8ceee69c6fb1d2a607bb9715607eed1fbbf7801f`
+- `src/FluentCode/Services/Protocols/ProtocolStreamDecoder.cs`：`43f6ec11e1291091f7548124458f25aa685fb0af22088976d52647b75b0fe908`
 
 ## 未验证点与后续接线
 

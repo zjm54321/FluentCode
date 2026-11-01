@@ -1,7 +1,7 @@
 # Web UI 契约：NormalPage 顶部选择栏与官网 WebView2 宿主
 
 > 状态：静态实现与静态核对（2026-10-06，视觉轮：WebView 圆角裁剪 / 工具栏留白收紧与刷新按钮加大；第 6 轮：品牌图标资源落盘 + Web 范围 cookie 清理入口；**第 7 轮（2026-10-07）：网页保活——`NavigationCacheMode.Required` + `Unloaded` 仅挂起 + `ShutdownWebViews` 最终释放，见 §11**）；**未构建、未运行、未做 UI 操作**，编译与行为验收由父会话统一执行。
-> 写范围（本 lane 独占）：`src/AIFrontend/Pages/NormalPage.xaml`、`src/AIFrontend/Pages/NormalPage.xaml.cs`、`src/AIFrontend/Pages/Web/**`、`docs/web-ui-contract.md`；第 7 轮扩入 `src/AIFrontend/MainWindow.xaml.cs`（**仅** cachedNormalPage/finalClose 释放相关局部，见 §11）与 `docs/shell-ui-contract.md`（仅 cached 网页生命周期相关节）。
+> 写范围（本 lane 独占）：`src/FluentCode/Pages/NormalPage.xaml`、`src/FluentCode/Pages/NormalPage.xaml.cs`、`src/FluentCode/Pages/Web/**`、`docs/web-ui-contract.md`；第 7 轮扩入 `src/FluentCode/MainWindow.xaml.cs`（**仅** cachedNormalPage/finalClose 释放相关局部，见 §11）与 `docs/shell-ui-contract.md`（仅 cached 网页生命周期相关节）。
 > 明确不改：`Services/**`（含 `Services/Web`，本轮不新建服务层）、`MainWindow.*`（除上述 `MainWindow.xaml.cs` 释放局部；`MainWindow.Local/OpenCode/Taskbar/ShellIntegration` 分部不改）、`Models/**`、其他 Pages、`*.csproj`、`docs/` 下其他文档。协议文档由另一 lane 负责，本 lane 不触碰。
 
 ---
@@ -10,7 +10,7 @@
 
 **做**：
 
-- NormalPage 顶部原生选择栏：ChatGPT / Gemini / Claude / Local（`Microsoft.UI.Xaml.Controls.SelectorBar`），左对齐；每项文字前**默认**为系统自带 Segoe 图标字形的通用占位图标（非品牌 logo）；官方品牌资源已落盘于 `src/AIFrontend/Assets/Brands/`，`ProviderBrandIcons`（`ImageIcon`，16 DIP；SVG→`SvgImageSource` / PNG→`BitmapImage`）在页面 `Loaded` 与主题变化时替换占位（机制与出处见 §5.3）。
+- NormalPage 顶部原生选择栏：ChatGPT / Gemini / Claude / Local（`Microsoft.UI.Xaml.Controls.SelectorBar`），左对齐；每项文字前**默认**为系统自带 Segoe 图标字形的通用占位图标（非品牌 logo）；官方品牌资源已落盘于 `src/FluentCode/Assets/Brands/`，`ProviderBrandIcons`（`ImageIcon`，16 DIP；SVG→`SvgImageSource` / PNG→`BitmapImage`）在页面 `Loaded` 与主题变化时替换占位（机制与出处见 §5.3）。
 - 顶部工具栏右侧原生刷新按钮：仅重载当前选中官网的 WebView2（`WebViewHost.Refresh`）；Local 标签下完全隐藏（`Collapsed`，不占位），切回官网恢复。本轮加大：`MinHeight=40`、左右内边距 16、图标 16 + “刷新”文字。
 - 前三个标签呈现对应官网，使用 WinUI3 `Microsoft.UI.Xaml.Controls.WebView2`，每个 provider 独立、固定的用户数据环境。
 - 三个 WebView2 宿主具备**真正可见的圆角**（内容随容器被裁剪，非仅边框）：`Border` 圆角容器 + composition 几何裁剪（半径 8 DIP = `OverlayCornerRadius`），机制与依据见 §5.1。
@@ -39,13 +39,13 @@
 
 | 文件 | 类型 | 职责 |
 | --- | --- | --- |
-| `src/AIFrontend/Pages/Web/WebProvider.cs` | 封闭枚举 + 静态元数据 | provider 枚举、显示名、环境目录名、官网地址、newwindow 允许域名 |
-| `src/AIFrontend/Pages/Web/WebViewHost.cs` | `UserControl`（纯 C#） | 单个官网的 WebView2 宿主：环境/实例懒加载、生命周期、加载错误与重试、`ClearCookiesAsync`、`Refresh`（仅重载当前网页）、圆角容器 + composition 圆角裁剪（`ApplyRoundedClip`） |
-| `src/AIFrontend/Pages/Web/ProviderBrandIcons.cs` | 静态类（纯 C#） | 官方品牌图标接入点：资源路径约定、16 DIP 尺寸、`ImageIcon` 替换与失败回退；SVG→`SvgImageSource` / PNG→`BitmapImage`；ChatGPT 按 `ActualTheme` 选浅/深变体 |
-| `src/AIFrontend/Pages/Web/WebCookieCleaner.cs` | 静态类（纯 C#） | Web 范围逐 provider cookie 清理入口（供主窗口调用）：受控临时宿主方案，不依赖 NormalPage 加载态（见 §6.3） |
-| `src/AIFrontend/Pages/Web/LocalHostPanel.cs` | `UserControl`（纯 C#） | 遗留占位面板；已被 `LocalChatView` 取代、无引用（保留文件，删除不在本轮范围） |
-| `src/AIFrontend/Pages/NormalPage.xaml` | `Page` | 顶部工具栏（`SelectorBar` + 加大版刷新按钮，`Grid Auto/*/Auto`，紧凑垂直留白）+ 内容宿主 `ContentHost` |
-| `src/AIFrontend/Pages/NormalPage.xaml.cs` | 代码后置 | 选择栏事件、刷新按钮路由与 Local 隐藏规则、宿主挂载/保活（主导航离开仅挂起）/最终释放（`ShutdownWebViews`）、`ClearCookiesAsync(WebProvider)`、品牌图标接入调用（`ApplyBrandIconsAsync`） |
+| `src/FluentCode/Pages/Web/WebProvider.cs` | 封闭枚举 + 静态元数据 | provider 枚举、显示名、环境目录名、官网地址、newwindow 允许域名 |
+| `src/FluentCode/Pages/Web/WebViewHost.cs` | `UserControl`（纯 C#） | 单个官网的 WebView2 宿主：环境/实例懒加载、生命周期、加载错误与重试、`ClearCookiesAsync`、`Refresh`（仅重载当前网页）、圆角容器 + composition 圆角裁剪（`ApplyRoundedClip`） |
+| `src/FluentCode/Pages/Web/ProviderBrandIcons.cs` | 静态类（纯 C#） | 官方品牌图标接入点：资源路径约定、16 DIP 尺寸、`ImageIcon` 替换与失败回退；SVG→`SvgImageSource` / PNG→`BitmapImage`；ChatGPT 按 `ActualTheme` 选浅/深变体 |
+| `src/FluentCode/Pages/Web/WebCookieCleaner.cs` | 静态类（纯 C#） | Web 范围逐 provider cookie 清理入口（供主窗口调用）：受控临时宿主方案，不依赖 NormalPage 加载态（见 §6.3） |
+| `src/FluentCode/Pages/Web/LocalHostPanel.cs` | `UserControl`（纯 C#） | 遗留占位面板；已被 `LocalChatView` 取代、无引用（保留文件，删除不在本轮范围） |
+| `src/FluentCode/Pages/NormalPage.xaml` | `Page` | 顶部工具栏（`SelectorBar` + 加大版刷新按钮，`Grid Auto/*/Auto`，紧凑垂直留白）+ 内容宿主 `ContentHost` |
+| `src/FluentCode/Pages/NormalPage.xaml.cs` | 代码后置 | 选择栏事件、刷新按钮路由与 Local 隐藏规则、宿主挂载/保活（主导航离开仅挂起）/最终释放（`ShutdownWebViews`）、`ClearCookiesAsync(WebProvider)`、品牌图标接入调用（`ApplyBrandIconsAsync`） |
 
 > 三个 Web 控件均为纯 C# 组合原生控件，**不新增 XAML 文件**，因此不触及 `csproj` 的 `Pages\**\*.xaml` 包含规则；`.cs` 由 SDK 默认编译项自动纳入，**本轮未修改任何依赖或工程文件**。
 
@@ -63,7 +63,7 @@ public static class WebProviderInfo
     public static string GetFolderName(WebProvider provider);       // "ChatGPT" / "Gemini" / "Claude"
     public static Uri    GetHomeUri(WebProvider provider);          // 固定 https 官网
     public static IReadOnlyList<string> GetAllowedHostSuffixes(WebProvider provider);
-    public static string GetWebView2RootDirectory();                // %LOCALAPPDATA%\AIFrontend\WebView2
+    public static string GetWebView2RootDirectory();                // %LOCALAPPDATA%\FluentCode\WebView2
     public static string GetUserDataFolder(WebProvider provider);   // 根目录 + provider 子目录（绝对路径）
     public static bool   IsHostAllowed(WebProvider provider, string? host);
     public static bool   TryParseProvider(string? tag, out WebProvider provider);
@@ -71,8 +71,8 @@ public static class WebProviderInfo
 ```
 
 - **路径注入防护**：环境目录名只来自对 `WebProvider` 枚举的 `switch`（硬编码常量），绝不来自 UI 文本或用户输入。选择栏 `Tag` 仅用于选择枚举常量，未知值（含 `Local`、数字、任意文本）一律拒绝。
-- 用户数据根目录：`%LOCALAPPDATA%\AIFrontend\WebView2`（`Environment.SpecialFolder.LocalApplicationData`）。与 `Services.Configuration` 的路径约定一致，但本 lane **不依赖**该服务，自行解析，保持 lane 解耦。
-- 各 provider 独立固定环境目录：`...\AIFrontend\WebView2\{ChatGPT|Gemini|Claude}`。
+- 用户数据根目录：`%LOCALAPPDATA%\FluentCode\WebView2`（`Environment.SpecialFolder.LocalApplicationData`）。与 `Services.Configuration` 的路径约定一致，但本 lane **不依赖**该服务，自行解析，保持 lane 解耦。
+- 各 provider 独立固定环境目录：`...\FluentCode\WebView2\{ChatGPT|Gemini|Claude}`。
 - 官网固定地址：`https://chatgpt.com/`、`https://gemini.google.com/`、`https://claude.ai/`。
 
 ---
@@ -217,7 +217,7 @@ if (_selectedProvider is WebProvider provider &&
 
 ### 5.3 品牌图标资源与接入机制（本轮更新：资源已落盘）
 
-- 用户要求 ChatGPT / Gemini / Claude 使用**官方品牌图标**；不得自绘近似 logo、不得以第三方聚合站素材冒充官方。**本轮资源已随仓库落盘**（出处、抓取时间与 SHA-256 见 `src/AIFrontend/Assets/Brands/ATTRIBUTION.md`）。
+- 用户要求 ChatGPT / Gemini / Claude 使用**官方品牌图标**；不得自绘近似 logo、不得以第三方聚合站素材冒充官方。**本轮资源已随仓库落盘**（出处、抓取时间与 SHA-256 见 `src/FluentCode/Assets/Brands/ATTRIBUTION.md`）。
 - 资源清单（**几何/像素逐字保存，未改绘、未自绘、未用第三方素材**）：
   - `chatgpt.official.svg`：官方原文副本（`https://chatgpt.com/cdn/assets/favicon-l4nq08hd.svg`，仅溯源）。
   - `chatgpt.svg`（浅）/ `chatgpt.dark.svg`（深）：**几何逐字**取自上述官方 SVG；差异仅把根 `fill="none"` + 内嵌 `<style>`（CSS）改为 path 上的显式 `fill="#000000"`/`fill="#FFFFFF"`。这是**配色适配**（同 `docs/back-icon-source.md` 先例），不是重绘品牌。
@@ -225,7 +225,7 @@ if (_selectedProvider is WebProvider provider &&
   - `claude.svg`：claude.ai 官方公开产品图标（`https://claude.ai/favicon.svg`，路径自带 `fill="#D97757"`）。**不**采用 Anthropic 企业 logo、**不**自绘、**不**用聚合站素材。
 - **为何 ChatGPT 需要浅/深两版（如实声明，不假称浏览器 CSS 有效）**：官方 favicon SVG 的填充色**仅**由内嵌 CSS `<style>`（含 `@media (prefers-color-scheme: dark)`）定义，根元素为 `fill="none"`。WinUI `SvgImageSource` 底层为 Direct2D SVG 渲染（Microsoft Learn「SVG Support」：其“支持元素”表中**没有 `<style>` 元素**，仅支持 `fill`、`fill-rule` 等**表现属性**），故**不保证**执行该 CSS 或媒体查询——若原样加载，`path` 将继承 `fill="none"`，很可能**渲染为空白**。因此本接入点不依赖 CSS，改用几何逐字、显式 `fill` 的浅/深两版按 `ActualTheme` 选择。此**不构成**“CSS 媒体查询在 `SvgImageSource` 中有效”的声明。
 - 代码接入点 `Pages/Web/ProviderBrandIcons.cs`：`IconSize = 16`（DIP，与 `SelectorBarItem` 图标位一致）；`GetFileName(provider)` / `GetFileName(provider, theme)` / `GetAbsolutePath(...)`；`ImageIcon` +（SVG→`SvgImageSource`、PNG/光栅→`BitmapImage`），`SetSourceAsync` 流式加载（避开非打包应用的 URI 方案不确定性）。`NormalPage` 在 `Loaded` 与 `ActualThemeChanged` 时调用 `TryApplyAsync`；文件缺失或加载失败静默保留通用占位字形；`TryApplyAsync` **可重复调用**（主题变化时按新主题更换变体，不因已是 `ImageIcon` 而跳过）。
-- **csproj 资源配置（报告，本 lane 不改）**：这些文件需以 `Content` 复制到输出目录，使其出现在 `AppContext.BaseDirectory/Assets/Brands/`（`WindowsPackageType=None` 下非 `ms-appx`），例如 `<Content Include="Assets\Brands\**" CopyToOutputDirectory="PreserveNewest" />`。`chatgpt.official.svg` 仅溯源，可选排除。**本 lane 未修改 `AIFrontend.csproj`，需求仅报告父会话。**
+- **csproj 资源配置（报告，本 lane 不改）**：这些文件需以 `Content` 复制到输出目录，使其出现在 `AppContext.BaseDirectory/Assets/Brands/`（`WindowsPackageType=None` 下非 `ms-appx`），例如 `<Content Include="Assets\Brands\**" CopyToOutputDirectory="PreserveNewest" />`。`chatgpt.official.svg` 仅溯源，可选排除。**本 lane 未修改 `FluentCode.csproj`，需求仅报告父会话。**
 - 尺寸接口说明：布局尺寸由 `ImageIcon.Width/Height = IconSize (16)` 固定；`SvgImageSource.RasterizePixelWidth/Height` 保持默认（自动光栅化），如官方画板非 16 号且实测发虚，再按 `IconSize × RasterizationScale` 固定（预留、本轮不写死）。
 
 ---
@@ -265,7 +265,7 @@ if (page is not null)
 ### 6.3 Web 范围清 cookie 入口（`WebCookieCleaner`，供主窗口调用；本轮新增）
 
 ```csharp
-namespace AIFrontend.Pages.Web;
+namespace FluentCode.Pages.Web;
 public static class WebCookieCleaner
 {
     // 清理指定 provider 环境的全部 cookie；须 UI 线程；hostLayer 须为已挂载且已加载的容器。
@@ -361,7 +361,7 @@ if (https && WebProviderInfo.IsHostAllowed(_provider, uri.Host))
 
 ## 10. 本轮修订（2026-10-06 第 6 轮）：品牌资源落盘 + Web 范围 cookie 清理入口
 
-> 写范围：`src/AIFrontend/Pages/NormalPage.xaml[.cs]`、`src/AIFrontend/Pages/Web/**`、`src/AIFrontend/Assets/Brands/**`、`docs/web-ui-contract.md`。**未**改 `Services/**`、`MainWindow.*`、`App/**`、`Pages/Settings/**`、`Pages/OpenCode/**`、`*.csproj`、脚本。
+> 写范围：`src/FluentCode/Pages/NormalPage.xaml[.cs]`、`src/FluentCode/Pages/Web/**`、`src/FluentCode/Assets/Brands/**`、`docs/web-ui-contract.md`。**未**改 `Services/**`、`MainWindow.*`、`App/**`、`Pages/Settings/**`、`Pages/OpenCode/**`、`*.csproj`、脚本。
 
 - **品牌图标（§5.3 更新）**：官方资源已落盘 `Assets/Brands/`（`chatgpt.official.svg` 溯源 + `chatgpt.svg`/`chatgpt.dark.svg` 几何逐字、显式 `fill` + `gemini.png` + `claude.svg`）。`ProviderBrandIcons` 支持 SVG→`SvgImageSource` / PNG→`BitmapImage`，并在 `Loaded` 与 `ActualThemeChanged` 时应用；`TryApplyAsync` 改为**可重复调用**（主题切换换变体）。官方出处、SHA-256、商标归属见 `Assets/Brands/ATTRIBUTION.md`。**不假称** `SvgImageSource` 支持 CSS 媒体查询（据 Direct2D「SVG Support」：不支持 `<style>` 元素）。
 - **csproj 复制需求（报告，未改）**：`<Content Include="Assets\Brands\**" CopyToOutputDirectory="PreserveNewest" />`（`chatgpt.official.svg` 可选排除），使文件出现在 `AppContext.BaseDirectory/Assets/Brands/`。
@@ -373,7 +373,7 @@ if (https && WebProviderInfo.IsHostAllowed(_provider, uri.Host))
 
 ## 11. 第 7 轮修订（2026-10-07）：网页保活（NavigationCacheMode.Required）与最终释放（ShutdownWebViews）
 
-> 写范围：`src/AIFrontend/Pages/NormalPage.xaml[.cs]`、`src/AIFrontend/Pages/Web/**`（注释同步）、`src/AIFrontend/MainWindow.xaml.cs`（**仅** cachedNormalPage/finalClose 释放相关局部）、`docs/web-ui-contract.md`、`docs/shell-ui-contract.md`（仅 cached 生命周期节）。**未**改 `Services/**`（含 Notifications / OpenCode client）、`App/**`、`Pages/OpenCode/**`、`Pages/Local/**`、`Pages/Settings/**`、`*.csproj`、`Assets/**`。静态实现与静态核对（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。**本节取代 §4.4/§5 旧“Unloaded 销毁宿主/页面返回重建”描述及 §6.2/§6.3 相关前提。**
+> 写范围：`src/FluentCode/Pages/NormalPage.xaml[.cs]`、`src/FluentCode/Pages/Web/**`（注释同步）、`src/FluentCode/MainWindow.xaml.cs`（**仅** cachedNormalPage/finalClose 释放相关局部）、`docs/web-ui-contract.md`、`docs/shell-ui-contract.md`（仅 cached 生命周期节）。**未**改 `Services/**`（含 Notifications / OpenCode client）、`App/**`、`Pages/OpenCode/**`、`Pages/Local/**`、`Pages/Settings/**`、`*.csproj`、`Assets/**`。静态实现与静态核对（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。**本节取代 §4.4/§5 旧“Unloaded 销毁宿主/页面返回重建”描述及 §6.2/§6.3 相关前提。**
 
 ### 11.1 行为变更（NormalPage）
 
@@ -405,3 +405,8 @@ if (https && WebProviderInfo.IsHostAllowed(_provider, uri.Host))
 2. 运行行为：缓存实例返回后 WebView2 渲染/网络/输入恢复、隐藏期主题收敛、挂起期间资源占用——未运行验证。
 3. 释放路径：窗口关闭时 `ShutdownWebViews` 的实际关闭与浏览器进程退出；`MainWindow_Closed` 订阅位于 `AppWindowTitleBar.IsCustomizationSupported()` 分支内（既有结构，本轮未改；目标机支持标题栏自定义）——未运行验证。
 4. 源哈希：`NormalPage.xaml.cs` `4030a935c1df4c12f38d9ad9595d4a495178161538b486ee802d1d200ad9d46b`；`NormalPage.xaml` `07488fae05ea5b91a73108ac29c7902bc0924f9276656c46aed344e0af9553eb`；`WebCookieCleaner.cs` `fd17d0a961f8c98f18c0fdb756ebe2a05266e18c8655e07dd24b178b4409f39f`；`WebViewHost.cs`（本轮未改）`166d0598d2ad181ae62c7323fbb1933cb496ba11ced29dc6e9d8a067c85df650`；`MainWindow.xaml.cs` `6f7e3a77c1f4d4501601565147ab5c8f7c0b47fe243ab7ad092c292f25dac4c9`。
+# Historical contract — removed feature
+
+The website-chat/NormalPage implementation described below was removed in the
+FluentCode OpenCode-only transition on 2026-11-01. This file retains historical
+design and validation context; it is not the current application's feature list.

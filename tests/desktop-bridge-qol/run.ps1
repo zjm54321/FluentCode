@@ -23,11 +23,11 @@ $sources = @(
     'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Messages.cs',
     'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs'
-) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
+) | ForEach-Object { Join-Path "$repo/src/FluentCode/Services/OpenCode" $_ }
 $sources += @(
     'OpenCodeInteractionGate.cs', 'NotificationArgumentCodec.cs', 'NotificationInteractions.cs',
     'NotificationSource.cs', 'OpenCodeExecutionProjection.cs', 'OpenCodePageSource.cs'
-) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/Notifications" $_ }
+) | ForEach-Object { Join-Path "$repo/src/FluentCode/Services/Notifications" $_ }
 $sources += Join-Path $PSScriptRoot 'Program.cs'
 $assembly = Join-Path $output 'DesktopBridgeQolTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))

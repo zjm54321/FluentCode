@@ -3,7 +3,7 @@
 // Shared backend gate/unknown protections are covered separately; no plugin UI is mounted here.
 using System;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
+using FluentCode.Pages;
 
 internal static class PluginPendingGuardTests
 {
@@ -50,7 +50,7 @@ internal static class PluginPendingGuardTests
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {

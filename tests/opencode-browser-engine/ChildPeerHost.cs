@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode.Browser;
+using FluentCode.Services.OpenCode.Browser;
 
 // Inert server boundary. The production peer, event feed, leases and manager execute unchanged.
-namespace AIFrontend.Services.OpenCode
+namespace FluentCode.Services.OpenCode
 {
     public sealed record OpenCodeEvent(string Type, string LocationDirectory, JsonElement Data);
     public class OpenCodeException : Exception { }
@@ -46,18 +46,18 @@ namespace AIFrontend.Services.OpenCode
     }
 }
 
-namespace AIFrontend.Services.OpenCode.Browser
+namespace FluentCode.Services.OpenCode.Browser
 {
     public sealed record OpenCodeBrowserTunnelTarget(string Host, int Port);
     public sealed record OpenCodeBrowserTunnelRead(byte[] Data, bool Eof);
 }
 
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal enum OpenCodeTreeStatus { Unknown, Running, Succeeded, Failed, Interrupted }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     // UI/source seams for source-linking the actual child-directory and peer-composition methods.
     public sealed partial class OpenCodePage
@@ -66,7 +66,7 @@ namespace AIFrontend.Pages
         private bool _homeActive = false;
         private bool _treeChildrenAccepted = true;
         private bool SourceReady => true;
-        private readonly AIFrontend.Services.OpenCode.OpenCodeClient _client;
+        private readonly FluentCode.Services.OpenCode.OpenCodeClient _client;
         private readonly Source _source = new();
         private readonly Dictionary<string, int> _sessionTabs = new();
         private readonly Dictionary<string, Info> _sessionItems = new();
@@ -93,7 +93,7 @@ namespace AIFrontend.Pages
         partial void OnBrowserSessionTabClosed(string sessionId);
         partial void OnBrowserEventSyncStarting();
         partial void OnBrowserEventStreamHealthChanged(bool connected);
-        partial void OnBrowserControlEvent(AIFrontend.Services.OpenCode.OpenCodeEvent item);
+        partial void OnBrowserControlEvent(FluentCode.Services.OpenCode.OpenCodeEvent item);
         partial void OnBrowserEventSyncStopped();
         partial void OnBrowserEngineSessionTabClosed(string sessionId) => _browserWorkspaces.Remove(sessionId);
         internal OpenCodePage()

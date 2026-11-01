@@ -21,7 +21,7 @@ other prepared files alongside `node.exe`.
 
 Lighthouse includes `puppeteer-core` and `chrome-launcher` as upstream production
 dependencies. Preparation runs with install scripts disabled and does not fetch
-Chromium. Their presence does not select an automation framework for AIFrontend;
+Chromium. Their presence does not select an automation framework for FluentCode;
 the sidecar uses the application's existing CDP/tunnel callbacks.
 
 Sources: <https://nodejs.org/dist/v24.22.1/> and

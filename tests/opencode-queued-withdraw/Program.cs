@@ -8,9 +8,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.Notifications;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
+using FluentCode.Services.Notifications;
 
 internal static class Program
 {

@@ -9,10 +9,10 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -402,7 +402,7 @@ internal static class NativeTests
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {
@@ -553,12 +553,12 @@ namespace AIFrontend.Pages
         internal int RemovedInteractions => _interactionsView.Removed;
         internal int SuppressedInteractions => _interactionsView.Suppressed;
         internal void TestSettleInteraction(bool isForm, string id, string title, string message) => SettleInteraction(isForm, id, title, message);
-        internal void TestHandleProtectedAtSubmit(bool isForm, string id, AIFrontend.Services.Notifications.NotificationInteractionStatus protection, bool sessionProtected)
+        internal void TestHandleProtectedAtSubmit(bool isForm, string id, FluentCode.Services.Notifications.NotificationInteractionStatus protection, bool sessionProtected)
         {
             if (isForm) HandleProtectedFormAtSubmit(id, protection, sessionProtected);
             else HandleProtectedPermissionAtSubmit(id, protection, sessionProtected);
         }
-        internal void TestApplyNavigationResult(AIFrontend.Services.Notifications.NotificationNavigationTarget target, AIFrontend.Services.Notifications.NotificationInteractionResult result) => ApplyNavigationResult(result, target);
+        internal void TestApplyNavigationResult(FluentCode.Services.Notifications.NotificationNavigationTarget target, FluentCode.Services.Notifications.NotificationInteractionResult result) => ApplyNavigationResult(result, target);
         internal int ComposerFocuses => Composer.Focuses;
         internal void SetPermissionDismissal(bool focused)
         {
@@ -575,7 +575,7 @@ namespace Microsoft.UI.Xaml.Controls
     public sealed class TextBlock { public string Text = ""; }
     public sealed class ScrollViewer { public double VerticalOffset, ScrollableHeight; public void UpdateLayout() { } public void ChangeView(double? x, double? y, double? zoom, bool disableAnimation) { VerticalOffset = y ?? VerticalOffset; } }
 }
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal sealed class OpenCodePermissionCard { }
     internal sealed class InteractionsViewStub

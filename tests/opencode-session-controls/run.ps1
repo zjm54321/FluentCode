@@ -22,12 +22,12 @@ $pack = Get-ChildItem (Join-Path $root 'packs/Microsoft.NETCore.App.Ref') -Direc
 if (!$sdk -or !$pack) { throw 'Cached .NET 10 SDK/reference pack required; no installation attempted.' }
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $refs = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | Sort-Object FullName)
-$sources = @((Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | Sort-Object FullName).FullName)
+$sources = @((Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | Sort-Object FullName).FullName)
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
-    $sources += Join-Path $repo "src/AIFrontend/Services/Notifications/$name"
+    $sources += Join-Path $repo "src/FluentCode/Services/Notifications/$name"
 }
-$sources += Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'
-$sources += Join-Path $repo 'src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs'
+$sources += Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'
+$sources += Join-Path $repo 'src/FluentCode/Services/Notifications/AgentSwitchCoordinator.cs'
 # Source-link the selector's actual state/transport methods; native layout and picker UI are boundaries.
 function Extract([string]$text, [string]$name) {
     $match = [regex]::Match($text, '(?m)^    (?:private|internal) (?:static |async )*[\w<>?]+ ' + $name + '\(')
@@ -40,10 +40,10 @@ function Extract([string]$text, [string]$name) {
     }
     throw "Unclosed selector method $name"
 }
-$selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
+$selector = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeAgentSelector.cs")
 $members = @('SelectPendingAgent','SelectUserAgent','SelectPendingModel','ApplyPendingSelectionAsync','ApplyPendingSelectionCoreAsync','ModelsMatch','CompletePendingSelection','SavePendingSelection','SwitchBlockedReason','RefreshDisplay','ReloadAsync','ApplyAgents','ApplyCurrentAgentPresentation','ApplyModel','RunSwitchAsync','ApplySwitchResultAsync','IsOriginCurrent','UpdateControls','DisplayName') | ForEach-Object { Extract $selector $_ }
 $selectorSource = Join-Path $EvidenceRoot 'ActualSelectorState.cs'
-"using System;using System.Collections.Generic;using System.Net.Http;using System.Threading;using System.Threading.Tasks;using AIFrontend.Services.Notifications;using AIFrontend.Services.OpenCode;namespace AIFrontend.Pages.OpenCode;internal sealed partial class OpenCodeAgentSelector {`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $selectorSource
+"using System;using System.Collections.Generic;using System.Net.Http;using System.Threading;using System.Threading.Tasks;using FluentCode.Services.Notifications;using FluentCode.Services.OpenCode;namespace FluentCode.Pages.OpenCode;internal sealed partial class OpenCodeAgentSelector {`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $selectorSource
 $sources += $selectorSource
 $sources += Join-Path $PSScriptRoot 'SelectorState.cs'
 $sources += Join-Path $PSScriptRoot 'Program.cs'

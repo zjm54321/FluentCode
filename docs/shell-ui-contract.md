@@ -7,7 +7,7 @@
 > 第 7 轮（2026-10-06）：Local 完成通知导航接线（订阅 `App.LocalNavigationRequested` → 公开安全定位；排队/去重/关闭回收的最小生命周期修正）——见 §13；§12.6 的 App 接口缺口请求已由 App 冻结接口满足（真实签名 `EventHandler<NotificationNavigationEventArgs>`，见 `docs/app-integration-contract.md`）。
 > 第 11 轮（2026-10-07）：NormalPage 缓存保活（`NavigationCacheMode.Required`，Web lane 落盘）与窗口最终释放接线——`MainWindow.xaml.cs` 仅动 cachedNormalPage/finalClose 释放局部（`_cachedNormalPage` / `ReleaseCachedNormalPageWebViews` / 重订阅去重）；§9.4 的“已卸载→关闭宿主”括注已按新行为更正。见 §17。
 > 本 lane **未构建、未运行、未做任何 UI 操作（无激活/点击/截图/UI 测试）、未 git、未运行验证脚本**；编译与运行验收由父会话统一执行。
-> 写范围（本 lane 唯一允许落盘）：`src/AIFrontend/MainWindow.xaml`、`src/AIFrontend/MainWindow.xaml.cs`、`docs/shell-ui-contract.md`、`artifacts/validation/Inspect-WindowChrome.ps1`。**未**改 `Pages/**`（含 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`、`packages.lock.json`、其他脚本与文档。
+> 写范围（本 lane 唯一允许落盘）：`src/FluentCode/MainWindow.xaml`、`src/FluentCode/MainWindow.xaml.cs`、`docs/shell-ui-contract.md`、`artifacts/validation/Inspect-WindowChrome.ps1`。**未**改 `Pages/**`（含 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`、`packages.lock.json`、其他脚本与文档。
 > **取代关系**：本文档记录**最新用户外框要求**下的主窗口设计，取代 `docs/window-integration-contract.md` §1「保留项」中关于顶栏/头像/侧栏的旧描述，并取代本文档第 1 轮版本中"顶栏汉堡三态常显、内置 PaneToggleButton 静态关闭"的描述。
 
 ---
@@ -38,7 +38,7 @@
 
 Grid 列：`LeftPaddingColumn`(LeftInset) → 左组(Auto) → 中部(`*`) → `RightPaddingColumn`(RightInset)。
 
-- 左组 `StackPanel` 顺序固定（不随状态重排）：`BackButton`（保留官方 16×16 `arrow_left_16_regular` 原样几何，见 `docs/back-icon-source.md`；无历史折叠、有历史显示并让位）→ `HamburgerButton`（**仅小窗 Minimal 可见**，默认 `Visibility="Collapsed"`，宽/中折叠）→ `SearchButton`（仅小窗可见，含原生 Flyout 承载 `SearchBoxFlyout`）→ 标题（E7F4 + "AIFrontend"）。
+- 左组 `StackPanel` 顺序固定（不随状态重排）：`BackButton`（保留官方 16×16 `arrow_left_16_regular` 原样几何，见 `docs/back-icon-source.md`；无历史折叠、有历史显示并让位）→ `HamburgerButton`（**仅小窗 Minimal 可见**，默认 `Visibility="Collapsed"`，宽/中折叠）→ `SearchButton`（仅小窗可见，含原生 Flyout 承载 `SearchBoxFlyout`）→ 标题（E7F4 + "FluentCode"）。
 - 中部：`SearchBox`（`AutoSuggestBox`，仅宽/中可见；小窗折叠为左组搜索按钮）。
 - 小窗顶栏可见顺序即 **返回(按需)/汉堡/搜索**（标题在其后）；宽/中顶栏**无汉堡**（汉堡在左栏顶部）。
 - 拖拽区：沿用系统默认全宽拖拽区；交互控件（返回/汉堡/搜索框/搜索按钮，折叠项自动排除）经 `NonClientRegionKind.Passthrough` 放行（`UpdateTitleBarRegions`）。右上窗口按钮由 `RightPaddingColumn`（RightInset 按 `RasterizationScale` 换算）保留。
@@ -173,7 +173,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 10. 第 4 轮修订（2026-10-06）：恢复 WinUI 原生左右栏宽度
 
-> **取代 §9.1 的宽度选择**（`OpenPaneLength=240` / `CompactPaneLength=48` 覆盖已移除）。写范围：`src/AIFrontend/MainWindow.xaml[.cs]`、`docs/shell-ui-contract.md`（另同步 `docs/settings-ui-contract.md`、`docs/window-integration-contract.md`）。未改 `Pages/**`（除 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
+> **取代 §9.1 的宽度选择**（`OpenPaneLength=240` / `CompactPaneLength=48` 覆盖已移除）。写范围：`src/FluentCode/MainWindow.xaml[.cs]`、`docs/shell-ui-contract.md`（另同步 `docs/settings-ui-contract.md`、`docs/window-integration-contract.md`）。未改 `Pages/**`（除 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
 
 ### 10.1 宽度：一律使用 WinUI 原生默认
 
@@ -202,7 +202,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 11. 第 5 轮修订（2026-10-06）：外壳核对（A 项）与 Cookie 委托、待接清单
 
-> 写范围：`src/AIFrontend/MainWindow.xaml[.cs]`、`docs/shell-ui-contract.md`（另同步 `docs/settings-ui-contract.md`）。未改 `Pages/**`（除 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
+> 写范围：`src/FluentCode/MainWindow.xaml[.cs]`、`docs/shell-ui-contract.md`（另同步 `docs/settings-ui-contract.md`）。未改 `Pages/**`（除 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
 
 ### 11.1 A 项核对：原生默认尺寸，无任何自定覆盖（已确认）
 
@@ -227,7 +227,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 12. 第 6 轮修订（2026-10-06）：Shell 集成接线（OpenCode 身份/会话/导航、任务栏、诊断提示、设置凭据刷新）
 
-> 写范围：`src/AIFrontend/MainWindow.xaml[.cs]`、**新增** `MainWindow.ShellIntegration.cs` / `MainWindow.OpenCode.cs` / `MainWindow.Taskbar.cs` / `MainWindow.Local.cs`、`src/AIFrontend/Pages/Settings/**`（仅凭据刷新接线：`SettingsView.cs`、`SettingsView.OpenCode.cs`、`SettingsView.OpenCodePairing.cs`、`SettingsPage.cs`）、`docs/shell-ui-contract.md`。**未**改 `App/**`、`Services/**`、`Models/**`、`NormalPage.*`、`Pages/Local/**`、`Pages/Web/**`、`Pages/OpenCode/**`、`*.csproj`、脚本。仍为**静态实现与静态核对**（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。**本节取代 §11.3 待接清单。**
+> 写范围：`src/FluentCode/MainWindow.xaml[.cs]`、**新增** `MainWindow.ShellIntegration.cs` / `MainWindow.OpenCode.cs` / `MainWindow.Taskbar.cs` / `MainWindow.Local.cs`、`src/FluentCode/Pages/Settings/**`（仅凭据刷新接线：`SettingsView.cs`、`SettingsView.OpenCode.cs`、`SettingsView.OpenCodePairing.cs`、`SettingsPage.cs`）、`docs/shell-ui-contract.md`。**未**改 `App/**`、`Services/**`、`Models/**`、`NormalPage.*`、`Pages/Local/**`、`Pages/Web/**`、`Pages/OpenCode/**`、`*.csproj`、脚本。仍为**静态实现与静态核对**（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。**本节取代 §11.3 待接清单。**
 > 依据（按优先级）：任务书 > 当前源码实际签名 > `docs/app-integration-contract.md`、`docs/notification-integration-contract.md`、`docs/local-ui-contract.md`、`docs/opencode-ui-contract.md`、`docs/taskbar-integration-contract.md`。
 
 ### 12.1 接线时序（关键顺序）
@@ -308,7 +308,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 13. 第 7 轮修订（2026-10-06）：Local 完成通知导航接线与生命周期修正
 
-> 写范围：`src/AIFrontend/MainWindow.Local.cs`、`src/AIFrontend/MainWindow.ShellIntegration.cs`、`src/AIFrontend/MainWindow.xaml.cs`（仅注释清单）、`docs/shell-ui-contract.md`。**未**改 `App/**`、`Services/**`、`Pages/**`、`MainWindow.OpenCode.cs`、`MainWindow.Taskbar.cs`、`*.csproj`、脚本。仍为静态实现与静态核对（未构建、未运行、未做 UI 操作、未发真实通知/HTTP、未 git）。**本节取代 §12.6 的“App 接口缺口”请求**（App 已按冻结契约实现 `LocalNavigationRequested`，见 `docs/app-integration-contract.md`「Local 完成导航接续」）。
+> 写范围：`src/FluentCode/MainWindow.Local.cs`、`src/FluentCode/MainWindow.ShellIntegration.cs`、`src/FluentCode/MainWindow.xaml.cs`（仅注释清单）、`docs/shell-ui-contract.md`。**未**改 `App/**`、`Services/**`、`Pages/**`、`MainWindow.OpenCode.cs`、`MainWindow.Taskbar.cs`、`*.csproj`、脚本。仍为静态实现与静态核对（未构建、未运行、未做 UI 操作、未发真实通知/HTTP、未 git）。**本节取代 §12.6 的“App 接口缺口”请求**（App 已按冻结契约实现 `LocalNavigationRequested`，见 `docs/app-integration-contract.md`「Local 完成导航接续」）。
 
 ### 13.1 消费接线（实际调用链）
 
@@ -346,7 +346,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 14. 第 8 轮修订（2026-10-06）：Local 定位等待真实 ready + 取消终态生命周期收尾
 
-> 写范围：`src/AIFrontend/Pages/NormalPage.xaml.cs`、`src/AIFrontend/Pages/Local/**`、`src/AIFrontend/MainWindow.Local.cs`、`src/AIFrontend/MainWindow.xaml.cs`（仅 Local 事件订阅/退订必需）、`src/AIFrontend/MainWindow.Taskbar.cs`（未改）、`docs/local-ui-contract.md`、`docs/shell-ui-contract.md`（另 `docs/app-integration-contract.md` 仅更正“已接 Local 事件”一句）。**未**改 `App/**`、`Services/**`、`Models/**`、`OpenCodePage`/`Pages/OpenCode/**`、`*.csproj`、`packages.lock.json`、其他视觉设计。仍为静态实现与静态核对（未构建、未运行、未 GUI/API、未 git）。
+> 写范围：`src/FluentCode/Pages/NormalPage.xaml.cs`、`src/FluentCode/Pages/Local/**`、`src/FluentCode/MainWindow.Local.cs`、`src/FluentCode/MainWindow.xaml.cs`（仅 Local 事件订阅/退订必需）、`src/FluentCode/MainWindow.Taskbar.cs`（未改）、`docs/local-ui-contract.md`、`docs/shell-ui-contract.md`（另 `docs/app-integration-contract.md` 仅更正“已接 Local 事件”一句）。**未**改 `App/**`、`Services/**`、`Models/**`、`OpenCodePage`/`Pages/OpenCode/**`、`*.csproj`、`packages.lock.json`、其他视觉设计。仍为静态实现与静态核对（未构建、未运行、未 GUI/API、未 git）。
 
 ### 14.1 定位：移除轮询重试，改为等待真实 ready（修复慢磁盘刷新后无法定位）
 
@@ -383,7 +383,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 15. 第 9 轮修订（2026-10-06）：设置页选中项归位、Footer 顺序与原生默认尺寸
 
-> 写范围：`src/AIFrontend/MainWindow.xaml`、`src/AIFrontend/MainWindow.xaml.cs`、`docs/shell-ui-contract.md`。**未**改 `Pages/**`（含 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`、其他脚本。静态实现与静态核对（未构建、未运行、未 GUI、未 git）。
+> 写范围：`src/FluentCode/MainWindow.xaml`、`src/FluentCode/MainWindow.xaml.cs`、`docs/shell-ui-contract.md`。**未**改 `Pages/**`（含 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`、其他脚本。静态实现与静态核对（未构建、未运行、未 GUI、未 git）。
 
 依据父会话 UIA 证据 `artifacts/validation/current-acceptance/settings-after-metadata.json` / `settings-opencode-after-metadata.json`（PID 17204）：设置页 `SettingsPage`/`SettingsView` 可见，但 `NavNormal.Selected=true`、`NavSettings.Selected=false`（500ms 与 2 分钟后相同）；Footer 顺序 `AccountButton`(664) → `TaskStatusButton`(704) → `NavSettings`(742)；三主项行距 60、Footer 项 36。
 
@@ -454,9 +454,9 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ### 16.4 源哈希（复核锚点）
 
-- `src/AIFrontend/MainWindow.xaml` sha256 `d17350c18ebc68babbd8bc8226380b24c353caea4c14fbbf3372d8028039de40`
-- `src/AIFrontend/MainWindow.xaml.cs` sha256 `2998444016673ebca34f5929ab6a058f0a1f3ae70b64a4fce63b4ef7848a89f3`
-- `src/AIFrontend/App.xaml` sha256 `a53678e47cd3988b058e15ba1ab5839992ebc20d85852421fc2d843d3f67b2d3`
+- `src/FluentCode/MainWindow.xaml` sha256 `d17350c18ebc68babbd8bc8226380b24c353caea4c14fbbf3372d8028039de40`
+- `src/FluentCode/MainWindow.xaml.cs` sha256 `2998444016673ebca34f5929ab6a058f0a1f3ae70b64a4fce63b4ef7848a89f3`
+- `src/FluentCode/App.xaml` sha256 `a53678e47cd3988b058e15ba1ab5839992ebc20d85852421fc2d843d3f67b2d3`
 - 锁定 `generic.xaml`（WinUI 1.8.260803003）sha256 `56c8c60fe0de6e5ccd81f3f726cb6b8354763c74ff7ca99b7c27ed26b2aed9fd`（3,368,884 字节）
 
 ### 16.5 未验证点（父会话验收）
@@ -468,7 +468,7 @@ Auto 三态、内置/顶栏汉堡互斥、返回/搜索/齿轮动画、拖拽 DP
 
 ## 17. 第 11 轮修订（2026-10-07）：NormalPage 缓存保活与窗口最终释放（MainWindow 侧）
 
-> 写范围（本轮扩入）：`src/AIFrontend/MainWindow.xaml.cs`（**仅** cachedNormalPage/finalClose 释放相关局部）、`docs/shell-ui-contract.md`（仅 cached 网页生命周期相关节）。**未**改 `MainWindow.Local/OpenCode/Taskbar/ShellIntegration` 分部、`Pages/**`（NormalPage 保活实现属 Web lane）、`Services/**`、`App/**`、`*.csproj`。静态实现与静态核对（未构建、未运行、未 GUI、未 git）。
+> 写范围（本轮扩入）：`src/FluentCode/MainWindow.xaml.cs`（**仅** cachedNormalPage/finalClose 释放相关局部）、`docs/shell-ui-contract.md`（仅 cached 网页生命周期相关节）。**未**改 `MainWindow.Local/OpenCode/Taskbar/ShellIntegration` 分部、`Pages/**`（NormalPage 保活实现属 Web lane）、`Services/**`、`App/**`、`*.csproj`。静态实现与静态核对（未构建、未运行、未 GUI、未 git）。
 
 ### 17.1 背景与目标
 

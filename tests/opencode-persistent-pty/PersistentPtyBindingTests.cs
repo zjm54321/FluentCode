@@ -7,10 +7,10 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 
 internal static class PersistentPtyBindingTests
 {

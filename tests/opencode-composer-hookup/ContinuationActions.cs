@@ -6,9 +6,9 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
+using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
 using Microsoft.UI.Xaml;
 
 internal static class ContinuationTests
@@ -206,7 +206,7 @@ internal static class ContinuationTests
         }
     }
 }
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {
@@ -227,7 +227,7 @@ namespace AIFrontend.Pages
         }
     }
 }
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal static class OpenCodeComposerContinuationDialog
     {

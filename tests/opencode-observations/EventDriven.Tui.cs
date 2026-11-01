@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 
 static partial class Checks
 {
@@ -213,7 +213,7 @@ static partial class Checks
         using var client = Client(http);
         using var monitor = new OpenCodeNotificationMonitor((CompletionNotificationService?)null, new("tui-app-lease", client));
         var source = new OpenCodePageSource("tui-app-lease", 1, () => client);
-        var app = new AIFrontend.App(); app.SetSource(source, monitor);
+        var app = new FluentCode.App(); app.SetSource(source, monitor);
         bool connected = true; Func<bool> current = () => connected;
         var at = DateTimeOffset.UtcNow.AddHours(-1);
         var observation = new OpenCodeSessionObservation(source.Identity, "ses_test",
@@ -228,11 +228,11 @@ static partial class Checks
         var state = app.GetOpenCodeSessionUiSnapshot(source, 1)!.Sessions.Single();
         Check(state.Working == true && state.PendingAction == false && state.QuestionPending == false,
             "real App/store preserves continuously event-observed status, pending and question without timestamp renewal");
-        Check(app.Snapshot.Status == AIFrontend.Services.Taskbar.TaskbarStatus.Working,
+        Check(app.Snapshot.Status == FluentCode.Services.Taskbar.TaskbarStatus.Working,
             "taskbar evidence also honors the current event epoch beyond snapshot TTL");
         connected = false; app.Tick();
         Check(app.GetOpenCodeSessionUiSnapshot(source, 1)!.Sessions.Single().Working is null
-            && app.Snapshot.Status != AIFrontend.Services.Taskbar.TaskbarStatus.Working,
+            && app.Snapshot.Status != FluentCode.Services.Taskbar.TaskbarStatus.Working,
             "disconnect revokes UI and taskbar event leases without a periodic HTTP safety read");
     }
 }

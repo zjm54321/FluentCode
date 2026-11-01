@@ -21,8 +21,8 @@ $notifications = @('NotificationFormPolicy.cs', 'NotificationInteractionCoordina
     'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs',
     'OpenCodeInteractionGate.cs', 'NotificationSource.cs', 'NotificationText.cs', 'NotificationInteractionXml.cs',
     'OpenCodeExecutionProjection.cs') # Required by wildcard-linked session-control DTOs; real type, not a stub.
-foreach ($file in $notifications) { $common += '"' + (Join-Path $repo "src/AIFrontend/Services/Notifications/$file") + '"' }
-$common += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Services/OpenCode/*.cs') |
+foreach ($file in $notifications) { $common += '"' + (Join-Path $repo "src/FluentCode/Services/Notifications/$file") + '"' }
+$common += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/*.cs') |
     Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
 $common += Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 

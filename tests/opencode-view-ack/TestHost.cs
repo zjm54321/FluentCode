@@ -4,9 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 namespace Windows.Foundation { internal readonly record struct Rect(double X, double Y, double Width, double Height); }
 namespace Microsoft.UI.Xaml
@@ -74,7 +74,7 @@ namespace Microsoft.UI.Xaml.Media
         internal static void Frame() => Rendering?.Invoke(null, new());
     }
 }
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Windows.Foundation.Rect LabelBounds,
         Windows.Foundation.Rect EffectiveViewport, Windows.Foundation.Rect ScrollBounds);
@@ -100,7 +100,7 @@ namespace AIFrontend.Pages.OpenCode
         }
     }
 }
-namespace AIFrontend
+namespace FluentCode
 {
     public class App : Microsoft.UI.Xaml.Application
     {
@@ -126,7 +126,7 @@ namespace AIFrontend
         }
     }
 }
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage : Microsoft.UI.Xaml.Controls.Page
     {

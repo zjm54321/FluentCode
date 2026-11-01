@@ -1,10 +1,10 @@
 // Real tree event reducer + projection/render glue; only native tree/count controls are inert.
 using System;
 using System.Collections.Generic;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 
 public sealed partial class OpenCodePage
 {

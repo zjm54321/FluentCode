@@ -6,8 +6,8 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode.Browser;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Services.OpenCode.Browser;
+using FluentCode.Pages.OpenCode;
 
 internal static class FrameTests
 {

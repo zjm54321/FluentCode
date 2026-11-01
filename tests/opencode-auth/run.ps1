@@ -12,13 +12,13 @@ New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeAuthTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$arguments += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Services/OpenCode/*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
-$arguments += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Models/*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
+$arguments += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
+$arguments += Get-ChildItem (Join-Path $repo 'src/FluentCode/Models/*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 # Current OpenCode session controls and AppSettings depend on these WinUI-free production types.
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
-    $arguments += '"' + (Join-Path $repo "src/AIFrontend/Services/Notifications/$name") + '"'
+    $arguments += '"' + (Join-Path $repo "src/FluentCode/Services/Notifications/$name") + '"'
 }
-$arguments += '"' + (Join-Path $repo 'src/AIFrontend/Services/Appearance/AppFontSettings.cs') + '"'
+$arguments += '"' + (Join-Path $repo 'src/FluentCode/Services/Appearance/AppFontSettings.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

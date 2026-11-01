@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 
 internal static partial class Program
 {

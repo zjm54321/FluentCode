@@ -10,7 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 
 internal static class Program
 {

@@ -49,7 +49,7 @@ Node/Lighthouse and required assets; actual callback integration and snapshot
 audits are validated by the runtime owner.
 
 The csproj owner should copy `../../artifacts/browser-runtime/**/*` (relative to
-`src/AIFrontend/AIFrontend.csproj`) to `BrowserRuntime/%(RecursiveDir)%(Filename)%(Extension)`
+`src/FluentCode/FluentCode.csproj`) to `BrowserRuntime/%(RecursiveDir)%(Filename)%(Extension)`
 with both `CopyToOutputDirectory` and `CopyToPublishDirectory` set to
 `PreserveNewest`, including hidden files. Missing `node.exe`,
 `node_modules/lighthouse/package.json`, `runtime-manifest.json`, or the eventual

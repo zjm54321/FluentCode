@@ -3,9 +3,9 @@
 > 2026-10-30 测试已精简为[清单中的 25 个关键入口](test-suite.md)；下文已移除 runner 的路径与结果仅为历史证据。
 
 > 状态：本轮仅**静态实现与静态核对**（2026-10-06）；**未构建、未运行、未做 UI 操作、未发真实请求、未 git**。编译、集成与行为验收由父会话统一执行。
-> 写范围（本 lane 独占）：`src/AIFrontend/Pages/Settings/**`、`docs/settings-ui-contract.md`。**未**改动 `MainWindow.*`、`NormalPage.*`、`Pages/Web/**`、`Services/**`、`Models/**`、`*.csproj`、`App.*`、其他文档。
+> 写范围（本 lane 独占）：`src/FluentCode/Pages/Settings/**`、`docs/settings-ui-contract.md`。**未**改动 `MainWindow.*`、`NormalPage.*`、`Pages/Web/**`、`Services/**`、`Models/**`、`*.csproj`、`App.*`、其他文档。
 >
-> **修订（2026-10-06 第 3 轮：设置→配置生效流程）**：本轮仍只动 `src/AIFrontend/Pages/Settings/**` 与本文档；**核对后未改 `MainWindow.xaml.cs`（无需改动）**，**未**触碰 `OpenCodePage.*`、`Pages/OpenCode/**`（cla-10 活跃写入域）、`App/Services/Models/csproj`。改动：
+> **修订（2026-10-06 第 3 轮：设置→配置生效流程）**：本轮仍只动 `src/FluentCode/Pages/Settings/**` 与本文档；**核对后未改 `MainWindow.xaml.cs`（无需改动）**，**未**触碰 `OpenCodePage.*`、`Pages/OpenCode/**`（cla-10 活跃写入域）、`App/Services/Models/csproj`。改动：
 > 1. OpenCode 分区新增“放弃修改”（`SettingsOpenCodeCancel`）：还原未提交的地址 / token 输入，不写盘、不连接。
 > 2. 保存成功提示改为只陈述“配置已写入”，并**明确引导前往 OpenCode 页面连接**（本页不建立连接、不制造重复的连接 UI）；绝不由“保存成功”推断“连接成功”。
 > 3. 空地址 = 清除后端地址（`BaseUrl=null`）且**保留**已存 token；**仅填 token、无地址被明确拒绝**（不静默写孤立凭据）。
@@ -19,7 +19,7 @@
 
 **做**：
 
-- 可嵌入 `public AIFrontend.Pages.Settings.SettingsView : UserControl`（纯 C# 组合原生 WinUI 控件，无 XAML 文件）。
+- 可嵌入 `public FluentCode.Pages.Settings.SettingsView : UserControl`（纯 C# 组合原生 WinUI 控件，无 XAML 文件）。
 - 中文普通文案；原生分区（`Expander` + `InfoBar`）；外层 `ScrollViewer` 适应小窗口。
 - 主题 `System/Light/Dark` 持久化，并通过公开事件通知主窗口应用。
 - OpenCode 后端 URL 与可选**密码型** token（`PasswordBox`）安全存储；测试连接。
@@ -38,13 +38,13 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/AIFrontend/Pages/Settings/SettingsView.cs` | 类声明、构造、公开 API、主题分区、`Changed` 处理、加载/保存、通用校验与布局 |
-| `src/AIFrontend/Pages/Settings/SettingsView.Providers.cs` | provider 分区（添加/编辑/删除/清除密钥/测试连接） |
-| `src/AIFrontend/Pages/Settings/SettingsView.Models.cs` | 模型分区（选中、手动添加/删除、发现加入、能力编辑） |
-| `src/AIFrontend/Pages/Settings/SettingsView.OpenCode.cs` | OpenCode 后端分区（地址、token、保存、测试、清除 token） |
-| `src/AIFrontend/Pages/Settings/SettingsView.Cookies.cs` | Cookie 清理分区（三个按钮） |
-| `src/AIFrontend/Pages/Settings/SettingsThemeChangedEventArgs.cs` | 主题事件参数 |
-| `src/AIFrontend/Pages/Settings/SettingsPage.cs` | 应用内设置页（纯 C# `Page`，无 XAML）：经 `ContentFrame` 承载 `SettingsView`，转发主题事件，离开时收尾内联确认（§11 新增） |
+| `src/FluentCode/Pages/Settings/SettingsView.cs` | 类声明、构造、公开 API、主题分区、`Changed` 处理、加载/保存、通用校验与布局 |
+| `src/FluentCode/Pages/Settings/SettingsView.Providers.cs` | provider 分区（添加/编辑/删除/清除密钥/测试连接） |
+| `src/FluentCode/Pages/Settings/SettingsView.Models.cs` | 模型分区（选中、手动添加/删除、发现加入、能力编辑） |
+| `src/FluentCode/Pages/Settings/SettingsView.OpenCode.cs` | OpenCode 后端分区（地址、token、保存、测试、清除 token） |
+| `src/FluentCode/Pages/Settings/SettingsView.Cookies.cs` | Cookie 清理分区（三个按钮） |
+| `src/FluentCode/Pages/Settings/SettingsThemeChangedEventArgs.cs` | 主题事件参数 |
+| `src/FluentCode/Pages/Settings/SettingsPage.cs` | 应用内设置页（纯 C# `Page`，无 XAML）：经 `ContentFrame` 承载 `SettingsView`，转发主题事件，离开时收尾内联确认（§11 新增） |
 
 > 全部为 `.cs`，由 SDK 默认编译项自动纳入；**未新增 XAML、未修改 csproj**。`Pages\**\*.xaml` 递归包含规则已存在，本 lane 未触碰。
 
@@ -52,19 +52,19 @@
 
 ## 3. 公开入口（精确签名）
 
-命名空间 `AIFrontend.Pages.Settings`：
+命名空间 `FluentCode.Pages.Settings`：
 
 ```csharp
 public sealed partial class SettingsView : Microsoft.UI.Xaml.Controls.UserControl
 {
     // 构造：共享服务 + 可选 cookie 回调 + 可选发现客户端
     public SettingsView(
-        AIFrontend.Services.Configuration.SettingsService settingsService,
-        AIFrontend.Services.Configuration.DpapiSecretStore secretStore,
-        System.Func<AIFrontend.Pages.Web.WebProvider, System.Threading.Tasks.Task>? clearCookiesAsync = null,
-        AIFrontend.Services.Contracts.IModelCatalogClient? modelCatalog = null);
+        FluentCode.Services.Configuration.SettingsService settingsService,
+        FluentCode.Services.Configuration.DpapiSecretStore secretStore,
+        System.Func<FluentCode.Pages.Web.WebProvider, System.Threading.Tasks.Task>? clearCookiesAsync = null,
+        FluentCode.Services.Contracts.IModelCatalogClient? modelCatalog = null);
 
-    public AIFrontend.Models.AppSettings Settings { get; }        // 最近已加载/已持久化快照
+    public FluentCode.Models.AppSettings Settings { get; }        // 最近已加载/已持久化快照
     public bool HasCookieClearCallback { get; }                   // false 时三个清除按钮禁用
 
     // 主题变化公开事件（供主窗口应用；仅在 SaveAsync 成功后触发）
@@ -137,7 +137,7 @@ var view = new SettingsView(
     clearCookiesAsync: async provider =>
     {
         // 通过 ContentFrame 取回当前 NormalPage（须处于已加载状态）后按 provider 清理。
-        if (window.ContentFrame.Content is AIFrontend.Pages.NormalPage page)
+        if (window.ContentFrame.Content is FluentCode.Pages.NormalPage page)
         {
             await page.ClearCookiesAsync(provider);
         }
@@ -155,8 +155,8 @@ view.ThemeChanged += (_, e) =>
 {
     root.RequestedTheme = e.Theme switch
     {
-        AIFrontend.Models.AppTheme.Light => ElementTheme.Light,
-        AIFrontend.Models.AppTheme.Dark  => ElementTheme.Dark,
+        FluentCode.Models.AppTheme.Light => ElementTheme.Light,
+        FluentCode.Models.AppTheme.Dark  => ElementTheme.Dark,
         _ => ElementTheme.Default,
     };
 };
@@ -219,9 +219,9 @@ await dialog.ShowAsync();
 
 ## 11. 第 4 轮修订（2026-10-06）：设置改为应用内页面承载
 
-> 本轮按用户实测要求：设置必须是**应用内页面**，**不再使用 ContentDialog / 独立窗口 / 模态浮层**。写范围：`src/AIFrontend/Pages/Settings/**`（新增 `SettingsPage.cs`）、`MainWindow.xaml[.cs]`、`docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`、`docs/window-integration-contract.md`。**未**改后端服务逻辑、`NormalPage.*`、`Pages/Web/**`、`App/**`、`Models/**`、`*.csproj`、脚本。
+> 本轮按用户实测要求：设置必须是**应用内页面**，**不再使用 ContentDialog / 独立窗口 / 模态浮层**。写范围：`src/FluentCode/Pages/Settings/**`（新增 `SettingsPage.cs`）、`MainWindow.xaml[.cs]`、`docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`、`docs/window-integration-contract.md`。**未**改后端服务逻辑、`NormalPage.*`、`Pages/Web/**`、`App/**`、`Models/**`、`*.csproj`、脚本。
 
-- **承载方式**：新增 `public sealed class AIFrontend.Pages.Settings.SettingsPage : Microsoft.UI.Xaml.Controls.Page`（**纯 C#，无 XAML**；由默认编译项纳入，未改 csproj）。`MainWindow` 以 `ContentFrame.Navigate(typeof(SettingsPage))` 承载 `SettingsView`，复用现有 Frame 导航与返回栈；**`MainWindow` 中 `ContentDialog` 已完全删除**（设置对话框 `SettingsDialog` 与兜底错误框 `SettingsDialogError` 一并移除）。
+- **承载方式**：新增 `public sealed class FluentCode.Pages.Settings.SettingsPage : Microsoft.UI.Xaml.Controls.Page`（**纯 C#，无 XAML**；由默认编译项纳入，未改 csproj）。`MainWindow` 以 `ContentFrame.Navigate(typeof(SettingsPage))` 承载 `SettingsView`，复用现有 Frame 导航与返回栈；**`MainWindow` 中 `ContentDialog` 已完全删除**（设置对话框 `SettingsDialog` 与兜底错误框 `SettingsDialogError` 一并移除）。
 - **共享服务**：`SettingsPage` 始终复用 `NormalPage.SharedSettingsService` / `SharedSecretStore`（应用级惰性单例），**不新建 `SettingsService`/`DpapiSecretStore`**，避免重复订阅与状态分裂。
 - **生命周期**：`SettingsPage.OnNavigatedTo` 构造 `SettingsView` 并 `LoadAsync()`（异步，异常由控件内 `InfoBar` 呈现）；`OnNavigatedFrom` 解订 `ThemeChanged`、清空 `Content`，并调 `SettingsView.CancelPendingInteractions()` 结束仍挂起的内联确认（按“取消”处理），不依赖 `Unloaded` 时机。
 - **主题**：`SettingsPage.ThemeChanged` 转发 `SettingsView.ThemeChanged`，并在首次 `LoadAsync` 完成后以已保存主题触发一次；`MainWindow` 订阅后 `ApplyTheme`。`MainWindow.AttachPageEvents`/`DetachPageEvents` 已增订/解订该事件。
@@ -243,7 +243,7 @@ await dialog.ShowAsync();
 
 ## 12. 第 5 轮修订（2026-10-06）：真正双栏页面 + 脏数据离开保护 + OpenCode 测试加固 + Cookie 清理恢复
 
-> 写范围：`src/AIFrontend/Pages/Settings/**`、`src/AIFrontend/MainWindow.xaml[.cs]`、`docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`、`docs/window-integration-contract.md`。**未**改 `NormalPage.*`、`Pages/Web/**`、`Services/**`（含 Configuration/OpenCode）、`App/**`、`Models/**`、`*.csproj`、脚本。仍为**静态实现与静态核对**（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。
+> 写范围：`src/FluentCode/Pages/Settings/**`、`src/FluentCode/MainWindow.xaml[.cs]`、`docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`、`docs/window-integration-contract.md`。**未**改 `NormalPage.*`、`Pages/Web/**`、`Services/**`（含 Configuration/OpenCode）、`App/**`、`Models/**`、`*.csproj`、脚本。仍为**静态实现与静态核对**（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。
 
 ### 12.1 真正双栏（需求 2）
 
@@ -298,7 +298,7 @@ await dialog.ShowAsync();
 
 ```csharp
 // 方案 A：Pages/Web 新增独立清理器（不依赖页面实例）
-namespace AIFrontend.Pages.Web;
+namespace FluentCode.Pages.Web;
 public static class WebCookieCleaner
 {
     // 清理指定 provider 环境的全部 cookie：只清 cookie、不删用户数据目录、不导航、UI 线程；
@@ -307,7 +307,7 @@ public static class WebCookieCleaner
 }
 
 // 方案 B：NormalPage 增加静态入口（复用其宿主逻辑，但需支持未挂载态）
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 public sealed partial class NormalPage
 {
     public static Task ClearCookiesForProviderAsync(WebProvider provider, CancellationToken cancellationToken = default);
@@ -330,7 +330,7 @@ public sealed partial class NormalPage
 
 ## 13. 第 6 轮修订（2026-10-06）：认证 UI 双入口（手动 Basic / 配对链接）+ Cookie 清理委托
 
-> 写范围：`src/AIFrontend/Pages/Settings/**`（`SettingsView.cs`、`SettingsView.OpenCode.cs` 修改；**新增** `SettingsView.OpenCodePairing.cs`）、`src/AIFrontend/MainWindow.xaml[.cs]`（Cookie 清理改委托 + 待接清单注释）、`docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`。**未**改 `Services/**`（含 OpenCode/Configuration）、`Models/**`、`App/**`、`NormalPage.*`、`Pages/Web/**`、`Pages/OpenCode/**`、`Pages/Local/**`、`*.csproj`、脚本。仍为**静态实现与静态核对**（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。
+> 写范围：`src/FluentCode/Pages/Settings/**`（`SettingsView.cs`、`SettingsView.OpenCode.cs` 修改；**新增** `SettingsView.OpenCodePairing.cs`）、`src/FluentCode/MainWindow.xaml[.cs]`（Cookie 清理改委托 + 待接清单注释）、`docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`。**未**改 `Services/**`（含 OpenCode/Configuration）、`Models/**`、`App/**`、`NormalPage.*`、`Pages/Web/**`、`Pages/OpenCode/**`、`Pages/Local/**`、`*.csproj`、脚本。仍为**静态实现与静态核对**（未构建、未运行、未做 UI 操作、未发真实请求、未 git）。
 
 ### 13.1 认证 UI 正式扩为两个入口（需求 D；后端字段已就绪）
 

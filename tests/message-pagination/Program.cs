@@ -7,9 +7,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 
 internal static partial class Program
 {
@@ -189,13 +189,13 @@ internal static partial class Program
             Check(left == (width + column.Width) / 2 + 8, $"SB1: {width}px bar sits 8px after the centered reading column");
             Check(left >= 0 && left + 56 <= width, $"SB1: {width}px bar stays inside the timeline");
             Check(column.RightGutter == 0, $"SB1: {width}px composer and messages retain the same center");
-            var gutters = AIFrontend.Pages.OpenCode.OpenCodeTurnOutline.Gutters(width, column.Width, 32, 12);
+            var gutters = FluentCode.Pages.OpenCode.OpenCodeTurnOutline.Gutters(width, column.Width, 32, 12);
             var columnLeft = (width - column.Width) / 2;
             Check(gutters.NavigatorFits && Math.Abs((columnLeft - (gutters.NavigatorLeft + 32)) - (gutters.ScrollBarLeft - (columnLeft + column.Width))) < 0.001
                 && gutters.ScrollBarLeft == left && width - 12 + gutters.ScrollBarShift == gutters.ScrollBarLeft,
                 $"TN: {width}px native scrollbar mirrors the turn navigator's gap to the reading column");
         }
-        var cramped = AIFrontend.Pages.OpenCode.OpenCodeTurnOutline.Gutters(60, 0, 32, 12);
+        var cramped = FluentCode.Pages.OpenCode.OpenCodeTurnOutline.Gutters(60, 0, 32, 12);
         Check(!cramped.NavigatorFits && cramped.ScrollBarShift == 0 && cramped.ScrollBarLeft == 48,
             "TN: too narrow for the navigator: it hides and the scrollbar returns to the viewport edge");
         var narrowBlank = OpenCodePage.ConversationColumn(480, 1040, true);

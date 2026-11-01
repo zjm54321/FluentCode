@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {
@@ -95,7 +95,7 @@ namespace Windows.ApplicationModel.DataTransfer
     public sealed class DataPackage { public void SetText(string text) { } }
     public static class Clipboard { public static void SetContent(DataPackage data) { } }
 }
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal sealed class OpenCodePersistentPtyInventoryView
     {

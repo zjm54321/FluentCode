@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Path $EvidenceRoot | Out-Null
 $EvidenceRoot = [IO.Path]::GetFullPath($EvidenceRoot)
 $profile = Join-Path $EvidenceRoot 'profile'
 New-Item -ItemType Directory -Path $profile | Out-Null
-$exe = (Resolve-Path (Join-Path $PublishDirectory 'AIFrontend.exe')).Path
+$exe = (Resolve-Path (Join-Path $PublishDirectory 'FluentCode.exe')).Path
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -42,8 +42,8 @@ try {
     $start = [Diagnostics.ProcessStartInfo]::new($exe)
     $start.UseShellExecute = $false
     $start.WorkingDirectory = Split-Path $exe
-    $start.EnvironmentVariables['AIF_STARTUP_SMOKE_ROOT'] = $profile
-    $start.EnvironmentVariables['AIF_THEME_REFRESH_TEST'] = '1'
+    $start.EnvironmentVariables['FC_STARTUP_SMOKE_ROOT'] = $profile
+    $start.EnvironmentVariables['FC_THEME_REFRESH_TEST'] = '1'
     $process = [Diagnostics.Process]::Start($start)
     $result.ProcessId = $process.Id
     Wait-Marker 'system-ready'
@@ -76,6 +76,6 @@ finally {
         [void][ThemeWindow]::SendMessageTimeout([IntPtr]::new(0xffff), 0x1a, [IntPtr]::Zero, 'ImmersiveColorSet', 2, 2000, [ref]$sent)
     }
     $result | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'results.json')
-    Get-FileHash -Algorithm SHA256 -LiteralPath $exe, (Join-Path $PublishDirectory 'AIFrontend.dll'), (Join-Path $PublishDirectory 'AIFrontend.pri') |
+    Get-FileHash -Algorithm SHA256 -LiteralPath $exe, (Join-Path $PublishDirectory 'FluentCode.dll'), (Join-Path $PublishDirectory 'FluentCode.pri') |
         Select-Object Path,Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'publish-hashes.json')
 }

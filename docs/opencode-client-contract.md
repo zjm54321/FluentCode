@@ -1,6 +1,6 @@
-# OpenCode V2 HTTP 客户端合同（`src/AIFrontend/Services/OpenCode`）
+# OpenCode V2 HTTP 客户端合同（`src/FluentCode/Services/OpenCode`）
 
-本文件描述 `AIFrontend.Services.OpenCode` 命名空间内独立最小 OpenCode V2 HTTP transport 的
+本文件描述 `FluentCode.Services.OpenCode` 命名空间内独立最小 OpenCode V2 HTTP transport 的
 已核实契约、公开接口、语义模型与未验证点。后续页面（Pages）通过该客户端消费 OpenCode 服务；
 本 lane 不依赖其他 lane 的共享模型，全部 DTO 位于本命名空间内。
 
@@ -110,7 +110,7 @@
 ## 5. 公开 API 签名
 
 ```csharp
-namespace AIFrontend.Services.OpenCode;
+namespace FluentCode.Services.OpenCode;
 
 public sealed record OpenCodeClientOptions
 {
@@ -282,7 +282,7 @@ public sealed class OpenCodeProtocolException : OpenCodeException        // 响�
 ## 9. 使用示例
 
 ```csharp
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 
 // 1) 构造（缺少/非法配置会立即抛 OpenCodeConfigurationException，不访问任何后端）
 using var client = new OpenCodeClient(new OpenCodeClientOptions
@@ -359,7 +359,7 @@ var waitingForPermission = permissions.Count > 0;   // 仅 UI 提示，不自动
 - **文档交叉核实**：baseUrl 语义（`http://localhost:4096`，不含 /api）、Bearer 头示例、
   事件订阅 live-only 语义、prompt/interrupt/inbox/permission/message 端点的原文措辞，
   对照两份官方文档抓取副本。
-- **范围检查**：写入仅限 `src/AIFrontend/Services/OpenCode/**` 与
+- **范围检查**：写入仅限 `src/FluentCode/Services/OpenCode/**` 与
   `docs/opencode-client-contract.md`；未改动 Models/Configuration/Contracts/Pages/
   MainWindow/App/csproj 或其他任何文件。
 - **代码级自查**：命名空间一致；DTO 属性名与 JSON 名逐字段对照；常量与已核实枚举逐字一致；
@@ -408,7 +408,7 @@ var waitingForPermission = permissions.Count > 0;   // 仅 UI 提示，不自动
 
 ### 完整新增公开方法
 
-均属于 `AIFrontend.Services.OpenCode.OpenCodeClient`（现有构造函数不变）：
+均属于 `FluentCode.Services.OpenCode.OpenCodeClient`（现有构造函数不变）：
 
 ```csharp
 Task<OpenCodePermissionRequest> GetPendingPermissionAsync(
@@ -531,7 +531,7 @@ await client.ReplyFormAsync(sessionId, form, chosenAnswer, ct);
 
 ### 本次实际验证
 
-隔离目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-opencode-interactions-validation-20261006T163406Z`。
+隔离目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-opencode-interactions-validation-20261006T163406Z`。
 
 - 复制全部 13 个 OpenCode C# 文件并记录前后 SHA-256；仅纯 net10 工程，不构建活动主工程。
 - Windows dotnet 禁首次证书生成（`DOTNET_GENERATE_ASPNET_CERTIFICATE=false`、`DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`），NuGet 源清空且无新增包。
@@ -548,11 +548,11 @@ await client.ReplyFormAsync(sessionId, form, chosenAnswer, ct);
 
 ### 持久化及准确接入契约
 
-`AIFrontend.Models.OpenCodeSettings` 仅新增：
+`FluentCode.Models.OpenCodeSettings` 仅新增：
 
 ```csharp
-public AIFrontend.Services.OpenCode.OpenCodeAuthenticationMode AuthenticationMode { get; init; }
-    = AIFrontend.Services.OpenCode.OpenCodeAuthenticationMode.Bearer;
+public FluentCode.Services.OpenCode.OpenCodeAuthenticationMode AuthenticationMode { get; init; }
+    = FluentCode.Services.OpenCode.OpenCodeAuthenticationMode.Bearer;
 public string? Username { get; init; } // 默认 null
 ```
 
@@ -621,7 +621,7 @@ SDK `10.0.401` / runtime `10.0.12`，警告作为错误，编译通过；**3 组
 
 ### 准确公开签名
 
-命名空间均为 `AIFrontend.Services.OpenCode`。新增独立服务，不改变之前 Basic 客户端签名：
+命名空间均为 `FluentCode.Services.OpenCode`。新增独立服务，不改变之前 Basic 客户端签名：
 
 ```csharp
 public sealed class OpenCodePairingService : IDisposable
@@ -700,7 +700,7 @@ public sealed class OpenCodePairingResult
 ### 冻结公开接口（供页面 owner 接续；本 lane 未接 UI）
 
 ```csharp
-// AIFrontend.Services.OpenCode.OpenCodeClient
+// FluentCode.Services.OpenCode.OpenCodeClient
 Task<OpenCodeAgentsResponse> ListAgentsAsync(string directory, CancellationToken cancellationToken = default);
 Task SwitchAgentAsync(string sessionId, string agentId, CancellationToken cancellationToken = default);
 Task<OpenCodeActiveSessionsResponse> GetActiveSessionsAsync(CancellationToken cancellationToken = default);
@@ -762,7 +762,7 @@ wire 是 **有限 JSON number、Unix epoch 毫秒**，无额外 integer/min/max 
 Session.Time.Idle/Viewed 为 optional non-null；现有 `double?` 属性继续表示可缺省，不改 public type。
 
 ```csharp
-// AIFrontend.Services.OpenCode.OpenCodeClient
+// FluentCode.Services.OpenCode.OpenCodeClient
 Task MarkSessionViewedAsync(
     string sessionId, double idleMilliseconds, CancellationToken cancellationToken = default);
 

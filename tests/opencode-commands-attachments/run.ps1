@@ -12,11 +12,11 @@ New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeCommandsAttachmentsTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
+$sources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
 # Services/OpenCode now depends on the interaction gate (SessionControlKind) and the execution projection
 # (OpenCodeExecutionMessageEvidence); compile the same WinUI-free Notifications closure the composer suites use.
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
-    $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
+    $sources += Get-Item "$repo/src/FluentCode/Services/Notifications/$name"
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'

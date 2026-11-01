@@ -10,19 +10,19 @@ New-Item -ItemType Directory -Path $EvidenceRoot | Out-Null
 $assembly = Join-Path $EvidenceRoot 'OpenCodeConnectionTests.dll'
 $dpapi = Join-Path $env:USERPROFILE '.nuget/packages/system.security.cryptography.protecteddata/10.0.12/lib/net10.0/System.Security.Cryptography.ProtectedData.dll'
 if (!(Test-Path $dpapi)) { throw 'Restore the project ProtectedData dependency with scripts/build.ps1 first.' }
-$sources = @(Get-ChildItem (Join-Path $repo 'src/AIFrontend/Models/*.cs') | ForEach-Object FullName)
-$sources += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Services/OpenCode/*.cs') | ForEach-Object FullName
-$sources += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Services/OpenCode/Connection/*.cs') | ForEach-Object FullName
+$sources = @(Get-ChildItem (Join-Path $repo 'src/FluentCode/Models/*.cs') | ForEach-Object FullName)
+$sources += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/*.cs') | ForEach-Object FullName
+$sources += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/Connection/*.cs') | ForEach-Object FullName
 foreach ($name in @('SettingsService.cs', 'ConfigurationJson.cs', 'ConfigurationExceptions.cs', 'AtomicFile.cs', 'AppDataPaths.cs', 'DpapiSecretStore.cs')) {
-    $sources += Join-Path $repo "src/AIFrontend/Services/Configuration/$name"
+    $sources += Join-Path $repo "src/FluentCode/Services/Configuration/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
-    $sources += Join-Path $repo "src/AIFrontend/Services/Notifications/$name"
+    $sources += Join-Path $repo "src/FluentCode/Services/Notifications/$name"
 }
-$sources += Join-Path $repo 'src/AIFrontend/Services/Appearance/AppFontSettings.cs'
+$sources += Join-Path $repo 'src/FluentCode/Services/Appearance/AppFontSettings.cs'
 $sources += Join-Path $PSScriptRoot 'Program.cs'
 # ContentDialog reparents its content (Unloaded then Loaded) while opening; the owner closes the view after ShowAsync.
-$viewSource = Get-Content -Raw (Join-Path $repo 'src/AIFrontend/Pages/Account/OpenCodeConnectionView.cs')
+$viewSource = Get-Content -Raw (Join-Path $repo 'src/FluentCode/Pages/Account/OpenCodeConnectionView.cs')
 if ($viewSource -match 'Unloaded\s*\+=') { throw 'Connection view must not close itself on Unloaded (dialog reparenting froze WSL enumeration).' }
 $refs = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object FullName) + @($dpapi)
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))

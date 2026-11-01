@@ -16,17 +16,17 @@ $assembly = Join-Path $output 'ViewAckTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 # Full production OpenCode transport (all partials) minus the unrelated pairing service; real source/DTOs/reader.
-$arguments += Get-ChildItem (Join-Path $repo 'src/AIFrontend/Services/OpenCode/*.cs') | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
+$arguments += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/*.cs') | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
-    $arguments += '"' + (Join-Path $repo "src/AIFrontend/Services/Notifications/$name") + '"'
+    $arguments += '"' + (Join-Path $repo "src/FluentCode/Services/Notifications/$name") + '"'
 }
-$arguments += '"' + (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs') + '"'
-$arguments += '"' + (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs') + '"'
+$arguments += '"' + (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionTracking.cs') + '"'
+$arguments += '"' + (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewAcknowledgement.cs') + '"'
 foreach ($name in @('OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs', 'OpenCodePage.Foreground.cs')) {
-    $arguments += '"' + (Join-Path $repo "src/AIFrontend/Pages/$name") + '"'
+    $arguments += '"' + (Join-Path $repo "src/FluentCode/Pages/$name") + '"'
 }
-$pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
-$builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
+$pagePath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.xaml.cs'
+$builtinPath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs'
 $members = foreach ($pair in @(@($pagePath, 'CreateOperationToken'), @($pagePath, 'OrderMessages'), @($pagePath, 'IsScrollContextCurrent'), @($builtinPath, 'ResetAcceptedHistoryProjection'))) {
     $text = [IO.File]::ReadAllText($pair[0])
     $matches = [regex]::Matches($text, ('(?m)^    private [^\r\n]*\b' + $pair[1] + '\('))
@@ -40,7 +40,7 @@ $members = foreach ($pair in @(@($pagePath, 'CreateOperationToken'), @($pagePath
     $block.Value
 }
 $generated = Join-Path $output 'PageMembers.cs'
-'using System; using System.Collections.Generic; using System.Threading; using AIFrontend.Services.OpenCode; using AIFrontend.Services.Notifications; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {' + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
+'using System; using System.Collections.Generic; using System.Threading; using FluentCode.Services.OpenCode; using FluentCode.Services.Notifications; namespace FluentCode.Pages; public sealed partial class OpenCodePage {' + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $arguments += '"' + $generated + '"'
 $arguments += Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 $responseFile = Join-Path $output 'compile.rsp'

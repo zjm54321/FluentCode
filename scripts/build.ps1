@@ -23,14 +23,14 @@ try {
     Push-Location $root
     try {
         Write-Host "MSBuild: $msbuild"
-        & $msbuild (Join-Path $root 'AIFrontend.sln') /restore /t:Build /m /nologo /verbosity:minimal "/p:Configuration=$Configuration" /p:Platform=x64 "/flp:logfile=$log;verbosity=normal;encoding=UTF-8"
+        & $msbuild (Join-Path $root 'FluentCode.sln') /restore /t:Build /m /nologo /verbosity:minimal "/p:Configuration=$Configuration" /p:Platform=x64 "/flp:logfile=$log;verbosity=normal;encoding=UTF-8"
         $buildExitCode = $LASTEXITCODE
     }
     finally { Pop-Location }
     Write-Host "Build exit code: $buildExitCode"
     Write-Host "Build log: $log"
     if ($buildExitCode -ne 0) { exit $buildExitCode }
-    $exe = Join-Path $root "src\AIFrontend\bin\x64\$Configuration\net10.0-windows10.0.26100.0\win-x64\AIFrontend.exe"
+    $exe = Join-Path $root "src\FluentCode\bin\x64\$Configuration\net10.0-windows10.0.26100.0\win-x64\FluentCode.exe"
     if (-not (Test-Path $exe)) { throw "Build completed but expected executable is missing: $exe" }
     Write-Host "Executable: $exe"
     exit 0

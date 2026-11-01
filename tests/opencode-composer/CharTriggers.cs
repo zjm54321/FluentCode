@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 internal static partial class Program
 {
@@ -65,14 +65,14 @@ internal static partial class Program
         Check(insert == (" @ ", 2), "explicit context inserts legal token without destroying neighbouring text");
         Check(OpenCodeComposerCharTriggers.MentionInsertion(new("explorer", false)) == "@explorer "
             && OpenCodeComposerCharTriggers.MentionInsertion(new("review", true)) == "@review ", "official agent and skill insertion uses registered ID");
-        var spans = new[] { new AIFrontend.Services.OpenCode.OpenCodePromptContext("explorer", false, 2) };
+        var spans = new[] { new FluentCode.Services.OpenCode.OpenCodePromptContext("explorer", false, 2) };
         Check(OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 11, true, spans) is { Id: "explorer" }
             && OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 2, false, spans) is { Id: "explorer" },
             "chosen mention deletes as one token: Backspace at its end, Delete at its start");
         Check(OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 12, true, spans) is null
             && OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 7, true, spans) is null
             && OpenCodeComposerCharTriggers.MentionAt("看 @explorex 继续", 11, true, spans) is null
-            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer", 11, true, Array.Empty<AIFrontend.Services.OpenCode.OpenCodePromptContext>()) is null,
+            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer", 11, true, Array.Empty<FluentCode.Services.OpenCode.OpenCodePromptContext>()) is null,
             "trailing space, mid-token caret, stale span (text no longer matches) and typed-only @text stay ordinary characters");
         Check(OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 6, 5, spans) == 11
             && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 6, 11, spans) == 2
@@ -92,10 +92,10 @@ internal static partial class Program
         Check(shellUri == "/api/session/ses%2Fescaped/shell", "shell uses escaped official session endpoint, never prompt or global shell");
         f.Handler.Send = (_, _) => Task.FromResult(Json("{}"));
         try { await f.Client.ExecuteSessionShellAsync("ses_test", "pwd"); Check(false, "shell rejects non-204"); }
-        catch (AIFrontend.Services.OpenCode.OpenCodeProtocolException) { Check(true, "shell requires actual 204"); }
+        catch (FluentCode.Services.OpenCode.OpenCodeProtocolException) { Check(true, "shell requires actual 204"); }
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NotFound));
         try { await f.Client.ExecuteSessionShellAsync("ses_test", "pwd"); Check(false, "shell rejects 404"); }
-        catch (AIFrontend.Services.OpenCode.OpenCodeApiException e) { Check(e.StatusCode == 404, "shell reports real HTTP error"); }
+        catch (FluentCode.Services.OpenCode.OpenCodeApiException e) { Check(e.StatusCode == 404, "shell reports real HTTP error"); }
         var uris = new System.Collections.Generic.List<string>();
         f.Handler.Send = (r, _) =>
         {
@@ -136,10 +136,10 @@ internal static partial class Program
         var malformed = await queries.QueryAsync((q, ct) => OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", q, ct), "malformed");
         Check(malformed is { Rows.Count: 0, Error: not null }, "malformed endpoint shape becomes error");
         var repo = SplashRepo();
-        var view = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
-        var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
-        var shellPage = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.ShellComposer.cs"));
-        var blankPage = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"));
+        var view = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs"));
+        var page = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Composer.cs"));
+        var shellPage = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.ShellComposer.cs"));
+        var blankPage = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.NewSessionTab.cs"));
         Check(page.IndexOf("TrySubmitShell(delivery, ref shellHandled)", StringComparison.Ordinal) < page.IndexOf("if (TryHandleSideQuestionSubmission(snapshot))", StringComparison.Ordinal)
             && shellPage.Contains("delivery == OpenCodeDeliveryModes.Queue") && !shellPage.Contains("SendPromptAsync("), "shell intercepted before all normal submission and queue routes");
         Check(shellPage.Contains("e.Cancel = true;") && !shellPage.Contains("\n        Composer.Text =")

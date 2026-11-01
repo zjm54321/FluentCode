@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 
 internal static class ResponseBounds
 {

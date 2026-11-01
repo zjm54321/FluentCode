@@ -7,8 +7,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 
 internal static class ShellTerminalTests
 {

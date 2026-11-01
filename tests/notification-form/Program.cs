@@ -7,8 +7,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 
 // Headless verification of the EXISTING Windows notification Form/permission interaction.
 // Compiles the real production sources read-only against installed net10.0 reference packs.
@@ -331,7 +331,7 @@ static class Checks
         var lines = NotificationText.CompletionLines(NotificationSource.OpenCode, longText);
         Check(lines.Count == 3 && lines[1].StartsWith("OpenCode · ", StringComparison.Ordinal)
             && lines[1] + lines[2] == "OpenCode · " + longText.Summary, "summary uses both body elements with attribution and no lost characters");
-        Check(NotificationText.CompletionLines(NotificationSource.LocalApi, null).Count == 2, "Local API completion structure unchanged");
+        Check(NotificationSourceLabels.TryParseTag("local") is null, "removed Local API notification source is rejected");
         Check(!char.IsHighSurrogate(NotificationText.SingleLine(new string('x', 118) + "😀x", 120)[^2]), "truncation keeps Unicode scalar intact");
         OpenCodeMessage[] markdown = [new() { Type = "assistant", Content = [new() { Type = "text", Text =
             "## 完成\n\n- **修复**通知中的 `*Markdown*` 符号\n1. 参见 [文档](https://example.com/a_b) 与 <https://x.dev>\n> 引用 _强调_ 与 snake_case_name\n\n| 项 | 状态 |\n|---|:--:|\n| 构建 | ~~失败~~通过 |\n\n---\n```cs\nvar x = 1;\n```\n![图](a.png)<br/>2 * 3 * 4" }] }, new() { Type = "idle" }];

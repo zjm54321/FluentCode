@@ -4,8 +4,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 
 static partial class Checks
 {
@@ -128,7 +128,7 @@ static partial class Checks
         using var service = new CompletionNotificationService(TimeProvider.System, (_, _, _) => new(1, "", ""), _ => new(2, "", ""), _ => Task.CompletedTask);
         using var monitor = new OpenCodeNotificationMonitor(service, source);
         var pageSource = new OpenCodePageSource(source.Identity, 1, () => client);
-        var app = new AIFrontend.App(); app.SetSource(pageSource, monitor); app.SetNotificationService(service);
+        var app = new FluentCode.App(); app.SetSource(pageSource, monitor); app.SetNotificationService(service);
         var owner = new object();
         app.UpdateOpenCodeForegroundSession(owner, pageSource, "ses_test", true);
         service.ObserveTrustedOpenCodeMessages(source, "ses_test", [Idle("msg_base", 1)], true);

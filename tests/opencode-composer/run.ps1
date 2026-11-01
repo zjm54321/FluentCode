@@ -25,16 +25,16 @@ $assembly = Join-Path $output 'OpenCodeComposerTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
 $arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeWorkingFamily.cs"
+$sources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeWorkingFamily.cs"
 foreach ($name in @('OpenCodeComposerCharTriggers.cs', 'OpenCodeComposerComposition.cs', 'OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerSplash.cs', 'OpenCodeSessionControlCoordinator.cs')) {
-    $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name"
+    $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
-    $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
+    $sources += Get-Item "$repo/src/FluentCode/Services/Notifications/$name"
 }
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSideQuestion.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeSideQuestion.cs"
 foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'ImeComposition.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs', 'SideQuestions.cs', 'CharTriggers.cs')) {
     $sources += Get-Item (Join-Path "$repo/tests/opencode-composer" $name)
 }
@@ -46,6 +46,6 @@ $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 Write-Output "Evidence directory: $output"
 & $dotnet exec $compiler "@$rsp" | Tee-Object -FilePath (Join-Path $output 'compile.txt')
 if ($LASTEXITCODE -ne 0) { throw "Core compile failed: $LASTEXITCODE" }
-$env:AIFRONTEND_SPLASH_REPO = $repo # Retained splash/character-trigger wiring checks read production sources.
+$env:FC_SPLASH_REPO = $repo # Retained splash/character-trigger wiring checks read production sources.
 & $dotnet $assembly | Tee-Object -FilePath (Join-Path $output 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Core tests failed: $LASTEXITCODE" }

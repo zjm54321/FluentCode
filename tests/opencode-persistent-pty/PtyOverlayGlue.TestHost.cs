@@ -1,10 +1,10 @@
 // Inert members for compiling the real OpenCodePage.PersistentPtyOverlay.cs glue against WinUI refs.
 // Names and control types mirror OpenCodePage.xaml and the production partials; nothing here runs.
 using System.Collections.Generic;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls;
 
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 
 public sealed partial class OpenCodePage : Page
 {

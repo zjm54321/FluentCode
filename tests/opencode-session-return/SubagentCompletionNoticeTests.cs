@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Text.Json;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 
 internal static partial class Program

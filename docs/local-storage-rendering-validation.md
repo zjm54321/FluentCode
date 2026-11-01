@@ -10,28 +10,28 @@
 
 ### 会话已有基础往返与损坏保护
 
-目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-core-validation-20261006T145839Z`。
+目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-core-validation-20261006T145839Z`。
 
 - 只读核对 `Program.cs:69-96`、`persistence-tests.utf8.log`、`fixed-post-validation-hashes.json`：原多轮消息/工具/思考/模型持久化、List/Load/Delete、损坏文件拒绝覆盖/删除已有通过结果。
 - 本次使用的 9 份 Models 和 5 份存储相关 Configuration 文件，逐文件与该旧快照及记录 SHA-256 一致。没有重新运行原 Settings/DPAPI/OpenCode 测试，也未触碰其合成或真实凭据。
 
 ### Markdown/HTML 输出策略
 
-目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-render-validation-20261006T153633Z`。
+目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-render-validation-20261006T153633Z`。
 
-- 当前 `src/AIFrontend/Services/Rendering/SafeContentRenderer.cs` 与该目录源码快照及 `final-hashes.json` 完全一致；只读核对 `Program.cs`、`test-results.json`，复用原三组 **198 项、0 失败**的证据，不新跑渲染矩阵。
+- 当前 `src/FluentCode/Services/Rendering/SafeContentRenderer.cs` 与该目录源码快照及 `final-hashes.json` 完全一致；只读核对 `Program.cs`、`test-results.json`，复用原三组 **198 项、0 失败**的证据，不新跑渲染矩阵。
 - 原证据实际覆盖标题/强调/列表/引用/围栏代码/表格，普通 HTML 结构与文本保留，Markdown 原始 HTML 惰性文字、javascript 链接、直接 HTML script/事件属性/实体编码 javascript URL/资源标签移除，以及输出 DOM 的标签白名单和**零属性**。
 - 继续使用 Markdig **1.4.0**、HtmlSanitizer **9.2.1039**，未改依赖版本或净化策略。服务只返回 fragment；所有属性（包括 href）移除，保留链接文字而不提供链接跳转。非允许容器的子文字可以留下，不将这些可见文字误判为可执行脚本。
 - 原验证使用 AngleSharp 解析输出 DOM，并非浏览器执行测试；不据此宣称 WebView 宿主安全已验收。
 
 ## 本次补充的两组存储验证
 
-隔离目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-local-storage-validation-20261006`。
+隔离目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-local-storage-validation-20261006`。
 
 1. **identity_switch_snapshot_and_filename_guard：通过。** 两个 CreateNew 产生不同稳定 ID；保存后由新 store 实例按 A→B→A 加载，比较全部序列化字段（包括 Unicode/换行/Markdown 原文、消息顺序、思考及模型）。验证默认时间补齐、List 排序、等待目录锁前已分离调用方消息集合、更新 A 不影响 B。另用合成 filename/Id 不一致文件确认 Load/List 报错且原始字节保留。
 2. **valid_file_survives_failure_and_cancellation：通过。** 对既有有效文件分别执行非法消息 Save、预取消 Save、等待共享目录锁时取消，以及读取旧文件成功但替换提交失败。每次均比较旧文件字节不变、新 store 仍可读原会话、无遗留临时文件；故障解除后可再次成功保存。
 
-提交失败由 Windows `FileShare.Read` 打开合成目标文件以允许旧文件校验读取、拒绝替换实现；实际栈定位到 `src/AIFrontend/Services/Configuration/AtomicFile.cs:46` 的 File.Move，再到 `src/AIFrontend/Services/Configuration/LocalSessionStore.cs:125`，不是在初始读取阶段就失败。
+提交失败由 Windows `FileShare.Read` 打开合成目标文件以允许旧文件校验读取、拒绝替换实现；实际栈定位到 `src/FluentCode/Services/Configuration/AtomicFile.cs:46` 的 File.Move，再到 `src/FluentCode/Services/Configuration/LocalSessionStore.cs:125`，不是在初始读取阶段就失败。
 
 ### 测试过程中的修正（仅 harness）
 
@@ -63,8 +63,8 @@ bash ./run-dotnet.sh run --project Validation.csproj --configuration Release --n
 
 当前关键源码 SHA-256：
 
-- `src/AIFrontend/Services/Configuration/LocalSessionStore.cs`：`6ca51ace7dc4d370263dd25b76be357464f8ec76756e150fa0b91c65eef5a520`
-- `src/AIFrontend/Services/Rendering/SafeContentRenderer.cs`：`50dc5581d4c09d69bc96a59bd7bd69d567a7060553e40d75afac7f4f8b59052c`
+- `src/FluentCode/Services/Configuration/LocalSessionStore.cs`：`6ca51ace7dc4d370263dd25b76be357464f8ec76756e150fa0b91c65eef5a520`
+- `src/FluentCode/Services/Rendering/SafeContentRenderer.cs`：`50dc5581d4c09d69bc96a59bd7bd69d567a7060553e40d75afac7f4f8b59052c`
 
 ## 边界与主应用后续验收
 

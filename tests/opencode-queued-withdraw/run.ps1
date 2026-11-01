@@ -13,13 +13,13 @@ New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeQueuedWithdrawTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$arguments += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" |
+$arguments += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" |
     Where-Object { $_.Name -NE 'OpenCodePairingService.cs' } | ForEach-Object { '"' + $_.FullName + '"' }
 @('OpenCodeInteractionGate.cs', 'OpenCodeExecutionProjection.cs', 'OpenCodePageSource.cs', 'NotificationInteractions.cs',
     'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs') | ForEach-Object {
-    $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"'
+    $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/Notifications" $_) + '"'
 }
-$arguments += '"' + (Join-Path "$repo/src/AIFrontend/Pages/OpenCode" 'OpenCodeQueuedPromptWithdrawal.cs') + '"'
+$arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeQueuedPromptWithdrawal.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

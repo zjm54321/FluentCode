@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AIFrontend;
-using AIFrontend.Pages;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode;
+using FluentCode.Pages;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml.Media;
 
 internal static class Program

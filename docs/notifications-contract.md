@@ -152,7 +152,7 @@ Dispose 不能撤回服务器已收到的决定；取消提交可能返回 Outco
     `AddText(String)`、`AddText(String, AppNotificationTextProperties)`、`BuildNotification()`。
   - `AppNotificationActivatedEventArgs`：`Argument` / `Arguments` / `UserInput`。
 - 本地 NuGet（`microsoft.windowsappsdk.foundation/1.8.260803002`，由 `Microsoft.WindowsAppSDK 1.8.260921001`
-  解析得到，见 `src/AIFrontend/obj/project.assets.json`）的 `metadata/*.xml` 与 `lib/**/*.Projection.xml`
+  解析得到，见 `src/FluentCode/obj/project.assets.json`）的 `metadata/*.xml` 与 `lib/**/*.Projection.xml`
   成员 id 与上述签名逐条一致。
 - 项目侧：`net10.0-windows10.0.26100.0`、`Nullable=enable`、`UseWinUI`、`WindowsPackageType=None`
   （unpackaged）、`WindowsAppSDKSelfContained=true`；本次未改动 csproj。
@@ -276,7 +276,7 @@ public IReadOnlyList<NotificationDispatchResult> ObserveOpenCodeMessages(
 
 ## 14. 本次实际执行证据（2026-10-06）
 
-隔离目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-notification-interactions-validation-20261006`。
+隔离目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-notification-interactions-validation-20261006`。
 
 - 复制 22 个 C# 文件（Notifications 9、OpenCode 13）到 Snapshot，主工程未构建；无 csproj/App/MainWindow/Pages/Taskbar/OpenCode 修改。
 - `NativeCompile.csproj` 仅引用本地真实 AppNotifications/Builder projection DLL、WinRT.Runtime/Windows.SDK.NET；编译但**不执行**。首轮发现 Arguments/UserInput 实际是 IDictionary 而非 IReadOnlyDictionary，已修正为同步复制字典，最终编译 0 警告/0 错误。纯 net10 引用工程关闭 CA1416 平台分析，不是 WinUI 主工程构建。

@@ -2,7 +2,7 @@
 
 ## 已实现范围
 
-本阶段修改仅限 `src/AIFrontend/App.xaml.cs`、新增 `src/AIFrontend/App.Notifications.cs` 和本文档。不修改 MainWindow、Pages、Services、Models 或主工程文件；不重写通知服务。
+本阶段修改仅限 `src/FluentCode/App.xaml.cs`、新增 `src/FluentCode/App.Notifications.cs` 和本文档。不修改 MainWindow、Pages、Services、Models 或主工程文件；不重写通知服务。
 
 `docs/notifications-contract.md` 中“App 尚未接线”的历史状态，现仅在**正常启动/运行中的 Local 完成通知**范围由本文更新；冷启动、单实例和 OpenCode 交互仍未接线。
 
@@ -14,9 +14,9 @@
 
 ## 已核实的接口及成功来源
 
-- `src/AIFrontend/MainWindow.xaml.cs` 实际公开 `event EventHandler<Pages.Local.LocalTaskCompletedEventArgs>? LocalTaskCompleted`，转发时 sender 为 `this`，DTO 原样传递。
-- `src/AIFrontend/Pages/Local/LocalTaskCompletedEventArgs.cs` 实际提供只读 `SourceRequestId`、`SessionId`；契约为仅 Completed + Stop 触发。
-- 当前 `src/AIFrontend/Pages/Local/LocalChatView.cs` 的 Completed 分支将 success 设为 `terminal == ChatFinishReason.Stop`，通过既有 TaskCompleted→NormalPage→MainWindow 链转发。App 不重新消费协议流或自行推断其终态。
+- `src/FluentCode/MainWindow.xaml.cs` 实际公开 `event EventHandler<Pages.Local.LocalTaskCompletedEventArgs>? LocalTaskCompleted`，转发时 sender 为 `this`，DTO 原样传递。
+- `src/FluentCode/Pages/Local/LocalTaskCompletedEventArgs.cs` 实际提供只读 `SourceRequestId`、`SessionId`；契约为仅 Completed + Stop 触发。
+- 当前 `src/FluentCode/Pages/Local/LocalChatView.cs` 的 Completed 分支将 success 设为 `terminal == ChatFinishReason.Stop`，通过既有 TaskCompleted→NormalPage→MainWindow 链转发。App 不重新消费协议流或自行推断其终态。
 - 实际服务方法为 `bool Initialize()`、`NotificationDispatchResult NotifyCompleted(NotificationSource source, string requestId)`、`void Dispose()`；激活 DTO 为 `NotificationActivationInfo`。本次 stub 签名按实际声明建立，未添加共享接口。
 
 ## 失败、隐私与退出语义
@@ -38,12 +38,12 @@
 
 ## 实际验证证据
 
-项目外目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-app-notification-glue-validation-20261006`。
+项目外目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-app-notification-glue-validation-20261006`。
 
 - 静态核对订阅→初始化、成功事件→稳定 ID 提交、后台激活→UI queue、Closed→退订/Dispose，以及关闭后的队列身份守卫。
 - 仅做**最小 stub 隔离编译**：复制 App 两份源码及四份真实 DTO/结果声明，MainWindow、WinUI 和服务实现用不可执行工程内的最小签名 stub 替代。net10.0 library 编译 **0 警告、0 错误**，不运行程序集。
 - `compile-glue.log` 为编译结果；`initial-hashes.json` / `final-hashes.json` 验证六份编译输入与当前源码完全一致且编译期间未变；`Stubs.cs` 明示被替代的边界。
-- 现有九份通知源码与 `/mnt/c/Users/Zhang/source/repos/AIFrontend-notification-interactions-validation-20261006/final-hashes.json` 的已验证版本一致，复用其原生 projection 编译和纯策略测试证据，不重复执行服务测试。该既有证据也没有 Register/Show 运行证据。
+- 现有九份通知源码与 `/mnt/c/Users/Zhang/source/repos/FluentCode-notification-interactions-validation-20261006/final-hashes.json` 的已验证版本一致，复用其原生 projection 编译和纯策略测试证据，不重复执行服务测试。该既有证据也没有 Register/Show 运行证据。
 - 使用 `/mnt/c/Program Files/dotnet/dotnet.exe`；清空 NuGet 源、无包依赖、CLI/cache/temp/bin/obj 项目外隔离，禁止首次体验/证书生成/遥测。没有构建主工程、调用真实 Initialize/Register/Show/Unregister、启动关闭 GUI、HTTP、git、安装或读写用户数据。
 
 复现编译（隔离目录内）：
@@ -54,8 +54,8 @@ bash ./run-dotnet.sh build Validation.csproj --configuration Release --no-restor
 
 关键 SHA-256：
 
-- `src/AIFrontend/App.xaml.cs`：`5e32fb2b4bb4206396d69bcf2b09e44279471134e6c7fa496872eafb9a52d614`
-- `src/AIFrontend/App.Notifications.cs`：`25f0f876fde5c0dd544050a7b2c6a4ad5586c7446733b5b273b14b970ebaf5a5`
+- `src/FluentCode/App.xaml.cs`：`5e32fb2b4bb4206396d69bcf2b09e44279471134e6c7fa496872eafb9a52d614`
+- `src/FluentCode/App.Notifications.cs`：`25f0f876fde5c0dd544050a7b2c6a4ad5586c7446733b5b273b14b970ebaf5a5`
 
 ## 父会话最终验收项
 
@@ -64,3 +64,8 @@ bash ./run-dotnet.sh build Validation.csproj --configuration Release --no-restor
 3. 验收运行期通知点击只激活现有窗口；窗口关闭与排队激活/初始化竞争时无重开窗口、无关闭后通知或未处理异常，正常关闭执行 Unregister。
 4. 在受支持/禁用通知/勿扰等环境分别确认聊天不受通知失败影响，单独记录 Submitted 与实际可见性；不要用其中一项代替另一项。
 5. 另开冷启动/单实例整合任务，明确入口、注册和激活获取顺序，测试跨进程重定向及未知/过期 nonce 不授权；不能把本阶段运行期接线当作这项已完成。
+# Historical notification integration notes
+
+The Local completion branch described below was removed in the FluentCode
+OpenCode-only transition on 2026-11-01. Only OpenCode notifications remain;
+the original integration/validation notes are retained as history.

@@ -13,10 +13,10 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -699,9 +699,9 @@ internal static class Program
         }
         using (var f = new Fixture())
         {
-            f.Page.SetWorking(); AIFrontend.App.Owner = null; var before = Windows.Storage.Pickers.FileOpenPicker.Opens;
+            f.Page.SetWorking(); FluentCode.App.Owner = null; var before = Windows.Storage.Pickers.FileOpenPicker.Opens;
             await f.Page.Pick(); Check(Windows.Storage.Pickers.FileOpenPicker.Opens == before && !f.Page.Snapshot.IsBusy, "missing owner opens no native dialog/ticket");
-            AIFrontend.App.Owner = new(); var files = Signal<IReadOnlyList<Windows.Storage.StorageFile>?>();
+            FluentCode.App.Owner = new(); var files = Signal<IReadOnlyList<Windows.Storage.StorageFile>?>();
             Windows.Storage.Pickers.FileOpenPicker.Next = () => files.Task;
             var pick = f.Page.Pick(); Check(!f.Page.SendEnabled && !f.Page.ShouldStop() && f.Page.Snapshot.IsBusy, "actual page picker busy disables Send AND Stop");
             var focusBeforeSwitch = f.Page.PickFocusAttempts;
@@ -714,7 +714,7 @@ internal static class Program
         }
         // Structural lifecycle supplement, explicitly not execution of the full WinUI page. Production
         // methods above are compiled verbatim. These guards ensure actual mutation paths call binding.
-        var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.xaml.cs"));
         foreach (var method in new[] { "OnPageLoaded", "PausePage", "ResumeCachedSource", "ApplyCurrentSource", "InvalidateForSourceChange", "SwitchToSessionAsync", "NavigateToSessionAsync", "HandleApiException", "DisposeOwnClient" })
         {
             var body = Member(page, method);
@@ -744,14 +744,14 @@ internal static class Program
         Check(new[] { "_source = null;", "DisposeOwnClient();", "ClearSessionReturnContext();", "_conversationView.ClearMessages();",
             "ReleaseDraftSlot(slot)", "_activeDraftSlot = null;", "_draftRecoverySlot = null;", "controller.DiscardDraft(controller.Snapshot.Token)" }
             .All(call => shutdown.Contains(call, StringComparison.Ordinal)), "final release disposes client, return context, conversation and retained composer payloads");
-        var reset = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs"));
+        var reset = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.SessionInsights.cs"));
         Check(reset.Contains("partial void OnMessageHistoryReset() => ResetSessionInsights();", StringComparison.Ordinal)
             && !Member(reset, "ResetSessionInsights").Contains("DiscardDraft", StringComparison.Ordinal), "history reset does not discard composer");
         Check(Member(page, "UpdateInteractionsSection").Contains("RefreshComposerView();", StringComparison.Ordinal), "gate protection refresh hook exists outside buttons");
         Check(!Member(page, "UpdateComposerButtons").Contains("RefreshComposerView", StringComparison.Ordinal), "no button/render feedback loop");
-        var picker = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerFilePicker.cs"));
+        var picker = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerFilePicker.cs"));
         Check(picker.Split("await controller.AddFilesAsync(", StringSplitOptions.None).Length == 2, "adapter has exactly one ticket completion invocation site");
-        var view = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
+        var view = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs"));
         // Static wiring proof only: the real WinUI view is not compiled by this harness. Match the
         // deferred source read, not the old statement terminator (the callback is now an expression lambda).
         // RealRenderOwnership executes the production lifetime/ledger with an explicit scheduler/editor seam.
@@ -764,7 +764,7 @@ internal static class Program
         Check(!System.Text.RegularExpressions.Regex.IsMatch(view,
             @"\b(?:OpenCodeClient|HttpClient|HttpMessageInvoker|OpenCodePageSource|OpenCodeInteractionGate|OpenCodeComposerBinding|OpenCodeComposerController)\b"),
             "static real-view boundary: no transport/client/source/gate/binding/controller type dependency");
-        var composer = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        var composer = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Composer.cs"));
         Check(new[] { "DiscardRequested", "_statusDiscardButton", "_discardFlyout", "BuildDiscardFlyout", "OpenCodeComposerInactiveDiscard", "OpenCodeComposerDiscardConfirm", "丢弃草稿" }
             .All(removed => !(view + composer).Contains(removed, StringComparison.Ordinal)),
             "DD1 no discard UI, confirmation, event or page hookup remains");
@@ -899,7 +899,7 @@ internal static class Program
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {
@@ -1097,7 +1097,7 @@ namespace AIFrontend.Pages
         private void OnSubagentSessionRequested(object? sender, EventArgs args) { }
     }
 }
-namespace AIFrontend
+namespace FluentCode
 {
     internal sealed class App : Application
     {
@@ -1112,7 +1112,7 @@ namespace Microsoft.UI.Xaml
     public enum FocusState { Unfocused, Programmatic }
     public class Window { }
     public class XamlRoot { }
-    public class Application { public static Application Current { get; } = new AIFrontend.App(); }
+    public class Application { public static Application Current { get; } = new FluentCode.App(); }
     public class RoutedEventArgs : EventArgs { }
     public static class VisualStateManager { public static bool GoToState(object owner,string state,bool transitions)=>true; }
     public sealed class Dispatcher
@@ -1164,7 +1164,7 @@ namespace WinRT.Interop
     public static class WindowNative { public static IntPtr GetWindowHandle(Window owner) => new(1); }
     public static class InitializeWithWindow { public static void Initialize(object picker, IntPtr handle) { } }
 }
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     public sealed class OpenCodeConversationView {
         public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }

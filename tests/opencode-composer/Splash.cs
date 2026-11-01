@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 // B15: composer placeholder splash library. Pure data/selection is executed; the real-view wiring is checked structurally
 // against the production source (the WinUI view itself is not compiled by this offline core harness).
@@ -87,25 +87,25 @@ internal static partial class Program
 
         // Honesty against the real code: every advertised native command and shortcut exists in production source.
         var repo = SplashRepo();
-        var controller = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.cs"));
+        var controller = System.IO.File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerController.cs"));
         foreach (Match m in Regex.Matches(string.Join("\n", OpenCodeComposerSplash.Library.Where(l => l.IsHint).Select(l => l.Text)), @"/([a-z]+)"))
             Check(controller.Contains($"Native(OpenCodeComposerClientActionKind.", StringComparison.Ordinal)
                 && Regex.IsMatch(controller, $@"Native\(OpenCodeComposerClientActionKind\.\w+, ""{m.Groups[1].Value}""\)"),
                 "hinted native command exists: /" + m.Groups[1].Value);
-        var menu = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerCommandMenu.cs"));
+        var menu = System.IO.File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerCommandMenu.cs"));
         Check(Regex.IsMatch(menu, @"RequiresSession[\s\S]*?is not \(OpenCodeComposerClientActionKind\.NewSession or OpenCodeComposerClientActionKind\.ChooseSession\s*or OpenCodeComposerClientActionKind\.EditDraft\)"),
             "only /new, /sessions, /editor are session-free (matches SessionNavigation/LargeEditor gating)");
-        var view = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
+        var view = System.IO.File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs"));
         Check(view.Contains("_commandItem.KeyboardAcceleratorTextOverride = \"/\"") && !view.Contains("KeyboardAcceleratorTextOverride = \"Ctrl+/\"")
             && view.Contains("VirtualKey.Tab => OpenCodeComposerKey.Tab") && view.Contains("OpenCodeAttachment.MaxFiles"), "/ shortcut, Tab completion and + attachments exist");
         Check(!OpenCodeComposerSplash.Library.Any(l => (l.Text + l.English).Contains("Ctrl+/", StringComparison.Ordinal)), "splash does not advertise Ctrl+/ instead of /");
-        var xaml = System.IO.File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.xaml"));
+        var xaml = System.IO.File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.xaml"));
         Check(xaml.Contains("x:Name=\"BlankAgentButton\"") && xaml.Contains("x:Name=\"BlankModelButton\"") && xaml.Contains("x:Name=\"BlankStrengthButton\""),
             "blank toolbar agent/model/strength pickers exist");
         Check(view.Contains("OpenCodeWorkingPhrases.Family(SplashModelIdProvider?.Invoke())")
             && Regex.Matches(view, @"_splash\.ObserveContext\(").Count == 1
             && view.Contains("RotatePlaceholderSplash(); // Session opened/switched"), "family is observed only at conversation activation, not per render/keystroke");
-        var page = File.ReadAllText(Path.Combine(repo, "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        var page = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Composer.cs"));
         Check(page.Contains("_composerView.SplashModelIdProvider = ComposerSplashModelId;")
             && page.Contains("_agentSelectorSessionId == _selectedSessionId") && page.Contains("IsSameMessageBinding(sessionId, _messageBinding?.Directory)")
             && page.Contains("LastOrDefault(m => m.Type == OpenCodeMessageTypes.Assistant)?.Model?.Id"), "splash model comes from this session's selected model or last executing assistant");
@@ -231,6 +231,6 @@ internal static partial class Program
     }
 
     private static string SplashRepo()
-        => Environment.GetEnvironmentVariable("AIFRONTEND_SPLASH_REPO") is { Length: > 0 } repo
-            ? repo : throw new InvalidOperationException("AIFRONTEND_SPLASH_REPO not set by run.ps1");
+        => Environment.GetEnvironmentVariable("FC_SPLASH_REPO") is { Length: > 0 } repo
+            ? repo : throw new InvalidOperationException("FC_SPLASH_REPO not set by run.ps1");
 }

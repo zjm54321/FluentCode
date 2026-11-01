@@ -31,7 +31,7 @@ function Extract-Method([string]$Source, [string]$Name) {
     }
     throw "Unsupported production method form: $Name"
 }
-$pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
+$pagePath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.xaml.cs'
 $page = [IO.File]::ReadAllText($pagePath)
 $names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'CancelSessionOperations',
     'IsRootSession', 'RebuildSessionList', 'InsertSessionItemFirst', 'SelectSessionItem',
@@ -39,7 +39,7 @@ $names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'CancelSessionOpera
     'CreateOperationToken', 'TryStartRead', 'ProcessNavigationTargetAsync', 'LocateSessionAsync',
     'DescribeNavigationReadFailure', 'ApplyNavigationResult', 'OnPageUnloaded', 'PausePage', 'InvalidateForSourceChange', 'DisposeOwnClient')
 $methods = @($names | ForEach-Object { Extract-Method $page $_ })
-$builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
+$builtinPath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs'
 $methods += Extract-Method ([IO.File]::ReadAllText($builtinPath)) 'ResetAcceptedHistoryProjection'
 $methods += Extract-Method $page 'OrderMessages'
 $methods += Extract-Method $page 'IsScrollContextCurrent'
@@ -52,15 +52,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.Notifications;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
+using FluentCode.Services.Notifications;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Automation;
-using TextBlock = AIFrontend.Pages.ReturnHostTextBlock;
-namespace AIFrontend.Pages;
+using TextBlock = FluentCode.Pages.ReturnHostTextBlock;
+namespace FluentCode.Pages;
 public sealed partial class OpenCodePage
 {
 '@
@@ -74,21 +74,21 @@ $production = @()
     'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeToolImageResolver.cs', 'OpenCodeUserAttachments.cs', 'OpenCodeManualBackgroundIndex.cs', 'OpenCodeShellCompletion.cs', 'OpenCodeNoticeDismissals.cs', 'OpenCodeSessionAncestry.cs',
     'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Inbox.cs',
     'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeCapabilityStatus.cs', 'OpenCodeDtos.Capabilities.cs') | ForEach-Object {
-    $production += Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_
+    $production += Join-Path "$repo/src/FluentCode/Services/OpenCode" $_
 }
 @('OpenCodePageSource.cs', 'OpenCodeInteractionGate.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs',
     'NotificationActivationInfo.cs', 'NotificationSource.cs', 'OpenCodeExecutionProjection.cs') | ForEach-Object {
-    $production += Join-Path "$repo/src/AIFrontend/Services/Notifications" $_
+    $production += Join-Path "$repo/src/FluentCode/Services/Notifications" $_
 }
 @('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SubagentNavigation.cs',
     'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs') | ForEach-Object {
-    $production += Join-Path "$repo/src/AIFrontend/Pages" $_
+    $production += Join-Path "$repo/src/FluentCode/Pages" $_
 }
 @('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
     'OpenCodeBrowserToolPresentation.cs', 'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
     'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs',
     'OpenCodeShellTerminalText.cs', 'OpenCodeShellTerminalPreview.cs', 'OpenCodeMessageRollbackPolicy.cs') | ForEach-Object {
-    $production += Join-Path "$repo/src/AIFrontend/Pages/OpenCode" $_
+    $production += Join-Path "$repo/src/FluentCode/Pages/OpenCode" $_
 }
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
 $commonHost = Join-Path $PSScriptRoot 'ConversationView.TestHost.cs'

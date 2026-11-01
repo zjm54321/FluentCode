@@ -2,14 +2,14 @@
 
 > Historical bare-glyph delivery, superseded by the approved TB1 circular badges
 > on 2026-10-23. Current sources, colors and regeneration instructions are in
-> `src/AIFrontend/Assets/Taskbar/source/README.md`; hashes and pixel findings below
+> `src/FluentCode/Assets/Taskbar/source/README.md`; hashes and pixel findings below
 > describe the previous artwork, not the current ICO files.
 
 本文档记录 `NeedsAttention` / `Completed` / `Failed` 三个 taskbar overlay 图标的
 设计判断、官方几何来源（固定 commit + sha256）、配色与对比度依据、尺寸/DPI 映射、
 `status -> 文件` 映射、许可、复现命令、静态校验结果与**未做项**。
 
-> 范围声明：本次**只新增资产与本文档**，未修改任何 C#、`AIFrontend.csproj`、XAML、
+> 范围声明：本次**只新增资产与本文档**，未修改任何 C#、`FluentCode.csproj`、XAML、
 > Services、App/Page，未改应用主图标，未运行应用/未截图/未操作窗口或任务栏 COM。
 > 服务接线（`LoadImageW` 加载、HICON 生命周期、csproj 部署项）由父会话/后续 fixer 完成，
 > 见第 8 节。
@@ -79,7 +79,7 @@ overlay 由 Shell 直接绘制，**不会**随应用主题着色；其背景是�
   https://raw.githubusercontent.com/microsoft/fluentui-system-icons/a563cf9166f4f91aa617557ed272612b7f0a2f72/assets/<NAME>/SVG/ic_fluent_<name>_<SIZE>_filled.svg
   ```
 
-- 本次逐字下载并**原样**保存于 `src/AIFrontend/Assets/Taskbar/source/official/`，
+- 本次逐字下载并**原样**保存于 `src/FluentCode/Assets/Taskbar/source/official/`，
   与上游 `cmp` 逐字节比对一致。sha256：
 
   | 文件名（`source/official/`） | sha256 |
@@ -172,9 +172,9 @@ overlay 由 Shell 直接绘制，**不会**随应用主题着色；其背景是�
 
 | `TaskbarStatus` | 语义 | overlay 描述（**不变**） | 默认文件（深色任务栏） |
 |---|---|---|---|
-| `NeedsAttention` | 需用户处理 / 结果未知 | `AIFrontend：有任务需要处理` | `Assets/Taskbar/dark-taskbar/taskbar-attention.ico` |
-| `Completed` | 任务已完成 | `AIFrontend：任务已完成` | `Assets/Taskbar/dark-taskbar/taskbar-completed.ico` |
-| `Failed` | 任务失败 | `AIFrontend：任务失败` | `Assets/Taskbar/dark-taskbar/taskbar-failed.ico` |
+| `NeedsAttention` | 需用户处理 / 结果未知 | `FluentCode：有任务需要处理` | `Assets/Taskbar/dark-taskbar/taskbar-attention.ico` |
+| `Completed` | 任务已完成 | `FluentCode：任务已完成` | `Assets/Taskbar/dark-taskbar/taskbar-completed.ico` |
+| `Failed` | 任务失败 | `FluentCode：任务失败` | `Assets/Taskbar/dark-taskbar/taskbar-failed.ico` |
 
 亮色任务栏套：同目录结构换成 `Assets/Taskbar/light-taskbar/taskbar-{attention,completed,failed}.ico`。
 
@@ -230,7 +230,7 @@ $I -c -o $set/taskbar-${status}.ico /tmp/${status}_{16,20,24,32}.png
 
 ## 8. 交付与接线说明（供父会话 / fixer，本次未做）
 
-1. **部署项**：`AIFrontend.csproj` 目前无该资产的复制规则（本次未改 csproj）。
+1. **部署项**：`FluentCode.csproj` 目前无该资产的复制规则（本次未改 csproj）。
    需由父会话加入类似
    `<Content Include="Assets\Taskbar\**\*.ico" CopyToOutputDirectory="PreserveNewest" />`，
    否则运行期取不到文件。
@@ -256,7 +256,7 @@ $I -c -o $set/taskbar-${status}.ico /tmp/${status}_{16,20,24,32}.png
 - **未做任何 GUI 操作**：未激活/点击窗口，未截图，未实例化 COM，未调用
   `LoadIcon`/`LoadImage`/`SetOverlayIcon`，未触碰真实任务栏 Explorer。
 - **未改任何代码/配置**：未改 `TaskbarStatusService`/`TaskbarNative`/其它 Services、
-  `AIFrontend.csproj`、任何 `MainWindow`/`App`/`Page`、其它 docs、Git 配置、全局配置、Claude memory；
+  `FluentCode.csproj`、任何 `MainWindow`/`App`/`Page`、其它 docs、Git 配置、全局配置、Claude memory；
   未新增生产依赖或永久安装软件；未改应用主图标。
 - 资产仅含官方 glyph 几何与本方选定色值，**不含任何 secret**。
 - **实际任务栏显示效果待父会话/用户统一验收**（本环境为 WSL2，无桌面）。若 16px 下

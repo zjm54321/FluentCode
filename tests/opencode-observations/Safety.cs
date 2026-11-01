@@ -4,10 +4,10 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using AIFrontend;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.Taskbar;
+using FluentCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
+using FluentCode.Services.Taskbar;
 
 static partial class Checks
 {

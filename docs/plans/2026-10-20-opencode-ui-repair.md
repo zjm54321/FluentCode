@@ -6,7 +6,7 @@
 
 - **主工作区与隔离原则**：
   - 当前主工作区路径：`/mnt/c/Users/Zhang/source/repos/AIFrontend-history-20261020`
-  - 严禁修改、构建或测试原版与冻结目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend` 及 `/mnt/c/Users/Zhang/source/repos/AIFrontend-frozen-20261019`。
+  - 严禁修改、构建或测试原版与冻结目录：`/mnt/c/Users/Zhang/source/repos/FluentCode` 及 `/mnt/c/Users/Zhang/source/repos/FluentCode-frozen-20261019`。
 - **基线版本与当前提交记录**：
   - 最新主分支基线 Commit SHA：`9711c71f90f951df74e4d83a157c3fb0252aecb0`
   - 旧版参考基线 Commit SHA：`8884a7cdc22fb7dca73b685fca7206703cc6ce53`
@@ -70,21 +70,21 @@
 
 当前工作区存在上一轮未成功的 Sol 尝试遗留代码（6 个已追踪修改 + 3 个未追踪文件）。**这些内容处于未完成、未测试、未提交状态，绝不代表任务已完成，严禁随任务 0 计划文档提交**。
 
-为确保计划 Task 0 提交时纯净无夹带，**该批 6+3 partial 资产已完整精确备份至系统安全目录 `/tmp/opencode/aif-ui-partial-before-plan-20261020`**。计划文档本身单独提交，后续各任务实施时按计划从备份及工作区中逐项审计与复用。
+为确保计划 Task 0 提交时纯净无夹带，**该批 6+3 partial 资产已完整精确备份至系统安全目录 `/tmp/opencode/fc-ui-partial-before-plan-20261020`**。计划文档本身单独提交，后续各任务实施时按计划从备份及工作区中逐项审计与复用。
 
 ### 2.1 遗留文件清单
 
 1. **已追踪修改文件（6 项）**：
-   - `src/AIFrontend/AIFrontend.csproj`（项目工程文件引用配置）
-   - `src/AIFrontend/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs`（原生弹窗/选择器逻辑）
-   - `src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs`（空白会话初始化与草稿处理）
-   - `src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs`（输入框布局与基线调整）
-   - `src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs`（新建会话 Tab 管理）
-   - `src/AIFrontend/Pages/OpenCodePage.xaml`（主界面 XAML 布局标记）
+   - `src/FluentCode/FluentCode.csproj`（项目工程文件引用配置）
+   - `src/FluentCode/Pages/OpenCode/OpenCodeComposerNativeDialogs.cs`（原生弹窗/选择器逻辑）
+   - `src/FluentCode/Pages/OpenCodePage.BlankConversation.cs`（空白会话初始化与草稿处理）
+   - `src/FluentCode/Pages/OpenCodePage.ComposerLayout.cs`（输入框布局与基线调整）
+   - `src/FluentCode/Pages/OpenCodePage.NewSessionTab.cs`（新建会话 Tab 管理）
+   - `src/FluentCode/Pages/OpenCodePage.xaml`（主界面 XAML 布局标记）
 2. **未追踪新增文件（3 项）**：
-   - `src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs`（模型品牌彩色图标解析）
-   - `src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs`（模型展示与文案格式化）
-   - `src/AIFrontend/Pages/OpenCode/OpenCodeRecentModels.cs`（最近实际成功使用模型记录）
+   - `src/FluentCode/Pages/OpenCode/OpenCodeModelLogo.cs`（模型品牌彩色图标解析）
+   - `src/FluentCode/Pages/OpenCode/OpenCodeModelPresentation.cs`（模型展示与文案格式化）
+   - `src/FluentCode/Pages/OpenCode/OpenCodeRecentModels.cs`（最近实际成功使用模型记录）
 
 ### 2.2 审计与复用策略
 
@@ -281,7 +281,7 @@
 ### Task R3：Reasoning Effort 变体改用 WinUI3 原生单选样式
 - **负责角色**：`designer` + `fixer` | **模型**：`openai/gpt-6.1-sol`
 - **详细规格**：
-  1. 真实控件改造（基于真实代码侦查）：经查证（`aif-ui-regression-recon-20261022.md`），当前 normal 会话弹窗已使用原生 `RadioButtons / RadioButton`，而 blank 新建会话变体菜单中实际采用的是系统原生 `ToggleMenuFlyoutItem.IsChecked` 的复选框式勾选（并非手绘符号）。本任务将 blank 的 checkbox 式 menu 改造替换为用户所需的原生 Radio 单选交互样式，normal 保持/复用既有原生单选逻辑；**不得引入自绘标记，亦绝不得误删 AgentPicker 当前选中项的 `E73E` 字体图标**。
+  1. 真实控件改造（基于真实代码侦查）：经查证（`fc-ui-regression-recon-20261022.md`），当前 normal 会话弹窗已使用原生 `RadioButtons / RadioButton`，而 blank 新建会话变体菜单中实际采用的是系统原生 `ToggleMenuFlyoutItem.IsChecked` 的复选框式勾选（并非手绘符号）。本任务将 blank 的 checkbox 式 menu 改造替换为用户所需的原生 Radio 单选交互样式，normal 保持/复用既有原生单选逻辑；**不得引入自绘标记，亦绝不得误删 AgentPicker 当前选中项的 `E73E` 字体图标**。
   2. 行为契约保持：未选定状态明确置为默认（`null`），清除选择时清空至 `null` 且不改变底层通信协议的原始 wire 值。
   3. 本地化与绑定解耦：界面严格采用规范汉化显示，内部保留原始 wire 枚举 ID，与当前会话及模型新鲜 catalog 正常双向绑定。
 - **单项验收标准**：
@@ -404,7 +404,7 @@
   1. 上部展示：显示当前会话标题，提供一键点击复制会话唯一标识（Session ID）的功能（附带复制成功轻量提示）。
   2. 中下部展示：只读展示当前工作空间目录路径（Working Directory）。
   3. 最底部展示：
-     - 集成 OpenCode 官方本地美术资源图标 + 所连接 OpenCode 后端服务版本号（非 AIFrontend 客户端版本号） + 实时连接状态小绿点。
+     - 集成 OpenCode 官方本地美术资源图标 + 所连接 OpenCode 后端服务版本号（非 FluentCode 客户端版本号） + 实时连接状态小绿点。
      - **视觉细节：小绿点依据真实连接状态渲染（已连接显示绿点，断连则不显绿点），小绿点旁不得出现“已连接”汉字文字**。
      - 点击该底部区域，可展开/唤起现有的真实版本信息、MCP 与 LSP 实际连接详情弹窗。
 - **单项验收标准**：
@@ -723,7 +723,7 @@
 
 ## 7. 重点非回归与质量红线
 
-1. **不可越界编辑目录**：严禁修改 `/mnt/c/Users/Zhang/source/repos/AIFrontend` 或 `/mnt/c/Users/Zhang/source/repos/AIFrontend-frozen-20261019`。
+1. **不可越界编辑目录**：严禁修改 `/mnt/c/Users/Zhang/source/repos/FluentCode` 或 `/mnt/c/Users/Zhang/source/repos/FluentCode-frozen-20261019`。
 2. **严禁混淆模型通道**：
    - Sol 阶段（共 13 项功能任务：A1~A10、R1~R3）：唯一允许使用 `openai/gpt-6.1-sol`。
    - Opus 阶段（共 18 项功能任务：B1、B1a、B1b、B2~B8、B11~B18）：唯一允许使用 `anthropic/claude-opus-5-5`。
@@ -786,13 +786,13 @@
 
 ### 视觉打磨与最终阶段提交记录（2026-10-23，全部默认模型并行车道 + parent cherry-pick）
 
-用户要求的最终阶段顺序：全面代码审查 → 删除无用测试 → 删除防御性代码 → 性能优化。人工逐项核对清单：`/tmp/opencode/aif-acceptance-checklist-20261023.html`（Gate A 用户实测与最终验收合并进行）。
+用户要求的最终阶段顺序：全面代码审查 → 删除无用测试 → 删除防御性代码 → 性能优化。人工逐项核对清单：`/tmp/opencode/fc-acceptance-checklist-20261023.html`（Gate A 用户实测与最终验收合并进行）。
 
 | 类别 | 提交（main） | 内容 |
 | :--- | :--- | :--- |
 | 视觉打磨 | `550a149` `9f2699f` `5607339` | 两行式 Composer/仪表盘/终端模式；侧栏卡片/Agent 树/上下文用量；working group/工具行/连接页 |
 | 审查发现的缺陷修复 | `71a37a4` `8335564` `5e9633a` `29fd865` `7f7189c` `0b7979e` `842d2a7` `8896e69` `13c057d` `ebddb6b` | REST 无 time 文本完成崩溃；中途加入的增量不覆盖快照；设置订阅者异常不删已提交凭据；畸形事件在边界拒绝；快照丢弃的消息可被后续事件恢复；设置读改写原子化；通知状态回收/锚点缺失恢复/准备失败有界重试；关标签取消跟踪；45 s 无心跳判定断流；REST JSON 64 MiB 上限 |
-| 删除死代码/防御代码 | `071e877` `2180a10` `de5ac96` `7f96c2e` `ccd333a` `67c5cee` `f9b8f7c` `b23a496` `1a724d4` | 临时崩溃 trace；重复 URI 校验；未用私有成员；从不触发的凭据事件链；通知死解析；无用参数；v2.1.1 不发送的 V1 事件处理（证据 `/tmp/opencode/aif-v1-events-evidence-20261023.md`）；客户端冗余检查与重复请求体。页面层防御审查未发现可证明安全删除的守卫（均为异步换会话/旧响应/草稿/生命周期守卫） |
+| 删除死代码/防御代码 | `071e877` `2180a10` `de5ac96` `7f96c2e` `ccd333a` `67c5cee` `f9b8f7c` `b23a496` `1a724d4` | 临时崩溃 trace；重复 URI 校验；未用私有成员；从不触发的凭据事件链；通知死解析；无用参数；v2.1.1 不发送的 V1 事件处理（证据 `/tmp/opencode/fc-v1-events-evidence-20261023.md`）；客户端冗余检查与重复请求体。页面层防御审查未发现可证明安全删除的守卫（均为异步换会话/旧响应/草稿/生命周期守卫） |
 | 精简测试 | `3023ffb` `fa02648` `9b55ae2` `8edf322` `99c933d` `2404ecb` | 删除源码字符串/自证常量检查，保留行为断言；runner 52 → 50（visible-idle 并入 instruction-notice，draft-slots 并入 tabs） |
 | 性能 | `784f7aa` `7bd15aa` `a445624` `68cbf00` `a038f92` `4ae9d29` `b69a41c` `ddced2d` | 仅解码变动消息；去重复历史拷贝；侧栏按输入变化重算；Markdown 文本不变不重绘；通知轮询共享读取；事件流健康时跳过 12 s 轮询；附件校验编码一次且在 UI 线程外准备；命令请求只序列化一次 |
 | 清理（续） | `d2a99a6` `d07785a` `c4c3242` `a96b245` `15386e1` | 无用 using/参数；无操作兼容重载与兼容垫片；子会话 ID 可空告警 |
@@ -800,15 +800,15 @@
 | 按用户原话纠偏（m01832 起） | `e33fb8a` `b2287f4` `820b01c` `3bf8208` `77c1704` `64cc7f5` `4ac7abe` `731bb30` `bc0ce76` `4e7aba3` `58532f7` `761391c` `69c1112` `83f9aeb` `c4ba8f9` `96f45f4` `ee4735d` `9c23569` | 首页不显示左右栏；左栏不放会话列表；OpenAI 标志无底色；新会话宽窗展开智能体详情、宽会话单行输入；+ 菜单只保留要求的项；模型选择仅 logo+名称；WSL 编辑器检测/记忆与 ~ 展开；智能体树模型与全名；新会话标签无 +；右栏自动加载；终端模式 |
 | 布局 D / 首页 H4 / 行为修复 | `c2109f8` `15be1f6` `33db14d` `342b7f4` `6887ecd` `bb43b0f` `a3fd3eb` `7b1c981` `020c133` `741cb55` `5ee1e25` `4c7104f` `e4c3a69` `b153f53` `a2beaa0` `3e537c5` `57d3887` `3632dd6` | 悬浮对齐侧栏卡片；首页 H4（无统计、Fluent 右键菜单、无限滚动、归档）；WSL 经 opencode CLI 连接；历史加载不抖动；`!` 进终端、`@` 列智能体与技能、/new 与 /sessions 行为；终端画刷移入页面主题字典（修复页面无法打开） |
 | 品牌与任务栏 | `552c82d` `f200dbd` `f468fd2` | 八家模型官方 logo；应用图标与圆形任务栏状态角标；智能体 Fluent 图标 |
-| v4 完整设计稿实现（`/tmp/opencode/aif-mockups/v4/`，修订 A1–A6、SA1–SA4、TD1、NV1–NV2） | `ba05bdf` `06973c4` `b1d2b72` `b2564cf` `bb0c303` `6b063d0` `0e64fc7` `42db285` `38b0f7f` `d81c8b4` `b10ab55` `4a145be` `ed55072` `762d719` `d7080aa` `4c8f305` `207f054` `aa142be` `6a37746` `e0d26e1` `ba7ba69` `228ac6b` `0fc9882` `d524cbb` `5b924b0` `19d79f4` `34e1a23` | 宽窗左导航只在点汉堡时展开；原生 TreeView 智能体树与子会话"返回主智能体"；选择器锚定 Flyout、子会话只读身份卡与无输入框；首页筛选/搜索/行；原生 Expander 处理分组与分开的进行中行；右栏 v4 与子会话上下文、to do 完成打勾/取消划线；气泡与服务端排队（虚线待送达、向上展开、不可排序）；原生 AnnotatedScrollBar（桥接现有 ScrollViewer）；By the way 对话框；整框终端、全页编辑器；指令/模型切换小框与远程文件查看（`GET /api/fs/read/*`） |
+| v4 完整设计稿实现（`/tmp/opencode/fc-mockups/v4/`，修订 A1–A6、SA1–SA4、TD1、NV1–NV2） | `ba05bdf` `06973c4` `b1d2b72` `b2564cf` `bb0c303` `6b063d0` `0e64fc7` `42db285` `38b0f7f` `d81c8b4` `b10ab55` `4a145be` `ed55072` `762d719` `d7080aa` `4c8f305` `207f054` `aa142be` `6a37746` `e0d26e1` `ba7ba69` `228ac6b` `0fc9882` `d524cbb` `5b924b0` `19d79f4` `34e1a23` | 宽窗左导航只在点汉堡时展开；原生 TreeView 智能体树与子会话"返回主智能体"；选择器锚定 Flyout、子会话只读身份卡与无输入框；首页筛选/搜索/行；原生 Expander 处理分组与分开的进行中行；右栏 v4 与子会话上下文、to do 完成打勾/取消划线；气泡与服务端排队（虚线待送达、向上展开、不可排序）；原生 AnnotatedScrollBar（桥接现有 ScrollViewer）；By the way 对话框；整框终端、全页编辑器；指令/模型切换小框与远程文件查看（`GET /api/fs/read/*`） |
 | v4 后续修复与工具视图（m02776–m02958） | `e7e14f2` `7690d40` `c94929d` `40bfb5f` `3cb6560` `515e0a5` `a4a4771` `c014deb` `6c4c669` `9400edf` `5a1b8bd` `083601f` `c11e27a` `b32e951` `f7376be` | 只看运行中时智能体树给出提示；模型 logo 重挂载不丢；补丁按文件拆行；todo/子智能体/提问/技能/网页搜索/execute 详情视图；窗口外 Mica、内部原生内容层（用户选 B）；滚动条贴在居中阅读列旁并用短横标注；已处理组细边框；右栏卡片实心灰底；To Do 文案与计数右对齐 |
 | 第 9 波：用户反馈 m03001–m03052 | `09fe6bf` `fc0db5b` `c5f1395` `c3a22ae` `9c99e37` `162c339` `da7eb20` `fd7545e` `1e166ec` `1436f08` `592ed94` `f3a0168` `8e31b65` `bd00856` `8573399` `3bdcaa8` `904e7de` `d6b7d9b` `7d8cdbc` `c260a21` `0334c10` `3800cb3` | 惯性滚动不再被锚点校正打断（抖动）；WSL 连接对话框不再卡在枚举；选择器点击无反应修复并改为原生 ComboBox，子会话中选择器禁用；智能体树箭头贴文字、整行折叠、无选中条、终端分隔线独立、图标按运行时颜色；终端行打开全屏只读终端视图（`GET /api/shell/{id}` 与 `/output`）；未送达插话气泡保留常规底色 + 虚线；重试倒计时；已处理组悬停才显底色、子行无绿勾、助手消息卡片不透明；右栏不整体滚动、To Do 最多 5 行内滚动、删除右侧返回父会话、上下文去进度条、“To Do” 文案、勾选框缩小 |
 | 生命周期（Unloaded 晚到）缺陷 | `171ab40` `585810c` `7e0894e` `8a3435f` `2c7b82a` `152e9e0` `344b16a` `a7ce12d` `5b8a792` `66fbd09` | 元素重新挂载时晚到的 Unloaded 不再取消图片渲染、代码主题/字体订阅、轮次模型补全、标签动效、指令对话框、已处理组、工作指示器、气泡宽度跟踪与选择器弹出；`tests/opencode-unload-lifecycle` 31 项（与 `7690d40`、`fc0db5b` 同类） |
 | 测试 | `944c2af` `c055919` `27f1611` `d502855` `d288752` `d6d3d01` `8f89cd4` | 右卡片顺序检查不锁间距；子会话卡片 ID 模式；原生 ComboBox 守卫提交；Unloaded 生命周期 runner（runner 数 52）；NativeOnly 模式等待 HTTP 入口再断言。全量：`8f89cd4` 编译 0 错误，52/52 runner 通过 |
-| v5 工具视图（`/tmp/opencode/aif-mockups/v5-tools/`，用户决定 D1–D9、PT1、SG1、CS1） | `127c367` `156df63` `36a3be6` `e93879f` `04c54ea` `53fdcb0` `173e6cc` `f72df79` `0d5c0c6` `be81ae9` `5589c7c` `26b865b` `c1cc047` `21dec0f` `184c7e5` `b2f4a3b` `f6b0783` `cd6f71f` `60b3943` `9c829db` `9b4a9d8` | 统一详情外框与可恢复上限；补丁每文件一行、编辑视图随宽度切换；搜索/网页/终端视图；上下文状态按固定格式解析；execute 内部调用中文名 + 原始 id；伴随工具状态与运行中子智能体实时悬浮；To Do/提问/思考行内展开；子智能体行点开进入子会话页；后台终端行进入终端页；已处理组仅悬停/聚焦高亮；文件动作走 WSL 路径策略；大视图代码块完整展开；“子智能体”术语 |
+| v5 工具视图（`/tmp/opencode/fc-mockups/v5-tools/`，用户决定 D1–D9、PT1、SG1、CS1） | `127c367` `156df63` `36a3be6` `e93879f` `04c54ea` `53fdcb0` `173e6cc` `f72df79` `0d5c0c6` `be81ae9` `5589c7c` `26b865b` `c1cc047` `21dec0f` `184c7e5` `b2f4a3b` `f6b0783` `cd6f71f` `60b3943` `9c829db` `9b4a9d8` | 统一详情外框与可恢复上限；补丁每文件一行、编辑视图随宽度切换；搜索/网页/终端视图；上下文状态按固定格式解析；execute 内部调用中文名 + 原始 id；伴随工具状态与运行中子智能体实时悬浮；To Do/提问/思考行内展开；子智能体行点开进入子会话页；后台终端行进入终端页；已处理组仅悬停/聚焦高亮；文件动作走 WSL 路径策略；大视图代码块完整展开；“子智能体”术语 |
 | 选择器与智能体树修复（m03524/m03537） | `28a54f6` `2aad035` `3c4fbe4` `53dd0b9` `e72cc4f` `098ea78` `d0e6270` | 智能体/思考强度选择器恢复图标、圆角下拉、v4 可搜索模型浮层、窄宽度紧凑；智能体按主题配色；树原生滚动；终端行单行省略 |
 | 第 10 波：用户反馈 m03650–m03800 | `1f751f3` `47f8f1c` `aca0176` `faff046` `cf63209` `d85655a` `053bfbb` `c56c15e` `60b59c2` `0559580` `2f9d7c5` `d841270` | 运行中行浅蓝底圆角；宽窗多行输入时 + 与发送贴最后一行；滚动条蓝条按实际滚动位置、悬停文字不再空白（原生控件按整篇高度计算、悬停模板只接受文本）；WSL `/mnt/<盘>/` 路径经 `wslpath -w` 还原为主机路径，资源管理器直接打开，编辑器改原生 SplitButton（只列检测到的编辑器）、按钮加大；思考中自动展开、结束自动收起；运行中分组可手动收起并显示当前步骤；悬浮卡片按内容宽度（≤80% 不换行，显示不全时逐步放宽到 100%）；工作中改智能体/模型/思考强度先记住，下次发送生效 |
-| 内置浏览器（m03489 BR1–BR7，设计稿 `/tmp/opencode/aif-mockups/browser/`，决定 BQ1–BQ13） | `34f8732` `5e83ffb` `5e7f94b` `26fed21` `1c0f432` `b65a85e` `0d2d982` `3fcb400` `35b9941` `033269e` `af4c1fc` `db2724e` `01912cb` `da8c158` `5d61bec` | 实现官方 `experimental.browser` 协议 4 的桌面端（`POST /api/rpc/experimental.browser/{method}` + `rpc.experimental.browser.control` 事件；所有打开的会话标签都接入）；WebView2 引擎执行 45 个 browser 动作（CDP），后台页面保持全尺寸隐形承载；程序内浮窗（导航、地址栏、错误页、智能体操作描边与接管/交还/停止）；右栏地球按钮 + 平铺缩略图（只显示画面，悬停卡片显示标签）；选择元素/框选/圈选/标注/截图与“添加到对话”（截图图片 + 元素信息含 ref）；预览模式渲染器；时间线 browser 行。证据：`/tmp/opencode/aif-browser-protocol-20261023.md`；车道报告 `/tmp/opencode/aif-b-{peer,core,panel,select,preview}-2026102[34].md`、`aif-b-timeline-20261024.md` |
+| 内置浏览器（m03489 BR1–BR7，设计稿 `/tmp/opencode/fc-mockups/browser/`，决定 BQ1–BQ13） | `34f8732` `5e83ffb` `5e7f94b` `26fed21` `1c0f432` `b65a85e` `0d2d982` `3fcb400` `35b9941` `033269e` `af4c1fc` `db2724e` `01912cb` `da8c158` `5d61bec` | 实现官方 `experimental.browser` 协议 4 的桌面端（`POST /api/rpc/experimental.browser/{method}` + `rpc.experimental.browser.control` 事件；所有打开的会话标签都接入）；WebView2 引擎执行 45 个 browser 动作（CDP），后台页面保持全尺寸隐形承载；程序内浮窗（导航、地址栏、错误页、智能体操作描边与接管/交还/停止）；右栏地球按钮 + 平铺缩略图（只显示画面，悬停卡片显示标签）；选择元素/框选/圈选/标注/截图与“添加到对话”（截图图片 + 元素信息含 ref）；预览模式渲染器；时间线 browser 行。证据：`/tmp/opencode/fc-browser-protocol-20261023.md`；车道报告 `/tmp/opencode/fc-b-{peer,core,panel,select,preview}-2026102[34].md`、`fc-b-timeline-20261024.md` |
 | 测试（第 10 波） | `e15597b` `1370df4` `e2664e3` | 新文件进入各 focused runner 编译清单；runner 数 56（新增 browser-peer、browser-engine、browser-panel、browser-preview） |
 | 已知未做 | — | 浏览器：服务端网络隧道代理未实现（页面走 Windows 网络；本机 WSL 靠 localhost 转发可用，远程服务器上的 localhost 页面打不开）；lighthouse 与 `inspect:true` 返回 unsupported；跨源 iframe 内的选择工具；Mermaid 无渲染器只显示源码；外部 Chrome（纯 CDP、设置里配置）记为以后再做。其它：`/editor` 命令仍走旧 ContentDialog；AnnotatedScrollBar 仍桥接现有 ScrollViewer；预设名不显示（无运行时来源）；以上浏览器与第 10 波改动均未在真实程序中逐项目测 |
 
@@ -854,9 +854,9 @@
 
 ### 9.6 代码与文件并发防冲撞纪律 (严禁并行写入)
 - **共享核心资产清单**：
-  - `src/AIFrontend/Pages/OpenCodePage.xaml`
-  - `src/AIFrontend/Pages/OpenCodePage.xaml.cs`
-  - `src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs`
-  - `src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs`
-  - `src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs`
+  - `src/FluentCode/Pages/OpenCodePage.xaml`
+  - `src/FluentCode/Pages/OpenCodePage.xaml.cs`
+  - `src/FluentCode/Pages/OpenCodePage.NewSessionTab.cs`
+  - `src/FluentCode/Pages/OpenCodePage.BlankConversation.cs`
+  - `src/FluentCode/Pages/OpenCodePage.ComposerLayout.cs`
 - **单线串行推进原则**：阶段 A 的各项任务虽然在功能层面相互独立，但由于上述 XAML 及分部类（Partial Classes）高度共享视图树与组件状态，**严禁在不同任务间发生并行写入（No Parallel Writes）**。必须严格遵循 `R1 → R2 → R3 → A8 → A9 → A10` 的单线顺序推进阶段 A 剩余任务，逐项修改、聚焦测试、独立 Commit，确保每个提交点的代码库均处于完全可用且便于审查回滚的健康状态。全量 13 项 Sol 任务完成后，统一执行一次 Gate A 综合验收。

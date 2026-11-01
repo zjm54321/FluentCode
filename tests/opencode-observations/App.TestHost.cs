@@ -2,8 +2,8 @@
 // expiry, gate, ACK and diagnostic dispatch methods compile from production partials.
 using System;
 using System.Collections.Generic;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.Taskbar;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.Taskbar;
 
 namespace Microsoft.UI.Dispatching
 {
@@ -21,7 +21,7 @@ namespace Microsoft.UI.Dispatching
     }
 }
 
-namespace AIFrontend
+namespace FluentCode
 {
     public partial class App
     {

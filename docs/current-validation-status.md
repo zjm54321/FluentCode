@@ -1,4 +1,4 @@
-# AIFrontend 当前验证与验收状态
+# FluentCode 当前验证与验收状态
 
 **记录截止时间**：2026-10-29
 
@@ -25,7 +25,7 @@
 | **工程全量编译** | 完整 | 0 警告 0 错误（Debug exit 0，含工具卡片原生 Expander 组合与界面修正） | 主工程与 linked harness 构建均 exit 0；单实例快照（PID 43552）拉起，OpenCodePage 可见 | ✅ 基础构建通过，最新实例持续运行 |
 | **外壳与响应式导航** | 完整 | 测试窗口尺寸断言通过 | NavigationView Auto 模式；侧栏底端顺序（Taskstatus→Account→Settings）已构建，最新界面待运行验证 | ⚠️ 已构建，最新界面待运行验证 |
 | **设置页面与导航** | 完整 | SettingsPage 补齐空 XAML、partial 与 InitializeComponent | 既定崩溃路径已修复（本轮未再崩溃）；「外观」、「OpenCode 后端」、「聊天 provider」、「模型」、「浏览器 Cookies」5 分类可加载；NavSettings 映射已构建待运行验 | ✅ 既定崩溃已排除，设置页可加载（不作全量 AV 保证） |
-| **设置持久化与 DPAPI** | 完整 | DPAPI 加密无明文 secret 存盘 | UIA 保存实测通过：`%LOCALAPPDATA%\AIFrontend\settings.json` 生成，含 CredentialId，无明文密码 | ✅ 真实保存与凭据加密验证通过 |
+| **设置持久化与 DPAPI** | 完整 | DPAPI 加密无明文 secret 存盘 | UIA 保存实测通过：`%LOCALAPPDATA%\FluentCode\settings.json` 生成，含 CredentialId，无明文密码 | ✅ 真实保存与凭据加密验证通过 |
 | **OpenCode 后端连通** | 完整 | 权限/Form 客户端 121 项断言通过 | 已验证设置保存、只读位置查询（200）、会话列表读取（10项）与单 Prompt 往返完成（idle=succeeded）；原生 Expander 消除隔离复现（38 检查点通过），UIA 观测 OpenCodePage 可见 | ⚠️ 通信链路打通，隔离渲染复现已消除，端到端完整交互待验 |
 | **AI 网页 (WebView2)** | 完整 | Profile 与 Cookie 隔离源码实现 | 进程拉起成功，WebView2 页面可切换 | ⏳ 真实登录与逐站 Cookie 清理未经验收 |
 | **Local 协议适配** | 完整 | 281 项协议断言通过；窄窗布局已修正 | 页面可打开；窄窗测量溢出已修正，已包含在最新 Debug 构建中，待更全面尺寸实测；无自备 provider/key 在线调用 | ⏳ 离线完备，已构建待运行验，在线未验 |
@@ -50,7 +50,7 @@
 3. **设置真实保存验证**：
    - 在应用设置 ->「OpenCode 后端」分类中填入用户授权的本机测试服务地址及 Basic 认证账号与服务密码；
    - 执行 UIA 点击“保存 (Save)”；
-   - 验证 `%LOCALAPPDATA%\AIFrontend\settings.json` 真实生成；
+   - 验证 `%LOCALAPPDATA%\FluentCode\settings.json` 真实生成；
    - 配置文件中 endpoint、auth (Basic)、username 符合设定，`CredentialId` 非空，无 plaintext 密码/token/secret 字段（凭据由 DPAPI 加密存储）；
    - 配对区域位于同页下方，兑换结果须显式保存（不具备粘贴自动连接行为）；
    - 证据文件：`artifacts/validation/current-acceptance/authorized-draft-second-result.json`、`authorized-save-result.json`。

@@ -4,7 +4,7 @@
 
 ## 范围与依赖
 
-- 命名空间：`AIFrontend.Services.Taskbar`。
+- 命名空间：`FluentCode.Services.Taskbar`。
 - 文件：`Services/Taskbar/TaskbarStatus.cs`、`TaskbarNative.cs`、`TaskbarStatusService.cs`。
 - 使用 Windows 原生 `ITaskbarList3` 与既定 Fluent 私有 ICO，没有新增 NuGet 包、DI、网络、通知、系统托盘或 tile/`BadgeUpdateManager` 依赖。适用于已有 HWND 的桌面窗口，不依赖打包应用 tile 身份。
 - 资产接线仅扩展已有 `TaskbarWindowHook` 消息边界及 csproj 的 ICO 部署项；不修改 App/MainWindow/Pages/Notifications，不创建计时器。
@@ -12,7 +12,7 @@
 ## 全部显式公开接口
 
 ```csharp
-namespace AIFrontend.Services.Taskbar;
+namespace FluentCode.Services.Taskbar;
 
 public enum TaskbarStatus { Idle, Working, NeedsAttention, Completed, Failed }
 public sealed record TaskbarProgress(ulong Completed, ulong Total);
@@ -56,9 +56,9 @@ public sealed class TaskbarStatusService : IDisposable
 | Idle | `TBPF_NOPROGRESS` | `HICON=NULL`、description=null，清 overlay |
 | Working，无真实进度 | `TBPF_INDETERMINATE` | 清 overlay；不发送任何伪造百分比 |
 | Working，有真实进度 | `SetProgressValue(completed,total)` 后明确 `TBPF_NORMAL` | 清 overlay |
-| NeedsAttention | `TBPF_NOPROGRESS`，**不是 PAUSED** | `taskbar-attention.ico`；“AIFrontend：有任务需要处理” |
-| Completed | `TBPF_NOPROGRESS`，不发送 100% | `taskbar-completed.ico`；“AIFrontend：任务已完成” |
-| Failed | `TBPF_ERROR`；有真实进度时先提交其值，否则不调用 SetProgressValue | `taskbar-failed.ico`；“AIFrontend：任务失败” |
+| NeedsAttention | `TBPF_NOPROGRESS`，**不是 PAUSED** | `taskbar-attention.ico`；“FluentCode：有任务需要处理” |
+| Completed | `TBPF_NOPROGRESS`，不发送 100% | `taskbar-completed.ico`；“FluentCode：任务已完成” |
+| Failed | `TBPF_ERROR`；有真实进度时先提交其值，否则不调用 SetProgressValue | `taskbar-failed.ico`；“FluentCode：任务失败” |
 
 - 真实进度只允许用于 Working/Failed，`Total > 0` 且 `Completed <= Total`；其他组合、未知枚举、null 快照返回 InvalidSnapshot，不改变当前意图、不调用任务栏。
 - Failed 无数值时仅请求 ERROR 状态；具体红色条形的默认长度由 Shell 决定，本服务不把它解释成百分比，也不注入虚假数值。
@@ -77,7 +77,7 @@ public sealed class TaskbarStatusService : IDisposable
 示例（仅接线说明，未执行）：
 
 ```csharp
-using AIFrontend.Services.Taskbar;
+using FluentCode.Services.Taskbar;
 
 // hwnd 由父窗口提供；以下全部在该窗口的 STA/UI 线程。
 var taskbar = new TaskbarStatusService(hwnd);

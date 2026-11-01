@@ -4,7 +4,7 @@
 
 ## UI 冻结接口
 
-通过 `(App)Application.Current` 使用既有 App，不创建第二个通知服务或 gate。以下类型的 namespace 分别为 `AIFrontend`、`AIFrontend.Services.Notifications`、`AIFrontend.Services.Taskbar`。
+通过 `(App)Application.Current` 使用既有 App，不创建第二个通知服务或 gate。以下类型的 namespace 分别为 `FluentCode`、`FluentCode.Services.Notifications`、`FluentCode.Services.Taskbar`。
 
 ```csharp
 // App
@@ -41,7 +41,7 @@ public sealed record AppIntegrationDiagnostic(DateTimeOffset AtUtc, string Code,
 ### 页面独立 client / 可撤销 source（oracle 选 A，冻结签名）
 
 ```csharp
-namespace AIFrontend.Services.Notifications;
+namespace FluentCode.Services.Notifications;
 public sealed class OpenCodePageSource
 {
     internal OpenCodePageSource(string identity, long revision, Func<OpenCodeClient> createClient);
@@ -105,9 +105,9 @@ App 已在唯一窗口取得 HWND 后 Initialize，在关闭流程 UI 阶段 Shu
 
 ## 单实例与激活：实现范围与待验证点
 
-- **未修改 csproj，也未新增 Program.cs / DISABLE_XAML_GENERATED_MAIN。** 保留现有生成入口的 `[STAThread]`、`ComWrappersSupport.InitializeComWrappers()` 和 `DispatcherQueueSynchronizationContext`。已有生成文件 `src/AIFrontend/obj/x64/Debug/net10.0-windows10.0.26100.0/win-x64/App.g.i.cs` 第 22–29 行验证了这些步骤；它只是旧构建产物的只读参考，本轮没有重生成。
-- 在有 pumping dispatcher 的 async `OnLaunched` 中，`AppInstance.FindOrRegisterForKey("AIFrontend.Main")` **先于窗口创建**。主实例订阅 `Activated` 并独占监听本机 IPC；副实例不创建窗口/通知服务/client，不执行 mutation。副实例 handler → Register → GetActivatedEventArgs → `await RedirectActivationToAsync` 继续用于 SDK 初始记录；**native handler 收到的当前 args 另行转交**，不再空处理，也不再次读取初始记录冒充当前回调。Unregister、退订后封闭转交 admission 并 `await StopAndDrainAsync()`，完成才退出；无同步 STA 等待。
-- 已安装 SDK `Microsoft.Windows.AppLifecycle.Projection.xml` 公开 `AppActivationArguments.Data/Kind` 只读属性及 `RedirectActivationToAsync(AppActivationArguments)`，没有从当前 `AppNotificationActivatedEventArgs` 构造的工厂/构造函数。因此当前 native 回调采用最小本机命名管道：`AIFrontend.Activation.v1.<primaryPID>`，服务端 `CurrentUserOnly | FirstPipeInstance | Asynchronous`，客户端 `CurrentUserOnly` 且仅连接 `.`；只有主实例监听，一个连接串行，最多 32 KiB 帧、8 个 Arguments/16 个 UserInput、键 128 字符/值 8192 字符、每次转交 5 秒上限、副实例最多 8 个在途转交。超限/超时仅记录固定诊断码，不重试。snapshot 在 admission 锁内同步完成；原 args/答案仅限有界内存，不写日志/磁盘/UI 队列。ACK 仅代表已交给主端，不代表 mutation 成功。主端仍走同一服务的可信 nonce registry/重查/gate；IPC 输入不是授权，不允许通过它指定 client/endpoint。
+- **未修改 csproj，也未新增 Program.cs / DISABLE_XAML_GENERATED_MAIN。** 保留现有生成入口的 `[STAThread]`、`ComWrappersSupport.InitializeComWrappers()` 和 `DispatcherQueueSynchronizationContext`。已有生成文件 `src/FluentCode/obj/x64/Debug/net10.0-windows10.0.26100.0/win-x64/App.g.i.cs` 第 22–29 行验证了这些步骤；它只是旧构建产物的只读参考，本轮没有重生成。
+- 在有 pumping dispatcher 的 async `OnLaunched` 中，`AppInstance.FindOrRegisterForKey("FluentCode.Main")` **先于窗口创建**。主实例订阅 `Activated` 并独占监听本机 IPC；副实例不创建窗口/通知服务/client，不执行 mutation。副实例 handler → Register → GetActivatedEventArgs → `await RedirectActivationToAsync` 继续用于 SDK 初始记录；**native handler 收到的当前 args 另行转交**，不再空处理，也不再次读取初始记录冒充当前回调。Unregister、退订后封闭转交 admission 并 `await StopAndDrainAsync()`，完成才退出；无同步 STA 等待。
+- 已安装 SDK `Microsoft.Windows.AppLifecycle.Projection.xml` 公开 `AppActivationArguments.Data/Kind` 只读属性及 `RedirectActivationToAsync(AppActivationArguments)`，没有从当前 `AppNotificationActivatedEventArgs` 构造的工厂/构造函数。因此当前 native 回调采用最小本机命名管道：`FluentCode.Activation.v1.<primaryPID>`，服务端 `CurrentUserOnly | FirstPipeInstance | Asynchronous`，客户端 `CurrentUserOnly` 且仅连接 `.`；只有主实例监听，一个连接串行，最多 32 KiB 帧、8 个 Arguments/16 个 UserInput、键 128 字符/值 8192 字符、每次转交 5 秒上限、副实例最多 8 个在途转交。超限/超时仅记录固定诊断码，不重试。snapshot 在 admission 锁内同步完成；原 args/答案仅限有界内存，不写日志/磁盘/UI 队列。ACK 仅代表已交给主端，不代表 mutation 成功。主端仍走同一服务的可信 nonce registry/重查/gate；IPC 输入不是授权，不允许通过它指定 client/endpoint。
 - 主实例成功 Register 后才读取初始 activated args。**删除永久 nonce 摘要去重**；InvalidInput 后同 nonce 可以纠正输入。导航只合并排队/事件投递在途的同一结构化目标，投递结束后删除，后续点击再次前置/定位。真正 mutation 的单次保护仍由同一 coordinator claim + Shared gate 保证，不能由 App 的历史点击集合决定。
 - 冷 nonce 明确 NeedsApp，不恢复批准/答案。来源未 ready、未知/过期 nonce 也不可提交。保留 instance key 到进程退出/drain 结束，不提前释放使新进程与旧请求竞争。
 - **完成解析边界已补齐：** 运行中的 native 与 SDK/IPC 转交现在共用 `HandleCompletionActivation`，Local/OpenCode 均可从本次注册成功提交的运行期 token 解析完整目标，不再有“转交 completion 只能 NeedsApp”的代码限制。**进程重启后没有运行期映射**，旧 token 仍只能 NeedsApp/前置，不持久化、不反射、不逆向解析、不凭摘要拼 SessionId。OpenCode App 继续校验当前 endpoint/generation，不能跨来源导航。
@@ -115,7 +115,7 @@ App 已在唯一窗口取得 HWND 后 Initialize，在关闭流程 UI 阶段 Shu
 
 ## 之前的 oracle 修复证据（历史）
 
-本次 oracle 五项修复证据：`/mnt/c/Users/Zhang/source/repos/AIFrontend-app-oracle-validation-20261006/`。此前 `AIFrontend-app-owner-validation-20261006/` 是修复前历史证据，不再代表当前行为；特别是旧 Program.cs:53–58 永久抑制后续导航的断言已被本次 Program.cs 的“再次点击得到第 2 次投递”断言替代，不把旧快照改写成新证据。
+本次 oracle 五项修复证据：`/mnt/c/Users/Zhang/source/repos/FluentCode-app-oracle-validation-20261006/`。此前 `FluentCode-app-owner-validation-20261006/` 是修复前历史证据，不再代表当前行为；特别是旧 Program.cs:53–58 永久抑制后续导航的断言已被本次 Program.cs 的“再次点击得到第 2 次投递”断言替代，不把旧快照改写成新证据。
 
 - `NativeCompile.csproj`：55 个真实 App/Models/Contracts/Configuration/Notifications/OpenCode/Taskbar 源码快照，引用现有真实 WinUI/AppLifecycle/AppNotifications/Windows SDK/ProtectedData assemblies；只有 XAML InitializeComponent、MainWindow/NormalPage/Local event 边界替身。**是隔离 App 编译，不是全应用编译。** `native-build.log`：0 warning、0 error。
 - `HeadlessTests.csproj`/`Program.cs`：3 核心组、30 assertions：①旧 monitor 阻塞期间同步撤销、发送前/后取消、activation drain 先于 client dispose、未知 tombstone 保留（13）；②乱序 Changed 读 Current、主题/Local/规范化别名不换代、显式 force 保留保护（5）；③导航在途合并/再次投递、Form 同 nonce 纠错且 mutation 仅一次、副实例当前参数快照和转交 drain、同进程真实 Windows CurrentUserOnly pipe 将未知 nonce 交给主端但不授权、有界输入、双 slash 路径 identity（12）。日志 `headless-build.log`/`headless-run.log`/`test-results.json`。
@@ -132,7 +132,7 @@ bash run-dotnet.sh bin/Debug/net10.0/HeadlessTests.dll
 
 ## 页面 source 与 session protection 安全回归（最新）
 
-证据：`/mnt/c/Users/Zhang/source/repos/AIFrontend-page-source-safety-validation-20261006/`。
+证据：`/mnt/c/Users/Zhang/source/repos/FluentCode-page-source-safety-validation-20261006/`。
 
 - 真实修改后的 `App*.cs`、`OpenCodePageSource`、gate、通知/monitor/lifetime、真实 OpenCode/Configuration/Taskbar 依赖及 Local 完成事件，共 58 份生产源码隔离编译。NativeCompile 引用真实 Windows SDK/AppSDK；HeadlessTests 仅 UI 边界替身，无反射。Windows net10：两工程均 0 warnings / 0 errors。非全应用构建。
 - 3 组、42 assertions，6 次纯 mock HTTP：①真实 App 配置入口同步撤销/null、取消中间 generation、I-null-I revision、关闭；阻塞 GET 后旧 source 零起发/Resolve、CancelAsync 不等 callback、旧 token 可继续 linked、独立工厂合成换密（18）；②Revoke 先赢零 mutation，起发先赢一次 POST/取消/保留精确旧 unknown，另一 gate 入口等待（8）；③Form/其他 Permission 无法凭 affectsSession 清 reject、来源键校验、原 reject 已消失后的完整 fresh list+显式确认 allowRetry=false 恢复，仅原源记录改变、其他 unknown 保留（16）。
@@ -144,7 +144,7 @@ Windows dotnet SDK 10.0.401、独立 CLI home/cache/temp、NuGet.Config 清空�
 
 ## 本次完成导航证据
 
-目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-completion-navigation-validation-20261006/`。
+目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-completion-navigation-validation-20261006/`。
 
 - `NativeCompile.csproj`：Windows net10、真实 SDK 引用与 57 个真实源码快照（包括真实 `LocalTaskCompletedEventArgs`）；仅 XAML 初始化/MainWindow/NormalPage 等 UI 边界替身。`native-build.log`：0 警告、0 错误，**非完整主工程构建**。
 - `HeadlessTests.csproj`：UI Application/Window/dispatcher 替身，真实 App/通知业务源码；内部注入 completion submit delegate 和时钟模拟成功提交/时间，不调用原生 Register/Show、不替换 SDK projection、不反射、不读配置/凭据、不发 HTTP。新 `Program.cs` 3 组 26 assertions：Local 完成事件保留 SessionId、native 所用服务边界与 App 转交同目标、重复导航/完成去重兼容旧 API（10）；伪造来源/外部 SessionId/输入、unknown/cold/过期/提交失败拒绝及容量淘汰（10）；OpenCode 同 resolver、历史/重复静默、跨 endpoint 拒绝及 invalidate 不影响 Local（6）。`headless-build.log`、`headless-run.log`、`test-results.json`。

@@ -1,9 +1,9 @@
 {
-  "name": "aifrontend-browser-runtime",
+  "name": "fluentcode-browser-runtime",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Workspace-local dependencies for the AIFrontend browser sidecar.",
+  "description": "Workspace-local dependencies for the FluentCode browser sidecar.",
   "license": "UNLICENSED",
   "engines": {
     "node": "24.22.1"

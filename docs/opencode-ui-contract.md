@@ -1,10 +1,10 @@
-# OpenCode 页 UI 合同（`src/AIFrontend/Pages/OpenCodePage.*` + `src/AIFrontend/Pages/OpenCode/**`）
+# OpenCode 页 UI 合同（`src/FluentCode/Pages/OpenCodePage.*` + `src/FluentCode/Pages/OpenCode/**`）
 
 > 2026-10-30 测试已精简为[清单中的 25 个关键入口](test-suite.md)；下文已移除 runner 的路径与结果仅为历史证据。
 
 > 状态：**来源绑定安全闭环修正**（2026-10-06，本 lane 本轮）。页面数据源改为 App 发布的 `OpenCodePageSource`（对象引用 + 单调 `Revision` 共同构成唯一代际）；六入口（权限提交 / 表单回答 / 表单取消 / 权限重查 / 表单重查 / 解除保护）统一捕获绑定并在来源私锁内原子起发；拒绝结果未知的整会话保护改为**精确来源键 + 显式整会话恢复**；静态身份注入降级为**导航提示**（绝不授权）。前轮的卡片交互、共享仲裁接入、导航入口、会话/执行事件保留；“页面自行读设置/凭据构建客户端”被本轮**整体替换**。
 > **收口修正（2026-10-06，同日追加）**：②三处 mutation 的非 unknown lease 结果（`Expired`/`Failed`/`Succeeded`，含成功分支）统一改经 `TryCompleteMutation`——`TryExecute` 私锁内复核完整绑定后才 `CompleteMutation`，`completed` 标志区分 action 被调用与真正写入；绑定失效/来源撤销/取消一律保留旧 lease 为 `OutcomeUnknown`。④-A 整会话恢复入口改为**有效会话常驻**（不依赖 pending/hint；点击才读取保护与完整列表，无保护如实提示）；④-B 两个会话切换入口清除提示/确认快照/确认面板，确认快照绑定（来源引用 + Revision + 来源代际 + 会话 + 会话代际 + 精确来源键），第二步逐项匹配否则重做确认。并修复父构建 5×CS1061（可空元组未解包）与 5×CS8602（client 捕获后未做非空检查）。
-> 收口修正只写：`src/AIFrontend/Pages/OpenCodePage.xaml.cs`、`src/AIFrontend/Pages/OpenCode/OpenCodeSessionRecoveryPanel.cs`（注释）、本文档。**未改** `App.*` / `Services/**` / `MainWindow.*` / 其他 Pages / `*.csproj` / `OpenCodePage.xaml`。
+> 收口修正只写：`src/FluentCode/Pages/OpenCodePage.xaml.cs`、`src/FluentCode/Pages/OpenCode/OpenCodeSessionRecoveryPanel.cs`（注释）、本文档。**未改** `App.*` / `Services/**` / `MainWindow.*` / 其他 Pages / `*.csproj` / `OpenCodePage.xaml`。
 > **未构建主工程、未运行、未做任何 UI 操作、未对真实后端发起任何请求、未读取任何凭据、未 git**。本环境（NixOS on WSL2）无 dotnet/pwsh，**无法本地编译 C#**；静态核对为逐条源文件比对 + 字符配平 + 计数，**不是编译**。主工程编译与运行验收由父会话统一执行，oracle 复核。
 > 接口依据（本轮冻结）：`docs/app-integration-contract.md`“页面独立 client / 可撤销 source”、`docs/notification-integration-contract.md` §2（共享仲裁、session protection、整会话恢复前置条件）；客户端能力仍见 `docs/opencode-client-contract.md` §13。
 > **输入框键盘修正（2026-10-07，本 lane 本轮）**：Enter 发送改经 `Composer.AddHandler(UIElement.PreviewKeyDownEvent, …, handledEventsToo: true)` 在**隧道阶段**拦截（先于原生 TextBox 的 `AcceptsReturn` 换行处理），XAML 侧 `KeyDown` 保留为共享判定的幂等兜底；`Shift+Enter` 换行、IME 组合/组合刚结束（80ms）的 Enter 不发送（保留原时序保护，新增 LostFocus 自愈与物理优先 Shift 判定）；发送中与按住 Enter 的自动重复不重复提交；仅复用既有 `SendPromptAsync()` 入口（无新 POST、无自动重试）；提示文案与实际行为一致（XAML 未改动）。只写 `OpenCodePage.xaml.cs` 与本文档；**未构建、未运行、未对真实后端发请求、未 git**；真机验证由父会话执行。
@@ -94,17 +94,17 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `src/AIFrontend/Pages/OpenCodePage.xaml` | 页面布局（2026-10-07 本轮改动：composer 单行自增高输入行 + 单按钮；回到底部按钮与其余布局保留） |
-| `src/AIFrontend/Pages/OpenCodePage.xaml.cs` | 来源绑定与独立 client 所有权、六入口 TryExecute 原子起发、整会话恢复、导航来源化（2026-10-06 收口）；2026-10-07 本轮追加（composer/滚动局部）：单/多行布局、单按钮模式、滚动守卫与有界 settle |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeSessionRecoveryPanel.cs` | **本轮新增**：整会话恢复入口 + “整会话影响”确认面板（纯 UI；不发送任何请求） |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeInteractionPolicy.cs` | （前轮，未改）纯策略：指纹 + 表单可表达性投影 + 答案装配与校验 |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeInteractionUi.cs` | （前轮，未改）卡片共享样式工具 |
-| `src/AIFrontend/Pages/OpenCode/OpenCodePermissionCard.cs` | （前轮，未改）权限卡片（阻断态“必要确认” `ShowResolutionConfirm`） |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeFormCard.cs` | （前轮，未改）表单卡片（同上） |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeInteractionsView.cs` | （前轮，未改）交互面板（`Suppress`/`Replace*`/`ApplyRechecked*`/`Mark*Blocked`/`ShowResolutionConfirm`/`SetSubmitting` 等） |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs` | （前轮，未改）会话跟踪 / 执行状态事件类型 |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeNotificationIntegration.cs` | （前轮，未改）导航结构化结果类型 |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs` / `OpenCodeToolPartView.cs` | （2026-10-07 组合化修正：`OpenCodeToolPartView` 改为普通 sealed 控制器持有原生 `Expander`，`OpenCodeConversationView` 使用 `view.Element` 入树） |
+| `src/FluentCode/Pages/OpenCodePage.xaml` | 页面布局（2026-10-07 本轮改动：composer 单行自增高输入行 + 单按钮；回到底部按钮与其余布局保留） |
+| `src/FluentCode/Pages/OpenCodePage.xaml.cs` | 来源绑定与独立 client 所有权、六入口 TryExecute 原子起发、整会话恢复、导航来源化（2026-10-06 收口）；2026-10-07 本轮追加（composer/滚动局部）：单/多行布局、单按钮模式、滚动守卫与有界 settle |
+| `src/FluentCode/Pages/OpenCode/OpenCodeSessionRecoveryPanel.cs` | **本轮新增**：整会话恢复入口 + “整会话影响”确认面板（纯 UI；不发送任何请求） |
+| `src/FluentCode/Pages/OpenCode/OpenCodeInteractionPolicy.cs` | （前轮，未改）纯策略：指纹 + 表单可表达性投影 + 答案装配与校验 |
+| `src/FluentCode/Pages/OpenCode/OpenCodeInteractionUi.cs` | （前轮，未改）卡片共享样式工具 |
+| `src/FluentCode/Pages/OpenCode/OpenCodePermissionCard.cs` | （前轮，未改）权限卡片（阻断态“必要确认” `ShowResolutionConfirm`） |
+| `src/FluentCode/Pages/OpenCode/OpenCodeFormCard.cs` | （前轮，未改）表单卡片（同上） |
+| `src/FluentCode/Pages/OpenCode/OpenCodeInteractionsView.cs` | （前轮，未改）交互面板（`Suppress`/`Replace*`/`ApplyRechecked*`/`Mark*Blocked`/`ShowResolutionConfirm`/`SetSubmitting` 等） |
+| `src/FluentCode/Pages/OpenCode/OpenCodeSessionTracking.cs` | （前轮，未改）会话跟踪 / 执行状态事件类型 |
+| `src/FluentCode/Pages/OpenCode/OpenCodeNotificationIntegration.cs` | （前轮，未改）导航结构化结果类型 |
+| `src/FluentCode/Pages/OpenCode/OpenCodeConversationView.cs` / `OpenCodeToolPartView.cs` | （2026-10-07 组合化修正：`OpenCodeToolPartView` 改为普通 sealed 控制器持有原生 `Expander`，`OpenCodeConversationView` 使用 `view.Element` 入树） |
 | `docs/opencode-ui-contract.md` | 本文档 |
 
 未新增 NuGet 包。
@@ -348,7 +348,7 @@ await page.NavigateToNotificationAsync(target, result);   // result 可为 null�
 
 ## 12. 与其他 lane 的边界
 
-- 本页只消费 `AIFrontend.Services.OpenCode`、`AIFrontend.Services.Configuration`、`AIFrontend.Models` 的既有公开 API，以及 `AIFrontend.Services.Notifications` 的**共享仲裁与来源类型**（只读引用，不修改）。构造签名仍接受 `SettingsService`/`DpapiSecretStore`（宿主组合兼容），但本轮起页面不再保存或使用它们。
+- 本页只消费 `FluentCode.Services.OpenCode`、`FluentCode.Services.Configuration`、`FluentCode.Models` 的既有公开 API，以及 `FluentCode.Services.Notifications` 的**共享仲裁与来源类型**（只读引用，不修改）。构造签名仍接受 `SettingsService`/`DpapiSecretStore`（宿主组合兼容），但本轮起页面不再保存或使用它们。
 - `MainWindow` / `App` / `NormalPage` / `Pages/Web` / `Pages/Local` 由其他 writer 独占；宿主契约（构造 + 事件 + 兼容身份提示 + 导航入口）保持不变，接线由父会话完成。
 - 本页不 `new` 通知服务；不 dispose App 客户端；页面自持的独立 client 仅在来源失效换代与 Unloaded 时释放。
 

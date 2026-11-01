@@ -8,7 +8,7 @@ $root = Split-Path $dotnet
 $sdk = Get-ChildItem "$root/sdk" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 if (-not $sdk -or -not $pack) { throw '.NET 10 is required.' }
-$browser = Join-Path $repo 'src/AIFrontend/Services/OpenCode/Browser'
+$browser = Join-Path $repo 'src/FluentCode/Services/OpenCode/Browser'
 $sources = @('OpenCodeBrowserAttachmentLease.cs', 'OpenCodeBrowserExecutionContracts.cs', 'OpenCodeBrowserRuntimeProtocol.cs', 'OpenCodeBrowserTunnelTransport.cs', 'OpenCodeBrowserRuntimeFactory.cs', 'OpenCodeBrowserRuntime.cs') | ForEach-Object { Join-Path $browser $_ }
 $sources += Join-Path $PSScriptRoot 'Program.cs'
 $sources += Join-Path $PSScriptRoot 'ChromeCdpHost.cs'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the 27 critical suite entries sequentially with immutable-candidate logs."""
+"""Run the FluentCode critical suite sequentially with immutable-candidate logs."""
 import argparse
 import hashlib
 import json
@@ -14,6 +14,7 @@ PWSH = '/mnt/c/Program Files/PowerShell/7/pwsh.exe'
 BASE_ROOTS = {'opencode-composer'}
 RUNNERS = (
     'opencode-auth/run.ps1',
+    'data-migration/run.ps1',
     'opencode-connection/run.ps1',
     'opencode-pairing/run.ps1',
     'opencode-event-sync/run.ps1',
@@ -128,8 +129,8 @@ def main():
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args()
     root = args.root.resolve()
-    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-')):
-        parser.error('Use a NEW artifacts/prune-verify-* or artifacts/restoration-suite-* directory')
+    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-', 'fluentcode-step1-suite-')):
+        parser.error('Use a NEW artifacts/fluentcode-step1-suite-* directory')
     entries = plan(root)
     if not args.execute:
         print(json.dumps(entries, ensure_ascii=False, indent=2))

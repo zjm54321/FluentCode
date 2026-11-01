@@ -22,47 +22,47 @@ New-Item -ItemType Directory -Path $env:TEMP | Out-Null
 $assembly = Join-Path $output 'OpenCodeComposerHookupTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$sources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerCharTriggers.cs"
+$sources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerCharTriggers.cs"
 foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerContinuationModels.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeSessionControlCoordinator.cs')) {
-    $sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/$name"
+    $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs', 'OpenCodeExecutionProjection.cs')) {
-    $sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/$name"
+    $sources += Get-Item "$repo/src/FluentCode/Services/Notifications/$name"
 }
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.Composer.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.ChildStop.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SideQuestion.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSideQuestion.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.Composer.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.ChildStop.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.SideQuestion.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeSideQuestion.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'SideQuestions.cs')
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.DraftSlots.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SteerChat.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.SessionActivityIntegration.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerActivityPolicy.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeModelPresentation.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.DraftSlots.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.SteerChat.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.SessionActivityIntegration.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerActivityPolicy.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeHomeProjection.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeModelPresentation.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'ComposerActivity.cs')
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.AgentIntegration.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs"
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.AgentIntegration.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.MessagePagination.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.MessageBinding.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'Program.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'ComposerStatus.cs')
 # Execute the actual status renderer against explicit in-memory control state, without native UI.
-$view = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs")
+$view = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs")
 $statusMember = [regex]::Match($view, '(?ms)^    private void RenderStatus\(.*?^    \}\r?$')
 if (!$statusMember.Success) { throw 'Missing production composer status renderer.' }
 $statusGenerated = Join-Path $output 'ComposerStatusMember.cs'
-"using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages.OpenCode; internal sealed partial class ComposerStatusHost {`n" + $statusMember.Value + "`n}" | Set-Content -Encoding UTF8 $statusGenerated
+"using System; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Automation; namespace FluentCode.Pages.OpenCode; internal sealed partial class ComposerStatusHost {`n" + $statusMember.Value + "`n}" | Set-Content -Encoding UTF8 $statusGenerated
 $sources += Get-Item $statusGenerated
 $sources += Get-Item (Join-Path $PSScriptRoot 'NativeActions.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'ContinuationActions.cs')
-$sources += Get-Item "$repo/src/AIFrontend/Services/Notifications/AgentSwitchCoordinator.cs"
+$sources += Get-Item "$repo/src/FluentCode/Services/Notifications/AgentSwitchCoordinator.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'DeferredSelections.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'PluginPendingGuard.cs')
 $sources += Get-Item (Join-Path $PSScriptRoot 'CatalogDispatch.cs')
-$selector = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCode/OpenCodeAgentSelector.cs")
+$selector = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeAgentSelector.cs")
 $pendingMembers = foreach ($name in @('SelectPendingAgent', 'SelectPendingModel', 'SavePendingSelection', 'ApplyPendingSelectionAsync', 'ApplyPendingSelectionCoreAsync', 'CompletePendingSelection', 'RunSwitchAsync', 'ReloadAsync')) {
     $m = [regex]::Match($selector, ('(?ms)^    (?:private|internal) [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))
     if (!$m.Success) { throw "Missing production pending selection member: $name" }
@@ -72,12 +72,12 @@ $modelsMatch = [regex]::Match($selector, '(?ms)^    private static bool ModelsMa
 if (!$modelsMatch.Success) { throw 'Missing production model-selection equivalence member.' }
 $pendingMembers += $modelsMatch.Value
 $pendingGenerated = Join-Path $output 'ActualPendingSelections.cs'
-"using System; using System.Collections.Generic; using System.Net.Http; using System.Threading; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Services.Notifications; namespace AIFrontend.Pages.OpenCode; internal sealed partial class DeferredSelectionHost {`n" + ($pendingMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $pendingGenerated
+"using System; using System.Collections.Generic; using System.Net.Http; using System.Threading; using System.Threading.Tasks; using FluentCode.Services.OpenCode; using FluentCode.Services.Notifications; namespace FluentCode.Pages.OpenCode; internal sealed partial class DeferredSelectionHost {`n" + ($pendingMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $pendingGenerated
 $sources += Get-Item $pendingGenerated
 
 # Extract complete production members, never a copied implementation. The fixed four-space class
 # indentation makes the end of a block/arrow member explicit; fail if any member is missing/ambiguous.
-$pagePath = "$repo/src/AIFrontend/Pages/OpenCodePage.xaml.cs"
+$pagePath = "$repo/src/FluentCode/Pages/OpenCodePage.xaml.cs"
 $page = [IO.File]::ReadAllText($pagePath)
 $names = @('SourceReady', 'IsCurrentBindingFields', 'IsCurrentBinding', 'CreateOperationToken', 'TryStartRead', 'EnterGateAsync',
     'SendStopButton_Click', 'ShouldStopSelectedSession', 'TryHandleComposerEnter', 'Composer_KeyDown',
@@ -105,26 +105,26 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $sources += Get-Item $generated
 # AgentIntegration implements this EventSync partial; only the declaration belongs in the page shell.
-$eventSync = [IO.File]::ReadAllText("$repo/src/AIFrontend/Pages/OpenCodePage.EventSync.cs")
+$eventSync = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.EventSync.cs")
 $refreshDeclaration = [regex]::Match($eventSync, '(?m)^    partial void RefreshAgentSelectorDisplay\(\);')
 if (!$refreshDeclaration.Success) { throw 'Missing production selector refresh partial declaration.' }
 $refreshGenerated = Join-Path $output 'SelectorRefreshDeclaration.cs'
-"namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + $refreshDeclaration.Value + "`n}" | Set-Content -Encoding UTF8 $refreshGenerated
+"namespace FluentCode.Pages; public sealed partial class OpenCodePage {`n" + $refreshDeclaration.Value + "`n}" | Set-Content -Encoding UTF8 $refreshGenerated
 $sources += Get-Item $refreshGenerated
 # Actual blank-tab creation/handoff methods; UI list/layout members remain boundaries.
-$blankPath = "$repo/src/AIFrontend/Pages/OpenCodePage.NewSessionTab.cs"
+$blankPath = "$repo/src/FluentCode/Pages/OpenCodePage.NewSessionTab.cs"
 $blank = [IO.File]::ReadAllText($blankPath)
 $blankMembers = foreach ($name in @('OpenNewSessionTab', 'TryGetBlankTab', 'RemoveNewSessionTab', 'CreateSessionAndSubmitAsync', 'OnNativeSessionCreating', 'OnNativeSessionCreated')) {
     $m = [regex]::Matches($blank, ('(?m)^    (?:private|partial) [^\r\n]*\b' + $name + '\('))
@@ -134,7 +134,7 @@ $blankMembers = foreach ($name in @('OpenNewSessionTab', 'TryGetBlankTab', 'Remo
     $block.Value
 }
 $blankGenerated = Join-Path $output 'BlankSessionMembers.cs'
-$blankChoicePath = "$repo/src/AIFrontend/Pages/OpenCodePage.BlankConversation.cs"
+$blankChoicePath = "$repo/src/FluentCode/Pages/OpenCodePage.BlankConversation.cs"
 $blankChoice = [IO.File]::ReadAllText($blankChoicePath)
 foreach ($name in @('EnsureBlankPreferences', 'HasBlankMetadata', 'CaptureBlankPreferences', 'OwnsBlankPreferences', 'BlankSelectedAgent', 'IsBlankAgentSelectable', 'ApplyBlankDefaults', 'ReadBlankAgentModel', 'BlankStrengthText')) {
     $m = [regex]::Match($blankChoice, ('(?m)^    private [^\r\n]*\b' + $name + '\('))
@@ -143,9 +143,9 @@ foreach ($name in @('EnsureBlankPreferences', 'HasBlankMetadata', 'CaptureBlankP
         else { [regex]::Match($blankChoice.Substring($m.Index), '(?ms)\A.*?^    \}\r?$') }
     $blankMembers += $block.Value
 }
-"using System; using System.Linq; using System.Globalization; using System.Text.Json; using System.Threading.Tasks; using AIFrontend.Services.OpenCode; using AIFrontend.Pages.OpenCode; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($blankMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $blankGenerated
+"using System; using System.Linq; using System.Globalization; using System.Text.Json; using System.Threading.Tasks; using FluentCode.Services.OpenCode; using FluentCode.Pages.OpenCode; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Automation; namespace FluentCode.Pages; public sealed partial class OpenCodePage {`n" + ($blankMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $blankGenerated
 $sources += Get-Item $blankGenerated
-$overlayPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerOverlays.cs"
+$overlayPath = "$repo/src/FluentCode/Pages/OpenCodePage.ComposerOverlays.cs"
 $overlay = [IO.File]::ReadAllText($overlayPath)
 $activityMembers = foreach ($name in @('IsComposerSessionWorking', 'RefreshComposerSessionActivity')) {
     $pattern = '(?ms)^    private [^\r\n]*\b' + $name + '\([^\r\n]*\).*?;'
@@ -154,33 +154,33 @@ $activityMembers = foreach ($name in @('IsComposerSessionWorking', 'RefreshCompo
     $m.Value
 }
 $activityGenerated = Join-Path $output 'ComposerActivityMembers.cs'
-"using System; using AIFrontend.Pages.OpenCode; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + ($activityMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $activityGenerated
+"using System; using FluentCode.Pages.OpenCode; namespace FluentCode.Pages; public sealed partial class OpenCodePage {`n" + ($activityMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $activityGenerated
 $sources += Get-Item $activityGenerated
-$layoutPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"
+$layoutPath = "$repo/src/FluentCode/Pages/OpenCodePage.ComposerLayout.cs"
 $layout = [IO.File]::ReadAllText($layoutPath)
 $layoutMembers = foreach ($name in @('UpdateComposerSecondaryActions', 'ComposerQueueButton_Click', 'ComposerExpandButton_Click')) {
     $m = [regex]::Match($layout, ('(?ms)^    private [^\r\n]*\b' + $name + '\([^\r\n]*\).*?^    \}\r?$'))
     if (!$m.Success) { throw "Missing production composer layout action: $name" }
     $m.Value
 }
-$deliveryPath = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerDelivery.cs"
+$deliveryPath = "$repo/src/FluentCode/Pages/OpenCodePage.ComposerDelivery.cs"
 $delivery = [IO.File]::ReadAllText($deliveryPath)
 $deliveryMembers = @([regex]::Match($delivery, '(?m)^    private bool _composerDeliverySupported;').Value,
     [regex]::Match($delivery, '(?m)^    internal string\? RequestedComposerDelivery =>[^;]*;').Value,
     [regex]::Match($delivery, '(?ms)^    internal void ConfigureComposerDelivery\(bool supported\).*?^    \}\r?$').Value)
 if ($deliveryMembers | Where-Object { !$_ }) { throw 'Missing actual composer delivery configuration member.' }
 $layoutGenerated = Join-Path $output 'ComposerLayoutActions.cs'
-$fullScreenPath = "$repo/src/AIFrontend/Pages/OpenCodePage.FullScreenComposer.cs"
+$fullScreenPath = "$repo/src/FluentCode/Pages/OpenCodePage.FullScreenComposer.cs"
 $queueFullScreen = [regex]::Match([IO.File]::ReadAllText($fullScreenPath), '(?ms)^    private void QueueFullScreenComposer\(.*?^    \}\r?$')
 if (!$queueFullScreen.Success) { throw 'Missing production full-screen editor dispatcher handoff.' }
-"using AIFrontend.Pages.OpenCode; using AIFrontend.Services.OpenCode; using Microsoft.UI.Xaml; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + (($layoutMembers + $deliveryMembers + @($queueFullScreen.Value)) -join "`n") + "`n}" | Set-Content -Encoding UTF8 $layoutGenerated
+"using FluentCode.Pages.OpenCode; using FluentCode.Services.OpenCode; using Microsoft.UI.Xaml; namespace FluentCode.Pages; public sealed partial class OpenCodePage {`n" + (($layoutMembers + $deliveryMembers + @($queueFullScreen.Value)) -join "`n") + "`n}" | Set-Content -Encoding UTF8 $layoutGenerated
 $sources += Get-Item $layoutGenerated
 $focusMember = [regex]::Match($overlay, '(?ms)^    private int SyncPermissionOverlay\(\).*?^    \}\r?$')
 if (!$focusMember.Success) { throw 'Missing production SyncPermissionOverlay member.' }
 $focusGenerated = Join-Path $output 'PermissionFocusMember.cs'
-"using System.Linq; using AIFrontend.Pages.OpenCode; using Microsoft.UI.Xaml; namespace AIFrontend.Pages; public sealed partial class OpenCodePage {`n" + $focusMember.Value + "`n}" | Set-Content -Encoding UTF8 $focusGenerated
+"using System.Linq; using FluentCode.Pages.OpenCode; using Microsoft.UI.Xaml; namespace FluentCode.Pages; public sealed partial class OpenCodePage {`n" + $focusMember.Value + "`n}" | Set-Content -Encoding UTF8 $focusGenerated
 $sources += Get-Item $focusGenerated
-$sources += Get-Item "$repo/src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeSessionTracking.cs"
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }
 $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp

@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.OpenCode.Browser;
+using FluentCode.Pages;
+using FluentCode.Services.OpenCode;
+using FluentCode.Services.OpenCode.Browser;
 
 internal static class ChildPeerTests
 {
@@ -75,7 +75,7 @@ internal static class ChildPeerTests
         check(page.BrowserPeerManager?.GetPeer("untracked-child") is null, "production scope reset detaches child");
         await page.BrowserPeerManager!.DisposeAsync();
 
-        string Read(string path) => File.ReadAllText(Path.Combine(root, "src/AIFrontend", path));
+        string Read(string path) => File.ReadAllText(Path.Combine(root, "src/FluentCode", path));
         var panel = Read("Pages/OpenCodePage.BrowserPanel.cs");
         var strip = Read("Pages/OpenCode/OpenCodeBrowserStrip.cs");
         var workspace = Read("Services/OpenCode/Browser/OpenCodeBrowserWorkspace.cs");

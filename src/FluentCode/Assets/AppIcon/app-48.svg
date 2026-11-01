@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="fr" x1="7" y1="3" x2="41" y2="45" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#62CDFF"/><stop offset=".45" stop-color="#1C86DE"/><stop offset="1" stop-color="#0B3F8F"/></linearGradient>
+<linearGradient id="pg" x1="0" y1="7.5" x2="0" y2="40.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCEAF8"/></linearGradient>
+<linearGradient id="bk" x1="15" y1="22" x2="33" y2="37.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2FA6F2"/><stop offset="1" stop-color="#0A4DA8"/></linearGradient>
+<linearGradient id="hl" x1="0" y1="3" x2="0" y2="24.0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="is" x1="0" y1="7.5" x2="0" y2="11.1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0B3F8F" stop-opacity=".22"/><stop offset="1" stop-color="#0B3F8F" stop-opacity="0"/></linearGradient>
+<filter id="sd" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.2"/></filter>
+</defs>
+<path d="M15,4.2 H33 A8,8 0 0 1 41,12.2 V38.2 A8,8 0 0 1 33,46.2 H15 A8,8 0 0 1 7,38.2 V12.2 A8,8 0 0 1 15,4.2 Z" fill="#001B44" opacity=".30" filter="url(#sd)"/>
+<path d="M14.99,7.49 H33.01 A3.5,3.5 0 0 1 36.51,10.99 V37.01 A3.5,3.5 0 0 1 33.01,40.51 H14.99 A3.5,3.5 0 0 1 11.49,37.01 V10.99 A3.5,3.5 0 0 1 14.99,7.49 Z" fill="url(#pg)"/>
+<path d="M15.0,7.5 H33.0 A3.5,3.5 0 0 1 36.5,11.0 V37.0 A3.5,3.5 0 0 1 33.0,40.5 H15.0 A3.5,3.5 0 0 1 11.5,37.0 V11.0 A3.5,3.5 0 0 1 15.0,7.5 Z" fill="url(#is)"/>
+<path d="M15,3 H33 A8,8 0 0 1 41,11 V37 A8,8 0 0 1 33,45 H15 A8,8 0 0 1 7,37 V11 A8,8 0 0 1 15,3 Z M15.0,7.5 H33.0 A3.5,3.5 0 0 1 36.5,11.0 V37.0 A3.5,3.5 0 0 1 33.0,40.5 H15.0 A3.5,3.5 0 0 1 11.5,37.0 V11.0 A3.5,3.5 0 0 1 15.0,7.5 Z" fill="url(#fr)" fill-rule="evenodd"/>
+<path d="M15.0,3.5 H33.0 A7.5,7.5 0 0 1 40.5,11.0 V37.0 A7.5,7.5 0 0 1 33.0,44.5 H15.0 A7.5,7.5 0 0 1 7.5,37.0 V11.0 A7.5,7.5 0 0 1 15.0,3.5 Z" fill="none" stroke="url(#hl)" stroke-width="1.0"/>
+<path d="M17.5,22 H30.5 A2.5,2.5 0 0 1 33,24.5 V35.0 A2.5,2.5 0 0 1 30.5,37.5 H17.5 A2.5,2.5 0 0 1 15,35.0 V24.5 A2.5,2.5 0 0 1 17.5,22 Z" fill="url(#bk)"/>
+<path d="M17.5,22.5 H30.5 A2.0,2.0 0 0 1 32.5,24.5 V35.0 A2.0,2.0 0 0 1 30.5,37.0 H17.5 A2.0,2.0 0 0 1 15.5,35.0 V24.5 A2.0,2.0 0 0 1 17.5,22.5 Z" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.0"/>
+</svg>

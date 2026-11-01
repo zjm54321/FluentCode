@@ -11,8 +11,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 
 static partial class Checks
 {

@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 
 // Public-API tests of the linked production store/records. No private reflection, copied state
 // algorithm, wall clock, waiting, transport or UI. Assertion failures contain fixed labels only.

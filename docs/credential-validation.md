@@ -2,14 +2,14 @@
 
 ## 结论与边界
 
-**未复现用户的正常 token 保存失败，不能声称该用户问题已修复。** 在 Windows x64 / .NET 10.0.12，直接加载上次成功构建的真实 `AIFrontend.dll` 及其同目录 `System.Security.Cryptography.ProtectedData.dll`，独立临时目录、固定假凭据的 set/get/update/delete 均通过。未读取、解密、覆盖或删除用户真实凭据；未操作 GUI、真实 HTTP、配置、证书或 git；未重建主应用。
+**未复现用户的正常 token 保存失败，不能声称该用户问题已修复。** 在 Windows x64 / .NET 10.0.12，直接加载上次成功构建的真实 `FluentCode.dll` 及其同目录 `System.Security.Cryptography.ProtectedData.dll`，独立临时目录、固定假凭据的 set/get/update/delete 均通过。未读取、解密、覆盖或删除用户真实凭据；未操作 GUI、真实 HTTP、配置、证书或 git；未重建主应用。
 
 因此本次仅补充后端可诊断异常语义，没有更换 DPAPI、改用明文、绕过旧密文校验或自动重置凭据。
 
 ## 源码改动与 UI 契约
 
-- `src/AIFrontend/Services/Configuration/DpapiSecretStore.cs`：对预期加密/文件系统/权限/平台支持异常统一转换为 `SecretStoreException`；已取消的 Set 在加密前退出。保留 CurrentUser、原子写入、旧密文保护与缺失返回 null/false 语义。
-- `src/AIFrontend/Services/Configuration/ConfigurationExceptions.cs`：仅扩展 `SecretStoreException`，保留旧公开构造函数；新增可空只读属性 `Operation`、`Stage`、`ErrorType`、`ErrorHResult`。其他异常类型未改。
+- `src/FluentCode/Services/Configuration/DpapiSecretStore.cs`：对预期加密/文件系统/权限/平台支持异常统一转换为 `SecretStoreException`；已取消的 Set 在加密前退出。保留 CurrentUser、原子写入、旧密文保护与缺失返回 null/false 语义。
+- `src/FluentCode/Services/Configuration/ConfigurationExceptions.cs`：仅扩展 `SecretStoreException`，保留旧公开构造函数；新增可空只读属性 `Operation`、`Stage`、`ErrorType`、`ErrorHResult`。其他异常类型未改。
 - 本存储产生的新异常 `Message` 只包含固定操作/阶段、底层异常类型和十六进制 HRESULT；`HResult` 同步底层值，`InnerException` 与 `FilePath` 为 null，避免调用方展开原始异常而泄露路径。旧构造函数仍可能保留原有元数据；不可将新异常的安全保证推广到任意异常。
 - 操作：`set` / `get` / `remove`。
 - 阶段：`encrypt` / `read` / `decrypt` / `read-existing` / `decrypt-existing` / `write` / `delete`。`write` 是 AtomicFile 写入阶段的整体标签，包括创建目录/临时文件、写入、flush 与 move，不声称已进一步区分其中子步骤。
@@ -34,7 +34,7 @@
 2. `after/result.json`：**46 项断言通过**。对修改后的四个真实 headless 源文件快照进行独立编译，仍使用同一个应用部署 ProtectedData DLL，然后重跑上述验证及操作/阶段/HResult/无原始异常链、路径和凭据文本的断言。不是修改后完整主工程构建或 UI 验收。
 3. `probe-build.log`、`probe-build-after.log`、`patched-build.log`：独立工程编译均成功，0 警告、0 错误。NuGet.Config 清空外部源，探针无包依赖；未安装工具或修改主项目依赖。
 4. `source-consistency.json`：DpapiSecretStore、ConfigurationExceptions、AtomicFile、AppDataPaths 与独立编译快照逐文件 SHA-256 核对一致。
-5. `Program.cs`、`Probe.csproj`、`patched-service/`：可复现探针、源码快照和独立项目。`before/after` 内 `fake-data-<guid>` 全部是本次新建的测试专用数据；不接触默认 `%LOCALAPPDATA%\AIFrontend`。
+5. `Program.cs`、`Probe.csproj`、`patched-service/`：可复现探针、源码快照和独立项目。`before/after` 内 `fake-data-<guid>` 全部是本次新建的测试专用数据；不接触默认 `%LOCALAPPDATA%\FluentCode`。
 
 部署应用 DLL SHA-256：`5CB53430557BB5668F8A2DFD5BEFBD3C42BFEB2ECEAF34FD93E21A53ECABC32A`。
 
@@ -42,11 +42,11 @@
 
 ## 执行命令（Windows 路径）
 
-`$root = 'C:\Users\Zhang\source\repos\AIFrontend'`，`$e = "$root\artifacts\validation\credentials-20261006"`，`$bin = "$root\src\AIFrontend\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64"`。
+`$root = 'C:\Users\Zhang\source\repos\FluentCode'`，`$e = "$root\artifacts\validation\credentials-20261006"`，`$bin = "$root\src\FluentCode\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64"`。
 
 ```powershell
 & 'C:\Program Files\dotnet\dotnet.exe' build "$e\Probe.csproj" --configfile "$e\NuGet.Config"
-& 'C:\Program Files\dotnet\dotnet.exe' "$e\bin\Debug\net10.0\Probe.dll" "$bin\AIFrontend.dll" $bin "$e\before"
+& 'C:\Program Files\dotnet\dotnet.exe' "$e\bin\Debug\net10.0\Probe.dll" "$bin\FluentCode.dll" $bin "$e\before"
 & 'C:\Program Files\dotnet\dotnet.exe' build "$e\patched-service\CredentialBackend.csproj" --configfile "$e\NuGet.Config"
 # 添加诊断断言后重新编译 Probe，再运行：
 & 'C:\Program Files\dotnet\dotnet.exe' build "$e\Probe.csproj" --configfile "$e\NuGet.Config"

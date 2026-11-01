@@ -2,9 +2,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 
-namespace AIFrontend.Pages.OpenCode;
+namespace FluentCode.Pages.OpenCode;
 
 // Explicit native subtree attachment is a boundary; factory, lifetime, metadata and image HTTP are real.
 internal static class OpenCodeImageContext

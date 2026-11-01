@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
-using AIFrontend.Services.OpenCode.Browser;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Services.OpenCode.Browser;
+using FluentCode.Pages.OpenCode;
 
 internal static class Program
 {
@@ -69,9 +69,9 @@ internal static class Program
         const string tab = "tab_00000000-0000-0000-0000-000000000000";
         const string file = "file_00000000-0000-0000-0000-000000000000";
         var fileBytes = new OpenCodeBrowserFile(file, "a.txt", "text/plain", new byte[] { 1 });
-        var dispatch = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserSessionBackend.cs"));
+        var dispatch = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Services/OpenCode/Browser/OpenCodeBrowserSessionBackend.cs"));
         Check(dispatch.Contains("startNavigation: false") && dispatch.Contains("await opened.NavigateAsync(url, opening.Token, waitForCommit: true)"), "tabs.open owns and awaits exactly one navigation (source fence)");
-        var pageSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserPage.cs"));
+        var pageSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Services/OpenCode/Browser/OpenCodeBrowserPage.cs"));
         Check(pageSource.Contains("commit.Task.WaitAsync(TimeSpan.FromSeconds(15), ct)") && pageSource.Contains("_navigationCommit?.TrySetResult(e.IsSuccess)"), "tab-open commit wait bounded and load errors complete it (source fence)");
         Check(pageSource.Contains("Navigation.Commit(e.NavigationId)") && pageSource.Contains("Navigation.IsCurrent(e.NavigationId)") && !pageSource.Contains("Generation++"), "only current unique top-level navigation commits drive generation (source fence)");
         foreach (var type in OpenCodeBrowserInput.Actions)
@@ -177,7 +177,7 @@ internal static class Program
         Error(() => OpenCodeBrowserGeometry.Bounds(new JsonArray(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)), "not_interactable", "empty border quad rejected");
         var batchBoxes = OpenCodeBrowserGeometry.SnapshotBoxes(Parse("""{"documents":[{"scrollOffsetX":10.5,"scrollOffsetY":200,"nodes":{"backendNodeId":[7,8]},"layout":{"nodeIndex":[0,1],"bounds":[[20.5,220,40.25,10.5],[0,0,0,0]]}},{"nodes":{"backendNodeId":[9]},"layout":{"nodeIndex":[0],"bounds":[[1,2,3,4]]}}]}"""));
         Check(batchBoxes.Count == 2 && batchBoxes[7] == new OpenCodeBrowserBox(10, 20, 40.25, 10.5) && batchBoxes.ContainsKey(9), "batch boxes map backend IDs across documents and subtract scroll");
-        var actionsSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserSessionBackend.PageActions.cs"));
+        var actionsSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Services/OpenCode/Browser/OpenCodeBrowserSessionBackend.PageActions.cs"));
         var screenshotSource = Member(actionsSource, "ScreenshotAsync");
         Check(screenshotSource.IndexOf("await BoxAsync(", StringComparison.Ordinal) < screenshotSource.IndexOf("range.selectNodeContents(this)", StringComparison.Ordinal)
             && screenshotSource.Contains("range.getBoundingClientRect()") && screenshotSource.Contains("OpenCodeBrowserGeometry.Union("), "screenshot measures Range contents after scrolling and unions with border (source fence)");
@@ -196,19 +196,19 @@ internal static class Program
         var analyzed = OpenCodeBrowserProfileAnalysis.Cpu(cpu, 100); Check(analyzed["functions"]![0]!["selfMs"]!.GetValue<double>() == 3, "CPU microseconds to sampled milliseconds");
         var heap = Parse("{\"snapshot\":{\"meta\":{\"node_fields\":[\"type\",\"name\",\"id\",\"self_size\",\"edge_count\"],\"node_types\":[[\"object\"],\"string\",\"number\",\"number\",\"number\"],\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\"edge_types\":[[\"property\"],\"string_or_number\",\"node\"]}},\"strings\":[\"Thing\",\"child\"],\"nodes\":[0,0,1,16,1,0,0,3,32,0],\"edges\":[0,1,5]}");
         var h = new OpenCodeBrowserProfileAnalysis.Heap(heap); Check(h.Summary(100)["selfBytes"]!.GetValue<double>() == 48, "heap shallow bytes"); Check(h.Query("thing", 1)["truncated"]!.GetValue<bool>(), "heap literal query bound"); Check(h.Object(3, 10)["retainers"]!.AsArray().Count == 1, "heap retainers"); Check(h.Compare(h, 10)["classes"]![0]!["bytesDelta"]!.GetValue<double>() == 0, "heap compare equal");
-        var composition = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.Browser.cs"));
-        var overlay = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs"));
+        var composition = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCodePage.Browser.cs"));
+        var overlay = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs"));
         Check(!composition.Contains("OpenCodeDetailPopupLayout.LargeView") && composition.Contains("OpenCodeBrowserOverlayLayout.Place(PageRoot.ActualWidth, height)"), "production browser fills full content band without tool-detail percentage caps");
         Check(overlay.Contains("_presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch") && overlay.Contains("_presenter.VerticalContentAlignment = VerticalAlignment.Stretch"), "native presenter stretches WebView content on both axes");
         Check(overlay.Contains("TargetType=\\\"ScrollViewer\\\"") && overlay.Contains("Property=\\\"HorizontalContentAlignment\\\" Value=\\\"Stretch\\\"") && overlay.Contains("Property=\\\"VerticalContentAlignment\\\" Value=\\\"Stretch\\\""), "native presenter inner viewport also stretches instead of Left/Top");
         Check(overlay.Contains("OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128)") && !overlay.Contains("_presenter.Margin ="), "shared native shadow and border without nested content margins");
         Check(!overlay.Contains("layout.Children.Add(_chrome.TitleBar)") && overlay.Contains("Grid.SetRow(content, 1)"), "single browser row without redundant title bar");
         Check(overlay.Contains("_displayAddress.Text = page.LoadError") && overlay.Contains("string.IsNullOrWhiteSpace(page.Title)") && overlay.Contains("_address.Text = _page?.PreviewPath ?? _page?.Url"), "unfocused address shows title; focused address shows URL");
-        var selection = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelection.cs"));
+        var selection = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodeBrowserSelection.cs"));
         var selectionButtons = selection.Split("overlay.PageTools.Children.Clear();")[1].Split("overlay.RightPanelSlot.Children.Add(_list);")[0];
         Check(selectionButtons.Contains("选择元素并批注") && selectionButtons.Contains("框选并批注") && !selectionButtons.Contains("OpenCodeBrowserSelectionTool.Annotate") && !selectionButtons.Contains("SplitButton"), "selection toolbar exposes only element and region with comments, without screenshot or drawing controls");
         Check(!overlay.Contains("PageTools.Children.Add(toggle)"), "overlay has no stale placeholder tools");
-        var selectedList = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelectedList.cs"));
+        var selectedList = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodeBrowserSelectedList.cs"));
         Check(selectedList.Contains("添加批注（可选）") && selectedList.Contains("第 {item.Number} 项批注") && selectedList.Contains("NoteChanged?.Invoke(item.Id, note.Text)") && selection.Contains("_list.NoteChanged += (id, text) => State?.List.SetNote(id, text)"), "each captured selection keeps its own accessible comment field and existing note persistence");
         Check(composition.Contains("RegisterPropertyChangedCallback(SplitView.IsPaneOpenProperty") && composition.Contains("RegisterPropertyChangedCallback(SplitView.DisplayModeProperty"), "resident dock changes recenter open overlay");
         Check(composition.Contains("BrowserBackendFactory = CreateBrowserPeerBackend;"), "production engine factory supplied to peer");
@@ -217,7 +217,7 @@ internal static class Program
         Check(composition.Contains("BrowserPeerAvailabilityChanged +=") && composition.Contains("workspace.NotifyAvailabilityChanged()"), "peer availability invalidates workspace");
         // Structural lifecycle fences only; no native page/WebView or window is executed here.
         Check(!composition.Contains("Unloaded +="), "temporary unload has no destructive browser lifecycle handler");
-        var pageLifecycle = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCodePage.xaml.cs"));
+        var pageLifecycle = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCodePage.xaml.cs"));
         var unload = Member(pageLifecycle, "OnPageUnloaded");
         var pause = Member(pageLifecycle, "PausePage");
         Check(unload.Contains("if (IsLoaded) return;") && unload.Contains("PausePage();")
@@ -231,14 +231,14 @@ internal static class Program
         Check(shutdown.Contains("if (_pageReleased) return;") && shutdown.Contains("PausePage();")
             && shutdown.Contains("PageReleased?.Invoke(this, EventArgs.Empty);") && shutdown.Contains("PageReleased = null;"),
             "shutdown pauses the active page and invokes final-release subscribers once even while cached");
-        var window = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/MainWindow.xaml.cs"));
+        var window = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/MainWindow.xaml.cs"));
         Check(window.Contains("Closed += MainWindow_Closed;")
             && Member(window, "MainWindow_Closed").Contains("_cachedOpenCodePage?.ShutdownPage();"), "window close releases the cached page even when main navigation is elsewhere");
         var dispose = Member(composition, "DisposeBrowserEngineResources");
         Check(new[] { "_browserSourceRevocation.Dispose();", "ReleaseBrowserPanelWorkspaces();", "backend.Dispose();", "workspace.Dispose();",
             "_browserBackends.Clear();", "_browserWorkspaces.Clear();", "_browserOverlay?.Bind(null);" }.All(dispose.Contains),
             "final engine cleanup releases source subscription, panel workspaces, backends, pages and overlay binding");
-        var workspaceSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Services/OpenCode/Browser/OpenCodeBrowserWorkspace.cs"));
+        var workspaceSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Services/OpenCode/Browser/OpenCodeBrowserWorkspace.cs"));
         var hide = Member(workspaceSource, "HideOverlay");
         Check(hide.Contains("Move(page.Surface, _hiddenHost);") && hide.Contains("Shown = null;")
             && !hide.Contains("Dispose") && !hide.Contains("Remove("), "BQ5 overlay close hides the surface without removing or disposing browser pages");

@@ -2,8 +2,8 @@
 
 ## Frozen consumer API
 
-`AIFrontend.App` exposes the following synchronous methods, all returning
-`AIFrontend.Services.Taskbar.TaskbarOperationResult`:
+`FluentCode.App` exposes the following synchronous methods, all returning
+`FluentCode.Services.Taskbar.TaskbarOperationResult`:
 
 ```csharp
 InitializeTaskbar(IntPtr hwnd)

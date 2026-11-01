@@ -8,10 +8,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Models;
-using AIFrontend.Services.Configuration;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.OpenCode.Connection;
+using FluentCode.Models;
+using FluentCode.Services.Configuration;
+using FluentCode.Services.OpenCode;
+using FluentCode.Services.OpenCode.Connection;
 
 internal static class Program
 {
@@ -380,7 +380,7 @@ internal static class Program
         int reconnectReads = 0;
         using var http = new System.Net.Http.HttpClient(new RecoveryHttp((_, _) => { reconnectReads++; return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK)
             { Content = new System.Net.Http.StringContent("{\"directory\":\"/test\",\"project\":{\"id\":\"test\"}}") }); }));
-        var source = new AIFrontend.Services.Notifications.OpenCodePageSource("same-logical-endpoint", 2,
+        var source = new FluentCode.Services.Notifications.OpenCodePageSource("same-logical-endpoint", 2,
             () => new OpenCodeClient(http, options!, true));
         using (var reconnected = source.CreateClient()) await reconnected.GetLocationAsync(null, default);
         Check(reconnectReads == 1, "WK1 verified options reconnect a new source and refetch, without replaying mutations");

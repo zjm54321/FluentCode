@@ -2,8 +2,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 
 namespace Windows.Foundation { internal readonly record struct Rect(double X, double Y, double Width, double Height); }
 namespace Microsoft.UI.Xaml
@@ -34,13 +34,13 @@ namespace Microsoft.UI.Xaml.Media
         internal static void Frame() => Rendering?.Invoke(null, new());
     }
 }
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Windows.Foundation.Rect LabelBounds,
         Windows.Foundation.Rect EffectiveViewport, Windows.Foundation.Rect ScrollBounds);
     internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
 }
-namespace AIFrontend
+namespace FluentCode
 {
     public sealed class App : Microsoft.UI.Xaml.Application
     {
@@ -54,7 +54,7 @@ namespace AIFrontend
         }
     }
 }
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodeConversationView
     {
@@ -75,7 +75,7 @@ namespace AIFrontend.Pages
     }
     public sealed partial class OpenCodePage
     {
-        private readonly AIFrontend.App _ackApp = new();
+        private readonly FluentCode.App _ackApp = new();
         private bool _newSessionDraftActive = false;
         public bool IsLoaded => true;
         public Microsoft.UI.Xaml.Visibility Visibility => Microsoft.UI.Xaml.Visibility.Visible;

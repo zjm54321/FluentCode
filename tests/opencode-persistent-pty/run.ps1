@@ -7,7 +7,7 @@ $root = Split-Path $dotnet
 $sdk = Get-ChildItem "$root/sdk" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where-Object Name -Like '10.*' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
 $refs = @(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll")
-$folder = "$repo/src/AIFrontend/Pages/OpenCode"
+$folder = "$repo/src/FluentCode/Pages/OpenCode"
 $models = @("$folder/OpenCodePersistentPtyPresentation.cs")
 function Compile([string]$name, [string]$kind, $references, $sources, [string]$defines = '') {
     $dll = Join-Path $EvidenceRoot "$name.dll"
@@ -38,39 +38,39 @@ $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
 # Shared Fluent motion layer used by the card / ☰ list / chips (production files, compiled as-is).
-$rendererSources += @("$repo/src/AIFrontend/Motion/FluentMotion.cs", "$repo/src/AIFrontend/Motion/FluentMotionPolicy.cs", "$repo/src/AIFrontend/Motion/OverlayCardMotion.cs", "$repo/src/AIFrontend/Services/Appearance/ThemeResources.cs")
+$rendererSources += @("$repo/src/FluentCode/Motion/FluentMotion.cs", "$repo/src/FluentCode/Motion/FluentMotionPolicy.cs", "$repo/src/FluentCode/Motion/OverlayCardMotion.cs", "$repo/src/FluentCode/Services/Appearance/ThemeResources.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
+    "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
 Write-Output 'PASS actual WinUI/native terminal view API reference compile; no native runtime window executed.'
 Compile 'PtyOverlayGlueNativeCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/AIFrontend/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
+    "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/FluentCode/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
 Write-Output 'PASS actual right-card/floating-card page glue reference compile against WinUI refs (page members shimmed).'
 
 # Production Billion/PTY bindings; the retired preset/clear action UI is intentionally absent.
 # Native view/dialog/OS-launch boundaries are inert, explicitly defined by BillionPtyPage.TestHost.cs.
-$serviceSources = @(Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/*.cs" | Where-Object { $_.Name -ne 'OpenCodePairingService.cs' } | ForEach-Object FullName)
-$serviceSources += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/PluginMutations/*.cs" | ForEach-Object FullName
-$serviceSources += Get-ChildItem "$repo/src/AIFrontend/Services/OpenCode/PersistentPty/*.cs" | ForEach-Object FullName
-$serviceSources += Get-ChildItem "$repo/src/AIFrontend/Services/Billion/*.cs" | ForEach-Object FullName
+$serviceSources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object { $_.Name -ne 'OpenCodePairingService.cs' } | ForEach-Object FullName)
+$serviceSources += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/PluginMutations/*.cs" | ForEach-Object FullName
+$serviceSources += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/PersistentPty/*.cs" | ForEach-Object FullName
+$serviceSources += Get-ChildItem "$repo/src/FluentCode/Services/Billion/*.cs" | ForEach-Object FullName
 foreach ($name in @('OpenCodeInteractionGate.cs','OpenCodeExecutionProjection.cs','OpenCodePageSource.cs','NotificationInteractions.cs','NotificationArgumentCodec.cs','NotificationActivationInfo.cs','NotificationSource.cs')) {
-    $serviceSources += "$repo/src/AIFrontend/Services/Notifications/$name"
+    $serviceSources += "$repo/src/FluentCode/Services/Notifications/$name"
 }
 $bindingSources = $serviceSources + @("$folder/OpenCodeBillionPresentation.cs",
-    "$folder/OpenCodeSessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.BillionDashboard.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPty.cs", "$folder/OpenCodePersistentPtyPresentation.cs", "$folder/OpenCodePersistentPtySurface.cs",
+    "$folder/OpenCodeSessionInsights.cs", "$repo/src/FluentCode/Pages/OpenCodePage.BillionDashboard.cs",
+    "$repo/src/FluentCode/Pages/OpenCodePage.PersistentPty.cs", "$folder/OpenCodePersistentPtyPresentation.cs", "$folder/OpenCodePersistentPtySurface.cs",
     "$folder/OpenCodePersistentPtyRendererAdapter.cs", "$folder/OpenCodePersistentPtyInventory.cs", "$folder/OpenCodePersistentPtyInventoryPresentation.cs",
     "$folder/OpenCodeShellTerminalText.cs", "$folder/OpenCodeShellTerminalAdapter.cs", "$folder/OpenCodeShellTerminalState.cs", "$folder/OpenCodeShellTerminalReader.cs", "$folder/OpenCodeAgentTreeProjection.cs",
     "$PSScriptRoot/ShellTerminalTests.cs",
     "$PSScriptRoot/PersistentPtyPage.TestHost.cs", "$PSScriptRoot/PersistentPtyBindingTests.cs",
     "$PSScriptRoot/BillionPtyPage.TestHost.cs", "$PSScriptRoot/BillionBindingTests.cs")
 $recordedInputs = @($bindingSources + $models + @("$folder/OpenCodeSessionInsightsView.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.RightPanelMetadata.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.AgentTree.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.TerminalView.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$repo/src/AIFrontend/Pages/OpenCodePage.xaml", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/AIFrontend/Pages/OpenCodePage.xaml.cs", "$PSScriptRoot/NativeHost.cs", "$PSScriptRoot/run.ps1"))
+    "$repo/src/FluentCode/Pages/OpenCodePage.SessionInsights.cs", "$repo/src/FluentCode/Pages/OpenCodePage.RightPanelMetadata.cs",
+    "$repo/src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs",
+    "$repo/src/FluentCode/Pages/OpenCodePage.AgentTree.cs", "$repo/src/FluentCode/Pages/OpenCodePage.TerminalView.cs",
+    "$repo/src/FluentCode/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$repo/src/FluentCode/Pages/OpenCodePage.xaml", "$folder/OpenCodeBrowserOverlayLayout.cs",
+    "$repo/src/FluentCode/Pages/OpenCodePage.xaml.cs", "$PSScriptRoot/NativeHost.cs", "$PSScriptRoot/run.ps1"))
 $recordedInputs += @(Get-ChildItem "$folder/OpenCodePersistentPty*.cs" | ForEach-Object FullName)
 $recordedInputs = $recordedInputs | Sort-Object -Unique
 $inputHashes = @{}

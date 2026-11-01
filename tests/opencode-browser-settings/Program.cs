@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using AIFrontend.Models;
-using AIFrontend.Services.Configuration;
+using FluentCode.Models;
+using FluentCode.Services.Configuration;
 
 internal static class Program
 {
@@ -30,7 +30,7 @@ internal static class Program
         catch (SettingsValidationException) { Check(File.ReadAllText(service.SettingsFilePath) == before, "invalid endpoint does not overwrite persisted settings"); }
         await File.WriteAllTextAsync(service.SettingsFilePath, "{\"schemaVersion\":1}");
         Check((await new SettingsService(data).LoadAsync()).Browser.Engine == BrowserEngine.WebView2, "old settings without browser migrate through defaults");
-        string Read(string file) => File.ReadAllText(Path.Combine(root, "src/AIFrontend/" + file));
+        string Read(string file) => File.ReadAllText(Path.Combine(root, "src/FluentCode/" + file));
         var composition = Read("Pages/OpenCodePage.Browser.cs");
         Check(composition.IndexOf("TryGetValue(sessionId, out var existing)", StringComparison.Ordinal) < composition.IndexOf("Current?.Browser", StringComparison.Ordinal), "STATIC settings read only after cached workspace return");
         Check(composition.Contains("new OpenCodeBrowserChromeDriverFactory(new OpenCodeBrowserChromeOptions") && composition.Contains("ProfileDirectory: null, DriverFactory: driverFactory") && composition.Contains("_source?.Identity") && composition.Contains("SHA256.HashData"), "STATIC exact factory handoff and source/session qualified isolated profile identity");

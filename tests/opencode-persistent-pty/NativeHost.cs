@@ -1,7 +1,7 @@
 // Only the unrelated application style lookup is stubbed. Controls, native terminal,
 // properties, dialogs and event APIs compile against the cached real WinUI refs.
 using Microsoft.UI.Xaml;
-namespace AIFrontend.Pages.OpenCode;
+namespace FluentCode.Pages.OpenCode;
 internal static class OpenCodeInteractionUi
 {
     internal const string CaptionSubtleStyleKey = "CaptionSubtle";

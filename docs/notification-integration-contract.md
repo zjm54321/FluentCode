@@ -148,9 +148,9 @@ public sealed record OpenCodeNotificationObservation(
 
 ## 5. 离线证据与限制
 
-**最新 source/session-protection 安全回归：** `/mnt/c/Users/Zhang/source/repos/AIFrontend-page-source-safety-validation-20261006/`，真实 58 份 App/Services/lifetime 源码，Windows net10 NativeCompile 与 HeadlessTests 各 0 warnings/errors；仅 UI 边界 stub。3 组 42 assertions：阻塞 GET 撤销/I-null-I/旧 source 零起发与 Resolve（18），TryExecute+真实 gate+mock transport 起发与 Revoke 两种顺序（8），Form 与 Permission reject 精确来源解除、原 reject 消失时显式结算、其他 unknown 保留（16）。6 次纯 mock 请求、0 真实 HTTP、0 凭据读取、0 Register/Show。`final-hashes.json` 记录 58/58 编译快照匹配；命令、日志、无真实凭据换密的测试边界详见 App 契约“页面 source 与 session protection 安全回归”。父负责页面集成/全工程和实机，oracle 负责最终 P1 复核。以下为原 monitor/nonce 历史证据，gate 改动后的相应旧快照不冒充当前验证；本轮未重复未受影响协议测试。
+**最新 source/session-protection 安全回归：** `/mnt/c/Users/Zhang/source/repos/FluentCode-page-source-safety-validation-20261006/`，真实 58 份 App/Services/lifetime 源码，Windows net10 NativeCompile 与 HeadlessTests 各 0 warnings/errors；仅 UI 边界 stub。3 组 42 assertions：阻塞 GET 撤销/I-null-I/旧 source 零起发与 Resolve（18），TryExecute+真实 gate+mock transport 起发与 Revoke 两种顺序（8），Form 与 Permission reject 精确来源解除、原 reject 消失时显式结算、其他 unknown 保留（16）。6 次纯 mock 请求、0 真实 HTTP、0 凭据读取、0 Register/Show。`final-hashes.json` 记录 58/58 编译快照匹配；命令、日志、无真实凭据换密的测试边界详见 App 契约“页面 source 与 session protection 安全回归”。父负责页面集成/全工程和实机，oracle 负责最终 P1 复核。以下为原 monitor/nonce 历史证据，gate 改动后的相应旧快照不冒充当前验证；本轮未重复未受影响协议测试。
 
-证据目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-notification-monitor-validation-20261006/`。
+证据目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-notification-monitor-validation-20261006/`。
 
 隔离工程包含 26 个真实 Notifications/OpenCode 源文件快照，引用现有 Windows App SDK 1.8.260803002 的真实通知/Builder projection、Windows SDK 10.0.26100.57 projection/WinRT.Runtime。没有主工程构建、GUI、HTTP socket、Register 或 Show；服务 native 调用仅编译。monitor 测试使用内部 sink 边界替代 Show，HTTP 使用注入假 handler，不能当作平台通知实测。
 
@@ -252,7 +252,7 @@ public Task<AgentSwitchResult> ReconcileAsync(AgentSwitchOrigin origin, Guid ope
 
 ## 10. UI 与 monitor 共用的纯 execution 投影（输入输出冻结）
 
-所有类型在 `AIFrontend.Services.Notifications`；集合使用 `System.Collections.Immutable.ImmutableArray<T>`，输入 DTO 通过 CreateWindow 拷贝成仅含明确执行证据的不可变值，不保存正文/原始 provider blob。
+所有类型在 `FluentCode.Services.Notifications`；集合使用 `System.Collections.Immutable.ImmutableArray<T>`，输入 DTO 通过 CreateWindow 拷贝成仅含明确执行证据的不可变值，不保存正文/原始 provider blob。
 
 ```csharp
 public enum OpenCodeExecutionState { Unknown, Idle, Working }

@@ -6,9 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Pages.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -79,7 +79,7 @@ namespace Microsoft.UI.Dispatching
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     /// <summary>记录每次 ApplyMessages 的应用快照（不渲染）：测试据此断言应用顺序、去重与内容更新。</summary>
     public sealed partial class OpenCodeConversationView
@@ -152,8 +152,8 @@ namespace AIFrontend.Pages
         private bool _homeActive = true;
         private string _homeRuntimeSource = "runtime-a";
         private long _homeRevision = 7;
-        private readonly Dictionary<string, AIFrontend.Pages.OpenCode.OpenCodeHomeProject> _homeProjects = new(StringComparer.Ordinal);
-        internal bool TestHomeEvent(long revision, AIFrontend.Pages.OpenCode.OpenCodeHomeProjectKey key) => HomeEventCurrent(revision, key);
+        private readonly Dictionary<string, FluentCode.Pages.OpenCode.OpenCodeHomeProject> _homeProjects = new(StringComparer.Ordinal);
+        internal bool TestHomeEvent(long revision, FluentCode.Pages.OpenCode.OpenCodeHomeProjectKey key) => HomeEventCurrent(revision, key);
         internal void TestHomeDirectory(string directory) { _homeActive = true; _homeProjects[directory] = new(new(_homeRuntimeSource, directory), directory); }
         internal void TestReplaceHomeSource() { _homeRuntimeSource = "runtime-b"; _homeRevision++; }
         // The extracted Home router calls the guarded switch directly from accepted DTO metadata.
@@ -217,11 +217,11 @@ namespace AIFrontend.Pages
             var state = new OpenCodeSessionUiState("ses_root", false, false, true, new("succeeded", 3), 3, OpenCodeStateUnknownReason.None);
             var info = new OpenCodeSessionInfo { Id = "ses_root", Outcome = "succeeded" };
             var status = CreateHomeStatus(state, info);
-            var session = new AIFrontend.Pages.OpenCode.OpenCodeHomeSession(new("runtime-a", "/work"), info, status);
+            var session = new FluentCode.Pages.OpenCode.OpenCodeHomeSession(new("runtime-a", "/work"), info, status);
             return status?.MutationProtected == true && status.PendingAction == false
-                && AIFrontend.Pages.OpenCode.OpenCodeHomeProjection.Classify(session) == AIFrontend.Pages.OpenCode.OpenCodeHomeTone.NeedsAction
-                && new AIFrontend.Pages.OpenCode.OpenCodeHomeSessionRow(session, "title", "project", AIFrontend.Pages.OpenCode.OpenCodeHomeTone.NeedsAction,
-                    AIFrontend.Pages.OpenCode.OpenCodeHomeDateGroup.Today, null).NeedsAttention;
+                && FluentCode.Pages.OpenCode.OpenCodeHomeProjection.Classify(session) == FluentCode.Pages.OpenCode.OpenCodeHomeTone.NeedsAction
+                && new FluentCode.Pages.OpenCode.OpenCodeHomeSessionRow(session, "title", "project", FluentCode.Pages.OpenCode.OpenCodeHomeTone.NeedsAction,
+                    FluentCode.Pages.OpenCode.OpenCodeHomeDateGroup.Today, null).NeedsAttention;
         }
         internal string? TestHomeStatus => _homeSessionsMessage ?? _homeMessage;
         internal void TestHomeResetActionScope() { _homeActionOwner = null; _homeCancellation?.Cancel(); _homeCancellation = new(); TestReplaceHomeSource(); }

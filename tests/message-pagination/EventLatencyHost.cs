@@ -6,9 +6,9 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 public sealed partial class OpenCodePage
 {
     // Agent-tree UI is outside this source-extracted pagination fixture. Preserve optional hooks.

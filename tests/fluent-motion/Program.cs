@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using AIFrontend.Motion;
+using FluentCode.Motion;
 
 // Offline tests for the Fluent motion tokens, the reduce-motion policy and the generation gate
-// (src/AIFrontend/Motion/FluentMotionPolicy.cs), plus static guards over the WinUI execution layer.
+// (src/FluentCode/Motion/FluentMotionPolicy.cs), plus static guards over the WinUI execution layer.
 internal static class Program
 {
     private static int _checks;
@@ -112,7 +112,7 @@ internal static class Program
     // Static guards over the WinUI layer: one UISettings owner, no layout (dependent) animations, terminal HWND gating.
     private static void Static(string repo)
     {
-        string Read(string relative) => File.ReadAllText(Path.Combine(repo, "src/AIFrontend", relative));
+        string Read(string relative) => File.ReadAllText(Path.Combine(repo, "src/FluentCode", relative));
         var motion = Read("Motion/FluentMotion.cs");
         Check(motion.Contains("FluentMotionPolicy.Run(Enabled, Instant,"), "STATIC Animate routes through the reduce-motion short-circuit");
         Check(motion.Contains("FluentMotionPolicy.Resolve(_systemEnabled, _userReduce)"), "STATIC Enabled = system AND NOT in-app reduce");
@@ -120,7 +120,7 @@ internal static class Program
             "STATIC shared motion uses XAML facade animations, never hands out a Visual before Scale/Opacity APIs");
         Check(!Read("MainWindow.xaml.cs").Contains("ElementCompositionPreview.GetElementVisual(SettingsGearIcon)"),
             "STATIC settings gear uses the same facade ownership as shared motion");
-        var sources = Directory.GetFiles(Path.Combine(repo, "src/AIFrontend"), "*.cs", SearchOption.AllDirectories)
+        var sources = Directory.GetFiles(Path.Combine(repo, "src/FluentCode"), "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)
                 && !path.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
             .ToArray();

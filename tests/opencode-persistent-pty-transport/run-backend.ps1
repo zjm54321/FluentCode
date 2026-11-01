@@ -17,9 +17,9 @@ $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Obje
  'OpenCodeInstructionNotice.cs','OpenCodeInstructionSource.cs','OpenCodeClient.Projects.cs','OpenCodeDtos.Projects.cs','OpenCodeClient.ServerInfo.cs',
  'OpenCodeClient.PersistentPty.cs','PersistentPtyModels.cs','PersistentPtyConnection.cs',
  'PersistentPty/PersistentPtyLifecycle.cs','PersistentPty/PersistentPtyController.cs'
-) | ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_) + '"' }
+) | ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/OpenCode" $_) + '"' }
 @('OpenCodePageSource.cs','OpenCodeInteractionGate.cs','NotificationArgumentCodec.cs','NotificationInteractions.cs','NotificationSource.cs','OpenCodeExecutionProjection.cs') |
- ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/AIFrontend/Services/Notifications" $_) + '"' }
+ ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/Notifications" $_) + '"' }
 @('BackendSupport.cs','BackendTests.cs') | ForEach-Object { $arguments += '"' + (Join-Path $PSScriptRoot $_) + '"' }
 # Placement regression check: the production wire closure must compile without page-source,
 # renderer/lifecycle contracts, or the unrelated desktop-bridge test closure.

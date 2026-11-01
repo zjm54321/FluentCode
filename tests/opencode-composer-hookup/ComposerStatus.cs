@@ -5,7 +5,7 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 
-namespace AIFrontend.Pages.OpenCode;
+namespace FluentCode.Pages.OpenCode;
 
 internal sealed partial class ComposerStatusHost
 {

@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode.Browser;
+using FluentCode.Services.OpenCode.Browser;
 
 /// <summary>Controlled Chrome callback host, without an automation framework or production UI dependencies.</summary>
 internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDisposable
@@ -31,10 +31,13 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
     private string? baseSession;
     private int holdEvaluation;
     private int holdAttachment;
+    private int holdDetachment;
     internal TaskCompletionSource EvaluationStarted = NewSignal();
     internal TaskCompletionSource AttachmentCreated = NewSignal();
     internal TaskCompletionSource AttachmentRelease = NewSignal();
     internal TaskCompletionSource Detached = NewSignal();
+    internal TaskCompletionSource DetachmentStarted = NewSignal();
+    internal TaskCompletionSource DetachmentRelease = NewSignal();
     internal int SubscriptionCount => subscribers.Count;
     internal int OwnedCount => owned.Count;
     internal int Attachments;
@@ -100,6 +103,13 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
         if (sessionId is not null && !owned.ContainsKey(sessionId)) throw new InvalidOperationException("C# runtime used a foreign audit session.");
         if (method == "Target.detachFromTarget" && parameters?["sessionId"]?.GetValue<string>() == baseSession)
             throw new InvalidOperationException("C# runtime attempted to detach the caller's page session.");
+        if (method == "Target.detachFromTarget" && !parents.ContainsKey(parameters!["sessionId"]!.GetValue<string>()) &&
+            Interlocked.CompareExchange(ref holdDetachment, 0, 1) == 1)
+        {
+            DetachmentStarted.TrySetResult();
+            await DetachmentRelease.Task; // A real CDP mutation can finish after its caller stops waiting.
+            cancellationToken = CancellationToken.None;
+        }
         if (method == "Runtime.evaluate" && Interlocked.CompareExchange(ref holdEvaluation, 0, 1) == 1)
         {
             EvaluationStarted.TrySetResult();
@@ -134,6 +144,12 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
     {
         AttachmentCreated = NewSignal(); AttachmentRelease = NewSignal(); Detached = NewSignal();
         Interlocked.Exchange(ref holdAttachment, 1);
+    }
+
+    internal void HoldNextDetachment()
+    {
+        DetachmentStarted = NewSignal(); DetachmentRelease = NewSignal();
+        Interlocked.Exchange(ref holdDetachment, 1);
     }
 
     public Task<IAsyncDisposable> SubscribeCdpAsync(string method, Action<OpenCodeBrowserCdpEvent> receive,

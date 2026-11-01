@@ -9,7 +9,7 @@ if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
 $output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-session-ui-state-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $output | Out-Null
 $production = @('OpenCodeSessionUiState.cs', 'OpenCodeSessionUiStateStore.cs', 'OpenCodeConstants.cs') | ForEach-Object {
-    Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_
+    Join-Path "$repo/src/FluentCode/Services/OpenCode" $_
 }
 $testSource = Join-Path $PSScriptRoot 'Program.cs'
 Write-Output "Evidence directory: $output"

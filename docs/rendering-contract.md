@@ -3,7 +3,7 @@
 ## 公开入口
 
 ```csharp
-namespace AIFrontend.Services.Rendering;
+namespace FluentCode.Services.Rendering;
 
 public sealed class SafeContentRenderer
 {
@@ -55,13 +55,13 @@ string cleaned = renderer.SanitizeHtml(untrustedHtml);
 
 ## 包与工程边界
 
-主 `AIFrontend.csproj` 仅新增 Markdig 1.4.0、HtmlSanitizer 9.2.1039；保留 WindowsAppSDK 1.8.260921001、BuildTools 10.0.26100.9169、ProtectedData 10.0.12 及 `Pages\**\*.xaml`。
+主 `FluentCode.csproj` 仅新增 Markdig 1.4.0、HtmlSanitizer 9.2.1039；保留 WindowsAppSDK 1.8.260921001、BuildTools 10.0.26100.9169、ProtectedData 10.0.12 及 `Pages\**\*.xaml`。
 
 没有 restore/build 活动主工程，也没有修改主 `packages.lock.json`；父会话统一主项目 restore/build 时应更新其锁文件并验证集成。
 
 ## 实际隔离验证结果
 
-目录：`/mnt/c/Users/Zhang/source/repos/AIFrontend-render-validation-20261006T153633Z`
+目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-render-validation-20261006T153633Z`
 
 - Windows `/mnt/c/Program Files/dotnet/dotnet.exe`，纯 `net10.0` 验证工程，仅复制渲染服务。
 - 设置 `DOTNET_GENERATE_ASPNET_CERTIFICATE=false`、`DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`；CLI/cache/temp 均重定向到隔离目录。

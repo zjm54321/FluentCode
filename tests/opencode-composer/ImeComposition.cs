@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 internal static partial class Program
 {
@@ -82,14 +82,14 @@ internal static partial class Program
         Check(!composition.TryComplete(secondEnd) && !composition.IsActive,
             "reattachment invalidates a queued composition completion");
 
-        var view = File.ReadAllText(Path.Combine(SplashRepo(), "src/AIFrontend/Pages/OpenCode/OpenCodeComposerView.cs"));
+        var view = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs"));
         Check(view.Contains("DispatcherQueuePriority.Low") && view.Contains("!_composition.TryComplete(version)")
             && view.Contains("if (_composing) { RequestRender(); return; }")
             && view.Contains("if (_composing) return;")
             && view.Contains("if (isComposing || _composing) return OpenCodeComposerKeyDecision.Pass;")
             && view.Contains("if (!string.Equals(editor.Text, text, StringComparison.Ordinal))"),
             "WinUI hookup defers commit release, flush/reconciliation and redundant native Text/selection writes");
-        var page = File.ReadAllText(Path.Combine(SplashRepo(), "src/AIFrontend/Pages/OpenCodePage.Composer.cs"));
+        var page = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCodePage.Composer.cs"));
         Check(page.Contains("_composerView.CompositionSettled +=") && page.Contains("QueueDeferredComposerOverlayRefresh();"),
             "page overlays resume at the same drained composition boundary, never the raw Ended callback");
         Console.WriteLine($"PASS IME composition regression: {checks - before} assertions; production composition state + editor ledger/controller, simulated native event ordering, no physical IME automation.");

@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 internal static partial class Program
 {

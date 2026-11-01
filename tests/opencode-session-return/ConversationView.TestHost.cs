@@ -6,11 +6,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     internal static class OpenCodeThemedXaml
     {
@@ -438,7 +438,7 @@ namespace Microsoft.UI.Dispatching
     }
 }
 
-namespace AIFrontend.Services.Appearance
+namespace FluentCode.Services.Appearance
 {
     // Inert stand-in for the real font service: records which slot an element asked for.
     public enum AppFontSlot { Body = 0, Serif = 1, Monospace = 2 }
@@ -446,7 +446,7 @@ namespace AIFrontend.Services.Appearance
     public static class AppFonts
     {
         public static void Apply(Microsoft.UI.Xaml.FrameworkElement element, AppFontSlot slot)
-            => AIFrontend.Pages.OpenCode.ConversationViewTestProbe.Record("Font", element, slot);
+            => FluentCode.Pages.OpenCode.ConversationViewTestProbe.Record("Font", element, slot);
     }
 }
 
@@ -538,7 +538,7 @@ namespace Microsoft.UI.Xaml
 
 namespace Microsoft.UI.Xaml.Controls
 {
-    using AIFrontend.Pages.OpenCode;
+    using FluentCode.Pages.OpenCode;
     using Microsoft.UI.Xaml.Media;
 
     public enum Orientation { Vertical, Horizontal }
@@ -875,7 +875,7 @@ namespace Microsoft.UI.Text
 
 namespace Microsoft.UI.Xaml.Automation
 {
-    using AIFrontend.Pages.OpenCode;
+    using FluentCode.Pages.OpenCode;
 
     public static class AutomationProperties
     {

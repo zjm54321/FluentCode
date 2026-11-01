@@ -4,7 +4,7 @@
 
 ## 公开入口
 
-命名空间 `AIFrontend.Services.Protocols`：
+命名空间 `FluentCode.Services.Protocols`：
 
 ```csharp
 public sealed class ProtocolChatClient : IChatClient, IDisposable

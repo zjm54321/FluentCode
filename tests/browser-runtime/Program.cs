@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode.Browser;
+using FluentCode.Services.OpenCode.Browser;
 
 internal static class Program
 {
@@ -121,6 +121,28 @@ internal static class Program
         Check(result.Value["scores"]!.AsArray().Count == 3 && result.Value["failures"]!.AsArray().Count > 0, "Real scores and failures");
         Check(chrome.SubscriptionCount == 0 && chrome.OwnedCount == 0, "Snapshot sessions/subscription leaked");
 
+        // Cancel after the worker has already started detaching the root session. Cleanup
+        // must join that mutation, not treat an in-progress detach as an acknowledged one.
+        chrome.HoldNextDetachment();
+        using (var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        {
+            var auditing = runtime.AuditAsync(chrome.Url, chrome, cancel.Token);
+            await chrome.DetachmentStarted.Task.WaitAsync(ct);
+            cancel.Cancel();
+            var completedBeforeDetach = false;
+            try
+            {
+                try { await auditing.WaitAsync(TimeSpan.FromMilliseconds(250)); completedBeforeDetach = true; }
+                catch (OperationCanceledException) { completedBeforeDetach = true; }
+                catch (TimeoutException) { }
+            }
+            finally { chrome.DetachmentRelease.TrySetResult(); }
+            try { await auditing; throw new InvalidOperationException("Audit cancellation was ignored"); }
+            catch (OperationCanceledException) { }
+            Check(!completedBeforeDetach, "Audit cancellation returned before its in-flight CDP detach completed");
+        }
+        Check(chrome.SubscriptionCount == 0 && chrome.OwnedCount == 0, "In-flight detach left sessions/subscription");
+
         chrome.HoldNextEvaluation();
         using (var cancel = CancellationTokenSource.CreateLinkedTokenSource(ct))
         {
@@ -130,7 +152,8 @@ internal static class Program
             try { await auditing; throw new InvalidOperationException("Audit cancellation was ignored"); }
             catch (OperationCanceledException) { }
         }
-        Check(chrome.SubscriptionCount == 0 && chrome.OwnedCount == 0, "Cancelled audit leaked sessions/subscription");
+        Check(chrome.SubscriptionCount == 0 && chrome.OwnedCount == 0,
+            $"Cancelled audit leaked sessions/subscription (subscriptions={chrome.SubscriptionCount}, sessions={chrome.OwnedCount}, attaches={chrome.Attachments}, detaches={chrome.Detachments})");
         await WaitForAttachmentAsync(http, ct);
         // Immediately run another snapshot: cancellation acknowledgement must leave the worker slot reusable.
         await runtime.AuditAsync(chrome.Url, chrome, ct);
@@ -184,7 +207,7 @@ internal static class Program
 
 // These two serialization-neutral records are defined beside the application RPC extensions.
 // Mirror them here so the focused source-linked harness needs no OpenCode HTTP client.
-namespace AIFrontend.Services.OpenCode.Browser
+namespace FluentCode.Services.OpenCode.Browser
 {
     public sealed record OpenCodeBrowserTunnelTarget(string Host, int Port);
     public sealed record OpenCodeBrowserTunnelRead(byte[] Data, bool Eof);

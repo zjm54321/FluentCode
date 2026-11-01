@@ -14,36 +14,36 @@ Paths are relative to the repository root; line numbers refer to this change.
 
 | Site | Change |
 | --- | --- |
-| `src/AIFrontend/Services/Appearance/AppThemeController.cs:17`, `src/AIFrontend/MainWindow.xaml.cs:83`, `src/AIFrontend/MainWindow.xaml.cs:898` | System changes now propagate through the live window root; saved app theme uses the same controller. |
-| `src/AIFrontend/Services/Appearance/ThemeResources.cs:18`, `src/AIFrontend/Services/Appearance/ThemeResources.cs:31` | Weak refresh registry for code-selected assets; UI-queued root reconciliation. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeThemeAssets.cs:10`, `src/AIFrontend/Pages/OpenCodePage.Home.cs:57`, `src/AIFrontend/Pages/OpenCodePage.Home.cs:58` | New-conversation and home OpenCode wordmarks choose the current host theme on attach and every root change. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeRightPanelView.cs:99` | Connection/footer wordmark uses the same refresh path. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeModelLogo.cs:45` | OpenAI, Grok, DeepSeek, GLM and Kimi light/dark provider SVG/bitmap variants reconcile after root changes; existing async revision guard retained. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeAgentIconTheme.cs:15` | Shared agent glyph colors reconcile after root changes. |
-| `src/AIFrontend/Pages/NormalPage.xaml.cs:72`, `src/AIFrontend/Pages/Web/ProviderBrandIcons.cs:110` | Website provider icons reconcile via the root hub; old async loads cannot overwrite a different current theme. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserButton.cs:44`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserButton.cs:88` | Checked/hover/pressed native aliases use ThemeDictionaries; status-dot brushes resolve in the host theme, not the application's startup theme. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserStrip.cs:311`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserStrip.cs:313`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserStrip.cs:315` | Preview outline/badge use the current host theme; error/agent glyphs use ThemeResource styles. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs:147`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs:180`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs:186`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserOverlay.cs:273` | Pointer ripple, page-tool checked aliases, agent-pill background/border and activity text no longer retain resolved application brushes. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelection.cs:71`, `src/AIFrontend/Pages/OpenCode/OpenCodeBrowserSelection.cs:80` | Selection-mode glyph and annotation pill use ThemeResource styles. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:97`, `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:244`, `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:321`, `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:438` | Terminal checked aliases use ThemeDictionaries; live dot, chip titles/outlines and switcher selected/title/bar brushes use ThemeResource styles. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyView.cs:145`, `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyView.cs:410`, `src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyView.cs:421` | Terminal badge/marker resolve in the actual theme and reconcile on load; terminate-action foreground uses a ThemeResource style. |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessView.cs:43` | Editor SplitButton background override uses ThemeDictionaries. |
-| `src/AIFrontend/Pages/Local/LocalChatView.cs:1463` | Session-pane fallback background resolves against the pane's actual theme rather than the application's startup theme. |
+| `src/FluentCode/Services/Appearance/AppThemeController.cs:17`, `src/FluentCode/MainWindow.xaml.cs:83`, `src/FluentCode/MainWindow.xaml.cs:898` | System changes now propagate through the live window root; saved app theme uses the same controller. |
+| `src/FluentCode/Services/Appearance/ThemeResources.cs:18`, `src/FluentCode/Services/Appearance/ThemeResources.cs:31` | Weak refresh registry for code-selected assets; UI-queued root reconciliation. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeThemeAssets.cs:10`, `src/FluentCode/Pages/OpenCodePage.Home.cs:57`, `src/FluentCode/Pages/OpenCodePage.Home.cs:58` | New-conversation and home OpenCode wordmarks choose the current host theme on attach and every root change. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeRightPanelView.cs:99` | Connection/footer wordmark uses the same refresh path. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeModelLogo.cs:45` | OpenAI, Grok, DeepSeek, GLM and Kimi light/dark provider SVG/bitmap variants reconcile after root changes; existing async revision guard retained. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeAgentIconTheme.cs:15` | Shared agent glyph colors reconcile after root changes. |
+| `src/FluentCode/Pages/NormalPage.xaml.cs:72`, `src/FluentCode/Pages/Web/ProviderBrandIcons.cs:110` | Website provider icons reconcile via the root hub; old async loads cannot overwrite a different current theme. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeBrowserButton.cs:44`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserButton.cs:88` | Checked/hover/pressed native aliases use ThemeDictionaries; status-dot brushes resolve in the host theme, not the application's startup theme. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeBrowserStrip.cs:311`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserStrip.cs:313`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserStrip.cs:315` | Preview outline/badge use the current host theme; error/agent glyphs use ThemeResource styles. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:147`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:180`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:186`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:273` | Pointer ripple, page-tool checked aliases, agent-pill background/border and activity text no longer retain resolved application brushes. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeBrowserSelection.cs:71`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserSelection.cs:80` | Selection-mode glyph and annotation pill use ThemeResource styles. |
+| `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:97`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:244`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:321`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:438` | Terminal checked aliases use ThemeDictionaries; live dot, chip titles/outlines and switcher selected/title/bar brushes use ThemeResource styles. |
+| `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs:145`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs:410`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs:421` | Terminal badge/marker resolve in the actual theme and reconcile on load; terminate-action foreground uses a ThemeResource style. |
+| `src/FluentCode/Pages/OpenCode/OpenCodeWslQuickAccessView.cs:43` | Editor SplitButton background override uses ThemeDictionaries. |
+| `src/FluentCode/Pages/Local/LocalChatView.cs:1463` | Session-pane fallback background resolves against the pane's actual theme rather than the application's startup theme. |
 
 ## Audited existing paths
 
-- `src/AIFrontend/Pages/OpenCode/OpenCodeWslQuickAccessIcons.cs:47`: VS Code/VSCodium/Zed PathIcons inherit native foreground; executable thumbnails are not theme variants. All three inherited colors are asserted by the regression.
-- `src/AIFrontend/Pages/Web/WebViewHost.cs:519`, `src/AIFrontend/Pages/Web/WebViewHost.cs:544`: WebView2 already reapplies background/Profile.PreferredColorScheme on ActualThemeChanged, Loaded and activation, without reload or profile replacement. It now receives live system-theme propagation from the root.
+- `src/FluentCode/Pages/OpenCode/OpenCodeWslQuickAccessIcons.cs:47`: VS Code/VSCodium/Zed PathIcons inherit native foreground; executable thumbnails are not theme variants. All three inherited colors are asserted by the regression.
+- `src/FluentCode/Pages/Web/WebViewHost.cs:519`, `src/FluentCode/Pages/Web/WebViewHost.cs:544`: WebView2 already reapplies background/Profile.PreferredColorScheme on ActualThemeChanged, Loaded and activation, without reload or profile replacement. It now receives live system-theme propagation from the root.
 - `src/ThirdParty/WindowsTerminalControl/src/WindowsTerminalControl.WinUI/TerminalControl.cs:132`, `src/ThirdParty/WindowsTerminalControl/src/WindowsTerminalControl.WinUI/TerminalControl.cs:516`: native terminal already reapplies SurfaceColors on ActualThemeChanged and load; terminal well/status rendering also had a theme listener. No third-party changes.
-- `src/AIFrontend/MainWindow.xaml.cs:148`: native Mica backdrop already updates its SystemBackdropConfiguration theme. Existing Composition uses clipping, offset/opacity/scale and shadows rather than cached theme-dependent color brushes.
-- `src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailSurface.cs:237`: diff surfaces already recompute theme colors. Tool rows, timeline/reasoning rows, session insights and Mermaid already have theme refresh paths.
-- `src/AIFrontend/AIFrontend.csproj:13`: unpackaged application, no separate themed native launch splash. The composer “splash” is placeholder text, not a theme-selected image.
+- `src/FluentCode/MainWindow.xaml.cs:148`: native Mica backdrop already updates its SystemBackdropConfiguration theme. Existing Composition uses clipping, offset/opacity/scale and shadows rather than cached theme-dependent color brushes.
+- `src/FluentCode/Pages/OpenCode/OpenCodeToolDetailSurface.cs:237`: diff surfaces already recompute theme colors. Tool rows, timeline/reasoning rows, session insights and Mermaid already have theme refresh paths.
+- `src/FluentCode/FluentCode.csproj:13`: unpackaged application, no separate themed native launch splash. The composer “splash” is placeholder text, not a theme-selected image.
 
 ## Regression and evidence
 
 `tests/theme-refresh/run.ps1 -PublishDirectory <native app output> -EvidenceRoot <new directory>` launches an isolated startup-smoke process and disposable profile. It temporarily changes the current user's `AppsUseLightTheme`, broadcasts the Windows setting change and restores the original registry value in `finally`. It closes only its own PID. Do not run concurrent theme-setting tests on the same desktop.
 
-The opt-in fixture (`AIF_THEME_REFRESH_TEST=1`) captures XAML-root PNGs and asserts, in the same process:
+The opt-in fixture (`FC_THEME_REFRESH_TEST=1`) captures XAML-root PNGs and asserts, in the same process:
 
 - App Light → Dark → Light, including a wordmark detached/reinserted across the change.
 - Four real/fixture/footer wordmark URI variants; wordmark and five provider images change pixels and restore their original light pixels.

@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Text.Json.Nodes;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.OpenCode.Browser;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode.Browser;
 
 internal static class SelectionTests
 {

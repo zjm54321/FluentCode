@@ -20,11 +20,11 @@ $refs = @("$($foundation.FullName)/lib/net6.0-windows10.0.17763.0/Microsoft.Wind
     "$($windows.FullName)/lib/net8.0/Microsoft.Windows.SDK.NET.dll", "$($windows.FullName)/lib/net8.0/WinRT.Runtime.dll")
 foreach ($ref in $refs) { $args += '/reference:"' + $ref + '"'; Copy-Item $ref $output }
 foreach ($area in @('Notifications', 'OpenCode')) {
-    $args += Get-ChildItem "$repo/src/AIFrontend/Services/$area/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
+    $args += Get-ChildItem "$repo/src/FluentCode/Services/$area/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
 }
-foreach ($file in @('TaskbarStatus.cs', 'TaskbarStateAggregator.cs', 'TaskbarStateAggregator.Sessions.cs')) { $args += '"' + "$repo/src/AIFrontend/Services/Taskbar/$file" + '"' }
+foreach ($file in @('TaskbarStatus.cs', 'TaskbarStateAggregator.cs', 'TaskbarStateAggregator.Sessions.cs')) { $args += '"' + "$repo/src/FluentCode/Services/Taskbar/$file" + '"' }
 $args += Get-ChildItem "$PSScriptRoot/*.cs" | ForEach-Object { '"' + $_.FullName + '"' }
-foreach ($file in @('App.OpenCode.Observations.cs', 'App.OpenCode.Diagnostics.cs', 'App.OpenCode.SessionState.cs', 'App.OpenCode.Foreground.cs')) { $args += '"' + "$repo/src/AIFrontend/$file" + '"' }
+foreach ($file in @('App.OpenCode.Observations.cs', 'App.OpenCode.Diagnostics.cs', 'App.OpenCode.SessionState.cs', 'App.OpenCode.Foreground.cs')) { $args += '"' + "$repo/src/FluentCode/$file" + '"' }
 $rsp = Join-Path $output 'compile.rsp'
 $args | Set-Content -Encoding UTF8 $rsp
 & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp"

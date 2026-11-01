@@ -4,7 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 
 internal static class Program
 {
@@ -64,7 +64,7 @@ internal static class Program
             && context != context with { SessionId = "other" }, "view events retain generation, PTY and session identity");
         Check(OpenCodePersistentPtyRendererPolicy.ValidGeometry(80, 24) && !OpenCodePersistentPtyRendererPolicy.ValidGeometry(0, 24)
             && !OpenCodePersistentPtyRendererPolicy.ValidGeometry(80, 1001), "renderer bounds resource geometry");
-        var rendererSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
+        var rendererSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
         Check(rendererSource.Contains("TerminalHostMode.ChildWindow") && !rendererSource.Contains("WebView2") && !rendererSource.Contains("CoreWebView")
             && rendererSource.Contains("TerminalTextReader.ReadSelectionAsync"), "persistent renderer uses the native child HWND and non-destructive selection, not WebView");
         var nativeSource = File.ReadAllText(Path.Combine(args[0], "src/ThirdParty/WindowsTerminalControl/src/WindowsTerminalControl.WinUI/TerminalControl.cs"));
@@ -72,13 +72,13 @@ internal static class Program
         Check(nativeSource.Contains("case NativeMethods.WmMouseWheel:") && nativeSource.Contains("ValueChanged += OnScrollBarValueChanged")
             && wheel.Contains("_terminalScrollBar.Value = top") && wheel.Contains("_wheelDelta %= 120")
             && !wheel.Contains("Resize(") && !wheel.Contains("WriteInput"), "child-HWND wheel scrolls clamped local history with high-resolution delta accumulation, never PTY input/resize");
-        var viewSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyView.cs"));
+        var viewSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs"));
         Check(!viewSource.Contains("适应窗口") && !viewSource.Contains("ConfirmTakeControlAsync") && !viewSource.Contains("接管终端\"")
             && viewSource.Contains("TerminateRequested") && viewSource.Contains("internal void RequestEnd()") && viewSource.Contains("_confirm.Visibility = Visibility.Visible; _header.Visibility = Visibility.Collapsed;"),
             "no Fit/takeover button/modal: ending a running terminal is confirmed in place of the header; close only detaches");
         Check(viewSource.Contains("Renderer.SuppressAirspace(snapshot: true)") && viewSource.Contains("Grid.SetColumn(_scrollBar, 2)") && viewSource.Contains("Grid.SetColumn(Renderer, 1)")
             && viewSource.Contains("ListExpanded ?? count >= 2"), "B2 card: menus freeze the terminal frame, scrollbar sits in its own gutter beside the HWND, list defaults collapsed for one terminal");
-        var renderer = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
+        var renderer = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
         Check(!renderer.Contains("InputIntentRequested") && renderer.Contains("else ReadOnlyInteraction?.Invoke();")
             && renderer.Contains("if (click.ClickCount == 2 && _activatable)") && renderer.Contains("click.Handled = true;")
             && renderer.Contains("_activatable = activatable && !_shellViewport"),
@@ -87,11 +87,11 @@ internal static class Program
         Check(nativeClicks.Contains("GetDoubleClickTime()") && nativeClicks.Contains("_nativeUpNearDown") && nativeClicks.Contains("_swallowLeftUp = true")
             && nativeSource.Contains("ScrollStateChanged?.Invoke(this, ScrollState);") && nativeSource.Contains("public bool ShowScrollBar"),
             "vendored control reports double-click only within system time/distance after a non-drag release, and publishes scroll state for the host scrollbar");
-        var toolRowSource = File.ReadAllText(Path.Combine(args[0], "src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs"));
+        var toolRowSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodeToolPartView.cs"));
         var shellBranch = toolRowSource[toolRowSource.IndexOf("private void RefreshInlineContent()", StringComparison.Ordinal)..];
         Check(shellBranch.Contains("_inlineRegion.Child = null;") && !shellBranch.Contains("new OpenCodeShellTerminalPreview"),
             "shell transcript keeps only its clickable task line, with no command/output preview");
-        var pages = Path.Combine(args[0], "src/AIFrontend/Pages");
+        var pages = Path.Combine(args[0], "src/FluentCode/Pages");
         var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(pages, "OpenCodePage.xaml"));
         System.Xml.Linq.XElement Named(string name) => xaml.Descendants().Single(e => e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == name));
         var button = Named("PersistentPtyButtonSlot"); var strip = Named("PersistentPtyStripSlot");

@@ -11,7 +11,7 @@ function copy(source, destination) {
   return spawnSync(process.execPath, [helper, source, destination], {encoding: 'utf8'});
 }
 async function fixture(t) {
-  const root = await mkdtemp(path.join(tmpdir(), 'aif-runtime-copy-'));
+  const root = await mkdtemp(path.join(tmpdir(), 'fc-runtime-copy-'));
   t.after(() => rm(root, {recursive: true, force: true}));
   const source = path.join(root, 'prepared');
   const output = path.join(root, 'output');

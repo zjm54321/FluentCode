@@ -1,7 +1,7 @@
 # Local UI 契约：`LocalChatView`（可嵌入聊天模块）
 
 > 状态：Local 控件静态实现（2026-10-06），随后由父会话完成 NormalPage 第四页签接入（2026-10-06）；本轮（2026-10-06）新增结构化状态事件（§6.1）与按 ID 定位公开方法（§3、§4.1）。**未构建、未运行、未做 UI 操作、未发真实请求、无 git 操作**。编译与行为验收由父会话统一执行。
-> 写范围（本 lane 独占）：`src/AIFrontend/Pages/Local/**`、`src/AIFrontend/Pages/NormalPage.xaml`、`src/AIFrontend/Pages/NormalPage.xaml.cs`、`docs/local-ui-contract.md`。
+> 写范围（本 lane 独占）：`src/FluentCode/Pages/Local/**`、`src/FluentCode/Pages/NormalPage.xaml`、`src/FluentCode/Pages/NormalPage.xaml.cs`、`docs/local-ui-contract.md`。
 > 明确不改：`MainWindow.*`、`Services/**`（含 `Services/Rendering`，其文件与依赖归各自 lane）、`Models/**`、`Pages/Web/**`（含已成遗留的 `LocalHostPanel.cs`）、`Pages/Settings/**`、`Pages/OpenCode/**`、`*.csproj`、`packages.lock.json`、其他文档（含 `docs/web-ui-contract.md`）。
 
 ---
@@ -11,10 +11,10 @@
 **做**（UI 编排）：
 
 - 左侧会话 `ListView`：新建、选择；右侧「模型选择 / 能力门控推理强度 / 渲染模式 / 转录 / 多行输入」。
-- 通过 `AIFrontend.Services.Protocols.ProtocolChatClient` 以**流式**方式完成多轮对话。
+- 通过 `FluentCode.Services.Protocols.ProtocolChatClient` 以**流式**方式完成多轮对话。
 - 会话持久化消费共享 `LocalSessionStore`；模型/provider 消费共享 `SettingsService`；密钥经共享 `DpapiSecretStore` 解析后注入 `ProtocolChatClient`。
 - 空配置引导：展示引导面板并公开 `SettingsRequested` 事件（父页面据此打开设置 UI）。
-- 转录渲染：Markdown/HTML 两种模式（原生选择器切换），经 `AIFrontend.Services.Rendering.SafeContentRenderer` 产出安全片段，放入受控文档，由隔离的 WebView2 呈现。
+- 转录渲染：Markdown/HTML 两种模式（原生选择器切换），经 `FluentCode.Services.Rendering.SafeContentRenderer` 产出安全片段，放入受控文档，由隔离的 WebView2 呈现。
 
 **不做**（明确排除）：
 
@@ -43,7 +43,7 @@
 ## 3. 公开 API（父页面接线面）
 
 ```csharp
-namespace AIFrontend.Pages.Local;
+namespace FluentCode.Pages.Local;
 
 public sealed class LocalChatView : Microsoft.UI.Xaml.Controls.UserControl
 {
@@ -52,9 +52,9 @@ public sealed class LocalChatView : Microsoft.UI.Xaml.Controls.UserControl
 
     // 推荐：注入父页面共享的服务实例（全局应各只共享一份）。
     public LocalChatView(
-        AIFrontend.Services.Configuration.SettingsService settingsService,
-        AIFrontend.Services.Configuration.DpapiSecretStore secretStore,
-        AIFrontend.Services.Configuration.LocalSessionStore sessionStore);
+        FluentCode.Services.Configuration.SettingsService settingsService,
+        FluentCode.Services.Configuration.DpapiSecretStore secretStore,
+        FluentCode.Services.Configuration.LocalSessionStore sessionStore);
 
     public string? CurrentSessionId { get; }                 // 无会话时为 null
 
@@ -106,24 +106,24 @@ Local 标签已由 `NormalPage` 挂载 `LocalChatView`；`LocalHostPanel` 占位
 ### 4.1 NormalPage 公开接口（精确签名）
 
 ```csharp
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 
 public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 {
     // 应用级共享服务（惰性单例）；Local 与未来主窗口设置界面必须复用同一实例。
-    public static AIFrontend.Services.Configuration.SettingsService   SharedSettingsService { get; }
-    public static AIFrontend.Services.Configuration.DpapiSecretStore  SharedSecretStore      { get; }
-    public static AIFrontend.Services.Configuration.LocalSessionStore SharedSessionStore     { get; }
+    public static FluentCode.Services.Configuration.SettingsService   SharedSettingsService { get; }
+    public static FluentCode.Services.Configuration.DpapiSecretStore  SharedSecretStore      { get; }
+    public static FluentCode.Services.Configuration.LocalSessionStore SharedSessionStore     { get; }
 
     // 实例便捷访问（等价于上列静态属性）。
-    public AIFrontend.Services.Configuration.SettingsService   SettingsService { get; }
-    public AIFrontend.Services.Configuration.DpapiSecretStore  SecretStore     { get; }
-    public AIFrontend.Services.Configuration.LocalSessionStore SessionStore    { get; }
+    public FluentCode.Services.Configuration.SettingsService   SettingsService { get; }
+    public FluentCode.Services.Configuration.DpapiSecretStore  SecretStore     { get; }
+    public FluentCode.Services.Configuration.LocalSessionStore SessionStore    { get; }
 
     // 转发事件：sender 为 NormalPage 实例，参数原样转发。
     public event System.EventHandler? SettingsRequested;
-    public event System.EventHandler<AIFrontend.Pages.Local.LocalTaskCompletedEventArgs>? LocalTaskCompleted;
-    public event System.EventHandler<AIFrontend.Pages.Local.LocalTaskStatusEventArgs>? LocalTaskStatusChanged;
+    public event System.EventHandler<FluentCode.Pages.Local.LocalTaskCompletedEventArgs>? LocalTaskCompleted;
+    public event System.EventHandler<FluentCode.Pages.Local.LocalTaskStatusEventArgs>? LocalTaskStatusChanged;
 
     // 通知/外部定位 Local 会话：校验 ID 后切到 Local 标签并选中；不覆盖未发送草稿；校验失败返回 false（UI 线程）。
     public bool TryActivateLocalSession(string sessionId);
@@ -136,7 +136,7 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
     internal bool IsLocalTeardownComplete { get; }   // 未创建过 Local 视图，或其收尾已完成时为 true
 
     // 保留：清理某官网 provider 环境的全部 cookie（页面已加载场景；见 web-ui-contract §6.2）。
-    public System.Threading.Tasks.Task ClearCookiesAsync(AIFrontend.Pages.Web.WebProvider provider);
+    public System.Threading.Tasks.Task ClearCookiesAsync(FluentCode.Pages.Web.WebProvider provider);
 }
 ```
 
@@ -208,7 +208,7 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 - 渲染器抛异常（如超过 256K 输入）→ **HTML 转义后降级为纯文本**并显式标注“内容无法安全渲染”，绝不注入未渲染原文。
 - 文档头：`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; script-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">`——仅放行固定内联样式。
 - 宿主 `TranscriptWebViewHost` 叠加硬设置：`IsScriptEnabled=false`、`IsWebMessageEnabled=false`、`AreHostObjectsAllowed=false`、禁默认脚本对话框/上下文菜单/加速键/状态栏/缩放/自动填充/手势导航、禁内建错误页；`NavigationStarting` 仅放行 `about:` / `data:text/html`，其余 `Cancel`；`NewWindowRequested` 一律 `Handled=true` 且不导航。**无 host objects、无 web messaging**。
-- 独立用户数据目录：`%LOCALAPPDATA%\AIFrontend\LocalTranscript`，与官网站点环境（`…\WebView2\{ChatGPT|Gemini|Claude}`）隔离。
+- 独立用户数据目录：`%LOCALAPPDATA%\FluentCode\LocalTranscript`，与官网站点环境（`…\WebView2\{ChatGPT|Gemini|Claude}`）隔离。
 - 布局用 `flex-direction: column-reverse` 让最新消息视觉在底部、初始/流式滚动锚定最新内容，**无需脚本**。
 - 字体与主题：CSS 变量按 `ActualTheme`（深/浅）切换；`ActualThemeChanged` 触发重渲染，保证字体/配色跟随主题。
 
@@ -231,7 +231,7 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 
 **待父会话验证（本轮仅静态核对）**：
 
-1. **编译**：`AIFrontend.csproj` 已含 `Markdig 1.4.0` 与 `HtmlSanitizer 9.2.1039`（渲染 lane 已补齐），`SafeContentRenderer` 及其消费方现可编译——仍未经实际构建验证。
+1. **编译**：`FluentCode.csproj` 已含 `Markdig 1.4.0` 与 `HtmlSanitizer 9.2.1039`（渲染 lane 已补齐），`SafeContentRenderer` 及其消费方现可编译——仍未经实际构建验证。
 2. **`InputKeyboardSource.GetKeyStateForCurrentThread`**：仅在 `Microsoft.InteractiveExperiences.Projection.dll` / `Microsoft.UI.Input.dll` 元数据中确认存在类型与成员；本 lane 用其做 Shift+Enter 判定，未能编译验证返回类型 `Windows.UI.Core.CoreVirtualKeyStates` 的可访问性。若不通过，回退方案：改为仅用按钮发送、或改用键事件跟踪 Shift。
 3. **`WebView2RuntimeNotFoundException`**：本地程序集中未找到该类型，故运行时缺失检测改用 `GetAvailableBrowserVersionString()` 的 `try/catch(Exception)`；需运行验证缺失场景确实走降级路径。
 4. **`NavigateToString` 与滚动**：`column-reverse` 无脚本锚定最新内容的实际表现；以及约 1.9Mi 字符上限触发截断提示的行为，均未运行验证。
@@ -255,7 +255,7 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 
 ## 11. 本轮修订（2026-10-06 第 6 轮）：结构化状态事件 + 按 ID 定位
 
-> 写范围：`src/AIFrontend/Pages/Local/**`、`src/AIFrontend/Pages/NormalPage.xaml[.cs]`、`docs/local-ui-contract.md`。**未**改 `Services/**`、`Models/**`、`Pages/Web/**`（品牌/清理入口属 Web lane）、`MainWindow.*`、`App.*`、`Pages/Settings/**`、`Pages/OpenCode/**`、`*.csproj`。
+> 写范围：`src/FluentCode/Pages/Local/**`、`src/FluentCode/Pages/NormalPage.xaml[.cs]`、`docs/local-ui-contract.md`。**未**改 `Services/**`、`Models/**`、`Pages/Web/**`（品牌/清理入口属 Web lane）、`MainWindow.*`、`App.*`、`Pages/Settings/**`、`Pages/OpenCode/**`、`*.csproj`。
 
 - **新增 `Pages/Local/LocalTaskStatusEventArgs.cs`**：`enum LocalTaskStatus { Working, Completed, Failed, Cancelled }` + 只读 `SourceRequestId` / `SessionId` / `Status` / `IsTerminal`。语义与 `Services.Taskbar.TaskbarTaskState` 的 Working/Completed/Failed/Cancelled 对齐（不含 Pending/OutcomeUnknown，不臆造）；载荷无正文/凭据。
 - **`LocalChatView`**：新增 `event EventHandler<LocalTaskStatusEventArgs>? TaskStatusChanged`；`RunStreamAsync` 起点发 `Working`，`finally` 发**恰好一次**终态（成功→Completed；`Cancelled`→Cancelled；其余→Failed），覆盖全部异常/取消路径。`TaskCompleted` 成功条件与去重**不变**。新增 `public bool TryActivateSession(string sessionId)`：仅当 ID 已在已加载会话集合（Ordinal 匹配）时切换（复用 `SelectSessionAsync`，先停旧流），**不读取/清空 `_input`**（保留未发送草稿）；校验失败返回 `false`，不抛异常、不造假。
@@ -267,7 +267,7 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 
 ## 12. 本轮修订（2026-10-06 第 7 轮）：可 await 的会话激活 + Shutdown 等待终态
 
-> 写范围：`src/AIFrontend/Pages/Local/**`、`src/AIFrontend/Pages/NormalPage.xaml.cs`、`docs/local-ui-contract.md`。**未**改 `Services/**`、`Models/**`、`App/**`、`Pages/OpenCode/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
+> 写范围：`src/FluentCode/Pages/Local/**`、`src/FluentCode/Pages/NormalPage.xaml.cs`、`docs/local-ui-contract.md`。**未**改 `Services/**`、`Models/**`、`App/**`、`Pages/OpenCode/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
 
 - **新增 `LocalChatView.TryActivateSessionAsync(string, CancellationToken)`**：复用当前同一加载 Task（`RefreshAsync` 记录 `_loadTask`；`OnLoaded` 与激活共用 `EnsureLoadStartedAsync`），加载真正完成后校验并选中；`false` = 会话不存在；取消抛 `OperationCanceledException`。同步 `TryActivateSession` 语义不变。
 - **`ShutdownAsync` 改为 `async`**：取消生命周期（`_lifetimeCts`，在途 `TryActivateSessionAsync` 随之取消）→ 同步解除自身订阅 → 取消并**等待在途流终结** → dispatcher 栅栏（`DrainDispatcherAsync`）确保终态回调投递完成后返回；重复调用幂等。父页面对本控件事件订阅在 `ShutdownAsync` 完成前保持有效。
@@ -279,7 +279,7 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 
 ## 13. 本轮修订（2026-10-07 第 8 轮）：响应式布局（原生 SplitView 三态）
 
-> 写范围：`src/AIFrontend/Pages/Local/LocalChatView.cs`、`docs/local-ui-contract.md`。**未**改其他文件（`Pages/NormalPage.*`、`MainWindow.*`、`Services/**`、`Models/**`、`*.csproj`/`packages.lock.json` 均未触碰）；未新增依赖、未换皮、未重构业务。静态实现与静态核对，**未构建、未运行、未做 UI 操作**（WSL 无 dotnet/pwsh）。
+> 写范围：`src/FluentCode/Pages/Local/LocalChatView.cs`、`docs/local-ui-contract.md`。**未**改其他文件（`Pages/NormalPage.*`、`MainWindow.*`、`Services/**`、`Models/**`、`*.csproj`/`packages.lock.json` 均未触碰）；未新增依赖、未换皮、未重构业务。静态实现与静态核对，**未构建、未运行、未做 UI 操作**（WSL 无 dotnet/pwsh）。
 
 **问题（父 UIA 实测）**：`artifacts/validation/current-acceptance/local-first-activation.json`（2026-10-06 23:21Z 捕获，晚于 bin 产物 mtime 22:59，证据对应当前一代布局代码）显示：可用宽 715 时 `NormalPage` 测宽 899 并伸出窗口。
 
@@ -312,3 +312,8 @@ public sealed partial class NormalPage : Microsoft.UI.Xaml.Controls.Page
 **不变（合同与逻辑）**：会话/历史/草稿保留、模型与能力门控 effort、发送/停止（含 Shift+Enter）、流式与渲染防护、`TaskStatusChanged`/`TaskCompleted` 语义、`ShutdownAsync`/`TryActivateSessionAsync` 行为均未改；既有 `AutomationId`（`LocalChatView`/`LocalSessionList`/`LocalModelCombo`/`LocalEffortCombo`/`LocalRenderModeCombo`/`LocalInput`/`LocalSendButton`/`LocalInfoBar`/`LocalNewSessionButton`/`LocalOpenSettingsButton`）全部保留。
 
 **未验证（实机边界）**：未构建/未运行——三态在 600/900 边界附近的实际行为、纵向工具栏实际高度（约 3 行，挤压转录高度）、`SplitView` Overlay 覆盖层底色是否解析到主题画刷、light-dismiss 行为、`SizeChanged` 在 NormalPage 显隐切换（Collapsed 不触发 `Unloaded`）下的时序，均待父会话**重新构建后**实机/UIA 复核（当前 bin 产物为修复前 2026-10-06 22:59 版本）。窗口未设 `MinWidth`：控件宽 < ~300 时右侧仍可能溢出，超出部分由页面外边距/窗口吸收，量级远小于原 899 > 715。
+# Historical contract — removed feature
+
+Local/direct-protocol chat and its NormalPage integration were removed in the
+FluentCode OpenCode-only transition on 2026-11-01. The following is historical
+implementation/validation context, not an active feature contract.

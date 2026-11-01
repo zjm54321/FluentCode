@@ -1,10 +1,10 @@
-# OpenCode 消息富文本渲染契约（`src/AIFrontend/Pages/OpenCode/**`）
+# OpenCode 消息富文本渲染契约（`src/FluentCode/Pages/OpenCode/**`）
 
 > 状态：**本轮新增消息富文本**（2026-10-07，本 lane）。针对 m03594 在 OpenCode 问题中指出的
 > “Markdown 和 HTML 目前不是富文本”，把 OpenCode 会话中 **user 文本、assistant 的 text / reasoning 部件**
 > 由纯文本改为真正的 Markdown / 安全 HTML 富文本呈现。
-> **本 lane 只写源码 + 静态核对**：`src/AIFrontend/Pages/OpenCode/OpenCodeRichTextPresenter.cs`（新增）、
-> `src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs`（修改）、本文档。
+> **本 lane 只写源码 + 静态核对**：`src/FluentCode/Pages/OpenCode/OpenCodeRichTextPresenter.cs`（新增）、
+> `src/FluentCode/Pages/OpenCode/OpenCodeConversationView.cs`（修改）、本文档。
 > **未构建主工程、未运行、未做任何 UI 操作/截图、未对真实后端发起任何请求、未读取任何凭据、未 git**。
 > 本环境（NixOS on WSL2，非 FHS）无可用 `dotnet`/`pwsh`；本轮静态核对为
 > 元数据字符串核对 + 源文件逐条比对 + `switch` 字面量覆盖计数 + 字符配平，**不是编译、不是运行**。
@@ -19,8 +19,8 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeRichTextPresenter.cs` | **本轮新增**：消息富文本专用 helper（普通 sealed 业务类，非控件子类） |
-| `src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs` | **本轮修改**：user 气泡 / assistant text / reasoning 部件改用上述 presenter；公开表面不变 |
+| `src/FluentCode/Pages/OpenCode/OpenCodeRichTextPresenter.cs` | **本轮新增**：消息富文本专用 helper（普通 sealed 业务类，非控件子类） |
+| `src/FluentCode/Pages/OpenCode/OpenCodeConversationView.cs` | **本轮修改**：user 气泡 / assistant text / reasoning 部件改用上述 presenter；公开表面不变 |
 | `docs/opencode-rich-content-contract.md` | 本文档 |
 
 **明确未改**：`OpenCodeToolPartView.cs`（工具卡片原生 `Expander`，保持不动）、`OpenCodePage.xaml(.cs)`、
@@ -33,7 +33,7 @@ Form / permission / gate、安全 factory、`App.*` / `MainWindow.*` / `Pages/No
 ### 2.1 新增公开类型（`Pages/OpenCode/**`）
 
 ```csharp
-namespace AIFrontend.Pages.OpenCode;
+namespace FluentCode.Pages.OpenCode;
 
 /// <summary>OpenCode 消息富文本的呈现样式。</summary>
 public enum OpenCodeRichTextStyle
@@ -178,7 +178,7 @@ source ──► Markdig（本 helper 局部管线，HTML 保留）──► HTM
 对 `AngleSharp` **1.7.2**（`HtmlSanitizer 9.2.1039` 的**传递依赖**，`packages.lock.json` 已列 `Transitive`）
 核对：`HtmlParser`、`ParseFragment`、`ParseDocument`、`IHtmlDocument`、`IElement`、`INode`、`IText`、
 `NodeType` 及访问器 `get_Body`/`get_DocumentElement`/`get_LocalName`/`get_ChildNodes`/`get_NodeType`/
-`get_TextContent` 均存在。主工程已还原产物 `src/AIFrontend/bin/x64/Debug/.../AngleSharp.dll` 存在，
+`get_TextContent` 均存在。主工程已还原产物 `src/FluentCode/bin/x64/Debug/.../AngleSharp.dll` 存在，
 证明该传递依赖在编译期可见（**未新增包**）。
 
 ### 6.3 标签覆盖（对 `SafeContentRenderer` 白名单逐标签计数）
@@ -280,10 +280,10 @@ dd blockquote pre code table thead tbody tfoot tr th td em strong b i u`；落�
 > 状态：**本轮新增**。按官方 V2 v2.0.24 已核准的 subagent 工具形状，在既有富文本管线与工具卡片之上
 > 制作**原生 Fluent 摘要**（agent / description / 记录状态 / 「查看子会话」按钮）、消息级「子任务结果」
 > 标记与向上转发的导航提示事件。**本 lane 只写源码 + 静态核对**：新增
-> `src/AIFrontend/Pages/OpenCode/OpenCodeSubagentPresentation.cs`（识别 + 文案 + 摘要控制器），
-> 修改 `src/AIFrontend/Pages/OpenCode/OpenCodeToolPartView.cs`（内容区顶部新增摘要区；输入 / 输出 / 错误
+> `src/FluentCode/Pages/OpenCode/OpenCodeSubagentPresentation.cs`（识别 + 文案 + 摘要控制器），
+> 修改 `src/FluentCode/Pages/OpenCode/OpenCodeToolPartView.cs`（内容区顶部新增摘要区；输入 / 输出 / 错误
 > 原分区不删；长 prompt 保留在「输入」分区）与
-> `src/AIFrontend/Pages/OpenCode/OpenCodeConversationView.cs`（新增公开事件、消息级标记与退订接线）、本文档。
+> `src/FluentCode/Pages/OpenCode/OpenCodeConversationView.cs`（新增公开事件、消息级标记与退订接线）、本文档。
 > **未构建、未运行、未做任何 UI 操作/截图、未对真实后端发起请求、未读取凭据、未 git**；
 > 主工程与 linked harness 的构建 / 运行由父 validation owner 执行。
 > 明确未改：`OpenCodeRichTextPresenter.cs`、`OpenCodePage.xaml(.cs)`、`MainWindow*` / `App*` / `Services/**`、
@@ -317,7 +317,7 @@ dd blockquote pre code table thead tbody tfoot tr th td em strong b i u`；落�
 ### 9.2 公开表面（冻结；UI phase B 消费入口）
 
 ```csharp
-namespace AIFrontend.Pages.OpenCode;
+namespace FluentCode.Pages.OpenCode;
 
 /// 事件参数：不可变（构造后只读）；null 归一为空串。
 public sealed class OpenCodeSubagentSessionRequestedEventArgs : EventArgs
@@ -451,14 +451,14 @@ public sealed class OpenCodeSubagentSummaryView   // 普通 sealed 控制器；�
   `OpenCodeConversationView.cs` **837 行**、147/147、215/215、8/8。
 - 作用域：`OpenCodeSubagentPresentation` 仅被本 lane 3 个文件引用；`SubagentSessionRequested`
   事件声明两处各 1 行；无 `Contains("ses")`、无日志 / HTTP 调用；未触碰文件哈希与写前一致
-  （`AIFrontend.csproj`、`packages.lock.json`、`NuGet.Config`、`global.json`、`OpenCodeRichTextPresenter.cs`、
+  （`FluentCode.csproj`、`packages.lock.json`、`NuGet.Config`、`global.json`、`OpenCodeRichTextPresenter.cs`、
   `OpenCodePage.xaml`）。
 - 最终 SHA-256：
   - `OpenCodeSubagentPresentation.cs`：`afceb8ed7b922ecf5320af99ac79698346e693dd121a13c2fe146b83292fe987`
   - `OpenCodeToolPartView.cs`：`935a02e97ffac2414e8e10efae192de9ac0ce158e1518aa931a7b9f175fd64a0`
   - `OpenCodeConversationView.cs`：`705034baa7d35004e62ee7eee660bc136ac029c12974923220c2c62f5c741d21`
 - **harness 接入**（父执行）：`OpenCodeLayoutHarness.csproj` 需新增第 12 个 link
-  `<Compile Include="../../../src/AIFrontend/Pages/OpenCode/OpenCodeSubagentPresentation.cs" Link="Production/OpenCodeSubagentPresentation.cs" />`。
+  `<Compile Include="../../../src/FluentCode/Pages/OpenCode/OpenCodeSubagentPresentation.cs" Link="Production/OpenCodeSubagentPresentation.cs" />`。
   新增元素（摘要区、消息标记）均为构造时创建、默认折叠；既有断言依赖的查询
   （`Descendants<Expander>()` 单实例、`ScrollViewer(MaxHeight==280)`、展开状态与输出区尺寸）
   不受影响——是否通过以父实际构建 / 运行为准。现有 `Validate-Static.ps1` 硬编码旧链接清单，

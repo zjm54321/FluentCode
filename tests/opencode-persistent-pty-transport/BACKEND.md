@@ -2,7 +2,7 @@
 
 `run-backend.ps1 -EvidenceRoot <directory>` uses the installed .NET 10 compiler/reference pack, warnings as errors, without restore or a main application build. It links the real HTTP transport, native WebSocket connection, renderer-aware controller and revocable page source. `BackendSupport.cs` substitutes only unrelated desktop-bridge storage; no PTY network/controller behavior is substituted.
 
-Source-bound origin/controller/renderer contracts live in `src/AIFrontend/Services/OpenCode/PersistentPty/`, explicitly included by this focused runner and recursively included by the main SDK's default compile glob. Root `Services/OpenCode/*.cs` retains only source-free wire DTOs/HTTP/socket/connection contracts, so flat transport harnesses do not acquire page lifecycle dependencies.
+Source-bound origin/controller/renderer contracts live in `src/FluentCode/Services/OpenCode/PersistentPty/`, explicitly included by this focused runner and recursively included by the main SDK's default compile glob. Root `Services/OpenCode/*.cs` retains only source-free wire DTOs/HTTP/socket/connection contracts, so flat transport harnesses do not acquire page lifecycle dependencies.
 
 The runner also compiles a source-free wire-only library with `OpenCodePageSource`, PTY lifecycle/controller contracts and `BackendSupport.cs` omitted. Its response file and log are `wire-only.rsp` and `wire-only-compile.log` in the evidence directory.
 

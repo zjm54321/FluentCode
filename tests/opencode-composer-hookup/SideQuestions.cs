@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 
 internal static class SideQuestionTests
@@ -82,7 +82,7 @@ internal static class SideQuestionTests
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed partial class OpenCodePage
     {
@@ -105,7 +105,7 @@ namespace AIFrontend.Pages
     }
 }
 
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     // Native prompt is a boundary double; the production /btw submission/routing is compiled above.
     internal static class OpenCodeSideQuestionDialog

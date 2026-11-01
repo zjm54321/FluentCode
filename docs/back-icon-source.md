@@ -50,7 +50,7 @@
   （sha256 `69bc45dc42b9acb96a69823adbc6ae538374e3c0bde169b855b32c48eaaef52f`）。
   上一版文档中“本环境未能逐字抓取 LICENSE 全文”的限制已解除。
 - 部署/打包阶段是否需要将该许可文件复制到输出目录等构建项，**由父会话处理**；
-  本次未修改 `AIFrontend.csproj`。
+  本次未修改 `FluentCode.csproj`。
 
 ## 3. 几何落位（16 画板 → 16 图标位，1:1，无缩放）
 
@@ -85,7 +85,7 @@ XAML 结构（`BackButton` 的内容）：
 ## 5. 构建项结论
 
 - **无需任何资产构建项**：几何以官方 `path d` 内联在 XAML 中，不新增 `.svg` 资源文件，
-  故不需要修改 `AIFrontend.csproj`。
+  故不需要修改 `FluentCode.csproj`。
 - 未采用 `SvgImageSource` 方案；若日后改用，需增加部署项并处理非打包资源定位，
   超出本次范围，留给父会话。
 
@@ -100,7 +100,7 @@ XAML 结构（`BackButton` 的内容）：
 
 - **未构建**（未执行 `dotnet build`/`msbuild`）、**未运行应用**、**未启停任何进程**。
 - **未做任何 UI 操作**：未激活/点击/截图，未跑 UI 探针；未触碰当前预览副本。
-- **未改 `AIFrontend.csproj`**，未改 `MainWindow.xaml.cs`，未改其他任何文件。
+- **未改 `FluentCode.csproj`**，未改 `MainWindow.xaml.cs`，未改其他任何文件。
 - 未做 git 操作。
 - 本会话已完成的静态核对：path 逐字一致（sha256 比对）、16 坐标 / 无 `Viewbox` / 无缩放、
   `Button` 36×32 / 折叠行为 / 68 DIP 导航 / 主题画刷保留、LICENSE 全文完整性（逐字节比对）。

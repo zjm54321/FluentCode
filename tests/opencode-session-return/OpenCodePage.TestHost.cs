@@ -6,13 +6,13 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Pages.OpenCode;
-using AIFrontend.Services.Notifications;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Notifications;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace AIFrontend.Pages.OpenCode
+namespace FluentCode.Pages.OpenCode
 {
     // Queue-presentation event payload; this harness does not construct the queue widget.
     internal sealed record OpenCodePendingDeliveryRequest(string InboxId, string Delivery);
@@ -34,7 +34,7 @@ namespace Microsoft.UI.Xaml.Media
     }
 }
 
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     public sealed class ReturnHostDispatcher
     {
@@ -76,7 +76,7 @@ namespace Microsoft.UI.Xaml.Controls
         }
     }
 }
-namespace AIFrontend
+namespace FluentCode
 {
     // The real ACK helper is exercised up to this App boundary. No real POST/ACK reconciliation.
     public sealed class App : Application
@@ -91,7 +91,7 @@ namespace AIFrontend
         }
     }
 }
-namespace AIFrontend.Pages
+namespace FluentCode.Pages
 {
     // These add only UI members absent from the reused inert ConversationView test host.
     public sealed class ReturnHostTextBlock : TextBlock { }

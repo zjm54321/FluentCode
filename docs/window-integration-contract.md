@@ -1,7 +1,7 @@
 # 主窗口 UI 整合契约（SettingsView 挂载 / 页面事件 / Cookie 清理 / 主题）
 
 > 状态：**静态整合完成**（2026-10-06）。本 lane **未构建、未运行、未做任何 UI 操作（无激活/点击/截图/UI 测试）、未 git、未运行验证脚本**；编译与运行验收由父会话在所有 writer 完成后统一执行。
-> 写范围（本 lane 唯一允许落盘）：`src/AIFrontend/MainWindow.xaml.cs`、`docs/window-integration-contract.md`。`src/AIFrontend/MainWindow.xaml` **经核对无需改动，实际未改**；`App/**`、`Pages/**`、`Services/**`（含 Taskbar/Notifications）、`Models/**`、`*.csproj`、`packages.lock.json`、脚本及其他文档一律未改。
+> 写范围（本 lane 唯一允许落盘）：`src/FluentCode/MainWindow.xaml.cs`、`docs/window-integration-contract.md`。`src/FluentCode/MainWindow.xaml` **经核对无需改动，实际未改**；`App/**`、`Pages/**`、`Services/**`（含 Taskbar/Notifications）、`Models/**`、`*.csproj`、`packages.lock.json`、脚本及其他文档一律未改。
 > 依据（按优先级）：任务书 > 当前源码（实际 API）> `docs/settings-ui-contract.md`、`docs/local-ui-contract.md`、`docs/opencode-ui-contract.md`、`docs/notifications-contract.md`。仓库内**不存在** AGENTS.md / CLAUDE.md（全仓 find 证实），故无额外仓库级约定。
 
 ## 1. 保留项（逐条核对，全部未改动）
@@ -63,7 +63,7 @@
 
 - MainWindow 新增公开事件（供后续 fixer 接线）：
   ```csharp
-  public event EventHandler<AIFrontend.Pages.Local.LocalTaskCompletedEventArgs>? LocalTaskCompleted;
+  public event EventHandler<FluentCode.Pages.Local.LocalTaskCompletedEventArgs>? LocalTaskCompleted;
   ```
   参数原样转发：`SourceRequestId`（GUID("N")，满足通知 requestId 字符集 `^[A-Za-z0-9._:-]{1,128}$`）、`SessionId`。触发前提由 NormalPage/Local 保证：仅 Completed + Stop。
 - 待接线（fixer，本轮未做）：`CompletionNotificationService.Initialize()`（启动早期）＋ 订阅本事件 → `NotifyCompleted(NotificationSource.LocalApi, e.SourceRequestId)`；以及 notifications-contract §9 的 App 层事项（启动激活区分、单实例、退出 `Dispose()`）——`App.xaml.cs` 当前未接线。
@@ -131,7 +131,7 @@
 
 ## 11. 第 4 轮修订（2026-10-06）：设置页 Cookie 清理恢复 + 离开保护
 
-> **取代 §5、§10 中“Cookie 清理传 null / 三按钮禁用”的描述。** 写范围：`src/AIFrontend/MainWindow.xaml[.cs]`、`docs/window-integration-contract.md`（另同步 `docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`）。未改 `Pages/**`（除 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
+> **取代 §5、§10 中“Cookie 清理传 null / 三按钮禁用”的描述。** 写范围：`src/FluentCode/MainWindow.xaml[.cs]`、`docs/window-integration-contract.md`（另同步 `docs/settings-ui-contract.md`、`docs/shell-ui-contract.md`）。未改 `Pages/**`（除 Settings）、`Services/**`、`App/**`、`Models/**`、`*.csproj`。静态实现与静态核对，未构建/未运行。
 
 ### 11.1 Cookie 清理：真实回调（不再置空）
 

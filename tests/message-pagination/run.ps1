@@ -34,32 +34,32 @@ $openCode = @(
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs',
     'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs',
     'OpenCodeManualBackgroundIndex.cs', 'OpenCodeShellCompletion.cs', 'OpenCodeClient.AgentTreeShells.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeCapabilityStatus.cs'
-) | ForEach-Object { Join-Path "$repo/src/AIFrontend/Services/OpenCode" $_ }
+) | ForEach-Object { Join-Path "$repo/src/FluentCode/Services/OpenCode" $_ }
 $sources = $openCode + @(
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeAgentTreeProjection.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeToolRowPresentation.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeStepRunPresentation.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSubagentPresentation.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeBrowserToolPresentation.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeToolDetailBuiltinData.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeExecuteInnerCatalog.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeContextStatusParser.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeLineDiff.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeHomeProjection.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeTurnOutline.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCode/OpenCodeSessionTracking.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodePageSource.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeExecutionProjection.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationArgumentCodec.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationActivationInfo.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationSource.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/OpenCodeInteractionGate.cs'),
-    (Join-Path $repo 'src/AIFrontend/Services/Notifications/NotificationInteractions.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessagePagination.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.MessageBinding.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewAcknowledgement.cs'),
-    (Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.ViewVisibility.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeAgentTreeProjection.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeToolRowPresentation.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeStepRunPresentation.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSubagentPresentation.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeBrowserToolPresentation.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeToolDetailBuiltinData.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeExecuteInnerCatalog.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeContextStatusParser.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeLineDiff.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeHomeProjection.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeTurnOutline.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionTracking.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/OpenCodePageSource.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/OpenCodeExecutionProjection.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/NotificationArgumentCodec.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/NotificationActivationInfo.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/NotificationSource.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/OpenCodeInteractionGate.cs'),
+    (Join-Path $repo 'src/FluentCode/Services/Notifications/NotificationInteractions.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.MessagePagination.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.MessageBinding.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewAcknowledgement.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewVisibility.cs'),
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyHost.cs'),
     (Join-Path $PSScriptRoot 'EventLatencyTests.cs'),
@@ -70,15 +70,15 @@ $sources = $openCode + @(
     (Join-Path $PSScriptRoot 'Viewport.TestHost.cs'),
     (Join-Path $PSScriptRoot 'ViewportTests.cs'),
     (Join-Path $PSScriptRoot 'Program.cs'))
-$pagePath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.xaml.cs'
-$builtinPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.BuiltinActions.cs'
-$eventPath = Join-Path $repo 'src/AIFrontend/Pages/OpenCodePage.EventSync.cs'
+$pagePath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.xaml.cs'
+$builtinPath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs'
+$eventPath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.EventSync.cs'
 $extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchToSessionAsync', 'NavigateToSessionAsync', 'UpdateEmptyState', 'RefreshMessagesAsync', 'StartAuxiliaryRead', 'PollTimer_Tick', 'CancelSessionOperations', 'OrderMessages', 'ObserveExecutionState', 'MarkWorking') },
-    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
-    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
-    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn', 'ConversationScrollBarLeft') },
+    @{ Path = "$repo/src/FluentCode/Pages/OpenCodePage.Home.cs"; Names = @('CreateHomeStatus', 'HomeEventCurrent', 'OwnsHome', 'RemoteChildDirectory', 'HomeSessionActionTargetCurrent', 'CopyHomeSessionId', 'OpenHomeSessionAsync') },
+    @{ Path = "$repo/src/FluentCode/Pages/OpenCodePage.HomeActions.cs"; Names = @('HomeActionOwner', 'CaptureHomeActionRoots', 'CanRequestHomeSessionAction', 'OwnsHomeAction', 'HomeActionRootCurrent', 'CanStartHomeAction', 'RunHomeSessionActionAsync', 'SetHomeActionStatus', 'InvalidateDeletedHomeSession', 'RefreshHomeActionMetadataAsync') },
+    @{ Path = "$repo/src/FluentCode/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn', 'ConversationScrollBarLeft') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
-    @{ Path = "$repo/src/AIFrontend/Pages/OpenCodePage.AgentTree.cs"; Names = @('OnAgentTreeEvent', 'RenderAgentTree', 'MergeAgentTreeShell') },
+    @{ Path = "$repo/src/FluentCode/Pages/OpenCodePage.AgentTree.cs"; Names = @('OnAgentTreeEvent', 'RenderAgentTree', 'MergeAgentTreeShell') },
     @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'CaptureHealthyEventStream', 'HasContinuousEventCoverage', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'IsSelectedBackgroundChildCompletion', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
@@ -105,15 +105,15 @@ using System.Text.Json;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Services.OpenCode;
-using OpenCodePageSource = AIFrontend.Services.Notifications.OpenCodePageSource;
-using SessionControlKind = AIFrontend.Services.Notifications.SessionControlKind;
+using FluentCode.Services.OpenCode;
+using OpenCodePageSource = FluentCode.Services.Notifications.OpenCodePageSource;
+using SessionControlKind = FluentCode.Services.Notifications.SessionControlKind;
 using Windows.ApplicationModel.DataTransfer;
-using AIFrontend.Pages.OpenCode;
+using FluentCode.Pages.OpenCode;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Dispatching;
-namespace AIFrontend.Pages;
+namespace FluentCode.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $sources += $generated

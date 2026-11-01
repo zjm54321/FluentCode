@@ -5,8 +5,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AIFrontend.Models;
-using AIFrontend.Services.OpenCode;
+using FluentCode.Models;
+using FluentCode.Services.OpenCode;
 
 internal static class Program
 {

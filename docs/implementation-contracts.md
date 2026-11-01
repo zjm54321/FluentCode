@@ -11,9 +11,9 @@
 
 | 命名空间 | 目录 | 内容 |
 | --- | --- | --- |
-| `AIFrontend.Models` | `src/AIFrontend/Models/` | 不可变数据模型（record / enum），无 IO、无网络 |
-| `AIFrontend.Services.Configuration` | `src/AIFrontend/Services/Configuration/` | 设置 / 凭据 / 会话持久化服务与异常 |
-| `AIFrontend.Services.Contracts` | `src/AIFrontend/Services/Contracts/` | 仅接口声明：`IChatClient`、`IModelCatalogClient` |
+| `FluentCode.Models` | `src/FluentCode/Models/` | 不可变数据模型（record / enum），无 IO、无网络 |
+| `FluentCode.Services.Configuration` | `src/FluentCode/Services/Configuration/` | 设置 / 凭据 / 会话持久化服务与异常 |
+| `FluentCode.Services.Contracts` | `src/FluentCode/Services/Contracts/` | 仅接口声明：`IChatClient`、`IModelCatalogClient` |
 
 约束：
 
@@ -23,7 +23,7 @@
 
 ---
 
-## 2. 数据模型（`AIFrontend.Models`）
+## 2. 数据模型（`FluentCode.Models`）
 
 ### 2.1 provider 与模型
 
@@ -224,7 +224,7 @@ public sealed record ChatStreamEvent
 
 ---
 
-## 3. 契约接口（`AIFrontend.Services.Contracts`，仅声明）
+## 3. 契约接口（`FluentCode.Services.Contracts`，仅声明）
 
 ```csharp
 public interface IChatClient
@@ -246,7 +246,7 @@ public interface IModelCatalogClient
 
 ---
 
-## 4. 持久化服务（`AIFrontend.Services.Configuration`）
+## 4. 持久化服务（`FluentCode.Services.Configuration`）
 
 ### 4.1 SettingsService
 
@@ -259,7 +259,7 @@ public sealed class AppSettingsChangedEventArgs : EventArgs
 
 public sealed class SettingsService
 {
-    public SettingsService(string? dataDirectory = null);   // null = %LOCALAPPDATA%\AIFrontend
+    public SettingsService(string? dataDirectory = null);   // null = %LOCALAPPDATA%\FluentCode
     public string DataDirectory { get; }
     public string SettingsFilePath { get; }
     public AppSettings? Current { get; }                    // 最近一次成功 Load/Save 的快照
@@ -325,7 +325,7 @@ public sealed class LocalSessionStore
 
 参数级错误（非法 ID、空白密钥、null 参数）抛标准 `ArgumentException` / `ArgumentNullException`。
 
-异常的全部显式公开签名（均位于 `AIFrontend.Services.Configuration`）：
+异常的全部显式公开签名（均位于 `FluentCode.Services.Configuration`）：
 
 ```csharp
 public sealed class SettingsCorruptedException : Exception
@@ -357,9 +357,9 @@ public sealed class LocalSessionStoreException : Exception
 ## 5. 初始化与调用示例
 
 ```csharp
-using AIFrontend.Models;
-using AIFrontend.Services.Configuration;
-using AIFrontend.Services.Contracts;
+using FluentCode.Models;
+using FluentCode.Services.Configuration;
+using FluentCode.Services.Contracts;
 
 // 1) 初始化（通常在 App/MainWindow 启动时；测试可传入临时目录隔离）
 var settingsService = new SettingsService();          // new SettingsService(tempDir) 用于测试
@@ -494,11 +494,11 @@ IReadOnlyList<LocalSession> all = await sessionStore.ListAsync();   // UpdatedAt
 
 | 路径 | 内容 |
 | --- | --- |
-| `%LOCALAPPDATA%\AIFrontend\settings.json` | `AppSettings`（camelCase、枚举名、null 省略、无密钥） |
-| `%LOCALAPPDATA%\AIFrontend\secrets\{credentialId}.bin` | DPAPI `CurrentUser` 密文（每凭据独立文件） |
-| `%LOCALAPPDATA%\AIFrontend\sessions\{sessionId}.json` | `LocalSession` |
+| `%LOCALAPPDATA%\FluentCode\settings.json` | `AppSettings`（camelCase、枚举名、null 省略、无密钥） |
+| `%LOCALAPPDATA%\FluentCode\secrets\{credentialId}.bin` | DPAPI `CurrentUser` 密文（每凭据独立文件） |
+| `%LOCALAPPDATA%\FluentCode\sessions\{sessionId}.json` | `LocalSession` |
 
-- 三个服务均可用构造函数参数覆盖数据根目录（测试隔离）；null/空白使用默认根 = `Environment.SpecialFolder.LocalApplicationData` + `AIFrontend`。
+- 三个服务均可用构造函数参数覆盖数据根目录（测试隔离）；null/空白使用默认根 = `Environment.SpecialFolder.LocalApplicationData` + `FluentCode`。
 - 系统未提供 LocalApplicationData 时构造函数抛 `InvalidOperationException`，不回退到当前工作目录。
 - 存储 ID（credentialId / sessionId）校验：1-64 字符，仅字母/数字/'.'/'_'/'-'，拒绝 Windows 保留设备名（防止路径穿越与非法文件名）。
 - 原子保存：先验证已有目标 → 同目录临时文件（`*.tmp-{guid}`）→ Flush 到磁盘 → 最后检查取消 → `File.Move(overwrite: true)` 替换；提交前失败尽力清理临时文件、保留原文件。原子重命名依赖本地文件系统语义，不承诺断电后目录项持久性；提交后到达的取消不撤销已提交写入。
@@ -557,12 +557,12 @@ IReadOnlyList<LocalSession> all = await sessionStore.ListAsync();   // UpdatedAt
 
 | 后续工作 | 建议目录 | 说明 |
 | --- | --- | --- |
-| 协议实现（Responses / ChatCompletions / Anthropic） | `src/AIFrontend/Services/Api/**` | 实现 `IChatClient` / `IModelCatalogClient`；自行定义内部 DTO 与异常 |
-| OpenCode 后端 | `src/AIFrontend/Services/OpenCode/**` | 独立 DTO，不引用本层之外的模型（并行 lane 已有归属） |
-| 通知 | `src/AIFrontend/Services/Notifications/**` | 既有 lane |
-| Normal 页（会话列表/聊天/Markdown/模型选择） | `src/AIFrontend/Pages/Normal/**` + 可选 `src/AIFrontend/Controls/**` | csproj 已递归包含 Pages 子目录 |
-| OpenCode 页 | `src/AIFrontend/Pages/OpenCode/**` | 对接独立 OpenCode lane |
-| 官网 WebView 登录 | `src/AIFrontend/Pages/Web/**` + `src/AIFrontend/Services/Web/**` | 独立 lane 独占，本层不写入 |
+| 协议实现（Responses / ChatCompletions / Anthropic） | `src/FluentCode/Services/Api/**` | 实现 `IChatClient` / `IModelCatalogClient`；自行定义内部 DTO 与异常 |
+| OpenCode 后端 | `src/FluentCode/Services/OpenCode/**` | 独立 DTO，不引用本层之外的模型（并行 lane 已有归属） |
+| 通知 | `src/FluentCode/Services/Notifications/**` | 既有 lane |
+| Normal 页（会话列表/聊天/Markdown/模型选择） | `src/FluentCode/Pages/Normal/**` + 可选 `src/FluentCode/Controls/**` | csproj 已递归包含 Pages 子目录 |
+| OpenCode 页 | `src/FluentCode/Pages/OpenCode/**` | 对接独立 OpenCode lane |
+| 官网 WebView 登录 | `src/FluentCode/Pages/Web/**` + `src/FluentCode/Services/Web/**` | 独立 lane 独占，本层不写入 |
 | 文档 | `docs/api-contracts.md`（协议 lane）、`docs/notifications-contract.md`（通知 lane） | 与本文件不重叠 |
 
 扩展 `AppSettings` 结构时须提升 `SchemaVersion` 并实现迁移（当前 v1 无迁移逻辑，遇到未知版本一律按损坏报错）。
@@ -574,7 +574,7 @@ IReadOnlyList<LocalSession> all = await sessionStore.ListAsync();   // UpdatedAt
 已完成的静态核对（本 lane owner）：
 
 - 本次补缺只写 `Models/**`、`Services/Configuration/**`、`docs/implementation-contracts.md`；已有 `Services/Contracts/**` 和 csproj 只读核对，未触碰任何独占 lane、App/MainWindow/Pages 或其他文档。
-- 无对 `AIFrontend.Services.OpenCode` / `AIFrontend.Services.Notifications` 的引用。
+- 无对 `FluentCode.Services.OpenCode` / `FluentCode.Services.Notifications` 的引用。
 - `Models` 中无任何密钥字段（仅 `CredentialId` 引用）；异常消息不含明文密钥。
 - 已静态检查三种存储在覆盖前验证原文件、DPAPI `CurrentUser`、同目录临时文件替换、串行锁及取消路径；不等同于运行验证。
 

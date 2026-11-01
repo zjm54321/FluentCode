@@ -5,10 +5,10 @@ $dotnet=(Get-Command dotnet.exe).Source;$root=Split-Path $dotnet
 $sdk=Get-ChildItem "$root/sdk" -Directory|Where-Object Name -Like '10.*'|Sort-Object {[version]$_.Name} -Descending|Select-Object -First 1
 $pack=Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory|Where-Object Name -Like '10.*'|Sort-Object {[version]$_.Name} -Descending|Select-Object -First 1
 New-Item -ItemType Directory -Path $EvidenceRoot -Force|Out-Null
-$sources=@(Get-ChildItem "$repo/src/AIFrontend/Models/*.cs"|ForEach-Object FullName)
-@('SettingsService.cs','ConfigurationJson.cs','ConfigurationExceptions.cs','AtomicFile.cs','AppDataPaths.cs')|ForEach-Object{$sources+=Join-Path "$repo/src/AIFrontend/Services/Configuration" $_}
-$sources+="$repo/src/AIFrontend/Services/Appearance/AppFontSettings.cs"
-$sources+="$repo/src/AIFrontend/Services/OpenCode/OpenCodeAuthenticationMode.cs"
+$sources=@(Get-ChildItem "$repo/src/FluentCode/Models/*.cs"|ForEach-Object FullName)
+@('SettingsService.cs','ConfigurationJson.cs','ConfigurationExceptions.cs','AtomicFile.cs','AppDataPaths.cs')|ForEach-Object{$sources+=Join-Path "$repo/src/FluentCode/Services/Configuration" $_}
+$sources+="$repo/src/FluentCode/Services/Appearance/AppFontSettings.cs"
+$sources+="$repo/src/FluentCode/Services/OpenCode/OpenCodeAuthenticationMode.cs"
 $sources+="$PSScriptRoot/Program.cs"
 $dll=Join-Path $EvidenceRoot 'BrowserSettingsTests.dll';$rsp=Join-Path $EvidenceRoot 'compile.rsp'
 $refs=@(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll"|ForEach-Object FullName)
