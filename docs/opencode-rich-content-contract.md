@@ -24,8 +24,8 @@
 | `docs/opencode-rich-content-contract.md` | 本文档 |
 
 **明确未改**：`OpenCodeToolPartView.cs`（工具卡片原生 `Expander`，保持不动）、`OpenCodePage.xaml(.cs)`、
-Form / permission / gate、安全 factory、`App.*` / `MainWindow.*` / `Pages/Normal/**` / `Pages/Web/**` /
-`Pages/Local/**` / `Services/**`、`*.csproj` / `packages.lock.json`、其他 `docs/**`。
+Form / permission / gate、安全 factory、`App.*` / `MainWindow.*` / `Services/**`、
+`*.csproj` / `packages.lock.json`、其他 `docs/**`。
 **未新增 NuGet 包**；未修改共享 `SafeContentRenderer` 及其 `DisableHtml` 语义。
 
 ## 2. 公开表面

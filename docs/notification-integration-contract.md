@@ -34,7 +34,6 @@ public NotificationNavigationTarget? HandleCompletionActivation(
 
 - 交互激活完整目标来自运行期 nonce entry；未知/过期/已撤销 nonce 不能提交。冷启动没有 registry 时只返回 NeedsApp，不能据原始参数重建授权。
 - 完成 toast 参数格式仍为 action/source/requestId，但 requestId **现为每次成功提交绑定的 32 字节随机 token**，原请求 ID/endpoint/session 不出站。唯一 CompletionNotificationService 的运行期 `_completionTargets` 同时保存 Local/OpenCode，最多 256 项、TTL 10 分钟，只有 Show 成功后才提交映射；失败无导航资格。`HandleCompletionActivation` 是 native 与 App SDK/IPC 转交的统一同步入口，严格验证三键、零 UserInput、token 存在/未过期、source 与可信绑定一致（不是由 raw source 决定目标）。不会逆向 token/摘要、读取外部 SessionId 或创建 client，更不 POST。
-- Local 新三参数 NotifyCompleted 仅接受可信 Local 成功事件，其目标是 LocalApi/固定 `LocalCompletionEndpointIdentity == "local"` 哨兵/SessionId/SourceRequestId/Completion。原两参数重载兼容，未带 session 只能可信地前置窗口，不构造完整目标。未知/过期/冷进程 token 仅 NeedsApp。App 新增 UI dispatcher 事件 `LocalNavigationRequested`，UI 订阅 `e.Target` 做会话定位；MainWindow/Pages 接线不在本服务 lane。
 - OpenCode 绑定的请求是 **idle message ID**，不是用户 prompt ID，不声称某次 prompt 成功。内部 tuple digest 仅作去重键；目标来自可信观察，不由摘要还原。其 `InvalidateOpenCodeSource` 清除该 endpoint 的完成绑定但保留 Local，暂停期间不接纳旧 OpenCode completion 导航；App 仍过滤当前 endpoint/generation。
 - 有效 completion token 的重复点击每次可引发完整 NavigationRequested，绝不作为 mutation。完成提交仍按 (source, requestId) 在原 10 分钟/256 项窗口去重，重复事件不会 Show 或重绑另一会话；超过运行期容量/TTL 的旧通知只能安全回退。Dispose 清空映射，不持久化参数或答案。
 - 完整导航仅用于定位，不授权，不 POST。Owner 校验目标仍属当前 endpoint generation，再 marshal 至 UI 打开页面、会话、具体 Permission/Form。

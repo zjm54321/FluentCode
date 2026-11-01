@@ -112,9 +112,7 @@ internal static class Program
             "credentialId": "opencode-backend-token",
             "authenticationMode": "Basic",
             "username": "opencode"
-          },
-          "providers": [],
-          "models": []
+          }
         }
         """;
         File.WriteAllText(path, legacy, new UTF8Encoding(false));

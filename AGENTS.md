@@ -1,12 +1,12 @@
 ## Cloned Dependency Source
 
-Read-only dependency source repositories are available under `.slim/clonedeps/repos/` for inspection. Do not edit these clones.
+`.slim/clonedeps.json` records dependency-source configuration. When dependency clones are present under `.slim/clonedeps/repos/`, they are read-only inspection sources; do not edit them.
 
-- `.slim/clonedeps/repos/ranxianglei__billion-context/` — `ranxianglei/billion-context` at `d64139f9cd2d64fdd4fb83fffced37cc2a0f57a7` (`v0.1.196`), for the OpenCode discovery RPC integration.
+- `ranxianglei/billion-context` at `d64139f9cd2d64fdd4fb83fffced37cc2a0f57a7` (`v0.1.196`) supplies the OpenCode discovery RPC reference.
 
-The separate `.slim/worktrees/billion-discovery/` implementation lane follows its own `AGENTS.md`; only its assigned owner may modify it. The main FluentCode checkout contains existing uncommitted work that must be preserved.
+Preserve unrelated uncommitted changes and respect the files assigned to concurrent implementation lanes.
 
-## Isolated Workspace Rule (2026-10-19)
+## FluentCode Workspace
 
-- This workspace (`/mnt/c/Users/Zhang/source/repos/FluentCode-wave5-argon`, Windows `C:\Users\Zhang\source\repos\FluentCode-wave5-argon`) is an isolated fork for Wave 5+ development.
-- **NEVER** edit, build, or run tests in `/mnt/c/Users/Zhang/source/repos/FluentCode` or `/mnt/c/Users/Zhang/source/repos/FluentCode-frozen-20261019`. Those directories are frozen for the original session.
+- Build `FluentCode.sln`; application sources are under `src/FluentCode/`.
+- Work only in this checkout, not sibling or frozen checkouts. Vendored dependency source is under `src/ThirdParty/` and should change only when explicitly assigned.

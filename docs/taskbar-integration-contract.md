@@ -19,7 +19,7 @@ ShutdownTaskbar()
   modifying the aggregate. Invalid empty/null IDs or undefined states are programmer
   errors (argument exceptions), not task execution failures.
 - `taskId` is an opaque, case-sensitive, nonempty **execution ID**, with no content,
-  filename, token, or prompt. Local/OpenCode adapters must namespace IDs if necessary.
+  filename, token, or prompt. OpenCode adapters namespace execution IDs as necessary.
   A session ID alone is not enough when executions overlap. Repeated events for one
   execution use the same ID; each subsequent execution gets a new ID.
 - States: `Working`, `Pending` (explicit unresolved user action), `OutcomeUnknown`
@@ -46,11 +46,11 @@ ShutdownTaskbar()
   Updates before initialization retain the aggregate and return NotInitialized.
   Projection failure never changes execution state. No retry loop or logging of IDs.
 
-## App owner wiring (not connected by this lane)
+## App owner wiring
 
 1. After obtaining the real top-level window HWND on the UI thread, call
    `InitializeTaskbar(hwnd)` (e.g. using `WinRT.Interop.WindowNative.GetWindowHandle`).
-2. Wire Local/OpenCode authoritative execution events to the API above. No speculative
+2. Wire OpenCode authoritative execution events to the API above. No speculative
    page/event names are required by this contract.
 3. In the owning window's `Closed` handler call `ShutdownTaskbar()` on the UI thread.
    This only tears down native resources; it never acknowledges tasks. Do not wire
@@ -79,21 +79,3 @@ no background COM, finalizer teardown, polling, inferred outcomes or activation 
 The hook/service do not destroy the HWND or shared system icons. Disposing does not
 clear taskbar pixels; normal Closed destroys the HWND. A still-visible old HWND can
 retain its last visual state until Windows removes it.
-
-## Assigned headless validation
-
-The former taskbar runner was removed when the suite was pruned on 2026-10-30 to [the listed critical runners](test-suite.md); the following describes its historical validation.
-The script used the installed .NET 10 SDK/ref pack and direct Roslyn compilation:
-no project edits, restore, install, GUI, real API, or full application build.
-
-- Independently compile all production Taskbar sources and App.Taskbar.cs as an x64
-  library, warnings as errors. The App partial stands alone: this is not WinUI startup
-  or other-partial integration validation.
-- Compile/run exactly three pure aggregate scenarios: concurrent-task priority;
-  stale observations/unknown/cancellation; terminal latching/per-task acknowledgement.
-  The test executable does not link or invoke native code.
-
-Not runtime-validated here: actual overlays/progress, HWND lifecycle/subclass removal,
-COM behavior, real STA/window dispatch, Explorer restart, WinUI wiring or real Local/
-OpenCode event delivery. Parent owns the main application build and Windows GUI/Shell
-verification after connecting the App lane.

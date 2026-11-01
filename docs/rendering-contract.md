@@ -51,23 +51,10 @@ string cleaned = renderer.SanitizeHtml(untrustedHtml);
 4. 在任何内容加载前注册全资源请求拦截，拒绝不可信网络与文件资源请求；不能仅靠脚本关闭或 CSP 代替导航/资源拦截。
 5. 不把未清洗原文拼进可信 wrapper 的其他位置（例如脚本、style、属性、标题），不启用片段调用宿主的桥接权限。
 
-这些约束仅用于**模型回答/用户 HTML 的离线渲染宿主**。ChatGPT/Gemini/Claude 官方网站的独立 WebView 必须维持其正常网站功能，**不套用这里的禁脚本/CSP 策略**，也不能复用其可信权限来显示不可信片段。
+这些约束仅用于**模型回答/用户 HTML 的离线渲染宿主**；OpenCode 原生富文本呈现的接入见 `opencode-rich-content-contract.md`。
 
 ## 包与工程边界
 
 主 `FluentCode.csproj` 仅新增 Markdig 1.4.0、HtmlSanitizer 9.2.1039；保留 WindowsAppSDK 1.8.260921001、BuildTools 10.0.26100.9169、ProtectedData 10.0.12 及 `Pages\**\*.xaml`。
 
-没有 restore/build 活动主工程，也没有修改主 `packages.lock.json`；父会话统一主项目 restore/build 时应更新其锁文件并验证集成。
-
-## 实际隔离验证结果
-
-目录：`/mnt/c/Users/Zhang/source/repos/FluentCode-render-validation-20261006T153633Z`
-
-- Windows `/mnt/c/Program Files/dotnet/dotnet.exe`，纯 `net10.0` 验证工程，仅复制渲染服务。
-- 设置 `DOTNET_GENERATE_ASPNET_CERTIFICATE=false`、`DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`；CLI/cache/temp 均重定向到隔离目录。
-- NuGet 官方源 restore 成功；隔离 `packages.lock.json` 确认 **Markdig 1.4.0 / HtmlSanitizer 9.2.1039**，未换版。传递依赖为 AngleSharp 1.7.2、AngleSharp.Css 1.0.2。
-- 原样源码基线及测试工程编译均 **0 警告 / 0 错误**。
-- 仅三组测试：Markdown 功能/输入策略 **75** 项；恶意 HTML 的属性/资源/事件移除 **27** 项；普通 HTML 结构及文本保留 **96** 项。合计 **198 项断言，3 组通过，0 失败**。
-- 测试使用库的 AngleSharp 依赖解析输出 DOM，不创建浏览器、不发真实 API/资源请求。恢复 NuGet 包之外未调用外部服务。
-- 证据：隔离目录 `restore.log`、`compile-baseline.log`、`compile-tests.log`、`test-run.log`、`test-results.json`、`packages.lock.json` 与快照 hash。
-- 未执行 GUI/服务/通知/git 操作。宿主 CSP、导航拦截及主 WinUI 集成仍由父会话及对应 UI lane 验证；不能将这三组 headless 测试解释为完整浏览器安全审计。
+依赖版本以主项目与 `packages.lock.json` 为准；当前自动化入口见 [关键测试清单](test-suite.md)。

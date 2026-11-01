@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace FluentCode.Models;
 
@@ -89,7 +87,6 @@ public enum OpenCodeConnectionKind
 /// 凭据只以 <see cref="OpenCodeSettings.CredentialId"/>
 /// 引用 DPAPI 密文文件。</description></item>
 /// <item><description>默认值即“无虚构配置”：空 provider/模型列表、未选模型、跟随系统主题。</description></item>
-/// <item><description>移除功能的旧 JSON 配置由扩展字段保留，不作为可执行 provider/模型读取。</description></item>
 /// </list>
 /// </remarks>
 public sealed record AppSettings
@@ -133,8 +130,4 @@ public sealed record AppSettings
 
     /// <summary>默认空设置（无任何虚构 provider/模型）。</summary>
     public static AppSettings Empty { get; } = new();
-
-    // Preserve removed feature settings verbatim on subsequent saves; no executable provider model remains.
-    [JsonExtensionData]
-    public Dictionary<string, JsonElement>? PreservedSettings { get; init; }
 }

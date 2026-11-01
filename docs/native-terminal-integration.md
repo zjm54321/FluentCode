@@ -1,6 +1,6 @@
 # Native terminal integration — 2026-10-30
 
-> Suite pruned on 2026-10-30 to [25 listed critical entries](test-suite.md); removed runner paths below identify historical evidence only.
+> Current automated entry points are listed in the [critical suite](test-suite.md).
 
 ## Result
 
@@ -34,10 +34,9 @@ Transcript shell tool rows and shell-message rows remain XAML with a three-line/
 - `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyRendererAdapter.cs`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtySession.cs`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyVtStream.cs`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyAirspace.cs`: native byte-consumption and airspace implementation.
 - `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyPresentation.cs`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs`, `src/FluentCode/Pages/OpenCodePage.PersistentPty.cs`, `src/FluentCode/Pages/OpenCodePage.PersistentPtyOverlay.cs`: shared native card, lifecycle and toolbar.
 - `src/FluentCode/Pages/OpenCode/OpenCodeShellTerminalState.cs`, `src/FluentCode/Pages/OpenCode/OpenCodeShellTerminalAdapter.cs`, `src/FluentCode/Pages/OpenCodePage.TerminalView.cs`, `src/FluentCode/Pages/OpenCodePage.xaml`: shared shell route and removal of `TerminalViewHost`.
-- Deleted `src/FluentCode/Pages/OpenCode/OpenCodeTerminalView.cs`, `src/FluentCode/Pages/OpenCode/OpenCodeTerminalState.cs` (renamed/reduced to shell data state), and `src/FluentCode/Assets/OpenCode/PersistentPty/`.
 - `src/FluentCode/Pages/OpenCode/OpenCodeToolPartView.cs`, `src/FluentCode/Pages/OpenCode/OpenCodeToolDetailResults.cs`, `src/FluentCode/Pages/OpenCode/OpenCodeToolDetailSurface.cs`, `src/FluentCode/Pages/OpenCode/OpenCodeToolRowPresentation.cs`, `src/FluentCode/Pages/OpenCode/OpenCodeConversationView.cs`: bounded transcript previews and unified foreground/background native-open actions. Concurrent non-terminal edits in these shared files were retained.
 - `src/FluentCode/Models/TerminalAppearanceSettings.cs`, `src/FluentCode/Models/AppSettings.cs`, `src/FluentCode/Services/Configuration/SettingsService.cs`, `src/FluentCode/Pages/Settings/TerminalAppearanceEditor.cs`, `src/FluentCode/Pages/Settings/SettingsView.Terminal.cs`, `src/FluentCode/Pages/Settings/SettingsView.cs`, `src/FluentCode/Pages/OpenCodePage.TerminalAppearance.cs`: persistence, shared editor and live application. Concurrent tray settings were retained.
-- Updated focused runners/fixtures in `tests/opencode-terminal/`, `tests/opencode-agent-tree/`, `tests/opencode-tool-detail/`, `tests/opencode-persistent-pty/`, `tests/opencode-pty-right-panel-visual/`, `tests/native-terminal-spike/`.
+- Retained runners: `tests/opencode-persistent-pty/run.ps1` and `tests/opencode-persistent-pty-transport/run-backend.ps1`.
 
 ## Dependency wiring / size
 
@@ -54,35 +53,8 @@ Vendored source/notices: **19 files, 93,434 bytes** (~91.2 KiB), excluding gener
 | WindowsTerminalControl.Core.dll | 7,680 |
 | WindowsTerminalControl.WinUI.dll | 653,312 |
 
-## Verification / evidence
-
-Evidence root: `artifacts/native-terminal-integrated-20261030-095748/`.
-
-| Check | Result / evidence |
-| --- | --- |
-| Scratch `dotnet build src/FluentCode/FluentCode.csproj -p:FluentCodeScratchRoot=.../build -p:Platform=x64 -p:RuntimeIdentifier=win-x64` | Passed; `build.txt`, `native-assets.json`, `build/bin/`. No Publish. Remaining warnings are CsWinRT1032 in the concurrent notification lane. |
-| `tests/opencode-terminal/run.ps1` | 27 focused checks; `opencode-terminal-final/`. Includes real shell data state, native-output adapter, settings JSON/validation and transcript routes. |
-| `tests/opencode-agent-tree/run.ps1` | 74 checks plus 6 shell read/fallback assertions; `opencode-agent-tree/`. |
-| `tests/opencode-tool-detail/run.ps1` | 784 assertions; `opencode-tool-detail-v2/`. |
-| `tests/opencode-persistent-pty/run.ps1` | 64 presentation/security checks, 55 PTY page/controller/adapter/inventory checks, 13 existing Billion checks and actual WinUI reference compiles; `opencode-persistent-pty-v2/`. |
-| `tests/opencode-pty-right-panel-visual/run.ps1` | Passed in light and dark; `visual-final/result-dark.json`, `visual-final/result-light.json`, `visual-final/input-hashes.json`. Real native renderer in a page-shaped fixture. |
-| `tests/native-terminal-spike/run.ps1 -HostMode ChildHwnd` | Passed, including the added live-appearance assertion; `spike-child-hwnd/result.json`. |
-
-Native runtime assertions cover checkpoint/CJK/emoji/fragmented UTF-8, cursor redraw, alternate screens, OSC52 filtering, consent revocation, Esc/Unicode input, non-destructive selection + actual toolbar Copy, explicit Fit/server resize, stale epochs/cancellation, native focus, popup/dialog/menu/permission airspace, movement, all palettes/font/cursor live updates, read-only shell input fencing and HWND destruction. Final integrated native 10k-line consumption: **24.3 ms dark / 25.5 ms light**.
-
-### Screenshots (real HWND included)
-
-- PTY dark: `artifacts/native-terminal-integrated-20261030-095748/visual-final/dark-terminal-overlay-desktop.png`
-- PTY light: `artifacts/native-terminal-integrated-20261030-095748/visual-final/light-terminal-overlay-desktop.png`
-- Shell dark: `artifacts/native-terminal-integrated-20261030-095748/visual-final/dark-shell-terminal-overlay-desktop.png`
-- Shell light: `artifacts/native-terminal-integrated-20261030-095748/visual-final/light-shell-terminal-overlay-desktop.png`
-
-The matching non-`desktop` RenderTargetBitmap images are XAML-only and intentionally cannot capture child HWND contents. Capture refreshes XAML before PrintWindow to avoid stale toolbar chrome. An earlier clipboard-owner failure was corrected by flushing the test guard's clipboard payload; final light/dark runs both pass.
-
 ## Remaining limits
 
 - The native renderer comes from the pinned unofficial NuGet package; retain the upstream fork/ABI patches and notices when upgrading it.
 - Child HWNDs cannot participate in XAML clipping/z-order. Insetting and temporary hiding are required behavior, not composition-mode hosting.
 - Shell tools remain read-only until a verified backend input contract exists. No speculative input or PTY-control endpoint was added.
-- Physical keyboard/IME candidate composition and cross-monitor DPI transitions were not exercised: the available Windows desktop is locked/restricted (`OpenInputDesktop failed: 5`). Programmatic HWND Esc/Unicode input, native/XAML focus, current DPI 192 and window movement were exercised. Full live-server reconnect/takeover was covered by the existing typed HTTP/controller fixtures rather than an external server session.
-- No main-app Publish, commits, notification/tray rewrites or unrelated test suites were performed.

@@ -20,7 +20,6 @@ Paths are relative to the repository root; line numbers refer to this change.
 | `src/FluentCode/Pages/OpenCode/OpenCodeRightPanelView.cs:99` | Connection/footer wordmark uses the same refresh path. |
 | `src/FluentCode/Pages/OpenCode/OpenCodeModelLogo.cs:45` | OpenAI, Grok, DeepSeek, GLM and Kimi light/dark provider SVG/bitmap variants reconcile after root changes; existing async revision guard retained. |
 | `src/FluentCode/Pages/OpenCode/OpenCodeAgentIconTheme.cs:15` | Shared agent glyph colors reconcile after root changes. |
-| `src/FluentCode/Pages/NormalPage.xaml.cs:72`, `src/FluentCode/Pages/Web/ProviderBrandIcons.cs:110` | Website provider icons reconcile via the root hub; old async loads cannot overwrite a different current theme. |
 | `src/FluentCode/Pages/OpenCode/OpenCodeBrowserButton.cs:44`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserButton.cs:88` | Checked/hover/pressed native aliases use ThemeDictionaries; status-dot brushes resolve in the host theme, not the application's startup theme. |
 | `src/FluentCode/Pages/OpenCode/OpenCodeBrowserStrip.cs:311`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserStrip.cs:313`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserStrip.cs:315` | Preview outline/badge use the current host theme; error/agent glyphs use ThemeResource styles. |
 | `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:147`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:180`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:186`, `src/FluentCode/Pages/OpenCode/OpenCodeBrowserOverlay.cs:273` | Pointer ripple, page-tool checked aliases, agent-pill background/border and activity text no longer retain resolved application brushes. |
@@ -28,12 +27,10 @@ Paths are relative to the repository root; line numbers refer to this change.
 | `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:97`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:244`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:321`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyInventoryView.cs:438` | Terminal checked aliases use ThemeDictionaries; live dot, chip titles/outlines and switcher selected/title/bar brushes use ThemeResource styles. |
 | `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs:145`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs:410`, `src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyView.cs:421` | Terminal badge/marker resolve in the actual theme and reconcile on load; terminate-action foreground uses a ThemeResource style. |
 | `src/FluentCode/Pages/OpenCode/OpenCodeWslQuickAccessView.cs:43` | Editor SplitButton background override uses ThemeDictionaries. |
-| `src/FluentCode/Pages/Local/LocalChatView.cs:1463` | Session-pane fallback background resolves against the pane's actual theme rather than the application's startup theme. |
 
 ## Audited existing paths
 
 - `src/FluentCode/Pages/OpenCode/OpenCodeWslQuickAccessIcons.cs:47`: VS Code/VSCodium/Zed PathIcons inherit native foreground; executable thumbnails are not theme variants. All three inherited colors are asserted by the regression.
-- `src/FluentCode/Pages/Web/WebViewHost.cs:519`, `src/FluentCode/Pages/Web/WebViewHost.cs:544`: WebView2 already reapplies background/Profile.PreferredColorScheme on ActualThemeChanged, Loaded and activation, without reload or profile replacement. It now receives live system-theme propagation from the root.
 - `src/ThirdParty/WindowsTerminalControl/src/WindowsTerminalControl.WinUI/TerminalControl.cs:132`, `src/ThirdParty/WindowsTerminalControl/src/WindowsTerminalControl.WinUI/TerminalControl.cs:516`: native terminal already reapplies SurfaceColors on ActualThemeChanged and load; terminal well/status rendering also had a theme listener. No third-party changes.
 - `src/FluentCode/MainWindow.xaml.cs:148`: native Mica backdrop already updates its SystemBackdropConfiguration theme. Existing Composition uses clipping, offset/opacity/scale and shadows rather than cached theme-dependent color brushes.
 - `src/FluentCode/Pages/OpenCode/OpenCodeToolDetailSurface.cs:237`: diff surfaces already recompute theme colors. Tool rows, timeline/reasoning rows, session insights and Mermaid already have theme refresh paths.
@@ -51,8 +48,7 @@ The opt-in fixture (`FC_THEME_REFRESH_TEST=1`) captures XAML-root PNGs and asser
 - Windows Light → Dark while following System.
 - App Light stays Light while Windows switches Light → Dark.
 
-Final native build/publish/runtime-copy hashes passed: `artifacts/theme-refresh-20261031-v4/results.json`.
-
-Final live regression passed in PID 87676: `artifacts/theme-refresh-20261031-proof-4/results.json`; assertions/hashes in `artifacts/theme-refresh-20261031-proof-4/assertions.json`; before/after screenshots in `artifacts/theme-refresh-20261031-proof-4/app-light.png`, `artifacts/theme-refresh-20261031-proof-4/app-dark.png`, `artifacts/theme-refresh-20261031-proof-4/system-light.png` and `artifacts/theme-refresh-20261031-proof-4/system-dark.png` (plus round-trip/override images). These are RenderTargetBitmap captures of the live XAML root; native backdrop pixels are transparent.
-
-The live regression uses the Debug **build output**. The Debug **publish output** produced by the assigned restoration script fails before the fixture with `Microsoft.UI.Xaml.Markup.XamlParseException`, HRESULT `0x802B000A`; that output has no loose `.xbf` files, while the working build output has six. Build/publish commands and runtime-copy verification themselves pass. This packaging issue is separate from the theme changes and was left for the publishing lane; the runner records executable/DLL/PRI hashes for its actual tested candidate.
+`FluentCode.csproj` copies application PRI and loose XBF resources to publish output.
+Use a complete build or publish directory; the runner records executable/DLL/PRI
+hashes for its actual tested candidate. XAML-root captures do not include native
+backdrop or child-HWND pixels.

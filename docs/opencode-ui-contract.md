@@ -86,7 +86,7 @@
 - **H9 + D2 任务列表（`OpenCodeTodoReplay` / `OpenCodeSessionInsightsView`）**：保持服务端 `todowrite` 原始顺序（不按状态分组），每行左侧显示只读状态图标（`\uE739` / `\uE73C` / `\uE73A` / `\uE711`）。`priority` 为可选字段（省略或 `null` 时保留任务且不显示优先级徽标；若提供无效值仍整表拒绝）。
 - **H10 + H11 上下文 Flyout 紧凑数字与 ACP 块列表**：`OpenCodeSessionInsightsView.Compact` 统一将 token 与计数格式化为 `82.3K` / `1M` / `10.2M`。`BillionTelemetryReader` 从 `/__bili/sessions/{id}/detail` 的 `blockDetails` 增量投影白名单元数据（`blockId` / `tier` / `compressedTokens` / `active`，上限 200，绝不解码 `topic` / `summary`），Flyout 的「ACP / Billion 状态」组以与任务列表一致的“图标 + 块 ID·Tier + 紧凑 token 数”行展示压缩块（`OpenCodeInsightsAcpBlocks` / `OpenCodeInsightsAcpBlock.{i}`），并提供显式「读取 / 重新读取」（`OpenCodeInsightsAcpRead`）或「设置 Billion 地址」（`OpenCodeInsightsAcpSetup`）。
 - **H15 页面材质与 Mica 透出（`OpenCodePage.xaml`）**：
-  - `OpenCodePage` 承载在 `MainWindow` 的 `NavigationView`（`NavView`）内容区内，其 `ContentGrid` 已在窗口 `MicaBackdrop` 之上提供一层半透明 `LayerFillColorDefaultBrush`（与 `SettingsPage`、`NormalPage` 一致）。因此 `SessionPane`（`Grid.Row="1"`）**不设置 `Background`**（仅保留 `PaneBackground="{ThemeResource AcrylicInAppFillColorDefaultBrush}"`），避免遮挡或双重叠加 `LayerFillColorDefaultBrush`。
+  - `OpenCodePage` 的宿主与背景由 `MainWindow` 管理；会话面板避免重复叠加窗口背景。窗口外壳布局见 `shell-ui-contract.md`。
   - WinUI 3 中 `Application.Resources.MergedDictionaries` 内的 `<XamlControlsResources />` 在查找顺序上优先于 `Application.Resources.ThemeDictionaries`，导致应用级 `TabViewItemHeaderBackgroundSelected` 覆写被 `XamlControlsResources` 默认的不透明 `SolidBackgroundFillColorTertiaryBrush`（深色 `#FF282828` / 浅色 `#FFF9F9F9`）遮蔽。`OpenCodePage.xaml` 在元素级 `<Page.Resources>` 的 `ResourceDictionary.ThemeDictionaries`（`Default`、`Light`、`HighContrast`）中定义 `TabViewItemHeaderBackgroundSelected`（`Default`/`Light` → `LayerFillColorDefaultBrush`，`HighContrast` → `SystemColorWindowColorBrush`），优先于 `Application.Resources` 生效，使选中标签同样透出 Mica。
 - 验证：`tests/appearance-fonts`、`tests/opencode-insights-view`、`tests/opencode-session-insights`、`tests/opencode-capabilities`、`tests/billion-context`、`tests/opencode-composer-hookup`、`tests/opencode-composer-view`、`tests/opencode-root-navigation`。
 
@@ -349,7 +349,7 @@ await page.NavigateToNotificationAsync(target, result);   // result 可为 null�
 ## 12. 与其他 lane 的边界
 
 - 本页只消费 `FluentCode.Services.OpenCode`、`FluentCode.Services.Configuration`、`FluentCode.Models` 的既有公开 API，以及 `FluentCode.Services.Notifications` 的**共享仲裁与来源类型**（只读引用，不修改）。构造签名仍接受 `SettingsService`/`DpapiSecretStore`（宿主组合兼容），但本轮起页面不再保存或使用它们。
-- `MainWindow` / `App` / `NormalPage` / `Pages/Web` / `Pages/Local` 由其他 writer 独占；宿主契约（构造 + 事件 + 兼容身份提示 + 导航入口）保持不变，接线由父会话完成。
+- `MainWindow` / `App` 负责窗口与应用生命周期；OpenCode 页负责会话视图，宿主接线见 `app-integration-contract.md`。
 - 本页不 `new` 通知服务；不 dispose App 客户端；页面自持的独立 client 仅在来源失效换代与 Unloaded 时释放。
 
 ## 13. 输入框（Composer）键盘契约（2026-10-07 修正）

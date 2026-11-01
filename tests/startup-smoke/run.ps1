@@ -1,7 +1,6 @@
 param(
     [string]$EvidenceRoot,
     [string]$PublishDirectory,
-    [string]$MigrationProfileRoot,
     [ValidateRange(15, 120)][int]$Seconds = 15
 )
 $ErrorActionPreference = 'Stop'
@@ -22,14 +21,13 @@ if (!$PublishDirectory) {
 }
 $PublishDirectory = [IO.Path]::GetFullPath($PublishDirectory)
 $exe = (Resolve-Path (Join-Path $PublishDirectory 'FluentCode.exe')).Path
-$profile = if ($MigrationProfileRoot) { Join-Path $MigrationProfileRoot 'FluentCode' } else { Join-Path $EvidenceRoot 'profile' }
-if (!$MigrationProfileRoot) { New-Item -ItemType Directory -Path $profile | Out-Null }
+$profile = Join-Path $EvidenceRoot 'profile'
+New-Item -ItemType Directory -Path $profile | Out-Null
 Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class SmokeWindow { [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint process); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wparam, IntPtr lparam); }'
 $start = [Diagnostics.ProcessStartInfo]::new($exe)
 $start.UseShellExecute = $false
 $start.WorkingDirectory = Split-Path $exe
 $start.EnvironmentVariables['FC_STARTUP_SMOKE_ROOT'] = $profile
-if ($MigrationProfileRoot) { $start.EnvironmentVariables['FC_MIGRATION_PROFILE_ROOT'] = $MigrationProfileRoot }
 $process = $null
 $result = @{ Executable = $exe; Profile = $profile; Passed = $false; RequiredSeconds = $Seconds }
 try {
