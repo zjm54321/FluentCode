@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using FluentCode.Models;
+using FluentCode.Motion;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -10,29 +11,38 @@ namespace FluentCode.Pages.Settings;
 public sealed partial class SettingsView
 {
     private bool _browserDirty, _browserSaving;
-    private readonly ComboBox _browserEngine = new() { Header = "浏览器引擎", HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly ComboBox _browserConnection = new() { Header = "Chrome 连接方式", HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBox _chromeExecutable = new() { Header = "Chrome 程序路径（可选）", PlaceholderText = "留空自动查找 Chrome；或填写完整 .exe 路径" };
-    private readonly TextBox _chromeEndpoint = new() { Header = "本机调试端点", PlaceholderText = "http://127.0.0.1:9222" };
-    private readonly StackPanel _chromeSettings = new() { Spacing = 12 };
-    private readonly StackPanel _chromeAttach = new() { Spacing = 8 };
-    private readonly Button _browserSave = new() { Content = "保存浏览器设置", HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly ComboBox _browserEngine = SettingsCards.Sized(new ComboBox());
+    private readonly ComboBox _browserConnection = SettingsCards.Sized(new ComboBox());
+    private readonly TextBox _chromeExecutable = SettingsCards.Sized(new TextBox { PlaceholderText = "留空自动查找" });
+    private readonly TextBox _chromeEndpoint = SettingsCards.Sized(new TextBox { PlaceholderText = "http://127.0.0.1:9222" });
+    private readonly StackPanel _chromeSettings = new() { Spacing = SettingsCards.RowSpacing };
+    private readonly StackPanel _chromeAttach = new() { Spacing = SettingsCards.RowSpacing };
+    private readonly Button _browserSave = new() { Content = "保存" };
 
     private UIElement BuildBrowserSection()
     {
-        var panel = new StackPanel { Spacing = 16, MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
-        panel.Children.Add(CreateSubtleText("WebView2 在应用内显示；Chrome 在独立窗口中运行，应用内只显示真实截图预览。服务器文件与 Mermaid 预览仍使用应用内渲染器。"));
-        _browserEngine.Items.Add("内嵌 WebView2"); _browserEngine.Items.Add("外部 Chrome · 独立窗口");
-        _browserConnection.Items.Add("由应用启动（推荐）"); _browserConnection.Items.Add("连接已启动的 Chrome（高级）");
-        panel.Children.Add(_browserEngine); panel.Children.Add(_chromeSettings);
-        _chromeSettings.Children.Add(_browserConnection); _chromeSettings.Children.Add(_chromeExecutable); _chromeSettings.Children.Add(_chromeAttach);
-        _chromeAttach.Children.Add(_chromeEndpoint);
-        _chromeAttach.Children.Add(CreateSubtleText("仅连接你信任的本机调试端点；不允许远程地址或重定向。请使用非默认的独立用户目录，按下面的参数启动 Chrome。应用只控制自己创建的窗口/标签，不接管其他标签页。"));
-        var command = new TextBox { Header = "Chrome 启动示例（可复制；程序路径请按实际位置替换）", IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true,
+        _browserEngine.Items.Add("内嵌 WebView2"); _browserEngine.Items.Add("外部 Chrome（独立窗口）");
+        _browserConnection.Items.Add("由应用启动"); _browserConnection.Items.Add("连接已启动的 Chrome");
+        AutomationProperties.SetName(_browserEngine, "浏览器引擎");
+        AutomationProperties.SetName(_browserConnection, "Chrome 连接方式");
+        AutomationProperties.SetName(_chromeExecutable, "Chrome 程序路径");
+        AutomationProperties.SetName(_chromeEndpoint, "本机调试端点");
+        var command = new TextBox { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas"),
             Text = "chrome.exe --user-data-dir=\"C:\\Chrome-OpenCode-Private\" --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --enable-automation --disable-quic --force-webrtc-ip-handling-policy=disable_non_proxied_udp" };
-        AutomationProperties.SetName(command, "连接已有 Chrome 的必需启动参数"); _chromeAttach.Children.Add(command);
-        panel.Children.Add(CreateSubtleText("保存不会切换正在运行的浏览器。已有会话请关闭会话标签页后重新打开，或在新会话中使用新设置；仅关闭网页不会重建工作区。此配置不包含 OpenCode 登录凭据。"));
-        panel.Children.Add(_browserSave);
+        AutomationProperties.SetName(command, "连接已有 Chrome 的必需启动参数");
+
+        _chromeSettings.Children.Add(SettingsCards.Card("\uE71B", "Chrome 连接方式", null, _browserConnection));
+        _chromeSettings.Children.Add(SettingsCards.Card("\uE8B7", "Chrome 程序路径", null, _chromeExecutable));
+        _chromeAttach.Children.Add(SettingsCards.Card("\uE968", "本机调试端点", "只允许本机地址；请用独立的用户目录启动 Chrome", _chromeEndpoint));
+        _chromeAttach.Children.Add(SettingsCards.Expander("\uE756", "Chrome 启动参数", "复制后按实际程序路径替换", null, SettingsCards.SubContent(command)));
+        _chromeSettings.Children.Add(_chromeAttach);
+
+        var panel = new StackPanel { Spacing = SettingsCards.GroupSpacing };
+        panel.Children.Add(SettingsCards.Group("会话浏览器",
+            SettingsCards.Card("\uE774", "浏览器引擎", "WebView2 在应用内显示；Chrome 在独立窗口中运行", _browserEngine),
+            _chromeSettings));
+        panel.Children.Add(SettingsCards.Group(null,
+            SettingsCards.Card("\uE74E", "保存浏览器设置", "仅对新建或重新打开的会话工作区生效；仅关闭网页不会重建工作区", _browserSave)));
         _browserEngine.SelectionChanged += (_, _) => BrowserDraftChanged();
         _browserConnection.SelectionChanged += (_, _) => BrowserDraftChanged();
         _chromeExecutable.TextChanged += (_, _) => BrowserDraftChanged(); _chromeEndpoint.TextChanged += (_, _) => BrowserDraftChanged();
@@ -44,6 +54,7 @@ public sealed partial class SettingsView
     private void BrowserDraftChanged()
     {
         UpdateBrowserVisibility(); if (!_suppressUiEvents) _browserDirty = true;
+        _browserSave.IsEnabled = _browserDirty && !_browserSaving;
     }
     private void UpdateBrowserVisibility()
     {
@@ -62,6 +73,7 @@ public sealed partial class SettingsView
             _browserConnection.SelectedIndex = browser.ChromeConnection == BrowserChromeConnection.Attach ? 1 : 0;
             _chromeExecutable.Text = browser.ChromeExecutablePath ?? ""; _chromeEndpoint.Text = browser.ChromeEndpoint ?? "";
             UpdateBrowserVisibility();
+            _browserSave.IsEnabled = false;
         }
         finally { _suppressUiEvents = suppress; }
     }
@@ -74,11 +86,14 @@ public sealed partial class SettingsView
             ChromeEndpoint = string.IsNullOrWhiteSpace(_chromeEndpoint.Text) ? null : _chromeEndpoint.Text.Trim() };
         if (browser.ValidationError() is { } reason) { ShowStatus(InfoBarSeverity.Error, "浏览器设置未保存", reason); return false; }
         _browserSaving = true; _browserSave.IsEnabled = false;
+        ActionFeedback.Busy(_browserSave);
         try
         {
-            if (!await SaveAsync(settings => settings with { Browser = browser }, "浏览器设置已保存，仅对新建或重新打开的工作区生效。")) return false;
-            _browserDirty = false; ApplyBrowserToUi(); return true;
+            if (!await SaveAsync(settings => settings with { Browser = browser })) { ActionFeedback.Failure(_browserSave, "浏览器设置未保存"); return false; }
+            _browserDirty = false; ApplyBrowserToUi();
+            ActionFeedback.Success(_browserSave, "已保存浏览器设置");
+            return true;
         }
-        finally { _browserSaving = false; _browserSave.IsEnabled = true; }
+        finally { _browserSaving = false; _browserSave.IsEnabled = _browserDirty; }
     }
 }

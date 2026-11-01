@@ -79,7 +79,6 @@ public sealed class OpenCodeConnectionView : UserControl
         distributionRow.Children.Add(_distributions);
         distributionRow.Children.Add(_refresh);
         _wsl.Children.Add(distributionRow);
-        _wsl.Children.Add(Hint("使用发行版默认用户的 OpenCode 配置；无需检查配置文件。WSL localhost 转发须可用。"));
 
         // ② 远程密码。
         _remote.Children.Add(_address);
@@ -96,7 +95,7 @@ public sealed class OpenCodeConnectionView : UserControl
         // 当前连接：卡片中“当前配置”为强调正文，单账号规则为次要说明。
         var currentPanel = new StackPanel { Spacing = 4 };
         currentPanel.Children.Add(_summary);
-        currentPanel.Children.Add(Hint("仅保留一个 OpenCode 账号 / 实例。连接成功会替换当前连接；验证或保存失败保留原连接。旧配置及 DPAPI 凭据保持原样，不需要重新登录。关闭此窗口会丢弃输入与未保存的配对结果。"));
+        currentPanel.Children.Add(Hint("连接成功后会替换当前连接；失败时保留原连接。"));
         var currentCard = new Border { Child = currentPanel, CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1), Padding = new Thickness(12, 10, 12, 10) };
         OpenCodeToolTheme.Apply(currentCard, OpenCodeToolTheme.Border("CardBackgroundFillColorDefaultBrush", OpenCodeToolTheme.CardStroke));
 
@@ -128,7 +127,20 @@ public sealed class OpenCodeConnectionView : UserControl
         Content = body;
 
         _flow.SelectionChanged += (_, _) => UpdateFlow();
-        _refresh.Click += async (_, _) => await RunAsync(RefreshDistributionsAsync);
+        _refresh.Click += async (_, _) => await RunAsync(async ct =>
+        {
+            FluentCode.Motion.ActionFeedback.Busy(_refresh);
+            try
+            {
+                await RefreshDistributionsAsync(ct);
+                if (!_closed) FluentCode.Motion.ActionFeedback.Success(_refresh, "已刷新 WSL 发行版");
+            }
+            catch (Exception)
+            {
+                if (!_closed) FluentCode.Motion.ActionFeedback.Failure(_refresh, "刷新失败");
+                throw;
+            }
+        });
         _connect.Click += async (_, _) => await RunAsync(ConnectAsync);
         _cancel.Click += (_, _) => _operation?.Cancel();
         _discardPair.Click += (_, _) => { _pairingResult = null; UpdatePairing(); SetStatus("已放弃配对结果；继续配对需要新链接。"); };
@@ -330,7 +342,8 @@ public sealed class OpenCodeConnectionView : UserControl
             return;
         }
 
-        SetStatus(outcome.Message, StatusTone.Success);
+        SetStatus(string.Empty);
+        FluentCode.Motion.ActionFeedback.Success(_connect, "已保存并连接 OpenCode");
         _password.Password = string.Empty;
         _pairingResult = null;
         _pairLink.Password = string.Empty;

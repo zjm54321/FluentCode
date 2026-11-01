@@ -50,7 +50,6 @@ public sealed partial class SettingsView : UserControl
     private ContentControl _contentHost = null!;
     private ListView _categoryList = null!;
     private TextBlock _categoryTitle = null!;
-    private TextBlock _categoryDescription = null!;
     private ContentControl _categoryContentHost = null!;
     private ScrollViewer _categoryScroll = null!;
     private readonly List<CategoryEntry> _categories = new();
@@ -120,9 +119,8 @@ public sealed partial class SettingsView : UserControl
     public async Task<SettingsLeaveChoice> ConfirmLeaveAsync()
     {
         ConfirmChoice choice = await ConfirmCoreAsync(
-            "有未保存的修改",
-             "当前会话浏览器设置中存在尚未提交的输入。" +
-            "请选择如何处理后再离开；选择“取消”将留在设置页。",
+            "浏览器设置尚未保存",
+            "离开前要保存这些修改吗？",
             "保存并离开",
             "放弃并离开");
 
@@ -283,7 +281,7 @@ public sealed partial class SettingsView : UserControl
             ApplyMotionToUi();
             ApplyThemeToUi();
             ApplyFontsToUi();
-            _terminalAppearance.Apply(_settings.TerminalAppearance);
+            _terminalAppearance?.Apply(_settings.TerminalAppearance);
             ApplyBrowserToUi();
         }
         finally
@@ -303,59 +301,56 @@ public sealed partial class SettingsView : UserControl
         Cancel,
     }
 
-    /// <summary>设置分类条目：标题、说明与已构建好的内容元素（构建一次，切换分类时复用）。</summary>
-    private sealed record CategoryEntry(string Title, string Description, UIElement Content);
+    /// <summary>设置分类：导航图标、标题与已构建好的内容（构建一次，切换分类时复用）。</summary>
+    private sealed record CategoryEntry(string Glyph, string Title, UIElement Content);
 
+    /// <summary>
+    /// Windows 11 设置页版式：左侧分类导航（图标 + 名称），右侧大标题 + 设置卡片组（SettingsCards）。
+    /// 分类：账号与连接 · 外观（主题 / 文字 / 动画） · 终端 · 浏览器 · 常规（后台运行；应用目前没有通知设置项，故不单列“通知”）。
+    /// </summary>
     private void BuildLayout()
     {
         _confirmPanel = BuildConfirmPanel();
 
-        var header = new StackPanel { Spacing = 2, Margin = new Thickness(24, 16, 24, 0) };
-        header.Children.Add(new TextBlock { Text = "设置", FontSize = 24 });
-        header.Children.Add(new TextBlock
-        {
-            Text = "主题、OpenCode 后端、终端与会话浏览器设置。凭据只以 DPAPI 密文保存。",
-            FontSize = 13,
-            Opacity = 0.75,
-            TextWrapping = TextWrapping.Wrap,
-        });
-
-        // 左侧：设置分类列表（可独立滚动）。宽度按内容自适应并设最小宽度，不硬编码固定值。
         _categoryList = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            MinWidth = 220,
+            Width = 260,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Stretch,
+            Padding = new Thickness(0, 4, 0, 0),
         };
         AutomationProperties.SetAutomationId(_categoryList, "SettingsCategoryList");
         AutomationProperties.SetName(_categoryList, "设置分类");
         _categoryList.SelectionChanged += OnCategorySelectionChanged;
 
-        // 分类内容（各构建一次，切换时复用；说明文本作为分类头说明）。
-        _categories.Add(new CategoryEntry(
-            "账号与连接",
-            "唯一的 OpenCode 连接：WSL 自动发现、远程地址或配对链接；也可以断开当前连接。",
-            BuildAccountSection()));
-        _categories.Add(new CategoryEntry(
-            "外观",
-            "主题（跟随系统 / 浅色 / 深色）与字体（正文 / 衬线 / 等宽）。选择后立即保存并应用到整个应用。",
-            BuildThemeSection()));
-        _categories.Add(new CategoryEntry("常规", string.Empty, BuildGeneralSection()));
-        _categories.Add(new CategoryEntry("终端", string.Empty, BuildTerminalSection()));
-        _categories.Add(new CategoryEntry(
-            "OpenCode 后端",
-            "连接设置位于“账号与连接”；现有连接与凭据保留。",
-            BuildOpenCodeSection()));
-        _categories.Add(new CategoryEntry("会话浏览器", "选择内嵌 WebView2 或独立 Chrome。更改只用于新建或重新打开的会话浏览器工作区。", BuildBrowserSection()));
+        _categories.Add(new CategoryEntry("\uE77B", "账号与连接", BuildAccountSection()));
+        _categories.Add(new CategoryEntry("\uE790", "外观", BuildAppearanceSection()));
+        _categories.Add(new CategoryEntry("\uE756", "终端", BuildTerminalSection()));
+        _categories.Add(new CategoryEntry("\uE774", "浏览器", BuildBrowserSection()));
+        _categories.Add(new CategoryEntry("\uE713", "常规", BuildGeneralSection()));
         foreach (CategoryEntry category in _categories)
         {
-            _categoryList.Items.Add(new ListViewItem { Content = category.Title, Tag = category });
+            var item = new ListViewItem
+            {
+                Tag = category,
+                MinHeight = 36,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 14,
+                    Children =
+                    {
+                        new FontIcon { Glyph = category.Glyph, FontSize = 16, VerticalAlignment = VerticalAlignment.Center },
+                        new TextBlock { Text = category.Title, VerticalAlignment = VerticalAlignment.Center },
+                    },
+                },
+            };
+            AutomationProperties.SetName(item, category.Title);
+            _categoryList.Items.Add(item);
         }
 
-        // 右侧：分类标题/说明（固定）+ 分类内容（独立滚动）。
-        _categoryTitle = new TextBlock { FontSize = 20, TextWrapping = TextWrapping.Wrap };
-        _categoryDescription = CreateSubtleText(string.Empty);
+        _categoryTitle = SettingsCards.Styled(new TextBlock { Margin = new Thickness(0, 0, 0, 20) }, "TitleTextBlockStyle");
         _categoryContentHost = new ContentControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -369,71 +364,58 @@ public sealed partial class SettingsView : UserControl
             {
                 new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition { VerticalOffset = 12 },
             });
-        _categoryScroll = new ScrollViewer
-        {
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            VerticalScrollMode = ScrollMode.Auto,
-            HorizontalScrollMode = ScrollMode.Disabled,
-            Content = _categoryContentHost,
-        };
 
-        var rightHeader = new StackPanel { Spacing = 4, Margin = new Thickness(0, 0, 0, 8) };
-        rightHeader.Children.Add(_categoryTitle);
-        rightHeader.Children.Add(_categoryDescription);
+        var right = new StackPanel { Padding = new Thickness(0, 0, 4, 32) };
+        right.Children.Add(_categoryTitle);
+        right.Children.Add(_statusBar);
+        right.Children.Add(_confirmPanel);
+        _statusBar.Margin = new Thickness(0, 0, 0, 12);
+        _confirmPanel.Margin = new Thickness(0, 0, 0, 12);
 
-        var rightPane = new Grid();
-        rightPane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        rightPane.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        Grid.SetRow(rightHeader, 0);
-        Grid.SetRow(_categoryScroll, 1);
-        rightPane.Children.Add(rightHeader);
-        rightPane.Children.Add(_categoryScroll);
-
-        // 双栏主体：左右各占一列；左列宽度自适应，右列占满剩余宽度。整体受有限高度约束，
-        // 因而两侧 ScrollViewer 的 Auto 滚动条按原生行为按需出现（不强行全局禁用）。
-        var body = new Grid
-        {
-            Margin = new Thickness(24, 8, 24, 16),
-            ColumnSpacing = 24,
-        };
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(_categoryList, 0);
-        Grid.SetColumn(rightPane, 1);
-        body.Children.Add(_categoryList);
-        body.Children.Add(rightPane);
-
-        // 其余设置内容置于独立宿主：确认期间整体禁用，近似模态且不遮挡确认区。
         _contentHost = new ContentControl
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            VerticalContentAlignment = VerticalAlignment.Stretch,
-            Content = body,
+            Content = _categoryContentHost,
+        };
+        // 确认期间整体禁用设置内容（近似模态，不遮挡确认区）。
+        right.Children.Add(_contentHost);
+
+        _categoryScroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Padding = new Thickness(8, 20, 28, 0),
+            Content = LeftAlignedColumn(right, 1000),
         };
 
-        var root = new Grid();
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 页头
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 状态条
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 内联确认
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // 双栏主体
-        Grid.SetRow(header, 0);
-        Grid.SetRow(_statusBar, 1);
-        Grid.SetRow(_confirmPanel, 2);
-        Grid.SetRow(_contentHost, 3);
-        _statusBar.Margin = new Thickness(24, 0, 24, 0);
-        _confirmPanel.Margin = new Thickness(24, 8, 24, 0);
-        root.Children.Add(header);
-        root.Children.Add(_statusBar);
-        root.Children.Add(_confirmPanel);
-        root.Children.Add(_contentHost);
+        var nav = new StackPanel { Padding = new Thickness(16, 20, 8, 0), Spacing = 12 };
+        nav.Children.Add(SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(12, 0, 0, 4) }, "SubtitleTextBlockStyle"));
+        nav.Children.Add(_categoryList);
 
+        var root = new Grid();
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(_categoryScroll, 1);
+        root.Children.Add(nav);
+        root.Children.Add(_categoryScroll);
         Content = root;
 
         // 默认选中首个分类。
         _categoryList.SelectedIndex = 0;
+    }
+
+    /// <summary>
+    /// Win11 设置页式内容列：随窗口变宽直到 <paramref name="maxWidth"/>，之后靠左（不居中）。
+    /// 不直接在 Stretch 元素上设 MaxWidth：那会在 ScrollViewer 里居中并越过视口右缘被裁切。
+    /// </summary>
+    private static Grid LeftAlignedColumn(FrameworkElement content, double maxWidth)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = maxWidth });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Auto) });
+        grid.Children.Add(content);
+        return grid;
     }
 
     private void OnCategorySelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -446,7 +428,6 @@ public sealed partial class SettingsView : UserControl
 
         CategoryEntry category = _categories[index];
         _categoryTitle.Text = category.Title;
-        _categoryDescription.Text = category.Description;
         _categoryContentHost.Content = category.Content;
         _categoryScroll.ChangeView(null, 0, null, disableAnimation: true);
     }
@@ -506,35 +487,6 @@ public sealed partial class SettingsView : UserControl
         pending.TrySetResult(choice);
     }
 
-    private UIElement BuildThemeSection()
-    {
-        var panel = new StackPanel { Spacing = 8 };
-
-        _themeCombo = new ComboBox { Header = "应用主题外观", MinWidth = 220 };
-        _themeCombo.Items.Add("跟随系统（推荐）");
-        _themeCombo.Items.Add("浅色");
-        _themeCombo.Items.Add("深色");
-        AutomationProperties.SetAutomationId(_themeCombo, "SettingsThemeCombo");
-        _themeCombo.SelectionChanged += OnThemeSelectionChanged;
-        panel.Children.Add(_themeCombo);
-
-        _codeThemeCombo = new ComboBox { Header = "代码配色", MinWidth = 220 };
-        _codeThemeCombo.Items.Add("跟随应用（默认）");
-        _codeThemeCombo.Items.Add("One Dark Pro");
-        AutomationProperties.SetAutomationId(_codeThemeCombo, "SettingsCodeThemeCombo");
-        _codeThemeCombo.SelectionChanged += OnCodeThemeSelectionChanged;
-        panel.Children.Add(_codeThemeCombo);
-        panel.Children.Add(new TextBlock { Text = "仅更改代码与源码区域，不改变应用主题。", TextWrapping = TextWrapping.Wrap });
-
-        // 字体（F11）：见 SettingsView.Fonts.cs。
-        panel.Children.Add(BuildFontsSection());
-
-        // 动画效果（只能减少）：见 SettingsView.Motion.cs。
-        panel.Children.Add(BuildMotionSection());
-
-        return panel;
-    }
-
     private void ApplyThemeToUi()
     {
         int index = _settings.Theme switch
@@ -552,7 +504,7 @@ public sealed partial class SettingsView : UserControl
         if (_suppressUiEvents || _codeThemeCombo.SelectedIndex < 0) return;
         var theme = _codeThemeCombo.SelectedIndex == 1 ? AppCodeTheme.OneDarkPro : AppCodeTheme.Fluent;
         if (theme == _settings.CodeTheme) return;
-        if (!await SaveAsync(settings => settings with { CodeTheme = theme }, "已保存代码配色。"))
+        if (!await SaveAsync(settings => settings with { CodeTheme = theme }))
             ApplySettingsToUi();
     }
 
@@ -575,7 +527,7 @@ public sealed partial class SettingsView : UserControl
             return;
         }
 
-        if (await SaveAsync(settings => settings with { Theme = theme }, "已保存主题。"))
+        if (await SaveAsync(settings => settings with { Theme = theme }))
         {
             ThemeChanged?.Invoke(this, new SettingsThemeChangedEventArgs(theme));
         }
@@ -588,12 +540,13 @@ public sealed partial class SettingsView : UserControl
 
     // ---- 通用保存 / 状态 / 校验 ----
 
-    private async Task<bool> SaveAsync(Func<AppSettings, AppSettings> transform, string successMessage)
+    /// <summary>即时保存。成功不显示文字提示（控件本身已反映新值）；失败用 InfoBar 说明并回滚界面。</summary>
+    private async Task<bool> SaveAsync(Func<AppSettings, AppSettings> transform)
     {
         try
         {
             _settings = await _settingsService.UpdateAsync(transform, _lifetimeCts.Token);
-            ShowStatus(InfoBarSeverity.Success, successMessage, null);
+            if (_statusBar.Severity != InfoBarSeverity.Informational) _statusBar.IsOpen = false;
             ApplySettingsToUi();
             return true;
         }
@@ -691,14 +644,6 @@ public sealed partial class SettingsView : UserControl
             $"type={s.ErrorType ?? ex.GetType().Name}; HRESULT=0x{(s.ErrorHResult ?? ex.HResult):X8}）",
         OpenCodeException => ex.Message,
         _ => $"{ex.GetType().Name}（HRESULT=0x{ex.HResult:X8}）",
-    };
-
-    private static TextBlock CreateSubtleText(string text) => new()
-    {
-        Text = text,
-        TextWrapping = TextWrapping.Wrap,
-        FontSize = 12,
-        Opacity = 0.75,
     };
 
 }

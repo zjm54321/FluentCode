@@ -10,11 +10,12 @@ public sealed partial class SettingsView
 
     private UIElement BuildGeneralSection()
     {
-        _runInBackgroundToggle = new ToggleSwitch { Header = "关闭窗口后在后台运行" };
+        _runInBackgroundToggle = new ToggleSwitch { OnContent = "开", OffContent = "关", MinWidth = 0 };
         AutomationProperties.SetAutomationId(_runInBackgroundToggle, "SettingsRunInBackground");
         AutomationProperties.SetName(_runInBackgroundToggle, "关闭窗口后在后台运行");
         _runInBackgroundToggle.Toggled += OnRunInBackgroundToggled;
-        return _runInBackgroundToggle;
+        return SettingsCards.Group(null,
+            SettingsCards.Card("\uE7E8", "关闭窗口后在后台运行", "可从通知区域图标重新打开", _runInBackgroundToggle));
     }
 
     private async void OnRunInBackgroundToggled(object sender, RoutedEventArgs args)
@@ -24,7 +25,7 @@ public sealed partial class SettingsView
         _runInBackgroundToggle.IsEnabled = false;
         try
         {
-            await SaveAsync(settings => settings with { RunInBackground = enabled }, "已保存设置。");
+            await SaveAsync(settings => settings with { RunInBackground = enabled });
         }
         finally
         {

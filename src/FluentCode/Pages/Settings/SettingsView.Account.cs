@@ -20,20 +20,18 @@ public sealed partial class SettingsView
 
     private UIElement BuildAccountSection()
     {
-        _connectionView = new OpenCodeConnectionView(_settingsService, _secretStore) { HorizontalAlignment = HorizontalAlignment.Left };
+        _connectionView = new OpenCodeConnectionView(_settingsService, _secretStore) { HorizontalAlignment = HorizontalAlignment.Left, MaxWidth = 640 };
         _disconnectButton = new Button { Content = "断开连接…" };
         AutomationProperties.SetAutomationId(_disconnectButton, "SettingsOpenCodeDisconnect");
+        AutomationProperties.SetName(_disconnectButton, "断开 OpenCode 连接");
         _disconnectButton.Click += async (_, _) => await DisconnectOpenCodeAsync();
 
-        var disconnect = new StackPanel { Spacing = 8, MaxWidth = 520, HorizontalAlignment = HorizontalAlignment.Left };
-        disconnect.Children.Add(new TextBlock { Text = "断开连接", FontSize = 16 });
-        disconnect.Children.Add(CreateSubtleText("清除当前 OpenCode 连接与已保存的凭据，回到欢迎页重新添加。不会停止或修改 OpenCode 服务本身。"));
-        disconnect.Children.Add(_disconnectButton);
-
-        var panel = new StackPanel { Spacing = 24 };
-        panel.Children.Add(_connectionView);
-        panel.Children.Add((UIElement)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Height=\"1\" MaxWidth=\"520\" HorizontalAlignment=\"Stretch\" Background=\"{ThemeResource DividerStrokeColorDefaultBrush}\"/>"));
-        panel.Children.Add(disconnect);
+        // 连接表单与欢迎页共用；在设置里放进一张卡片，与其余分类同一版式。
+        var form = SettingsCards.Panel(new Border { Padding = new Thickness(16, 14, 16, 16), Child = _connectionView });
+        var panel = new StackPanel { Spacing = SettingsCards.GroupSpacing };
+        panel.Children.Add(SettingsCards.Group("OpenCode 连接", form));
+        panel.Children.Add(SettingsCards.Group(null,
+            SettingsCards.Card("\uE8D8", "断开连接", "清除连接与已保存的凭据，不影响 OpenCode 服务本身", _disconnectButton)));
         UpdateDisconnectAvailability();
         return panel;
     }
