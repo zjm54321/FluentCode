@@ -3,6 +3,8 @@
 **/bin/
 **/obj/
 artifacts/
+**/AppPackages/
+**/node_modules/
 *.user
 *.suo
 *.log
