@@ -26,13 +26,29 @@ public sealed partial class MainWindow
     internal async Task VerifyThemeRefreshAsync(string evidence)
     {
         File.WriteAllText(Path.Combine(evidence, "progress.txt"), "navigate");
-        ContentFrame.Navigate(typeof(Pages.OpenCodePage));
+        EnsureOpenCodePage();
+        // The current shell starts an isolated, unconfigured profile on Welcome (ContentFrame is collapsed).
+        // Home branding is wide-only; the real footer moves into an unopened flyout at narrow widths.
+        _welcomeExitTimer?.Stop();
+        HideWelcome();
+        ContentFrame.Visibility = Visibility.Visible;
+        // Canvas measures children independently of the monitor/work area. Keep the same real Frame/page
+        // in this window's XamlRoot, but arrange it at explicit DIPs even on a portrait RDP desktop.
+        var renderHost = new Canvas { Width = 1600, Height = 900, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        RootElement.Children.Remove(ContentFrame);
+        ContentFrame.Width = 1600; ContentFrame.Height = 900;
+        renderHost.Children.Add(ContentFrame);
+        RootElement.Children.Insert(1, renderHost);
+        await Task.Delay(300);
+        var page = (Pages.OpenCodePage)ContentFrame.Content;
+        var homeWordmark = page.ThemeSmokeHomeWordmark;
+        var realFooter = page.ThemeSmokeFooter;
+        Image? footerWordmark = null;
         File.AppendAllText(Path.Combine(evidence, "progress.txt"), "\nfixture");
         var fixture = new StackPanel { Spacing = 14, Padding = new Thickness(24) };
         var title = new TextBlock { Text = "Runtime theme refresh", FontSize = 22 };
         var wordmark = new Image { Width = 200, Height = 40, HorizontalAlignment = HorizontalAlignment.Left };
         OpenCodeThemeAssets.BindWordmark(wordmark);
-        var footer = new OpenCodeRightPanelView().Footer;
         var agent = OpenCodeAgentIconTheme.Create("fixer", fontSize: 24);
         var editor = OpenCodeWslQuickAccessIcons.VsCodeLogo();
         var codium = OpenCodeWslQuickAccessIcons.VsCodiumLogo();
@@ -45,12 +61,13 @@ public sealed partial class MainWindow
         var checkedToggle = Descendants(browser).OfType<ToggleButton>().First();
         checkedToggle.IsChecked = true;
         fixture.Children.Add(title); fixture.Children.Add(wordmark); fixture.Children.Add(icons);
-        fixture.Children.Add(browser); fixture.Children.Add(footer);
+        fixture.Children.Add(browser);
         var surface = (Border)XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Background=\"{ThemeResource LayerFillColorDefaultBrush}\"/>");
-        surface.Child = fixture; surface.Width = 420; surface.HorizontalAlignment = HorizontalAlignment.Right;
-        Grid.SetRow(surface, 1); RootElement.Children.Add(surface);
+        surface.Child = fixture; surface.Width = 420; surface.HorizontalAlignment = HorizontalAlignment.Left;
+        surface.Height = 240; Canvas.SetLeft(surface, 24); Canvas.SetTop(surface, 48); renderHost.Children.Add(surface);
         var results = new List<object>();
         var imageHashes = new Dictionary<string, string>();
+        var lightPixels = new Dictionary<string, byte[]>();
 
         async Task Snapshot(string name, ElementTheme expected)
         {
@@ -61,11 +78,37 @@ public sealed partial class MainWindow
             Require(RootElement.ActualTheme == expected, name + ": root theme");
             title.Text = "Runtime theme refresh — " + name;
             var logoSuffix = expected == ElementTheme.Dark ? "logo-dark.svg" : "logo-light.svg";
-            var logos = Descendants(RootElement).OfType<Image>().Where(image => image.Source is SvgImageSource svg
-                && svg.UriSource?.OriginalString.Contains("Assets/OpenCode/logo-") == true).ToArray();
-            Require(logos.Length >= 3, name + ": real home, fixture and footer wordmarks are present");
-            foreach (var logo in logos) Require(((SvgImageSource)logo.Source).UriSource.OriginalString.EndsWith(logoSuffix),
-                name + ": logo variant " + logo.Name + " theme=" + logo.ActualTheme + " source=" + ((SvgImageSource)logo.Source).UriSource);
+            var capturedPixels = new Dictionary<string, byte[]>();
+            var pixelChecks = new List<object>();
+            // Check explicit production instances in their current real hosts, not a count satisfied by test copies.
+            await Present(1600, home: true);
+            var homeHash = await Wordmark(homeWordmark, "home");
+            await Screenshot(renderHost, Path.Combine(evidence, name + "-home.png"));
+            await Present(1600, home: false);
+            var currentFooterWordmark = Descendants(realFooter).OfType<Image>().Single();
+            footerWordmark ??= currentFooterWordmark;
+            Require(ReferenceEquals(footerWordmark, currentFooterWordmark), name + ": real footer image instance is retained");
+            var footerHash = await Wordmark(footerWordmark, "footer");
+            await Screenshot(renderHost, Path.Combine(evidence, name + "-wide.png"));
+            await Present(720, home: false);
+            var narrowFooterHost = page.ShowThemeSmokeNarrowFooter();
+            await Task.Delay(300);
+            Require(ReferenceEquals(footerWordmark, Descendants(realFooter).OfType<Image>().Single()), name + ": narrow footer retains the production image");
+            await CheckWordmark(footerWordmark, "narrow-flyout", narrowFooterHost);
+            // RenderTargetBitmap excludes Popup composition. Verify the open real flyout above, then
+            // capture that same content in our native render host (no replacement/footer asset).
+            page.MountThemeSmokeNarrowFooter(renderHost);
+            string narrowFooterHash;
+            try
+            {
+                await Task.Delay(300);
+                narrowFooterHash = await Wordmark(footerWordmark, "narrow-footer");
+                await Screenshot(renderHost, Path.Combine(evidence, name + "-narrow.png"));
+            }
+            finally { page.RestoreThemeSmokeNarrowFooter(renderHost); }
+            await Present(1600, home: false);
+            Require(ReferenceEquals(footerWordmark, Descendants(realFooter).OfType<Image>().Single()), name + ": wide footer restores the production image");
+            var logoHash = await Wordmark(wordmark, "fixture");
             var alias = (SolidColorBrush)((ResourceDictionary)checkedToggle.Resources.ThemeDictionaries[expected.ToString()])["ToggleButtonForegroundChecked"];
             var expectedBrush = (SolidColorBrush)ThemeResources.Brush(checkedToggle, "TextFillColorPrimaryBrush");
             Require(alias.Color == expectedBrush.Color, name + ": checked-toggle foreground alias");
@@ -80,31 +123,114 @@ public sealed partial class MainWindow
             foreach (var brand in brands)
             {
                 Require(Descendants(brand).OfType<Image>().Single().Source is not null, name + ": provider asset loaded");
-                hashes.Add(Convert.ToHexString(SHA256.HashData(await Pixels(brand))));
+                var pixels = await Pixels(brand);
+                capturedPixels["brand" + hashes.Count] = pixels;
+                hashes.Add(Convert.ToHexString(SHA256.HashData(pixels)));
             }
-            var logoHash = Convert.ToHexString(SHA256.HashData(await Pixels(wordmark)));
-            Require(!string.IsNullOrEmpty(logoHash), name + ": logo rendered");
             if (name == "app-light")
             {
                 imageHashes["logo"] = logoHash;
+                imageHashes["home"] = homeHash;
+                imageHashes["footer"] = footerHash;
+                imageHashes["narrow-footer"] = narrowFooterHash;
                 for (var i = 0; i < hashes.Count; i++) imageHashes["brand" + i] = hashes[i];
                 imageHashes["alias"] = alias.Color.ToString();
+                foreach (var pair in capturedPixels) lightPixels[pair.Key] = pair.Value;
             }
             if (name == "app-dark")
             {
                 Require(imageHashes["logo"] != logoHash, "wordmark pixels change on the same instance");
+                Require(imageHashes["home"] != homeHash, "real home wordmark pixels change on the same instance");
+                Require(imageHashes["footer"] != footerHash, "real footer wordmark pixels change on the same instance");
+                Require(imageHashes["narrow-footer"] != narrowFooterHash, "real narrow footer pixels change on the same instance");
                 Require(imageHashes["alias"] != alias.Color.ToString(), "cached alias color changes");
                 for (var i = 0; i < hashes.Count; i++) Require(imageHashes["brand" + i] != hashes[i], "provider " + i + " pixels change");
             }
-            if (name == "app-light-again")
+            if (expected == ElementTheme.Light && name != "app-light")
             {
-                Require(imageHashes["logo"] == logoHash, "wordmark restores original light pixels");
-                for (var i = 0; i < hashes.Count; i++) Require(imageHashes["brand" + i] == hashes[i], "provider " + i + " restores light pixels");
+                SameLightPixels("fixture"); SameLightPixels("home"); SameLightPixels("footer"); SameLightPixels("narrow-footer");
+                for (var i = 0; i < hashes.Count; i++) SameLightPixels("brand" + i);
             }
-            await Screenshot(RootElement, Path.Combine(evidence, name + ".png"));
-            results.Add(new { Name = name, Theme = RootElement.ActualTheme.ToString(), Logos = logos.Length,
-                LogoHash = logoHash, BrandHashes = hashes, ToggleForeground = alias.Color.ToString(), Agent = ((SolidColorBrush)agent.Foreground).Color.ToString() });
+            await Screenshot(renderHost, Path.Combine(evidence, name + ".png"));
+            results.Add(new { Name = name, Theme = RootElement.ActualTheme.ToString(), Wordmarks = new[] { "home", "footer", "fixture" },
+                LogoHash = logoHash, HomeLogoHash = homeHash, FooterLogoHash = footerHash,
+                HomeLogoUri = ((SvgImageSource)homeWordmark.Source).UriSource.OriginalString,
+                FooterLogoUri = ((SvgImageSource)footerWordmark.Source).UriSource.OriginalString,
+                RealHostsPresented = true, SameImageInstances = true,
+                WideWidthDip = 1600, NarrowWidthDip = 720, NarrowFooterHash = narrowFooterHash,
+                NarrowFlyoutPresented = true, NarrowPopupContentCapturedInRoot = true,
+                LightPixelChecks = pixelChecks,
+                BrandHashes = hashes, ToggleForeground = alias.Color.ToString(), Agent = ((SolidColorBrush)agent.Foreground).Color.ToString() });
             File.WriteAllText(Path.Combine(evidence, "assertions.json"), JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
+
+            async Task CheckWordmark(Image image, string role, FrameworkElement? popupHost = null)
+            {
+                var readyUntil = DateTime.UtcNow.AddSeconds(12);
+                while ((!image.IsLoaded || image.ActualWidth <= 0 || image.ActualHeight <= 0) && DateTime.UtcNow < readyUntil) await Task.Delay(100);
+                Require(image.IsLoaded && image.ActualWidth > 0 && image.ActualHeight > 0, name + ": " + role + " wordmark is measured and loaded");
+                DependencyObject? ancestor = image;
+                var visualRoot = popupHost ?? RootElement;
+                while (ancestor is not null && !ReferenceEquals(ancestor, visualRoot))
+                {
+                    Require(ancestor is not UIElement { Visibility: Visibility.Collapsed }, name + ": " + role + " wordmark has no collapsed ancestor");
+                    ancestor = VisualTreeHelper.GetParent(ancestor);
+                }
+                Require(ReferenceEquals(ancestor, visualRoot) && image.XamlRoot == RootElement.XamlRoot,
+                    name + ": " + role + " wordmark is in the real window or its open production flyout");
+                Require(image.ActualTheme == expected && image.Source is SvgImageSource svg
+                    && svg.UriSource?.OriginalString.EndsWith("Assets/OpenCode/" + logoSuffix, StringComparison.Ordinal) == true,
+                    name + ": " + role + " logo variant theme=" + image.ActualTheme + " source=" + (image.Source as SvgImageSource)?.UriSource);
+            }
+
+            async Task<string> Wordmark(Image image, string role)
+            {
+                await CheckWordmark(image, role);
+                var pixels = await Pixels(image);
+                Require(pixels.Length > 0 && pixels.Where((_, index) => index % 4 == 3).Any(alpha => alpha != 0), name + ": " + role + " wordmark has nontransparent rendered pixels");
+                capturedPixels[role] = pixels;
+                var hash = Convert.ToHexString(SHA256.HashData(pixels));
+                await Screenshot(image, Path.Combine(evidence, name + "-" + role + "-wordmark.png"));
+                File.AppendAllText(Path.Combine(evidence, "wordmark-measures.jsonl"), JsonSerializer.Serialize(new
+                {
+                    Name = name, Role = role, image.ActualWidth, image.ActualHeight,
+                    Offset = image.TransformToVisual(RootElement).TransformPoint(new Windows.Foundation.Point()),
+                    image.Opacity, RasterizationScale = image.XamlRoot.RasterizationScale, PixelBytes = pixels.Length,
+                    Hash = hash, Uri = ((SvgImageSource)image.Source).UriSource.OriginalString,
+                }) + Environment.NewLine);
+                return hash;
+            }
+
+            void SameLightPixels(string role)
+            {
+                var original = lightPixels[role]; var restored = capturedPixels[role];
+                Require(original.Length == restored.Length, name + ": " + role + " restores light pixel dimensions");
+                var maxDelta = 0; var changedPixels = 0;
+                for (var pixel = 0; pixel < original.Length; pixel += 4)
+                {
+                    var changed = false;
+                    for (var channel = 0; channel < 4; channel++)
+                    {
+                        var delta = Math.Abs(original[pixel + channel] - restored[pixel + channel]);
+                        maxDelta = Math.Max(maxDelta, delta); changed |= delta != 0;
+                    }
+                    if (changed) changedPixels++;
+                }
+                // Direct2D SVG rerasterization can vary at antialiased edges by 1–2 byte levels.
+                // Keep full pixel/dimension comparison; hash equality would reject that rounding noise.
+                Require(maxDelta <= 2, name + ": " + role + " restores light pixels, max channel delta=" + maxDelta);
+                pixelChecks.Add(new { Role = role, MaxChannelDelta = maxDelta, ChangedPixels = changedPixels, PixelCount = original.Length / 4 });
+            }
+        }
+
+        async Task Present(double width, bool home)
+        {
+            renderHost.Width = width; ContentFrame.Width = width;
+            renderHost.UpdateLayout();
+            page.ShowThemeSmokeSurface(home);
+            await Task.Delay(300);
+            Require(Math.Abs(page.ThemeSmokePageWidth - width) < 0.5,
+                $"fixed native page width: expected={width}, actual={page.ThemeSmokePageWidth}");
+            Require(page.ThemeSmokeIsWide == (width >= OpenCodeSidebarLayout.EnterWideWidth), "real wide/narrow breakpoint");
         }
 
         ApplyTheme(AppTheme.Light); await Snapshot("app-light", ElementTheme.Light);

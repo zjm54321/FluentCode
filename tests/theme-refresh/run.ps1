@@ -58,8 +58,23 @@ try {
     $handle = [IntPtr]::new([long]$Matches[1]); [uint32]$owner = 0
     [void][ThemeWindow]::GetWindowThreadProcessId($handle, [ref]$owner)
     if (![ThemeWindow]::IsWindow($handle) -or $owner -ne $process.Id) { throw 'Fixture HWND is not live.' }
+    $assertions = Get-Content -Raw (Join-Path $profile 'assertions.json') | ConvertFrom-Json
+    $expectedPhases = @('app-light', 'app-dark', 'app-light-again', 'system-light', 'system-dark', 'override-light', 'override-dark')
+    if ($assertions.Count -ne $expectedPhases.Count) { throw 'Expected all seven theme phases.' }
+    for ($i = 0; $i -lt $expectedPhases.Count; $i++) {
+        $phase = $assertions[$i]
+        if ($phase.Name -ne $expectedPhases[$i] -or !$phase.RealHostsPresented -or !$phase.SameImageInstances -or
+            $phase.WideWidthDip -ne 1600 -or $phase.NarrowWidthDip -ne 720 -or !$phase.NarrowFooterHash -or
+            !$phase.NarrowFlyoutPresented -or !$phase.NarrowPopupContentCapturedInRoot) {
+            throw "Missing real wide/narrow wordmark evidence: $($expectedPhases[$i])"
+        }
+    }
+    $result.Phases = $expectedPhases
+    $result.WideWidthDip = 1600
+    $result.NarrowWidthDip = 720
     Copy-Item (Join-Path $profile '*.png') $EvidenceRoot
     Copy-Item (Join-Path $profile 'assertions.json') $EvidenceRoot
+    Copy-Item (Join-Path $profile 'wordmark-measures.jsonl') $EvidenceRoot
     $result.Passed = $true
     Write-Output "PASS runtime app and Windows theme changes, same PID $($process.Id): $EvidenceRoot"
 } catch { $result.Error=$_.Exception.Message; throw }
