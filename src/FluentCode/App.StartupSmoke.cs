@@ -13,7 +13,8 @@ public partial class App
     private void InitializeStartupSmokeDiagnostics()
     {
         if (StartupSmokeRoot is not { } root || Environment.GetEnvironmentVariable("FC_THEME_REFRESH_TEST") != "1"
-            && Environment.GetEnvironmentVariable("FC_TRANSCRIPT_INPUT_TEST") != "1") return;
+            && Environment.GetEnvironmentVariable("FC_TRANSCRIPT_INPUT_TEST") != "1"
+            && Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_TEST") != "1") return;
         DebugSettings.IsXamlResourceReferenceTracingEnabled = true;
         DebugSettings.XamlResourceReferenceFailed += (_, args) => File.AppendAllText(Path.Combine(root, "resource-errors.txt"), args.Message + Environment.NewLine);
     }
@@ -32,6 +33,13 @@ public partial class App
                 {
                     var failures = await window.VerifyTranscriptInputAsync(StartupSmokeRoot!);
                     if (failures > 0) { File.WriteAllText(Path.Combine(StartupSmokeRoot!, "failed.txt"), $"transcript input: {failures} failures"); return; }
+                    File.WriteAllText(Path.Combine(StartupSmokeRoot!, "ready.txt"),
+                        $"PID={Environment.ProcessId}; HWND={WinRT.Interop.WindowNative.GetWindowHandle(window)}; Base={AppContext.BaseDirectory}");
+                    return;
+                }
+                if (Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_TEST") == "1")
+                {
+                    await window.RunShellCaptureAsync(StartupSmokeRoot!);
                     File.WriteAllText(Path.Combine(StartupSmokeRoot!, "ready.txt"),
                         $"PID={Environment.ProcessId}; HWND={WinRT.Interop.WindowNative.GetWindowHandle(window)}; Base={AppContext.BaseDirectory}");
                     return;

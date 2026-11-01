@@ -46,8 +46,6 @@ public partial class App : Application
             if (_window is not null) { ShowMainWindow(); return; }
             if (!await BecomePrimaryInstanceAsync()) { Exit(); return; }
             if (_closing) return;
-            // Migration is a startup prerequisite; do not open a blank replacement profile on failure.
-            _ = Services.Configuration.AppDataPaths.GetRootDirectory(null);
             // 用户字体（F11）必须在任何界面创建前写入应用资源；失败时保持默认字体，不阻断启动。
             try { await Services.Appearance.AppFonts.InitializeAsync(FluentCode.Services.Configuration.AppServices.Settings); }
             catch (Exception ex) { RecordDiagnostic("app-fonts-initialize-failed", error: ex); }
@@ -60,7 +58,13 @@ public partial class App : Application
             window.AppWindow.Closing += OnAppWindowClosing;
             window.Closed += OnNotificationWindowClosed;
             window.Activate();
-            if (StartupSmokeRoot is not null) { StartStartupSmoke(window); return; }
+            if (StartupSmokeRoot is not null)
+            {
+                // Opt-in shell capture needs a real OpenCode source (isolated profile; client only, no tray/taskbar/toasts).
+                if (Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_TEST") == "1") StartOpenCodeOwnership();
+                StartStartupSmoke(window);
+                return;
+            }
             InitializeBackgroundMode(window);
             RecordDiagnostic("taskbar-initialize", taskbar: InitializeTaskbar(WinRT.Interop.WindowNative.GetWindowHandle(window)));
             StartCompletionNotifications(window);
@@ -69,8 +73,6 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            if (ex is Services.Configuration.AppDataMigrationException)
-                MigrationMessageBox(IntPtr.Zero, ex.Message, "FluentCode — 数据迁移未完成", 0x10);
             if (StartupSmokeRoot is { } root)
                 File.AppendAllText(Path.Combine(root, "failed.txt"), ex.ToString());
             RecordDiagnostic("app-launch-failed", error: ex);
@@ -78,6 +80,4 @@ public partial class App : Application
         }
     }
 
-    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, EntryPoint = "MessageBoxW")]
-    private static extern int MigrationMessageBox(IntPtr owner, string text, string caption, uint type);
 }

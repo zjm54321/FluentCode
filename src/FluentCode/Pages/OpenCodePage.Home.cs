@@ -50,6 +50,7 @@ public sealed partial class OpenCodePage
     {
         InitializePinnedHomeTab();
         HomePageHost.Children.Add(_homeView);
+        HomePageHost.Children.Add(CreateHomeSettingsButton());
         Loaded += (_, _) => { if (_homeActive) ShowHomePage(); };
         Unloaded += (_, _) => { if (!IsLoaded) ResetHomeSource(); };
         SessionLayoutRoot.SizeChanged += (_, _) => { UpdateConversationColumns(); if (_blankComposerPlacement) QueueComposerLayout(); };

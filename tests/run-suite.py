@@ -14,7 +14,6 @@ PWSH = '/mnt/c/Program Files/PowerShell/7/pwsh.exe'
 BASE_ROOTS = {'opencode-composer'}
 RUNNERS = (
     'opencode-auth/run.ps1',
-    'data-migration/run.ps1',
     'opencode-connection/run.ps1',
     'opencode-pairing/run.ps1',
     'opencode-event-sync/run.ps1',
@@ -129,8 +128,8 @@ def main():
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args()
     root = args.root.resolve()
-    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-', 'fluentcode-step1-suite-')):
-        parser.error('Use a NEW artifacts/fluentcode-step1-suite-* directory')
+    if root.parent != REPO / 'artifacts' or not root.name.startswith(('prune-verify-', 'restoration-suite-', 'fluentcode-step1-suite-', 'fluentcode-step2-suite-')):
+        parser.error('Use a NEW artifacts/fluentcode-step1-suite-* or fluentcode-step2-suite-* directory')
     entries = plan(root)
     if not args.execute:
         print(json.dumps(entries, ensure_ascii=False, indent=2))

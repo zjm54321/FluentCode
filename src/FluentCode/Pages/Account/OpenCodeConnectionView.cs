@@ -13,7 +13,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace FluentCode.Pages.Account;
 
-/// <summary>账户入口中的唯一连接表单。秘密仅留在密码控件/内存中；离开即清空，不自动兑换或重试。</summary>
+/// <summary>唯一 OpenCode 连接表单（设置 › 账号与连接、首次运行欢迎页）。秘密仅留在密码控件/内存中；离开即清空，不自动兑换或重试。</summary>
 /// <remarks>
 /// 视觉层级（仅原生控件 + 主题画刷）：当前连接卡片 → 三种连接方式（原生 RadioButtons，一眼可见）→ 所选方式的表单
 /// → 唯一主操作“连接 OpenCode”（强调色按钮）→ 状态条（失败 / 待保存 / 成功按 InfoBar 语义着色，并配图标，不只靠颜色）。
@@ -51,7 +51,8 @@ public sealed class OpenCodeConnectionView : UserControl
 
     public bool IsBusy => _operation is not null;
 
-    public OpenCodeConnectionView(SettingsService settings, DpapiSecretStore secrets)
+    /// <param name="showCurrentConnection">欢迎页（尚未添加任何 OpenCode）不显示“当前配置”卡片。</param>
+    public OpenCodeConnectionView(SettingsService settings, DpapiSecretStore secrets, bool showCurrentConnection = true)
     {
         _settings = settings;
         _committer = new(OpenCodeConnectionCommitter.VerifyWithOpenCodeAsync, secrets.SetAsync,
@@ -116,14 +117,14 @@ public sealed class OpenCodeConnectionView : UserControl
         _statusCard.Child = statusRow;
 
         var body = new StackPanel { Spacing = 16, MaxWidth = 520 };
-        body.Children.Add(currentCard);
+        if (showCurrentConnection) body.Children.Add(currentCard);
         body.Children.Add(_flow);
         body.Children.Add(_wsl);
         body.Children.Add(_remote);
         body.Children.Add(_pairing);
         body.Children.Add(actions);
         body.Children.Add(_statusCard);
-        // ContentDialog 内容区自带纵向滚动视图：窄 / 矮窗口时整页滚动，不出现嵌套滚动条。
+        // 宿主（设置分类滚动区 / 欢迎页滚动区）负责纵向滚动，不出现嵌套滚动条。
         Content = body;
 
         _flow.SelectionChanged += (_, _) => UpdateFlow();
@@ -189,6 +190,9 @@ public sealed class OpenCodeConnectionView : UserControl
 
         _statusIcon.Glyph = glyph;
         OpenCodeToolTheme.Apply(_statusIcon, OpenCodeToolTheme.Icon(iconKey));
+        // 结果（成功 / 警告 / 失败）出现在表单底部：滚动宿主中自动带入视野，避免在矮窗口里看不到。
+        if (tone != StatusTone.Neutral && _statusCard.IsLoaded)
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => _statusCard.StartBringIntoView());
     }
 
     private static string SafeAddress(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var uri)
@@ -333,6 +337,19 @@ public sealed class OpenCodeConnectionView : UserControl
         if (_settings.Current is { } current) ShowSummary(current.OpenCode);
         // The new credential reference causes the existing App settings owner to reconnect exactly once.
     }
+
+    // ---- Opt-in shell capture (FC_SHELL_CAPTURE_TEST, isolated startup-smoke profile only) ----
+    internal int TestDistributionCount => _distributions.Items.Count;
+    internal string TestStatusText => _status.Text;
+    internal void TestFillRemote(string address, string username, string password)
+    {
+        _flow.SelectedIndex = 1;
+        _address.Text = address;
+        _username.Text = username;
+        _password.Password = password;
+    }
+    internal void TestSelectWsl() => _flow.SelectedIndex = 0;
+    internal Task TestConnectAsync() => RunAsync(ConnectAsync);
 
     public void Close()
     {

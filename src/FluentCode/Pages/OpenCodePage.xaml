@@ -15,7 +15,7 @@
           Row 1  双侧 SplitView：页面宽度与滞回由 OpenCodePage.Sidebars.cs 管理；宽屏 Inline 常驻，窄屏 Overlay 抽屉。
                  工作区 = 右侧概况面板 → 状态行 / 进度 / InfoBar / 时间线 / 交互区 / 排队条 / 输入区
         全部为 WinUI 原生控件与内置样式、主题资源；不设置 RequestedTheme（跟随系统）。
-        BG1：MainWindow 提供桌面亚克力，NavigationView 内容层与页面根透明；文字卡片保留标准主题背景。
+        BG1：MainWindow 提供 Mica；标签行透明（外框色），Row 1 由 ContentLayer 铺内容层色；文字卡片保留标准主题背景。
         SessionPane 不设置 Background（避免叠加或遮挡窗口材质）。
         同时在页面级 Resources.ThemeDictionaries 中将 TabViewItemHeaderBackgroundSelected 映射到
         LayerFillColorDefaultBrush（高对比度为 SystemColorWindowColorBrush），因为元素级 Resources 优先于
@@ -107,7 +107,7 @@
         </VisualStateManager.VisualStateGroups>
 
         <!-- ============================================================
-             Row 0：会话标签（原生 TabView；不并入窗口标题栏）
+             Row 0：会话标签（原生 TabView）= 窗口标题栏（资源管理器式；首页标签固定最左，右侧空白可拖动）
              ============================================================ -->
         <TabView
             x:Name="SessionTabs"
@@ -139,86 +139,21 @@
                 </TabViewItem>
             </TabView.TabItems>
 
+            <!-- FluentCode：TabView 即窗口标题栏（资源管理器式）。标签行透明，透出窗口 Mica（原外框色）；
+                 右侧剩余空白为可拖动区域（MainWindow.TitleBar.cs 经 Window.SetTitleBar 登记），
+                 MinWidth 由宿主按系统 caption 按钮宽度设置，标签不会被窗口按钮遮住。 -->
             <TabView.TabStripFooter>
-                <StackPanel
-                    x:Name="SidebarHeaderActions"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Margin="0,0,8,0"
-                    Spacing="4">
-                    <ToggleButton x:Name="SessionPaneToggleButton" Width="32" Height="32" MinWidth="0" Padding="0"
-                                  Click="SessionPaneToggleButton_Click"
-                                  AutomationProperties.AutomationId="OpenCodeSessionPaneToggle"
-                                  AutomationProperties.Name="会话导航" ToolTipService.ToolTip="会话导航">
-                        <FontIcon Glyph="&#xE700;" FontSize="16" />
-                    </ToggleButton>
-                    <!-- 服务连接状态（只在可确定时显示；可达性来自真实请求结果）。F10b：原生透明按钮，点击打开连接详情 Flyout
-                         （服务状态 / MCP / 插件 / LSP）；打开时读取一次服务版本，MCP/插件复用会话概况的显式读取，不轮询。 -->
-                    <Button
-                        x:Name="ConnectionStatusButton"
-                        Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
-                        Height="32"
-                        Padding="10,0,10,0"
-                        Margin="8,0,4,0"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AutomationId="OpenCodeConnectionStatus"
-                        AutomationProperties.Name="连接状态">
-                        <Button.Flyout>
-                            <Flyout
-                                x:Name="ConnectionFlyout"
-                                Placement="BottomEdgeAlignedRight"
-                                Opening="ConnectionFlyout_Opening"
-                                Closed="ConnectionFlyout_Closed" />
-                        </Button.Flyout>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Ellipse
-                                x:Name="ConnectionDot"
-                                Width="8"
-                                Height="8"
-                                VerticalAlignment="Center" />
-                            <TextBlock
-                                x:Name="ConnectionStatusText"
-                                Text="尚未连接"
-                                Style="{ThemeResource CaptionTextBlockStyle}"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <!-- wave5 G5：上下文参考圆环（OpenCodeContextRing.Root，32×32 原生透明按钮 + 确定进度环 + Flyout），
-                         紧挨在“概况”按钮左侧；由页面代码挂入一次。新标签页布局时隐藏。 -->
-                    <Border
-                        x:Name="ContextRingHost"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AutomationId="OpenCodeContextRingHost" />
-                    <!-- 布局 D 窄模式：“概况”按钮（图标 + 文字）把右侧会话卡片作为浮动面板打开（轻点外部关闭）。宽模式不显示。 -->
-                    <Button
-                        x:Name="SessionInsightsButton"
-                        Height="32"
-                        MinWidth="0"
-                        Padding="10,0,10,0"
-                        VerticalAlignment="Center"
-                        Click="SessionInsightsButton_Click"
-                        AutomationProperties.AutomationId="OpenCodeSessionInsightsButton"
-                        AutomationProperties.Name="概况"
-                        ToolTipService.ToolTip="概况">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-                                <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
-                            </Style>
-                        </Button.Style>
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE9D2;" FontSize="14" VerticalAlignment="Center" />
-                            <TextBlock Text="概况" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                <Grid x:Name="TitleBarDragRegion" Background="Transparent" MinWidth="138"
+                      AutomationProperties.AutomationId="FluentCodeTitleBarDragRegion" />
             </TabView.TabStripFooter>
         </TabView>
 
         <!-- ============================================================
              Row 1：内容区。不设 Background，直接透出窗口桌面亚克力（BG1）。
              ============================================================ -->
+        <!-- FluentCode：内容层 = 原 NavigationView 内容层颜色（LayerFillColorDefaultBrush），贴边铺满，无描边、无圆角、无外边距；
+             选中标签使用同一画刷（见 TabViewItemHeaderBackgroundSelected），与内容区连成一片。 -->
+        <Border x:Name="ContentLayer" Grid.Row="1" Background="{ThemeResource LayerFillColorDefaultBrush}" IsHitTestVisible="False" />
         <!-- Browser pages remain full-sized and mounted even when the overlay is closed. -->
         <Grid x:Name="BrowserHiddenHost" Grid.Row="1" Opacity="0" IsHitTestVisible="False"
               HorizontalAlignment="Left" VerticalAlignment="Top" Loaded="BrowserHiddenHost_Loaded" />
@@ -771,6 +706,70 @@
                                                                         AutomationProperties.AutomationId="OpenCodeBlankStrength" />
                                                         <StackPanel x:Name="ComposerToolbarMiddle" Grid.Column="4" Orientation="Horizontal" Spacing="2"
                                                                     HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                            <!-- 窄屏：原标题栏右侧的“上下文”与“概况”移到输入框底部工具行；宽屏两者由常驻右侧面板承担（不显示）。
+                                                                 SidebarHeaderActions 只是保留的隐藏宿主：会话导航开关（始终折叠）与连接状态按钮（宽屏移入右侧面板）。 -->
+                                                            <StackPanel x:Name="SidebarHeaderActions" Orientation="Horizontal" Visibility="Collapsed">
+                                                                <ToggleButton x:Name="SessionPaneToggleButton" Width="32" Height="32" MinWidth="0" Padding="0"
+                                                                              Click="SessionPaneToggleButton_Click"
+                                                                              AutomationProperties.AutomationId="OpenCodeSessionPaneToggle"
+                                                                              AutomationProperties.Name="会话导航" ToolTipService.ToolTip="会话导航">
+                                                                    <FontIcon Glyph="&#xE700;" FontSize="16" />
+                                                                </ToggleButton>
+                                                                <Button
+                                                                    x:Name="ConnectionStatusButton"
+                                                                    Style="{StaticResource OpenCodeTransparentToolButtonStyle}"
+                                                                    Height="32"
+                                                                    Padding="10,0,10,0"
+                                                                    Margin="8,0,4,0"
+                                                                    VerticalAlignment="Center"
+                                                                    AutomationProperties.AutomationId="OpenCodeConnectionStatus"
+                                                                    AutomationProperties.Name="连接状态">
+                                                                    <Button.Flyout>
+                                                                        <Flyout
+                                                                            x:Name="ConnectionFlyout"
+                                                                            Placement="BottomEdgeAlignedRight"
+                                                                            Opening="ConnectionFlyout_Opening"
+                                                                            Closed="ConnectionFlyout_Closed" />
+                                                                    </Button.Flyout>
+                                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                        <Ellipse
+                                                                            x:Name="ConnectionDot"
+                                                                            Width="8"
+                                                                            Height="8"
+                                                                            VerticalAlignment="Center" />
+                                                                        <TextBlock
+                                                                            x:Name="ConnectionStatusText"
+                                                                            Text="尚未连接"
+                                                                            Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                            VerticalAlignment="Center" />
+                                                                    </StackPanel>
+                                                                </Button>
+                                                            </StackPanel>
+                                                            <Border
+                                                                    x:Name="ContextRingHost"
+                                                                    VerticalAlignment="Center"
+                                                                    AutomationProperties.AutomationId="OpenCodeContextRingHost" />
+                                                            <Button
+                                                                    x:Name="SessionInsightsButton"
+                                                                    Height="32"
+                                                                    MinWidth="0"
+                                                                    Padding="10,0,10,0"
+                                                                    VerticalAlignment="Center"
+                                                                    Click="SessionInsightsButton_Click"
+                                                                    AutomationProperties.AutomationId="OpenCodeSessionInsightsButton"
+                                                                    AutomationProperties.Name="概况"
+                                                                    ToolTipService.ToolTip="概况">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                                                                            <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                        <FontIcon Glyph="&#xE9D2;" FontSize="14" VerticalAlignment="Center" />
+                                                                        <TextBlock Text="概况" VerticalAlignment="Center" />
+                                                                    </StackPanel>
+                                                                </Button>
                                                             <Button x:Name="ComposerSubagentsButton" Width="32" Height="32" MinWidth="0" Padding="0"
                                                                     Click="ComposerSubagentsButton_Click" AutomationProperties.Name="后台子智能体"
                                                                     ToolTipService.ToolTip="后台子智能体" AutomationProperties.AutomationId="OpenCodeComposerSubagents">
@@ -887,5 +886,8 @@
         <Grid x:Name="BrowserOverlayHost" Grid.Row="1" HorizontalAlignment="Left" Visibility="Collapsed" />
         <Grid x:Name="PersistentPtyOverlayHost" Grid.Row="1" HorizontalAlignment="Left" Visibility="Collapsed"
               AutomationProperties.AutomationId="OpenCodePersistentPtyOverlayHost" />
+        <!-- 设置标签（单例）：选中时覆盖会话区域；内容为原设置页（OpenCodePage.SettingsTab.cs）。 -->
+        <Grid x:Name="SettingsTabHost" Grid.Row="1" Visibility="Collapsed"
+              AutomationProperties.AutomationId="FluentCodeSettingsTabHost" />
     </Grid>
 </Page>

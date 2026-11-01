@@ -189,13 +189,7 @@ public sealed partial class MainWindow
             return;
         }
 
-        // 设置页存在未保存输入时，Frame.Navigating 会把本次导航转为页内确认；目标保留在缓冲，待其完成后重试。
-        if (ContentFrame.Content is Pages.Settings.SettingsPage { HasUnsavedChanges: true })
-        {
-            ShowShellNotice(InfoBarSeverity.Warning, "设置中有未保存的修改", "完成或放弃设置修改后，将打开目标会话。");
-        }
-
-        NavigateToTag("OpenCode");
+        EnsureOpenCodePage();
 
         if (ContentFrame.Content is Pages.OpenCodePage)
         {
@@ -245,6 +239,8 @@ public sealed partial class MainWindow
 
                 try
                 {
+                    // 设置标签保持打开（未保存输入不丢），先回到会话区域再打开目标。
+                    page.RevealSessionSurface();
                     await page.NavigateToNotificationAsync(item.Target, item.Result);
                 }
                 catch (Exception)
@@ -429,7 +425,6 @@ public sealed partial class MainWindow
     {
         this.Activated += ShellWindow_VisibilityChanged;
         AppWindow.Changed += ShellAppWindow_Changed;
-        InitializeOpenCodeNavBadge();
     }
 
     /// <summary>窗口关闭时调用：保守置不可见（在途 view ACK fence 立即失败），再解除订阅。</summary>
@@ -438,7 +433,6 @@ public sealed partial class MainWindow
         this.Activated -= ShellWindow_VisibilityChanged;
         AppWindow.Changed -= ShellAppWindow_Changed;
         PushOpenCodeWindowVisibility(false);
-        ShutdownOpenCodeNavBadge();
     }
 
     /// <summary>窗口激活状态变化（含最小化路径的失活）：失活即保守不可见；其余按 presenter 状态重算。</summary>
@@ -483,130 +477,10 @@ public sealed partial class MainWindow
     {
         _openCodeWindowVisible = visible;
         Pages.OpenCode.OpenCodeWorkingClock.Shared.SetHostVisible(visible);
+        AcknowledgeTerminalTasksWhenVisible();
         if (ContentFrame.Content is Pages.OpenCodePage page)
         {
             page.NotifyHostWindowVisibility(visible);
         }
-    }
-
-    // ---- 导航项 InfoBadge（重设计 v3 L9：OpenCode 有需要处理的会话） ----
-
-    private App? _navBadgeApp;
-    private bool _navBadgeRefreshQueued;
-
-    /// <summary>
-    /// 构造期（在 <c>InitializeShellIntegration</c> 之后）订阅 App 会话 UI 状态与来源变化，驱动 OpenCode 导航项的原生 InfoBadge。
-    /// 只读：不发请求、不改任何会话状态；事件负载不直接使用，统一经 <see cref="App.GetOpenCodeSessionUiSnapshot"/> 在 UI 线程按当前来源复核后读取。
-    /// </summary>
-    private void InitializeOpenCodeNavBadge()
-    {
-        if (_navBadgeApp is not null || _app is not { } app)
-        {
-            return;
-        }
-
-        _navBadgeApp = app;
-        app.OpenCodeSessionUiStateChanged += App_OpenCodeNavBadgeChanged;
-        app.OpenCodeSourceChanged += App_OpenCodeNavBadgeChanged;
-        QueueOpenCodeNavBadgeRefresh();
-    }
-
-    private void ShutdownOpenCodeNavBadge()
-    {
-        if (_navBadgeApp is { } app)
-        {
-            app.OpenCodeSessionUiStateChanged -= App_OpenCodeNavBadgeChanged;
-            app.OpenCodeSourceChanged -= App_OpenCodeNavBadgeChanged;
-            _navBadgeApp = null;
-        }
-
-        ApplyOpenCodeNavBadge(0, 0);
-    }
-
-    private void App_OpenCodeNavBadgeChanged(object? sender, EventArgs e)
-    {
-        if (_shellClosing || !ReferenceEquals(sender, _navBadgeApp))
-        {
-            return;
-        }
-
-        QueueOpenCodeNavBadgeRefresh();
-    }
-
-    /// <summary>合并到下一次 UI 调度（来源换代与状态事件常成串到达）。</summary>
-    private void QueueOpenCodeNavBadgeRefresh()
-    {
-        if (_navBadgeRefreshQueued || DispatcherQueue is not { } queue)
-        {
-            return;
-        }
-
-        _navBadgeRefreshQueued = true;
-        if (!queue.TryEnqueue(() =>
-        {
-            _navBadgeRefreshQueued = false;
-            RefreshOpenCodeNavBadge();
-        }))
-        {
-            _navBadgeRefreshQueued = false;
-        }
-    }
-
-    private void RefreshOpenCodeNavBadge()
-    {
-        int pending = 0, unread = 0;
-        if (!_shellClosing && _navBadgeApp is { } app && app.CurrentOpenCodePageSource is { IsRevoked: false } source)
-        {
-            try
-            {
-                if (app.GetOpenCodeSessionUiSnapshot(source, source.Revision) is { } snapshot)
-                {
-                    foreach (var state in snapshot.Sessions)
-                    {
-                        if (state.PendingAction == true) pending++;
-                        else if (state.IsUnread) unread++;
-                    }
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // 非 App 线程 / 关闭中：按“无提示”处理，不伪造状态。
-                pending = unread = 0;
-            }
-        }
-
-        ApplyOpenCodeNavBadge(pending, unread);
-    }
-
-    /// <summary>pending &gt; 0：数字徽标（等待处理的会话数）；仅有未读完成：圆点（Value = -1）；否则隐藏。</summary>
-    private void ApplyOpenCodeNavBadge(int pending, int unread)
-    {
-        if (NavOpenCodeBadge is not { } badge)
-        {
-            return;
-        }
-
-        string description;
-        if (pending > 0)
-        {
-            badge.Value = pending;
-            badge.Visibility = Visibility.Visible;
-            description = "OpenCode：" + pending + " 个会话等待你处理" + (unread > 0 ? "，另有 " + unread + " 个会话有未查看的结果" : "");
-        }
-        else if (unread > 0)
-        {
-            badge.Value = -1;
-            badge.Visibility = Visibility.Visible;
-            description = "OpenCode：" + unread + " 个会话有未查看的结果";
-        }
-        else
-        {
-            badge.Visibility = Visibility.Collapsed;
-            description = "OpenCode";
-        }
-
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(badge,
-            pending > 0 || unread > 0 ? description : "OpenCode 没有需要处理的会话");
-        ToolTipService.SetToolTip(NavOpenCode, description);
     }
 }

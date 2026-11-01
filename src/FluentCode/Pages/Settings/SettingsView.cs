@@ -35,6 +35,7 @@ namespace FluentCode.Pages.Settings;
 public sealed partial class SettingsView : UserControl
 {
     private readonly SettingsService _settingsService;
+    private readonly DpapiSecretStore _secretStore;
     private CancellationTokenSource _lifetimeCts = new();
     private AppSettings _settings = AppSettings.Empty;
     private bool _unloaded;
@@ -83,6 +84,7 @@ public sealed partial class SettingsView : UserControl
         DpapiSecretStore secretStore)
     {
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+        _secretStore = secretStore ?? throw new ArgumentNullException(nameof(secretStore));
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
         AutomationProperties.SetAutomationId(this, "SettingsView");
@@ -208,6 +210,7 @@ public sealed partial class SettingsView : UserControl
 
         // 卸载时结束任何仍待处理的内联确认（按“取消”处理），避免等待它的处理器悬挂。
         CompleteConfirm(ConfirmChoice.Cancel);
+        CloseAccountSection();
 
         Unsubscribe();
         _lifetimeCts.Cancel();
@@ -259,6 +262,7 @@ public sealed partial class SettingsView : UserControl
 
             _settings = _settingsService.Current ?? e.Settings;
             ApplySettingsToUi();
+            UpdateDisconnectAvailability();
         });
     }
 
@@ -330,6 +334,10 @@ public sealed partial class SettingsView : UserControl
 
         // 分类内容（各构建一次，切换时复用；说明文本作为分类头说明）。
         _categories.Add(new CategoryEntry(
+            "账号与连接",
+            "唯一的 OpenCode 连接：WSL 自动发现、远程地址或配对链接；也可以断开当前连接。",
+            BuildAccountSection()));
+        _categories.Add(new CategoryEntry(
             "外观",
             "主题（跟随系统 / 浅色 / 深色）与字体（正文 / 衬线 / 等宽）。选择后立即保存并应用到整个应用。",
             BuildThemeSection()));
@@ -337,7 +345,7 @@ public sealed partial class SettingsView : UserControl
         _categories.Add(new CategoryEntry("终端", string.Empty, BuildTerminalSection()));
         _categories.Add(new CategoryEntry(
             "OpenCode 后端",
-            "连接设置已移至“用户”→“连接 OpenCode”；现有连接与凭据保留。",
+            "连接设置位于“账号与连接”；现有连接与凭据保留。",
             BuildOpenCodeSection()));
         _categories.Add(new CategoryEntry("会话浏览器", "选择内嵌 WebView2 或独立 Chrome。更改只用于新建或重新打开的会话浏览器工作区。", BuildBrowserSection()));
         foreach (CategoryEntry category in _categories)

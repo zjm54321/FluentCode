@@ -2,22 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentCode.Services.Taskbar;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Controls;
 
 namespace FluentCode;
 
 /// <summary>
-/// Shell 集成：任务栏任务跟踪与“任务状态”入口。
+/// Shell 集成：任务栏任务跟踪（任务栏按钮状态叠加）。
 /// </summary>
 /// <remarks>
 /// <para>执行 ID 均为不透明标识（OpenCode 用 oc- 前缀 GUID，每次执行新建）。
 /// 只映射真实观察到的状态：Working/Completed/Failed/Cancelled（OpenCode 回合）、
 /// Pending（等待用户处理的真实 pending 请求）与 OutcomeUnknown（明确的提交结果未知）；
 /// 绝不把 HTTP 接纳、页面切换、断线或历史记录当作完成/失败（不造业务状态）。</para>
-/// <para>终态保持到显式确认：仅终态可在“任务状态”入口清除；等待处理/结果未知/进行中不可清除。
-/// 本窗口不注册、不发送系统通知。</para>
+/// <para>终态在窗口对用户可见时确认（见 <see cref="AcknowledgeTerminalTasksWhenVisible"/>）；
+/// 等待处理/结果未知/进行中不会被确认。本窗口不注册、不发送系统通知。</para>
 /// </remarks>
 public sealed partial class MainWindow
 {
@@ -71,6 +68,7 @@ public sealed partial class MainWindow
 
         UpsertTrackedTask(taskId, kind, sessionId, state);
         _app!.UpdateTaskbarTask(taskId, state);
+        AcknowledgeTerminalTasksWhenVisible();
     }
 
     private void UpsertTrackedTask(string taskId, TrackedTaskKind kind, string? sessionId, TaskbarTaskState state)
@@ -132,19 +130,23 @@ public sealed partial class MainWindow
         }
     }
 
-    // ---- “任务状态”入口（仅终态可显式确认清除） ----
+    // ---- 终态确认（原“任务状态”入口已随导航栏移除） ----
 
-    private void TaskFlyout_Opened(object? sender, object e) => RebuildTaskStatusList();
-
-    private void TaskStatusClearCompleted_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// 窗口对用户可见时确认全部终态（已完成 / 失败 / 已取消）：任务栏状态叠加只用于提醒“窗口不在眼前时发生了什么”，
+    /// 用户回到窗口即视为已看到。等待处理 / 结果未知 / 进行中从不在此确认。
+    /// </summary>
+    private void AcknowledgeTerminalTasksWhenVisible()
     {
-        // 仅确认终态；等待处理/结果未知/进行中一律保留（不能清除）。
+        if (!_openCodeWindowVisible)
+        {
+            return;
+        }
+
         foreach (TrackedTask task in _trackedTaskList.Where(static t => t.IsTerminal).ToArray())
         {
             AcknowledgeTrackedTask(task.Id);
         }
-
-        RebuildTaskStatusList();
     }
 
     private void AcknowledgeTrackedTask(string taskId)
@@ -168,7 +170,6 @@ public sealed partial class MainWindow
         _trackedTaskList.Remove(task);
         _trackedTaskIndex.Remove(taskId);
         RememberAcknowledged(taskId);
-        RebuildTaskStatusList();
     }
 
     private void RememberAcknowledged(string taskId)
@@ -183,59 +184,4 @@ public sealed partial class MainWindow
             _acknowledgedTaskIds.Remove(_acknowledgedTaskOrder.Dequeue());
         }
     }
-
-    private void RebuildTaskStatusList()
-    {
-        TaskStatusList.Children.Clear();
-        TaskStatusEmptyHint.Visibility = _trackedTaskList.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        TaskStatusClearCompleted.IsEnabled = _trackedTaskList.Any(static t => t.IsTerminal);
-
-        foreach (TrackedTask task in _trackedTaskList)
-        {
-            TaskStatusList.Children.Add(BuildTaskRow(task));
-        }
-    }
-
-    private UIElement BuildTaskRow(TrackedTask task)
-    {
-        var panel = new StackPanel { Spacing = 4 };
-        panel.Children.Add(new TextBlock
-        {
-            Text = "OpenCode 任务",
-            FontSize = 13,
-        });
-        panel.Children.Add(new TextBlock
-        {
-            Text = "会话：" + (string.IsNullOrEmpty(task.SessionId) ? "（未知）" : task.SessionId) +
-                "　状态：" + DescribeTaskState(task.State),
-            FontSize = 12,
-            Opacity = 0.75,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        });
-
-        if (task.IsTerminal)
-        {
-            var acknowledge = new Button
-            {
-                Content = "确认已读（清除）",
-                HorizontalAlignment = HorizontalAlignment.Left,
-            };
-            AutomationProperties.SetAutomationId(acknowledge, "TaskAcknowledge");
-            string id = task.Id;
-            acknowledge.Click += (_, _) => AcknowledgeTrackedTask(id);
-            panel.Children.Add(acknowledge);
-        }
-
-        return panel;
-    }
-
-    private static string DescribeTaskState(TaskbarTaskState state) => state switch
-    {
-        TaskbarTaskState.Working => "进行中",
-        TaskbarTaskState.Pending => "等待处理",
-        TaskbarTaskState.OutcomeUnknown => "结果未知（请重新查询）",
-        TaskbarTaskState.Completed => "已完成",
-        TaskbarTaskState.Failed => "失败",
-        _ => "已取消",
-    };
 }

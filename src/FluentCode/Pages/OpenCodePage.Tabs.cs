@@ -287,7 +287,7 @@ public sealed partial class OpenCodePage
         var target = _homeActive ? HomeTab
             : sessionId is not null && _sessionTabs.TryGetValue(sessionId, out var entry) ? entry.Item
             : sessionId is null && _newSessionDraftActive && _newSessionTab is not null ? _newSessionTab : HomeTab;
-        if (ReferenceEquals(SessionTabs.SelectedItem, target))
+        if (ReferenceEquals(SessionTabs.SelectedItem, target) || KeepSettingsSelected(target))
         {
             return;
         }
@@ -310,6 +310,12 @@ public sealed partial class OpenCodePage
 
     private void SessionTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // 设置标签：覆盖层随选中项显示/收起（静默选择也要同步）；回到被覆盖的同一标签时不再重新导航。
+        if (SyncSettingsSurface(e))
+        {
+            return;
+        }
+
         if (_suppressTabSelection)
         {
             return;
@@ -381,6 +387,7 @@ public sealed partial class OpenCodePage
     private void SessionTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
         if (ReferenceEquals(args.Tab, HomeTab)) return;
+        if (_settingsTab is not null && ReferenceEquals(args.Tab, _settingsTab)) { CloseSettingsTab(); return; }
         if (TryGetRetiredDraftTab(args.Tab, out _)) { CloseRetiredDraftTab(args.Tab); return; }
         if (TryGetBlankTab(args.Tab, out _))
         {
