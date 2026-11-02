@@ -106,13 +106,23 @@ internal static class Program
     internal sealed class QueuedContext : SynchronizationContext
     {
         private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> queue = new();
+        private readonly SemaphoreSlim posted = new(0);
         internal readonly TaskCompletionSource<bool> Ready = Signal<bool>();
-        public override void Post(SendOrPostCallback d, object? state) { queue.Enqueue((d, state)); Ready.TrySetResult(true); }
+        public override void Post(SendOrPostCallback d, object? state) { queue.Enqueue((d, state)); Ready.TrySetResult(true); posted.Release(); }
         internal void Drain()
         {
             var old = Current; SetSynchronizationContext(this);
             try { while (queue.TryDequeue(out var next)) next.Callback(next.State); }
             finally { SetSynchronizationContext(old); }
+        }
+        internal async Task DrainUntilAsync(Task completion)
+        {
+            while (!completion.IsCompleted)
+            {
+                if (!await posted.WaitAsync(TimeSpan.FromSeconds(5))) throw new TimeoutException("Queued UI continuation did not arrive.");
+                Drain();
+            }
+            await completion;
         }
     }
     private static async Task Main(string[] args)
@@ -934,6 +944,12 @@ namespace FluentCode.Pages
         private bool _pageActive = true, _sessionMissing, _isSending, _isComposing, _enterDown, _shiftDown;
         private DateTimeOffset _lastCompositionEndedAt = DateTimeOffset.MinValue;
         private string? _selectedSessionId = "ses_test";
+        // This composer-only fixture has no descendant permission widgets; real owner routing is
+        // source-linked with the existing permission card in opencode-event-sync.
+        private string? _sessionRecoveryTargetId;
+        private bool IsInteractionSession(string? sessionId) => sessionId == _selectedSessionId;
+        private string? GetInteractionSession(bool isForm, string id) => _selectedSessionId;
+        internal string? InteractionRecoverySession => _sessionRecoveryTargetId;
         private CancellationTokenSource? _pageCts = new(), _sessionCts = new();
         private readonly List<string> _pendingAckIds = new();
         private readonly HashSet<string> _workingSessions = new();

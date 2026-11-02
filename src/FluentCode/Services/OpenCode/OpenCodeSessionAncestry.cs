@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -39,6 +40,38 @@ public static class OpenCodeSessionAncestry
 {
     /// <summary>向上追溯的最大步数（一步 = 一次 <see cref="OpenCodeClient.GetSessionInfoAsync"/> 调用）。</summary>
     public const int MaxDepth = 32;
+
+    /// <summary>Enumerate verified descendants, including unopened grandchildren, using owner-filtered pages.</summary>
+    internal static async IAsyncEnumerable<OpenCodeSessionInfo> EnumerateDescendantsAsync(
+        Func<OpenCodeSessionListQuery, CancellationToken, Task<OpenCodeSessionsResponse>> read,
+        string parentSessionId, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var parents = new Queue<(string Id, int Depth)>();
+        var visited = new HashSet<string>(StringComparer.Ordinal) { parentSessionId };
+        parents.Enqueue((parentSessionId, 0));
+        while (parents.TryDequeue(out var parent))
+        {
+            string? cursor = null;
+            var cursors = new HashSet<string>(StringComparer.Ordinal);
+            do
+            {
+                var page = await read(new()
+                {
+                    ParentFilter = OpenCodeSessionParentFilter.Children, ParentId = parent.Id,
+                    Limit = 100, Cursor = cursor, Order = cursor is null ? OpenCodeSessionOrders.Asc : null,
+                }, cancellationToken).ConfigureAwait(false);
+                foreach (var child in page.Data ?? new())
+                {
+                    if (child.Id is not { Length: > 0 } id || child.ParentId != parent.Id || !visited.Add(id)) continue;
+                    if (parent.Depth >= MaxDepth) throw new OpenCodeProtocolException("子会话层级超过祖先校验预算。");
+                    yield return child;
+                    parents.Enqueue((id, parent.Depth + 1));
+                }
+                cursor = page.Cursor?.Next;
+                if (cursor is not null && !cursors.Add(cursor)) throw new OpenCodeProtocolException("子会话分页游标重复。");
+            } while (cursor is not null);
+        }
+    }
 
     /// <summary>
     /// 判断 <paramref name="expectedParentSessionId"/> 是否确实位于

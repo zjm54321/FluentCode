@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.Notifications;
@@ -58,16 +59,28 @@ internal static class SideQuestionTests
         }
         using (var f = new Program.Fixture())
         {
-            var pending = Program.Signal<bool>();
-            f.Http.Respond = async (_, _) => { await pending.Task; return Program.Json("{\"data\":{\"text\":\"late\"}}"); };
-            f.Page.Text("/btw first"); await f.Page.Send();
-            f.Page.DrainView(); f.Page.Text("/btw second"); await f.Page.Send();
-            Program.Check(f.Page.SideQuestionsPending == 2 && f.Page.SidePendingRendered == 2, "multiple requests counted without composer busy lock");
-            f.Page.Switch("ses_other");
-            pending.SetResult(true);
-            await f.Page.SideQuestionSettled.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Program.Check(f.Page.SideAnswers.Count == 2 && f.Page.SideAnswers.TrueForAll(a => a.SessionId == "ses_test") && f.Page.Snapshot.Text == "",
-                "late answers stay attributed to origin session and never enter new draft");
+            // Both replies must resume through the UI queue, as they do in WinUI. Without a
+            // captured context the shared release races List.Add and pending-dictionary removal
+            // on two pool threads; observing pending == 0 is not a safe publication barrier there.
+            var context = new Program.QueuedContext(); var old = SynchronizationContext.Current;
+            Task scenario;
+            try { SynchronizationContext.SetSynchronizationContext(context); scenario = ConcurrentRepliesAsync(); }
+            finally { SynchronizationContext.SetSynchronizationContext(old); }
+            await context.DrainUntilAsync(scenario);
+
+            async Task ConcurrentRepliesAsync()
+            {
+                var pending = Program.Signal<bool>();
+                f.Http.Respond = async (_, _) => { await pending.Task; return Program.Json("{\"data\":{\"text\":\"late\"}}"); };
+                f.Page.Text("/btw first"); await f.Page.Send();
+                f.Page.DrainView(); f.Page.Text("/btw second"); await f.Page.Send();
+                Program.Check(f.Page.SideQuestionsPending == 2 && f.Page.SidePendingRendered == 2, "multiple requests counted without composer busy lock");
+                f.Page.Switch("ses_other");
+                pending.SetResult(true);
+                await f.Page.SideQuestionSettled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Program.Check(f.Page.SideAnswers.Count == 2 && f.Page.SideAnswers.TrueForAll(a => a.SessionId == "ses_test") && f.Page.Snapshot.Text == "",
+                    "late answers stay attributed to origin session and never enter new draft");
+            }
         }
         using (var f = new Program.Fixture())
         {

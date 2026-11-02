@@ -12,6 +12,7 @@ static partial class Checks
     {
         await TuiHealthyAndBufferedBaseline();
         await TuiTerminalAndForeground();
+        await TuiUnopenedDescendants();
         await TuiReconnect();
         await TuiAuthBackoff();
         TuiAppContinuity();
@@ -189,6 +190,51 @@ static partial class Checks
         clock.Advance(TimeSpan.FromSeconds(3));
         Check(backend.ActiveRequests == 2 && backend.Reads.IsEmpty, "disconnected state has no five/15-second REST polling or guessed completion");
         await monitor.DisposeAsync(); Check(clock.Empty, "dispose cancels reconnect delay");
+    }
+
+    private static async Task TuiUnopenedDescendants()
+    {
+        var clock = new ObservationClock(); var sink = new PushSink();
+        using var backend = new PushBackend(); using var http = new HttpClient(backend); using var client = Client(http);
+        backend.Parents["ses_grand"] = "ses_child";
+        backend.Parents["ses_foreign_child"] = "ses_foreign";
+        await using var monitor = new OpenCodeNotificationMonitor(sink, new("tui-unopened", client), timeProvider: clock);
+        backend.Attach(monitor); monitor.TrackSession("ses_root"); monitor.Start();
+        var stream = await backend.Connections.Reader.ReadAsync();
+        await stream.SendAsync(ObservationSse.Wire("server.connected", new { }));
+        await Eventually(() => backend.Observed("ses_root") == 1, "unopened root baseline");
+        await stream.SendAsync(ObservationSse.Wire("permission.asked", new { sessionID = "ses_child", id = "per_child" })
+            + ObservationSse.Wire("form.created", Question("ses_grand", "frm_grand"))
+            + ObservationSse.Wire("permission.asked", new { sessionID = "ses_foreign_child", id = "per_foreign" })
+            + ObservationSse.Wire("permission.asked", new { sessionID = "ses_foreign", id = "per_root_foreign" }));
+        await Eventually(() => sink.Interactions.Count == 2, "unopened child/grandchild interactions reach lifetime monitor");
+        Check(sink.Interactions.Contains("ses_child:permission") && sink.Interactions.Contains("ses_grand:question")
+            && !backend.Latest.ContainsKey("ses_foreign") && !backend.Latest.ContainsKey("ses_foreign_child"),
+            "real ancestor chain admits descendants only, never unrelated roots or their children");
+        await stream.SendAsync(ObservationSse.Wire("permission.asked", new { sessionID = "ses_child", id = "per_child" })
+            + ObservationSse.Wire("session.execution.succeeded", new { sessionID = "ses_child" })
+            + ObservationSse.Wire("session.execution.failed", new { sessionID = "ses_grand" }));
+        await Eventually(() => backend.Latest["ses_grand"].Outcome == "failed", "unopened terminal reduced");
+        Check(sink.Interactions.Count == 2 && sink.Completed.IsEmpty && sink.Errors.IsEmpty && backend.Reads.IsEmpty,
+            "duplicate asks deduplicate and unopened descendant completion/error suppression never suppresses prompts");
+        await stream.SendAsync(ObservationSse.Wire("permission.replied", new { sessionID = "ses_child", requestID = "per_child" })
+            + ObservationSse.Wire("form.replied", new { sessionID = "ses_grand", id = "frm_grand" }));
+        await Eventually(() => sink.Permissions["ses_child"].Length == 0 && sink.Forms["ses_grand"].Length == 0,
+            "unopened reply reconciles the exact owning sessions");
+        stream.End(); await Eventually(() => !monitor.EventStreamConnected && clock.At(TimeSpan.FromSeconds(1)), "unopened reconnect gap");
+        backend.Pending["ses_child"] = true;
+        clock.Advance(TimeSpan.FromSeconds(1)); stream = await backend.Connections.Reader.ReadAsync();
+        await stream.SendAsync(ObservationSse.Wire("server.connected", new { }));
+        await Eventually(() => backend.Observed("ses_child") >= 2 && sink.Permissions["ses_child"].Contains("per_test"),
+            "reconnect restores pending auto-tracked child snapshot");
+        Check(sink.Interactions.Count == 2 && backend.Reads.IsEmpty, "existing child gap prompts remain silent, not guessed as live notifications");
+        Check(monitor.TrackSession("ses_child"), "selecting an auto-tracked child promotes explicit ownership for App retention");
+        monitor.UntrackSession("ses_root");
+        await stream.SendAsync(ObservationSse.Wire("permission.asked", new { sessionID = "ses_grand", id = "per_promoted" }));
+        await Eventually(() => sink.Interactions.Count == 3, "explicit child keeps its own descendant after parent retirement");
+        monitor.UntrackSession("ses_child");
+        await stream.SendAsync(ObservationSse.Wire("permission.asked", new { sessionID = "ses_grand", id = "per_retired_child" }));
+        Check(sink.Interactions.Count == 3, "retiring the final explicit owner cancels descendant observation and prompt delivery");
     }
 
     private static async Task TuiAuthBackoff()

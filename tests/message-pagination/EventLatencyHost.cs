@@ -35,6 +35,10 @@ public sealed partial class OpenCodePage
     // Server-scoped PTY inventory is outside pagination; its real event/transport lifecycle is
     // exercised in tests/opencode-persistent-pty. Do not emulate its server behavior here.
     private void OnPersistentPtyEvent(OpenCodeEvent item) { }
+    // Permission widgets/owner-scoped transport run source-linked in opencode-event-sync, not this transcript fixture.
+    private void ResetChildInteractions() { }
+    private void QueueChildInteractionDiscovery() { }
+    private void OnChildInteractionEvent(OpenCodeEvent item) { }
 
     internal sealed record StreamBoundary(CancellationTokenSource Owner, TaskCompletionSource Ready);
     internal StreamBoundary TestBeginEvents()

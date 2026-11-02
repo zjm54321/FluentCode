@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
@@ -117,6 +118,27 @@ internal sealed class OpenCodeInteractionsView : StackPanel
 
     private readonly List<CardEntry> _entries = new();
     private readonly Dictionary<string, CardEntry> _byKey = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (IReadOnlyList<OpenCodePermissionRequest> Permissions, IReadOnlyList<OpenCodeFormInfo> Forms)> _sessions = new(StringComparer.Ordinal);
+
+    /// <summary>Replace only the owning session's successful snapshots; sibling cards keep their state and input.</summary>
+    internal IReadOnlyList<OpenCodeInteractionsRemovedItem> ApplyForSession(string sessionId,
+        IReadOnlyList<OpenCodePermissionRequest>? permissions, IReadOnlyList<OpenCodeFormInfo>? forms)
+    {
+        var previous = _sessions.GetValueOrDefault(sessionId);
+        _sessions[sessionId] = (permissions ?? previous.Permissions ?? Array.Empty<OpenCodePermissionRequest>(),
+            forms ?? previous.Forms ?? Array.Empty<OpenCodeFormInfo>());
+        return Apply(_sessions.Values.SelectMany(s => s.Permissions).ToArray(), _sessions.Values.SelectMany(s => s.Forms).ToArray());
+    }
+
+    internal string? GetSessionId(bool isForm, string id)
+        => _byKey.TryGetValue((isForm ? "f:" : "p:") + id, out var entry)
+            ? isForm ? entry.FormCard?.Form.SessionId : entry.PermissionCard?.Request.SessionId : null;
+
+    internal void RemoveSession(string sessionId)
+    {
+        _sessions.Remove(sessionId);
+        Apply(_sessions.Values.SelectMany(s => s.Permissions).ToArray(), _sessions.Values.SelectMany(s => s.Forms).ToArray());
+    }
 
     /// <summary>本页操作已结算的条目 key（其消失不再向上报告，避免与操作结果提示重复）。</summary>
     private readonly HashSet<string> _settled = new(StringComparer.Ordinal);
@@ -467,6 +489,7 @@ internal sealed class OpenCodeInteractionsView : StackPanel
         _byKey.Clear();
         _settled.Clear();
         _suppressed.Clear();
+        _sessions.Clear();
     }
 
     /// <summary>移除一个由本页操作结算的条目；其后续消失不再作为“外部变化”提示。</summary>
@@ -480,6 +503,13 @@ internal sealed class OpenCodeInteractionsView : StackPanel
         }
 
         _settled.Add(key);
+        foreach (var session in _sessions.Keys.ToArray())
+        {
+            var snapshot = _sessions[session];
+            _sessions[session] = isForm
+                ? (snapshot.Permissions, snapshot.Forms.Where(f => f.Id != id).ToArray())
+                : (snapshot.Permissions.Where(p => p.Id != id).ToArray(), snapshot.Forms);
+        }
     }
 
     /// <summary>
@@ -545,6 +575,7 @@ internal sealed class OpenCodeInteractionsView : StackPanel
 
         if (_byKey.TryGetValue("p:" + id, out var entry) && entry.PermissionCard is { } card)
         {
+            RememberPermission(fresh);
             card.Update(fresh);
             entry.Fingerprint = OpenCodeInteractionFingerprint.ForPermission(fresh);
         }
@@ -566,6 +597,7 @@ internal sealed class OpenCodeInteractionsView : StackPanel
 
         if (_byKey.TryGetValue("f:" + id, out var entry) && entry.FormCard is { } card)
         {
+            RememberForm(fresh);
             card.Update(fresh);
             entry.Fingerprint = OpenCodeInteractionFingerprint.ForForm(fresh);
         }
@@ -595,6 +627,7 @@ internal sealed class OpenCodeInteractionsView : StackPanel
         }
 
         var fingerprint = OpenCodeInteractionFingerprint.ForPermission(fresh);
+        RememberPermission(fresh);
         if (string.Equals(entry.Fingerprint, fingerprint, StringComparison.Ordinal))
         {
             card.Unblock();
@@ -630,6 +663,7 @@ internal sealed class OpenCodeInteractionsView : StackPanel
         }
 
         var fingerprint = OpenCodeInteractionFingerprint.ForForm(fresh);
+        RememberForm(fresh);
         if (string.Equals(entry.Fingerprint, fingerprint, StringComparison.Ordinal))
         {
             card.Unblock();
@@ -648,6 +682,18 @@ internal sealed class OpenCodeInteractionsView : StackPanel
         {
             entry.PermissionCard?.MarkBlocked(detail);
         }
+    }
+
+    private void RememberPermission(OpenCodePermissionRequest fresh)
+    {
+        if (fresh.SessionId is { } sessionId && _sessions.TryGetValue(sessionId, out var snapshot))
+            _sessions[sessionId] = (snapshot.Permissions.Select(p => p.Id == fresh.Id ? fresh : p).ToArray(), snapshot.Forms);
+    }
+
+    private void RememberForm(OpenCodeFormInfo fresh)
+    {
+        if (fresh.SessionId is { } sessionId && _sessions.TryGetValue(sessionId, out var snapshot))
+            _sessions[sessionId] = (snapshot.Permissions, snapshot.Forms.Select(f => f.Id == fresh.Id ? fresh : f).ToArray());
     }
 
     /// <summary>把指定表单卡片置为阻断态（结果未知），只保留“重新查询状态”。</summary>
@@ -686,11 +732,13 @@ internal sealed class OpenCodeInteractionsView : StackPanel
     }
 
     /// <summary>拒绝操作发起后，保守作废同会话其他权限卡片的操作入口（即使结果未知）。</summary>
-    internal void InvalidateOtherPermissions(string exceptId, string detail)
+    internal void InvalidateOtherPermissions(string exceptId, string detail, string? sessionId = null)
     {
+        sessionId ??= GetSessionId(false, exceptId);
         foreach (var entry in _entries)
         {
-            if (!entry.IsForm && !string.Equals(entry.Id, exceptId, StringComparison.Ordinal))
+            if (!entry.IsForm && entry.PermissionCard?.Request.SessionId == sessionId
+                && !string.Equals(entry.Id, exceptId, StringComparison.Ordinal))
             {
                 entry.PermissionCard?.MarkBlocked(detail);
             }
@@ -698,11 +746,13 @@ internal sealed class OpenCodeInteractionsView : StackPanel
     }
 
     /// <summary>拒绝操作发起后，其他权限条目的消失视为预期连带结果，不再单独提示。</summary>
-    internal void MarkOtherPermissionsSettled(string exceptId)
+    internal void MarkOtherPermissionsSettled(string exceptId, string? sessionId = null)
     {
+        sessionId ??= GetSessionId(false, exceptId);
         foreach (var entry in _entries)
         {
-            if (!entry.IsForm && !string.Equals(entry.Id, exceptId, StringComparison.Ordinal))
+            if (!entry.IsForm && entry.PermissionCard?.Request.SessionId == sessionId
+                && !string.Equals(entry.Id, exceptId, StringComparison.Ordinal))
             {
                 _settled.Add(entry.Key);
             }

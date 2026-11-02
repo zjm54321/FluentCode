@@ -272,6 +272,7 @@ namespace FluentCode.Pages
         private void SetConnectionState(ConnectionState state) { }
         private void HandleApiException(OpenCodeException ex, string context) { }
         private void RestartSessionEventSync(string id) { }
+        private void QueueChildInteractionDiscovery() { } // Permission routing runs source-linked in opencode-event-sync.
         private void StopEventSync() { }
         // Inert native layout input only: uses the real ConversationView CaptureIdleViewport query.
         internal void ProveViewport()

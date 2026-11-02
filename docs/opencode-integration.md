@@ -73,6 +73,13 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 - **指数退避重连**：当 SSE 流断开时，客户端按 1秒、2秒、4秒、8秒、15秒 的退避阶梯尝试重新建立连接。
 - **REST 回退（Fallback）**：长连接中断超过 12 秒后，客户端自动退避为基于 REST 接口的只读静默轮询，恢复连通后重新核对消息游标与未处理权限。
 
+### 3.4 子会话权限与表单
+- 当前会话的子会话（含未打开的更深后代）的 `permission.asked/replied` 与 `form.created/replied/cancelled` 在消息/发送工作流过滤之前处理，合并到现有交互卡片；显示请求不会切换当前会话、清空草稿或滚动父会话。
+- 首次打开、重连、重新激活及 SSE 不可用时的回退轮询，按 `GET api/session?parentID=...` 的真实父子关系逐层分页，补读后代的 pending permission/form；不读取后代消息或 inbox。无关根会话排除在外。
+- `form.created` 的会话归属来自 `data.form.sessionID`；`permission.replied` 的请求标识来自 `data.requestID`。回复、重新核对与未知结果恢复均使用请求自己的 `sessionID`，提交前重新验证祖先链并进入该会话的共享 Gate。
+- “拒绝”的连带范围与未知结果保护仅覆盖请求所属会话。子会话隐藏输入框时保留权限/提问遮罩宿主；IME 与全局交互忙碌仍沿用既有延迟/禁用规则。
+- App 生命周期通知监视器可为已跟踪会话的、经真实祖先链验证的未打开后代发送权限/表单通知；子会话完成/失败通知仍受 root-only 策略抑制，重连快照仍静默恢复。
+
 ---
 
 ## 4. 状态仲裁门（`OpenCodeInteractionGate`）

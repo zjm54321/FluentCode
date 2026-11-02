@@ -47,6 +47,7 @@ public sealed partial class OpenCodePage
 
     private void StopEventSync()
     {
+        ResetChildInteractions();
         _eventProjectionDirty = false;
         OnBrowserEventSyncStopped();
         OnAgentTreeReset();
@@ -81,6 +82,7 @@ public sealed partial class OpenCodePage
 
     private void RestartSessionEventSync(string sessionId)
     {
+        ResetChildInteractions();
         ResetRuntimeFeedback();
         _eventReducer = new(sessionId);
         StartEventSync();
@@ -127,6 +129,7 @@ public sealed partial class OpenCodePage
             if (_messageHistoryWorkflowOwner is null) _ = RefreshMessagesAsync();
         }
         _ = RefreshListedSessionStatusesAsync();
+        QueueChildInteractionDiscovery();
         OnAgentTreeConnected();
     }
 
@@ -235,6 +238,7 @@ public sealed partial class OpenCodePage
         {
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
+            OnChildInteractionEvent(item);
             if (item.Type is "persistent-pty.added" or "persistent-pty.removed" or "persistent-pty.updated")
             {
                 OnPersistentPtyEvent(item); // Separate server-scoped inventory, including during message workflows.

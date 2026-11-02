@@ -281,11 +281,11 @@ internal sealed class OpenCodePermissionCard : StackPanel
     }
 
     /// <summary>遮罩告知本请求在待处理列表中的位置（“1 / 2”），并据此具体说明“拒绝”的连带范围。</summary>
-    internal void SetPosition(int index, int total)
+    internal void SetPosition(int index, int total, int? otherPending = null)
     {
         _positionText.Text = OpenCodePermissionPresentation.Position(index, total);
         _positionText.Visibility = _positionText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        _otherPending = Math.Max(0, total - 1);
+        _otherPending = Math.Max(0, otherPending ?? total - 1);
         if (_pendingDecision == OpenCodePermissionDecisions.Reject)
         {
             _noticeBar.Message = OpenCodePermissionPresentation.RejectConfirmText(_otherPending);

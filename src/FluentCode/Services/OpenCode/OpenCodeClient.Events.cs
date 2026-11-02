@@ -17,7 +17,10 @@ public sealed record OpenCodeEvent(string Type, JsonElement Data, DateTimeOffset
     public double? Created { get; init; }
     public JsonElement? Metadata { get; init; }
     public string? LocationDirectory { get; init; }
-    public string? SessionId => Data.TryGetProperty("sessionID", out var id) ? id.GetString() : null;
+    public string? SessionId => Data.TryGetProperty("sessionID", out var id) && id.ValueKind == JsonValueKind.String
+        ? id.GetString()
+        : Type == "form.created" && Data.TryGetProperty("form", out var form) && form.ValueKind == JsonValueKind.Object
+            && form.TryGetProperty("sessionID", out var owner) && owner.ValueKind == JsonValueKind.String ? owner.GetString() : null;
 
     internal static OpenCodeEvent Parse(string json)
     {

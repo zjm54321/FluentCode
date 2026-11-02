@@ -20,7 +20,8 @@ public sealed partial class OpenCodePage
     private void RefreshChildComposerVisibility()
     {
         var child = IsChildComposerSession;
-        ComposerCell.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
+        ComposerCell.Visibility = child && !ComposerCoveredByOverlay ? Visibility.Collapsed : Visibility.Visible;
+        ComposerCard.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         ComposerQueueHost.Visibility = child ? Visibility.Collapsed : Visibility.Visible;
         RefreshChildStopButton();
         RefreshChildReturnButton();

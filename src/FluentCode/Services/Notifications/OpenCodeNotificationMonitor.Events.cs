@@ -82,6 +82,8 @@ public sealed partial class OpenCodeNotificationMonitor
                         continue;
                     }
                     if (!ChangesNotificationState(item.Type) || NotificationSession(item.Data) is not { } session) continue;
+                    if (item.Type is "permission.asked" or "permission.replied" or "form.created" or "form.replied" or "form.cancelled")
+                        await TrackInteractionDescendantAsync(owner, session, connection.Token).ConfigureAwait(false);
                     lock (_sync)
                     {
                         if (!owner.Connected || !_tracked.TryGetValue(session, out var state)) continue;
@@ -151,6 +153,46 @@ public sealed partial class OpenCodeNotificationMonitor
             && owner.Connection is { IsCancellationRequested: false }
             && ReferenceEquals(owner, _observationRun) && _tracked.TryGetValue(session, out var current) && ReferenceEquals(current, state)
             && (revision is null || state.EventRevision == revision);
+    }
+
+    // Unopened children still need prompts. Only a real parentID chain reaching an explicitly
+    // tracked session grants ownership; foreign roots and text/tool/completion frames do no work.
+    private async Task TrackInteractionDescendantAsync(ObservationRun owner, string session, CancellationToken token)
+    {
+        long epoch;
+        lock (_sync)
+        {
+            if (_disposed || !owner.Connected || _tracked.ContainsKey(session) || !_tracked.Values.Any(s => s.ExplicitlyTracked)) return;
+            epoch = owner.Epoch;
+        }
+        var current = session;
+        var ancestors = new List<string>();
+        var visited = new HashSet<string>(StringComparer.Ordinal) { session };
+        try
+        {
+            for (var depth = 0; depth < OpenCodeSessionAncestry.MaxDepth; depth++)
+            {
+                var info = await _source.Client.GetSessionInfoAsync(current, token).ConfigureAwait(false);
+                if (info.ParentId is not { } parent || !visited.Add(parent)) return;
+                ancestors.Add(parent);
+                lock (_sync)
+                {
+                    if (_disposed || token.IsCancellationRequested || !owner.Connected || owner.Epoch != epoch
+                        || !ReferenceEquals(owner, _observationRun)) return;
+                    if (_tracked.TryGetValue(parent, out var tracked) && tracked.ExplicitlyTracked)
+                    {
+                        if (_tracked.ContainsKey(session) || _tracked.Count >= 128) return;
+                        var child = new StreamState { IsChild = true, TrackingOwner = tracked, TrackingAncestors = ancestors.ToArray() };
+                        _tracked.Add(session, child);
+                        QueueObservationLocked(session, child, immediate: true);
+                        return;
+                    }
+                }
+                current = parent;
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception error) when (IsObservationFailure(error)) { /* Unverified ancestry never authorizes a notification. */ }
     }
 
     internal static bool ChangesNotificationState(string type) => type is

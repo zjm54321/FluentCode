@@ -186,7 +186,7 @@ public sealed partial class OpenCodePage : Page
         _interactionsView.FormRecheckRequested += (_, e) => _ = RecheckFormAsync(e.FormId);
         _interactionsView.ResolutionRequested += (_, e) => _ = ResolveInteractionAsync(e.IsForm, e.Id, e.Retry);
         InitializeInteractionAnchors();
-        _sessionRecoveryPanel.RecoveryRequested += (_, _) => _ = BeginSessionRecoveryAsync();
+        _sessionRecoveryPanel.RecoveryRequested += (_, _) => _ = BeginSessionRecoveryAsync(_sessionRecoveryTargetId);
         _sessionRecoveryPanel.DecisionRequested += (_, e) => _ = CompleteSessionRecoveryAsync(e.AllowRetry);
 
         // IME 组合状态经 TextCompositionStarted/Ended 跟踪（代码挂钩，避免 XAML 事件签名解析差异）。
@@ -376,6 +376,7 @@ public sealed partial class OpenCodePage : Page
         if (!_homeActive && !_newSessionDraftActive && _selectedSessionId is { } id)
             ConfigureAgentSelectorForSession(id);
         QueueAgentTreeRefresh();
+        QueueChildInteractionDiscovery();
         RefreshRightPanelMetadata();
         _ = RefreshSessionsAsync();
         _ = RefreshMessagesAsync(); // Non-initial refresh retains the current reading position.
@@ -847,6 +848,7 @@ public sealed partial class OpenCodePage : Page
         UpdateInteractionsSection();
 
         RaiseSessionTracked(sessionId, OpenCodeSessionTrackReason.Selected);
+        QueueChildInteractionDiscovery();
         await RefreshMessagesAsync(initial: true);
         if (!_firstMessagesLoading) RevealTranscript(); // Loaded, failed or empty; a queued refresh reveals on accept.
     }
@@ -887,6 +889,7 @@ public sealed partial class OpenCodePage : Page
         if (SourceReady && _eventCts is { IsCancellationRequested: false }
             && _eventReady?.Task.IsCompletedSuccessfully == true) return;
 
+        QueueChildInteractionDiscovery();
         _ = RefreshMessagesAsync();
         _ = RefreshListedSessionStatusesAsync();
     }
@@ -1149,8 +1152,9 @@ public sealed partial class OpenCodePage : Page
             PermissionBar.IsOpen = false;
         }
 
-        var externallyRemoved = _interactionsView.Apply(permissions, forms);
+        var externallyRemoved = _interactionsView.ApplyForSession(sessionId, permissions, forms);
         _ = externallyRemoved;
+        if (_interactionBusy) _interactionsView.SetSubmitting(false, string.Empty, true, string.Empty);
         UpdateInteractionsSection();
 
         if (snapshot.Inbox is { } inbox)
@@ -1548,6 +1552,7 @@ public sealed partial class OpenCodePage : Page
         RefreshComposerView(); // Shared gate has no change event; this path also runs after polling/settlement.
         // 权限请求改由输入区遮罩逐个呈现（重设计 v3 §5）；交互面板只统计其余条目（表单等）。
         var count = Math.Max(0, _interactionsView.Count - SyncComposerOverlays());
+        RefreshChildComposerVisibility();
         InteractionsHeader.Text = count > 0 ? "待处理交互（" + count + "）" : "会话交互恢复";
 
         if (!_sessionRecoveryPanel.IsShowingConfirm)
@@ -1558,9 +1563,11 @@ public sealed partial class OpenCodePage : Page
             if (SourceReady && _pageActive && _selectedSessionId is not null && !_sessionMissing)
             {
                 var identity = _source!.Identity;
-                if (OpenCodeInteractionGate.Shared.TryPeekSessionProtection(identity, _selectedSessionId, out var protection))
+                var recoverySessionId = IsInteractionSession(_sessionRecoveryTargetId) ? _sessionRecoveryTargetId! : _selectedSessionId;
+                if (OpenCodeInteractionGate.Shared.TryPeekSessionProtection(identity, recoverySessionId, out var protection))
                 {
                     _sessionProtectionHint = protection is not null;
+                    if (protection is null) _sessionRecoveryTargetId = null;
                 }
 
                 if (_sessionProtectionHint)
@@ -1633,7 +1640,7 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = displayed.SessionId;
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
             || _interactionBusy || source.IsRevoked)
         {
@@ -1642,7 +1649,7 @@ public sealed partial class OpenCodePage : Page
 
         var requestId = displayed.Id ?? string.Empty;
         if (requestId.Length == 0
-            || !string.Equals(displayed.SessionId, sessionId, StringComparison.Ordinal)
+            || !IsInteractionSession(sessionId)
             || decision is not (OpenCodePermissionDecisions.Once
                 or OpenCodePermissionDecisions.Always
                 or OpenCodePermissionDecisions.Reject))
@@ -1893,7 +1900,7 @@ public sealed partial class OpenCodePage : Page
                 // 拒绝会连带处理本会话其他 pending：其消失不再单独提示（是否仍在待处理以重新查询为准）。
                 _sessionProtectionHint = false;
                 UpdateInteractionsSection();
-                HandleRejectSideEffects(generation, client, requestId, invalidateOthers: false);
+                HandleRejectSideEffects(generation, client, requestId, invalidateOthers: false, owningSessionId: sessionId);
             }
 
             await RefreshMessagesAsync();
@@ -1947,6 +1954,25 @@ public sealed partial class OpenCodePage : Page
         }
 
         // 等待租约期间来源可能撤销/换代、页面可能切换会话或重建客户端：任一变化一律拒绝提交。
+        if (sessionId != _selectedSessionId)
+        {
+            try
+            {
+                if (!IsInteractionSession(sessionId) || _selectedSessionId is not { } selected
+                    || !TryStartRead(source, revision, sourceGeneration, client, generation, cancellationToken,
+                        () => OpenCodeSessionAncestry.IsAncestorAsync(client, sessionId, selected, cancellationToken), out var ancestry)
+                    || !await ancestry!)
+                {
+                    lease.Dispose();
+                    return (false, false, null, "无法确认交互请求属于当前会话的子会话；未发送任何决定。");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                lease.Dispose();
+                return (false, true, null, null);
+            }
+        }
         if (!IsCurrentBinding(source, revision, sourceGeneration, client, generation))
         {
             lease.Dispose();
@@ -1965,6 +1991,7 @@ public sealed partial class OpenCodePage : Page
                 if (sessionProtected)
                 {
                     // 整会话保护（拒绝结果未知）：单卡入口不适用，指向专门恢复入口。
+                    _sessionRecoveryTargetId = GetInteractionSession(false, requestId);
                     _sessionProtectionHint = true;
                     UpdateInteractionsSection();
                     _interactionsView.MarkPermissionBlocked(requestId,
@@ -2004,6 +2031,7 @@ public sealed partial class OpenCodePage : Page
                 if (sessionProtected)
                 {
                     // 整会话保护（拒绝结果未知）：单卡入口不适用，指向专门恢复入口。
+                    _sessionRecoveryTargetId = GetInteractionSession(true, formId);
                     _sessionProtectionHint = true;
                     UpdateInteractionsSection();
                     _interactionsView.MarkFormBlocked(formId,
@@ -2049,6 +2077,7 @@ public sealed partial class OpenCodePage : Page
         if (decision == OpenCodePermissionDecisions.Reject)
         {
             // 拒绝的未知结果同时保护整个会话：显示专门的整会话恢复入口。
+            _sessionRecoveryTargetId = GetInteractionSession(false, requestId);
             _sessionProtectionHint = true;
             UpdateInteractionsSection();
             HandleRejectSideEffects(sessionGeneration, client, requestId, invalidateOthers: true);
@@ -2057,7 +2086,7 @@ public sealed partial class OpenCodePage : Page
         _ = RefreshMessagesAsync();
     }
 
-    private void HandleRejectSideEffects(int generation, OpenCodeClient client, string requestId, bool invalidateOthers)
+    private void HandleRejectSideEffects(int generation, OpenCodeClient client, string requestId, bool invalidateOthers, string? owningSessionId = null)
     {
         if (!IsCurrentSession(generation, client))
         {
@@ -2066,11 +2095,11 @@ public sealed partial class OpenCodePage : Page
 
         // 拒绝会拒绝同会话其他 pending（即使结果未知也保守处理）：
         // 其他条目的消失不再单独提示；结果未知时其操作入口一并作废，等待重新查询。
-        _interactionsView.MarkOtherPermissionsSettled(requestId);
+        _interactionsView.MarkOtherPermissionsSettled(requestId, owningSessionId);
         if (invalidateOthers)
         {
             _interactionsView.InvalidateOtherPermissions(requestId,
-                "本会话的“拒绝”操作可能已处理本请求（即使结果未知）；不会自动重发。请点击“重新查询状态”核实后再决定。");
+                "本会话的“拒绝”操作可能已处理本请求（即使结果未知）；不会自动重发。请点击“重新查询状态”核实后再决定。", owningSessionId);
         }
     }
 
@@ -2084,7 +2113,7 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = displayed.SessionId;
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
             || _interactionBusy || source.IsRevoked)
         {
@@ -2093,7 +2122,7 @@ public sealed partial class OpenCodePage : Page
 
         var formId = displayed.Id ?? string.Empty;
         if (formId.Length == 0
-            || !string.Equals(displayed.SessionId, sessionId, StringComparison.Ordinal))
+            || !IsInteractionSession(sessionId))
         {
             return;
         }
@@ -2347,7 +2376,7 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = displayed.SessionId;
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
             || _interactionBusy || source.IsRevoked)
         {
@@ -2356,7 +2385,7 @@ public sealed partial class OpenCodePage : Page
 
         var formId = displayed.Id ?? string.Empty;
         if (formId.Length == 0
-            || !string.Equals(displayed.SessionId, sessionId, StringComparison.Ordinal))
+            || !IsInteractionSession(sessionId))
         {
             return;
         }
@@ -2607,9 +2636,10 @@ public sealed partial class OpenCodePage : Page
     /// 存在整会话保护时转交“整会话恢复”入口（绝不在此误清会话级保护）。</summary>
     private async Task RecheckPermissionAsync(string requestId)
     {
+        var sessionId = GetInteractionSession(false, requestId);
         if (await RecheckPermissionCoreAsync(requestId))
         {
-            await BeginSessionRecoveryAsync();
+            await BeginSessionRecoveryAsync(sessionId);
         }
     }
 
@@ -2617,7 +2647,7 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = GetInteractionSession(false, requestId);
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
             || _interactionBusy || source.IsRevoked || string.IsNullOrEmpty(requestId))
         {
@@ -2654,6 +2684,7 @@ public sealed partial class OpenCodePage : Page
             if (activeLease.GetSessionProtection() is not null)
             {
                 // 整会话保护：本入口不处理单卡，转交专门恢复（含整会话影响确认）。
+                _sessionRecoveryTargetId = sessionId;
                 _sessionProtectionHint = true;
                 UpdateInteractionsSection();
                 return true;
@@ -2769,9 +2800,10 @@ public sealed partial class OpenCodePage : Page
     /// 存在整会话保护时转交“整会话恢复”入口（绝不在此误清会话级保护）。</summary>
     private async Task RecheckFormAsync(string formId)
     {
+        var sessionId = GetInteractionSession(true, formId);
         if (await RecheckFormCoreAsync(formId))
         {
-            await BeginSessionRecoveryAsync();
+            await BeginSessionRecoveryAsync(sessionId);
         }
     }
 
@@ -2779,7 +2811,7 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = GetInteractionSession(true, formId);
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
             || _interactionBusy || source.IsRevoked || string.IsNullOrEmpty(formId))
         {
@@ -2816,6 +2848,7 @@ public sealed partial class OpenCodePage : Page
             if (activeLease.GetSessionProtection() is not null)
             {
                 // 整会话保护：本入口不处理单卡，转交专门恢复（含整会话影响确认）。
+                _sessionRecoveryTargetId = sessionId;
                 _sessionProtectionHint = true;
                 UpdateInteractionsSection();
                 return true;
@@ -2942,9 +2975,10 @@ public sealed partial class OpenCodePage : Page
     /// </summary>
     private async Task ResolveInteractionAsync(bool isForm, string id, bool retry)
     {
+        var sessionId = GetInteractionSession(isForm, id);
         if (await ResolveInteractionCoreAsync(isForm, id, retry))
         {
-            await BeginSessionRecoveryAsync();
+            await BeginSessionRecoveryAsync(sessionId);
         }
     }
 
@@ -2952,7 +2986,7 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = GetInteractionSession(isForm, id);
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
             || _interactionBusy || source.IsRevoked || string.IsNullOrEmpty(id))
         {
@@ -2990,6 +3024,7 @@ public sealed partial class OpenCodePage : Page
             if (activeLease.GetSessionProtection() is not null)
             {
                 // 整会话保护存在：转交专门恢复（其自带“整会话影响”确认），绝不在此误清会话级保护。
+                _sessionRecoveryTargetId = sessionId;
                 _sessionProtectionHint = true;
                 UpdateInteractionsSection();
                 return true;
@@ -3227,13 +3262,13 @@ public sealed partial class OpenCodePage : Page
     /// 绑定快照（来源引用 + Revision + 来源代际 + 会话 + 会话代际 + 精确来源键）。
     /// 不发送任何 mutation；没有保护时如实提示；每 await 后复核绑定与取消。
     /// </summary>
-    private async Task BeginSessionRecoveryAsync()
+    private async Task BeginSessionRecoveryAsync(string? interactionSessionId = null)
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = interactionSessionId ?? _selectedSessionId;
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
-            || _interactionBusy || source.IsRevoked)
+            || _interactionBusy || source.IsRevoked || !IsInteractionSession(sessionId))
         {
             return;
         }
@@ -3278,6 +3313,7 @@ public sealed partial class OpenCodePage : Page
             }
 
             var originValue = origin.Value;
+            _sessionRecoveryTargetId = sessionId;
             _sessionProtectionHint = true;
 
             if (!TryStartRead(source, revision, sourceGeneration, client, generation, ct,
@@ -3353,9 +3389,9 @@ public sealed partial class OpenCodePage : Page
     {
         var source = _source;
         var client = _client;
-        var sessionId = _selectedSessionId;
+        var sessionId = _recoveryOrigin?.SessionId ?? _selectedSessionId;
         if (source is null || client is null || sessionId is null || !_pageActive || _sessionMissing
-            || _interactionBusy || source.IsRevoked)
+            || _interactionBusy || source.IsRevoked || !IsInteractionSession(sessionId))
         {
             return;
         }
@@ -3498,7 +3534,7 @@ public sealed partial class OpenCodePage : Page
         {
             ShowMessage(InfoBarSeverity.Warning, "保护状态已变化",
                 "整会话保护来源或确认绑定与确认时不同；未执行解除，请重新核对后再确认。");
-            await BeginSessionRecoveryAsync();
+            await BeginSessionRecoveryAsync(sessionId);
         }
     }
 

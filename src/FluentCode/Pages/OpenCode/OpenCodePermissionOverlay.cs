@@ -113,7 +113,7 @@ internal sealed class OpenCodePermissionOverlay : Grid
 
         for (var i = 0; i < _cards.Count; i++)
         {
-            _cards[i].SetPosition(i + 1, _cards.Count);
+            _cards[i].SetPosition(i + 1, _cards.Count, _cards.Count(c => c.Request.SessionId == _cards[i].Request.SessionId) - 1);
         }
 
         return _cards.Count;

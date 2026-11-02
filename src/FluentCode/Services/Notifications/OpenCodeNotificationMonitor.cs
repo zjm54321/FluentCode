@@ -40,7 +40,7 @@ internal interface IOpenCodeNotificationSink
         => terminal.Outcome == "succeeded" ? ObserveContext(endpoint, session, new[] { terminal }, context, title) : Array.Empty<NotificationDispatchResult>();
 }
 
-/// <summary>App-owned, explicitly tracked sessions only. Does not own client/service, register Windows,
+/// <summary>App-owned, explicitly tracked sessions and their verified interaction descendants. Does not own client/service, register Windows,
 /// read settings, resolve uncertain mutations, or infer completion of an individual prompt.</summary>
 public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDisposable
 {
@@ -79,6 +79,9 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
         internal bool Baseline;
         internal string? Anchor;
         internal bool? IsChild; // parentID is immutable; retain known ancestry across metadata failures.
+        internal bool ExplicitlyTracked;
+        internal StreamState? TrackingOwner;
+        internal IReadOnlyList<string> TrackingAncestors = Array.Empty<string>();
         internal DateTimeOffset NextPollAt;
         internal bool Idle;
         internal HashSet<string> Permissions = new(StringComparer.Ordinal);
@@ -133,12 +136,18 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             _prioritySession = sessionId;
             if (_tracked.TryGetValue(sessionId, out var tracked))
             {
+                var promoted = !tracked.ExplicitlyTracked;
+                tracked.ExplicitlyTracked = true;
+                tracked.TrackingOwner = null;
+                if (promoted)
+                    foreach (var descendant in _tracked.Values.Where(s => !s.ExplicitlyTracked && s.TrackingAncestors.Contains(sessionId)))
+                        descendant.TrackingOwner = tracked;
                 tracked.NextPollAt = default;
                 QueueObservationLocked(sessionId, tracked, immediate: true);
-                return false;
+                return promoted;
             }
             if (_tracked.Count >= 128) throw new InvalidOperationException("Tracked session capacity reached.");
-            _tracked.Add(sessionId, tracked = new());
+            _tracked.Add(sessionId, tracked = new() { ExplicitlyTracked = true });
             QueueObservationLocked(sessionId, tracked, immediate: true);
             return true;
         }
@@ -152,6 +161,13 @@ public sealed partial class OpenCodeNotificationMonitor : IDisposable, IAsyncDis
             state.EventLifetime.Cancel();
             _observationRun?.Bootstrap.Remove(sessionId);
             _sink.Retire(sessionId);
+            foreach (var child in _tracked.Where(p => !p.Value.ExplicitlyTracked && ReferenceEquals(p.Value.TrackingOwner, state)).ToArray())
+            {
+                _tracked.Remove(child.Key);
+                child.Value.EventLifetime.Cancel();
+                _observationRun?.Bootstrap.Remove(child.Key);
+                _sink.Retire(child.Key);
+            }
             return true;
         }
     }
