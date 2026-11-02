@@ -59,7 +59,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 | 5 | `tests/message-pagination/run.ps1` | 会话消息历史双向分页拉取、不透明 Cursor 游标维护、增量更新与分页边界对齐 |
 | 6 | `tests/opencode-view-ack/run.ps1` | 界面确认机制、未处理提示同步、会话未读计数与已观测执行状态 |
 | 7 | `tests/opencode-observations/run.ps1` | 权威会话状态、active 快照与 idle 终态；未打开子会话/孙会话权限和表单的通知跟踪、无关根排除、重连与跟踪退役，保留 root-only 完成通知规则 |
-| 8 | `tests/notification-form/run.ps1` | 原生 Toast 通知组装、交互按钮与输入表单 Nonce 映射、`OpenCodeInteractionGate` 仲裁与未知结果锁定 |
+| 8 | `tests/notification-form/run.ps1` | 原生 Toast 通知组装、交互按钮与输入表单 Nonce 映射、`OpenCodeInteractionGate` 仲裁与未知结果锁定；真实提问卡片/遮罩的“其他”单多选输入、延迟焦点与刷新保留回归（受控调度/原生控件替身，不是物理输入法自动化） |
 | 9 | `tests/opencode-composer/run.ps1` | 输入区状态管理、字符快捷触发器（`@` 提及、`/` 命令、`!` Shell 直通）、多模式草稿切换与持久化 |
 | 10 | `tests/opencode-composer-hookup/run.ps1` | 输入区按键管线：隧道阶段 Enter 拦截、Shift+Enter 换行、IME 中文输入法 80ms 选词保护、发送与停止按钮动态切换 |
 | 11 | `tests/opencode-commands-attachments/run.ps1` | 斜杠命令目录读取与 204 回调确认；附件 Base64 编码、MIME 白名单、单文件与总容量大小硬上限截断 |

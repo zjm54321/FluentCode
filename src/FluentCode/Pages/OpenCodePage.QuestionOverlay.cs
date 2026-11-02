@@ -84,7 +84,7 @@ public sealed partial class OpenCodePage
             // 焦点移到提问呈现根（不是任何输入或提交按钮），防止正在输入时的 Enter / 字符落进答案或误提交。
             DispatcherQueue.TryEnqueue(() =>
             {
-                if (_composerCoveredByQuestion)
+                if (_composerCoveredByQuestion && !_questionOverlay.ContainsFocus())
                 {
                     _questionOverlay.FocusCurrent();
                 }

@@ -397,9 +397,28 @@ internal sealed class OpenCodeQuestionOverlay : Grid
                 || !ReferenceEquals(card.Editor, editor) || !ReferenceEquals(_editorHost.Content, editor)
                 || card.IsDetached || card.Revision != revision || editor?.PageIndex != page
                 || input && (IsStale || _confirming || !card.CanSubmit)) return;
+            // A queued navigation/Answer/request-switch focus may run after the user has
+            // entered Other (including an IME commit). CurrentInput is the radio/check group,
+            // not that textbox: do not take focus away from an active, visible editor input.
+            if (EditorHasFocus(editor)) return;
             if (scrollTop) _editorScroll.ChangeView(null, 0, null);
             if (input) FocusCurrentInput(); else FocusCurrent();
         });
+    }
+
+    private bool EditorHasFocus(OpenCodeFormAnswerEditor? editor)
+    {
+        if (editor is null || XamlRoot is null) return false;
+        var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        while (focused is not null)
+        {
+            // A previous page can still own focus while it is being collapsed. It must not
+            // prevent the queued request from focusing the newly displayed question.
+            if (focused is UIElement { Visibility: Visibility.Collapsed }) return false;
+            if (ReferenceEquals(focused, editor)) return true;
+            focused = VisualTreeHelper.GetParent(focused);
+        }
+        return false;
     }
 
     private void Card_AnswerRequested(object? sender, EventArgs e)

@@ -12,6 +12,7 @@ namespace Microsoft.UI.Xaml
     public enum HorizontalAlignment { Left, Center, Right, Stretch }
     public enum VerticalAlignment { Top, Center, Bottom, Stretch }
     public enum TextWrapping { NoWrap, Wrap }
+    public enum TextTrimming { None, CharacterEllipsis }
     public enum FocusState { Unfocused, Programmatic }
     public enum KeyboardNavigationMode { Local, Cycle }
     public enum XYFocusKeyboardNavigationMode { Disabled, Enabled }
@@ -32,6 +33,7 @@ namespace Microsoft.UI.Xaml
         public double Width { get; set; }
         public double Height { get; set; }
         public double MinWidth { get; set; }
+        public double MinHeight { get; set; }
         public double MaxHeight { get; set; }
         public Thickness Margin { get; set; }
         public HorizontalAlignment HorizontalAlignment { get; set; }
@@ -66,7 +68,13 @@ namespace Microsoft.UI.Dispatching
     public sealed class DispatcherQueue
     {
         public bool HasThreadAccess => true;
+#if QUESTION_INPUT_TESTS
+        internal static readonly Queue<Action> Pending = new();
+        public bool TryEnqueue(Action callback) { Pending.Enqueue(callback); return true; }
+        internal static void Drain() { while (Pending.TryDequeue(out var callback)) callback(); }
+#else
         public bool TryEnqueue(Action callback) { callback(); return true; }
+#endif
     }
 }
 namespace Microsoft.UI.Xaml.Controls
@@ -99,7 +107,8 @@ namespace Microsoft.UI.Xaml.Controls
         public XYFocusKeyboardNavigationMode XYFocusKeyboardNavigation { get; set; }
         public static void SetColumn(FrameworkElement element, int column) { }
     }
-    public class ContentControl : FrameworkElement
+    public class Control : FrameworkElement { }
+    public class ContentControl : Control
     {
         private object? _content;
         public object? Content
@@ -109,6 +118,10 @@ namespace Microsoft.UI.Xaml.Controls
         }
         public HorizontalAlignment HorizontalContentAlignment { get; set; }
         public VerticalAlignment VerticalContentAlignment { get; set; }
+#if QUESTION_INPUT_TESTS
+        public event Microsoft.UI.Xaml.Input.KeyEventHandler? PreviewKeyDown;
+        internal void PreviewKeyForTest(Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args) => PreviewKeyDown?.Invoke(this, args);
+#endif
     }
     public class Border : ContentControl
     {
@@ -123,21 +136,32 @@ namespace Microsoft.UI.Xaml.Controls
         public double FontSize { get; set; }
         public TextWrapping TextWrapping { get; set; }
         public bool IsTextSelectionEnabled { get; set; }
+        public int MaxLines { get; set; }
+        public TextTrimming TextTrimming { get; set; }
         public List<Microsoft.UI.Xaml.Documents.Run> Inlines { get; } = new();
     }
+#if !QUESTION_INPUT_TESTS
     public class TextBox : TextBlock { }
+#endif
     public class FontIcon : FrameworkElement { public string Glyph { get; set; } = string.Empty; public double FontSize { get; set; } }
     public class Button : ContentControl
     {
+        public Thickness Padding { get; set; }
         public event Action<object, RoutedEventArgs>? Click;
         internal void ClickForTest() { if (IsEnabled) Click?.Invoke(this, new()); }
     }
     public class Expander : ContentControl { public object? Header { get; set; } public bool IsExpanded { get; set; } }
     public class ScrollViewer : ContentControl
-    { public ScrollBarVisibility VerticalScrollBarVisibility { get; set; } public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; } }
-    public class ProgressRing : FrameworkElement { public bool IsActive { get; set; } }
-    public class InfoBar : FrameworkElement
     {
+        public ScrollBarVisibility VerticalScrollBarVisibility { get; set; }
+        public ScrollBarVisibility HorizontalScrollBarVisibility { get; set; }
+        public Thickness Padding { get; set; }
+        public bool ChangeView(double? horizontalOffset, double? verticalOffset, float? zoomFactor) => true;
+    }
+    public class ProgressRing : FrameworkElement { public bool IsActive { get; set; } }
+    public class InfoBar : ContentControl
+    {
+        public Button? ActionButton { get; set; }
         public bool IsOpen { get; set; }
         public bool IsClosable { get; set; }
         public bool IsIconVisible { get; set; }
@@ -170,7 +194,8 @@ namespace Microsoft.UI.Xaml.Automation
     public static class AutomationProperties
     {
         public static void SetAutomationId(Microsoft.UI.Xaml.UIElement element, string id) => element.AutomationId = id;
-        public static void SetName(Microsoft.UI.Xaml.UIElement element, string name) => element.AutomationName = name;
+        public static void SetName(Microsoft.UI.Xaml.DependencyObject element, string name) { if (element is Microsoft.UI.Xaml.UIElement ui) ui.AutomationName = name; }
+        public static void SetHelpText(object element, string text) { }
         public static void SetAccessibilityView(object element, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView view) { }
         public static void SetLiveSetting(object element, AutomationLiveSetting value) { }
         public static void SetLandmarkType(object element, AutomationLandmarkType value) { }
@@ -186,6 +211,7 @@ namespace FluentCode.Pages.OpenCode
     internal static class OpenCodeThemedXaml { internal static T? Load<T>(string name, string attributes) where T : FrameworkElement => null; }
     internal sealed class OpenCodeQuestionAnchorHost : ContentControl
     { internal void Attach(FrameworkElement element) => Content = element; internal void Detach(FrameworkElement element) { if (ReferenceEquals(Content, element)) Content = null; } }
+#if !QUESTION_INPUT_TESTS
     // Form editor/native rendering are outside this permission regression; its page/HTTP/gate path is real.
     internal sealed class OpenCodeFormCard : FrameworkElement
     {
@@ -211,4 +237,5 @@ namespace FluentCode.Pages.OpenCode
         internal bool ContainsFocus() => false;
         internal bool FocusCurrent() => false;
     }
+#endif
 }
