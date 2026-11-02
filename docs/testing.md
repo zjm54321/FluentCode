@@ -40,7 +40,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 
 `opencode-qol` 父仓库的 `.github/workflows/windows-client.yml` 递归检出子模块，使用短路径 Windows 克隆、.NET 10 SDK 和原生 `--windows` 模式。父仓库的 gitlink 更新触发 CI；只向客户端独立仓库提交不会自动推进父仓库的锁定版本。先准备 BrowserRuntime，再运行 Debug 构建以恢复 NuGet 依赖。套件用 `--exclude startup-smoke` 运行其余 **26 项**；这些默认入口不启用 `-RealWsl`、`-PanelFeedback` 或现场 OpenCode 后端。浏览器审计使用自建回环夹具；若未安装 Chrome，现有 Chrome 专项用例会明确跳过。
 
-随后单独运行 Release 发布和 `tests/startup-smoke/run.ps1 -PublishDirectory <本次发布目录>`，避免冒烟测试重复发布。工作流上传完整、未签名的发布目录及测试证据，仅 `fluentcode-v*` 标签触发 Windows Release ZIP。Linux 的 `v*` 发布工作流保持独立；CI 不执行证书签名或 MSIX 打包。
+随后单独运行 Release 发布和 `tests/startup-smoke/run.ps1 -PublishDirectory <本次发布目录>`，避免冒烟测试重复发布；再构建自包含 MSIX，解包校验清单与载荷哈希。工作流上传发布目录、未签名 MSIX 及测试证据，仅 `fluentcode-v*` 标签触发 Windows Release ZIP/MSIX。Linux 的 `v*` 发布工作流保持独立；CI 不提供签名证书，MSIX 需签名后才能安装。构建、签名与手动安装步骤见 [MSIX 指南](msix.md)。
 
 原生构建和启动冒烟脚本的相对 `-EvidenceRoot`、`-PublishDirectory` 均以客户端根目录（`clients/windows`）为基准，不依赖 PowerShell 启动时的进程工作目录。
 

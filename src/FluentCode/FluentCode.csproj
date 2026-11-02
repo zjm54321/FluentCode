@@ -23,9 +23,12 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWinUI>true</UseWinUI>
-    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsPackageType Condition="'$(FluentCodePackaged)' != 'true'">None</WindowsPackageType>
+    <WindowsPackageType Condition="'$(FluentCodePackaged)' == 'true'">MSIX</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <SelfContained>false</SelfContained>
+    <SelfContained Condition="'$(FluentCodePackaged)' != 'true'">false</SelfContained>
+    <SelfContained Condition="'$(FluentCodePackaged)' == 'true'">true</SelfContained>
+    <DefineConstants Condition="'$(FluentCodePackaged)' == 'true'">$(DefineConstants);FLUENTCODE_PACKAGED</DefineConstants>
     <PublishAot>false</PublishAot>
     <PublishSingleFile>false</PublishSingleFile>
     <Nullable>enable</Nullable>

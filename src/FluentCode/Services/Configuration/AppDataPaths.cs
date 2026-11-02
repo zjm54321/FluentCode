@@ -7,7 +7,7 @@ namespace FluentCode.Services.Configuration;
 /// 数据根目录与文件路径的集中定义（内部使用）。
 /// </summary>
 /// <remarks>
-/// 默认根目录：<c>%LOCALAPPDATA%\FluentCode</c>
+/// 非打包默认根目录：<c>%LOCALAPPDATA%\FluentCode</c>；MSIX 使用独立的包 LocalState。
 /// （<see cref="Environment.SpecialFolder.LocalApplicationData"/> + "FluentCode"）。
 /// 文件布局：<c>settings.json</c>、<c>secrets\{credentialId}.bin</c>、<c>sessions\{sessionId}.json</c>。
 /// </remarks>
@@ -31,12 +31,17 @@ internal static class AppDataPaths
             return Path.GetFullPath(overrideRoot);
         }
 
+#if FLUENTCODE_PACKAGED
+        // A packaged install starts fresh. Do not migrate or fall back to unpackaged credentials.
+        return Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+#else
         string localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(localData))
         {
             throw new InvalidOperationException("无法获取 LocalApplicationData；拒绝回退到当前工作目录存储数据。");
         }
         return Path.Combine(localData, AppFolderName);
+#endif
     }
 
     internal static string GetSettingsFilePath(string rootDirectory) =>

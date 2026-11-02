@@ -51,9 +51,14 @@ internal sealed class OpenCodeBrowserRuntimeProtocol : IAsyncDisposable
         foreach (var name in new[] { "node.exe", "sidecar.mjs", "audit-worker.mjs", "runtime-manifest.json", "node_modules/lighthouse/package.json" })
             if (!File.Exists(Path.Combine(directory, name)))
                 throw new FileNotFoundException("Prepared browser runtime is missing. Run tools/browser-runtime/prepare.ps1 before building or publishing.", Path.Combine(directory, name));
+        string workingDirectory = directory;
+#if FLUENTCODE_PACKAGED
+        workingDirectory = Path.Combine(FluentCode.Services.Configuration.AppDataPaths.GetRootDirectory(null), "Browser", "Runtime");
+        Directory.CreateDirectory(workingDirectory);
+#endif
         var info = new ProcessStartInfo(Path.Combine(directory, "node.exe"))
         {
-            WorkingDirectory = directory, UseShellExecute = false, CreateNoWindow = true,
+            WorkingDirectory = workingDirectory, UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
         };
         info.ArgumentList.Add(Path.Combine(directory, "sidecar.mjs"));
@@ -62,6 +67,14 @@ internal sealed class OpenCodeBrowserRuntimeProtocol : IAsyncDisposable
         info.Environment.Clear();
         foreach (var name in new[] { "SystemRoot", "WINDIR", "TEMP", "TMP" })
             if (Environment.GetEnvironmentVariable(name) is { } value) info.Environment[name] = value;
+#if FLUENTCODE_PACKAGED
+        // The bundle is read-only under WindowsApps. Node/Lighthouse scratch and user caches are not.
+        foreach (var name in new[] { "Temp", "User", "CompileCache" }) Directory.CreateDirectory(Path.Combine(workingDirectory, name));
+        info.Environment["TEMP"] = info.Environment["TMP"] = Path.Combine(workingDirectory, "Temp");
+        info.Environment["HOME"] = info.Environment["USERPROFILE"] = Path.Combine(workingDirectory, "User");
+        info.Environment["LOCALAPPDATA"] = workingDirectory;
+        info.Environment["NODE_COMPILE_CACHE"] = Path.Combine(workingDirectory, "CompileCache");
+#endif
         var child = Process.Start(info) ?? throw new InvalidOperationException("Could not start prepared browser runtime.");
         return new(child, handler);
     }

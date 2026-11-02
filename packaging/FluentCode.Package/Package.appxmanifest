@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+         xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap10 desktop com rescap">
+  <Identity Name="mingz.SST.OpenCodeDesktop.Fluent" Publisher="CN=mingz" Version="1.2611.1.0" ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>FluentCode</DisplayName>
+    <PublisherDisplayName>mingz</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>OpenCode 的 Fluent 风格 Windows 客户端</Description>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19044.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Resources><Resource Language="en-us" /><Resource Language="zh-cn" /></Resources>
+  <Applications>
+    <Application Id="FluentCode" Executable="FluentCode.exe" EntryPoint="Windows.FullTrustApplication"
+                 uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
+      <uap:VisualElements DisplayName="FluentCode" Description="OpenCode 的 Fluent 风格 Windows 客户端"
+                          BackgroundColor="transparent" Square44x44Logo="Assets\Square44x44Logo.png"
+                          Square150x150Logo="Assets\Square150x150Logo.png" />
+      <Extensions>
+        <desktop:Extension Category="windows.toastNotificationActivation">
+          <desktop:ToastNotificationActivation ToastActivatorCLSID="77E0A389-0925-45DF-A8D1-7B7552DAB83D" />
+        </desktop:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="FluentCode.exe" DisplayName="FluentCode" Arguments="----AppNotificationActivated:">
+              <com:Class Id="77E0A389-0925-45DF-A8D1-7B7552DAB83D" DisplayName="FluentCode" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>

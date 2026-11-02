@@ -118,7 +118,11 @@ public sealed partial class CompletionNotificationService : IDisposable
                 AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
                 _handlerSubscribed = true;
 
+#if FLUENTCODE_PACKAGED
+                AppNotificationManager.Default.Register();
+#else
                 AppNotificationManager.Default.Register("FluentCode", RegistrationIcon);
+#endif
                 _status = NotificationServiceStatus.Initialized;
                 return true;
             }

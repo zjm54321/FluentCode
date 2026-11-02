@@ -57,7 +57,11 @@ public partial class App
         bool registered = false;
         try
         {
+#if FLUENTCODE_PACKAGED
+            manager.Register(); // MSIX identity, icon and COM activator come from the package manifest.
+#else
             manager.Register("FluentCode", CompletionNotificationService.RegistrationIcon);
+#endif
             registered = true;
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
             await instance.RedirectActivationToAsync(activation);

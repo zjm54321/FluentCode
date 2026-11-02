@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{2BAEB01B-1542-4339-B046-32B7570DFA6A}</ProjectGuid>
+    <ProjectName>FluentCode.Package</ProjectName>
+    <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
+    <TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.19044.0</TargetPlatformMinVersion>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <EntryPointExe>FluentCode.exe</EntryPointExe>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <AppxBundle>Never</AppxBundle>
+    <AppxPackageFileName>FluentCode_1.2611.1.0_x64.msix</AppxPackageFileName>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
+    <UapAppxPackageBuildMode>SideloadOnly</UapAppxPackageBuildMode>
+    <AppxSymbolPackageEnabled>false</AppxSymbolPackageEnabled>
+    <AppxGenerateTestArtifacts>false</AppxGenerateTestArtifacts>
+    <DesktopBridgePropsPath>$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.props</DesktopBridgePropsPath>
+    <DesktopBridgeTargetsPath>$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.targets</DesktopBridgeTargetsPath>
+  </PropertyGroup>
+  <Import Project="$(DesktopBridgePropsPath)" />
+  <ItemGroup>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <AppxManifest Include="Package.appxmanifest" />
+    <Content Include="Assets\*.png" />
+    <!-- A full publish is supplied explicitly, including the separately copied npm tree and node.exe.
+         No project reference: publishing is done once with the packaged, self-contained properties. -->
+    <!-- Preserve the app/SDK PRIs as opaque payload. Re-indexing/merging their embedded XBFs
+         duplicates Files/App.xbf; npm filenames are not Windows resource qualifiers either.
+         Only the package's shell icons participate in the WAP resource index. -->
+    <AppxPackagePayload Include="$(FluentCodePayloadDirectory)\**\*" Exclude="$(FluentCodePayloadDirectory)\**\*.pdb">
+      <TargetPath>%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+      <ProjectName>$(ProjectName)</ProjectName>
+    </AppxPackagePayload>
+  </ItemGroup>
+  <Target Name="ValidateFluentCodePayload" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(FluentCodePayloadDirectory)' == '' Or !Exists('$(FluentCodePayloadDirectory)\FluentCode.exe')"
+           Text="Use scripts/package-msix.ps1 to prepare a complete self-contained payload before packaging." />
+    <Error Condition="'$(Platform)' != 'x64'" Text="FluentCode MSIX supports x64 only." />
+  </Target>
+  <Import Project="$(DesktopBridgeTargetsPath)" />
+</Project>

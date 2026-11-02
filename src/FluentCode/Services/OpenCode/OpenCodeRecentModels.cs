@@ -23,8 +23,12 @@ public sealed class OpenCodeRecentModels
     private bool _loaded;
 
     public static OpenCodeRecentModels Shared { get; } = new(Path.Combine(
+#if FLUENTCODE_PACKAGED
+        Configuration.AppDataPaths.GetRootDirectory(null), "opencode-model-recents.json"));
+#else
         Environment.GetEnvironmentVariable("FC_STARTUP_SMOKE_ROOT") ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FluentCode"), "opencode-model-recents.json"));
+#endif
 
     public OpenCodeRecentModels(string path) => _path = path;
 
