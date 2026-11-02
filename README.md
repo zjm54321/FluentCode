@@ -13,7 +13,7 @@
 
 FluentCode 为 OpenCode 及 opencode-qol 后端提供原生 Windows 桌面界面。应用基于 WinUI 3 开发，使用资源管理器风格的单行标签栏、Windows Terminal 原生控件、离线 Node.js 浏览器运行时以及系统通知与任务栏状态指示。
 
-本项目作为保留完整历史的 `clients/windows` 子树纳入 `opencode-qol` 仓库，独立于 Linux Nix 构建。当前版本为 **1.2611.1**，发布标签使用 `fluentcode-v*`（例如 `fluentcode-v1.2611.1`）。后续计划提供 MSIX 安装包，支持自签名侧载与 `.appinstaller` 自动更新。
+本项目是保留完整历史的独立 Git 仓库；`opencode-qol` 通过 `clients/windows` 子模块锁定具体提交，父仓库只保存链接，不合并客户端历史，也不将客户端纳入 Linux Nix 构建。当前版本为 **1.2611.1**，父仓库的 Windows 发布标签使用 `fluentcode-v*`（例如 `fluentcode-v1.2611.1`）。后续计划提供 MSIX 安装包，支持自签名侧载与 `.appinstaller` 自动更新。
 
 ---
 
@@ -76,7 +76,7 @@ FluentCode 为 OpenCode 及 opencode-qol 后端提供原生 Windows 桌面界面
 
 ## 构建与运行
 
-在 Windows 的短路径 Git 克隆中，先进入 `clients/windows`，再在 Windows PowerShell 下执行：
+在 Windows 的短路径 Git 克隆中，从本仓库根目录执行以下命令；若通过 `opencode-qol` 子模块使用，则先在父仓库运行 `git submodule update --init --recursive`，再进入 `clients/windows`：
 
 ```powershell
 # 1. 准备离线浏览器运行时（下载固定版本的官方 Node 并安装锁定依赖，仅首次需联网）
