@@ -18,7 +18,7 @@ MSIX 自带 .NET 10、Windows App SDK、原生 Terminal 控件及完整离线 Br
 .\scripts\package-msix.ps1 -CertificateThumbprint $thumbprint -EvidenceRoot artifacts\msix-signed
 ```
 
-输出在本次目录的 `package/` 下：`.msix`、`SHA256SUMS.txt`；签名时另有仅含公钥的 `.cer`。脚本不会信任证书、安装包、提权或启动应用。
+输出在本次目录的 `package/` 下：`.msix`、`SHA256SUMS.txt`；签名时另有仅含公钥的 `.cer`、`Install.cmd`、`Install.ps1`。安装脚本自动绑定本次包的 SHA256、版本和证书指纹；未签名 CI 包不生成安装脚本。打包过程本身不会信任证书、安装包、提权或启动应用。
 
 开发私钥以不可导出形式保存在当前用户的 Windows 证书/密钥存储区，位于仓库及证据目录之外；按 `CN=mingz` 和 `FluentCode MSIX development` 友好名称复用。无需 PFX 或密码，不应将任何私钥提交、上传或放进构建证据。没有自动时间戳服务；开发包需要在证书有效期内签名。正式分发应使用调用者持有的适当代码签名证书。
 
@@ -28,7 +28,19 @@ WAP 项目是 `packaging/FluentCode.Package/FluentCode.Package.wapproj`。它打
 
 ## 由用户决定信任和安装
 
-自签名包在没有显式信任时不能安装。先核对 `.msix` 的 SHA256、证书主题 `CN=mingz` 和签名指纹；仅在确认来源且愿意信任该开发发布者后，**手动**执行：
+将 `Install.cmd`、`Install.ps1`、`.msix` 和 `.cer` 保留在同一文件夹（可整体复制到含空格或中文的目录），从普通桌面**双击 `Install.cmd`**。无需 PowerShell 7，使用系统自带 Windows PowerShell 5.1，不修改执行策略。窗口会显示中文包身份、SHA256、发布者、证书指纹和当前安装用户；校验全部通过后，输入 `INSTALL` 才继续。
+
+首次需要信任证书时会出现 UAC 提示：管理员助手仅校验证书并将该公钥加入 **本地计算机 / 受信任的人（LocalMachine\TrustedPeople）**，不加入根证书库、不安装应用。助手退出后，原普通用户进程调用 `Add-AppxPackage` 安装；不要右键“以管理员身份运行”整个脚本，否则会被拒绝。已经信任同一证书时不再提权。只有在你确认来源并愿意信任 `CN=mingz` 发布者时才授权。
+
+脚本不下载任何内容、不调整执行策略或开发者模式、不自动关闭应用、不迁移或删除数据，也不会安装后自动启动。若取消 UAC，安装停止；若 Windows 提示包被占用（`0x80073D02`），请自行退出 FluentCode（包括托盘）后重试。窗口会显示结果并暂停。`Install.cmd -WhatIf` 只校验和预览，不确认、不提权、不导入证书、不安装。
+
+给已经完成的签名包补上安装脚本，无需重新发布或修改包：
+
+```powershell
+.\scripts\write-install-scripts.ps1 -PackagePath '<包目录>\FluentCode_1.2611.1.0_x64.msix' -CertificatePath '<包目录>\FluentCode-signing.cer'
+```
+
+自签名包在没有显式信任时不能安装。以下手动步骤仅供故障排查；先核对 SHA256、主题 `CN=mingz` 和证书指纹，并确认来源：
 
 ```powershell
 # 只读检查：

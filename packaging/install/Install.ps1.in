@@ -1,0 +1,134 @@
+﻿[CmdletBinding(SupportsShouldProcess = $true)]
+param([string]$PackageDirectory = $PSScriptRoot)
+
+$ErrorActionPreference = 'Stop'
+$script:PackageFileName = '__PACKAGE_FILE__'
+$script:CertificateFileName = '__CERTIFICATE_FILE__'
+$script:ExpectedPackageSha256 = '__PACKAGE_SHA256__'
+$script:ExpectedCertificateThumbprint = '__CERTIFICATE_THUMBPRINT__'
+$script:ExpectedPackageVersion = '__PACKAGE_VERSION__'
+
+function Get-FluentCodeInstallInputs([string]$Directory) {
+    $packagePath = Join-Path $Directory $script:PackageFileName
+    $certificatePath = Join-Path $Directory $script:CertificateFileName
+    if (!(Test-Path -LiteralPath $packagePath -PathType Leaf) -or !(Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
+        throw '请将 Install.cmd、Install.ps1、MSIX 和公钥 CER 保留在同一个文件夹。'
+    }
+    $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+    if ($hash -ne $script:ExpectedPackageSha256) { throw '安装包 SHA256 不匹配；已停止，未修改证书或安装应用。请重新取得完整安装文件。' }
+    $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new([IO.File]::ReadAllBytes($certificatePath))
+    if ($certificate.Thumbprint -ne $script:ExpectedCertificateThumbprint -or $certificate.Subject -ne 'CN=mingz') {
+        throw '公钥证书指纹或发布者不匹配；已停止，未修改证书或安装应用。'
+    }
+    if ($certificate.NotBefore -gt (Get-Date) -or $certificate.NotAfter -le (Get-Date)) { throw '签名证书尚未生效或已经过期；请联系发布者取得新的签名安装包。' }
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    Add-Type -AssemblyName System.Security
+    $archive = [IO.Compression.ZipFile]::OpenRead($packagePath)
+    try {
+        $entry = $archive.GetEntry('AppxSignature.p7x')
+        if (!$entry) { throw '安装包未签名，不能使用此安装脚本。' }
+        $stream = $entry.Open()
+        $buffer = [IO.MemoryStream]::new()
+        try { $stream.CopyTo($buffer) } finally { $stream.Dispose() }
+        $data = $buffer.ToArray()
+        $buffer.Dispose()
+        if ($data.Length -le 4 -or [Text.Encoding]::ASCII.GetString($data, 0, 4) -ne 'PKCX') { throw '安装包签名格式无效。' }
+        $cms = [Security.Cryptography.Pkcs.SignedCms]::new()
+        $cms.Decode($data[4..($data.Length - 1)])
+        $cms.CheckSignature($true)
+        if ($cms.SignerInfos.Count -ne 1 -or $cms.SignerInfos[0].Certificate.Thumbprint -ne $script:ExpectedCertificateThumbprint -or
+            $cms.SignerInfos[0].Certificate.Subject -ne 'CN=mingz') { throw '安装包签名与公钥证书不匹配。' }
+        $manifestEntry = $archive.GetEntry('AppxManifest.xml')
+        if (!$manifestEntry) { throw '安装包缺少清单。' }
+        $reader = [IO.StreamReader]::new($manifestEntry.Open())
+        try { [xml]$manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+        $identity = $manifest.Package.Identity
+        if ($identity.Name -ne 'mingz.SST.OpenCodeDesktop.Fluent' -or $identity.Publisher -ne 'CN=mingz' -or
+            $identity.Version -ne $script:ExpectedPackageVersion -or $identity.ProcessorArchitecture -ne 'x64') { throw '安装包身份、版本、架构或发布者不匹配。' }
+    } finally { $archive.Dispose() }
+    # Windows may report an untrusted chain before the explicitly approved trust step.
+    # When the native signature provider supplies a signer, it must match our pinned CER too.
+    $nativeSignature = Get-AuthenticodeSignature -LiteralPath $packagePath
+    if ($nativeSignature.SignerCertificate -and $nativeSignature.SignerCertificate.Thumbprint -ne $script:ExpectedCertificateThumbprint) {
+        throw 'Windows 检测到的安装包签名者与公钥证书不匹配。'
+    }
+    return [pscustomobject]@{ PackagePath = $packagePath; Certificate = $certificate; Sha256 = $hash }
+}
+
+function Test-FluentCodeElevated {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    return ([Security.Principal.WindowsPrincipal]::new($identity)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Test-FluentCodeCertificateTrusted {
+    return Test-Path -LiteralPath ('Cert:\LocalMachine\TrustedPeople\' + $script:ExpectedCertificateThumbprint)
+}
+
+function Get-FluentCodeTrustCommand([Security.Cryptography.X509Certificates.X509Certificate2]$Certificate) {
+    # Only public DER bytes and the pinned thumbprint cross the UAC boundary. No path or script is loaded elevated.
+    $helper = @'
+$ErrorActionPreference = 'Stop'
+try {
+    $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String('__CERTIFICATE_DATA__'))
+    if ($certificate.Subject -ne 'CN=mingz' -or $certificate.Thumbprint -ne '__CERTIFICATE_THUMBPRINT__') { throw 'Certificate mismatch.' }
+    $store = [Security.Cryptography.X509Certificates.X509Store]::new('TrustedPeople', 'LocalMachine')
+    try {
+        $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+        $existing = $store.Certificates.Find([Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint, $certificate.Thumbprint, $false)
+        if ($existing.Count -eq 0) { $store.Add($certificate) }
+    } finally { $store.Close() }
+    exit 0
+} catch { Write-Error $_; exit 1 }
+'@
+    $helper = $helper.Replace('__CERTIFICATE_DATA__', [Convert]::ToBase64String($Certificate.RawData))
+    return [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($helper))
+}
+
+function Invoke-FluentCodeCertificateTrust([Security.Cryptography.X509Certificates.X509Certificate2]$Certificate) {
+    $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    if ([Environment]::Is64BitOperatingSystem -and ![Environment]::Is64BitProcess) { $powershell = Join-Path $env:SystemRoot 'Sysnative\WindowsPowerShell\v1.0\powershell.exe' }
+    $encoded = Get-FluentCodeTrustCommand $Certificate
+    try {
+        $helper = Start-Process -FilePath $powershell -Verb RunAs -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) -Wait -PassThru
+    } catch {
+        $cause = $_.Exception
+        while ($cause -and $cause.NativeErrorCode -ne 1223) { $cause = $cause.InnerException }
+        if ($cause) { throw '已取消 UAC 授权；没有安装应用。如需安装，请重新双击 Install.cmd 并允许证书导入。' }
+        throw ('无法启动证书导入助手；应用未安装。请确认有管理员授权，再重试。详细信息：' + $_.Exception.Message)
+    }
+    if ($helper.ExitCode -ne 0 -or !(Test-FluentCodeCertificateTrusted)) { throw '证书导入失败；应用未安装。请确认管理员授权成功，然后重试。' }
+}
+
+function Invoke-FluentCodeInstall {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([string]$Directory)
+    $inputs = Get-FluentCodeInstallInputs $Directory
+    Write-Host ('安装包：FluentCode ' + $script:ExpectedPackageVersion + ' (x64)')
+    Write-Host '包标识：mingz.SST.OpenCodeDesktop.Fluent'
+    Write-Host '发布者 / 证书主题：CN=mingz'
+    Write-Host ('SHA256：' + $inputs.Sha256)
+    Write-Host ('证书指纹：' + $inputs.Certificate.Thumbprint)
+    Write-Host ('证书有效期至：' + $inputs.Certificate.NotAfter.ToString('yyyy-MM-dd HH:mm:ss'))
+    Write-Host ('安装用户：' + [Security.Principal.WindowsIdentity]::GetCurrent().Name)
+    if (Test-FluentCodeElevated) { throw '请关闭此窗口，不要“以管理员身份运行”。请从普通桌面双击 Install.cmd，让应用安装到原登录用户；只有证书导入助手需要 UAC。' }
+    Write-Host '首次安装将请求 UAC：仅将此公钥证书加入“本地计算机 / 受信任的人”，不会加入根证书库。'
+    Write-Host '随后以当前普通用户安装；不关闭现有应用、不迁移或删除数据、不自动启动应用。请仅在信任发布者时继续。'
+    if (!$PSCmdlet.ShouldProcess($inputs.PackagePath, '信任已核验的发布者证书（如需要），并为当前用户安装 FluentCode')) { return 0 }
+    if ((Read-Host '确认安装请输入 INSTALL；其他输入取消') -cne 'INSTALL') { Write-Host '已取消；未修改证书或安装应用。'; return 2 }
+    if (!(Test-FluentCodeCertificateTrusted)) { Invoke-FluentCodeCertificateTrust $inputs.Certificate }
+    # Recheck after confirmation/UAC so changing the folder while the prompt is open cannot change the approved input.
+    $inputs = Get-FluentCodeInstallInputs $Directory
+    try { Add-AppxPackage -Path $inputs.PackagePath -ErrorAction Stop }
+    catch {
+        if ($_.ToString() -match '80073D02') { throw ('安装包正在使用（0x80073D02）。请自行退出 FluentCode（包括托盘图标）后重试；脚本不会关闭应用。' + [Environment]::NewLine + $_.Exception.Message) }
+        throw ('安装失败；未自动关闭应用或修改数据。请查看下列 Windows 部署错误；若提示占用，请自行退出 FluentCode（包括托盘）后重试。' + [Environment]::NewLine + $_.Exception.Message)
+    }
+    Write-Host '安装成功。请从开始菜单打开 FluentCode；脚本不会自动启动应用。' -ForegroundColor Green
+    return 0
+}
+
+if ($MyInvocation.InvocationName -ne '.') {
+    try { exit (Invoke-FluentCodeInstall -Directory $PackageDirectory -WhatIf:$WhatIfPreference) }
+    catch { Write-Host ('安装已停止：' + $_.Exception.Message) -ForegroundColor Red; exit 1 }
+}

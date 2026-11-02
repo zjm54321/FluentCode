@@ -133,6 +133,9 @@ Invoke-Native 'unpack' $makeappx @('unpack', '/p', $package, '/d', $unpacked, '/
 $signature | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'signature.json')
 $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
 "$hash  $([IO.Path]::GetFileName($package))" | Set-Content -Encoding UTF8 (Join-Path $output 'SHA256SUMS.txt')
+if ($certificate) {
+    & (Join-Path $repo 'scripts\write-install-scripts.ps1') -PackagePath $package -CertificatePath (Join-Path $output 'FluentCode-signing.cer')
+}
 $result = @{
     Passed = $true; Package = $package; Sha256 = $hash; Bytes = (Get-Item $package).Length
     StagingDirectory = $stage; PayloadDirectory = $payload; UnpackedDirectory = $unpacked
