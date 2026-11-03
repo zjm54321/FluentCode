@@ -21,6 +21,7 @@ internal static partial class Program
     private static async Task Main()
     {
         SubagentCompletionNotices();
+        PtyCompletionNotices();
         GroupFinalizesWhenFollowed();
         TranscriptMessageMenus();
         await ImageBindings();

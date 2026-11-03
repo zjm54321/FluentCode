@@ -52,6 +52,9 @@ internal enum OpenCodeAsyncCompletionKind
     /// <summary>后台终端（synthetic，<c>metadata.source == "shell"</c>）。</summary>
     Shell,
 
+    /// <summary>原生 PTY 完成通知（synthetic / system，metadata.source == "pty" + ptyID）。</summary>
+    Pty,
+
     /// <summary>后台子任务（synthetic / system，<c>metadata.source == "subagent"</c> 且带 childID）。</summary>
     Subagent,
 
@@ -61,7 +64,7 @@ internal enum OpenCodeAsyncCompletionKind
 
 /// <summary>
 /// 一条异步完成通知（后台终端 / 后台子任务 / 插件后台任务）的只读投影（纯数据，无 UI 依赖）。
-/// Key 为关联原始工具调用的不透明 id（shellID / childID / 任务 id）；State 为服务端原始状态字符串（可空串）。
+/// Key 为关联原始工具调用的不透明 id（shellID / ptyID / childID / 任务 id）；State 为服务端终态（可空串）。
 /// </summary>
 internal sealed record OpenCodeAsyncCompletion(
     OpenCodeAsyncCompletionKind Kind,
@@ -80,7 +83,8 @@ internal sealed record OpenCodeAsyncCompletion(
     public bool IsRunning => State.ToLowerInvariant() is "running" or "pending" or "queued";
 
     /// <summary>状态表示成功完成（且退出码缺失或为 0）。</summary>
-    public bool IsSuccess => State.ToLowerInvariant() is "completed" or "succeeded" or "success" or "done" && ExitCode is null or 0;
+    public bool IsSuccess => State.ToLowerInvariant() is "completed" or "succeeded" or "success" or "done" && ExitCode is null or 0
+        || Kind == OpenCodeAsyncCompletionKind.Pty && State == "exited" && ExitCode == 0;
 }
 
 /// <summary>时间线中工具样式的单行（指令 / 异步完成 / 内部消息）的展示内容（纯数据，无 UI 依赖）。</summary>
@@ -261,7 +265,7 @@ internal static class OpenCodeStepRunPresentation
 
     /// <summary>
     /// 读取异步完成通知（后台终端 / 后台子任务 / 插件后台任务）：仅 synthetic / system 消息；
-    /// 终端按 <c>metadata.source == "shell"</c>，子任务按 <c>metadata.source == "subagent"</c> + childID，
+    /// 终端按 <c>metadata.source == "shell" / "pty"</c>，子任务按 <c>metadata.source == "subagent"</c> + childID，
     /// 插件任务按正文 <c>&lt;task id="…" state="…"&gt;</c> 前缀。只读识别，不执行正文。
     /// </summary>
     internal static bool TryReadAsyncCompletion(OpenCodeMessage? message, out OpenCodeAsyncCompletion completion)
@@ -276,6 +280,9 @@ internal static class OpenCodeStepRunPresentation
         var (tag, attributes, body) = ParseWrapper(text);
         var metadata = message.Metadata is { ValueKind: System.Text.Json.JsonValueKind.Object } m ? m : (System.Text.Json.JsonElement?)null;
         var source = MetadataString(metadata, "source");
+
+        if (string.Equals(source, "pty", StringComparison.Ordinal))
+            return TryReadPtyCompletion(message, metadata, out completion);
 
         if (string.Equals(source, "shell", StringComparison.Ordinal))
         {
@@ -339,6 +346,58 @@ internal static class OpenCodeStepRunPresentation
         return false;
     }
 
+    // native-pty.ts emits this exact machine-origin envelope. Metadata is the discriminator;
+    // prose/quoted JSON never grants a terminal/session navigation or output-read capability.
+    private static bool TryReadPtyCompletion(OpenCodeMessage message, System.Text.Json.JsonElement? metadata,
+        out OpenCodeAsyncCompletion completion)
+    {
+        completion = null!;
+        var id = MetadataString(metadata, "ptyID");
+        var state = MetadataString(metadata, "state");
+        if (string.IsNullOrWhiteSpace(id) || state is not ("exited" or "killed")) return false;
+        var text = message.Text ?? string.Empty;
+        var prefix = "PTY " + id + " (";
+        const string separator = ") finished: ";
+        const string suffix = ". Read retained output with pty_read.";
+        if (!text.StartsWith(prefix, StringComparison.Ordinal) || !text.EndsWith(suffix, StringComparison.Ordinal)) return false;
+        // Titles may themselves contain parentheses/braces/the separator. Only a complete JSON object
+        // with a matching title/header is the payload; never split at an arbitrary brace inside a title.
+        for (var marker = text.IndexOf(separator, prefix.Length, StringComparison.Ordinal); marker >= 0;
+            marker = text.IndexOf(separator, marker + separator.Length, StringComparison.Ordinal))
+        {
+            var start = marker + separator.Length;
+            var length = text.Length - suffix.Length - start;
+            if (length <= 0) return false;
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(text.AsMemory(start, length));
+                var info = document.RootElement;
+                if (info.ValueKind != System.Text.Json.JsonValueKind.Object) return false;
+                var title = MetadataString(info, "title");
+                if (title is null || text[..start] != prefix + title + separator) continue;
+                if (MetadataString(info, "id") != id || MetadataString(info, "status") != state
+                    || !info.TryGetProperty("tool", out var tool) || tool.ValueKind != System.Text.Json.JsonValueKind.Object
+                    || string.IsNullOrEmpty(message.Id) || MetadataString(tool, "completionID") != message.Id
+                    || !tool.TryGetProperty("notifyOnExit", out var notify) || notify.ValueKind != System.Text.Json.JsonValueKind.True)
+                    return false;
+                int? exit = null;
+                if (info.TryGetProperty("exitCode", out var code) && code.ValueKind != System.Text.Json.JsonValueKind.Null)
+                {
+                    if (code.ValueKind != System.Text.Json.JsonValueKind.Number || !code.TryGetInt32(out var value)) return false;
+                    exit = value;
+                }
+                var timeout = info.TryGetProperty("timedOut", out var timedOut) && timedOut.ValueKind == System.Text.Json.JsonValueKind.True;
+                var target = MetadataString(info, "userTitle");
+                if (string.IsNullOrWhiteSpace(target)) target = string.IsNullOrWhiteSpace(message.Description) ? title : message.Description;
+                completion = new(OpenCodeAsyncCompletionKind.Pty, id, timeout ? "timeout" : state, target!, exit,
+                    string.Empty, null, null);
+                return true;
+            }
+            catch (System.Text.Json.JsonException) { } // Unsupported/malformed notices retain their original presentation.
+        }
+        return false;
+    }
+
     /// <summary>异步状态的中文说明（completed → 已完成 等；缺失为“状态未提供”，未识别原样）。</summary>
     internal static string DescribeAsyncState(string? state) => (state ?? string.Empty).ToLowerInvariant() switch
     {
@@ -357,15 +416,17 @@ internal static class OpenCodeStepRunPresentation
     internal static OpenCodeTimelineRowContent DescribeAsyncCompletion(OpenCodeAsyncCompletion completion)
     {
         ArgumentNullException.ThrowIfNull(completion);
-        var stateText = DescribeAsyncState(completion.State);
+        var stateText = completion.Kind == OpenCodeAsyncCompletionKind.Pty && completion.State == "exited"
+            ? completion.ExitCode == 0 ? "已完成" : "已退出"
+            : DescribeAsyncState(completion.State);
         var noun = completion.Kind switch
         {
-            OpenCodeAsyncCompletionKind.Shell => "终端",
+            OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Pty => "终端",
             OpenCodeAsyncCompletionKind.Subagent => SubagentLabel,
             _ => "后台任务",
         };
 
-        var name = completion.Kind is OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Subagent ? noun + "（后台）" : noun;
+        var name = completion.Kind is OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Pty or OpenCodeAsyncCompletionKind.Subagent ? noun + "（后台）" : noun;
         var target = completion.Kind == OpenCodeAsyncCompletionKind.Subagent && !string.IsNullOrWhiteSpace(completion.Agent)
             ? (completion.Agent + " " + completion.Target).Trim()
             : completion.Target;
@@ -391,6 +452,12 @@ internal static class OpenCodeStepRunPresentation
         {
             case OpenCodeAsyncCompletionKind.Shell:
                 Add("命令", completion.Target, completion.Target.Contains('\n', StringComparison.Ordinal) || completion.Target.Length > 100 ? OpenCodeToolPropertyKind.Block : OpenCodeToolPropertyKind.Code);
+                Add("状态", stateText, OpenCodeToolPropertyKind.Text);
+                Add("退出码", completion.ExitCode?.ToString(CultureInfo.InvariantCulture), OpenCodeToolPropertyKind.Code);
+                Add("终端 id", completion.Key, OpenCodeToolPropertyKind.Code);
+                break;
+            case OpenCodeAsyncCompletionKind.Pty:
+                Add("任务", completion.Target, OpenCodeToolPropertyKind.Text);
                 Add("状态", stateText, OpenCodeToolPropertyKind.Text);
                 Add("退出码", completion.ExitCode?.ToString(CultureInfo.InvariantCulture), OpenCodeToolPropertyKind.Code);
                 Add("终端 id", completion.Key, OpenCodeToolPropertyKind.Code);

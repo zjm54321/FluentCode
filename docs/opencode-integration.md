@@ -115,3 +115,9 @@ FluentCode 包含独立的 Node.js 运行时，用于会话浏览器的网络隧
 - **数据流与编码**：底层传输规范的 VT100 / xterm 控制序列与原始 UTF-8 字符流。
 - **服务端权威几何（Geometry）**：终端的行列尺寸由服务端严格仲裁。界面卡片触发“适应窗口”时，先计算目标行列数并向服务端发送尺寸变更提议（Resize）；收到服务端的确认帧后，本地 Windows Terminal 解析器再重放对应尺寸的视图。
 - **控制权接管（Takeover）**：终端连接建立后默认处于被动观察模式（Observer），防止键盘误输入打断长任务。用户在终端卡片上双击后，客户端向服务端发送控制权接管信令，转入交互模式（Controller）。
+
+### PTY 后台完成通知
+
+QoL 原生 PTY 的 `synthetic/system` 通知以 `metadata.source="pty"`、`ptyID`、`state` 标识，正文为 `PTY <id> (<title>) finished: <JSON>. Read retained output with pty_read.`。客户端核对信封中的 id、标题、终态及 `tool.completionID` 与消息 id 一致后，复用现有“终端（后台）”时间线行，仅展示用户标题/任务描述、终态、退出码和终端 id；退出码 0 为完成，非零、终止或超时保持失败提示，未提供退出码不推断成功。
+
+通知 JSON 中的命令参数、目录、进程及输出游标不作为正文或详情显示，不自动调用 `pty_read`，也不从 JSON 的 `sessionID` 创建终端/子会话导航权限。来源不匹配、普通用户/助手引用、格式不完整或 id 不一致的内容保留原有呈现，不按正文关键词猜测或删除。
