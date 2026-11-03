@@ -141,6 +141,15 @@ internal static class Program
         Check(view.Contains("_listMotionLease = Renderer.SuppressAirspace()"), "STATIC terminal HWND hidden during the ☰ list slide");
         var conversation = Read("Pages/OpenCode/OpenCodeConversationView.cs");
         Check(!conversation.Contains("ChildrenTransitions") && conversation.Contains("MaxLiveEntrances = 6"), "STATIC transcript has no children transitions; live entrances capped");
+        var transcriptMotion = Read("Pages/OpenCodePage.Motion.cs");
+        Check(transcriptMotion.Contains("FluentMotion.Settle(MessageScroll)")
+            && transcriptMotion.Contains("FluentMotion.Snap(MessageScroll, 0f)")
+            && transcriptMotion.Contains("FluentMotion.SlideFadeIn(MessageScroll,")
+            && transcriptMotion.Contains("MessageHost.LayoutUpdated += OnLayout"),
+            "STATIC session motion targets outer ScrollView and retains content layout reveal gate");
+        Check(!sources.Any(path => System.Text.RegularExpressions.Regex.IsMatch(File.ReadAllText(path),
+            @"FluentMotion\.\w+\(MessageHost\b|MessageHost\.(Scale|Translation)\s*=|GetElementVisual\(MessageHost\b")),
+            "STATIC direct scroll content is never reset/animated by app motion or visual handout");
         var feedback = Read("Motion/ActionFeedback.cs");
         Check(feedback.Contains("SuccessGlyph = \"\\uE73E\"") && feedback.Contains("FluentMotion.ScaleFadeIn(overlay, 0.6f, Center, FluentMotion.Fast)")
             && feedback.Contains("RaiseNotificationEvent(AutomationNotificationKind.ActionCompleted"),

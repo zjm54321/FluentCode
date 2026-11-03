@@ -30,10 +30,9 @@ public sealed partial class OpenCodePage
         while (!IsLoaded && DateTime.UtcNow < until) await Task.Delay(100);
         await Task.Delay(1500);
         _homeActive = false;
+        WorkspaceGrid.Visibility = Visibility.Visible;
+        NotConfiguredPanel.Visibility = Visibility.Collapsed;
         VisualStateManager.GoToState(this, "SessionLayout", false);
-        Motion.FluentMotion.Settle(MessageHost);
-        _conversationView.ApplyMessages(SmokeTranscript());
-        await Task.Delay(2000);
 
         var root = (UIElement)XamlRoot.Content;
         string Describe(UIElement e) => e.GetType().Name + (e is FrameworkElement { Name.Length: > 0 } f ? "#" + f.Name : "")
@@ -52,6 +51,58 @@ public sealed partial class OpenCodePage
             log.AppendLine($"     {label} @{centre.X:F0},{centre.Y:F0}: " + string.Join(" > ", hits.Take(8).Select(Describe)));
             Check(top is not null && Within(top, target), $"{label}: topmost hit-test element is inside the row ({(top is null ? "none" : Describe(top))})");
         }
+
+        // ScrollPresenter owns the direct content's Translation/Scale expressions. Run the real session
+        // hide/reveal path after a nonzero offset is established, without first settling that content.
+        async Task VerifyScrolledReveal(string label, int session)
+        {
+            BeginTranscriptSwitchMotion();
+            _conversationView.ClearMessages();
+            _conversationView.ApplyMessages(Enumerable.Range(0, 36).Select(i => new OpenCodeMessage
+            {
+                Id = $"msg_input_{session}_{i}", Type = i % 2 == 0 ? "user" : "assistant",
+                Text = $"Native transcript input regression {session}/{i}.\nSecond line for selection and scrolling.",
+                Time = new() { Created = i + 1, Completed = i + 2 },
+            }).ToArray());
+            _conversationView.FollowToBottom(MessageScroll, () => true);
+            await Task.Delay(400);
+            MessageScroll.UpdateLayout();
+            var offset = Math.Min(MessageScroll.ScrollableHeight, Math.Max(1, MessageScroll.ViewportHeight) * 2);
+            MessageScroll.ScrollTo(0, offset, new ScrollingScrollOptions(ScrollingAnimationMode.Disabled, ScrollingSnapPointsMode.Ignore));
+            await Task.Delay(250);
+            RevealTranscript(); // Keep the production MessageHost.LayoutUpdated reveal gate.
+            await Task.Delay(700);
+            var origin = MessageHost.TransformToVisual(MessageScroll).TransformPoint(new Windows.Foundation.Point(0, 0));
+            var unit = MessageHost.TransformToVisual(MessageScroll).TransformPoint(new Windows.Foundation.Point(1, 1));
+            log.AppendLine($"     {label}: offset={MessageScroll.VerticalOffset:F2}, origin={origin}, unit={unit}, viewport={MessageScroll.ViewportWidth:F2}x{MessageScroll.ViewportHeight:F2}, zoom={MessageScroll.ZoomFactor:F2}");
+            Check(ReferenceEquals(MessageScroll.Content, MessageHost), label + ": exercising direct ScrollView content");
+            Check(MessageScroll.VerticalOffset > 100, label + ": nonzero scroll offset established");
+            Check(Math.Abs(origin.Y + MessageScroll.VerticalOffset) < 1, label + ": content origin retains native scroll translation");
+            Check(Math.Abs(origin.X - Math.Max(0, (MessageScroll.ViewportWidth - MessageHost.ActualWidth) / 2)) < 1,
+                label + ": content retains native horizontal alignment");
+            Check(Math.Abs(unit.X - origin.X - 1) < 0.01 && Math.Abs(unit.Y - origin.Y - 1) < 0.01,
+                label + ": content basis retains unit scale");
+            var visible = Descendants(_conversationView).OfType<RichTextBlock>().FirstOrDefault(text =>
+            {
+                var at = text.TransformToVisual(MessageScroll).TransformPoint(new Windows.Foundation.Point(0, 0));
+                return text.IsLoaded && text.ActualWidth > 50 && at.Y >= 0 && at.Y + text.ActualHeight < MessageScroll.ViewportHeight;
+            });
+            Check(visible is not null, label + ": realized text inside the scrolled viewport");
+            if (visible is not null) Probe(label + " scrolled body", visible);
+        }
+        await VerifyScrolledReveal("cold session A", 1);
+        await VerifyScrolledReveal("session B", 2);
+        await VerifyScrolledReveal("session A return", 1);
+        Motion.FluentMotion.SetUserReduceMotion(true);
+        try { await VerifyScrolledReveal("reduced-motion session", 3); }
+        finally { Motion.FluentMotion.SetUserReduceMotion(false); }
+
+        BeginTranscriptSwitchMotion();
+        _conversationView.ClearMessages();
+        _conversationView.ApplyMessages(SmokeTranscript());
+        _conversationView.FollowToBottom(MessageScroll, () => true);
+        RevealTranscript();
+        await Task.Delay(1000);
 
         var descendants = Descendants(_conversationView).OfType<FrameworkElement>().ToList();
         var userText = descendants.OfType<RichTextBlock>().FirstOrDefault(r => FindAncestor<Border>(r) is not null && TextOf(r).Contains("请帮我"));

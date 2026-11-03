@@ -73,9 +73,11 @@ public sealed partial class OpenCodePage
     private void BeginTranscriptSwitchMotion()
     {
         var generation = ++_transcriptRevealGeneration;
-        if (!FluentMotion.Enabled) { _transcriptHidden = false; FluentMotion.Settle(MessageHost); return; }
+        // MessageHost is ScrollView.Content: ScrollPresenter owns its Translation/Scale expressions.
+        // Animate the viewport, never reset or animate that scroll-managed content visual.
+        if (!FluentMotion.Enabled) { _transcriptHidden = false; FluentMotion.Settle(MessageScroll); return; }
         _transcriptHidden = true;
-        FluentMotion.Snap(MessageHost, 0f);
+        FluentMotion.Snap(MessageScroll, 0f);
         // Never leave the transcript invisible: a failed/slow first load is revealed after 1.2s regardless.
         var timer = DispatcherQueue.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(1200);
@@ -100,7 +102,7 @@ public sealed partial class OpenCodePage
             started = true;
             MessageHost.LayoutUpdated -= OnLayout;
             if (generation != _transcriptRevealGeneration) return;
-            FluentMotion.SlideFadeIn(MessageHost, new Vector3(0, 8, 0));
+            FluentMotion.SlideFadeIn(MessageScroll, new Vector3(0, 8, 0));
         }
         void OnLayout(object? sender, object args) => Start();
         MessageHost.LayoutUpdated += OnLayout;

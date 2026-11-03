@@ -51,6 +51,10 @@ public sealed partial class MainWindow
     // Opt-in (FC_TRANSCRIPT_INPUT_TEST=1): real OpenCodePage transcript hit-test / selection / menu surface checks.
     internal async System.Threading.Tasks.Task<int> VerifyTranscriptInputAsync(string evidence)
     {
+        // Fresh isolated profiles start on Welcome with the Frame collapsed; realize the actual page first.
+        _welcomeExitTimer?.Stop();
+        HideWelcome();
+        ContentFrame.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
         ContentFrame.Navigate(typeof(Pages.OpenCodePage));
         var until = System.DateTime.UtcNow.AddSeconds(15);
         while (ContentFrame.Content is not Pages.OpenCodePage && System.DateTime.UtcNow < until) await System.Threading.Tasks.Task.Delay(100);
