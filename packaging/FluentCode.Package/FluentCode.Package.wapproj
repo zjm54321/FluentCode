@@ -10,7 +10,7 @@
     <EntryPointExe>FluentCode.exe</EntryPointExe>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <AppxBundle>Never</AppxBundle>
-    <AppxPackageFileName>FluentCode_1.2611.1.0_x64.msix</AppxPackageFileName>
+    <AppxPackageFileName>FluentCode_1.2611.2.0_x64.msix</AppxPackageFileName>
     <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <UapAppxPackageBuildMode>SideloadOnly</UapAppxPackageBuildMode>
@@ -24,12 +24,16 @@
     <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
     <AppxManifest Include="Package.appxmanifest" />
     <Content Include="Assets\*.png" />
+    <!-- Packaged XAML resolves through the package's primary resources.pri, not loose sidecar PRIs.
+         FluentCode.pri already merges the app, WinUI and control resources: index it exactly once. -->
+    <Content Include="$(FluentCodePayloadDirectory)\FluentCode.pri">
+      <Link>FluentCode.pri</Link>
+    </Content>
     <!-- A full publish is supplied explicitly, including the separately copied npm tree and node.exe.
          No project reference: publishing is done once with the packaged, self-contained properties. -->
-    <!-- Preserve the app/SDK PRIs as opaque payload. Re-indexing/merging their embedded XBFs
-         duplicates Files/App.xbf; npm filenames are not Windows resource qualifiers either.
-         Only the package's shell icons participate in the WAP resource index. -->
-    <AppxPackagePayload Include="$(FluentCodePayloadDirectory)\**\*" Exclude="$(FluentCodePayloadDirectory)\**\*.pdb">
+    <!-- Other SDK PRIs and loose XBFs stay opaque: merging them again would duplicate resources
+         already in FluentCode.pri. npm filenames must not be interpreted as resource qualifiers. -->
+    <AppxPackagePayload Include="$(FluentCodePayloadDirectory)\**\*" Exclude="$(FluentCodePayloadDirectory)\**\*.pdb;$(FluentCodePayloadDirectory)\FluentCode.pri">
       <TargetPath>%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
       <ProjectName>$(ProjectName)</ProjectName>
     </AppxPackagePayload>

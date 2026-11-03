@@ -22,7 +22,7 @@ foreach ($entry in @{
 }.GetEnumerator()) { $ns.AddNamespace($entry.Key, $entry.Value) }
 function Assert([bool]$Condition, [string]$Message) { if (!$Condition) { throw $Message } }
 $identity = $manifest.SelectSingleNode('/f:Package/f:Identity', $ns)
-Assert ($identity.Name -eq 'mingz.SST.OpenCodeDesktop.Fluent' -and $identity.Publisher -eq 'CN=mingz' -and $identity.Version -eq '1.2611.1.0' -and $identity.ProcessorArchitecture -eq 'x64') 'Unexpected package identity/version/publisher/architecture.'
+Assert ($identity.Name -eq 'mingz.SST.OpenCodeDesktop.Fluent' -and $identity.Publisher -eq 'CN=mingz' -and $identity.Version -eq '1.2611.2.0' -and $identity.ProcessorArchitecture -eq 'x64') 'Unexpected package identity/version/publisher/architecture.'
 $family = $manifest.SelectSingleNode('/f:Package/f:Dependencies/f:TargetDeviceFamily', $ns)
 Assert ($family.Name -eq 'Windows.Desktop' -and $family.MinVersion -eq '10.0.19044.0' -and $family.MaxVersionTested -eq '10.0.26100.0') 'Unexpected OS contract.'
 Assert ($manifest.SelectNodes('/f:Package/f:Dependencies/f:PackageDependency', $ns).Count -eq 0) 'Self-contained package must not depend on an App SDK/.NET framework package.'
@@ -35,16 +35,21 @@ Assert ($manifest.SelectNodes('//rescap:Capability[@Name="runFullTrust"]', $ns).
 Assert ($manifest.OuterXml -notmatch 'startupTask|appinstaller') 'No startup task or update endpoint is authorized.'
 $checked = 0
 if ($UnpackedDirectory) {
-    foreach ($relative in @('FluentCode.exe', 'FluentCode.dll', 'FluentCode.pri', 'Microsoft.Terminal.Control.dll', 'Microsoft.UI.Xaml.dll', 'coreclr.dll', 'hostfxr.dll', 'System.Private.CoreLib.dll', 'BrowserRuntime/node.exe', 'BrowserRuntime/sidecar.mjs', 'BrowserRuntime/node_modules/lighthouse/package.json', 'BrowserRuntime/runtime-manifest.json', 'LICENSE', 'licenses/fluentui-system-icons-LICENSE.txt', 'ThirdPartyNotices/WindowsTerminalControl-LICENSE.txt', 'ThirdPartyNotices/OpenCode.txt', 'Assets/AppIcon/app.ico', 'Assets/Square44x44Logo.png', 'Assets/Square150x150Logo.png', 'Assets/StoreLogo.png')) {
+    $resourceEvidence = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('fc-msix-pri-' + [guid]::NewGuid().ToString('N')) }
+    $sourcePri = if ($ExpectedPayloadDirectory) { Join-Path $ExpectedPayloadDirectory 'FluentCode.pri' } else { '' }
+    & (Join-Path $PSScriptRoot 'verify-resource-index.ps1') -PriPath (Join-Path $UnpackedDirectory 'resources.pri') -SourcePriPath $sourcePri -EvidenceRoot $resourceEvidence
+    foreach ($relative in @('FluentCode.exe', 'FluentCode.dll', 'resources.pri', 'Microsoft.Terminal.Control.dll', 'Microsoft.UI.Xaml.dll', 'coreclr.dll', 'hostfxr.dll', 'System.Private.CoreLib.dll', 'BrowserRuntime/node.exe', 'BrowserRuntime/sidecar.mjs', 'BrowserRuntime/node_modules/lighthouse/package.json', 'BrowserRuntime/runtime-manifest.json', 'LICENSE', 'licenses/fluentui-system-icons-LICENSE.txt', 'ThirdPartyNotices/WindowsTerminalControl-LICENSE.txt', 'ThirdPartyNotices/OpenCode.txt', 'Assets/AppIcon/app.ico', 'Assets/Square44x44Logo.png', 'Assets/Square150x150Logo.png', 'Assets/StoreLogo.png')) {
         Assert (Test-Path -LiteralPath (Join-Path $UnpackedDirectory $relative) -PathType Leaf) "Missing packaged payload: $relative"
     }
     $runtimeConfig = Get-Content -Raw (Join-Path $UnpackedDirectory 'FluentCode.runtimeconfig.json') | ConvertFrom-Json
     Assert (!$runtimeConfig.runtimeOptions.framework -and !$runtimeConfig.runtimeOptions.frameworks -and $runtimeConfig.runtimeOptions.includedFrameworks) '.NET publish is not self-contained.'
     $metadata = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $UnpackedDirectory 'FluentCode.exe'))
-    Assert ($metadata.ProductName -eq 'FluentCode' -and $metadata.FileVersion -eq '1.2611.1.0' -and $metadata.LegalCopyright.Contains('© 2026 mingz')) 'Unexpected executable product/version/copyright.'
+    Assert ($metadata.ProductName -eq 'FluentCode' -and $metadata.FileVersion -eq '1.2611.2.0' -and $metadata.LegalCopyright.Contains('© 2026 mingz')) 'Unexpected executable product/version/copyright.'
     if ($ExpectedPayloadDirectory) {
         foreach ($file in Get-ChildItem -LiteralPath $ExpectedPayloadDirectory -File -Recurse | Where-Object Extension -ne '.pdb') {
             $relative = [IO.Path]::GetRelativePath($ExpectedPayloadDirectory, $file.FullName)
+            # WAP consumes the app PRI into resources.pri; its candidates are compared above instead.
+            if ($relative -eq 'FluentCode.pri') { continue }
             $target = Join-Path $UnpackedDirectory $relative
             Assert (Test-Path -LiteralPath $target -PathType Leaf) "Payload omitted by WAP: $relative"
             Assert ((Get-FileHash -LiteralPath $file.FullName).Hash -eq (Get-FileHash -LiteralPath $target).Hash) "Payload changed by packaging: $relative"

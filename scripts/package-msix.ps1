@@ -55,6 +55,17 @@ if ($PublishedPayloadDirectory) {
     )
 }
 
+# The merged app PRI also indexes these project assets (including source variants/attribution).
+# WAP merges that PRI into the package index and must be able to include every referenced file.
+foreach ($relative in @('Assets\AppIcon', 'Assets\Taskbar')) {
+    $assets = Join-Path $repo ('src\FluentCode\' + $relative)
+    foreach ($file in Get-ChildItem -LiteralPath $assets -Recurse -File) {
+        $target = Join-Path $payload (Join-Path $relative ([IO.Path]::GetRelativePath($assets, $file.FullName)))
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $target)) | Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $target
+    }
+}
+
 # Record native dependencies, including Terminal's statically linked CRT and Node's real imports.
 $dumpbin = Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory | Sort-Object { [version]$_.Name } -Descending |
     ForEach-Object { Join-Path $_.FullName 'bin\Hostx64\x64\dumpbin.exe' } | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -82,7 +93,7 @@ Invoke-Native 'wap' $msbuild @(
 )
 $packages = @(Get-ChildItem (Join-Path $stage 'packages') -Recurse -File -Filter '*.msix')
 if ($packages.Count -ne 1) { throw "Expected one x64 MSIX; found $($packages.Count)." }
-$package = Join-Path $output 'FluentCode_1.2611.1.0_x64.msix'
+$package = Join-Path $output 'FluentCode_1.2611.2.0_x64.msix'
 Copy-Item -LiteralPath $packages[0].FullName -Destination $package
 
 $certificate = $null
