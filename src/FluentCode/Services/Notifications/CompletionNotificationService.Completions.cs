@@ -62,7 +62,6 @@ public sealed partial class CompletionNotificationService
     private static NotificationNativeReceipt ShowCompletion(NotificationSource source, string token, NotificationCompletionText? text)
     {
         var builder = new AppNotificationBuilder()
-            .SetAppLogoOverride(RegistrationIcon)
             .AddArgument(NotificationArgumentCodec.ActionKey, NotificationArgumentCodec.CompletionActionValue)
             .AddArgument(NotificationArgumentCodec.SourceKey, NotificationSourceLabels.GetArgumentTag(source))
             .AddArgument(NotificationArgumentCodec.RequestIdKey, token);

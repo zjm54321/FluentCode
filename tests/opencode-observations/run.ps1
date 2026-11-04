@@ -9,6 +9,19 @@ $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where
 $output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-observations-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory $output | Out-Null
 $assembly = Join-Path $output 'Observations.dll'
+# The offline delivery seam does not invoke the WinRT completion builder. Guard that exact
+# production method without registering/showing a native Toast or creating a fake builder.
+$completionSource = [IO.File]::ReadAllText((Join-Path $repo 'src/FluentCode/Services/Notifications/CompletionNotificationService.Completions.cs'))
+$completionMethods = [regex]::Matches($completionSource, '(?ms)^    private static NotificationNativeReceipt ShowCompletion\([^\r\n]+\)\r?\n    \{.*?^    \}')
+if ($completionMethods.Count -ne 1) { throw 'Expected the single production completion Toast builder.' }
+if ($completionMethods[0].Value.Contains('SetAppLogoOverride')) { throw 'Completion Toast must not add a body app-logo image.' }
+$registration = [IO.File]::ReadAllText((Join-Path $repo 'src/FluentCode/Services/Notifications/CompletionNotificationService.cs'))
+if (!$registration.Contains('RegistrationIcon => NotificationInteractionXml.AppLogo') -or
+    !$registration.Contains('AppNotificationManager.Default.Register();') -or
+    !$registration.Contains('AppNotificationManager.Default.Register("FluentCode", RegistrationIcon);')) {
+    throw 'Packaged/unpackaged application notification identity registration must remain intact.'
+}
+Write-Output 'PASS completion Toast body-logo source contract; application identity registration retained.'
 # WinAppSDK ships net6 projections and the SDK net8 references; the host is net10 (standard unification).
 $args = @('/nologo', '/langversion:latest', '/nullable:enable', '/warnaserror+', '/nowarn:1701,1702', '/target:exe', ('/out:"' + $assembly + '"'))
 $args += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }

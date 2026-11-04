@@ -143,6 +143,10 @@ static partial class Checks
         System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "question-toast.xml"), questionXml);
         Console.WriteLine("SAMPLE final question toast XML:\n" + questionXml);
         var questionRoot = System.Xml.Linq.XElement.Parse(questionXml);
+        var questionLogo = questionRoot.Descendants("image").Single();
+        Check((string?)questionLogo.Attribute("placement") == "appLogoOverride"
+            && (string?)questionLogo.Attribute("src") == NotificationInteractionXml.AppLogo.AbsoluteUri,
+            "interactive Toast retains its existing body app logo");
         var xmlInputs = questionRoot.Element("actions")!.Elements("input").ToArray();
         Check(xmlInputs.Length == 2 && (string?)xmlInputs[0].Attribute("type") == "selection"
             && (string?)xmlInputs[1].Attribute("type") == "text"
