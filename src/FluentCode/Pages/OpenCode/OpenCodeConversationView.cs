@@ -68,7 +68,6 @@ public sealed class OpenCodeConversationView : StackPanel
     private readonly List<Border> _windowGaps = new();
     private readonly Border _emptyHistoryMarker = new() { Height = 0 };
     private readonly Dictionary<string, bool> _rowExpansion = new(StringComparer.Ordinal);
-    private readonly OpenCodeReasoningExpansionState _reasoningExpansion = new();
     private ScrollView? _viewport;
     private OpenCodeConversationWindow.Anchor? _readAnchor;
     private bool _followingBottom;
@@ -1196,7 +1195,6 @@ public sealed class OpenCodeConversationView : StackPanel
         _asyncCompletions = new Dictionary<string, OpenCodeAsyncCompletion>(StringComparer.Ordinal);
         _groupExpansion.Clear();
         _rowExpansion.Clear();
-        _reasoningExpansion.Clear();
         _activeGroups.Clear();
         if (_questionAnchors.Count > 0)
         {
@@ -2680,10 +2678,9 @@ public sealed class OpenCodeConversationView : StackPanel
                 {
                     if (part.IsReasoning)
                     {
-                        // TH1: use one signal for the label and inline default, including authoritative turn end.
-                        var running = OpenCodeReasoningExpansionState.IsRunning(
-                            run.Owner.Message?.Time is { Completed: null }, part.ReasoningOpen,
-                            activeTurn && currentOwners.Contains(run.Owner));
+                        // Keep the row and any open detail in sync with authoritative turn end.
+                        var running = run.Owner.Message?.Time is { Completed: null } && part.ReasoningOpen
+                            && activeTurn && currentOwners.Contains(run.Owner);
                         part.ReasoningStatus = running ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
                         part.RefreshVisual?.Invoke();
                         if (run.Owner.Message is { } message)
@@ -2931,12 +2928,7 @@ public sealed class OpenCodeConversationView : StackPanel
             case OpenCodePartTypes.Reasoning:
             {
                 // “思考”行（F4）：外观同工具行，完整文本在悬停详情中；连续思考由 LayoutParts 合并到段首行。
-                var row = new OpenCodeReasoningRowView(_reasoningExpansion, change =>
-                {
-                    // Same anchor/height reconciliation as snapshot updates; never cancel bottom-follow here.
-                    ChangeIdleContent(change);
-                    QueueWindowUpdate();
-                });
+                var row = new OpenCodeReasoningRowView();
                 return new PartEntry
                 {
                     Key = partKey,

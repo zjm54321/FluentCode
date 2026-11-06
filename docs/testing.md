@@ -1,6 +1,6 @@
 # FluentCode 自动化测试指南
 
-本文档全面介绍 FluentCode 的自动化测试体系、测试架构设计、测试套件运行方法以及全部 27 个关键 Runner 的技术覆盖范围。
+本文档全面介绍 FluentCode 的自动化测试体系、测试架构设计、测试套件运行方法以及全部 28 个关键 Runner 的技术覆盖范围。
 
 ---
 
@@ -22,7 +22,7 @@ FluentCode 采用严格的自动化测试策略，确保在快速重构与协议
 所有命令都从客户端仓库根目录执行（独立克隆根目录，或父仓库中的 `clients/windows` 子模块目录）。在 WSL（Linux）环境下，保留原有 Windows PowerShell / `wslpath` 调用方式：
 
 ```bash
-# 规划并依次执行所有 27 个测试用例（需要指定一个全新的产物输出目录）
+# 规划并依次执行所有 28 个测试用例（需要指定一个全新的产物输出目录）
 python3 tests/run-suite.py --root "artifacts/fluentcode-import-suite-$(date -u +%Y%m%dT%H%M%SZ)" --execute
 ```
 
@@ -46,9 +46,9 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 
 ---
 
-## 3. 核心测试清单（27 项关键测试）
+## 3. 核心测试清单（28 项关键测试）
 
-自动化套件共包含 **27 个测试项**（25 个 PowerShell 测试 + 2 个 Node.js 运行时测试）：
+自动化套件共包含 **28 个测试项**（26 个 PowerShell 测试 + 2 个 Node.js 运行时测试）：
 
 | 序号 | 测试 Runner 路径 | 核心验证范围 |
 |:---:|---|---|
@@ -77,14 +77,15 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 | 23 | `tests/desktop-bridge-qol/run.ps1` | 桌面增强 QoL 功能：紧凑 Token 格式化（如 `82.3K` / `1M`）、Billion 上下文遥测与压缩块列表投影 |
 | 24 | `tests/opencode-persistent-pty/run.ps1` | 原生终端卡片布局、WinUI 空域（Airspace）同步遮挡与恢复、Windows Terminal 子窗口生命周期 |
 | 25 | `tests/opencode-persistent-pty-transport/run-backend.ps1` | 终端底层 WebSocket 传输协议、VT100 字节流解析、服务端权威网格尺寸协商（Resize）与控制权接管 |
-| 26 | `tests/browser-runtime/runtime.test.mjs` | Node.js 侧运行时单元测试：本地 HTTP/CONNECT/WebSocket 隧道代理、TCP 半关闭与背压控制 |
-| 27 | `tests/browser-runtime/audit.test.mjs` | Node.js 侧审计单元测试：真机 Lighthouse 快照审计、CDP 会话扁平化与审计取消清理 |
+| 26 | `tests/opencode-tool-presentation/run.ps1` | 工具行呈现：会话/终端类工具按精确名称命名与配图标、不套用文件读取/差异视图，通用详情构建与分组仅标题行悬停高亮；悬停预览与来源行之间让出相邻一整行、详情浮层跟随应用/Windows 主题、完成通知使用 Fluent 完成/出错字形 |
+| 27 | `tests/browser-runtime/runtime.test.mjs` | Node.js 侧运行时单元测试：本地 HTTP/CONNECT/WebSocket 隧道代理、TCP 半关闭与背压控制 |
+| 28 | `tests/browser-runtime/audit.test.mjs` | Node.js 侧审计单元测试：真机 Lighthouse 快照审计、CDP 会话扁平化与审计取消清理 |
 
 ---
 
 ## 4. 独立桌面回归测试（Theme Refresh Regression）
 
-除了无人值守的 27 项自动化套件外，仓库中还包含一项针对 Windows 桌面环境的真机主题刷新测试：
+除了无人值守的 28 项自动化套件外，仓库中还包含一项针对 Windows 桌面环境的真机主题刷新测试：
 
 - **脚本路径**：`tests/theme-refresh/run.ps1`
 - **执行方式**：

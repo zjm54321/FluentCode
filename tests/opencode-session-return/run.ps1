@@ -101,7 +101,7 @@ $commonText = $commonText.Replace($anchor + "`n    {", $anchor + "`n    {`n     
 if (!$commonText.Contains('event Action<object, SizeChangedEventArgs>')) { throw 'FrameworkElement shim failed.' }
 $commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
 [IO.File]::WriteAllText($commonHost, $commonText)
-$tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'SubagentCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'PtyCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'GroupFinalizeTests.cs'), (Join-Path $PSScriptRoot 'TranscriptMenuTests.cs'))
+$tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'SubagentCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'PtyCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'GroupFinalizeTests.cs'), (Join-Path $PSScriptRoot 'TranscriptMenuTests.cs'), (Join-Path $PSScriptRoot 'PopupRowTests.cs'))
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
@@ -115,5 +115,5 @@ New-Item -ItemType File -Path (Join-Path $output 'compile.log') -Force | Out-Nul
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeSessionReturnTests.runtimeconfig.json')
 Write-Output "Headless compilation passed (SDK $($sdk.Name); $($methods.Count) extracted members; warnings treated as errors)."
-& $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'test.log')
+& $dotnet $assembly $repo 2>&1 | Tee-Object -FilePath (Join-Path $output 'test.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }

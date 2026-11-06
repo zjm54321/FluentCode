@@ -312,7 +312,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _parentMessageId = parentMessageId;
         _lastPart = part;
         _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex, FindChild);
-        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question
+        if (_model.Kind == OpenCodeToolKind.Todo
             || _model is { Kind: OpenCodeToolKind.Shell, ShellId.Length: > 0 })
             _rowActionSource ??= new RowActionPreviewSource(this);
         else if (_rowActionSource is { } oldActionSource)
@@ -738,7 +738,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             RequestTerminal();
             return;
         }
-        if (_model.Kind is OpenCodeToolKind.Todo or OpenCodeToolKind.Question || OpenCodeToolDetailContent.ToolImages(_model).Count > 0)
+        if (HasInlineDetail)
         {
             CloseDetailIfShowing();
             _inlineExpanded = !_inlineExpanded;
@@ -756,11 +756,16 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         }
     }
 
+    private bool HasInlineDetail => _model.Kind == OpenCodeToolKind.Todo
+        || (_model.Kind is not (OpenCodeToolKind.Question or OpenCodeToolKind.Shell)
+            && OpenCodeToolDetailContent.ToolImages(_model).Count > 0);
+
     private void RefreshInlineContent()
     {
-        if (_model.Kind == OpenCodeToolKind.Shell)
+        if (!HasInlineDetail)
         {
-            // The transcript owns only the task line. Complete output belongs to the shared terminal overlay.
+            // Questions use the shared detail popup; shell output belongs to the terminal overlay.
+            _inlineExpanded = false;
             _inlineRegion.Child = null;
             _inlineRegion.Visibility = Visibility.Collapsed;
             ApplyRunningTint();
@@ -777,7 +782,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             _inlineRegion.Child = OpenCodeToolDetailContent.BuildToolImages(_model, options, thumbnail: true,
                 openLarge: () => { if (!_disposed) OpenCodeToolDetailPopup.Shared.TogglePinned(this); });
         }
-        else _inlineRegion.Child = OpenCodeToolDetailBuiltins.BuildInline(_model)
+        else _inlineRegion.Child = OpenCodeToolDetailBuiltins.Build(_model, new OpenCodeToolDetailOptions())
             ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供");
     }
 

@@ -100,7 +100,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-releas
 
 ## 自动化测试
 
-运行 27 项自动化测试套件：
+运行 28 项自动化测试套件：
 
 ```bash
 # 在 WSL 环境下规划并执行完整套件（需要指定一个全新的产物输出目录）
@@ -126,7 +126,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 - [原生终端集成](docs/terminal.md)：Windows Terminal 控件承载、空域遮罩处理与终端外观设置。
 - [通知、任务栏与托盘](docs/notifications-and-tray.md)：Toast 弹窗、任务栏状态角标与托盘后台模式。
 - [开发与构建指南](docs/development.md)：环境搭建、编译打包与故障排除。
-- [自动化测试指南](docs/testing.md)：测试架构、27 个 Runner 清单与真机主题回归测试。
+- [自动化测试指南](docs/testing.md)：测试架构、28 个 Runner 清单与真机主题回归测试。
 
 ---
 

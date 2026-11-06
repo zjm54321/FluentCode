@@ -93,7 +93,7 @@ internal sealed class OpenCodeToolGroupVisual
     private DispatcherQueueTimer? _timer;
     private bool _single, _inline, _headerVisible = true, _expanded, _updating, _loaded, _disposed;
     private bool? _groupContainer;
-    private bool _pointerOver, _headerPointerOver, _focusVisible, _headerFocusVisible;
+    private bool _headerPointerOver, _headerFocusVisible;
 
     // Expanded children: a 1px guide under the header icon's centre (x = 24.5 ≈ 5 + 8 + 12), and the
     // children's icon column starts exactly where the header text starts (x = 45 = 32 + 13).
@@ -155,7 +155,7 @@ internal sealed class OpenCodeToolGroupVisual
         header.Children.Add(titleStack);
         Grid.SetColumn(tally, 2);
         header.Children.Add(tally);
-        // PG7: a settled group highlights only this header, never the Expander/content container.
+        // PG7: every group highlights only this header, never the Expander/content container.
         _headerSurface = new Border
         {
             // Same 4px radius, 5px lead (rows' 3px selection bar + 2px gap) and 8px padding as a row button:
@@ -189,14 +189,12 @@ internal sealed class OpenCodeToolGroupVisual
         };
         ApplyGroupChrome();
         _outline = new Border { Child = _expander, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8) };
-        OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
         AutomationProperties.SetAutomationId(_expander, "OpenCodeToolGroup." + groupId);
         _expander.Loaded += (_, _) => NormalizeTemplateInsets();
         // Fluent hover: fills cross-fade in 83ms; the chevron fades in 83ms and turns 0→90° in 167ms (Point-to-point
         // feel via the system scalar transition). Composition-driven; the native Expander keeps its own expand animation.
         FluentCode.Motion.FluentMotion.Bind(_root, enabled =>
         {
-            _outline.BackgroundTransition = enabled ? FluentCode.Motion.FluentMotion.HoverFill() : null;
             _headerSurface.BackgroundTransition = enabled ? FluentCode.Motion.FluentMotion.HoverFill() : null;
             _chevron.OpacityTransition = enabled ? new ScalarTransition { Duration = FluentCode.Motion.FluentMotion.Duration(FluentCode.Motion.FluentMotion.Faster) } : null;
             _chevron.RotationTransition = enabled ? new ScalarTransition { Duration = FluentCode.Motion.FluentMotion.Duration(FluentCode.Motion.FluentMotion.Fast) } : null;
@@ -204,19 +202,16 @@ internal sealed class OpenCodeToolGroupVisual
         _chevron.SizeChanged += (_, args) => _chevron.CenterPoint = new System.Numerics.Vector3((float)args.NewSize.Width / 2, (float)args.NewSize.Height / 2, 0);
         _expander.Expanding += (_, _) => ExpansionChanged(true);
         _expander.Collapsed += (_, _) => ExpansionChanged(false);
-        _root.PointerEntered += (_, _) => { _pointerOver = true; UpdateChevronAffordance(); };
-        _root.PointerExited += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
-        _root.PointerCanceled += (_, _) => { _pointerOver = false; UpdateChevronAffordance(); };
         _headerSurface.PointerEntered += (_, _) => { _headerPointerOver = true; UpdateChevronAffordance(); };
         _headerSurface.PointerExited += (_, _) => { _headerPointerOver = false; UpdateChevronAffordance(); };
         _headerSurface.PointerCanceled += (_, _) => { _headerPointerOver = false; UpdateChevronAffordance(); };
         _expander.GotFocus += (_, e) =>
         {
-            _focusVisible = e.OriginalSource is Control { FocusState: FocusState.Keyboard };
-            _headerFocusVisible = _focusVisible && !IsItemsSource(e.OriginalSource as DependencyObject);
+            _headerFocusVisible = e.OriginalSource is Control { FocusState: FocusState.Keyboard }
+                && !IsItemsSource(e.OriginalSource as DependencyObject);
             UpdateChevronAffordance();
         };
-        _expander.LostFocus += (_, _) => { _focusVisible = _headerFocusVisible = false; UpdateChevronAffordance(); };
+        _expander.LostFocus += (_, _) => { _headerFocusVisible = false; UpdateChevronAffordance(); };
         _root.Loaded += (_, _) => { _loaded = true; RefreshWorking(); };
         // Reparenting can deliver an old Unloaded after the next Loaded; trust the current tree state.
         _root.Unloaded += (_, _) => { if (_root.IsLoaded) return; _loaded = false; StopTimer(); };
@@ -236,7 +231,7 @@ internal sealed class OpenCodeToolGroupVisual
             "ExpanderChevronBorderBrush", "ExpanderChevronBorderPointerOverBrush", "ExpanderChevronBorderPressedBrush",
             "ExpanderChevronForeground", "ExpanderChevronPointerOverForeground", "ExpanderChevronPressedForeground",
         }) _expander.Resources[key] = transparent;
-        // PG4/PG7: our group/header surfaces own the fill. Native template parts always stay clear.
+        // PG4/PG7: only our header surface owns the fill. Native template parts always stay clear.
         foreach (var key in new[]
         {
             "ExpanderHeaderBorderThickness", "ExpanderContentDownBorderThickness", "ExpanderContentUpBorderThickness",
@@ -285,13 +280,11 @@ internal sealed class OpenCodeToolGroupVisual
 
     private void UpdateChevronAffordance()
     {
-        var highlighted = _summary.IsActive ? _pointerOver || _focusVisible : _headerPointerOver || _headerFocusVisible;
+        var highlighted = _headerPointerOver || _headerFocusVisible;
         _chevron.Opacity = highlighted ? 1 : 0;
         // Brush ThemeResource handles Light/Dark/High Contrast; no outline in any state.
-        OpenCodeToolTheme.Apply(_outline, OpenCodeToolTheme.Border(
-            _summary.IsActive && highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
         OpenCodeToolTheme.Apply(_headerSurface, OpenCodeToolTheme.Border(
-            !_summary.IsActive && highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
+            highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
     }
 
     internal FrameworkElement Element => _root;

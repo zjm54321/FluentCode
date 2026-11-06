@@ -88,7 +88,7 @@ internal interface IOpenCodeDetailContentSource
 /// 工具 / 子智能体 / 思考等详情弹出层（G7）：全局同一时刻只有一个，两种形态——
 /// <list type="bullet">
 /// <item><b>悬停预览</b>（AutomationId <c>OpenCodeToolDetailPreview</c>）：鼠标停留 <see cref="HoverOpenDelayMs"/> 后显示的小浮层
-/// （原生 <see cref="FlyoutPresenter"/>：亚克力、Flyout 描边、OverlayCornerRadius + ThemeShadow），紧贴来源行，<b>没有关闭按钮</b>；
+/// （原生 <see cref="FlyoutPresenter"/>：亚克力、Flyout 描边、OverlayCornerRadius + ThemeShadow），在来源行上/下方并让出相邻一行（<see cref="OpenCodeDetailPopupLayout.PreviewGap"/>），<b>没有关闭按钮</b>；
 /// 鼠标离开行即隐藏（移入预览可保持；行与预览都离开即隐藏）。不移动键盘焦点。在预览内点击 = 打开大视图。</item>
 /// <item><b>大详情视图</b>（AutomationId <c>OpenCodeToolDetailPopup</c>，遮罩 <c>OpenCodeToolDetailOverlay</c>）：点击行 / Enter / Space 打开，
 /// 约为应用窗口的 80%、居中，系统遮罩层（SmokeFillColorDefaultBrush）+ 原生 FlyoutPresenter 表面，内容完整（不截断）纵向滚动；
@@ -139,6 +139,7 @@ internal sealed class OpenCodeToolDetailPopup
     private ScrollViewer? _scroller;
     private FrameworkElement? _previewAnchor;
     private XamlRoot? _observedRoot;
+    private FrameworkElement? _themeAnchor;
     private UIElement? _restoreFocus;
     private bool _updatingToggles;
     private bool _placingPreview;
@@ -399,6 +400,7 @@ internal sealed class OpenCodeToolDetailPopup
         }
 
         ObserveRoot(null);
+        FollowTheme(null);
         var previous = _source;
         _source = null;
         _mode = OpenCodeDetailPopupMode.None;
@@ -581,6 +583,7 @@ internal sealed class OpenCodeToolDetailPopup
         }
 
         _closeTimer?.Stop();
+        FollowTheme(anchor);
         _mode = mode;
         _scroller = null;
         _previewChrome.ContentHost.Child = null;
@@ -1096,6 +1099,35 @@ internal sealed class OpenCodeToolDetailPopup
         {
             root.Changed += OnRootChanged;
         }
+    }
+
+    /// <summary>
+    /// Popups are separate visual roots: they never inherit the window root's RequestedTheme, so their
+    /// ThemeResources would otherwise stay on Application.RequestedTheme (the startup theme). Mirror the
+    /// source row's ActualTheme — set by AppThemeController for app and live Windows changes — onto both
+    /// popup children, at open and whenever it changes while open. High Contrast still wins natively.
+    /// </summary>
+    private void FollowTheme(FrameworkElement? anchor)
+    {
+        if (!ReferenceEquals(_themeAnchor, anchor))
+        {
+            if (_themeAnchor is { } old) old.ActualThemeChanged -= OnAnchorThemeChanged;
+            _themeAnchor = anchor;
+            if (anchor is not null) anchor.ActualThemeChanged += OnAnchorThemeChanged;
+        }
+
+        if (anchor is not null) ApplyTheme(anchor.ActualTheme);
+    }
+
+    private void OnAnchorThemeChanged(FrameworkElement sender, object args)
+    {
+        if (ReferenceEquals(sender, _themeAnchor) && _mode != OpenCodeDetailPopupMode.None) ApplyTheme(sender.ActualTheme);
+    }
+
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (_previewPresenter.RequestedTheme != theme) _previewPresenter.RequestedTheme = theme;
+        if (_overlay.RequestedTheme != theme) _overlay.RequestedTheme = theme;
     }
 
     private void OnRootChanged(XamlRoot sender, XamlRootChangedEventArgs args)

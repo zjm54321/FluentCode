@@ -54,12 +54,21 @@ internal static class OpenCodeDetailPopupLayout
     internal const double PreviewWrapFraction = 0.8;
     internal const double PreviewGrowthFraction = 0.05;
 
-    internal const double PreviewGap = 8;
+    /// <summary>
+    /// 时间线中最高的一整行占位：进行中行 36px + 上下各 2px 间距（OpenCodeTimelineRowMetrics / OpenCodeProcessedRowMetrics）。
+    /// </summary>
+    internal const double PreviewNeighbourRowClearance = 40;
 
     /// <summary>
-    /// 鼠标离开行 / 预览后的过渡宽限（毫秒），允许安全跨越 8px 间距。
+    /// 预览与来源行之间的距离：先让出相邻的一整行，再留 4px 视觉间隔。
+    /// 鼠标从当前行移到上一行 / 下一行时落在那一行上，而不是落在当前行的预览上。
     /// </summary>
-    internal const int HoverLeaveGraceMs = 240;
+    internal const double PreviewGap = PreviewNeighbourRowClearance + 4;
+
+    /// <summary>
+    /// 鼠标离开行 / 预览后的过渡宽限（毫秒），允许从来源行越过相邻行（<see cref="PreviewGap"/>）移入预览。
+    /// </summary>
+    internal const int HoverLeaveGraceMs = 360;
 
     /// <summary>大视图矩形：窗口的 80%，居中；窗口很小时不小于最小尺寸但绝不超出窗口（减去边距）。</summary>
     internal static OpenCodeDetailRect LargeView(double rootWidth, double rootHeight)
@@ -146,7 +155,7 @@ internal static class OpenCodeDetailPopupLayout
     }
 
     /// <summary>
-    /// 预览只在行上方或下方，选择空间更大的一侧，保留 8px 间距并夹紧宽高。
+    /// 预览只在行上方或下方，选择空间更大的一侧，保留 <see cref="PreviewGap"/>（让出相邻一行）并夹紧宽高。
     /// 横向（A8）：以指针 X 为中心，夹紧在内容列安全区 <paramref name="band"/> 内，而不是来源行中心 / 整个窗口。
     /// </summary>
     internal static OpenCodeDetailRect PreviewPlacement(

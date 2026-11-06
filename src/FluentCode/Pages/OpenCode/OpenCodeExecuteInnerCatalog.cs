@@ -5,14 +5,17 @@ using System.Text.Json;
 
 namespace FluentCode.Pages.OpenCode;
 
-internal sealed record OpenCodeExecuteInnerName(string Name, string Family, string Keys)
+internal sealed record OpenCodeExecuteInnerName(string Name, string Family, string Keys, string? GlyphOverride = null)
 {
-    internal string Glyph => Family switch { "web" => "\uE774", "code" => "\uE721", "agent" => "\uE8D4", "pty" => OpenCodeStepRunPresentation.TerminalGlyph, "chrome" => "\uE7F4", "oc" => "\uE8B7", _ => "\uEA86" };
+    internal string Glyph => GlyphOverride ?? (Family switch { "web" => "\uE774", "code" => "\uE721", "agent" => "\uE8D4", "pty" => OpenCodeStepRunPresentation.TerminalGlyph, "chrome" => "\uE7F4", "oc" => "\uE8B7", _ => "\uEA86" });
 }
 
 /// <summary>Designer execute-inner-catalog: exact ids only, seven families, fixed summary keys. Unknown ids stay raw.</summary>
 internal static class OpenCodeExecuteInnerCatalog
 {
+    // Same chat-bubbles glyph as the home session list's unread-session indicator.
+    internal const string SessionGlyph = "\uE8F2";
+
     internal static readonly IReadOnlyDictionary<string, OpenCodeExecuteInnerName> Entries = new Dictionary<string, OpenCodeExecuteInnerName>(StringComparer.Ordinal)
     {
         ["fetch"] = new("获取资源", "web", "method url"),
@@ -51,12 +54,12 @@ internal static class OpenCodeExecuteInnerCatalog
         ["chrome-devtools.get_network_request"] = new("读取网络请求", "chrome", "reqid pageId"),
         ["chrome-devtools.close_page"] = new("关闭页面", "chrome", "pageId"),
         ["opencode.models"] = new("列出模型", "oc", "query provider"),
-        ["session_read"] = new("读取会话", "oc", "sessionID mode"),
-        ["opencode.session_move"] = new("移动会话目录", "oc", "directory"),
+        ["session_read"] = new("读取会话", "oc", "sessionID mode", SessionGlyph),
+        ["opencode.session_move"] = new("移动会话目录", "oc", "directory", SessionGlyph),
         ["opencode.list_mcp_resources"] = new("列出 MCP 资源", "oc", "server"),
-        ["opencode.session_rename"] = new("重命名会话", "oc", "sessionID title"),
-        ["session_list"] = new("会话列表", "oc", "search limit"),
-        ["session_diff"] = new("查看会话差异", "oc", "sessionID file"),
+        ["opencode.session_rename"] = new("重命名会话", "oc", "sessionID title", SessionGlyph),
+        ["session_list"] = new("会话列表", "oc", "search limit", SessionGlyph),
+        ["session_diff"] = new("查看会话差异", "oc", "sessionID file", SessionGlyph),
         ["opencode.read_mcp_resource"] = new("读取 MCP 资源", "oc", "server uri"),
         ["opencode.worktree_remove"] = new("移除工作树", "oc", "directory"),
         ["opencode.worktree_list"] = new("列出工作树", "oc", ""),
@@ -66,6 +69,10 @@ internal static class OpenCodeExecuteInnerCatalog
         ["image_gen_nano"] = new("生成图片（Nano）", "misc", "prompt aspect_ratio"),
         ["image_gen"] = new("生成图片", "misc", "prompt aspect_ratio"),
     };
+
+    // Exact catalog ids only: session/PTY operations must never inherit file semantics from a suffix.
+    internal static OpenCodeExecuteInnerName? FindNonFile(string id)
+        => Entries.TryGetValue(id.Trim().ToLowerInvariant(), out var entry) && entry.Family is "oc" or "pty" ? entry : null;
 
     internal static OpenCodeExecuteInnerName? Find(string id)
         => OpenCodeBrowserToolPresentation.Action(id) is { } action

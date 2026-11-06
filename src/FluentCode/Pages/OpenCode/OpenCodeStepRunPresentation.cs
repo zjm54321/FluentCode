@@ -7,22 +7,6 @@ using FluentCode.Services.OpenCode;
 
 namespace FluentCode.Pages.OpenCode;
 
-/// <summary>TH1: only manual choices are retained, independent of row realization and snapshots.</summary>
-internal sealed class OpenCodeReasoningExpansionState
-{
-    private readonly Dictionary<string, bool> _manual = new(StringComparer.Ordinal);
-
-    internal bool Resolve(string partKey, bool running, string? text, bool encrypted)
-        => _manual.TryGetValue(partKey, out var expanded) ? expanded
-            : running && !encrypted && !string.IsNullOrWhiteSpace(text);
-
-    internal void SetManual(string partKey, bool expanded) => _manual[partKey] = expanded;
-    internal void Clear() => _manual.Clear();
-
-    internal static bool IsRunning(bool messageRunning, bool partOpen, bool turnRunning)
-        => messageRunning && partOpen && turnRunning;
-}
-
 /// <summary>
 /// 一段“处理过程”分组（两段文本输出之间的全部思考 / 工具调用）的头部摘要（纯数据，无 UI 依赖）。
 /// </summary>

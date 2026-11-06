@@ -303,6 +303,7 @@ internal static class OpenCodeToolRowPresentation
         }
 
         var lower = name.Trim().ToLowerInvariant();
+        if (OpenCodeExecuteInnerCatalog.FindNonFile(lower) is not null) return OpenCodeToolKind.Other;
         if (OpenCodeBrowserToolPresentation.Action(name) is not null) return OpenCodeToolKind.Browser;
         var kind = ClassifyExact(lower);
         if (kind != OpenCodeToolKind.Other)
@@ -368,8 +369,6 @@ internal static class OpenCodeToolRowPresentation
         "execute" => "运行代码",
         "ast_grep_search" => "AST 搜索",
         "ast_grep_replace" => "AST 替换",
-        "session_list" => "会话列表",
-        "pty_spawn" => "启动终端",
         "git_diff" => "Git 差异",
         "git_diff_summary" => "Git 差异摘要",
         "marketplace_inspect" => "查看插件市场",
@@ -383,6 +382,7 @@ internal static class OpenCodeToolRowPresentation
     {
         if (string.IsNullOrWhiteSpace(name)) return "工具";
         var trimmed = name.Trim();
+        if (OpenCodeExecuteInnerCatalog.FindNonFile(trimmed) is { } nonFile) return nonFile.Name;
         if (OpenCodeBrowserToolPresentation.DisplayName(trimmed) is { } browserName) return browserName;
         if (trimmed.StartsWith("lsp_", StringComparison.OrdinalIgnoreCase)) return "代码导航";
         var kind = Classify(trimmed);
@@ -822,7 +822,8 @@ internal static class OpenCodeToolRowPresentation
             RawStateProperties = rawStateProperties,
             AccessibleName = accessible.ToString(),
             IsBackground = background,
-            GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph : null,
+            GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph
+                : OpenCodeExecuteInnerCatalog.FindNonFile(part.Name ?? string.Empty)?.Glyph,
             AgentName = agentName,
             ToolName = part.Name?.Trim() ?? string.Empty,
             State = part.State,

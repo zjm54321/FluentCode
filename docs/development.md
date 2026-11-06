@@ -41,7 +41,7 @@ AIFrontend-history-20261020/
 ├── scripts/                   # 构建、发布、运行与图标生成脚本
 ├── tools/
 │   └── browser-runtime/       # 离线 Node.js 浏览器运行时准备脚本与清单
-├── tests/                     # 27 组自动化测试 Runner 与测试驱动
+├── tests/                     # 28 组自动化测试 Runner 与测试驱动
 └── docs/                      # 架构设计、协议与用户文档
 ```
 

@@ -18,8 +18,10 @@ using Microsoft.UI.Xaml.Controls;
 internal static partial class Program
 {
     private static int _assertions;
-    private static async Task Main()
+    private static async Task Main(string[] args)
     {
+        PopupRowDetails(args[0]);
+        ReasoningStatusLifecycle();
         SubagentCompletionNotices();
         PtyCompletionNotices();
         GroupFinalizesWhenFollowed();

@@ -45,14 +45,21 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     internal OpenCodeTimelineRowContent Content => _content;
     internal string Glyph => EffectiveGlyph;
     private IOpenCodeDetailContentSource Source => (_completionNotice || OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name)) && _linkInvoked is not null ? _childSource : this;
-    private string EffectiveGlyph => _completionNotice ? _content.Status == OpenCodeToolRowStatus.Completed ? "↳" : "!"
+    /// <summary>Segoe Fluent “Completed” (circle check, same as other async-completion rows).</summary>
+    internal const string CompletionNoticeDoneGlyph = "\uE930";
+
+    /// <summary>Segoe Fluent “Error” (circle exclamation): the same outlined family for failed / cancelled notices.</summary>
+    internal const string CompletionNoticeFailedGlyph = "\uE783";
+
+    private string EffectiveGlyph => _completionNotice
+        ? _content.Status == OpenCodeToolRowStatus.Completed ? CompletionNoticeDoneGlyph : CompletionNoticeFailedGlyph
         : OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name) ? OpenCodeStepRunPresentation.SubagentGlyph
         : _content.Name == "终端（后台）" ? OpenCodeStepRunPresentation.TerminalGlyph : _glyph;
 
     /// <param name="automationId">行按钮的 AutomationId。</param>
     /// <param name="glyph">Segoe Fluent Icons 字形。</param>
     /// <param name="labelAutomationId">名称文本的 AutomationId（可空）。</param>
-    /// <param name="completionNotice">父会话完成通知：箭头、强调色名称/终态、次要色任务，无工具状态列。</param>
+    /// <param name="completionNotice">父会话完成通知：Fluent 完成 / 出错字形、强调色名称/终态、次要色任务，无工具状态列。</param>
     internal OpenCodeTimelineChipView(string automationId, string glyph, string? labelAutomationId = null, bool completionNotice = false)
     {
         _glyph = glyph ?? "\uE946";
@@ -74,7 +81,6 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _statusCell.Children.Add(_progress);
 
         _icon = new FontIcon { Glyph = _glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        if (_completionNotice) _icon.FontFamily = new FontFamily("Segoe UI");
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
         _iconVisual = new(_icon);
 
@@ -316,7 +322,9 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             var tone = cancelled ? OpenCodeToolTheme.Caution
                 : content.Status == OpenCodeToolRowStatus.Error ? OpenCodeToolTheme.Critical : OpenCodeToolTheme.Accent;
             OpenCodeToolTheme.Apply(_label, OpenCodeToolTheme.Text(tone, OpenCodeInteractionUi.CaptionStyleKey));
-            OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(tone));
+            // The name stays the accent "open child" tone; the glyph carries the outcome like sibling status icons.
+            OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(!cancelled && content.Status == OpenCodeToolRowStatus.Completed
+                ? OpenCodeToolTheme.Success : tone));
             OpenCodeToolTheme.Apply(_targetText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
             OpenCodeToolPartView.ApplyRowChrome(_rowChrome, OpenCodeToolRowChrome.For(null));
             _statusCell.Visibility = Visibility.Collapsed;
@@ -333,7 +341,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     }
 
     private void ApplyRowStyle()
-        => OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, false, _label, _targetText, _summaryText);
+        => OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, _label, _targetText, _summaryText);
 
     internal void Dispose()
     {
@@ -389,11 +397,11 @@ internal static class OpenCodeTimelineRowMetrics
 
 internal static class OpenCodeTimelineRowStyle
 {
-    internal static void Apply(Grid root, Button row, OpenCodeToolRowStatus? status, bool expanded, params TextBlock[] labels)
+    internal static void Apply(Grid root, Button row, OpenCodeToolRowStatus? status, params TextBlock[] labels)
     {
         // Paint the rounded root itself, once, rather than relying on an unclipped rounded child.
-        root.CornerRadius = new CornerRadius(expanded ? 8 : 4);
-        row.CornerRadius = expanded ? new CornerRadius(8, 8, 0, 0) : new CornerRadius(4);
+        root.CornerRadius = new CornerRadius(4);
+        row.CornerRadius = new CornerRadius(4);
         row.Height = OpenCodeTimelineRowMetrics.Height(status);
         var gap = OpenCodeTimelineRowMetrics.VerticalGap(status);
         // A4: each row owns its tint; its margins remain untinted even beside another active row.

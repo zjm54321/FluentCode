@@ -64,7 +64,7 @@ Add-AppxPackage -Path .\FluentCode_1.2611.5.0_x64.msix
 
 ## 校验范围
 
-`pwsh -NoProfile -File tests/msix/run.ps1` 可独立运行打包专项静态校验；它不加入现有 27 项运行时套件，不安装或启动应用。
+`pwsh -NoProfile -File tests/msix/run.ps1` 可独立运行打包专项静态校验；它不加入现有 28 项运行时套件，不安装或启动应用。
 
 `tests/msix/run.ps1` 可离线校验源清单，打包脚本还会解包并校验身份、版本、最低系统、COM 激活、运行时/PRI/原生 DLL/图标/通知及每个载荷文件哈希，并通过 SDK `makepri dump` 确认包主资源索引包含应用和 WinUI 主题的内嵌 XAML（`resource-index-validation.json`）。签名校验分别记录密码学完整性与 Windows 信任链结果；开发证书未被信任是预期状态，不通过自动导入证书消除该结果。
 

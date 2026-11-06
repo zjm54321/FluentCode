@@ -39,7 +39,7 @@ This document provides concise instructions for automated agents working on the 
    ```
 
 4. **Testing**:
-   Run the 27-suite automated test battery via:
+   Run the 28-suite automated test battery via:
    ```bash
    python3 tests/run-suite.py --root "artifacts/scripts-move-suite-$(date -u +%Y%m%dT%H%M%SZ)" --execute
    ```

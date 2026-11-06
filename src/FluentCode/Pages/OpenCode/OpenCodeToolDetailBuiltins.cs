@@ -41,19 +41,8 @@ internal static partial class OpenCodeToolDetailBuiltins
         return body;
     }
 
-    /// <summary>D1: full body for the row-owned inline expansion, with no popup or nested scroll host.</summary>
-    internal static FrameworkElement? BuildInline(OpenCodeToolRowModel model)
-        => OpenCodeToolDetailBuiltinData.Resolve(model) switch
-        {
-            OpenCodeBuiltinToolView.Todo => Todo(model, false),
-            OpenCodeBuiltinToolView.Question => Question(model),
-            OpenCodeBuiltinToolView.Skill => Skill(model, false),
-            _ => null,
-        };
-
-    /// <summary>Reasoning is shared by hover, detail and D1 inline hosts. Content is never translated.</summary>
-    internal static FrameworkElement BuildReasoning(string? text, bool encrypted = false, bool compact = false, bool running = false,
-        OpenCodeRichTextPresenter? presenter = null)
+    /// <summary>Reasoning content for the shared detail popup. Content is never translated.</summary>
+    internal static FrameworkElement BuildReasoning(string? text, bool encrypted = false, bool compact = false, bool running = false)
     {
         if (encrypted) return OpenCodeToolDetailContent.Caption("思考内容已加密，无法显示");
         if (string.IsNullOrWhiteSpace(text)) return OpenCodeToolDetailContent.Caption(running ? "思考中…" : "（没有可显示的思考内容）");
@@ -63,7 +52,7 @@ internal static partial class OpenCodeToolDetailBuiltins
             var lines = content.Replace("\r", "", StringComparison.Ordinal).Split('\n');
             content = string.Join('\n', running ? lines.TakeLast(5) : lines.Take(5));
         }
-        presenter ??= new OpenCodeRichTextPresenter();
+        var presenter = new OpenCodeRichTextPresenter();
         presenter.Render(content, OpenCodeRichTextStyle.Body);
         var body = presenter.Element;
         OpenCodeToolDetailContent.EnforceWrapping(body);

@@ -47,6 +47,7 @@ RUNNERS = (
     'desktop-bridge-qol/run.ps1',
     'opencode-persistent-pty/run.ps1',
     'opencode-persistent-pty-transport/run-backend.ps1',
+    'opencode-tool-presentation/run.ps1',
 )
 NODE_TESTS = ('runtime.test.mjs', 'audit.test.mjs')
 
