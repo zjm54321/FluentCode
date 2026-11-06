@@ -302,7 +302,7 @@ namespace FluentCode.Pages.OpenCode
         internal int DisposeCount { get; private set; }
         internal OpenCodeReasoningRowView()
             => ConversationViewTestProbe.Record("Construct", this, Element);
-        internal void Update(string text, bool streaming, string rowKey, bool encrypted = false)
+        internal void Update(string text, bool streaming, string rowKey, bool encrypted = false, double? durationMs = null)
         {
             Text = text;
             Streaming = streaming;

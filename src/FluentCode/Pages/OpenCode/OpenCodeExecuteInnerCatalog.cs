@@ -40,6 +40,7 @@ internal static class OpenCodeExecuteInnerCatalog
         ["pty_spawn"] = new("启动终端", "pty", "command args"),
         ["pty_kill"] = new("结束终端", "pty", "id cleanup"),
         ["pty_list"] = new("列出终端", "pty", ""),
+        ["pty_resize"] = new("调整终端大小", "pty", "id cols rows"),
         ["chrome-devtools.take_snapshot"] = new("读取页面快照", "chrome", "pageId verbose"),
         ["chrome-devtools.new_page"] = new("新建页面", "chrome", "url background"),
         ["chrome-devtools.click"] = new("点击页面元素", "chrome", "uid pageId"),

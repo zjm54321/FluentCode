@@ -22,12 +22,26 @@ internal enum OpenCodeBuiltinToolView
     Execute,
     Context,
     Companion,
+    SessionRead,
+    SessionList,
 }
 
 internal sealed record OpenCodeSubagentDetail(
     string? Agent, string? Description, string? Prompt, string? SessionId, string? RecordedStatus, string? Output);
 
-internal sealed record OpenCodeQuestionOption(string Label, string? Description);
+/// <param name="Label">The exact offered label (answers are matched against it).</param>
+internal sealed record OpenCodeQuestionOption(string Label, string? Description)
+{
+    private static readonly Regex RecommendedSuffix = new(@"\s*[(（]\s*(?:recommended|推荐)\s*[)）]\s*$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    /// <summary>The model's “(Recommended)” / “（推荐）” suffix, shown as a tag instead of raw label text.</summary>
+    internal bool Recommended => !string.Equals(DisplayLabel, Label, StringComparison.Ordinal);
+
+    internal string DisplayLabel => RecommendedSuffix.Replace(Label, string.Empty) is { Length: > 0 } plain ? plain : Label;
+
+    /// <summary>Row-summary form of a recorded answer: the same suffix stripped.</summary>
+    internal static string Plain(string answer) => RecommendedSuffix.Replace(answer, string.Empty) is { Length: > 0 } plain ? plain : answer;
+}
 
 /// <param name="Answers">null = the server recorded no answer for this question (shown as “未回答”).</param>
 internal sealed record OpenCodeQuestionDetail(
@@ -99,6 +113,7 @@ internal static class OpenCodeToolDetailBuiltinData
     internal static string? RowSummary(OpenCodeToolRowModel model)
     {
         var output = model.OutputText ?? "";
+        if (OpenCodeSessionToolData.RowSummary(model) is { } session) return session;
         if (Resolve(model) == OpenCodeBuiltinToolView.Companion) return Companion(model).Label;
         if (model.ToolName == "acp_status")
         {
@@ -145,6 +160,8 @@ internal static class OpenCodeToolDetailBuiltinData
             return OpenCodeBuiltinToolView.Companion;
         if (model.ToolName is "acp_status" or "compress" or "decompress" or "search_context" or "prune" or "absorb" or "acp_run")
             return OpenCodeBuiltinToolView.Context;
+        if (OpenCodeSessionToolData.IsSessionRead(model.ToolName)) return OpenCodeBuiltinToolView.SessionRead;
+        if (OpenCodeSessionToolData.IsSessionList(model.ToolName)) return OpenCodeBuiltinToolView.SessionList;
         return model.Kind switch
         {
             OpenCodeToolKind.Todo => OpenCodeBuiltinToolView.Todo,

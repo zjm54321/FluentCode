@@ -33,7 +33,7 @@ foreach ($name in @('OpenCodeConstants.cs', 'OpenCodeJson.cs', 'OpenCodeExceptio
 }
 foreach ($name in @('OpenCodeToolRowPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeLineDiff.cs',
     'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeBrowserToolPresentation.cs', 'OpenCodeSubagentPresentation.cs',
-    'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs', 'OpenCodeWorkingPhrases.cs',
+    'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeSessionToolData.cs', 'OpenCodeContextStatusParser.cs', 'OpenCodeWorkingPhrases.cs',
     'OpenCodeWorkingFamily.cs', 'OpenCodeModelPresentation.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeComposerInputPolicy.cs')) {
     $production += Join-Path "$repo/src/FluentCode/Pages/OpenCode" $name
 }

@@ -85,7 +85,7 @@ $production = @()
     $production += Join-Path "$repo/src/FluentCode/Pages" $_
 }
 @('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
-    'OpenCodeBrowserToolPresentation.cs', 'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
+    'OpenCodeBrowserToolPresentation.cs', 'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeSessionToolData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
     'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs',
     'OpenCodeShellTerminalText.cs', 'OpenCodeShellTerminalPreview.cs', 'OpenCodeMessageRollbackPolicy.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/FluentCode/Pages/OpenCode" $_

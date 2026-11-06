@@ -27,7 +27,8 @@ internal static partial class Program
             && !Source("OpenCodeStepRunPresentation.cs").Contains("OpenCodeReasoningExpansionState", StringComparison.Ordinal),
             "popup.reasoning-has-no-auto-or-manual-inline-state");
         Check(reasoning.Contains("OpenCodeToolDetailPopup.Shared.Refresh(this);", StringComparison.Ordinal)
-            && reasoning.Contains("Text, _encrypted, compact: true, running: _model.IsActive", StringComparison.Ordinal),
+            && reasoning.Contains("Text, _encrypted, compact: !OpenCodeToolDetailContent.IsFullDetailBuild, running: _model.IsActive", StringComparison.Ordinal)
+            && reasoning.Contains("DurationText: _model.DurationText", StringComparison.Ordinal),
             "popup.reasoning-keeps-live-shared-builder-refresh");
         Check(reasoning.Contains("HoverEnter(this)", StringComparison.Ordinal) && reasoning.Contains("HoverExit(this)", StringComparison.Ordinal)
             && reasoning.Contains("case VirtualKey.Escape:", StringComparison.Ordinal)

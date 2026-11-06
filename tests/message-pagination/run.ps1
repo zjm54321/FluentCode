@@ -43,6 +43,7 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeBrowserToolPresentation.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeToolDetailBuiltinData.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeExecuteInnerCatalog.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionToolData.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeContextStatusParser.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeLineDiff.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeHomeProjection.cs'),

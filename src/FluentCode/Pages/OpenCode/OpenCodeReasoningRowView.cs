@@ -126,17 +126,19 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         "\uEA80",
         "思考",
         StatusText: _model.Status == OpenCodeToolRowStatus.Streaming ? "思考中…" : string.Empty,
+        DurationText: _model.DurationText,
         AccessibleName: _model.AccessibleName);
 
+    // Hover = excerpt; the pinned large view (full detail build) shows the whole reasoning.
     OpenCodeToolDetailView IOpenCodeDetailContentSource.BuildDetailContent()
         => OpenCodeToolDetailContent.Wrap(OpenCodeToolDetailBuiltins.BuildReasoning(
-            Text, _encrypted, compact: true, running: _model.IsActive));
+            Text, _encrypted, compact: !OpenCodeToolDetailContent.IsFullDetailBuild, running: _model.IsActive));
 
     void IOpenCodeDetailContentSource.OnDetailStateChanged(bool shown, bool pinned)
         => _selectionBar.Visibility = shown && pinned ? Visibility.Visible : Visibility.Collapsed;
 
-    /// <summary>就地更新合并后的思考文本；streaming = 该思考仍在生成（显示进度环）。</summary>
-    internal void Update(string text, bool streaming, string rowKey, bool encrypted = false)
+    /// <summary>就地更新合并后的思考文本；streaming = 该思考仍在生成（显示进度环）；durationMs = 已结束思考的用时（详情标题栏显示，未知为 null）。</summary>
+    internal void Update(string text, bool streaming, string rowKey, bool encrypted = false, double? durationMs = null)
     {
         _encrypted = encrypted;
         text ??= string.Empty;
@@ -150,6 +152,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
             StatusText = streaming ? "思考中" : "思考完成",
             Summary = preview,
             OutputText = text,
+            DurationText = !streaming && durationMs is > 0 ? OpenCodeStepRunPresentation.FormatDuration(durationMs.Value) : string.Empty,
             AccessibleName = "思考" + (streaming ? "（进行中）" : string.Empty) + (preview.Length > 0 ? "：" + preview : string.Empty),
         };
 

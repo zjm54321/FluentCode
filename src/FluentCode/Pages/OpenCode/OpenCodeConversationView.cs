@@ -863,6 +863,7 @@ public sealed class OpenCodeConversationView : StackPanel
         public Action? RefreshVisual { get; set; }
         public string ReasoningText { get; set; } = string.Empty;
         public bool ReasoningEncrypted { get; set; }
+        public double? ReasoningDurationMs { get; set; }
 
         /// <summary>就地更新；第二参数为当前 assistant 消息 id（仅工具部件的导航事件使用，可为 null），第三参数为关联的异步完成通知。</summary>
         public required Action<OpenCodeContentPart, string?, OpenCodeAsyncCompletion?> Update { get; init; }
@@ -2351,6 +2352,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
             var leadInProgress = false;
             var leadEncrypted = false;
+            double? leadStarted = null;
+            double? leadCompleted = null;
+            var leadTimed = true;
 
             void FlushReasoning()
             {
@@ -2361,16 +2365,22 @@ public sealed class OpenCodeConversationView : StackPanel
                         ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
                     lead.ReasoningText = OpenCodeStepRunPresentation.MergeReasoning(texts);
                     lead.ReasoningEncrypted = leadEncrypted && string.IsNullOrWhiteSpace(lead.ReasoningText);
+                    // Duration only when every merged part reported plausible start/end times.
+                    lead.ReasoningDurationMs = !leadInProgress && leadTimed && leadStarted is { } from && leadCompleted is { } to && to >= from
+                        ? to - from : null;
                     lead.RefreshVisual?.Invoke();
                     lead.Reasoning?.Update(
                         lead.ReasoningText,
                         leadInProgress,
-                        QualifyKey(message, lead), lead.ReasoningEncrypted);
+                        QualifyKey(message, lead), lead.ReasoningEncrypted, lead.ReasoningDurationMs);
                 }
 
                 lead = null;
                 leadInProgress = false;
                 leadEncrypted = false;
+                leadStarted = null;
+                leadCompleted = null;
+                leadTimed = true;
                 texts.Clear();
             }
 
@@ -2401,6 +2411,14 @@ public sealed class OpenCodeConversationView : StackPanel
 
                     leadInProgress |= inProgress;
                     leadEncrypted |= encrypted;
+                    if (part.LastPart?.Time is { } thoughtTime
+                        && OpenCodeStepRunPresentation.IsPlausibleTimestamp(thoughtTime.Created)
+                        && OpenCodeStepRunPresentation.IsPlausibleTimestamp(thoughtTime.Completed))
+                    {
+                        leadStarted = Math.Min(leadStarted ?? thoughtTime.Created, thoughtTime.Created);
+                        leadCompleted = Math.Max(leadCompleted ?? thoughtTime.Completed!.Value, thoughtTime.Completed!.Value);
+                    }
+                    else leadTimed = false;
                     texts.Add(text);
                     continue;
                 }
@@ -2684,7 +2702,7 @@ public sealed class OpenCodeConversationView : StackPanel
                         part.ReasoningStatus = running ? OpenCodeToolRowStatus.Streaming : OpenCodeToolRowStatus.Completed;
                         part.RefreshVisual?.Invoke();
                         if (run.Owner.Message is { } message)
-                            part.Reasoning?.Update(part.ReasoningText, running, QualifyKey(message, part), part.ReasoningEncrypted);
+                            part.Reasoning?.Update(part.ReasoningText, running, QualifyKey(message, part), part.ReasoningEncrypted, part.ReasoningDurationMs);
                     }
                     var operation = part.OperationKey?.Invoke();
                     if (part.LastPart is { } snapshot && !part.IsReasoning)
@@ -2871,7 +2889,8 @@ public sealed class OpenCodeConversationView : StackPanel
             if (kind == OpenCodePartTypes.Reasoning)
                 visual.Reasoning?.Update(descriptor.ReasoningText,
                     descriptor.ReasoningStatus == OpenCodeToolRowStatus.Streaming,
-                    snapshot.Id is { Length: > 0 } ? key : (messageId is { Length: > 0 } ? messageId : "anon") + "/" + key, descriptor.ReasoningEncrypted);
+                    snapshot.Id is { Length: > 0 } ? key : (messageId is { Length: > 0 } ? messageId : "anon") + "/" + key, descriptor.ReasoningEncrypted,
+                    descriptor.ReasoningDurationMs);
         }
         descriptor = new PartEntry
         {

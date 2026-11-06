@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -254,8 +255,10 @@ internal sealed class OpenCodeToolRowModel
     /// <summary>TL1: the server's tool name (trimmed, original case) and raw part state for built-in detail views.</summary>
     public string ToolName { get; init; } = string.Empty;
     public JsonElement? State { get; init; }
+    /// <summary>Raw id pill for unrecognised snake_case tools only; catalogued tools (session_*, pty_*) already show a real name.</summary>
     public string RawToolLabel => ToolName.Contains('_', StringComparison.Ordinal)
         && ToolName is not ("apply_patch" or "task_status" or "task_result" or "task_message" or "task_revive" or "task_cancel" or "wait_for_user" or "acp_status" or "search_context" or "acp_run")
+        && OpenCodeExecuteInnerCatalog.FindNonFile(ToolName) is null
         ? ToolName : string.Empty;
 }
 
@@ -650,7 +653,7 @@ internal static class OpenCodeToolRowPresentation
             case OpenCodeToolKind.Question:
                 target = QuestionFallbackTitle(input);
                 var answers = ReadAnswers(metadata);
-                summary = answers.Count > 0 ? "已回答：" + string.Join("；", answers) : "未回答";
+                summary = answers.Count > 0 ? "已回答：" + string.Join("；", answers.Select(OpenCodeQuestionOption.Plain)) : "未回答";
                 break;
 
             case OpenCodeToolKind.Todo:
@@ -667,6 +670,7 @@ internal static class OpenCodeToolRowPresentation
             default:
                 target = FirstString(input, "filePath", "path", "command", "pattern", "url", "description", "query", "name", "reason", "message", "prompt", "task_id", "sessionID", "id") ?? string.Empty;
                 if (part.Name == "skill") target = FirstString(metadata, "name") ?? FirstString(input, "id") ?? target;
+                if (OpenCodeSessionToolData.RowTarget(builtinModel) is { } sessionTarget) target = sessionTarget;
                 if (part.Name == "execute")
                 {
                     target = OpenCodeExecuteInnerCatalog.Target(OpenCodeToolDetailBuiltinData.Execute(builtinModel)) ?? string.Empty;
@@ -1699,9 +1703,11 @@ internal static class OpenCodeToolRowPresentation
             return string.Empty;
         }
 
+        // Long waits (e.g. a question left open for hours) read as “10 小时 1 分”, never “36118 秒”.
         var ms = end - start;
         return ms < 1000
             ? Math.Round(ms).ToString(CultureInfo.InvariantCulture) + " 毫秒"
+            : ms >= 60_000 ? OpenCodeStepRunPresentation.FormatDuration(ms)
             : (ms / 1000).ToString(ms < 10000 ? "0.0" : "0", CultureInfo.InvariantCulture) + " 秒";
     }
 }

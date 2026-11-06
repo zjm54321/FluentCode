@@ -13,9 +13,9 @@ namespace FluentCode.Pages.OpenCode;
 
 /// <summary>
 /// TL1: small tool-specific detail views for OpenCode's built-in tools (todowrite, subagent, question, skill,
-/// websearch, execute) used by BOTH the hover preview (<see cref="OpenCodeToolDetailOptions.Compact"/>: lists capped,
-/// excerpts) and the large view (everything). Native controls only — read-only CheckBox / RadioButton,
-/// HyperlinkButton, Expander, ProgressRing — with built-in text styles and ThemeResource brushes.
+/// websearch, execute, session_read / session_list) and reasoning, used by BOTH the hover preview
+/// (<see cref="OpenCodeToolDetailOptions.Compact"/>: lists capped, excerpts) and the large view (everything). Native
+/// controls only — Fluent glyphs, HyperlinkButton, Expander, ProgressRing — with built-in text styles and ThemeResource brushes.
 /// Data comes from <see cref="OpenCodeToolDetailBuiltinData"/>; unknown values are hidden, never guessed.
 /// </summary>
 internal static partial class OpenCodeToolDetailBuiltins
@@ -35,29 +35,60 @@ internal static partial class OpenCodeToolDetailBuiltins
             OpenCodeBuiltinToolView.Execute => Execute(model, options.Compact),
             OpenCodeBuiltinToolView.Context => Context(model, options.Compact),
             OpenCodeBuiltinToolView.Companion => Companion(model, options),
+            OpenCodeBuiltinToolView.SessionRead => SessionRead(model, options.Compact),
+            OpenCodeBuiltinToolView.SessionList => SessionList(model, options.Compact),
             _ => Generic(model, options.Compact),
         };
         if (body is not null) AutomationProperties.SetAutomationId(body, "OpenCodeToolDetailBuiltin." + OpenCodeToolDetailBuiltinData.Resolve(model));
         return body;
     }
 
-    /// <summary>Reasoning content for the shared detail popup. Content is never translated.</summary>
+    internal const int CompactReasoningLines = 8;
+
+    /// <summary>
+    /// Reasoning content for the shared detail popup (title, live state and duration live in the popup chrome).
+    /// Hover: the opening lines — or, while streaming, the newest lines — with how much more there is. Large view: the full
+    /// Markdown at a readable measure, padded like the tool detail views. Content is never translated.
+    /// </summary>
     internal static FrameworkElement BuildReasoning(string? text, bool encrypted = false, bool compact = false, bool running = false)
     {
-        if (encrypted) return OpenCodeToolDetailContent.Caption("思考内容已加密，无法显示");
-        if (string.IsNullOrWhiteSpace(text)) return OpenCodeToolDetailContent.Caption(running ? "思考中…" : "（没有可显示的思考内容）");
-        var content = text!;
-        if (compact)
+        var panel = new StackPanel { Spacing = 12 };
+        AutomationProperties.SetAutomationId(panel, "OpenCodeToolDetailReasoning");
+        if (encrypted)
+            panel.Children.Add(Notice("\uE72E", "思考内容已加密", "模型只返回了加密后的思考内容，无法在这里显示。"));
+        else if (string.IsNullOrWhiteSpace(text))
+            panel.Children.Add(running ? Thinking() : OpenCodeToolDetailContent.Caption("没有可显示的思考内容"));
+        else
         {
+            var content = text!;
             var lines = content.Replace("\r", "", StringComparison.Ordinal).Split('\n');
-            content = string.Join('\n', running ? lines.TakeLast(5) : lines.Take(5));
+            var hidden = compact ? Math.Max(0, lines.Length - CompactReasoningLines) : 0;
+            if (hidden > 0 && running)
+            {
+                // Streaming hover follows the newest thoughts.
+                var earlier = OpenCodeToolDetailContent.Caption("前面还有 " + hidden.ToString(CultureInfo.InvariantCulture) + " 行 · 点击查看全部");
+                AutomationProperties.SetAutomationId(earlier, "OpenCodeToolDetailMore");
+                panel.Children.Add(earlier);
+                content = string.Join('\n', lines.TakeLast(CompactReasoningLines));
+            }
+            else if (hidden > 0) content = string.Join('\n', lines.Take(CompactReasoningLines));
+
+            var body = MarkdownBody(content);
+            body.MaxWidth = 760;
+            body.HorizontalAlignment = HorizontalAlignment.Left;
+            panel.Children.Add(body);
+            if (!running) AddMore(panel, hidden, "行");
+            else if (!compact) panel.Children.Add(Thinking());
         }
-        var presenter = new OpenCodeRichTextPresenter();
-        presenter.Render(content, OpenCodeRichTextStyle.Body);
-        var body = presenter.Element;
-        OpenCodeToolDetailContent.EnforceWrapping(body);
-        body.MaxWidth = 820;
-        return body;
+
+        if (!compact) panel.Margin = new Thickness(24, 4, 12, 24);
+        return panel;
+    }
+
+    private static FrameworkElement Thinking()
+    {
+        var ring = new ProgressRing { IsActive = true, Width = 12, Height = 12, MinWidth = 12, MinHeight = 12 };
+        return StateLine(ring, "正在思考…", OpenCodeToolTheme.TextSecondary);
     }
 
     /// <summary>grep / glob: a count header from metadata above the unchanged line list (null when not reported).</summary>
@@ -174,51 +205,65 @@ internal static partial class OpenCodeToolDetailBuiltins
 
     // ------------------------------------------------------------------ question
 
+    /// <summary>
+    /// Each question: an eyebrow (“问题 2 / 3 · header” when several), the question, then the offered options as read-only
+    /// rows — the chosen one(s) carry a check glyph, bold label and soft fill; the rest recede once answered. A model's
+    /// “(Recommended)” suffix becomes a small 推荐 tag. Typed answers (其他) get their own quoted card. Hover keeps only
+    /// the chosen rows of an answered question.
+    /// </summary>
     private static FrameworkElement? Question(OpenCodeToolRowModel model)
     {
         var questions = OpenCodeToolDetailBuiltinData.Questions(model.State);
         if (questions.Count == 0) return null;
-        var panel = new StackPanel { Spacing = 24 };
+        var compact = !OpenCodeToolDetailContent.IsFullDetailBuild;
+        var panel = new StackPanel { Spacing = compact ? 16 : 24 };
         for (var q = 0; q < questions.Count; q++)
         {
             var question = questions[q];
-            var block = new StackPanel { Spacing = 4 };
-            if (question.Header is { } header) block.Children.Add(OpenCodeToolDetailContent.Caption(header));
-            var title = OpenCodeInteractionUi.StyledText(question.Text, OpenCodeInteractionUi.BodyStrongStyleKey);
-            title.TextWrapping = TextWrapping.Wrap;
-            title.Margin = new Thickness(0, 0, 0, 2);
-            block.Children.Add(title);
+            var block = new StackPanel { Spacing = 8 };
             var group = "OpenCodeToolDetailQuestion." + model.PartId + "." + q.ToString(CultureInfo.InvariantCulture);
-            var radio = question.Multiple ? null : new RadioButtons { MaxColumns = 1, IsHitTestVisible = false, IsTabStop = false, SelectedIndex = -1 };
-            var selectedIndex = -1;
+            // A single question's header is already the popup title's target; only several questions need an eyebrow.
+            if (questions.Count > 1)
+            {
+                var eyebrow = OpenCodeInteractionUi.StyledText(
+                    "问题 " + (q + 1).ToString(CultureInfo.InvariantCulture) + " / " + questions.Count.ToString(CultureInfo.InvariantCulture)
+                    + (question.Header is { } header ? " · " + header : ""), OpenCodeInteractionUi.CaptionStyleKey, true);
+                OpenCodeToolTheme.Apply(eyebrow, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, OpenCodeInteractionUi.CaptionStyleKey));
+                block.Children.Add(eyebrow);
+            }
+
+            var title = OpenCodeInteractionUi.StyledText(question.Text, OpenCodeInteractionUi.BodyStrongStyleKey, true);
+            title.TextWrapping = TextWrapping.Wrap;
+            block.Children.Add(title);
+            if (question.Multiple && !compact) block.Children.Add(OpenCodeToolDetailContent.Caption("可多选"));
+
+            var answered = question.Answers is not null;
+            var options = new StackPanel { Spacing = 2 };
+            var skipped = 0;
             for (var o = 0; o < question.Options.Count; o++)
             {
                 var option = question.Options[o];
                 var selected = question.IsSelected(option);
-                if (radio is null)
-                    block.Children.Add(Choice(true, selected, option.Label, option.Description, group, group + "." + o.ToString(CultureInfo.InvariantCulture)));
-                else
-                {
-                    var content = new StackPanel { Spacing = 2 };
-                    content.Children.Add(OpenCodeInteractionUi.StyledText(option.Label, selected ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.BodyStyleKey));
-                    if (option.Description is { } description) content.Children.Add(OpenCodeToolDetailContent.Caption(description));
-                    if (selected) { content.Children.Add(OpenCodeToolDetailContent.Caption("已选")); selectedIndex = o; }
-                    var item = new Border { Child = content, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(6) };
-                    if (selected) OpenCodeToolTheme.Apply(item, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
-                    AutomationProperties.SetAutomationId(item, group + "." + o.ToString(CultureInfo.InvariantCulture));
-                    radio.Items.Add(item);
-                }
+                if (compact && answered && !selected) { skipped++; continue; }
+                options.Children.Add(QuestionOption(option, selected, answered, question.Multiple, compact, group + "." + o.ToString(CultureInfo.InvariantCulture)));
             }
-            if (radio is not null) { radio.SelectedIndex = selectedIndex; block.Children.Add(radio); }
 
-            foreach (var custom in question.CustomAnswers())
-                block.Children.Add(Section("自行输入", MarkdownBody("> " + custom.Replace("\n", "\n> ", StringComparison.Ordinal))));
+            if (options.Children.Count > 0) block.Children.Add(options);
+            var c = 0;
+            foreach (var custom in question.CustomAnswers()) block.Children.Add(CustomAnswer(custom, group + ".custom." + (c++).ToString(CultureInfo.InvariantCulture)));
+            if (skipped > 0) AddMore(block, skipped, "个未选的选项");
 
-            if (question.Answers is null)
+            if (!answered)
             {
-                var unanswered = OpenCodeToolDetailContent.Caption(model.IsActive ? "等待回答…" : "未回答");
-                AutomationProperties.SetAutomationId(unanswered, group + ".unanswered");
-                block.Children.Add(unanswered);
+                var (icon, text, brush) = model.IsActive
+                    ? ((FrameworkElement)new ProgressRing { IsActive = true, Width = 12, Height = 12, MinWidth = 12, MinHeight = 12 }, "等待回答…", OpenCodeToolTheme.TextSecondary)
+                    : model.Status == OpenCodeToolRowStatus.Error
+                        ? (StatusGlyph("\uE711", OpenCodeToolTheme.Caution), "已跳过，没有作答", OpenCodeToolTheme.TextSecondary)
+                        : (StatusGlyph("\uE9CE", OpenCodeToolTheme.TextSecondary), "未回答", OpenCodeToolTheme.TextSecondary);
+                var state = StateLine(icon, text, brush);
+                AutomationProperties.SetAutomationId(state, group + ".unanswered");
+                AutomationProperties.SetName(state, text);
+                block.Children.Add(state);
             }
 
             panel.Children.Add(block);
@@ -227,33 +272,77 @@ internal static partial class OpenCodeToolDetailBuiltins
         return panel;
     }
 
-    /// <summary>A read-only native RadioButton (single choice) or CheckBox (multiple); the chosen ones are checked and bold.</summary>
-    private static FrameworkElement Choice(bool multiple, bool selected, string label, string? description, string group, string automationId)
+    /// <summary>One read-only option row: indicator | label (+ description) | optional 推荐 tag.</summary>
+    private static FrameworkElement QuestionOption(OpenCodeQuestionOption option, bool selected, bool answered, bool multiple, bool compact, string automationId)
     {
-        var content = new StackPanel { Spacing = 0 };
-        var text = OpenCodeInteractionUi.StyledText(label, selected ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.BodyStyleKey);
-        text.TextWrapping = TextWrapping.Wrap;
-        content.Children.Add(text);
-        if (description is not null) content.Children.Add(OpenCodeToolDetailContent.Caption(description));
-        if (selected) content.Children.Add(OpenCodeToolDetailContent.Caption("已选"));
-        Control element = multiple
-            ? new CheckBox { Content = content, IsChecked = selected }
-            : new RadioButton { Content = content, IsChecked = selected, GroupName = group };
-        element.IsHitTestVisible = false;
-        element.IsTabStop = false;
-        element.MinWidth = 0;
-        element.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        if (selected)
+        var grid = new Grid { ColumnSpacing = 10 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // Shape (check vs. empty box/ring) carries the state, not colour alone — stays legible in high contrast.
+        var indicator = selected
+            ? StatusGlyph(multiple ? "\uE73A" : "\uE930", OpenCodeToolTheme.Accent)
+            : StatusGlyph(multiple ? "\uE739" : "\uEA3A", OpenCodeToolTheme.TextTertiary);
+        indicator.FontSize = 14;
+        indicator.VerticalAlignment = VerticalAlignment.Top;
+        indicator.Margin = new Thickness(0, 3, 0, 0);
+        grid.Children.Add(indicator);
+
+        var text = new StackPanel { Spacing = 1 };
+        var label = OpenCodeInteractionUi.StyledText(option.DisplayLabel, selected ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.BodyStyleKey, true);
+        label.TextWrapping = TextWrapping.Wrap;
+        if (answered && !selected) OpenCodeToolTheme.Apply(label, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.BodyStyleKey));
+        text.Children.Add(label);
+        if (option.Description is { } description)
         {
-            var background = new Border { Child = element, CornerRadius = new CornerRadius(6), Padding = new Thickness(6, 2, 6, 2) };
-            OpenCodeToolTheme.Apply(background, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
-            AutomationProperties.SetAutomationId(element, automationId);
-            AutomationProperties.SetName(element, "已选：" + label);
-            return background;
+            var caption = OpenCodeToolDetailContent.Caption(description);
+            if (compact) { caption.MaxLines = 2; caption.TextTrimming = TextTrimming.CharacterEllipsis; }
+            text.Children.Add(caption);
         }
-        AutomationProperties.SetAutomationId(element, automationId);
-        AutomationProperties.SetName(element, (selected ? "已选：" : "未选：") + label);
-        return element;
+
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(text);
+        if (option.Recommended)
+        {
+            var tag = new Border
+            {
+                Child = OpenCodeInteractionUi.StyledText("推荐", OpenCodeInteractionUi.CaptionStyleKey),
+                Padding = new Thickness(6, 1, 6, 2), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1),
+                VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 1, 0, 0),
+            };
+            OpenCodeToolTheme.Apply(tag, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary, OpenCodeToolTheme.CardStroke));
+            Grid.SetColumn(tag, 2);
+            grid.Children.Add(tag);
+        }
+
+        var row = new Border { Child = grid, Padding = new Thickness(10, 6, 10, 7), CornerRadius = new CornerRadius(6) };
+        if (selected) OpenCodeToolTheme.Apply(row, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        AutomationProperties.SetAutomationId(row, automationId);
+        AutomationProperties.SetName(row, (selected ? "已选：" : "未选：") + option.DisplayLabel + (option.Recommended ? "（推荐）" : ""));
+        return row;
+    }
+
+    /// <summary>An answer typed instead of picking an option (the question tool's “其他”).</summary>
+    private static FrameworkElement CustomAnswer(string answer, string automationId)
+    {
+        var grid = new Grid { ColumnSpacing = 10 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var icon = StatusGlyph("\uE70F", OpenCodeToolTheme.Accent);
+        icon.FontSize = 14;
+        icon.VerticalAlignment = VerticalAlignment.Top;
+        icon.Margin = new Thickness(0, 3, 0, 0);
+        grid.Children.Add(icon);
+        var text = new StackPanel { Spacing = 2 };
+        text.Children.Add(OpenCodeToolDetailContent.Caption("自行输入的回答"));
+        text.Children.Add(MarkdownBody(answer));
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(text);
+        var card = new Border { Child = grid, Padding = new Thickness(10, 6, 10, 8), CornerRadius = new CornerRadius(6) };
+        OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        AutomationProperties.SetAutomationId(card, automationId);
+        AutomationProperties.SetName(card, "自行输入的回答：" + answer);
+        return card;
     }
 
     // ------------------------------------------------------------------ skill
@@ -499,8 +588,8 @@ internal static partial class OpenCodeToolDetailBuiltins
 
     // ------------------------------------------------------------------ shared pieces
 
-    /// <summary>Icon tile (32 px, subtle fill) + title (BodyStrong) + optional caption line.</summary>
-    private static FrameworkElement Header(string glyph, string title, string? caption)
+    /// <summary>Icon tile (32 px, subtle fill) + title (BodyStrong) + optional caption line + optional mono identity line (ids, paths).</summary>
+    private static FrameworkElement Header(string glyph, string title, string? caption, string? identity = null)
     {
         var grid = new Grid { ColumnSpacing = 10 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -517,6 +606,17 @@ internal static partial class OpenCodeToolDetailBuiltins
         heading.TextWrapping = TextWrapping.Wrap;
         text.Children.Add(heading);
         if (!string.IsNullOrWhiteSpace(caption)) text.Children.Add(OpenCodeToolDetailContent.Caption(caption!));
+        if (!string.IsNullOrWhiteSpace(identity))
+        {
+            var mono = OpenCodeToolDetailContent.Mono(identity!);
+            OpenCodeToolTheme.Apply(mono, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, OpenCodeInteractionUi.CodeStyleKey));
+            mono.FontSize = 12;
+            mono.TextWrapping = TextWrapping.NoWrap;
+            mono.TextTrimming = TextTrimming.CharacterEllipsis;
+            ToolTipService.SetToolTip(mono, identity);
+            text.Children.Add(mono);
+        }
+
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
         AutomationProperties.SetAutomationId(grid, "OpenCodeToolDetailBuiltinHeader");
