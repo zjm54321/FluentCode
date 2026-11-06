@@ -98,6 +98,8 @@ namespace FluentCode.Pages
         public void SetCurrentTurnActivity(bool? active) { TurnActivity = active; ActivityPublications++; }
 
         public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { Applied.Add(messages); Children = messages; InvalidateGeometry(); }
+        public bool TryApplyMessageChanges(IReadOnlyList<OpenCodeMessage> changed, object owner, long baseline, long version) => false;
+        public void BindIncrementalSnapshot(object owner, long version) { }
 
         public void ClearMessages() { Applied.Clear(); Children = Array.Empty<OpenCodeMessage>(); InvalidateGeometry(); }
     }

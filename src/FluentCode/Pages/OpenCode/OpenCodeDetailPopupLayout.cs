@@ -13,7 +13,7 @@ internal enum OpenCodeDetailPopupMode
     /// <summary>悬停预览：小型浮层，无关闭按钮，鼠标离开行（且未进入预览）即隐藏。</summary>
     Preview,
 
-    /// <summary>点击打开的大详情视图：约窗口 80%、居中、遮罩层，关闭按钮 / Esc / 点击外部关闭。</summary>
+    /// <summary>点击打开的大详情视图：按内容收缩（最大约窗口 80%）、居中、遮罩层，关闭按钮 / Esc / 点击外部关闭。</summary>
     Large,
 }
 
@@ -31,7 +31,7 @@ internal readonly record struct OpenCodeDetailBand(double Left, double Right)
 
 /// <summary>
 /// 详情弹出层的纯几何与悬停判定（G7，无 WinUI 依赖，headless 测试直接编译本文件）。
-/// 大视图 = 应用窗口的 <see cref="LargeViewFraction"/>（居中，随窗口改变）；
+/// 大视图 = 按内容收缩、最大为应用窗口的 <see cref="LargeViewFraction"/>（居中，随窗口改变）；
 /// 悬停预览 = 自然宽度（最多安全区的 80%），仍被裁切时逐步扩至安全区全宽，只在行上/下方，
 /// 横向以指针为中心并夹紧在内容列两侧约 10% 留白之内（A8）。
 /// </summary>
@@ -70,7 +70,11 @@ internal static class OpenCodeDetailPopupLayout
     /// </summary>
     internal const int HoverLeaveGraceMs = 360;
 
-    /// <summary>大视图矩形：窗口的 80%，居中；窗口很小时不小于最小尺寸但绝不超出窗口（减去边距）。</summary>
+    /// <summary>
+    /// 大视图的上限矩形：窗口的 80%，居中；窗口很小时不小于最小尺寸但绝不超出窗口（减去边距）。
+    /// 实际大小按内容收缩（<see cref="LargeViewWidthRange"/> / <see cref="LargeViewHeightRange"/>），只有并排 diff、
+    /// 浏览器与图片等需要宽度的视图才占满这一宽度。
+    /// </summary>
     internal static OpenCodeDetailRect LargeView(double rootWidth, double rootHeight)
     {
         rootWidth = Math.Max(0, rootWidth);
@@ -81,6 +85,44 @@ internal static class OpenCodeDetailPopupLayout
         var height = Math.Min(maxHeight, Math.Max(LargeMinHeight, Math.Round(rootHeight * LargeViewFraction)));
         return new OpenCodeDetailRect((rootWidth - width) / 2, (rootHeight - height) / 2, width, height);
     }
+
+    /// <summary>按内容收缩的大视图最小宽度：短内容也是一张完整的卡片，而不是一条窄条。</summary>
+    internal const double LargeFitMinWidth = 560;
+
+    /// <summary>按内容收缩的大视图最小高度（标题栏 56 + 约三行正文）。</summary>
+    internal const double LargeFitMinHeight = 160;
+
+    /// <summary>
+    /// 大视图宽度范围：默认取内容的自然宽度，限制在 [<see cref="LargeFitMinWidth"/>, 上限宽度]；
+    /// <paramref name="fillWidth"/>（并排 diff / 浏览器 / 图片）固定为上限宽度。上限比最小值还小时以上限为准。
+    /// </summary>
+    internal static (double Min, double Max) LargeViewWidthRange(OpenCodeDetailRect cap, bool fillWidth)
+    {
+        var max = Math.Max(0, cap.Width);
+        return (fillWidth ? max : Math.Min(LargeFitMinWidth, max), max);
+    }
+
+    /// <summary>大视图高度范围：内容高度，限制在 [<see cref="LargeFitMinHeight"/>, 上限高度]；更长的内容在视图内滚动。</summary>
+    internal static (double Min, double Max) LargeViewHeightRange(OpenCodeDetailRect cap)
+    {
+        var max = Math.Max(0, cap.Height);
+        return (Math.Min(LargeFitMinHeight, max), max);
+    }
+
+    /// <summary>把内容测得的自然宽度夹到 <see cref="LargeViewWidthRange"/> 内。</summary>
+    internal static double LargeFitWidth(double contentWidth, OpenCodeDetailRect cap, bool fillWidth)
+    {
+        var (min, max) = LargeViewWidthRange(cap, fillWidth);
+        return double.IsFinite(contentWidth) ? Math.Clamp(contentWidth, min, max) : max;
+    }
+
+    /// <summary>
+    /// 哪些大视图需要占满上限宽度：差异视图（edit / multiedit / patch，以及 write 的差异模式）的并排两栏、
+    /// 浏览器页面，以及带图片结果的工具。write 的整文件预览 / 源码与其他所有视图按内容收缩。
+    /// </summary>
+    internal static bool LargeViewFillsWidth(OpenCodeToolKind kind, bool hasImages, bool fileView)
+        => hasImages || kind == OpenCodeToolKind.Browser
+            || ((kind is OpenCodeToolKind.Edit or OpenCodeToolKind.MultiEdit or OpenCodeToolKind.Patch or OpenCodeToolKind.Write) && !fileView);
 
     /// <summary>
     /// A8：悬停预览左右各留内容列宽度的这一比例（约 10%）。预览只能落在内容列内这段安全区里，

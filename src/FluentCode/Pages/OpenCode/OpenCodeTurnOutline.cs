@@ -65,6 +65,124 @@ internal static class OpenCodeTurnOutline
         return Math.Clamp((int)Math.Floor(Math.Clamp(y / stackHeight, 0, 0.999999) * turns), 0, turns - 1);
     }
 
+    // ---- Touch navigator (OpenCodeTurnTouchPanel) ------------------------------------------------------
+    // A finger tap on the rail expands it into a list of touch-sized rows (one per loaded turn). Rows map 1:1
+    // to the finger (no proportional compression), so 100+ turns stay precise: the list is clipped to at most
+    // TouchMaxVisibleRows and scrolls when a drag holds near or past its top/bottom edge (edge auto-scroll).
+
+    /// <summary>Fluent touch target: ≥ 40 effective px; 44 leaves a margin for a fingertip on a 10" screen.</summary>
+    internal const double TouchRowHeight = 44;
+    /// <summary>Header that repeats the targeted turn above the finger (the finger hides the row it is on).</summary>
+    internal const double TouchHeaderHeight = 72;
+    internal const double TouchPanelWidth = 320;
+    internal const double TouchPanelMinWidth = 200;
+    internal const int TouchMaxVisibleRows = 10;
+    internal const double TouchPanelGap = 6;
+    internal const double TouchPanelMargin = 8;
+    /// <summary>Movement before a press becomes a drag (a tap with a slightly rolling finger stays a tap).</summary>
+    internal const double TouchDragSlop = 10;
+    /// <summary>Releasing this far right of the list cancels a drag instead of jumping.</summary>
+    internal const double TouchCancelReach = 48;
+    /// <summary>Inner band of the first/last visible row that starts auto-scrolling; beyond the edge it speeds up.</summary>
+    internal const double TouchAutoScrollZone = 22;
+    internal const double TouchAutoScrollMinSpeed = 160;
+    internal const double TouchAutoScrollMaxSpeed = 1100;
+
+    /// <param name="Left">Panel left in bounds coordinates.</param>
+    /// <param name="Top">Panel top in bounds coordinates (header first, then the list).</param>
+    /// <param name="ListHeight">Visible list height: whole rows only.</param>
+    /// <param name="Offset">Initial list scroll offset (current turn centred when possible).</param>
+    internal readonly record struct TouchPanelLayout(double Left, double Top, double Width, double ListHeight, double Offset)
+    {
+        internal double Height => TouchHeaderHeight + ListHeight;
+    }
+
+    /// <summary>
+    /// Places the expanded touch navigator beside the rail inside the timeline bounds (never over the composer,
+    /// which lives below them). The current turn's row is aligned with <paramref name="anchorY"/> (the finger on
+    /// the rail) when the bounds allow, so a press that turns into a drag starts on "you are here".
+    /// </summary>
+    internal static TouchPanelLayout TouchPanel(double boundsWidth, double boundsHeight, double railRight, double anchorY, int turns, int current)
+    {
+        if (!double.IsFinite(boundsWidth) || boundsWidth < 0) boundsWidth = 0;
+        if (!double.IsFinite(boundsHeight) || boundsHeight < 0) boundsHeight = 0;
+        if (!double.IsFinite(anchorY)) anchorY = boundsHeight / 2;
+        turns = Math.Max(1, turns);
+        current = current < 0 || current >= turns ? turns - 1 : current;
+        var fitRows = Math.Max(1, Math.Floor((boundsHeight - 2 * TouchPanelMargin - TouchHeaderHeight) / TouchRowHeight));
+        var listHeight = Math.Min(Math.Min(turns, TouchMaxVisibleRows), fitRows) * TouchRowHeight;
+        var left = Math.Max(0, railRight) + TouchPanelGap;
+        var width = Math.Max(TouchPanelMinWidth, Math.Min(TouchPanelWidth, boundsWidth - left - TouchPanelMargin));
+        var offset = ClampTouchOffset((current + 0.5) * TouchRowHeight - listHeight / 2, turns, listHeight);
+        var height = TouchHeaderHeight + listHeight;
+        var top = anchorY - (TouchHeaderHeight + (current + 0.5) * TouchRowHeight - offset);
+        top = Math.Clamp(top, TouchPanelMargin, Math.Max(TouchPanelMargin, boundsHeight - TouchPanelMargin - height));
+        return new(left, top, width, listHeight, offset);
+    }
+
+    internal static double ClampTouchOffset(double offset, int turns, double viewport)
+    {
+        var max = Math.Max(0, Math.Max(0, turns) * TouchRowHeight - Math.Max(0, viewport));
+        return double.IsFinite(offset) ? Math.Clamp(offset, 0, max) : 0;
+    }
+
+    /// <summary>Row under a list-relative y (clamped to the loaded turns: above/below the list = first/last reachable).</summary>
+    internal static int TouchRowAt(double y, double offset, int turns)
+    {
+        if (turns <= 0 || !double.IsFinite(y)) return -1;
+        return Math.Clamp((int)Math.Floor((y + offset) / TouchRowHeight), 0, turns - 1);
+    }
+
+    /// <summary>The smallest scroll that brings <paramref name="turn"/>'s whole row into view.</summary>
+    internal static double TouchReveal(int turn, double offset, int turns, double viewport)
+    {
+        if (turn < 0 || turns <= 0) return ClampTouchOffset(offset, turns, viewport);
+        var top = Math.Clamp(turn, 0, turns - 1) * TouchRowHeight;
+        if (top < offset) offset = top;
+        else if (top + TouchRowHeight > offset + viewport) offset = top + TouchRowHeight - viewport;
+        return ClampTouchOffset(offset, turns, viewport);
+    }
+
+    /// <summary>Realised rows only (the list is virtualised: about TouchMaxVisibleRows + 1 elements for any session length).</summary>
+    internal static (int First, int Count) TouchVisibleRange(double offset, double viewport, int turns)
+    {
+        if (turns <= 0 || viewport <= 0) return (0, 0);
+        var first = Math.Clamp((int)Math.Floor(offset / TouchRowHeight), 0, turns - 1);
+        var last = Math.Clamp((int)Math.Ceiling((offset + viewport) / TouchRowHeight) - 1, first, turns - 1);
+        return (first, last - first + 1);
+    }
+
+    /// <summary>
+    /// Edge auto-scroll speed (px/s, negative = towards earlier turns) for a dragging finger at list-relative y.
+    /// Zero in the middle; ramps from the min speed at the inner zone edge to the max one row-height beyond the list.
+    /// </summary>
+    internal static double TouchAutoScrollVelocity(double y, double viewport)
+    {
+        if (!double.IsFinite(y) || viewport <= 0) return 0;
+        var range = TouchAutoScrollZone + TouchRowHeight;
+        double depth;
+        if (y < TouchAutoScrollZone) depth = TouchAutoScrollZone - y;
+        else if (y > viewport - TouchAutoScrollZone) depth = y - (viewport - TouchAutoScrollZone);
+        else return 0;
+        var speed = TouchAutoScrollMinSpeed + (TouchAutoScrollMaxSpeed - TouchAutoScrollMinSpeed) * Math.Clamp(depth / range, 0, 1);
+        return y < TouchAutoScrollZone ? -speed : speed;
+    }
+
+    internal static bool IsTouchDrag(double dx, double dy) => dx * dx + dy * dy >= TouchDragSlop * TouchDragSlop;
+
+    /// <summary>A drag released well to the right of the list is a cancel (finger slid off the panel).</summary>
+    internal static bool TouchReleaseCancels(double x, double listWidth) => !double.IsFinite(x) || x > listWidth + TouchCancelReach;
+
+    /// <summary>One-line row label: whitespace (including line breaks) collapsed, capped; the row clamps with an ellipsis.</summary>
+    internal static string TouchRowLabel(string? prompt, int max = 160)
+    {
+        if (string.IsNullOrWhiteSpace(prompt)) return "（无文字内容）";
+        var text = Whitespace.Replace(prompt.Trim(), " ");
+        return text.Length <= max ? text : text[..max].TrimEnd() + "…";
+    }
+
+    private static readonly Regex Whitespace = new(@"\s+");
+
     /// <summary>
     /// Turn in view: the last turn starting above the upper third of the viewport. At the bottom of the
     /// document the last turn that starts anywhere inside the viewport wins (short final turns).

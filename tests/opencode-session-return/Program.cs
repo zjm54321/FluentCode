@@ -22,6 +22,7 @@ internal static partial class Program
     {
         PopupRowDetails(args[0]);
         ReasoningStatusLifecycle();
+        CompactionSummaryRow();
         SubagentCompletionNotices();
         PtyCompletionNotices();
         GroupFinalizesWhenFollowed();

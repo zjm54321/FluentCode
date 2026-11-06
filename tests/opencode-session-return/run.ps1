@@ -102,6 +102,7 @@ if (!$commonText.Contains('event Action<object, SizeChangedEventArgs>')) { throw
 $commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
 [IO.File]::WriteAllText($commonHost, $commonText)
 $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'SubagentCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'PtyCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'GroupFinalizeTests.cs'), (Join-Path $PSScriptRoot 'TranscriptMenuTests.cs'), (Join-Path $PSScriptRoot 'PopupRowTests.cs'))
+$tests += Join-Path $PSScriptRoot 'StreamingApplyTests.cs'
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))

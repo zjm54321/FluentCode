@@ -8,13 +8,28 @@ $pack = Get-ChildItem "$root/packs/Microsoft.NETCore.App.Ref" -Directory | Where
 $output = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('opencode-event-sync-' + [guid]::NewGuid().ToString('N')) }
 New-Item -ItemType Directory -Path $output | Out-Null
 $assembly = Join-Path $output 'OpenCodeEventSyncTests.dll'
-$arguments = @('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+',('/out:"' + $assembly + '"'))
+# HtmlSanitizer targets net8; the net10 runtime unifies its framework references (as in native runners).
+$arguments = @('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+','/nowarn:CS1701,CS1702',('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $arguments += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
 @('OpenCodeInteractionGate.cs','OpenCodeExecutionProjection.cs','OpenCodePageSource.cs','NotificationInteractions.cs','NotificationArgumentCodec.cs','NotificationActivationInfo.cs','NotificationSource.cs') | ForEach-Object {
     $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/Notifications" $_) + '"'
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'StreamingPerformanceTests.cs') + '"'
+# Pure production presenter scheduling/conversion and insights: no WinUI runtime or app build.
+foreach ($name in @('OpenCodeSessionInsights.cs', 'OpenCodeRichTextRenderGate.cs', 'OpenCodeMarkdownImagePlan.cs')) {
+    $arguments += '"' + "$repo/src/FluentCode/Pages/OpenCode/$name" + '"'
+}
+$arguments += '"' + "$repo/src/FluentCode/Services/Rendering/SafeContentRenderer.cs" + '"'
+$arguments += Get-ChildItem "$repo/src/FluentCode/Services/Billion/*.cs" | ForEach-Object { '"' + $_.FullName + '"' }
+$nuget = Join-Path $env:USERPROFILE '.nuget/packages'
+foreach ($relative in @('markdig/1.4.0/lib/net10.0/Markdig.dll', 'htmlsanitizer/9.2.1039/lib/net8.0/HtmlSanitizer.dll',
+    'anglesharp/1.7.2/lib/net10.0/AngleSharp.dll', 'anglesharp.css/1.0.2/lib/net10.0/AngleSharp.Css.dll')) {
+    $reference = Join-Path $nuget $relative
+    $arguments += '/reference:"' + $reference + '"'
+    Copy-Item $reference $output
+}
 $rsp = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $rsp
 & $dotnet exec "$($sdk.FullName)/Roslyn/bincore/csc.dll" "@$rsp" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
@@ -74,7 +89,7 @@ namespace FluentCode.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $childAssembly = Join-Path $output 'ChildPermissionTests.dll'
-$childArguments = $arguments | Where-Object { !($_.StartsWith('/out:')) -and !($_.EndsWith('Program.cs"')) }
+$childArguments = $arguments | Where-Object { !($_.StartsWith('/out:')) -and !($_.EndsWith('Program.cs"')) -and !($_.EndsWith('StreamingPerformanceTests.cs"')) }
 $childArguments += '/out:"' + $childAssembly + '"'
 foreach ($file in @('OpenCodeInteractionsView.cs', 'OpenCodePermissionCard.cs', 'OpenCodePermissionOverlay.cs',
     'OpenCodePermissionPresentation.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeInteractionPolicy.cs', 'OpenCodeSessionTracking.cs')) {

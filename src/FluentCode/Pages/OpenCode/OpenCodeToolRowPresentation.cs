@@ -811,7 +811,9 @@ internal static class OpenCodeToolRowPresentation
             Deletions = deletions,
             ExitCode = exitCode,
             Truncated = metadata is { } md && md.TryGetProperty("truncated", out var truncated) && truncated.ValueKind == JsonValueKind.True,
-            DurationText = DescribeDuration(part.Time),
+            // A background call returns as soon as the job is launched, so part.Time measures the launch (“9 毫秒”), not the job.
+            // Showing it beside “后台运行中 / 后台已完成” reads as the job's run time; omit it for every background row.
+            DurationText = background ? string.Empty : DescribeDuration(part.Time),
             InputText = FormatInput(state),
             OutputText = output,
             FileOutputs = fileOutputs,

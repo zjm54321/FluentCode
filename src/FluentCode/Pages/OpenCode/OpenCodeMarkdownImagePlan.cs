@@ -3,10 +3,24 @@ using System.Text;
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using FluentCode.Services.Rendering;
 
 namespace FluentCode.Pages.OpenCode;
 
 internal sealed record OpenCodeMarkdownSegment(string Text, bool IsImage = false, string Alt = "", string? Title = null);
+
+/// <summary>Shared full-render conversion used by the native presenter and offline cadence regressions.</summary>
+internal static class OpenCodeMarkdownTextPlan
+{
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().UsePipeTables().Build();
+    private static readonly SafeContentRenderer Renderer = new();
+
+    internal static (string Html, string SafeHtml) Build(string source)
+    {
+        var html = Markdown.ToHtml(source, Pipeline);
+        return (html, Renderer.SanitizeHtml(html));
+    }
+}
 
 /// <summary>Only Markdown AST image nodes become image requests. HTML, code and escaped syntax stay text.</summary>
 internal static class OpenCodeMarkdownImagePlan

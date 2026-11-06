@@ -154,7 +154,9 @@ public sealed partial class OpenCodePage : FrameworkElement
     private IReadOnlyList<OpenCodeMessage> MergeMessageHistory() => _latestMessages;
     private IReadOnlyList<OpenCodeMessage> ProjectMessageHistory(IReadOnlyList<OpenCodeMessage> messages) => messages;
     private void EnsureConversationImages() { }
-    private void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages) { }
+    private void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages, IReadOnlyList<OpenCodeMessage>? changedMessages = null) { }
+    private bool _messageHistoryBoundaryKnown = true, _isLoadingOlderMessages = false;
+    private string? _messageRevertBoundary = null;
     private void ObserveExecutionState(string session, IReadOnlyList<OpenCodeMessage> messages) { }
     private void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> messages, bool visible) { }
     private void InvalidateViewAcknowledgement() { }
@@ -190,6 +192,8 @@ public sealed partial class OpenCodePage : FrameworkElement
     {
         internal readonly List<FrameworkElement> Children = new();
         internal void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { }
+        internal bool TryApplyMessageChanges(IReadOnlyList<OpenCodeMessage> changed, object owner, long baseline, long version) => false;
+        internal void BindIncrementalSnapshot(object owner, long version) { }
     }
     private sealed class RecoverySurface
     {

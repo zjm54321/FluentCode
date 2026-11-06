@@ -19,9 +19,15 @@ namespace FluentCode.Pages.OpenCode;
 /// <summary>
 /// Left-gutter turn navigator in the Fluent pips idiom: a column of identical short marks (one per loaded
 /// user turn, capped and proportionally mapped) with an accent pill on the turn in view that glides between
-/// marks (composition translation). Hover/focus shows a card with the turn's question and its reply text;
-/// click, Enter or a second tap jumps. Idle cost: nothing runs until the page reports a change.
+/// marks (composition translation). Mouse and pen: hover/focus shows a card with the turn's question and its
+/// reply text; click or Enter jumps. Touch: a tap expands the rail into <see cref="OpenCodeTurnTouchPanel"/>
+/// (tap a row or drag to choose; nothing jumps on the first tap). Idle cost: nothing runs until the page
+/// reports a change.
 /// </summary>
+/// <remarks>
+/// Pen is treated like a mouse on purpose: a pen hovers (preview card) and its tip is precise enough for the
+/// 8px pitch, so it keeps hover-preview + press-to-jump.
+/// </remarks>
 internal sealed class OpenCodeTurnNavigator : Grid
 {
     private const double CardWidth = 340;
@@ -35,9 +41,10 @@ internal sealed class OpenCodeTurnNavigator : Grid
     // Fluent selection-indicator pill; moves via an implicit composition translation (no layout, no timers).
     private readonly Rectangle _indicator = new() { Width = IndicatorWidth, Height = IndicatorThickness, RadiusX = IndicatorThickness / 2,
         RadiusY = IndicatorThickness / 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
-        IsHitTestVisible = false, Visibility = Visibility.Collapsed,
-        TranslationTransition = new Vector3Transition { Duration = TimeSpan.FromMilliseconds(250) } };
-    private readonly Border _surface = new() { CornerRadius = new CornerRadius(4), Padding = new Thickness(0, 10, 0, 10) };
+        IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+    // The visible surface stays 32px wide; the hit area around it is touch-sized (Width/MinHeight below).
+    private readonly Border _surface = new() { Width = 32, CornerRadius = new CornerRadius(4), Padding = new Thickness(0, 10, 0, 10),
+        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private readonly Popup _popup = new() { ShouldConstrainToRootBounds = true, IsLightDismissEnabled = false };
     private readonly Border _card = new() { Width = CardWidth, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
         Padding = new Thickness(16, 14, 16, 14) };
@@ -51,7 +58,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
     private int _cardTurn = -1;
     private bool _pointerInside;
     private bool _pointerInCard;
-    private bool _touchArmed;
+    private readonly OpenCodeTurnTouchPanel _touchPanel;
 
     /// <summary>Lazily builds one turn's card content (question/reply verbatim).</summary>
     internal Func<int, OpenCodeTurnPreview?>? PreviewProvider { get; set; }
@@ -59,11 +66,14 @@ internal sealed class OpenCodeTurnNavigator : Grid
     internal event Action<int>? TurnInvoked;
     internal int PreviewTurn => _preview;
     internal bool IsCardOpen => _popup.IsOpen;
+    internal bool IsTouchPanelOpen => _touchPanel.IsOpen;
 
     internal OpenCodeTurnNavigator()
     {
-        Width = 32; // touch target; the marks themselves stay 12px
-        MinHeight = 32;
+        Width = 40; // Fluent touch target (≥ 40 epx); the marks themselves stay 12px, the hover surface 32px
+        MinHeight = 44;
+        // Never hand a contact on the rail to an ancestor's direct manipulation (pan); the rail scrubs itself.
+        ManipulationMode = ManipulationModes.None;
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Center;
         Visibility = Visibility.Collapsed;
@@ -74,6 +84,9 @@ internal sealed class OpenCodeTurnNavigator : Grid
         AutomationProperties.SetAutomationId(this, "OpenCodeTurnNavigator");
         AutomationProperties.SetName(this, "对话导航");
         Apply(_indicator, FillStyle("AccentFillColorDefaultBrush"));
+        // Reduced motion (system or app setting): the pill snaps instead of gliding.
+        FluentCode.Motion.FluentMotion.Bind(_indicator, enabled =>
+            _indicator.TranslationTransition = enabled ? new Vector3Transition { Duration = TimeSpan.FromMilliseconds(250) } : null);
         _surface.Child = new Grid { Children = { _lines, _indicator } };
         Children.Add(_surface);
 
@@ -95,17 +108,25 @@ internal sealed class OpenCodeTurnNavigator : Grid
         FluentCode.Motion.FluentMotion.BindTransitions(_popup, transitions => _popup.ChildTransitions = transitions, () => new TransitionCollection { new PopupThemeTransition { FromHorizontalOffset = -8, FromVerticalOffset = 0 } });
         Children.Add(_popup);
 
+        _touchPanel = new OpenCodeTurnTouchPanel(this);
+        _touchPanel.Invoked += turn => Invoke(turn);
+        _touchPanel.Changed += Paint;
+        Children.Add(_touchPanel.Popup);
+
         PointerEntered += OnPointerMoved;
         PointerMoved += OnPointerMoved;
         PointerExited += (_, e) => { _pointerInside = false; if (e.Pointer.PointerDeviceType != PointerDeviceType.Touch) ScheduleClose(); };
-        PointerCanceled += (_, _) => { _pointerInside = false; ScheduleClose(); };
+        PointerCanceled += (_, e) => { _pointerInside = false; _touchPanel.Cancel(e); ScheduleClose(); };
+        PointerCaptureLost += (_, e) => _touchPanel.Cancel(e);
         PointerPressed += OnPointerPressed;
+        PointerReleased += (_, e) => _touchPanel.End(e);
         PointerWheelChanged += OnPointerWheel;
         KeyDown += OnKeyDown;
-        GotFocus += (_, _) => { if (_preview < 0) SetPreview(Math.Max(0, _current)); OpenCard(); };
+        // A finger tap can focus the rail; the touch panel, not the mouse card, is the touch surface.
+        GotFocus += (_, _) => { if (_touchPanel.IsOpen) return; if (_preview < 0) SetPreview(Math.Max(0, _current)); OpenCard(); };
         LostFocus += (_, _) => { if (!_pointerInside && !_pointerInCard) CloseCard(); };
-        Unloaded += (_, _) => { _closeTimer?.Stop(); CloseCard(); };
-        ActualThemeChanged += (_, _) => _popup.RequestedTheme = ActualTheme;
+        Unloaded += (_, _) => { _closeTimer?.Stop(); CloseCard(); _touchPanel.Close(); };
+        ActualThemeChanged += (_, _) => { _popup.RequestedTheme = ActualTheme; _touchPanel.SetTheme(ActualTheme); };
     }
 
     private bool _gutterAvailable = true;
@@ -121,7 +142,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
     private void ApplyVisibility()
     {
         Visibility = _gutterAvailable && _turns.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
-        if (Visibility == Visibility.Collapsed) CloseCard();
+        if (Visibility == Visibility.Collapsed) { CloseCard(); _touchPanel.Close(); }
     }
 
     internal void SetTurns(IReadOnlyList<OpenCodeTurnOutlineItem> turns, int current)
@@ -135,6 +156,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
         _current = Math.Min(current, turns.Count - 1);
         if (_preview >= turns.Count) _preview = -1;
         if (Visibility == Visibility.Visible && _popup.IsOpen && _preview >= 0) ShowCard(_preview, force: true);
+        _touchPanel.Update(turns, _current);
         Paint();
     }
 
@@ -143,6 +165,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
         current = Math.Min(current, _turns.Count - 1);
         if (current == _current) return;
         _current = current;
+        _touchPanel.Update(_turns, _current);
         Paint();
     }
 
@@ -150,7 +173,8 @@ internal sealed class OpenCodeTurnNavigator : Grid
     {
         var lines = _lines.Children.Count;
         var currentLine = OpenCodeTurnOutline.LineForTurn(_current, lines, _turns.Count);
-        var previewLine = _popup.IsOpen ? OpenCodeTurnOutline.LineForTurn(_preview, lines, _turns.Count) : -1;
+        var previewLine = _popup.IsOpen ? OpenCodeTurnOutline.LineForTurn(_preview, lines, _turns.Count)
+            : _touchPanel.IsOpen ? OpenCodeTurnOutline.LineForTurn(_touchPanel.Highlight, lines, _turns.Count) : -1;
         // Identical marks; only the hovered/previewed one strengthens. The current turn is the accent pill.
         for (var i = 0; i < lines; i++)
             Apply((Rectangle)_lines.Children[i], FillStyle(i == previewLine ? "TextFillColorPrimaryBrush" : "TextFillColorTertiaryBrush"));
@@ -169,7 +193,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
             else if (_indicator.Translation.Y != y) _indicator.Translation = new Vector3(0, y, 0);
         }
         else _indicator.Visibility = Visibility.Collapsed;
-        Apply(_surface, BorderStyle(_pointerInside || _popup.IsOpen ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush", null));
+        Apply(_surface, BorderStyle(_pointerInside || _popup.IsOpen || _touchPanel.IsOpen ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush", null));
         AutomationProperties.SetName(this, _preview >= 0 && _preview < _turns.Count
             ? $"对话导航，第 {_preview + 1} 轮，共 {_turns.Count} 轮" : $"对话导航，共 {_turns.Count} 轮");
     }
@@ -184,9 +208,11 @@ internal sealed class OpenCodeTurnNavigator : Grid
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (_turns.Count == 0) return;
+        if (_touchPanel.IsTracking(e)) { _touchPanel.Track(e); return; } // a finger dragging from the rail into the panel
         _pointerInside = true;
         _closeTimer?.Stop();
-        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch) return; // touch previews on tap
+        // Touch never hover-previews; while the touch panel is open a stray mouse/pen hover does not stack a card on it.
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch || _touchPanel.IsOpen) return;
         SetPreview(TurnAt(e));
         OpenCard();
     }
@@ -195,20 +221,36 @@ internal sealed class OpenCodeTurnNavigator : Grid
     {
         if (_turns.Count == 0) return;
         e.Handled = true;
-        var turn = TurnAt(e);
-        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch && !(_touchArmed && _popup.IsOpen && turn == _preview))
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
         {
-            _touchArmed = true;
-            SetPreview(turn);
-            OpenCard();
+            if (_touchPanel.IsTracking(e) || !CapturePointer(e.Pointer)) return;
+            var wasOpen = _touchPanel.IsOpen;
+            if (!wasOpen) OpenTouchPanel(e);
+            // Tap: opens (never jumps) / closes when already open. Drag: scrubs into the panel, release jumps.
+            _touchPanel.BeginFromRail(e, this, toggleOnTap: wasOpen);
             return;
         }
-        Invoke(turn);
+        Invoke(TurnAt(e));
+    }
+
+    private void OpenTouchPanel(PointerRoutedEventArgs e)
+    {
+        CloseCard();
+        if (Parent is not FrameworkElement host) return;
+        // Bounds: the navigator's own timeline row (the transcript viewport), so the panel never covers the
+        // composer or the timeline's header row.
+        double top = 0, height = host.ActualHeight;
+        if (host is Grid grid && Grid.GetRow(this) is var row && row < grid.RowDefinitions.Count)
+        {
+            for (var i = 0; i < row; i++) top += grid.RowDefinitions[i].ActualHeight;
+            height = grid.RowDefinitions[row].ActualHeight;
+        }
+        _touchPanel.Open(_turns, _current, host, top, height, e.GetCurrentPoint(null).Position.Y);
     }
 
     private void OnPointerWheel(object sender, PointerRoutedEventArgs e)
     {
-        if (_turns.Count == 0) return;
+        if (_turns.Count == 0 || _touchPanel.IsOpen) return;
         var delta = e.GetCurrentPoint(this).Properties.MouseWheelDelta;
         SetPreview(Math.Clamp((_preview < 0 ? Math.Max(0, _current) : _preview) + (delta > 0 ? -1 : 1), 0, _turns.Count - 1));
         OpenCard();
@@ -218,6 +260,8 @@ internal sealed class OpenCodeTurnNavigator : Grid
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (_turns.Count == 0) return;
+        // Touch panel open (e.g. a Surface type cover): arrows move its highlight, Enter jumps, Esc closes.
+        if (_touchPanel.HandleKey(e.Key)) { e.Handled = true; return; }
         var from = _preview < 0 ? Math.Max(0, _current) : _preview;
         int? next = e.Key switch
         {
@@ -235,8 +279,8 @@ internal sealed class OpenCodeTurnNavigator : Grid
     private void Invoke(int turn, bool keepCard = false)
     {
         if (turn < 0 || turn >= _turns.Count) return;
-        _touchArmed = false;
         if (!keepCard) CloseCard();
+        if (_touchPanel.IsOpen) _touchPanel.Close();
         _current = turn;
         Paint();
         TurnInvoked?.Invoke(turn);
@@ -309,7 +353,6 @@ internal sealed class OpenCodeTurnNavigator : Grid
     private void CloseCard()
     {
         _closeTimer?.Stop();
-        _touchArmed = false;
         _pointerInCard = false;
         if (_popup.IsOpen) _popup.IsOpen = false;
         _reply.Text = string.Empty;
@@ -319,14 +362,17 @@ internal sealed class OpenCodeTurnNavigator : Grid
     }
 
     // Theme-following styles: {ThemeResource} setters re-resolve on theme switch; cached per key.
+    // Shared with OpenCodeTurnTouchPanel.
     private static readonly Dictionary<string, Style?> Styles = new(StringComparer.Ordinal);
-    private static Style? FillStyle(string brush) => Load("Rectangle|" + brush,
+    internal static Style? FillStyle(string brush) => Load("Rectangle|" + brush,
         $"<Style TargetType=\"Rectangle\"><Setter Property=\"Fill\" Value=\"{{ThemeResource {brush}}}\" /></Style>");
-    private static Style? TextStyle(string brush, string basedOn) => Load("TextBlock|" + brush + "|" + basedOn,
+    internal static Style? TextStyle(string brush, string basedOn) => Load("TextBlock|" + brush + "|" + basedOn,
         $"<Style TargetType=\"TextBlock\" BasedOn=\"{{StaticResource {basedOn}}}\"><Setter Property=\"Foreground\" Value=\"{{ThemeResource {brush}}}\" /></Style>");
-    private static Style? BorderStyle(string background, string? border) => Load("Border|" + background + "|" + border,
+    internal static Style? BorderStyle(string background, string? border) => Load("Border|" + background + "|" + border,
         $"<Style TargetType=\"Border\"><Setter Property=\"Background\" Value=\"{{ThemeResource {background}}}\" />"
         + (border is null ? string.Empty : $"<Setter Property=\"BorderBrush\" Value=\"{{ThemeResource {border}}}\" />") + "</Style>");
+    internal static Style? PanelStyle(string background) => Load("Grid|" + background,
+        $"<Style TargetType=\"Grid\"><Setter Property=\"Background\" Value=\"{{ThemeResource {background}}}\" /></Style>");
 
     private static Style? Load(string key, string xaml)
     {
@@ -340,7 +386,7 @@ internal sealed class OpenCodeTurnNavigator : Grid
         return style;
     }
 
-    private static void Apply(FrameworkElement element, Style? style)
+    internal static void Apply(FrameworkElement element, Style? style)
     {
         if (style is not null && !ReferenceEquals(element.Style, style)) element.Style = style;
     }

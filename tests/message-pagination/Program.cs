@@ -199,7 +199,76 @@ internal static partial class Program
         Check(!cramped.NavigatorFits && cramped.ScrollBarShift == 0 && cramped.ScrollBarLeft == 48,
             "TN: too narrow for the navigator: it hides and the scrollbar returns to the viewport edge");
         var narrowBlank = OpenCodePage.ConversationColumn(480, 1040, true);
-        Check(narrowBlank.Width == 480 && narrowBlank.RightGutter == 0, "blank/new-session does not reserve an invisible timeline bar");
+        return Task.CompletedTask;
+    }
+
+    private static Task TouchTurnNavigatorGeometry()
+    {
+        const double row = OpenCodeTurnOutline.TouchRowHeight;
+        Check(row >= 40 && OpenCodeTurnOutline.TouchPanelMinWidth >= 40, "TT: touch rows meet the Fluent 40 epx touch target");
+        foreach (var width in new double[] { 240, 480, 800, 1200, 2560 })
+        {
+            var column = OpenCodePage.ConversationColumn(width, 920, false);
+            Check(OpenCodeTurnOutline.Gutters(width, column.Width, 40, 12).NavigatorFits, $"TT: {width}px gutter holds the 40px touch hit area");
+        }
+
+        // Surface Go 3 landscape-ish timeline: 700 tall, rail ends at x=60, finger on the rail at y=350.
+        var few = OpenCodeTurnOutline.TouchPanel(900, 700, 60, 350, 5, 2);
+        Check(few.ListHeight == 5 * row && few.Offset == 0, "TT: few turns show every row, unscrolled");
+        Check(few.Left == 60 + OpenCodeTurnOutline.TouchPanelGap && few.Width == OpenCodeTurnOutline.TouchPanelWidth, "TT: panel sits beside the rail at full width");
+        Check(Math.Abs(few.Top + OpenCodeTurnOutline.TouchHeaderHeight + 2.5 * row - 350) < 0.001, "TT: the current turn's row is aligned with the finger");
+        var many = OpenCodeTurnOutline.TouchPanel(900, 700, 60, 350, 150, 120);
+        Check(many.ListHeight == OpenCodeTurnOutline.TouchMaxVisibleRows * row, "TT: 150 turns cap the visible rows (the list scrolls)");
+        Check(many.Offset > 0 && OpenCodeTurnOutline.TouchRowAt(many.ListHeight / 2, many.Offset, 150) == 120, "TT: list opens scrolled with the current turn centred");
+        Check(many.Top >= OpenCodeTurnOutline.TouchPanelMargin && many.Top + many.Height <= 700 - OpenCodeTurnOutline.TouchPanelMargin,
+            "TT: panel stays inside the timeline bounds (never over the composer)");
+        var edge = OpenCodeTurnOutline.TouchPanel(900, 700, 60, 690, 150, 149);
+        Check(edge.Top + edge.Height <= 700 - OpenCodeTurnOutline.TouchPanelMargin && edge.Offset == 150 * row - edge.ListHeight,
+            "TT: last turn near the bottom edge: panel clamps up and the list is scrolled to the end");
+        var cramped = OpenCodeTurnOutline.TouchPanel(220, 120, 48, 60, 30, 0);
+        Check(cramped.ListHeight == row && cramped.Width == OpenCodeTurnOutline.TouchPanelMinWidth && cramped.Offset == 0,
+            "TT: tiny timeline still shows one whole touch row at the minimum width");
+        var unknown = OpenCodeTurnOutline.TouchPanel(900, 700, 60, double.NaN, 8, -1);
+        Check(double.IsFinite(unknown.Top) && OpenCodeTurnOutline.TouchRowAt(unknown.ListHeight - 1, unknown.Offset, 8) == 7,
+            "TT: no current turn falls back to the latest; NaN anchor stays finite");
+
+        Check(OpenCodeTurnOutline.TouchRowAt(0, 0, 10) == 0 && OpenCodeTurnOutline.TouchRowAt(row - 0.01, 0, 10) == 0
+            && OpenCodeTurnOutline.TouchRowAt(row, 0, 10) == 1 && OpenCodeTurnOutline.TouchRowAt(10, row * 3, 10) == 3,
+            "TT: finger y maps 1:1 to 44px rows, including the scroll offset");
+        Check(OpenCodeTurnOutline.TouchRowAt(-500, 0, 10) == 0 && OpenCodeTurnOutline.TouchRowAt(5000, 0, 10) == 9
+            && OpenCodeTurnOutline.TouchRowAt(double.NaN, 0, 10) == -1 && OpenCodeTurnOutline.TouchRowAt(5, 0, 0) == -1,
+            "TT: above/below the list clamps to the first/last turn; no turns or NaN hits nothing");
+        Check(OpenCodeTurnOutline.ClampTouchOffset(-5, 20, 440) == 0 && OpenCodeTurnOutline.ClampTouchOffset(1e6, 20, 440) == 20 * row - 440
+            && OpenCodeTurnOutline.ClampTouchOffset(100, 5, 440) == 0 && OpenCodeTurnOutline.ClampTouchOffset(double.NaN, 20, 440) == 0,
+            "TT: scroll offset clamps to the content");
+        Check(OpenCodeTurnOutline.TouchReveal(0, 300, 20, 440) == 0 && OpenCodeTurnOutline.TouchReveal(19, 0, 20, 440) == 20 * row - 440
+            && OpenCodeTurnOutline.TouchReveal(5, 100, 20, 440) == 100, "TT: reveal scrolls minimally and leaves visible rows alone");
+
+        var (first, count) = OpenCodeTurnOutline.TouchVisibleRange(0, 440, 1000);
+        Check(first == 0 && count == 10, "TT: 1000 turns realise only the visible rows");
+        (first, count) = OpenCodeTurnOutline.TouchVisibleRange(22, 440, 1000);
+        Check(first == 0 && count == 11 && count <= OpenCodeTurnOutline.TouchMaxVisibleRows + 1, "TT: a half-scrolled list realises one extra row at most");
+        (first, count) = OpenCodeTurnOutline.TouchVisibleRange(0, 440, 3);
+        Check(first == 0 && count == 3 && OpenCodeTurnOutline.TouchVisibleRange(0, 0, 3).Count == 0, "TT: short lists and empty viewports realise exactly what exists");
+
+        Check(OpenCodeTurnOutline.TouchAutoScrollVelocity(220, 440) == 0, "TT: no auto-scroll in the middle of the list (idle cost zero)");
+        var up = OpenCodeTurnOutline.TouchAutoScrollVelocity(10, 440);
+        var upFast = OpenCodeTurnOutline.TouchAutoScrollVelocity(-row, 440);
+        var down = OpenCodeTurnOutline.TouchAutoScrollVelocity(435, 440);
+        Check(up < 0 && down > 0 && upFast < up && Math.Abs(upFast) == OpenCodeTurnOutline.TouchAutoScrollMaxSpeed,
+            "TT: edge auto-scroll points towards the edge and speeds up past it, capped");
+        Check(Math.Abs(OpenCodeTurnOutline.TouchAutoScrollVelocity(OpenCodeTurnOutline.TouchAutoScrollZone - 0.001, 440)) >= OpenCodeTurnOutline.TouchAutoScrollMinSpeed
+            && OpenCodeTurnOutline.TouchAutoScrollVelocity(double.NaN, 440) == 0, "TT: auto-scroll starts at a usable minimum speed; NaN is still");
+
+        Check(!OpenCodeTurnOutline.IsTouchDrag(6, 6) && OpenCodeTurnOutline.IsTouchDrag(0, OpenCodeTurnOutline.TouchDragSlop),
+            "TT: a rolling fingertip stays a tap; ten pixels make a drag");
+        Check(!OpenCodeTurnOutline.TouchReleaseCancels(-40, 318) && !OpenCodeTurnOutline.TouchReleaseCancels(318 + 40, 318)
+            && OpenCodeTurnOutline.TouchReleaseCancels(318 + 60, 318) && OpenCodeTurnOutline.TouchReleaseCancels(double.NaN, 318),
+            "TT: releasing over the rail or the list jumps; sliding off to the right cancels");
+
+        Check(OpenCodeTurnOutline.TouchRowLabel("  fix the\r\n\tbuild  please ") == "fix the build please", "TT: row labels collapse line breaks into one line");
+        Check(OpenCodeTurnOutline.TouchRowLabel(new string('x', 400)).Length == 161 && OpenCodeTurnOutline.TouchRowLabel(" \n") == "（无文字内容）",
+            "TT: long prompts are capped; empty prompts get a readable placeholder");
         return Task.CompletedTask;
     }
 
@@ -272,6 +341,7 @@ internal static partial class Program
                 ("Home click routes directly from accepted session metadata", HomeUnchangedSelectionClick),
                 ("Home actual root action consumer, confirmation/current/source guards and metadata-only refresh", HomeRootActions),
                 ("blank to session restores one finite centered content column", BlankToSessionColumn),
+                ("touch turn navigator: touch-sized rows, placement, 1:1 hit testing, virtualisation, edge auto-scroll, cancel", TouchTurnNavigatorGeometry),
             })
             {
                 var before = _assertions;

@@ -23,7 +23,9 @@ internal static class Program
         RedesignSourceContracts(args[0]);
         HeaderAffordance(args[0]);
         PreviewThemeAndPlacement(args[0]);
-        Console.WriteLine($"PASS {_checks} focused tool naming, glyph, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, header-affordance and preview theme/placement checks.");
+        LargeViewFitsContent(args[0]);
+        UnifiedRunningIndicator(args[0]);
+        Console.WriteLine($"PASS {_checks} focused tool naming, glyph, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, header-affordance, preview theme/placement and unified running-indicator checks.");
     }
 
     private const string ListOutput = "[\n  {\n    \"id\": \"ses_a1\",\n    \"title\": \"Fix login\",\n    \"directory\": \"C:\\\\src\\\\app\",\n    \"updated\": 1700000000000\n  },\n"
@@ -179,6 +181,82 @@ internal static class Program
             && chip.Contains("CompletionNoticeFailedGlyph = \"\\uE783\"", StringComparison.Ordinal), "completion notice uses Fluent completed/error glyphs");
         Check(Read("OpenCodeConversationView.cs").Contains("\"\\uE930\", completionNotice: subagentNotice", StringComparison.Ordinal),
             "done glyph matches the sibling async-completion rows");
+    }
+
+    private static void UnifiedRunningIndicator(string repo)
+    {
+        // Geometry: a 16px cell, 2px round-capped stroke fully inside it, 3/4 arc from 12 o'clock clockwise to 9 o'clock.
+        Check(OpenCodeWorkingMotion.RingSize == 16 && OpenCodeWorkingMotion.RingStroke == 2
+            && OpenCodeWorkingMotion.RingSweepDegrees == 270, "ring = 16px status column, 2px stroke, 270° sweep");
+        Check(OpenCodeWorkingMotion.RingRadius + OpenCodeWorkingMotion.RingStroke / 2 == OpenCodeWorkingMotion.RingSize / 2, "stroke outer edge touches, never exceeds, the 16px cell");
+        Check(OpenCodeWorkingMotion.RingArcPoint(0) == (8d, 1d) && OpenCodeWorkingMotion.RingArcPoint(90) == (15d, 8d)
+            && OpenCodeWorkingMotion.RingArcPoint(270) == (1d, 8d), "arc starts at 12 o'clock and sweeps clockwise to 9 o'clock");
+        // Motion: every running row shares the group gear's absolute clock phase (same angle at the same instant).
+        Check(OpenCodeWorkingMotion.RingExpression == OpenCodeWorkingMotion.GearExpression, "ring rotates on the shared working clock, in phase with the gear");
+
+        string Read(string name) => File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode", name));
+        var cell = Read("OpenCodeTimelineStatusCell.cs");
+        Check(cell.Contains("internal static readonly Thickness CellMargin = new(0, 0, OpenCodeTimelineRowMetrics.Padding, 0);", StringComparison.Ordinal)
+            && cell.Contains("Width = size,", StringComparison.Ordinal) && cell.Contains("HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal),
+            "one fixed 16px cell, 8px from the row's right edge");
+        Check(cell.Contains("\"SystemColorHighlightTextColorBrush\" : OpenCodeToolTheme.Accent", StringComparison.Ordinal)
+            && !cell.Contains("OpenCodeToolTheme.Caution", StringComparison.Ordinal) && !cell.Contains("IsBackground", StringComparison.Ordinal),
+            "one accent tone for foreground and background work (high-contrast highlight text)");
+        Check(cell.Contains("clock.Join(this)", StringComparison.Ordinal) && cell.Contains("clock.Leave(this);", StringComparison.Ordinal)
+            && cell.Contains("OpenCodeWorkingClockComposition.PhaseSet(compositor)", StringComparison.Ordinal)
+            && cell.Contains("visual.RotationAngleInDegrees = 0;", StringComparison.Ordinal),
+            "joins the shared clock only while running and loaded; reduced motion leaves a still arc");
+        Check(cell.Contains("StrokeStartLineCap = PenLineCap.Round", StringComparison.Ordinal) && cell.Contains("IsLargeArc = OpenCodeWorkingMotion.RingSweepDegrees > 180", StringComparison.Ordinal),
+            "arc drawn from the shared metrics with round caps");
+        foreach (var name in new[] { "OpenCodeToolPartView.cs", "OpenCodeReasoningRowView.cs", "OpenCodeTimelineChipView.cs" })
+        {
+            var row = Read(name);
+            Check(!row.Contains("ProgressRing", StringComparison.Ordinal) && !row.Contains("_progress", StringComparison.Ordinal), name + " has no private ring");
+            Check(row.Contains("Grid.SetColumn(_status.Element, 3);", StringComparison.Ordinal) && row.Contains(".SetRunning(", StringComparison.Ordinal)
+                && row.Contains("_status.Dispose();", StringComparison.Ordinal), name + " hosts the shared status cell in root column 3");
+            var root = row[row.IndexOf("_root = new Grid", StringComparison.Ordinal)..];
+            Check(root.Contains("ColumnSpacing = 2", StringComparison.Ordinal)
+                && root.Split("_root.ColumnDefinitions.Add(", StringSplitOptions.None).Length - 1 == 4, name + " uses the same 4-column root (bar | row | actions | status)");
+        }
+
+        // Background jobs: the call's own time is the launch, not the job; never show it beside 后台运行中 / 后台已完成.
+        var pending = OpenCodeToolRowPresentation.Build(Tool("bash", "completed", new { command = "sleep 60", background = true }, "started", new { status = "running" },
+            new OpenCodeToolTime { Created = 1_700_000_000_000, Completed = 1_700_000_000_009 }));
+        Check(pending is { IsBackground: true, Status: OpenCodeToolRowStatus.Running, DurationText: "" } && pending.Summary == "后台运行中", "running background row has no launch duration");
+        var foreground = OpenCodeToolRowPresentation.Build(Tool("bash", "completed", new { command = "ls" }, "a", new { },
+            new OpenCodeToolTime { Created = 1_700_000_000_000, Completed = 1_700_000_000_009 }));
+        Check(foreground is { IsBackground: false, DurationText: "9 毫秒" }, "foreground rows keep their duration");
+    }
+
+    private static void LargeViewFitsContent(string repo)
+    {
+        // The 80% rectangle is only the cap; short content (reasoning, to do, text) shrinks to fit.
+        var cap = OpenCodeDetailPopupLayout.LargeView(1600, 1000);
+        Check(cap.Width == 1280 && cap.Height == 800, "large view cap stays 80% of the window");
+        Check(OpenCodeDetailPopupLayout.LargeViewWidthRange(cap, fillWidth: false) == (560, 1280), "content-fit width range is 560..cap");
+        Check(OpenCodeDetailPopupLayout.LargeViewHeightRange(cap) == (160, 800), "content-fit height range is 160..cap");
+        Check(OpenCodeDetailPopupLayout.LargeFitWidth(808, cap, false) == 808, "reasoning column (760 + 48 inset) keeps its own width");
+        Check(OpenCodeDetailPopupLayout.LargeFitWidth(120, cap, false) == 560, "very short content still reads as a card");
+        Check(OpenCodeDetailPopupLayout.LargeFitWidth(5000, cap, false) == 1280 && OpenCodeDetailPopupLayout.LargeFitWidth(double.PositiveInfinity, cap, false) == 1280,
+            "wide content never exceeds the cap");
+        Check(OpenCodeDetailPopupLayout.LargeFitWidth(120, cap, true) == 1280 && OpenCodeDetailPopupLayout.LargeViewWidthRange(cap, true) == (1280, 1280),
+            "fill-width views keep the full cap");
+        var small = OpenCodeDetailPopupLayout.LargeView(420, 300);
+        Check(OpenCodeDetailPopupLayout.LargeViewWidthRange(small, false).Min == small.Width
+            && OpenCodeDetailPopupLayout.LargeViewHeightRange(small).Min == 160, "tiny windows clamp the minimum to the cap");
+        foreach (var kind in new[] { OpenCodeToolKind.Edit, OpenCodeToolKind.MultiEdit, OpenCodeToolKind.Patch, OpenCodeToolKind.Write, OpenCodeToolKind.Browser })
+            Check(OpenCodeDetailPopupLayout.LargeViewFillsWidth(kind, hasImages: false, fileView: false), "wide view fills the cap: " + kind);
+        Check(!OpenCodeDetailPopupLayout.LargeViewFillsWidth(OpenCodeToolKind.Write, false, fileView: true), "write file preview fits its content");
+        foreach (var kind in new[] { OpenCodeToolKind.Todo, OpenCodeToolKind.Read, OpenCodeToolKind.Shell, OpenCodeToolKind.Grep, OpenCodeToolKind.WebFetch, OpenCodeToolKind.Other })
+            Check(!OpenCodeDetailPopupLayout.LargeViewFillsWidth(kind, false, false), "content-fit view: " + kind);
+        Check(OpenCodeDetailPopupLayout.LargeViewFillsWidth(OpenCodeToolKind.Other, hasImages: true, false), "image results fill the cap");
+
+        var popup = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeToolDetailPopup.cs"));
+        Check(popup.Contains("_dialogPresenter.Width = fill ? maxWidth : double.NaN;", StringComparison.Ordinal)
+            && popup.Contains("_dialogPresenter.LayoutUpdated += (_, _) => FreezeLargeWidth();", StringComparison.Ordinal)
+            && popup.Contains("FitLarge(root.Size, growOnly: true);", StringComparison.Ordinal)
+            && !popup.Contains("MinHeight = Math.Min(320", StringComparison.Ordinal),
+            "large view sizes to native content once, freezes, and only grows on refresh");
     }
 
     private static void ToolNamingAndDetails()

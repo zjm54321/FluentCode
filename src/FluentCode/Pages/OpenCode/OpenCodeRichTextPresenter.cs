@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -8,7 +9,6 @@ using FluentCode.Services.Appearance;
 using FluentCode.Services.Rendering;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
-using Markdig;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -72,13 +72,6 @@ public sealed class OpenCodeRichTextPresenter
     /// <summary>嵌套深度上限：超过即降级为纯文本，避免恶意深层嵌套导致栈溢出。</summary>
     private const int MaximumDepth = 64;
 
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UsePipeTables()
-        .Build();
-
-    // 无状态：方法内每次新建 HtmlSanitizer 实例；共享只读管线。见 SafeContentRenderer 文档。
-    private static readonly SafeContentRenderer Renderer = new();
-
     // 用户可选等宽字体（F11）：构建时取当前值；整块文本元素另经 AppFonts.Apply 随设置实时更新。
     private static FontFamily MonospaceFont => AppFonts.Monospace;
 
@@ -93,11 +86,19 @@ public sealed class OpenCodeRichTextPresenter
     };
     private readonly OpenCodeImageRenderLifetime _renderLifetime = new();
     private readonly OpenCodeRichTextRenderGate _renderGate = new();
+    private readonly OpenCodeStreamingRenderSchedule _renderSchedule = new();
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _renderTimer;
+    private object? _lastImageScope;
     // Keep the originating surface policy across image-scope rebinds and Unloaded/Loaded rerenders.
     private readonly bool _expandCodeBlocks = OpenCodeToolDetailContent.IsFullDetailBuild;
     private readonly List<Func<Task>> _pendingImageLoads = new();
     private string? _lastSource;
     private OpenCodeRichTextStyle _lastStyle;
+    internal long FullRenderCount { get; private set; }
+    internal long IncrementalRenderCount => 0; // Coalescing preserves the full parser/sanitizer contract.
+    internal long CoalescedRenderCount { get; private set; }
+    internal double TotalRenderMilliseconds { get; private set; }
+    internal double LastRenderMilliseconds => _renderSchedule.LastRenderMilliseconds;
 
     /// <summary>承载原生控件子树的根元素（构造时创建，同一实例；由调用方入树）。</summary>
     public FrameworkElement Element => _root;
@@ -122,7 +123,12 @@ public sealed class OpenCodeRichTextPresenter
     {
         _root.SizeChanged += (_, _) => ConstrainBlocks();
         // Reparenting can deliver the old Unloaded after the new Loaded.
-        _root.Unloaded += (_, _) => { if (!_root.IsLoaded) _renderLifetime.Cancel(); };
+        _root.Unloaded += (_, _) =>
+        {
+            if (_root.IsLoaded) return;
+            _renderTimer?.Stop();
+            _renderLifetime.Cancel();
+        };
         _root.Loaded += async (_, _) =>
         {
             ConstrainBlocks();
@@ -142,12 +148,57 @@ public sealed class OpenCodeRichTextPresenter
     /// <param name="style">正文或思考样式。</param>
     public void Render(string? source, OpenCodeRichTextStyle style)
     {
+        var imageScope = OpenCodeImageContext.Find(_root);
+        var force = _renderLifetime.IsCanceled || style != _lastStyle || !ReferenceEquals(imageScope, _lastImageScope);
+        _lastSource = source;
+        _lastStyle = style;
+        _lastImageScope = imageScope;
+        if (!_renderSchedule.Request(source, force, RenderClockMilliseconds))
+        {
+            CoalescedRenderCount++;
+            if (_renderTimer is null)
+            {
+                _renderTimer = _root.DispatcherQueue.CreateTimer();
+                _renderTimer.IsRepeating = false;
+                _renderTimer.Tick += (_, _) =>
+                {
+                    if (_renderSchedule.HasPending && !_renderLifetime.IsCanceled) RenderNow(_lastSource, _lastStyle);
+                };
+            }
+            if (!_renderTimer.IsRunning)
+            {
+                _renderTimer.Interval = TimeSpan.FromMilliseconds(_renderSchedule.RemainingMilliseconds(RenderClockMilliseconds));
+                _renderTimer.Start();
+            }
+            return;
+        }
+        RenderNow(source, style);
+    }
+
+    private static double RenderClockMilliseconds => Stopwatch.GetElapsedTime(0).TotalMilliseconds;
+
+    private void RenderNow(string? source, OpenCodeRichTextStyle style)
+    {
+        _renderTimer?.Stop();
         using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(_expandCodeBlocks);
         var imageScope = OpenCodeImageContext.Find(_root);
         if (!_renderGate.ShouldRender(source, style, imageScope, _renderLifetime.IsCanceled)) return;
+        var started = Stopwatch.GetTimestamp();
+        FullRenderCount++;
+        try
+        {
+            RenderCore(source, style);
+        }
+        finally
+        {
+            var duration = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            TotalRenderMilliseconds += duration;
+            _renderSchedule.Rendered(RenderClockMilliseconds, duration);
+        }
+    }
 
-        _lastSource = source;
-        _lastStyle = style;
+    private void RenderCore(string? source, OpenCodeRichTextStyle style)
+    {
         var (generation, renderToken) = _renderLifetime.Begin();
         _pendingImageLoads.Clear();
         _root.Opacity = style == OpenCodeRichTextStyle.Reasoning ? 0.75 : 1.0;
@@ -172,8 +223,7 @@ public sealed class OpenCodeRichTextPresenter
                     blocks.Add(CreateMarkdownImage(segment.Text, segment.Alt, segment.Title, generation, renderToken));
                 else
                 {
-                    var html = Markdown.ToHtml(segment.Text, Pipeline);
-                    var safe = Renderer.SanitizeHtml(html);
+                    var (html, safe) = OpenCodeMarkdownTextPlan.Build(segment.Text);
                     blocks.AddRange(BuildBlocks(safe, style, html));
                 }
             }

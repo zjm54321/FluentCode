@@ -20,7 +20,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
     private readonly Border _selectionBar;
     private readonly Button _row;
     private readonly FontIcon _icon;
-    private readonly ProgressRing _progress;
+    private readonly OpenCodeTimelineStatusCell _status = new();
     private readonly TextBlock _nameText;
     private readonly TextBlock _previewText;
     private bool _encrypted;
@@ -33,19 +33,6 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
     {
         _icon = new FontIcon { Glyph = "\uEA80", FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
-        _progress = new ProgressRing
-        {
-            Width = 16,
-            Height = 16,
-            MinWidth = 16,
-            MinHeight = 16,
-            IsActive = false,
-            Visibility = Visibility.Collapsed,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        var statusCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
-        // PG2: finished reasoning has no green check; keep the aligned slot for live progress.
-        statusCell.Children.Add(_progress);
 
         _nameText = OpenCodeInteractionUi.StyledText("思考", OpenCodeInteractionUi.CaptionStyleKey);
         _nameText.VerticalAlignment = VerticalAlignment.Center;
@@ -60,13 +47,10 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(OpenCodeTimelineRowMetrics.IconColumn) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         Grid.SetColumn(_icon, 0);
         Grid.SetColumn(_nameText, 1);
         Grid.SetColumn(_previewText, 2);
-        Grid.SetColumn(statusCell, 3);
         content.Children.Add(_icon);
-        content.Children.Add(statusCell);
         content.Children.Add(_nameText);
         content.Children.Add(_previewText);
 
@@ -99,13 +83,19 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         OpenCodeToolTheme.Apply(_selectionBar, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
         _selectionBar.VerticalAlignment = VerticalAlignment.Stretch;
 
+        // Same trailing columns as tool rows: [actions (empty here)][shared status cell], so rings line up row to row.
+        // PG2: finished reasoning has no green check; the slot only shows live progress.
         _root = new Grid { ColumnSpacing = 2 };
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_selectionBar, 0);
         Grid.SetColumn(_row, 1);
+        Grid.SetColumn(_status.Element, 3);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_row);
+        _root.Children.Add(_status.Element);
         _root.ActualThemeChanged += (_, _) => ApplyRowStyle();
         ApplyRowStyle();
     }
@@ -158,8 +148,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
 
         _nameText.Text = streaming ? "思考中…" : "已思考";
         _previewText.Text = preview;
-        _progress.IsActive = streaming;
-        _progress.Visibility = streaming ? Visibility.Visible : Visibility.Collapsed;
+        _status.SetRunning(streaming);
         // B16: finished reasoning recedes (secondary label, tertiary glyph); streaming keeps the default emphasis.
         var labelKey = OpenCodeProcessedSummaryStyle.RowLabelKey(_model.Status);
         OpenCodeToolTheme.Apply(_nameText, labelKey is null
@@ -189,6 +178,7 @@ internal sealed class OpenCodeReasoningRowView : IOpenCodeDetailContentSource
         }
 
         _disposed = true;
+        _status.Dispose();
         OpenCodeToolDetailPopup.Shared.CloseIf(this);
     }
 

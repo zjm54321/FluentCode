@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -13,9 +14,21 @@ public sealed class OpenCodeEventReducer
     private readonly Dictionary<string, JsonObject> _messages = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeMessage> _messageDtos = new(StringComparer.Ordinal);
     private readonly List<string> _order = new();
+    private readonly Dictionary<string, int> _orderIndexes = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _publicationChanges = new(StringComparer.Ordinal);
+    private long _publicationVersion;
+    private bool _knownTextPartsOnly;
     private readonly Dictionary<string, long> _changed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeEvent> _pendingShellEnds = new(StringComparer.Ordinal);
     private readonly HashSet<string> _placeholders = new(StringComparer.Ordinal);
+    // JSON holds the last published value. Active builders retain append capacity across publications.
+    private readonly Dictionary<string, Dictionary<JsonObject, PendingString>> _strings = new(StringComparer.Ordinal);
+    private sealed class PendingString(string field, string? prefix)
+    {
+        internal readonly string Field = field;
+        internal readonly StringBuilder Builder = new(prefix);
+        internal bool Dirty;
+    }
     private long _version;
     private bool _executionTerminal;
     public OpenCodeMessageRetry? CurrentRetry { get; private set; }
@@ -24,6 +37,31 @@ public sealed class OpenCodeEventReducer
     public long Version => _version;
 
     internal long MessageDeserializationCount { get; private set; }
+    internal long StringMaterializationCount { get; private set; }
+    internal int MessageCount => _order.Count;
+
+    /// <summary>One UI consumer acknowledges a publication; REST/structural changes always require a full bind.</summary>
+    internal OpenCodeMessageChanges TakeChanges()
+    {
+        var updates = new List<(int Index, OpenCodeMessage Message)>(_publicationChanges.Count);
+        foreach (var id in _publicationChanges)
+            if (_orderIndexes.TryGetValue(id, out var index)) updates.Add((index, MessageDto(id)));
+        var result = new OpenCodeMessageChanges(_publicationVersion, _version, _knownTextPartsOnly, updates);
+        _publicationVersion = _version;
+        _publicationChanges.Clear();
+        _knownTextPartsOnly = true;
+        return result;
+    }
+
+    private OpenCodeMessage MessageDto(string id)
+    {
+        if (_messageDtos.TryGetValue(id, out var message)) return message;
+        MaterializeStrings(id);
+        message = _messages[id].Deserialize<OpenCodeMessage>(OpenCodeJson.Options)!;
+        _messageDtos[id] = message;
+        MessageDeserializationCount++;
+        return message;
+    }
 
     /// <summary>New list owned by the caller; cached DTOs and their content collections are read-only snapshots.</summary>
     public List<OpenCodeMessage> Messages
@@ -33,13 +71,7 @@ public sealed class OpenCodeEventReducer
             var messages = new List<OpenCodeMessage>(_order.Count);
             foreach (var id in _order)
             {
-                if (!_messageDtos.TryGetValue(id, out var message))
-                {
-                    message = _messages[id].Deserialize<OpenCodeMessage>(OpenCodeJson.Options)!;
-                    _messageDtos[id] = message;
-                    MessageDeserializationCount++;
-                }
-                messages.Add(message);
+                messages.Add(MessageDto(id));
             }
             return messages;
         }
@@ -62,6 +94,7 @@ public sealed class OpenCodeEventReducer
     /// <summary>Changes since fetch start win over the snapshot; missing baseline fields/parts are filled.</summary>
     public List<OpenCodeMessage> MergeSnapshot(IReadOnlyList<OpenCodeMessage> ascending, long fetchVersion)
     {
+        _knownTextPartsOnly = false;
         var ordered = new List<string>();
         foreach (var message in ascending)
         {
@@ -70,6 +103,7 @@ public sealed class OpenCodeEventReducer
             StampOrdinals(baseline);
             if (_changed.GetValueOrDefault(id) > fetchVersion && _messages.TryGetValue(id, out var live))
             {
+                MaterializeStrings(id);
                 var placeholder = _placeholders.Contains(id);
                 foreach (var field in live)
                 {
@@ -94,6 +128,7 @@ public sealed class OpenCodeEventReducer
                     }
             }
             _placeholders.Remove(id);
+            _strings.Remove(id); // The reconciled baseline now owns every prefix, including partial parts.
             _messages[id] = baseline;
             _messageDtos.Remove(id);
             ordered.Add(id);
@@ -108,9 +143,12 @@ public sealed class OpenCodeEventReducer
             _messageDtos.Remove(id);
             _changed.Remove(id);
             _placeholders.Remove(id);
+            _strings.Remove(id);
         }
         _order.Clear();
         _order.AddRange(ordered);
+        _orderIndexes.Clear();
+        for (var index = 0; index < _order.Count; index++) _orderIndexes[_order[index]] = index;
         return Messages;
     }
 
@@ -155,6 +193,7 @@ public sealed class OpenCodeEventReducer
         var messageId = String(data, "assistantMessageID");
         if (messageId is null) return false;
         var current = GetMessage(messageId);
+        var knownTextPart = false;
         if (type == "session.step.started")
         {
             current["agent"] = data["agent"]?.DeepClone();
@@ -167,16 +206,18 @@ public sealed class OpenCodeEventReducer
             var ordinal = data["ordinal"]?.GetValue<int>() ?? 0;
             var parts = Parts(current);
             var target = parts.OfType<JsonObject>().Where(p => String(p, "type") == kind).ElementAtOrDefault(ordinal);
+            knownTextPart = target is not null;
             if (target is null)
             {
                 target = new JsonObject { ["type"] = kind, ["text"] = "", ["_ordinal"] = ordinal, ["time"] = new JsonObject { ["created"] = item.ReceivedAt.ToUnixTimeMilliseconds() } };
                 if (type.EndsWith(".delta", StringComparison.Ordinal)) target["_partial"] = true;
                 parts.Add(target);
             }
-            if (type.EndsWith(".delta", StringComparison.Ordinal)) target["text"] = (String(target, "text") ?? "") + String(data, "delta");
+            if (type.EndsWith(".delta", StringComparison.Ordinal)) AppendString(messageId, target, "text", String(data, "delta"));
             if (type.EndsWith(".ended", StringComparison.Ordinal))
             {
                 target.Remove("_partial");
+                ForgetString(messageId, target);
                 target["text"] = data["text"]?.DeepClone() ?? JsonValue.Create("");
                 if (target["time"] is not JsonObject time) target["time"] = time = new JsonObject();
                 time["completed"] = item.ReceivedAt.ToUnixTimeMilliseconds();
@@ -198,9 +239,11 @@ public sealed class OpenCodeEventReducer
             var state = tool["state"]!.AsObject();
             switch (type)
             {
-                case "session.tool.input.delta": state["input"] = (String(state, "input") ?? "") + String(data, "delta"); break;
-                case "session.tool.input.ended": tool.Remove("_partial"); state["input"] = data["text"]?.DeepClone(); break;
+                case "session.tool.input.delta": AppendString(messageId, state, "input", String(data, "delta")); break;
+                case "session.tool.input.ended":
+                    ForgetString(messageId, state); tool.Remove("_partial"); state["input"] = data["text"]?.DeepClone(); break;
                 case "session.tool.called":
+                    ForgetString(messageId, state);
                     tool.Remove("_partial");
                     state["status"] = "running"; state["input"] = data["input"]?.DeepClone();
                     tool["time"]!.AsObject()["ran"] = item.ReceivedAt.ToUnixTimeMilliseconds(); break;
@@ -221,7 +264,7 @@ public sealed class OpenCodeEventReducer
             current["time"]!.AsObject()["completed"] = item.ReceivedAt.ToUnixTimeMilliseconds();
         }
         else return false;
-        Touch(messageId);
+        Touch(messageId, knownTextPart);
         return true;
     }
 
@@ -263,6 +306,8 @@ public sealed class OpenCodeEventReducer
     private JsonObject GetMessage(string id)
     {
         if (_messages.TryGetValue(id, out var message)) return message;
+        _knownTextPartsOnly = false;
+        _orderIndexes[id] = _order.Count;
         _order.Add(id);
         _placeholders.Add(id);
         return _messages[id] = new JsonObject { ["id"] = id, ["type"] = "assistant", ["content"] = new JsonArray(), ["time"] = new JsonObject { ["created"] = 0 } };
@@ -277,10 +322,37 @@ public sealed class OpenCodeEventReducer
         CurrentRetry = null;
         CurrentRetryMessageId = null;
     }
-    private void Touch(string id)
+    private void Touch(string id, bool knownTextPart = false)
     {
         _changed[id] = ++_version;
+        _publicationChanges.Add(id);
+        _knownTextPartsOnly &= knownTextPart;
         _messageDtos.Remove(id);
+    }
+    private void AppendString(string messageId, JsonObject target, string field, string? delta)
+    {
+        if (!_strings.TryGetValue(messageId, out var strings))
+            _strings[messageId] = strings = new(ReferenceEqualityComparer.Instance);
+        if (!strings.TryGetValue(target, out var pending))
+            strings[target] = pending = new(field, String(target, field));
+        pending.Builder.Append(delta);
+        pending.Dirty = true;
+    }
+    private void ForgetString(string messageId, JsonObject target)
+    {
+        if (_strings.TryGetValue(messageId, out var strings) && strings.Remove(target) && strings.Count == 0)
+            _strings.Remove(messageId);
+    }
+    private void MaterializeStrings(string messageId)
+    {
+        if (!_strings.TryGetValue(messageId, out var strings)) return;
+        foreach (var (target, pending) in strings)
+        {
+            if (!pending.Dirty) continue;
+            target[pending.Field] = pending.Builder.ToString();
+            pending.Dirty = false;
+            StringMaterializationCount++;
+        }
     }
     private static void StampOrdinals(JsonObject message)
     {
@@ -310,5 +382,26 @@ public sealed class OpenCodeEventReducer
         var existing = FindPart(message, part);
         if (existing is null) parts.Add(part);
         else parts[parts.IndexOf(existing)] = part;
+    }
+}
+
+internal sealed record OpenCodeMessageChanges(long BaseVersion, long Version, bool KnownTextPartsOnly,
+    IReadOnlyList<(int Index, OpenCodeMessage Message)> Updates);
+
+/// <summary>UI-thread-owned, allocation-free counters for nonempty event-drain batches.</summary>
+internal static class OpenCodeEventDrainMetrics
+{
+    internal static long BatchCount { get; private set; }
+    internal static long EventCount { get; private set; }
+    internal static double TotalMilliseconds { get; private set; }
+    internal static double LastMilliseconds { get; private set; }
+
+    internal static void Record(int events, double milliseconds)
+    {
+        if (events == 0) return;
+        BatchCount++;
+        EventCount += events;
+        LastMilliseconds = milliseconds;
+        TotalMilliseconds += milliseconds;
     }
 }

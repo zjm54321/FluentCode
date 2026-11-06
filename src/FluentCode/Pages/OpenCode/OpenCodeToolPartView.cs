@@ -18,7 +18,7 @@ namespace FluentCode.Pages.OpenCode;
 /// 普通 sealed 业务类（不是控件子类）：构造时创建同一实例的根元素，经 <see cref="Element"/> 暴露，
 /// 节点身份跨轮询保持。行本体是原生 <see cref="Button"/>（内置悬停/按下/焦点视觉与 Enter/Space 键盘行为），
 /// 高 32：类别图标 16 | 工具名（BodyStrong）| 目标（等宽、省略号）| 摘要 | 右侧状态图标 16。
-/// 完成 ✓ 成功色；出错 ✕ 危险色且行底为危险背景；运行中 / 输入生成中 = 16px ProgressRing；
+/// 完成 ✓ 成功色；出错 ✕ 危险色且行底为危险背景；运行中 / 输入生成中 = 统一状态格的强调色进行中弧（<see cref="OpenCodeTimelineStatusCell"/>）；
 /// 状态严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值，无法识别时如实显示“状态未识别”。
 /// </para>
 /// <para>
@@ -42,7 +42,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     private readonly Button _row;
     private readonly FontIcon _statusIcon;
     private bool? _lastActive;
-    private readonly ProgressRing _progress;
+    private readonly OpenCodeTimelineStatusCell _status;
     private readonly FontIcon _kindIcon;
     private readonly OpenCodeTerminalGlyphIcon _kindIconVisual;
     private readonly TextBlock _nameText;
@@ -52,8 +52,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     private readonly TextBlock _deletionsText;
     private readonly TextBlock _rowTag;
     private readonly Border _rowTagBorder;
-    private readonly Border _inlineRegion;
-    private bool _inlineExpanded;
     private readonly Button _backgroundButton;
     private readonly Button _showBrowserButton;
     private Action<string, OpenCodeContentPart>? _backgroundAction;
@@ -140,20 +138,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     /// <summary>创建空的工具行；通过 <see cref="Update"/> 填充内容。</summary>
     public OpenCodeToolPartView()
     {
-        _statusIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        _progress = new ProgressRing
-        {
-            Width = 16,
-            Height = 16,
-            MinWidth = 16,
-            MinHeight = 16,
-            IsActive = false,
-            Visibility = Visibility.Collapsed,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        var statusCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
-        statusCell.Children.Add(_statusIcon);
-        statusCell.Children.Add(_progress);
+        _status = new OpenCodeTimelineStatusCell();
+        _statusIcon = _status.Icon;
 
         _kindIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
@@ -211,6 +197,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             MinHeight = 0,
             Padding = new Thickness(8, 0, 8, 0),
             BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(4),
             Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle"),
         };
         _row.Click += (_, _) => TogglePinnedDetail();
@@ -236,8 +223,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _selectionBar.VerticalAlignment = VerticalAlignment.Stretch;
 
         _root = new Grid { ColumnSpacing = 2, CornerRadius = new CornerRadius(4) }; // running tint uses the native control corner radius
-        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -271,14 +256,8 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _root.Children.Add(_backgroundButton);
         Grid.SetColumn(_showBrowserButton, 2);
         _root.Children.Add(_showBrowserButton);
-        Grid.SetColumn(statusCell, 3);
-        statusCell.Margin = new Thickness(0, 0, 8, 0);
-        _root.Children.Add(statusCell);
-        _inlineRegion = new Border { Visibility = Visibility.Collapsed, Padding = new Thickness(32, 12, 12, 12) };
-        Grid.SetRow(_inlineRegion, 1);
-        Grid.SetColumn(_inlineRegion, 1);
-        Grid.SetColumnSpan(_inlineRegion, 3);
-        _root.Children.Add(_inlineRegion);
+        Grid.SetColumn(_status.Element, 3);
+        _root.Children.Add(_status.Element);
         _root.ActualThemeChanged += (_, _) => { ApplyRunningTint(); ApplyAgentColor(_model); };
     }
 
@@ -312,8 +291,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _parentMessageId = parentMessageId;
         _lastPart = part;
         _model = OpenCodeToolRowPresentation.Build(part, asyncCompletion, manualBackground, fileIndex, FindChild);
-        if (_model.Kind == OpenCodeToolKind.Todo
-            || _model is { Kind: OpenCodeToolKind.Shell, ShellId.Length: > 0 })
+        if (_model is { Kind: OpenCodeToolKind.Shell, ShellId.Length: > 0 })
             _rowActionSource ??= new RowActionPreviewSource(this);
         else if (_rowActionSource is { } oldActionSource)
         {
@@ -324,7 +302,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _showBrowserButton.Visibility = _model.Kind == OpenCodeToolKind.Browser && _model.IsActive
             ? Visibility.Visible : Visibility.Collapsed;
         _showBrowserButton.IsEnabled = OpenCodeBrowserToolPresentation.TabId(_model) is not null;
-        RefreshInlineContent();
         RefreshBackgroundAction();
 
         // subagent 严格按已核准名称识别；尚未提供 child id 时，小窗如实提示而不显示属性卡冒充对话。
@@ -386,7 +363,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         }
 
         _disposed = true;
-        _inlineRegion.Child = null;
+        _status.Dispose();
         ConfigureDetail = null;
         FindChild = null;
         _backgroundAction = null;
@@ -559,8 +536,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         var wasActive = _lastActive;
         var iconWasVisible = _statusIcon.Visibility == Visibility.Visible;
         _lastActive = active;
-        _progress.IsActive = active;
-        _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        _status.SetRunning(active);
         // PG2: successful child rows need no green check; group totals still carry success counts.
         _statusIcon.Visibility = active || model.Status == OpenCodeToolRowStatus.Completed || !chrome.ShowsStatusIcon
             ? Visibility.Collapsed : Visibility.Visible;
@@ -600,9 +576,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
 
     private void ApplyRunningTint()
     {
-        // The tint owner grows with inline content; rounded child chrome cannot round this Grid.
-        _root.CornerRadius = new CornerRadius(_inlineExpanded ? 8 : 4);
-        _row.CornerRadius = _inlineExpanded ? new CornerRadius(8, 8, 0, 0) : new CornerRadius(4);
         // Tint the complete row, including its native action and the right-aligned status cell.
         // High contrast uses the system highlight rather than a low-alpha accent.
         if (new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast)
@@ -653,12 +626,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         switch (e.Key)
         {
             case VirtualKey.Escape:
-                if (_inlineExpanded)
-                {
-                    _inlineExpanded = false;
-                    RefreshInlineContent();
-                    e.Handled = true;
-                }
                 if (OpenCodeToolDetailPopup.Shared.IsShowing(this)
                     || (_subagentSource is { } preview && OpenCodeToolDetailPopup.Shared.IsShowing(preview)))
                 {
@@ -738,13 +705,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             RequestTerminal();
             return;
         }
-        if (HasInlineDetail)
-        {
-            CloseDetailIfShowing();
-            _inlineExpanded = !_inlineExpanded;
-            RefreshInlineContent();
-            return;
-        }
         if (_subagentSource is { } preview)
         {
             OpenCodeToolDetailPopup.Shared.CloseIf(preview);
@@ -754,36 +714,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         {
             OpenCodeToolDetailPopup.Shared.TogglePinned(this);
         }
-    }
-
-    private bool HasInlineDetail => _model.Kind == OpenCodeToolKind.Todo
-        || (_model.Kind is not (OpenCodeToolKind.Question or OpenCodeToolKind.Shell)
-            && OpenCodeToolDetailContent.ToolImages(_model).Count > 0);
-
-    private void RefreshInlineContent()
-    {
-        if (!HasInlineDetail)
-        {
-            // Questions use the shared detail popup; shell output belongs to the terminal overlay.
-            _inlineExpanded = false;
-            _inlineRegion.Child = null;
-            _inlineRegion.Visibility = Visibility.Collapsed;
-            ApplyRunningTint();
-            return;
-        }
-        _inlineRegion.Visibility = _inlineExpanded ? Visibility.Visible : Visibility.Collapsed;
-        _inlineRegion.Padding = new Thickness(32, 12, 12, 12);
-        ApplyRunningTint();
-        if (!_inlineExpanded) { _inlineRegion.Child = null; return; }
-        if (OpenCodeToolDetailContent.ToolImages(_model).Count > 0)
-        {
-            var options = new OpenCodeToolDetailOptions();
-            ConfigureDetailOptions(options);
-            _inlineRegion.Child = OpenCodeToolDetailContent.BuildToolImages(_model, options, thumbnail: true,
-                openLarge: () => { if (!_disposed) OpenCodeToolDetailPopup.Shared.TogglePinned(this); });
-        }
-        else _inlineRegion.Child = OpenCodeToolDetailBuiltins.Build(_model, new OpenCodeToolDetailOptions())
-            ?? OpenCodeToolDetailContent.Caption(_model.OutputText ?? "未提供");
     }
 
     private void CloseDetailIfShowing()
@@ -797,7 +727,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
     }
 
     // Reuse the popup's existing click-action source hook: it invokes OpenChildChat rather
-    // than pinning a large dialog. Here the action is the row's inline/terminal routing.
+    // than pinning a large dialog. Here the action is the shell row's terminal overlay.
     private sealed class RowActionPreviewSource : IOpenCodeDetailContentSource, IOpenCodeChildChatSource, IOpenCodeDetailActivationSource
     {
         private readonly OpenCodeToolPartView _owner;

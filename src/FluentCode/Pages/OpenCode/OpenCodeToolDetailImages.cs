@@ -18,14 +18,14 @@ internal static partial class OpenCodeToolDetailContent
 
     /// <summary>No file I/O until this image section is realized; unload cancels both fetch and publication.</summary>
     internal static FrameworkElement BuildToolImages(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options,
-        bool thumbnail = false, Action? openLarge = null, Action<int, int>? dimensions = null)
+        Action<int, int>? dimensions = null)
     {
         var panel = new StackPanel { Spacing = 8 };
         AutomationProperties.SetAutomationId(panel, "OpenCodeToolImageSection");
         var sources = ToolImages(model);
         foreach (var source in sources)
         {
-            panel.Children.Add(BuildImage(model.PartId, source, options, thumbnail, openLarge, dimensions,
+            panel.Children.Add(BuildImage(model.PartId, source, options, dimensions,
                 model.Kind == OpenCodeToolKind.Browser ? "OpenCodeBrowserScreenshot" : "OpenCodeToolImage"));
         }
         return panel;
@@ -33,25 +33,17 @@ internal static partial class OpenCodeToolDetailContent
 
     /// <summary>Shared native renderer and session-byte cache for tool results and user attachments.</summary>
     internal static FrameworkElement BuildImage(string partId, OpenCodeToolImageSource source, OpenCodeToolDetailOptions options,
-        bool thumbnail = false, Action? openLarge = null, Action<int, int>? dimensions = null, string automationId = "OpenCodeUserImage")
+        Action<int, int>? dimensions = null, string automationId = "OpenCodeUserImage")
     {
         var panel = new StackPanel { Spacing = 4 };
-        var image = new Image { Stretch = Stretch.Uniform, MaxHeight = thumbnail ? 240 : options.Compact ? 200 : double.PositiveInfinity,
+        var image = new Image { Stretch = Stretch.Uniform, MaxHeight = options.Compact ? 200 : double.PositiveInfinity,
             HorizontalAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetAutomationId(image, automationId);
         AutomationProperties.SetName(image, source.Name);
         var caption = Caption(source.Name + " · 正在读取图片…");
         var frame = new Border { Child = image, CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1) };
         OpenCodeToolTheme.Apply(frame, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary, OpenCodeToolTheme.CardStroke));
-        if (thumbnail && openLarge is not null)
-        {
-            var button = new Button { Content = frame, Padding = new Thickness(0), BorderThickness = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-            AutomationProperties.SetName(button, "查看完整图片 · " + source.Name);
-            button.Click += (_, _) => openLarge();
-            panel.Children.Add(button);
-        }
-        else panel.Children.Add(frame);
+        panel.Children.Add(frame);
         panel.Children.Add(caption);
         var lifetime = new OpenCodeImageRenderLifetime();
         frame.Loaded += async (_, _) =>

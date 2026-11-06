@@ -36,23 +36,37 @@ internal static partial class Program
             "popup.reasoning-keeps-hover-escape-and-pinned-selection");
 
         var actionKinds = Regex.Match(tools, @"if \(([^;]+)\)\s*_rowActionSource \?\?= new RowActionPreviewSource", RegexOptions.Singleline);
-        Check(actionKinds.Success && actionKinds.Groups[1].Value.Contains("OpenCodeToolKind.Todo", StringComparison.Ordinal)
+        Check(actionKinds.Success && actionKinds.Groups[1].Value.Contains("OpenCodeToolKind.Shell", StringComparison.Ordinal)
+            && !actionKinds.Groups[1].Value.Contains("OpenCodeToolKind.Todo", StringComparison.Ordinal)
             && !actionKinds.Groups[1].Value.Contains("OpenCodeToolKind.Question", StringComparison.Ordinal),
-            "popup.question-does-not-use-inline-action-preview");
-        Check(tools.Contains("if (HasInlineDetail)", StringComparison.Ordinal)
-            && tools.Contains("_model.Kind is not (OpenCodeToolKind.Question or OpenCodeToolKind.Shell)", StringComparison.Ordinal)
-            && tools.Contains("if (!HasInlineDetail)", StringComparison.Ordinal),
-            "popup.question-cannot-inline-even-with-images");
-        Check(tools.Contains("OpenCodeToolDetailPopup.Shared.TogglePinned(this);", StringComparison.Ordinal)
+            "popup.only-shell-rows-route-click-away-from-the-detail");
+        Check(!tools.Contains("_inlineRegion", StringComparison.Ordinal) && !tools.Contains("_inlineExpanded", StringComparison.Ordinal)
+            && !tools.Contains("HasInlineDetail", StringComparison.Ordinal) && !tools.Contains("RefreshInlineContent", StringComparison.Ordinal)
+            && !tools.Contains("RowDefinitions.Add", StringComparison.Ordinal),
+            "popup.tool-rows-have-no-inline-expansion-region");
+        var toggle = tools[tools.IndexOf("internal void TogglePinnedDetail()", StringComparison.Ordinal)..];
+        toggle = toggle[..toggle.IndexOf("private void CloseDetailIfShowing()", StringComparison.Ordinal)];
+        Check(toggle.Contains("RequestTerminal();", StringComparison.Ordinal) && toggle.Contains("preview.OpenChildChat();", StringComparison.Ordinal)
+            && toggle.Contains("OpenCodeToolDetailPopup.Shared.TogglePinned(this);", StringComparison.Ordinal)
+            && !toggle.Contains("Visibility", StringComparison.Ordinal),
+            "popup.todo-and-image-rows-pin-the-shared-detail");
+        Check(tools.Contains("OpenCodeToolDetailPopup.Shared.HoverEnter(this);", StringComparison.Ordinal)
             && tools.Contains("OpenCodeToolDetailPopup.Shared.Refresh(this);", StringComparison.Ordinal),
-            "popup.question-keeps-normal-tool-popup-and-refresh");
-        Check(builtins.Contains("OpenCodeBuiltinToolView.Question => Question(model)", StringComparison.Ordinal)
+            "popup.todo-and-image-rows-keep-hover-preview-and-live-refresh");
+        Check(builtins.Contains("OpenCodeBuiltinToolView.Todo => Todo(model, options.Compact)", StringComparison.Ordinal)
+            && builtins.Contains("OpenCodeBuiltinToolView.Question => Question(model)", StringComparison.Ordinal)
             && !builtins.Contains("BuildInline", StringComparison.Ordinal),
-            "popup.question-reuses-existing-detail-builder-without-parallel-inline-builder");
-        Check(tools.Contains("private bool HasInlineDetail => _model.Kind == OpenCodeToolKind.Todo", StringComparison.Ordinal)
-            && tools.Contains("_inlineExpanded = !_inlineExpanded;", StringComparison.Ordinal)
-            && tools.Contains("OpenCodeToolDetailBuiltins.Build(_model, new OpenCodeToolDetailOptions())", StringComparison.Ordinal),
-            "popup.todo-retains-full-inline-toggle");
+            "popup.todo-and-question-reuse-the-detail-builder");
+        var images = Source("OpenCodeToolDetailImages.cs");
+        Check(Source("OpenCodeToolDetailContent.cs").Contains("top.Children.Add(BuildToolImages(model, options));", StringComparison.Ordinal)
+            && !images.Contains("thumbnail", StringComparison.Ordinal) && !images.Contains("openLarge", StringComparison.Ordinal),
+            "popup.tool-images-render-only-inside-the-detail");
+        var compaction = conversation[conversation.IndexOf("private static Entry CreateCompactionEntry", StringComparison.Ordinal)..];
+        compaction = compaction[..compaction.IndexOf("private static Entry CreateIdleEntry", StringComparison.Ordinal)];
+        Check(!compaction.Contains("Expander", StringComparison.Ordinal)
+            && compaction.Contains("new OpenCodeTimelineChipView(\"OpenCodeCompactionSummary\"", StringComparison.Ordinal)
+            && compaction.Contains("DetailMarkdown: true", StringComparison.Ordinal),
+            "popup.compaction-summary-is-a-detail-row-not-an-expander");
         Console.WriteLine($"PASS popup row routing: {_assertions - before} source-contract assertions; no native UI.");
     }
 
@@ -82,5 +96,31 @@ internal static partial class Program
         Check(!row.Streaming && row.Text == "message ended", "popup.reasoning-message-end-settles-open-part");
         view.ClearMessages();
         Console.WriteLine($"PASS reasoning row lifecycle: {_assertions - before} assertions; real ConversationView, inert row.");
+    }
+
+    private static void CompactionSummaryRow()
+    {
+        var before = _assertions;
+        ConversationViewTestProbe.Reset();
+        var view = new OpenCodeConversationView();
+        var compaction = new OpenCodeMessage
+        {
+            Id = "msg_popup_compaction", Type = OpenCodeMessageTypes.Compaction,
+            Status = OpenCodeCompactionStatuses.Running, Reason = OpenCodeCompactionReasons.Auto,
+        };
+        view.ApplyMessages(new[] { compaction });
+        var row = Constructed<OpenCodeTimelineChipView>().Single();
+        Check(row.Element.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed && row.DetailText is null,
+            "popup.compaction-without-summary-has-no-detail-row");
+        const string summary = "## Goal\n**Ship** the popup lane";
+        view.ApplyMessages(new[] { compaction with { Status = OpenCodeCompactionStatuses.Completed, Summary = summary } });
+        Check(ReferenceEquals(row, Constructed<OpenCodeTimelineChipView>().Single())
+            && row.Element.Visibility == Microsoft.UI.Xaml.Visibility.Visible
+            && row.Content is { Name: "压缩摘要", DetailMarkdown: true } content && content.DetailText == summary
+            && content.Summary == "Goal",
+            "popup.compaction-summary-opens-in-shared-detail");
+        view.ClearMessages();
+        Check(row.DisposeCount == 1, "popup.compaction-summary-row-disposed-with-entry");
+        Console.WriteLine($"PASS compaction summary row: {_assertions - before} assertions; real ConversationView, inert chip.");
     }
 }

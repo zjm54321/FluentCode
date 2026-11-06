@@ -88,8 +88,9 @@ internal static class Program
             && nativeSource.Contains("ScrollStateChanged?.Invoke(this, ScrollState);") && nativeSource.Contains("public bool ShowScrollBar"),
             "vendored control reports double-click only within system time/distance after a non-drag release, and publishes scroll state for the host scrollbar");
         var toolRowSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodeToolPartView.cs"));
-        var shellBranch = toolRowSource[toolRowSource.IndexOf("private void RefreshInlineContent()", StringComparison.Ordinal)..];
-        Check(shellBranch.Contains("_inlineRegion.Child = null;") && !shellBranch.Contains("new OpenCodeShellTerminalPreview"),
+        var shellBranch = toolRowSource[toolRowSource.IndexOf("internal void TogglePinnedDetail()", StringComparison.Ordinal)..];
+        Check(shellBranch.Contains("RequestTerminal();") && !toolRowSource.Contains("_inlineRegion")
+            && !toolRowSource.Contains("new OpenCodeShellTerminalPreview"),
             "shell transcript keeps only its clickable task line, with no command/output preview");
         var pages = Path.Combine(args[0], "src/FluentCode/Pages");
         var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(pages, "OpenCodePage.xaml"));

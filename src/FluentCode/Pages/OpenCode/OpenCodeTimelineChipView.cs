@@ -23,9 +23,8 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     private readonly Border _selectionBar;
     private readonly Border _rowChrome;
     private readonly Button _chip;
-    private readonly Grid _statusCell;
+    private readonly OpenCodeTimelineStatusCell _status = new();
     private readonly FontIcon _statusIcon;
-    private readonly ProgressRing _progress;
     private readonly FontIcon _icon;
     private readonly OpenCodeTerminalGlyphIcon _iconVisual;
     private readonly TextBlock _label;
@@ -65,20 +64,8 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _glyph = glyph ?? "\uE946";
         _completionNotice = completionNotice;
         _childSource = new ChildSource(this);
-        _statusIcon = new FontIcon { FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        _progress = new ProgressRing
-        {
-            Width = 16,
-            Height = 16,
-            MinWidth = 16,
-            MinHeight = 16,
-            IsActive = false,
-            Visibility = Visibility.Collapsed,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        _statusCell = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
-        _statusCell.Children.Add(_statusIcon);
-        _statusCell.Children.Add(_progress);
+        _statusIcon = _status.Icon;
+        _statusIcon.Visibility = Visibility.Collapsed;
 
         _icon = new FontIcon { Glyph = _glyph, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         OpenCodeToolTheme.Apply(_icon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
@@ -111,13 +98,10 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(_completionNotice ? 0 : 16) });
         Grid.SetColumn(_iconVisual, 0);
         Grid.SetColumn(_label, 1);
         Grid.SetColumn(_targetText, 2);
         Grid.SetColumn(_summaryText, 3);
-        Grid.SetColumn(_statusCell, 4);
-        content.Children.Add(_statusCell);
         content.Children.Add(_iconVisual);
         content.Children.Add(_label);
         content.Children.Add(_targetText);
@@ -157,13 +141,22 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         };
         OpenCodeToolTheme.Apply(_selectionBar, OpenCodeToolTheme.Border(OpenCodeToolTheme.Accent));
 
+        // Same trailing columns as tool rows: [actions (empty here)][shared status cell], so rings line up row to row.
+        // Completion notices have no status column (their glyph carries the outcome).
         _root = new Grid { ColumnSpacing = 2 };
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
         _root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_selectionBar, 0);
         Grid.SetColumn(_rowChrome, 1);
         _root.Children.Add(_selectionBar);
         _root.Children.Add(_rowChrome);
+        if (!_completionNotice)
+        {
+            Grid.SetColumn(_status.Element, 3);
+            _root.Children.Add(_status.Element);
+        }
         _root.ActualThemeChanged += (_, _) => ApplyRowStyle();
         ApplyRowStyle();
     }
@@ -296,10 +289,9 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         // A8: no native text tooltip on the chip — the custom hover preview already shows name/target.
 
         var active = content.Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
-        _statusCell.Visibility = content.Status is null ? Visibility.Collapsed : Visibility.Visible;
-        _progress.IsActive = active;
-        _progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        _statusIcon.Visibility = active || !chrome.ShowsStatusIcon ? Visibility.Collapsed : Visibility.Visible;
+        // The 16px slot stays reserved (like tool rows) so summaries end at the same x; only its content changes.
+        _status.SetRunning(active && !_completionNotice);
+        _statusIcon.Visibility = active || content.Status is null || !chrome.ShowsStatusIcon ? Visibility.Collapsed : Visibility.Visible;
         switch (content.Status)
         {
             case OpenCodeToolRowStatus.Completed:
@@ -327,7 +319,6 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
                 ? OpenCodeToolTheme.Success : tone));
             OpenCodeToolTheme.Apply(_targetText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
             OpenCodeToolPartView.ApplyRowChrome(_rowChrome, OpenCodeToolRowChrome.For(null));
-            _statusCell.Visibility = Visibility.Collapsed;
             _summaryText.Visibility = Visibility.Collapsed;
         }
         ApplyRowStyle();
@@ -351,6 +342,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         }
 
         _disposed = true;
+        _status.Dispose();
         _linkInvoked = null;
         OpenCodeToolDetailPopup.Shared.CloseIf(this);
         OpenCodeToolDetailPopup.Shared.CloseIf(_childSource);

@@ -107,14 +107,21 @@ public sealed partial class OpenCodePage
 
     partial void CaptureContextMetadataVersion(ref long version) => version = _insights?.ContextMetadataVersion ?? -1;
 
-    partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages)
+    partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages, IReadOnlyList<OpenCodeMessage>? changedMessages)
     {
-        UpdateShellTerminalTranscript(messages);
-        OnAgentTreeMessages(messages);
+        if (changedMessages is null)
+        {
+            UpdateShellTerminalTranscript(messages);
+            OnAgentTreeMessages(messages);
+        }
         OnRuntimeMessagesAccepted(messages);
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
         {
-            insights.UpdateContext(binding!, messages, IsLoadedMessageHistoryComplete(), CaptureTodoHistory());
+            var complete = IsLoadedMessageHistoryComplete();
+            var history = CaptureTodoHistory();
+            if (changedMessages is null) insights.UpdateContext(binding!, messages, complete, history);
+            else if (!insights.TryUpdateContextMessages(binding!, changedMessages, complete, history))
+                insights.UpdateContext(binding!, ProjectMessageHistory(MergeMessageHistory()), complete, history);
             if (_insightsVisible) _ = EnsureSessionTodoAsync(insights, binding!);
             if (_insightsVisible && !insights.HasResultFor(binding!)) OpenSessionInsightsPane();
         }

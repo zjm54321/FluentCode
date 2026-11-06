@@ -60,6 +60,20 @@ public sealed class OpenCodeConversationView : StackPanel
     internal event EventHandler? BindingCleared;
     internal event EventHandler? IdleViewportInvalidated;
     internal long RenderVersion { get; private set; }
+    internal long FullApplyCount { get; private set; }
+    internal long FastApplyCount { get; private set; }
+    internal long MessageFingerprintRequestCount { get; private set; }
+    internal static long MessageFingerprintsComputed { get; private set; }
+    internal static long PartFingerprintsComputed { get; private set; }
+    internal long UpdateWindowCount { get; private set; }
+    internal long UpdateLayoutCount { get; private set; }
+    internal long StepChainEntriesVisited { get; private set; }
+    private object? _incrementalOwner;
+    private long _incrementalVersion;
+    private int _latestTurnStart;
+    private bool _recoverySensitive;
+    private readonly Dictionary<string, int> _entryIndexes = new(StringComparer.Ordinal);
+    private readonly HashSet<Entry> _realizedEntries = new();
     private long _idleLayoutVersion = -1;
     private bool _idleContentChanging;
     private bool _idleSnapshotComplete = true;
@@ -74,6 +88,8 @@ public sealed class OpenCodeConversationView : StackPanel
     private bool _animateNextScroll;
     private bool _animatingScroll;
     private bool _windowQueued;
+    private bool _windowFrameSubscribed;
+    private long _queuedWindowGeneration;
     private bool _updatingWindow;
     private bool _userScrolling;
     private double? _requestedOffset;
@@ -95,7 +111,7 @@ public sealed class OpenCodeConversationView : StackPanel
         return true;
     }
     private Func<bool>? _scrollOwnerCurrent;
-    internal int RealizedRowCount => _entries.Count(entry => entry.Realized);
+    internal int RealizedRowCount => _realizedEntries.Count;
     internal bool IsRestoringViewport => _updatingWindow || _idleContentChanging || _requestedOffset is not null || _animatingScroll;
     // Publish classification from the single scroll owner, independent of native event
     // subscription order. Pagination observes corrections but never treats them as input.
@@ -228,6 +244,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void DisconnectViewport()
     {
+        CancelWindowFrame();
         if (_viewport is not null)
         {
             _viewport.ViewChanged -= WindowViewChanged;
@@ -341,14 +358,25 @@ public sealed class OpenCodeConversationView : StackPanel
     private void QueueWindowUpdate()
     {
         if (_windowQueued || _updatingWindow || _viewport is null || !IsLoaded) return;
-        var generation = _windowGeneration;
         _windowQueued = true;
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (generation != _windowGeneration) return;
-            _windowQueued = false;
-            UpdateWindow();
-        });
+        _queuedWindowGeneration = _windowGeneration;
+        if (_windowFrameSubscribed) return;
+        _windowFrameSubscribed = true;
+        CompositionTarget.Rendering += WindowFrame;
+    }
+
+    private void CancelWindowFrame()
+    {
+        if (_windowFrameSubscribed) CompositionTarget.Rendering -= WindowFrame;
+        _windowFrameSubscribed = false;
+        _windowQueued = false;
+    }
+
+    private void WindowFrame(object? sender, object args)
+    {
+        var run = _windowQueued && _queuedWindowGeneration == _windowGeneration;
+        CancelWindowFrame();
+        if (run) UpdateWindow();
     }
 
     private OpenCodeConversationWindow.Range WindowRange()
@@ -360,20 +388,24 @@ public sealed class OpenCodeConversationView : StackPanel
         return _window.Select(offset, height, Math.Max(height, 800));
     }
 
-    private void UpdateWindow()
+    private void UpdateWindow(bool measureAnchor = true)
     {
         if (_updatingWindow || _viewport is not { } viewport || !IsLoaded) return;
         if (_scrollOwnerCurrent is { } current && !current()) return;
+        UpdateWindowCount++;
         _updatingWindow = true;
         var changed = false;
         try
         {
-            viewport.UpdateLayout();
             if (_readAnchor is null) _readAnchor = _window.Capture(WindowOffset());
             changed = MeasureRealizedRows();
             var range = WindowRange();
             var replacements = new List<(int Index, bool Realize)>();
-            for (var i = 0; i < _entries.Count; i++)
+            var candidates = new SortedSet<int>();
+            for (var index = range.Start; index < range.End; index++) candidates.Add(index);
+            foreach (var entry in _realizedEntries)
+                if (_entryIndexes.TryGetValue(entry.Key, out var index)) candidates.Add(index);
+            foreach (var i in candidates)
             {
                 var old = _entries[i];
                 var realize = i >= range.Start && i < range.End && (_window.Height(old.Key) > 0 || old.Realized) || KeepVisual(old);
@@ -381,7 +413,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 changed = true;
                 replacements.Add((i, realize));
             }
-            if (changed)
+            if (replacements.Count > 0)
             {
                 ChangeIdleContent(() =>
                 {
@@ -401,14 +433,19 @@ public sealed class OpenCodeConversationView : StackPanel
                     RaiseQuestionAnchorsChangedIfNeeded();
                 });
             }
-            if (changed) viewport.UpdateLayout();
+            // A settled frame already supplies actual heights. Only realization or an unmeasured
+            // retained-anchor/bottom correction needs a synchronous layout; never force it during inertia.
+            if (replacements.Count > 0 || (measureAnchor && !_userScrolling && _idleLayoutVersion != RenderVersion
+                && (_followingBottom || _readAnchor is not null))) ForceWindowLayout(viewport);
             // Realization, deferred Markdown and tool expansion can change heights in this
             // very layout pass. Accept them BEFORE restoring the anchor, not next frame.
             if (MeasureRealizedRows())
             {
                 changed = true;
                 ChangeIdleContent(AlignWindow);
-                viewport.UpdateLayout();
+                // New realized rows can replace estimated spacer heights. Their new extent must
+                // be committed before clamping an anchor; unchanged realized sets need no second pass.
+                if (replacements.Count > 0) ForceWindowLayout(viewport);
             }
             // Realize at the live logical position during a pan, but let native input own
             // the offset until its final ViewChanged. Do not retain a pre-pan anchor for
@@ -432,10 +469,16 @@ public sealed class OpenCodeConversationView : StackPanel
     private bool MeasureRealizedRows()
     {
         var changed = false;
-        foreach (var entry in _entries)
-            if (entry.Realized) changed |= _window.Measure(entry.Key,
+        foreach (var entry in _realizedEntries)
+            changed |= _window.Measure(entry.Key,
                 entry.Element.Visibility == Visibility.Collapsed ? 0 : entry.Element.ActualHeight + entry.Element.Margin.Top + entry.Element.Margin.Bottom);
         return changed;
+    }
+
+    private void ForceWindowLayout(ScrollView viewport)
+    {
+        UpdateLayoutCount++;
+        viewport.UpdateLayout();
     }
 
     private bool KeepVisual(Entry entry)
@@ -464,8 +507,13 @@ public sealed class OpenCodeConversationView : StackPanel
     private void RefreshRealizedMessageIds()
     {
         _renderedMessageIds.Clear();
+        _realizedEntries.Clear();
         foreach (var entry in _entries)
-            if (entry.Realized && entry.Snapshot?.Id is { Length: > 0 } id) _renderedMessageIds.Add(id);
+            if (entry.Realized)
+            {
+                _realizedEntries.Add(entry);
+                if (entry.Snapshot?.Id is { Length: > 0 } id) _renderedMessageIds.Add(id);
+            }
     }
 
     private static void CopyEntrySnapshot(Entry from, Entry to)
@@ -1159,6 +1207,10 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void ClearMessagesCore()
     {
+        CancelWindowFrame();
+        _incrementalOwner = null;
+        _entryIndexes.Clear();
+        _realizedEntries.Clear();
         _childToolTargets.Clear();
         _windowGeneration++;
         _windowQueued = false;
@@ -1215,6 +1267,7 @@ public sealed class OpenCodeConversationView : StackPanel
     public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        _incrementalOwner = null; // REST, pagination, rollback and reconnect paints retire any delta baseline.
         if (_scrollOwnerCurrent is { } current && !current())
         {
             _windowGeneration++;
@@ -1230,6 +1283,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private void ApplyMessagesCore(IReadOnlyList<OpenCodeMessage> messages)
     {
+        FullApplyCount++;
         _childToolTargets.Clear();
         foreach (var message in messages)
             if (message.Content is { } parts)
@@ -1323,7 +1377,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 key = key + "#" + i.ToString(CultureInfo.InvariantCulture);
             }
 
-            var fingerprint = ComputeFingerprint(message);
+            var fingerprint = MessageFingerprint(message);
             // B14: recovery state is snapshot-relative (a LATER message can recover this one), so it is tracked beside the fingerprint.
             var recoverySignature = RecoverySignature(message);
 
@@ -1400,6 +1454,17 @@ public sealed class OpenCodeConversationView : StackPanel
 
         _entries.Clear();
         _entries.AddRange(newEntries);
+        _entryIndexes.Clear();
+        _latestTurnStart = 0;
+        _recoverySensitive = false;
+        for (var index = 0; index < _entries.Count; index++)
+        {
+            var entry = _entries[index];
+            _entryIndexes[entry.Key] = index;
+            if (entry.MessageType is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !entry.IsManualBackgroundNotice)
+                _latestTurnStart = index + 1;
+            _recoverySensitive |= entry.Snapshot?.Error is not null || entry.Snapshot?.Retry is not null;
+        }
 
         // Accepted user IDs deduplicate admission rows; navigation membership is realized-only.
         RefreshRealizedMessageIds();
@@ -1411,6 +1476,55 @@ public sealed class OpenCodeConversationView : StackPanel
         QueueWindowUpdate();
         RaiseQuestionAnchorsChangedIfNeeded();
         RefreshTurnOutline();
+    }
+
+    internal void BindIncrementalSnapshot(object owner, long version)
+    {
+        _incrementalOwner = owner;
+        _incrementalVersion = version;
+    }
+
+    /// <summary>Only the reducer's known text/reasoning-part publications may use this latest-turn path.</summary>
+    internal bool TryApplyMessageChanges(IReadOnlyList<OpenCodeMessage> changed, object owner, long baselineVersion, long version)
+    {
+        if (!ReferenceEquals(owner, _incrementalOwner) || baselineVersion != _incrementalVersion || _recoverySensitive
+            || (_scrollOwnerCurrent is { } current && !current())) return false;
+        foreach (var message in changed)
+        {
+            if (message.Id is not { } id || !_entryIndexes.TryGetValue(id, out var index) || index < _latestTurnStart
+                || _messageIdCounts.GetValueOrDefault(id) != 1 || !_byKey.TryGetValue(id, out var entry)
+                || entry.IsInstructionNotice || entry.IsInitiatorChip || entry.IsAsyncCompletion || entry.IsManualBackgroundNotice
+                || message.Type != OpenCodeMessageTypes.Assistant || message.Error is not null || message.Retry is not null
+                || entry.Snapshot?.Content is not { } oldParts || message.Content is not { } parts || oldParts.Count != parts.Count)
+                return false;
+            for (var part = 0; part < parts.Count; part++)
+                if (parts[part].Type != oldParts[part].Type || parts[part].Id != oldParts[part].Id) return false;
+        }
+        ChangeIdleContent(() =>
+        {
+            FastApplyCount++;
+            foreach (var message in changed)
+            {
+                var entry = _byKey[message.Id!];
+                var fingerprint = MessageFingerprint(message);
+                if (!string.Equals(entry.Fingerprint, fingerprint, StringComparison.Ordinal)) entry.Update(message);
+                entry.Fingerprint = fingerprint;
+                entry.Snapshot = message;
+            }
+            ApplyStepChains(_latestTurnStart);
+            AlignWindow();
+            RaiseQuestionAnchorsChangedIfNeeded();
+        });
+        _incrementalVersion = version;
+        // An entirely offscreen latest turn cannot change the reader's measured anchor above it.
+        UpdateWindow(measureAnchor: _followingBottom || _realizedEntries.Any(entry => _entryIndexes[entry.Key] >= _latestTurnStart));
+        return true;
+    }
+
+    private string MessageFingerprint(OpenCodeMessage message)
+    {
+        MessageFingerprintRequestCount++;
+        return ComputeFingerprint(message);
     }
 
     private const int MaxLiveEntrances = 6;
@@ -1598,7 +1712,11 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         try
         {
-            return MessageFingerprints.GetValue(message, static snapshot => new(JsonSerializer.Serialize(snapshot, OpenCodeJson.Options))).Value;
+            return MessageFingerprints.GetValue(message, static snapshot =>
+            {
+                MessageFingerprintsComputed++;
+                return new(JsonSerializer.Serialize(snapshot, OpenCodeJson.Options));
+            }).Value;
         }
         catch (Exception)
         {
@@ -1611,7 +1729,11 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         try
         {
-            return PartFingerprints.GetValue(part, static snapshot => new(JsonSerializer.Serialize(snapshot, OpenCodeJson.Options))).Value;
+            return PartFingerprints.GetValue(part, static snapshot =>
+            {
+                PartFingerprintsComputed++;
+                return new(JsonSerializer.Serialize(snapshot, OpenCodeJson.Options));
+            }).Value;
         }
         catch (Exception)
         {
@@ -2580,15 +2702,16 @@ public sealed class OpenCodeConversationView : StackPanel
     /// 后续段隐藏头部并跟随链首的展开状态（默认进行中展开、终态收起，手动选择优先；规则见 ResolveExpansion）。
     /// 只剩隐藏的后续段（或什么都不显示）的 assistant 条目整体折叠，避免空行间距。
     /// </summary>
-    private void ApplyStepChains()
+    private void ApplyStepChains(int startIndex = 0)
     {
         var chains = new List<List<StepRun>>();
         List<StepRun>? open = null;
         // Only the newest chain with nothing visible after it may stay live. Any later text / boundary / chain
         // means the model has moved on: earlier groups finalize ("已处理", frozen duration) and collapse by default.
         List<StepRun>? trailing = null;
-        for (var index = 0; index < _entries.Count; index++)
+        for (var index = startIndex; index < _entries.Count; index++)
         {
+            StepChainEntriesVisited++;
             var state = _entries[index].Assistant;
             if (state is null)
             {
@@ -2636,9 +2759,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
         // A completed assistant message is only a step boundary. Latch activity for the whole
         // latest turn until idle/new user or an authoritative selected-session terminal signal.
-        var turnStart = 0;
-        var lastBoundaryIdle = false;
-        for (var index = 0; index < _entries.Count; index++)
+        var turnStart = startIndex;
+        var lastBoundaryIdle = startIndex > 0 && _entries[startIndex - 1].MessageType == OpenCodeMessageTypes.Idle;
+        for (var index = startIndex; index < _entries.Count; index++)
         {
             var type = _entries[index].MessageType;
             if (type is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !_entries[index].IsManualBackgroundNotice)
@@ -2812,8 +2935,9 @@ public sealed class OpenCodeConversationView : StackPanel
         _activeGroups.Clear();
         _activeGroups.UnionWith(nowActive);
 
-        foreach (var entry in _entries)
+        for (var index = startIndex; index < _entries.Count; index++)
         {
+            var entry = _entries[index];
             if (entry.Assistant is not { } state)
             {
                 continue;
@@ -3213,7 +3337,11 @@ public sealed class OpenCodeConversationView : StackPanel
             OpenTerminal, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph, chip.Dispose, inline: true);
     }
 
-    private Entry CreateCompactionEntry(string key, OpenCodeMessage message)
+    /// <summary>
+    /// 上下文压缩：居中说明行；有摘要时下方是一行“压缩摘要”（与工具行一致：悬停预览、点击 / Enter 固定、Esc 关闭），
+    /// 摘要全文只在共享详情浮层中按 Markdown 显示，不在时间线中展开。
+    /// </summary>
+    private static Entry CreateCompactionEntry(string key, OpenCodeMessage message)
     {
         var caption = new TextBlock
         {
@@ -3223,44 +3351,33 @@ public sealed class OpenCodeConversationView : StackPanel
             HorizontalAlignment = HorizontalAlignment.Center,
             IsTextSelectionEnabled = true,
         };
-        var summaryText = new TextBlock
-        {
-            FontSize = 12,
-            TextWrapping = TextWrapping.Wrap,
-            IsTextSelectionEnabled = true,
-        };
-        var summaryExpander = new Expander
-        {
-            Header = new TextBlock { Text = "摘要", FontSize = 12, Opacity = 0.75 },
-            Content = summaryText,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Visibility = Visibility.Collapsed,
-        };
+        var summary = new OpenCodeTimelineChipView("OpenCodeCompactionSummary", "\uE8A5");
+        summary.Element.Visibility = Visibility.Collapsed;
 
         var root = new StackPanel
         {
             Spacing = 6,
-            Children = { caption, summaryExpander },
+            Children = { caption, summary.Element },
         };
-        if (_rowExpansion.TryGetValue(key, out var expanded)) summaryExpander.IsExpanded = expanded;
 
         void Apply(OpenCodeMessage m)
         {
             caption.Text = DescribeCompaction(m);
             if (string.IsNullOrWhiteSpace(m.Summary))
             {
-                summaryExpander.Visibility = Visibility.Collapsed;
+                summary.Element.Visibility = Visibility.Collapsed;
+                return;
             }
-            else
-            {
-                summaryText.Text = m.Summary;
-                summaryExpander.Visibility = Visibility.Visible;
-            }
+
+            var preview = OpenCodeStepRunPresentation.DescribeReasoningPreview(m.Summary);
+            summary.UpdateRow(new OpenCodeTimelineRowContent("压缩摘要", string.Empty, preview, null,
+                "压缩摘要" + (preview.Length > 0 ? "：" + preview : string.Empty), "压缩摘要",
+                Array.Empty<OpenCodeToolProperty>(), m.Summary, DetailMarkdown: true));
+            summary.Element.Visibility = Visibility.Visible;
         }
 
         Apply(message);
-        return new Entry { Key = key, Element = root, Update = Apply, Dispose = () => _rowExpansion[key] = summaryExpander.IsExpanded };
+        return new Entry { Key = key, Element = root, Update = Apply, Dispose = summary.Dispose };
     }
 
     /// <summary>回合结束：居中分隔线 + “回合结束 · 成功 · 12:04”；可读名称保留“回合结束：成功”。</summary>

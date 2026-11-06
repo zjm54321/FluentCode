@@ -221,6 +221,8 @@ public sealed partial class OpenCodePage
     private void DrainEventQueue()
     {
         if (!_pageActive || !SourceReady) return;
+        var drainStarted = Stopwatch.GetTimestamp();
+        var drainedCount = 0;
         var changed = false;
         var refetch = false;
         var refreshSessionList = false;
@@ -236,6 +238,7 @@ public sealed partial class OpenCodePage
         }
         while (Next(out var queued))
         {
+            drainedCount++;
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
             OnChildInteractionEvent(item);
@@ -329,18 +332,35 @@ public sealed partial class OpenCodePage
         {
             _eventProjectionDirty = false;
             var follow = IsScrolledToBottom();
-            _latestMessages.Clear();
-            _latestMessages.AddRange(_eventReducer.Messages);
-            var history = MergeMessageHistory();
-            // Merge appends the latest window unchanged; equal counts mean no older rows were added.
-            var historyIsLatestWindow = history.Count == _latestMessages.Count;
-            var acceptedHistory = ProjectMessageHistory(history);
-            EnsureConversationImages();
-            _conversationView.ApplyMessages(acceptedHistory);
+            var changes = _eventReducer.TakeChanges();
+            var changedMessages = changes.Updates.Select(update => update.Message).ToArray();
+            var incremental = changes.KnownTextPartsOnly && !_eventReconciliationPending && _messageHistoryBoundaryKnown
+                && _messageRevertBoundary is null && !_isLoadingOlderMessages && _latestMessages.Count == _eventReducer.MessageCount
+                && changes.Updates.All(update => update.Index >= 0 && update.Index < _latestMessages.Count
+                    && _latestMessages[update.Index].Id == update.Message.Id)
+                && _conversationView.TryApplyMessageChanges(changedMessages, _eventReducer, changes.BaseVersion, changes.Version);
+            IReadOnlyList<OpenCodeMessage> window;
+            if (incremental)
+            {
+                foreach (var update in changes.Updates) _latestMessages[update.Index] = update.Message;
+                OnContextMessagesAccepted(_latestMessages, changedMessages);
+                window = _latestMessages;
+            }
+            else
+            {
+                _latestMessages.Clear();
+                _latestMessages.AddRange(_eventReducer.Messages);
+                var history = MergeMessageHistory();
+                // Merge appends the latest window unchanged; equal counts mean no older rows were added.
+                var historyIsLatestWindow = history.Count == _latestMessages.Count;
+                var acceptedHistory = ProjectMessageHistory(history);
+                EnsureConversationImages();
+                _conversationView.ApplyMessages(acceptedHistory);
+                _conversationView.BindIncrementalSnapshot(_eventReducer, changes.Version);
+                OnContextMessagesAccepted(acceptedHistory);
+                window = historyIsLatestWindow ? acceptedHistory : ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
+            }
             RefreshConversationSessionActivity();
-            OnContextMessagesAccepted(acceptedHistory);
-            var window = historyIsLatestWindow ? acceptedHistory
-                : ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
             ObserveExecutionState(selected, window);
             NotifyViewAcknowledgementRendered(window, _hostWindowVisible);
             UpdateEmptyState();
@@ -348,6 +368,7 @@ public sealed partial class OpenCodePage
             Debug.WriteLine($"OpenCode.SSE apply received_utc={first:O} applied_utc={DateTimeOffset.UtcNow:O} latency_ms={(DateTimeOffset.UtcNow - first).TotalMilliseconds:F1} events={count}");
         }
         if (refetch) _ = RefreshMessagesAsync();
+        OpenCodeEventDrainMetrics.Record(drainedCount, Stopwatch.GetElapsedTime(drainStarted).TotalMilliseconds);
     }
 
     private bool IsSelectedBackgroundChildCompletion(OpenCodeEvent item)

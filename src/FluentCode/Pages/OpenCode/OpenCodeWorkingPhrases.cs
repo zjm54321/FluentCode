@@ -173,6 +173,32 @@ internal static class OpenCodeWorkingMotion
 
     internal static double GearAngle(double phase) => phase * 360;
 
+    /// <summary>
+    /// 时间线行右侧统一“进行中”弧（<c>OpenCodeTimelineStatusCell</c>）：与齿轮同一表达式，每个时钟周期一圈，
+    /// 因此同屏所有进行中的行（前台 / 后台工具、思考、芯片）在任一时刻角度相同。
+    /// </summary>
+    internal const string RingExpression = GearExpression;
+
+    /// <summary>状态格边长（与行状态列宽、状态字形格一致）。</summary>
+    internal const double RingSize = 16;
+
+    /// <summary>弧线粗细（圆头）。</summary>
+    internal const double RingStroke = 2;
+
+    /// <summary>弧长：四分之三圈，缺口指示转动方向；静态（减少动画）时同样可辨认。</summary>
+    internal const double RingSweepDegrees = 270;
+
+    /// <summary>弧中心线半径：描边完整落在 16×16 方格内。</summary>
+    internal const double RingRadius = (RingSize - RingStroke) / 2;
+
+    /// <summary>弧上自 12 点方向顺时针 <paramref name="degrees"/> 度处的点（方格坐标，中心 = 边长 / 2）。</summary>
+    internal static (double X, double Y) RingArcPoint(double degrees)
+    {
+        var radians = degrees * Math.PI / 180;
+        var center = RingSize / 2;
+        return (Math.Round(center + RingRadius * Math.Sin(radians), 6), Math.Round(center - RingRadius * Math.Cos(radians), 6));
+    }
+
     internal static double DotOpacity(double phase, int index) => Math.Floor(phase * 4) > index ? 1 : DotDimOpacity;
 
     /// <summary>某相位下点亮的点数（0–3）。</summary>

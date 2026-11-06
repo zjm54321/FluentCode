@@ -198,8 +198,12 @@ public sealed class OpenCodeSessionInsightsController
     private bool _contextHistoryComplete;
     private bool _contextHasMessages;
     private OpenCodeTodoHistory _todoHistory = OpenCodeTodoHistory.NoRevert;
-    private string? _contextInputSignature;
-    private string? _todoInputSignature;
+    private string[] _contextMessageInputs = Array.Empty<string>();
+    private string[] _todoMessageInputs = Array.Empty<string>();
+    private readonly Dictionary<string, int> _contextMessageIndexes = new(StringComparer.Ordinal);
+    private string? _todoHistorySignature;
+    private bool _contextProjectionDirty = true;
+    private bool _todoProjectionDirty = true;
     private OpenCodeTodoConfig _todoConfig = OpenCodeTodoConfig.Unknown;
     // Cache only the derived list (not entire histories), scoped to the live source/client/session.
     private sealed record TodoCache(string Signature, OpenCodeTodoSnapshot Snapshot);
@@ -259,6 +263,10 @@ public sealed class OpenCodeSessionInsightsController
     /// <summary>Deterministic evidence that unchanged streaming text does not rebuild derived projections.</summary>
     public int ContextProjectionCount { get; private set; }
     public int TodoProjectionCount { get; private set; }
+    internal long MessageInputInspectionCount { get; private set; }
+    internal long MessageArrayCopyCount { get; private set; }
+    internal long MessageIdentityCheckCount { get; private set; }
+    internal long SparseUpdateCount { get; private set; }
 
     /// <summary>模型元数据读取起点的栅栏；晚于它的已接纳模型切换优先于旧响应。</summary>
     public long ContextMetadataVersion => _contextModelVersion;
@@ -266,6 +274,25 @@ public sealed class OpenCodeSessionInsightsController
     /// <summary>只更新本地上下文参考。调用方已核实 binding、历史投影及消息顺序；无网络/发现/费用读取。</summary>
     public void UpdateContext(OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> orderedMessages, bool historyComplete,
         OpenCodeTodoHistory? todoHistory = null)
+        => UpdateContextCore(binding, orderedMessages, historyComplete, todoHistory, null);
+
+    internal bool TryUpdateContextMessages(OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> changed,
+        bool historyComplete, OpenCodeTodoHistory todoHistory)
+    {
+        if (!OwnsContext(binding) || !_contextHasMessages) return false;
+        var updates = new List<(int Index, OpenCodeMessage Message)>(changed.Count);
+        foreach (var message in changed)
+        {
+            if (message.Id is not { } id || !_contextMessageIndexes.TryGetValue(id, out var index) || index < 0) return false;
+            updates.Add((index, message));
+        }
+        UpdateContextCore(binding, _contextMessages, historyComplete, todoHistory, updates);
+        SparseUpdateCount++;
+        return true;
+    }
+
+    private void UpdateContextCore(OpenCodeInsightsBinding binding, IReadOnlyList<OpenCodeMessage> orderedMessages, bool historyComplete,
+        OpenCodeTodoHistory? todoHistory, IReadOnlyList<(int Index, OpenCodeMessage Message)>? updates)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(orderedMessages);
@@ -275,20 +302,18 @@ public sealed class OpenCodeSessionInsightsController
         binding.Source.TryExecute(CancellationToken.None, () =>
         {
             if (!OwnsContext(binding)) return;
+            var historyChanged = todoHistory is not null && todoHistory != _todoHistory;
             if (todoHistory is not null) _todoHistory = todoHistory;
-            CaptureContextMessages(orderedMessages, historyComplete);
-            var contextSignature = ContextInputSignature(orderedMessages, historyComplete, _todoHistory);
-            if (_contextInputSignature != contextSignature)
+            CaptureContextMessages(orderedMessages, historyComplete, updates);
+            if (historyChanged)
             {
-                _contextInputSignature = contextSignature;
-                changed = SetContextSnapshot();
+                _todoHistorySignature = null;
+                _todoProjectionDirty = _contextProjectionDirty = true;
             }
-            if (todoHistory is not null)
+            if (_contextProjectionDirty) changed = SetContextSnapshot();
+            if (todoHistory is not null && _todoProjectionDirty)
             {
-                var todoSignature = TodoHistorySignature();
-                if (_todoInputSignature == todoSignature) return;
-                _todoInputSignature = todoSignature;
-                _todoHistory = todoHistory;
+                _todoProjectionDirty = false;
                 var scope = Snapshot.Todo.Value?.Scope ?? new OpenCodeCapabilityScope(binding.Source.Identity,
                     binding.Revision, _contextDirectory, DateTimeOffset.UtcNow);
                 var todo = BuildTodo(scope);
@@ -367,7 +392,60 @@ public sealed class OpenCodeSessionInsightsController
     private bool OwnsContext(OpenCodeInsightsBinding binding)
         => _binding is { } owned && SameScope(owned, binding) && IsCurrent(binding);
 
-    private void CaptureContextMessages(IReadOnlyList<OpenCodeMessage> messages, bool complete)
+    private void CaptureContextMessages(IReadOnlyList<OpenCodeMessage> messages, bool complete,
+        IReadOnlyList<(int Index, OpenCodeMessage Message)>? updates = null)
+    {
+        var membershipChanged = _contextMessages.Length != messages.Count;
+        var contextChanged = membershipChanged || !_contextHasMessages || complete != _contextHistoryComplete;
+        var todoChanged = contextChanged;
+        if (membershipChanged)
+        {
+            _contextMessages = new OpenCodeMessage[messages.Count];
+            _contextMessageInputs = new string[messages.Count];
+            _todoMessageInputs = new string[messages.Count];
+            MessageArrayCopyCount++;
+        }
+        // Accepted DTOs are immutable snapshots: unchanged historical rows need only an identity check.
+        // A changed row is inspected once; text-only updates never rescan all usage/tool bodies.
+        var reindex = membershipChanged;
+        for (var cursor = 0; cursor < (updates?.Count ?? messages.Count); cursor++)
+        {
+            if (updates is null) MessageIdentityCheckCount++;
+            var index = updates is null ? cursor : updates[cursor].Index;
+            var message = updates is null ? messages[index] : updates[cursor].Message;
+            if (!membershipChanged && ReferenceEquals(_contextMessages[index], message)) continue;
+            MessageInputInspectionCount++;
+            var contextInput = ContextMessageSignature(message);
+            var todoInput = TodoMessageSignature(message);
+            contextChanged |= _contextMessageInputs[index] != contextInput;
+            todoChanged |= _todoMessageInputs[index] != todoInput || _contextMessages[index]?.Id != message?.Id;
+            reindex |= _contextMessages[index]?.Id != message?.Id;
+            _contextMessageInputs[index] = contextInput;
+            _todoMessageInputs[index] = todoInput;
+            _contextMessages[index] = message!;
+        }
+        if (reindex)
+        {
+            _contextMessageIndexes.Clear();
+            for (var index = 0; index < _contextMessages.Length; index++)
+                if (_contextMessages[index]?.Id is { } id)
+                    _contextMessageIndexes[id] = _contextMessageIndexes.ContainsKey(id) ? -1 : index;
+        }
+        if (todoChanged)
+        {
+            _todoHistorySignature = null;
+            _todoProjectionDirty = true;
+        }
+        if (contextChanged)
+        {
+            _contextProjectionDirty = true;
+            CaptureContextModel(messages);
+        }
+        _contextHistoryComplete = complete;
+        _contextHasMessages = true;
+    }
+
+    private void CaptureContextModel(IReadOnlyList<OpenCodeMessage> messages)
     {
         OpenCodeMessage? latestSwitch = null;
         double latestModelCreated = _contextLatestModelCreated;
@@ -392,58 +470,48 @@ public sealed class OpenCodeSessionInsightsController
             _contextSwitchCreated = latestSwitch.Time.Created;
             _contextSwitchId = latestSwitch.Id;
         }
-        _contextMessages = messages.ToArray();
         _contextLatestModelCreated = latestModelCreated;
-        _contextHistoryComplete = complete;
-        _contextHasMessages = true;
     }
 
-    private string ContextInputSignature(IReadOnlyList<OpenCodeMessage> messages, bool complete, OpenCodeTodoHistory history)
+    private static string ContextMessageSignature(OpenCodeMessage? message)
     {
+        if (message is null) return "null;";
         var signature = new StringBuilder();
-        signature.Append(complete ? '1' : '0').Append('|').Append(history.ReadFailed ? '1' : '0')
-            .Append('|').Append(history.RevertKnown ? '1' : '0').Append('|').Append(history.RevertMessageId).Append('|')
-            .Append(_contextModelVersion).Append('|');
-        foreach (var message in messages)
-        {
-            if (message is null) { signature.Append("null;"); continue; }
-            if (message.Type == OpenCodeMessageTypes.User)
-                signature.Append("u:").Append(message.Id).Append(';');
-            if (message.Type is OpenCodeMessageTypes.Compaction or OpenCodeMessageTypes.ModelSwitched)
-                signature.Append("b:").Append(message.Id).Append(':').Append(message.Type).Append(':')
-                    .Append(message.Status).Append(':').Append(message.Time?.Created).Append(':')
-                    .Append(message.Model?.ProviderId).Append(':').Append(message.Model?.Id).Append(':')
-                    .Append(message.Model?.Variant).Append(';');
-            if (message.Type != OpenCodeMessageTypes.Assistant || message.Error is not null || message.Tokens is null
-                || message.Time is not { Created: > 0 }) continue;
-            var tokens = OpenCodeUsageTokens.From(message.Tokens);
-            if (tokens is null) continue;
-            signature.Append("a:").Append(message.Id).Append(':').Append(message.Time.Created).Append(':')
-                .Append(message.Time.Streamed).Append(':').Append(message.Time.Completed).Append(':')
-                .Append(message.Finish).Append(':').Append(message.Cost).Append(':')
+        // Every ID participates in revert membership/order; text and content do not affect context usage.
+        signature.Append(message.Id).Append(':').Append(message.Type).Append(';');
+        if (message.Type is OpenCodeMessageTypes.Assistant or OpenCodeMessageTypes.ModelSwitched)
+            signature.Append(message.Time?.Created).Append(':').Append(message.Model?.ProviderId).Append(':')
+                .Append(message.Model?.Id).Append(':').Append(message.Model?.Variant).Append(';');
+        if (message.Type is OpenCodeMessageTypes.Compaction or OpenCodeMessageTypes.ModelSwitched)
+            signature.Append("b:").Append(message.Id).Append(':').Append(message.Type).Append(':')
+                .Append(message.Status).Append(':').Append(message.Time?.Created).Append(':')
                 .Append(message.Model?.ProviderId).Append(':').Append(message.Model?.Id).Append(':')
-                .Append(message.Model?.Variant).Append(':').Append(tokens.Input).Append(':').Append(tokens.Output)
-                .Append(':').Append(tokens.Reasoning).Append(':').Append(tokens.CacheRead).Append(':').Append(tokens.CacheWrite).Append(';');
-        }
+                .Append(message.Model?.Variant).Append(';');
+        if (message.Type != OpenCodeMessageTypes.Assistant || message.Error is not null || message.Tokens is null
+            || message.Time is not { Created: > 0 }) return signature.ToString();
+        var tokens = OpenCodeUsageTokens.From(message.Tokens);
+        if (tokens is null) return signature.ToString();
+        signature.Append("a:").Append(message.Id).Append(':').Append(message.Time.Created).Append(':')
+            .Append(message.Time.Streamed).Append(':').Append(message.Time.Completed).Append(':')
+            .Append(message.Finish).Append(':').Append(message.Cost).Append(':')
+            .Append(message.Model?.ProviderId).Append(':').Append(message.Model?.Id).Append(':')
+            .Append(message.Model?.Variant).Append(':').Append(tokens.Input).Append(':').Append(tokens.Output)
+            .Append(':').Append(tokens.Reasoning).Append(':').Append(tokens.CacheRead).Append(':').Append(tokens.CacheWrite).Append(';');
         return signature.ToString();
     }
 
-    private static string TodoInputSignature(IReadOnlyList<OpenCodeMessage> messages, OpenCodeTodoHistory history)
+    private static string TodoMessageSignature(OpenCodeMessage? message)
     {
-        var signature = new StringBuilder().Append(history.ReadFailed ? '1' : '0').Append('|')
-            .Append(history.RevertKnown ? '1' : '0').Append('|').Append(history.RevertMessageId).Append('|');
-        foreach (var message in messages)
+        if (message is null) return "null;";
+        if (message.Type != OpenCodeMessageTypes.Assistant) return string.Empty;
+        if (message.Content is null) return "content-null:" + message.Id + ";";
+        var signature = new StringBuilder();
+        foreach (var part in message.Content)
         {
-            if (message is null) { signature.Append("null;"); continue; }
-            if (message.Type != OpenCodeMessageTypes.Assistant) continue;
-            if (message.Content is null) { signature.Append("content-null:").Append(message.Id).Append(';'); continue; }
-            foreach (var part in message.Content)
-            {
-                if (part is null) { signature.Append("part-null:").Append(message.Id).Append(';'); continue; }
-                if (part.Type != OpenCodePartTypes.Tool || part.Name != OpenCodeTodoReplay.ToolId) continue;
-                signature.Append("todo:").Append(message.Id).Append(':').Append(part.Id).Append(':')
-                    .Append(part.State?.GetRawText()).Append(';');
-            }
+            if (part is null) { signature.Append("part-null:").Append(message.Id).Append(';'); continue; }
+            if (part.Type != OpenCodePartTypes.Tool || part.Name != OpenCodeTodoReplay.ToolId) continue;
+            signature.Append("todo:").Append(message.Id).Append(':').Append(part.Id).Append(':')
+                .Append(part.State?.GetRawText()).Append(';');
         }
         return signature.ToString();
     }
@@ -494,6 +562,7 @@ public sealed class OpenCodeSessionInsightsController
 
     private bool SetContextSnapshot()
     {
+        _contextProjectionDirty = false;
         ContextProjectionCount++;
         var context = BuildContext();
         var before = Snapshot.Context.Value;
@@ -518,8 +587,12 @@ public sealed class OpenCodeSessionInsightsController
         CancelAndForget(ref _contextCts);
         _contextCatalogVersion++;
         _contextMessages = Array.Empty<OpenCodeMessage>();
-        _contextInputSignature = null;
-        _todoInputSignature = null;
+        _contextMessageIndexes.Clear();
+        _contextMessageInputs = Array.Empty<string>();
+        _todoMessageInputs = Array.Empty<string>();
+        _todoHistorySignature = null;
+        _contextProjectionDirty = true;
+        _todoProjectionDirty = true;
         _contextHasMessages = false;
         _contextHistoryComplete = false;
         _contextModel = null;
@@ -733,6 +806,11 @@ public sealed class OpenCodeSessionInsightsController
         var ct = cts.Token;
         var messages = orderedMessages.ToArray(); // 起发时快照：之后的轮询不改变本次投影输入。
         CaptureContextMessages(messages, historyComplete);
+        if (_todoHistory != todoHistory)
+        {
+            _todoHistorySignature = null;
+            _todoProjectionDirty = _contextProjectionDirty = true;
+        }
         _todoHistory = todoHistory;
         var contextModelVersion = _contextModelVersion;
 
@@ -1363,7 +1441,14 @@ public sealed class OpenCodeSessionInsightsController
         => binding with { SessionGeneration = 0 };
 
     private string TodoHistorySignature()
-        => (_contextHistoryComplete ? "1|" : "0|") + TodoInputSignature(_contextMessages, _todoHistory);
+    {
+        if (_todoHistorySignature is not null) return _todoHistorySignature;
+        var signature = new StringBuilder().Append(_contextHistoryComplete ? '1' : '0').Append('|')
+            .Append(_todoHistory.ReadFailed ? '1' : '0').Append('|').Append(_todoHistory.RevertKnown ? '1' : '0')
+            .Append('|').Append(_todoHistory.RevertMessageId).Append('|');
+        foreach (var input in _todoMessageInputs) signature.Append(input);
+        return _todoHistorySignature = signature.ToString();
+    }
 
     /// <summary>Invalidate remote evidence on native todowrite completion or revert, including inactive sessions.</summary>
     public void InvalidateTodo(string sessionId)

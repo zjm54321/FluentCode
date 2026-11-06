@@ -91,7 +91,7 @@ internal interface IOpenCodeDetailContentSource
 /// （原生 <see cref="FlyoutPresenter"/>：亚克力、Flyout 描边、OverlayCornerRadius + ThemeShadow），在来源行上/下方并让出相邻一行（<see cref="OpenCodeDetailPopupLayout.PreviewGap"/>），<b>没有关闭按钮</b>；
 /// 鼠标离开行即隐藏（移入预览可保持；行与预览都离开即隐藏）。不移动键盘焦点。在预览内点击 = 打开大视图。</item>
 /// <item><b>大详情视图</b>（AutomationId <c>OpenCodeToolDetailPopup</c>，遮罩 <c>OpenCodeToolDetailOverlay</c>）：点击行 / Enter / Space 打开，
-/// 约为应用窗口的 80%、居中，系统遮罩层（SmokeFillColorDefaultBrush）+ 原生 FlyoutPresenter 表面，内容完整（不截断）纵向滚动；
+/// 按内容收缩（最大约为应用窗口的 80%；并排 diff / 浏览器 / 图片占满这一宽度）、居中，系统遮罩层（SmokeFillColorDefaultBrush）+ 原生 FlyoutPresenter 表面，内容完整（不截断）纵向滚动；
 /// ✕ 按钮 / Esc / 点击遮罩关闭，随窗口大小改变；打开时焦点移入（Tab 在视图内循环），关闭后还给原焦点（与 ContentDialog 一致）。</item>
 /// </list>
     /// 所有详情文字默认换行（G8），没有“换行”开关；复制等工具操作集中在详情页脚。
@@ -155,6 +155,9 @@ internal sealed class OpenCodeToolDetailPopup
     private double _previewPointerX = double.NaN;
     private bool _previewPlaced;
     private double _previewFullHeight;
+
+    /// <summary>大视图宽度正等待原生布局按内容测出，下一次布局后固定。</summary>
+    private bool _largeFitPending;
 
     /// <summary>消息内容列（OpenCodePage.xaml 的 MessageHost）：预览横向边界的来源，而不是整个窗口。</summary>
     private const string ContentColumnName = "MessageHost";
@@ -254,6 +257,7 @@ internal sealed class OpenCodeToolDetailPopup
         _dialogPresenter.HorizontalAlignment = HorizontalAlignment.Center;
         _dialogPresenter.VerticalAlignment = VerticalAlignment.Center;
         _dialogPresenter.SizeChanged += (_, _) => ApplyResponsiveDiff();
+        _dialogPresenter.LayoutUpdated += (_, _) => FreezeLargeWidth();
         FluentCode.Motion.FluentMotion.BindTransitions(_dialogPresenter, transitions => _dialogPresenter.Transitions = transitions, () => new TransitionCollection
         {
             new EntranceThemeTransition { FromHorizontalOffset = 0, FromVerticalOffset = 24, IsStaggeringEnabled = false },
@@ -779,6 +783,8 @@ internal sealed class OpenCodeToolDetailPopup
         _previewTruncated = view.IsTruncated;
         _previewHint.Text = view.PreviewHint ?? (view.HiddenLineCount > 0 ? $"还有 {view.HiddenLineCount} 行" : "内容未完整显示");
         if (_mode == OpenCodeDetailPopupMode.Preview) PlacePreview();
+        // Refreshed / toggled content re-fits once; the open view never shrinks under the reader.
+        else if (_dialogPopup.IsOpen && _observedRoot is { } root) FitLarge(root.Size, growOnly: true);
         if (_scroller is { } scroller && (offset is not null || follow))
         {
             void OnLoaded(object sender, RoutedEventArgs e)
@@ -798,19 +804,55 @@ internal sealed class OpenCodeToolDetailPopup
         return options;
     }
 
-    /// <summary>大视图：遮罩铺满窗口，表面为窗口 80% 并居中（窗口改变时重算）。</summary>
+    /// <summary>
+    /// 大视图：遮罩铺满窗口；表面按内容收缩并居中，最大为窗口 80%（窗口改变时重算）。
+    /// 宽度先由原生布局按内容决定，第一次布局后固定下来（<see cref="FreezeLargeWidth"/>），
+    /// 滚动时虚拟化列表实现的新行不会让视图忽宽忽窄；内容刷新只允许变宽。
+    /// </summary>
     private void LayoutLarge(Size rootSize)
     {
-        var rect = OpenCodeDetailPopupLayout.LargeView(rootSize.Width, rootSize.Height);
         _overlay.Width = rootSize.Width;
         _overlay.Height = rootSize.Height;
-        _dialogPresenter.Width = rect.Width;
-        _dialogPresenter.Height = double.NaN;
-        _dialogPresenter.MinHeight = Math.Min(320, rect.Height);
-        _dialogPresenter.MaxHeight = rect.Height;
+        FitLarge(rootSize, growOnly: false);
         _dialogPopup.HorizontalOffset = 0;
         _dialogPopup.VerticalOffset = 0;
         ApplyResponsiveDiff();
+    }
+
+    private void FitLarge(Size rootSize, bool growOnly)
+    {
+        var cap = OpenCodeDetailPopupLayout.LargeView(rootSize.Width, rootSize.Height);
+        var fill = LargeFillsWidth();
+        var (minWidth, maxWidth) = OpenCodeDetailPopupLayout.LargeViewWidthRange(cap, fill);
+        var (minHeight, maxHeight) = OpenCodeDetailPopupLayout.LargeViewHeightRange(cap);
+        if (growOnly && !fill && _dialogPresenter.ActualWidth > 0)
+            minWidth = OpenCodeDetailPopupLayout.LargeFitWidth(_dialogPresenter.ActualWidth, cap, fill);
+        _dialogPresenter.MaxWidth = maxWidth;
+        _dialogPresenter.MinWidth = minWidth;
+        _dialogPresenter.Width = fill ? maxWidth : double.NaN;
+        _largeFitPending = !fill;
+        _dialogPresenter.Height = double.NaN;
+        _dialogPresenter.MinHeight = minHeight;
+        _dialogPresenter.MaxHeight = maxHeight;
+    }
+
+    /// <summary>并排 diff、浏览器与图片结果占满上限宽度；其余（思考、To Do、文本、属性等）按内容收缩。</summary>
+    private bool LargeFillsWidth()
+    {
+        if (_source is not IOpenCodeToolDetailSource tool) return false;
+        var model = tool.DetailModel;
+        var fileView = model.Kind == OpenCodeToolKind.Write && !_options.ShowDifference && model.DiffFiles.Count > 0
+            && model.DiffFiles[Math.Clamp(_options.SelectedFile, 0, model.DiffFiles.Count - 1)].After is not null;
+        return OpenCodeDetailPopupLayout.LargeViewFillsWidth(model.Kind, OpenCodeToolDetailContent.ToolImages(model).Count > 0, fileView);
+    }
+
+    private void FreezeLargeWidth()
+    {
+        if (!_largeFitPending || _mode != OpenCodeDetailPopupMode.Large || !_dialogPopup.IsOpen) return;
+        var width = _dialogPresenter.ActualWidth;
+        if (width <= 0) return;
+        _largeFitPending = false;
+        _dialogPresenter.Width = Math.Clamp(width, _dialogPresenter.MinWidth, _dialogPresenter.MaxWidth);
     }
 
     private void ApplyResponsiveDiff()

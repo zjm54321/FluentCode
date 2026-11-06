@@ -31,3 +31,31 @@ internal sealed class OpenCodeRichTextRenderGate
         return true;
     }
 }
+
+/// <summary>UI-independent adaptive cadence; only append-only updates may wait for the next render.</summary>
+internal sealed class OpenCodeStreamingRenderSchedule
+{
+    private string? _requested;
+    private double _nextRenderAt;
+    internal bool HasPending { get; private set; }
+    internal double LastRenderMilliseconds { get; private set; }
+    internal double IntervalMilliseconds => Math.Max(100, 3 * LastRenderMilliseconds);
+
+    internal bool Request(string? source, bool force, double now)
+    {
+        var growing = _requested is not null && source is not null && source.Length > _requested.Length
+            && source.StartsWith(_requested, StringComparison.Ordinal);
+        _requested = source;
+        HasPending = !force && growing && now < _nextRenderAt;
+        return !HasPending;
+    }
+
+    internal double RemainingMilliseconds(double now) => Math.Max(1, _nextRenderAt - now);
+
+    internal void Rendered(double now, double duration)
+    {
+        HasPending = false;
+        LastRenderMilliseconds = duration;
+        _nextRenderAt = now + IntervalMilliseconds;
+    }
+}

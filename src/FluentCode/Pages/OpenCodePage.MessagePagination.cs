@@ -147,7 +147,7 @@ public sealed partial class OpenCodePage
     partial void CaptureContextMetadataVersion(ref long version);
     partial void OnRightPanelSessionMetadata(SessionControlState state);
     partial void OnContextSessionMetadata(OpenCodeModelRef? model, string directory, long version);
-    partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages);
+    partial void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages, IReadOnlyList<OpenCodeMessage>? changedMessages = null);
 
     private void BeginMessageHistoryWorkflow(long owner)
     {
