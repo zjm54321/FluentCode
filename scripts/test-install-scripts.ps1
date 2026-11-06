@@ -10,7 +10,7 @@ if (!$EvidenceRoot) { $EvidenceRoot = Join-Path $repo ('artifacts\install-script
 if (Test-Path -LiteralPath $EvidenceRoot) { throw 'Use a fresh installation-script evidence directory.' }
 $copy = Join-Path $EvidenceRoot "安装 空格 & 单引号'"
 New-Item -ItemType Directory -Path $copy | Out-Null
-foreach ($name in @('Install.cmd', 'Install.ps1', 'FluentCode_1.2611.6.0_x64.msix', 'FluentCode-signing.cer')) {
+foreach ($name in @('Install.cmd', 'Install.ps1', 'FluentCode_1.2611.7.0_x64.msix', 'FluentCode-signing.cer')) {
     Copy-Item -LiteralPath (Join-Path $PackageDirectory $name) -Destination (Join-Path $copy $name)
 }
 $checks = [Collections.Generic.List[string]]::new()
