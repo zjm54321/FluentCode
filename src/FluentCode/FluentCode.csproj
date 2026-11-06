@@ -12,9 +12,9 @@
     <Authors>mingz</Authors>
     <Copyright>Copyright © 2026 mingz. Licensed under GPL-3.0-or-later.</Copyright>
     <Description>OpenCode 的 Fluent 风格 Windows 客户端</Description>
-    <Version>1.2611.5</Version>
-    <AssemblyVersion>1.2611.5.0</AssemblyVersion>
-    <FileVersion>1.2611.5.0</FileVersion>
+    <Version>1.2611.6</Version>
+    <AssemblyVersion>1.2611.6.0</AssemblyVersion>
+    <FileVersion>1.2611.6.0</FileVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <ApplicationManifest>app.manifest</ApplicationManifest>
