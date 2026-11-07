@@ -380,9 +380,12 @@ public sealed partial class OpenCodePage
 
         _latestMessages.Clear();
         _latestMessages.AddRange(latestAsc);
+        UpdateMessageWindowBudget();
         var acceptedHistory = ProjectMessageHistory(MergeMessageHistory());
         EnsureConversationImages();
-        _conversationView.ApplyMessages(acceptedHistory);
+        var applyStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!_conversationView.TryApplyRefreshedMessages(acceptedHistory)) _conversationView.ApplyMessages(acceptedHistory);
+        RecordRestSwitchApply(applyStarted);
         RefreshConversationSessionActivity();
 
         if (latestAsc.Count == 0)
@@ -901,6 +904,7 @@ public sealed partial class OpenCodePage
 
         // 续页条目全部老于当前旧历史块（游标沿序列向更老推进），按服务端顺序整体前插。
         _olderMessages.InsertRange(0, prepend);
+        UpdateMessageWindowBudget();
         return prepend.Count;
     }
 

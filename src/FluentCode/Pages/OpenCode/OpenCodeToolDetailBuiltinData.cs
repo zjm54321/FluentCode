@@ -99,13 +99,16 @@ internal static class OpenCodeToolDetailBuiltinData
         values.TryGetValue("state", out var state);
         var session = values.TryGetValue("sessionID", out var returned) ? returned
             : StringValue(Input(model), "sessionID") ?? StringValue(Input(model), "task_id");
-        var uncertain = state?.Contains("(unconfirmed)", StringComparison.Ordinal) == true
+        var uncertain = output.Contains("(unconfirmed)", StringComparison.OrdinalIgnoreCase)
             || values.TryGetValue("status_uncertain", out var uncertainty) && uncertainty == "true";
         var known = state?.Replace("(unconfirmed)", "", StringComparison.Ordinal).Trim();
         if (values.TryGetValue("status", out var status) && status is "accepted" or "started") known = status;
         var queued = Regex.Match(output, @"^Message queued for (ses_[A-Za-z0-9_]+) \(\1\) without launching or resuming it\.$");
         if (queued.Success) { known = "accepted"; session ??= queued.Groups[1].Value; }
-        var label = known switch { "running" => "运行中", "completed" => "已完成", "cancelled" => "已取消", "stopped" => "已停止", "waiting_for_user" => "等待你的确认", "accepted" => "已接收", "started" => "已启动", _ => known };
+        if (model.ToolName is "task_status" or "task_cancel"
+            && known is not ("running" or "completed" or "cancelled" or "stopped" or "waiting_for_user" or "accepted" or "started" or "succeeded" or "failed" or "error" or "interrupted"))
+            uncertain = true;
+        var label = known switch { "running" => "运行中", "completed" or "succeeded" => "已完成", "failed" or "error" => "失败", "interrupted" => "已中断", "cancelled" => "已取消", "stopped" => "已停止", "waiting_for_user" => "等待你的确认", "accepted" => "已接收", "started" => "已启动", "unknown" or null => uncertain ? "状态未知" : null, _ => known };
         return new(values, state, session, label is null ? null : label + (uncertain ? "（未确认）" : ""), uncertain);
     }
 

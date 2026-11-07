@@ -304,6 +304,8 @@ public sealed class OpenCodeBrowserChromeDriver : IOpenCodeBrowserPageDriver
     private void CompleteNavigation(bool success, string? error)
     {
         if (!_navigating) return;
+        if (!success && error?.StartsWith("net::ERR_", StringComparison.Ordinal) == true)
+            error = _workspace.Options.Proxy.TunnelError?.Invoke(_state.Url) ?? error;
         _navigating = false;
         SetState(_state with { Loading = false, LoadError = error });
         NavigationChanged?.Invoke(this, new(_navigationId, OpenCodeBrowserNavigationPhase.Completed, _state.Url, success, error));

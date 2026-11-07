@@ -32,6 +32,8 @@ public sealed partial class OpenCodePage
     private bool _treeReload;
     private string? _treeDirectory;
     private string? _treeHint;
+    private string? _treeScopeAgentId;
+    private IReadOnlyList<OpenCodeModelInfo>? _treeModels;
     private SessionReturnTarget? _treeParentTarget;
     private bool _treeParentReturnBusy;
     partial void OnBrowserAgentTreeChanged();
@@ -41,6 +43,7 @@ public sealed partial class OpenCodePage
 
     private void InitializeAgentTree()
     {
+        _conversationView.ChildSessionTarget = FindKnownChildSession;
         LeftAgentTreeSlot.Children.Add(_agentTree);
         InitializePersistentPty();
         InitializePersistentPtyPanel();
@@ -48,8 +51,17 @@ public sealed partial class OpenCodePage
         _agentTree.ParentReturnRequested += () => _ = ReturnFromAgentTreeAsync();
         _agentTree.ShellRequested += OpenTerminalView;
         InitializeChildReturn();
+        _agentSelector.DisplayChanged += (_, _) => RefreshAgentTreeScope();
         Loaded += (_, _) => QueueAgentTreeRefresh();
         Unloaded += (_, _) => { if (!IsLoaded) ResetAgentTree(); };
+    }
+
+    private (string? Agent, string? Description)? FindKnownChildSession(string sessionId)
+    {
+        if (!_pageActive || !SourceReady) return null;
+        if (_treeBinding is { } binding && IsTreeCurrent(binding) && _treeChildren.TryGetValue(sessionId, out var child))
+            return (child.Agent, child.Title);
+        return _sessionItems.TryGetValue(sessionId, out var known) ? (known.Agent, known.Title) : null;
     }
 
     private TreeBinding? CaptureTreeBinding() => _pageActive && SourceReady && !_sessionMissing
@@ -77,6 +89,8 @@ public sealed partial class OpenCodePage
         _treeShellKinds.Clear();
         _treeDirectory = null;
         _treeHint = null;
+        _treeScopeAgentId = null;
+        _treeModels = null;
         _treeLoading = false;
         _treeChildrenAccepted = false;
         _treeReload = false;
@@ -110,7 +124,7 @@ public sealed partial class OpenCodePage
     {
         if (_treeRefreshQueued) return;
         _treeRefreshQueued = true;
-        DispatcherQueue.TryEnqueue(() =>
+        RunAfterTranscriptFirstFrame(() =>
         {
             _treeRefreshQueued = false;
             _ = RefreshAgentTreeAsync();
@@ -143,7 +157,13 @@ public sealed partial class OpenCodePage
         LeftAgentTreeSlot.Visibility = Visibility.Visible;
         try
         {
-            var session = await TreeReadAsync(binding, () => binding.Client.GetSessionInfoAsync(binding.SessionId, ct), ct);
+            bool SelectorCurrent() => ReferenceEquals(_agentSelectorSource, binding.Source)
+                && _agentSelectorRevision == binding.Revision && _agentSelectorSessionId == binding.SessionId;
+            if (SelectorCurrent()) await _agentSelector.InitialMetadataRead.ConfigureAwait(true);
+            if (!Current()) return;
+            var session = SelectorCurrent() && _agentSelector.CurrentSessionInfo is { } acceptedSession
+                && acceptedSession.Id == binding.SessionId ? acceptedSession
+                : await TreeReadAsync(binding, () => binding.Client.GetSessionInfoAsync(binding.SessionId, ct), ct);
             if (!Current()) return;
             _treeParentTarget = CreateVerifiedParentTarget(session, binding.SessionId);
             if (_treeParentTarget is not null)
@@ -155,10 +175,12 @@ public sealed partial class OpenCodePage
             var directory = session.Location?.Directory;
             if (string.IsNullOrWhiteSpace(directory)) { _treeHint = "会话目录不可用"; RenderAgentTree(); return; }
             _treeDirectory = directory;
-            var agents = await TreeReadAsync(binding, () => binding.Client.ListAgentsAsync(directory, ct), ct);
+            var agents = SelectorCurrent() && _agentSelector.CurrentSessionInfo?.Location?.Directory == directory
+                && _agentSelector.AgentCatalog is { } acceptedAgents ? acceptedAgents
+                : (await TreeReadAsync(binding, () => binding.Client.ListAgentsAsync(directory, ct), ct)).Data ?? new();
             if (!Current()) return;
             _treeAgents.Clear();
-            _treeAgents.AddRange(agents.Data ?? new());
+            _treeAgents.AddRange(agents);
             var children = new Dictionary<string, OpenCodeSessionInfo>(StringComparer.Ordinal);
             var cursors = new HashSet<string>(StringComparer.Ordinal);
             string? cursor = null;
@@ -252,10 +274,25 @@ public sealed partial class OpenCodePage
         foreach (var id in _treeChildren.Keys)
             if (!statuses.ContainsKey(id) && _liveSessionStatuses.TryGetValue(id, out var live) && live.Working)
                 statuses[id] = OpenCodeTreeStatus.Running;
-        var agents = OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses);
+        _treeModels = _agentSelector.ModelChoices;
+        var agents = OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses, AgentTreeScope(), _treeModels);
         RenderSubagentCount(agents.Sum(agent => agent.Children.Count(child => child.Status == OpenCodeTreeStatus.Running)));
         _agentTree.Render(agents, _treeShells.Values.ToArray(), _treeHint);
         SyncShellTerminalEntries();
+    }
+
+    // Native delegation rules of the composer's primary agent; null (show all) until a primary is known.
+    private Func<string, bool>? AgentTreeScope()
+    {
+        _treeScopeAgentId = ComposerMentionAgentId();
+        var primary = _treeAgents.FirstOrDefault(a => a.Id == _treeScopeAgentId && a.Mode != OpenCodeAgentModes.Subagent);
+        return primary is null ? null : id => OpenCodeAgentMentionScope.AllowsMention(primary, id);
+    }
+
+    private void RefreshAgentTreeScope()
+    {
+        if (_treeBinding is not null && _treeParentTarget is null
+            && (ComposerMentionAgentId() != _treeScopeAgentId || !ReferenceEquals(_treeModels, _agentSelector.ModelChoices))) RenderAgentTree();
     }
 
     private async Task ReturnFromAgentTreeAsync()

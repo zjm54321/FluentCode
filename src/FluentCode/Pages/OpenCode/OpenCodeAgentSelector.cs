@@ -365,6 +365,8 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     internal OpenCodeModelRef? CurrentModel { get => _pendingModel ?? _observedModel; private set => _observedModel = value; }
     // The exact, origin-fenced Session.Info read also identifies child sessions without a second request/cache.
     internal OpenCodeSessionInfo? CurrentSessionInfo { get; private set; }
+    internal IReadOnlyList<OpenCodeAgentInfo>? AgentCatalog { get; private set; }
+    internal Task InitialMetadataRead { get; private set; } = Task.CompletedTask;
     internal string? CurrentAgentColor => _rows.Find(row => row.Id == CurrentAgentId)?.Color;
     internal string? CurrentAgentDescription => _rows.Find(row => row.Id == CurrentAgentId)?.Description;
     internal event EventHandler? DisplayChanged;
@@ -381,7 +383,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     /// 自有客户端与真实 agent 列表；同上下文且已就绪时为幂等无操作。selectionGeneration 由宿主在
     /// 选择上下文变化（含切走再切回）时递增。
     /// </summary>
-    internal void Configure(OpenCodePageSource source, long revision, string sessionId, long selectionGeneration)
+    internal void Configure(OpenCodePageSource source, long revision, string sessionId, long selectionGeneration, Task? transcriptFrame = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         if (string.IsNullOrEmpty(sessionId) || !sessionId.StartsWith("ses", StringComparison.Ordinal))
@@ -412,6 +414,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         var keptModelDisplay = keepDisplay ? CurrentModelDisplay : null;
         var keptModelRef = keepDisplay ? _observedModel : null;
         var keptSessionInfo = keepDisplay ? CurrentSessionInfo : null;
+        var keptAgentCatalog = keepDisplay ? AgentCatalog : null;
 
         InvalidateContext();
         if (keepDisplay)
@@ -424,6 +427,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             CurrentModelDisplay = keptModelDisplay;
             CurrentModel = keptModelRef;
             CurrentSessionInfo = keptSessionInfo;
+            AgentCatalog = keptAgentCatalog;
         }
 
         var origin = new AgentSwitchOrigin(source, revision, sessionId, selectionGeneration);
@@ -467,7 +471,13 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         }
 
         UpdateControls();
-        _ = ReloadAsync(origin, surfaceProtection: true);
+        InitialMetadataRead = ReloadAfterFrameAsync(origin, transcriptFrame ?? Task.CompletedTask);
+    }
+
+    private async Task ReloadAfterFrameAsync(AgentSwitchOrigin origin, Task transcriptFrame)
+    {
+        await transcriptFrame.ConfigureAwait(true);
+        if (IsOriginCurrent(origin)) await ReloadAsync(origin, surfaceProtection: true).ConfigureAwait(true);
     }
 
     /// <summary>清空上下文：取消在途操作、丢弃迟到结果、释放自有客户端、清 UI。绝不释放 App 共享 client。</summary>
@@ -529,6 +539,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             }
 
             var data = agents.Data ?? new List<OpenCodeAgentInfo>();
+            AgentCatalog = data;
             ApplyAgents(data, session.Agent);
             ApplyModel(session.Model);
             UpdateControls();
@@ -998,6 +1009,8 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         CurrentModel = null;
         ModelChoices = Array.Empty<OpenCodeModelInfo>();
         CurrentSessionInfo = null;
+        AgentCatalog = null;
+        InitialMetadataRead = Task.CompletedTask;
         _statusText.Text = string.Empty;
         _progress.IsActive = false;
         HideRecoveryConfirm();

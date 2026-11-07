@@ -2,6 +2,8 @@
 
 本文档全面描述 FluentCode 与 OpenCode / opencode-qol 后端之间的通信契约，包括 HTTP REST 接口、SSE 事件流、认证与数据安全、交互仲裁门（Gate）、离线浏览器协议以及 PTY 终端流传输。
 
+展示契约已适配 **opencode-qol v2.2.5-qol.2 / oh-my-opencode-slim 3.0.7**；沿用 OpenCode V2 与现有 PTY 协议，不新增调用或委派通道。
+
 ---
 
 ## 1. 服务发现与认证模型
@@ -35,6 +37,7 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 | 方法 | 路径 | 主要参数 / 请求体 | 预期响应 | 核心语义与约束 |
 |---|---|---|---|---|
 | `GET` | `api/location` | 可选 `location[directory]` | `Location.PublicInfo` | 查询工作区状态与运行环境信息 |
+| `GET` | `api/agent` | `location[directory]` | `{ location, data: Agent.Info[] }` | 提供智能体身份、模式、颜色与有序权限规则 |
 | `GET` | `api/session` | `limit`, `order`, `search`, `parentID`, `cursor` | `{ data: Session.Info[], cursor }` | 分页拉取会话列表；游标（cursor）不透明 |
 | `POST` | `api/session` | `{ parentID?, title?, agent?, model?, location? }` | `{ data: Session.Info }` | 创建新会话 |
 | `POST` | `api/session/{id}/prompt` | `{ text, files?, agents?, skills? }` | `{ data: Session.Inbox.User }` | **仅代表服务端接纳并排程输入，不代表模型执行完毕** |
@@ -43,6 +46,12 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 | `GET` | `api/session/{id}/inbox` | — | `{ data: Inbox.Info[] }` | 查询当前排队中尚未处理的输入条目 |
 | `GET` | `api/session/{id}/permission` | — | `{ data: Permission.Request[] }` | 查询当前等待用户审批的敏感权限请求 |
 | `POST` | `api/session/{id}/command` | `{ name, text }` | `204 No Content` | 执行斜杠命令或自定义扩展指令 |
+
+### 智能体提及与 OMO 汇报
+- Agent.Info 保留 `id`, `name`, `model`, `request`, `system`, `description`, `mode`, `hidden`, `color`, `steps`, `permissions`。`permissions` 是有序的 `{ action, resource, effect }` 规则数组；OMO 的 `permission.task` 在 V2 中映射为 `action: "subagent"`，`resource` 匹配子智能体 ID。当前主智能体的最后一条匹配规则决定候选可见性，动作与资源支持 `*`，`deny` 隐藏，`allow` / `ask` 保留；没有当前主智能体或匹配规则时保留原候选，服务端继续负责授权。只筛选非隐藏的 `subagent` / `all` 智能体，不筛选 Skill，也不硬编码主智能体的允许名单。
+- `task_report` 的参数为 `kind: "progress" | "escalation"` 与经过修剪、非空、最多 2000 字符的 `message`。两个字符串结果仅说明已向主会话排队（可选“未唤醒”）；详情译为中文并保留“主会话尚未确认处理”，不据此确认子任务结束。
+- 主会话的合成文本 `<subagent-update id="uuid" kind="progress|escalation">` 包含 `From @agent (session child-id):` 与完整消息，末尾附有 `SLIM_INTERNAL_INITIATOR` 标记。有效更新复用内部提示行与现有子会话导航；缺少或异常的 UUID、类型、来源、子会话或闭合标签，以及空白 / 超长消息，回退为通用内部消息，不进入异步完成通知的状态或成功计数。
+- `task_status` / `task_cancel` 同时读取 V2 `sessionID` 和旧 `task_id`，复用已知子会话的智能体 / 标题。缺失、未知、`(unconfirmed)` 或明确不确定的状态不作为终态成功；不根据自由文本推断子任务完成。
 
 ### 附件规范（Attachments）
 在发送 Prompt 时，客户端支持挂载文件附件：

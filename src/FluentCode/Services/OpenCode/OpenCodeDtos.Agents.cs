@@ -38,6 +38,7 @@ public sealed record OpenCodeAgentInfo
     [JsonPropertyName("steps")]
     public double? Steps { get; init; }
 
+    /// <summary>V2 Rule[]: action/resource/effect. OMO permission.task is action=subagent; source order is significant.</summary>
     [JsonRequired, JsonPropertyName("permissions")]
     public JsonElement Permissions { get; init; }
 

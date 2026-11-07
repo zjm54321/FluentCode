@@ -55,6 +55,7 @@ internal sealed partial class OpenCodeAgentSelector
     private string? CurrentModelDisplay;
     private OpenCodeModelRef? CurrentModel => _pendingModel ?? _observedModel;
     private OpenCodeSessionInfo? CurrentSessionInfo;
+    private IReadOnlyList<OpenCodeAgentInfo>? AgentCatalog; // Accepted catalog from the extracted production ReloadAsync.
     private IReadOnlyList<OpenCodeModelInfo> ModelChoices = Array.Empty<OpenCodeModelInfo>();
     private event EventHandler? DisplayChanged;
     private string _status = "";

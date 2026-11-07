@@ -480,6 +480,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         OpenCodeToolKind.Subagent => OpenCodeStepRunPresentation.SubagentGlyph,
         OpenCodeToolKind.Question => "\uE897",
         OpenCodeToolKind.Todo => "\uE9D5",
+        OpenCodeToolKind.Report => "\uE8F2",
         _ => "\uE90F",
     };
 
@@ -511,7 +512,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         }
 
         // B14: unrecovered failure = whole-row red semantic (background + border + icon + text + "失败" label).
-        var chrome = OpenCodeToolRowChrome.For(model.Status);
+        var chrome = OpenCodeToolRowChrome.For(model.Status, model.IsEscalation);
         if (chrome.IsFailure)
         {
             _summaryText.Text = chrome.ComposeSummary(_summaryText.Text);
@@ -520,6 +521,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         // 非零退出码用危险色突出；其余摘要为次要色。
         var summaryStyle = chrome.IsFailure || (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0)
             ? OpenCodeToolTheme.Text(OpenCodeToolTheme.Critical, OpenCodeInteractionUi.CaptionStyleKey)
+            : model.IsEscalation ? OpenCodeToolTheme.Text(OpenCodeToolTheme.Caution, OpenCodeInteractionUi.CaptionStyleKey)
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         OpenCodeToolTheme.Apply(_summaryText, summaryStyle);
         // Failure text keeps critical chrome; successful processed tool names/targets recede with their group.

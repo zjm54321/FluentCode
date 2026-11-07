@@ -166,6 +166,7 @@ namespace FluentCode.Pages
         public new double ActualWidth => 800;
         public new double ActualHeight => 600;
         internal readonly Queue<Task> MessageLoads = new();
+        internal readonly Dictionary<string, List<OpenCodeMessage>> FixtureMessageWindows = new(StringComparer.Ordinal);
         internal TaskCompletionSource<string> LoadEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly List<string> Tracked = new();
         internal readonly List<OpenCodeNavigationStatus> NavigationStatuses = new();
@@ -227,6 +228,12 @@ namespace FluentCode.Pages
             _messageHistoryBoundaryKnown = true;
             _messageHistoryNeedsState = false;
             LoadEntered.TrySetResult(_selectedSessionId ?? string.Empty);
+            if (_selectedSessionId is { } id && FixtureMessageWindows.TryGetValue(id, out var messages))
+            {
+                ApplyRefreshedMessages(messages, null, explicitRefresh: false);
+                _messageWindowAccepted = true;
+                _firstMessagesLoading = false;
+            }
             return MessageLoads.Count == 0 ? Task.CompletedTask : MessageLoads.Dequeue();
         }
         private void RaiseSessionTracked(string id, OpenCodeSessionTrackReason reason) => Tracked.Add(id);

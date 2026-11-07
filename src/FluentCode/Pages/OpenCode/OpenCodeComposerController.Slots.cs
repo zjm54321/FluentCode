@@ -7,7 +7,12 @@ namespace FluentCode.Pages.OpenCode;
 internal sealed partial class OpenCodeComposerController
 {
     // Copies the ordered reference list, not payloads. StoredFile and its bytes remain private and immutable.
-    private sealed record SlotContents(Guid Draft, string Text, string? Command, StoredFile[] Files, OpenCodePromptContext[] Contexts);
+    private sealed record SlotContents(Guid Draft, string Text, string? Command, StoredFile[] Files, OpenCodePromptContext[] Contexts)
+    {
+        internal OpenCodeComposerLinkSpan[] Links { get; init; } = Array.Empty<OpenCodeComposerLinkSpan>();
+        internal OpenCodeComposerImageSpan[] Images { get; init; } = Array.Empty<OpenCodeComposerImageSpan>();
+        internal int ImageHighWater { get; init; }
+    }
 
     internal OpenCodeComposerSlotData CreateEmptySlotData()
         => OpenCodeComposerSlotData.Wrap(new SlotContents(Guid.NewGuid(), string.Empty, null, Array.Empty<StoredFile>(), Array.Empty<OpenCodePromptContext>()));
@@ -19,7 +24,8 @@ internal sealed partial class OpenCodeComposerController
             data = null;
             // Read-only data recovery is allowed even after source revocation. This is NOT CaptureDraft authority.
             if (expected != Token) return false;
-            data = OpenCodeComposerSlotData.Wrap(new SlotContents(_draft, _text, _command, _files.ToArray(), _contexts.ToArray()));
+            data = OpenCodeComposerSlotData.Wrap(new SlotContents(_draft, _text, _command, _files.ToArray(), _contexts.ToArray())
+                { Links = _links.ToArray(), Images = _images.ToArray(), ImageHighWater = _imageHighWater });
             return true;
         }
     }
@@ -58,6 +64,7 @@ internal sealed partial class OpenCodeComposerController
                 if (contents is not null) _files.AddRange(contents.Files);
                 _contexts.Clear();
                 if (contents is not null) _contexts.AddRange(contents.Contexts);
+                ResetChips(contents?.Links, contents?.Images, contents?.ImageHighWater ?? 0);
                 _origin = binding is not null && HasDraft ? binding : null;
                 next = Token;
                 return true;

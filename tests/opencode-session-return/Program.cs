@@ -24,6 +24,7 @@ internal static partial class Program
         ReasoningStatusLifecycle();
         CompactionSummaryRow();
         SubagentCompletionNotices();
+        SubagentUpdates();
         PtyCompletionNotices();
         GroupFinalizesWhenFollowed();
         TranscriptMessageMenus();
@@ -33,6 +34,8 @@ internal static partial class Program
         await NotificationParentAndFences();
         await ReturnRacesGateAndAcknowledgements();
         BlankTabRebuild();
+        RefreshedWindowProjection();
+        await DenseCachedSwitch(args[0]);
         Console.WriteLine($"PASS: session-return + child-chat lifecycle, {_assertions} assertions; real linked page glue/navigation/client/ancestry/gate/ACK helper; fake HTTP/inert UI.");
         Console.WriteLine("BOUNDARIES: native child popup, parent message-load body, agent/recovery widgets and App ACK transport are stubs; real XAML layout and App POST reconciliation are not tested.");
     }

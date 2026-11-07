@@ -279,6 +279,7 @@ public sealed partial class SettingsView : UserControl
         {
             _runInBackgroundToggle.IsOn = _settings.RunInBackground;
             ApplyMotionToUi();
+            ApplyLinkChipsToUi();
             ApplyThemeToUi();
             ApplyFontsToUi();
             _terminalAppearance?.Apply(_settings.TerminalAppearance);

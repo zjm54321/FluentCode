@@ -47,6 +47,16 @@ internal static class Program
         Check(overlay.Contains("toolbar.ActualWidth < 560") && overlay.Contains("back.IsEnabled = _page?.CanGoBack"), "STATIC narrow single-row navigation overflow retains actions");
         var preview = Read("Pages/OpenCode/OpenCodeBrowserPreviewView.cs"); var web = Read("Pages/OpenCode/OpenCodeBrowserPreviewWebContent.cs");
         Check(!preview.Contains("_page.View") && !web.Contains("_page.Core") && web.Contains("View.EnsureCoreWebView2Async") && web.Contains("WebResourceRequested"), "STATIC file previews retain their own local-only embedded renderer");
+        Check(!web.Contains("NavigateToString") && web.Contains("core.Navigate(_resources!.DocumentUrl)") && web.Contains("GetDeferral"), "STATIC preview navigates to its virtual origin, never the canceled data document");
+        Check(preview.Contains("_readError = ex.Message") && preview.Contains("if (_readError is not null)"), "STATIC both render and source selection show read failures");
+        var previewComposition = Read("Pages/OpenCodeBrowserPreview.Composition.cs");
+        Check(previewComposition.Contains("workspace.Pages.OfType<OpenCodeBrowserPage>().Any") && previewComposition.Contains("SamePath(page.PreviewPath, previewPath)")
+            && preview.Contains("resourceReader(page.PreviewPath!, path, ct)"), "STATIC only an existing explicit preview supplies the resource reader's trusted root");
+        Check(previewComposition.Contains("ReadBrowserPreviewAsync(plan.Directory, plan.Path") && !previewComposition.Contains("new FileStream"), "STATIC local, WSL and remote preview bytes use the same scoped fs.read transport");
+        Check(!Read("Services/OpenCode/OpenCodeClient.Browser.cs").Contains("using FluentCode.Services.OpenCode.Browser;", StringComparison.Ordinal)
+            && Read("Services/OpenCode/OpenCodeBrowserTransportErrors.cs").Contains("namespace FluentCode.Services.OpenCode;", StringComparison.Ordinal), "STATIC root-service globbing runners do not need the Browser subfolder for transport errors");
+        _checks += await PreviewResourceTests.RunAsync();
+        _checks += ChromePresentationTests.Run(Read);
         Console.WriteLine($"PASS {_checks} browser settings persistence/validation and explicitly static UI composition checks");
     }
 }

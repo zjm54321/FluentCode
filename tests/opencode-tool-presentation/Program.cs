@@ -6,7 +6,7 @@ using System.Text.Json;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 
-internal static class Program
+internal static partial class Program
 {
     private static int _checks;
     private static void Check(bool condition, string name)
@@ -18,6 +18,11 @@ internal static class Program
     private static void Main(string[] args)
     {
         ToolNamingAndDetails();
+        Omo307ReportsAndControls();
+        AgentMentionScopesAndValidator();
+        AgentIdentityTable();
+        SidebarPrimaryScope();
+        SidebarModelNames();
         SessionToolViews();
         QuestionAndDuration();
         RedesignSourceContracts(args[0]);
@@ -25,7 +30,7 @@ internal static class Program
         PreviewThemeAndPlacement(args[0]);
         LargeViewFitsContent(args[0]);
         UnifiedRunningIndicator(args[0]);
-        Console.WriteLine($"PASS {_checks} focused tool naming, glyph, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, header-affordance, preview theme/placement and unified running-indicator checks.");
+        Console.WriteLine($"PASS {_checks} focused tool naming, glyph, OMO reports/controls/mention scopes, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, header-affordance, preview theme/placement and unified running-indicator checks.");
     }
 
     private const string ListOutput = "[\n  {\n    \"id\": \"ses_a1\",\n    \"title\": \"Fix login\",\n    \"directory\": \"C:\\\\src\\\\app\",\n    \"updated\": 1700000000000\n  },\n"

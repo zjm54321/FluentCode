@@ -43,6 +43,12 @@ internal sealed record OpenCodeComposerDraftBasis(
     string Text, string? ServerCommand, bool HasFiles, SessionControlDraft Draft, string? Delivery = null)
 {
     internal IReadOnlyList<OpenCodePromptContext> Contexts { get; init; } = Array.Empty<OpenCodePromptContext>();
+    /// <summary>What is sent: <see cref="Text"/> with link chips restored to their full URLs.</summary>
+    internal string SendText { get => _sendText ?? Text; init => _sendText = value; }
+    private readonly string? _sendText;
+    /// <summary><see cref="Contexts"/> re-based onto <see cref="SendText"/>.</summary>
+    internal IReadOnlyList<OpenCodePromptContext> SendContexts { get => _sendContexts ?? Contexts; init => _sendContexts = value; }
+    private readonly IReadOnlyList<OpenCodePromptContext>? _sendContexts;
 }
 internal sealed record OpenCodeComposerSendContext(
     SessionControlOrigin Origin, OpenCodeComposerDraftBasis Basis,
@@ -134,6 +140,13 @@ public sealed record OpenCodeComposerSnapshot(OpenCodeComposerToken Token, strin
     public OpenCodeComposerCatalogHandle? CatalogHandle { get; init; }
     /// <summary>The draft's chosen "@" contexts with their exact spans in <see cref="Text"/> (presentation/atomic editing only).</summary>
     internal IReadOnlyList<OpenCodePromptContext> Mentions { get; init; } = Array.Empty<OpenCodePromptContext>();
+    /// <summary>Link chips: label spans in <see cref="Text"/> standing for full URLs (presentation, send and copy).</summary>
+    internal IReadOnlyList<OpenCodeComposerLinkSpan> Links { get; init; } = Array.Empty<OpenCodeComposerLinkSpan>();
+    /// <summary>"[Image N]" spans bound to attachment rows.</summary>
+    internal IReadOnlyList<OpenCodeComposerImageSpan> Images { get; init; } = Array.Empty<OpenCodeComposerImageSpan>();
+    /// <summary>The text the model receives (link chips expanded). Equals <see cref="Text"/> without link chips.</summary>
+    internal string SendText { get => _sendText ?? Text; init => _sendText = value; }
+    private readonly string? _sendText;
     /// <summary>Active draft on the blank “新会话” tab (unbound binding): session-dependent actions explain “开始会话后可用”.</summary>
     public bool IsUnboundDraft { get; init; }
     public OpenCodeComposerClientIntent? ClientIntent { get; init; }

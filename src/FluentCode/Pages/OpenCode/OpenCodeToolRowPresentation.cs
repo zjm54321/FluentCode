@@ -29,6 +29,7 @@ internal enum OpenCodeToolKind
     Subagent,
     Todo,
     Browser,
+    Report,
 }
 
 /// <summary>工具行状态（严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值；其余为 Unknown）。</summary>
@@ -64,9 +65,11 @@ internal sealed record OpenCodeToolRowChrome(
 
     private static readonly OpenCodeToolRowChrome Failure = new(true, CriticalBackgroundKey, CriticalKey, 1, CriticalKey, CriticalKey, false, FailureText);
     private static readonly OpenCodeToolRowChrome Normal = new(false, null, null, 0, SecondaryIconKey, null, true, null);
+    private static readonly OpenCodeToolRowChrome Caution = new(false, null, null, 0, "SystemFillColorCautionBrush", "SystemFillColorCautionBrush", true, null);
 
     /// <summary>Chrome for a row status (null = chip without status).</summary>
-    internal static OpenCodeToolRowChrome For(OpenCodeToolRowStatus? status) => status == OpenCodeToolRowStatus.Error ? Failure : Normal;
+    internal static OpenCodeToolRowChrome For(OpenCodeToolRowStatus? status, bool escalation = false)
+        => status == OpenCodeToolRowStatus.Error ? Failure : escalation ? Caution : Normal;
 
     /// <summary>Right-side summary: failure label first, then the existing summary (if any).</summary>
     internal string ComposeSummary(string summary)
@@ -248,6 +251,7 @@ internal sealed class OpenCodeToolRowModel
     public bool OpensTerminalView => Kind == OpenCodeToolKind.Shell && !string.IsNullOrEmpty(ShellId);
     public string? GlyphOverride { get; init; }
     public string? AgentName { get; init; }
+    public bool IsEscalation { get; init; }
     public bool CanMoveToBackground => IsActive && !IsBackground && Kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent;
 
     public bool IsActive => Status is OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming;
@@ -257,7 +261,7 @@ internal sealed class OpenCodeToolRowModel
     public JsonElement? State { get; init; }
     /// <summary>Raw id pill for unrecognised snake_case tools only; catalogued tools (session_*, pty_*) already show a real name.</summary>
     public string RawToolLabel => ToolName.Contains('_', StringComparison.Ordinal)
-        && ToolName is not ("apply_patch" or "task_status" or "task_result" or "task_message" or "task_revive" or "task_cancel" or "wait_for_user" or "acp_status" or "search_context" or "acp_run")
+        && ToolName is not ("apply_patch" or "task_status" or "task_result" or "task_message" or "task_report" or "task_revive" or "task_cancel" or "wait_for_user" or "acp_status" or "search_context" or "acp_run")
         && OpenCodeExecuteInnerCatalog.FindNonFile(ToolName) is null
         ? ToolName : string.Empty;
 }
@@ -334,6 +338,7 @@ internal static class OpenCodeToolRowPresentation
         "question" => OpenCodeToolKind.Question,
         "subagent" or "task" => OpenCodeToolKind.Subagent,
         "todowrite" or "todoread" => OpenCodeToolKind.Todo,
+        "task_report" => OpenCodeToolKind.Report,
         _ => OpenCodeToolKind.Other,
     };
 
@@ -362,6 +367,7 @@ internal static class OpenCodeToolRowPresentation
         "absorb" => "提炼工具结果",
         "acp_run" => "外部智能体（ACP）",
         "task_message" => "给子智能体发消息",
+        "task_report" => "汇报",
         "task_status" => "查看子智能体状态",
         "task_result" => "获取子智能体结果",
         "task_revive" => "恢复子智能体",
@@ -380,6 +386,28 @@ internal static class OpenCodeToolRowPresentation
         "invalid" => "无效的工具调用",
         _ => DisplayRenamedTool(name),
     };
+
+    internal static string TaskReportName(string? kind) => kind switch
+    {
+        "progress" => "汇报进度",
+        "escalation" => "上报问题",
+        _ => "汇报",
+    };
+
+    internal static string TaskReportSummary(string? message)
+        => (message?.Trim() ?? string.Empty).Split(new[] { '\r', '\n' }, 2)[0];
+
+    internal static string? TaskReportDelivery(string? output)
+    {
+        if (output is null) return null;
+        var text = output.Trim();
+        if (!text.StartsWith("Update ", StringComparison.Ordinal)) return null;
+        const string suffix = " The host accepted the update; processing is not confirmed.";
+        if (text.EndsWith(" queued for the parent without waking it." + suffix, StringComparison.Ordinal))
+            return "已排队（未唤醒主会话）。主会话尚未确认处理。";
+        return text.EndsWith(" queued for the parent." + suffix, StringComparison.Ordinal)
+            ? "已排队。主会话尚未确认处理。" : null;
+    }
 
     private static string DisplayRenamedTool(string? name)
     {
@@ -469,6 +497,9 @@ internal static class OpenCodeToolRowPresentation
         var output = JoinTextOutput(state);
         var builtinModel = new OpenCodeToolRowModel { ToolName = part.Name?.Trim() ?? "", State = part.State, OutputText = output };
         var agentName = kind == OpenCodeToolKind.Subagent ? FirstString(input, "agent", "subagent_type") : null;
+        var reportKind = kind == OpenCodeToolKind.Report ? FirstString(input, "kind") : null;
+        var reportMessage = kind == OpenCodeToolKind.Report ? FirstString(input, "message")?.Trim() : null;
+        var reportDelivery = kind == OpenCodeToolKind.Report ? TaskReportDelivery(output) : null;
         var fileOutputs = new List<string>();
         if (state?.Content is { } contents)
         {
@@ -650,6 +681,13 @@ internal static class OpenCodeToolRowPresentation
                 break;
             }
 
+            case OpenCodeToolKind.Report:
+                name = TaskReportName(reportKind);
+                summary = TaskReportSummary(reportMessage);
+                // An accepted update is not a child completion or a parent processing receipt.
+                if (status == OpenCodeToolRowStatus.Completed) status = OpenCodeToolRowStatus.Unknown;
+                break;
+
             case OpenCodeToolKind.Question:
                 target = QuestionFallbackTitle(input);
                 var answers = ReadAnswers(metadata);
@@ -677,15 +715,19 @@ internal static class OpenCodeToolRowPresentation
                 }
                 if (OpenCodeToolDetailBuiltinData.Resolve(builtinModel) == OpenCodeBuiltinToolView.Companion)
                 {
-                    var child = OpenCodeToolDetailBuiltinData.Companion(builtinModel).SessionId;
+                    var companion = OpenCodeToolDetailBuiltinData.Companion(builtinModel);
+                    var child = companion.SessionId;
                     var related = child is null ? null : findChild?.Invoke(child);
-                    agentName = related?.Agent;
-                    if (part.Name is "task_status" or "task_result")
+                    agentName = related?.Agent ?? (companion.Values.TryGetValue("agent", out var reportedAgent) ? reportedAgent : null);
+                    if (part.Name is "task_status" or "task_result" or "task_cancel")
                         target = related is { } known
                             ? string.IsNullOrWhiteSpace(known.Agent) ? known.Description ?? target
                                 : char.ToUpperInvariant(known.Agent[0]) + known.Agent[1..] + (string.IsNullOrWhiteSpace(known.Description) ? "" : " · " + known.Description)
+                            : !string.IsNullOrWhiteSpace(agentName) ? char.ToUpperInvariant(agentName[0]) + agentName[1..]
                             : child is null ? target : child[..Math.Min(12, child.Length)];
                     else target = FirstLine(FirstString(input, "reason", "message", "prompt")) ?? target;
+                    if (part.Name is "task_status" or "task_cancel" && companion.Uncertain && status == OpenCodeToolRowStatus.Completed)
+                        status = OpenCodeToolRowStatus.Unknown;
                 }
                 break;
         }
@@ -747,6 +789,8 @@ internal static class OpenCodeToolRowPresentation
             OpenCodeToolRowStatus.Error => "出错",
             _ => "状态未识别",
         };
+        if (kind == OpenCodeToolKind.Report && reportDelivery is not null && status == OpenCodeToolRowStatus.Unknown)
+            statusText = "已排队 · 主会话尚未确认处理";
 
         string? errorText = null;
         if (status == OpenCodeToolRowStatus.Error)
@@ -769,6 +813,19 @@ internal static class OpenCodeToolRowPresentation
             ? BuildProperties(inputElement)
             : Array.Empty<OpenCodeToolProperty>();
         var outputProperties = TryParseStructuredOutput(output);
+        if (kind == OpenCodeToolKind.Report)
+        {
+            inputProperties = new[]
+            {
+                new OpenCodeToolProperty(0, "类型", reportKind switch { "progress" => "进度（progress）", "escalation" => "问题（escalation）", _ => reportKind ?? "未提供" }, OpenCodeToolPropertyKind.Text),
+                new OpenCodeToolProperty(0, "消息", reportMessage ?? "未提供", OpenCodeToolPropertyKind.Text),
+            };
+            if (reportDelivery is not null)
+            {
+                output = reportDelivery;
+                outputProperties = new[] { new OpenCodeToolProperty(0, "投递结果", reportDelivery, OpenCodeToolPropertyKind.Text) };
+            }
+        }
         if (kind == OpenCodeToolKind.Question)
         {
             // 提问详情：问题与所选回答的键值列表（不显示原始 JSON 或模型侧回执文本）。
@@ -829,8 +886,10 @@ internal static class OpenCodeToolRowPresentation
             AccessibleName = accessible.ToString(),
             IsBackground = background,
             GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph
+                : kind == OpenCodeToolKind.Report ? reportKind == "escalation" ? "\uE7BA" : "\uE8F2"
                 : OpenCodeExecuteInnerCatalog.FindNonFile(part.Name ?? string.Empty)?.Glyph,
             AgentName = agentName,
+            IsEscalation = reportKind == "escalation",
             ToolName = part.Name?.Trim() ?? string.Empty,
             State = part.State,
         };

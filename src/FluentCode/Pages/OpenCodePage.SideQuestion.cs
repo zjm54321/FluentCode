@@ -33,7 +33,7 @@ public sealed partial class OpenCodePage
     private bool TryHandleSideQuestionSubmission(OpenCodeComposerSnapshot snapshot)
     {
         if (snapshot.SelectedCommand is not null || snapshot.ClientIntent is not null
-            || !OpenCodeSideQuestionPolicy.TryParse(snapshot.Text, out var question)) return false;
+            || !OpenCodeSideQuestionPolicy.TryParse(snapshot.SendText, out var question)) return false;
         if (snapshot.Attachments.Count != 0)
         {
             ShowMessage(InfoBarSeverity.Warning, "/btw 不支持附件", "顺便问一句只发送文字问题；请先移除附件，草稿保持不变。");

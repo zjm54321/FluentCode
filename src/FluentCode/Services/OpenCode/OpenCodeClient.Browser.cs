@@ -27,14 +27,17 @@ public sealed partial class OpenCodeClient
                 LocationQuery(directory), content, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                // RpcErrorEncoded has a top-level type. Only retain known codes; never
-                // surface the error message/body (it may echo page data or credentials).
+                // Retain only known RPC types and (for tunnel.open) an allowlisted socket
+                // code. Raw server messages may contain page data or credentials.
                 string? code = null;
+                string? socketCode = null;
                 if ((int)response.StatusCode is 400 or 500)
                 {
                     try
                     {
                         using var error = JsonDocument.Parse(await ReadResponseBodyAsync(response.Content, timeout.Token).ConfigureAwait(false));
+                        if (method == "tunnel.open" && error.RootElement.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                            socketCode = OpenCodeBrowserTunnelOpenException.SocketCode(message.GetString());
                         if (error.RootElement.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String)
                             code = type.GetString() switch
                             {
@@ -49,7 +52,7 @@ public sealed partial class OpenCodeClient
                     }
                     catch (JsonException) { }
                 }
-                throw new OpenCodeBrowserRpcException((int)response.StatusCode, code);
+                throw new OpenCodeBrowserRpcException((int)response.StatusCode, code, socketCode);
             }
             using var document = JsonDocument.Parse(await ReadResponseBodyAsync(response.Content, timeout.Token).ConfigureAwait(false));
             if (document.RootElement.ValueKind != JsonValueKind.Object)
@@ -65,8 +68,9 @@ public sealed partial class OpenCodeClient
     }
 }
 
-public sealed class OpenCodeBrowserRpcException(int statusCode, string? code)
-    : OpenCodeException($"浏览器 RPC 失败（HTTP {statusCode}）。")
+public sealed class OpenCodeBrowserRpcException(int statusCode, string? code, string? socketCode = null)
+    : OpenCodeException($"浏览器 RPC 失败（HTTP {statusCode}）。" +
+        (OpenCodeBrowserTunnelOpenException.SocketCode(socketCode) is { } safeCode ? "服务端连接错误：" + safeCode + "。" : ""))
 {
     public int StatusCode { get; } = statusCode;
     public string? Code { get; } = code;

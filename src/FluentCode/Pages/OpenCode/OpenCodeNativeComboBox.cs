@@ -5,7 +5,6 @@ using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -161,10 +160,8 @@ public sealed class OpenCodeNativeComboBox : ComboBox
 
     private static FontIcon AgentGlyph(OpenCodeAgentPickerRow row)
     {
-        var glyph = new FontIcon { Glyph = OpenCodeAgentIcons.Glyph(row.Id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
-        glyph.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FontIcon\"><Setter Property=\"Foreground\" Value=\"{ThemeResource AccentTextFillColorPrimaryBrush}\"/></Style>");
-        if (OpenCodeAgentPresentation.Color(row.Color) is { } color)
-            glyph.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        var glyph = OpenCodeAgentIconTheme.Create(row.Id, row.Color, 16);
+        glyph.VerticalAlignment = VerticalAlignment.Center;
         return glyph;
     }
 

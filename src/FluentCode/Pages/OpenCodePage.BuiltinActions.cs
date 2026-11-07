@@ -125,7 +125,7 @@ public sealed partial class OpenCodePage
                     break;
                 case OpenCodeComposerClientActionKind.SideQuestion:
                     // A9: only asks for the question; the generate request then runs detached from this action.
-                    await AskNativeSideQuestionAsync(owner, snapshot.Text);
+                    await AskNativeSideQuestionAsync(owner, snapshot.SendText);
                     break;
             }
         }

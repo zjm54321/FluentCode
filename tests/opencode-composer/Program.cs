@@ -135,6 +135,9 @@ internal static partial class Program
         Splash();
         await SideQuestions();
         await CharTriggers();
+        var beforeChips = checks;
+        await LinkChips();
+        Console.WriteLine($"link/image chips: {checks - beforeChips} assertions");
         Console.WriteLine($"PASS: original {originalChecks} + sync {syncChecks} + legacy {legacyChecks} + builtin {builtinChecks} + continuation {continuationChecks} + slots {slotChecks} + splash {checks - originalChecks - syncChecks - legacyChecks - builtinChecks - continuationChecks - slotChecks}, {checks} assertions; real Core/EditorSync/coordinator/gate/transport, fake HTTP only; ordinary Page/history/native not executed.");
     }
 

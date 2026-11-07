@@ -337,6 +337,7 @@ namespace FluentCode.Pages.OpenCode
         private long _displayReadVersion;
         private string? CurrentModelDisplay { get; set; }
         private OpenCodeSessionInfo? CurrentSessionInfo { get; set; }
+        private IReadOnlyList<OpenCodeAgentInfo>? AgentCatalog { get; set; } // Accepted catalog from the extracted production ReloadAsync.
         private IReadOnlyList<OpenCodeModelInfo> ModelChoices { get; set; } = Array.Empty<OpenCodeModelInfo>();
         private readonly Dictionary<(string Source, string Session), (string? Agent, OpenCodeModelRef? Model)> _pendingSelections = new();
         private AgentSwitchOrigin? _currentOrigin;

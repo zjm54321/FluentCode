@@ -28,14 +28,14 @@ $arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' 
 $sources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeWorkingFamily.cs"
-foreach ($name in @('OpenCodeComposerCharTriggers.cs', 'OpenCodeComposerComposition.cs', 'OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerSplash.cs', 'OpenCodeSessionControlCoordinator.cs')) {
+foreach ($name in @('OpenCodeComposerCharTriggers.cs', 'OpenCodeAgentMentionScope.cs', 'OpenCodeComposerComposition.cs', 'OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerController.Chips.cs', 'OpenCodeLinkChipParser.cs', 'OpenCodeFaviconCache.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerSplash.cs', 'OpenCodeSessionControlCoordinator.cs')) {
     $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/$name"
 }
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
     $sources += Get-Item "$repo/src/FluentCode/Services/Notifications/$name"
 }
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeSideQuestion.cs"
-foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'ImeComposition.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs', 'SideQuestions.cs', 'CharTriggers.cs')) {
+foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'ImeComposition.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs', 'SideQuestions.cs', 'CharTriggers.cs', 'LinkChips.cs')) {
     $sources += Get-Item (Join-Path "$repo/tests/opencode-composer" $name)
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }

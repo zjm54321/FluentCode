@@ -9,8 +9,8 @@ using System.Xml.Linq;
 namespace FluentCode.Services.OpenCode.Browser;
 
 public enum OpenCodeBrowserPreviewKind { Source, Markdown, Mermaid, Html, Image, Svg, Csv, Tsv, Pdf, Audio, Video, Font }
-public enum OpenCodeBrowserPreviewRoute { Http, WslMapping, Unavailable }
-public sealed record OpenCodeBrowserPreviewReadPlan(OpenCodeBrowserPreviewRoute Route, string Path, string? Reason = null);
+public enum OpenCodeBrowserPreviewRoute { Http, Unavailable }
+public sealed record OpenCodeBrowserPreviewReadPlan(OpenCodeBrowserPreviewRoute Route, string Directory, string Path, string? Reason = null);
 public sealed record OpenCodeBrowserPreviewContent(byte[] Bytes, string? Mime = null);
 public sealed record OpenCodeBrowserPreviewTable(IReadOnlyList<string[]> Rows, int RemainingRows, bool CellsTruncated);
 
@@ -58,22 +58,37 @@ public static class OpenCodeBrowserPreviewPolicy
         var text = new UTF8Encoding(false, true).GetString(bytes);
         return text.StartsWith('\uFEFF') ? text[1..] : text;
     }
-    public static OpenCodeBrowserPreviewReadPlan Plan(string directory, string path, bool wsl)
+    /// <summary>Only an explicit preview request selects an fs.read location, never an asset URL.</summary>
+    public static OpenCodeBrowserPreviewReadPlan Plan(string directory, string path)
     {
-        if (string.IsNullOrWhiteSpace(directory) || string.IsNullOrWhiteSpace(path) || path.Contains("://", StringComparison.Ordinal) || wsl && path.Contains('\\'))
-            return new(OpenCodeBrowserPreviewRoute.Unavailable, path, "服务器路径无效；不能使用 file:// 或网络地址");
-        foreach (var ch in path) if (char.IsControl(ch)) return new(OpenCodeBrowserPreviewRoute.Unavailable, path, "服务器路径包含控制字符");
-        var root = Normalize(directory);
-        var absolute = path.StartsWith('/') || path.Length > 1 && path[1] == ':';
-        var resolved = Normalize(absolute ? path : root + "/" + path);
-        var comparison = root.Length > 1 && root[1] == ':' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var prefix = root.TrimEnd('/') + "/";
-        if (resolved.StartsWith(prefix, comparison) && resolved.Length > prefix.Length)
-            return new(OpenCodeBrowserPreviewRoute.Http, resolved[prefix.Length..]);
-        if (wsl && resolved.StartsWith('/')) return new(OpenCodeBrowserPreviewRoute.WslMapping, resolved);
-        return new(OpenCodeBrowserPreviewRoute.Unavailable, resolved,
-            "fs.read 只允许读取会话目录内的文件；当前连接没有可用于目录外文件的 WSL 主机路径映射");
+        if (!ValidPath(directory) || !ValidPath(path) || !Absolute(directory.Replace('\\', '/')) || path.EndsWith('/') || path.EndsWith('\\'))
+            return new(OpenCodeBrowserPreviewRoute.Unavailable, directory, path, "服务器文件路径无效；不能使用网络地址、控制字符或 .. 路径");
+        var resolved = Resolve(directory, path);
+        var slash = resolved.LastIndexOf('/');
+        if (slash < 0 || resolved[(slash + 1)..] is "" or ".")
+            return new(OpenCodeBrowserPreviewRoute.Unavailable, directory, path, "预览路径必须指向文件");
+        var parent = slash == 0 ? "/" : resolved[..slash];
+        if (parent.Length == 2 && parent[1] == ':') parent += "/";
+        return new(OpenCodeBrowserPreviewRoute.Http, parent, resolved[(slash + 1)..]);
     }
+    public static OpenCodeBrowserPreviewReadPlan ResourcePlan(string directory, string previewPath, string resourcePath)
+    {
+        var preview = Plan(directory, previewPath);
+        if (preview.Route == OpenCodeBrowserPreviewRoute.Unavailable) return preview;
+        if (!ValidPath(resourcePath)) return new(OpenCodeBrowserPreviewRoute.Unavailable, preview.Directory, resourcePath, "资源路径无效或包含 ..");
+        var resolved = Resolve(directory, resourcePath);
+        var prefix = preview.Directory.TrimEnd('/') + "/";
+        var comparison = preview.Directory.Length > 1 && preview.Directory[1] == ':' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!resolved.StartsWith(prefix, comparison) || resolved.Length <= prefix.Length)
+            return new(OpenCodeBrowserPreviewRoute.Unavailable, preview.Directory, resourcePath, "资源路径超出明确预览文件的目录");
+        // Keep the original location for nested assets: the server's realpath check then
+        // also rejects symlinks that leave this directory. Never re-root at an asset's parent.
+        return new(OpenCodeBrowserPreviewRoute.Http, preview.Directory, resolved[prefix.Length..]);
+    }
+    private static bool Absolute(string path) => path.StartsWith('/') || path.Length > 2 && char.IsLetter(path[0]) && path[1] == ':' && path[2] == '/';
+    private static bool ValidPath(string path) => !string.IsNullOrWhiteSpace(path) && !path.Contains("://", StringComparison.Ordinal)
+        && !path.Any(char.IsControl) && !path.Replace('\\', '/').Split('/').Contains("..", StringComparer.Ordinal);
+    private static string Resolve(string directory, string path) => Normalize(Absolute(path.Replace('\\', '/')) ? path : directory.TrimEnd('/', '\\') + "/" + path);
     private static string Normalize(string path)
     {
         path = path.Replace('\\', '/');

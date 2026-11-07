@@ -158,7 +158,8 @@ public sealed partial class OpenCodePage
     private void InitializeComposerMentionChips()
     {
         if (_composerView is not { } view || _composerController is not { } controller) return;
-        _mentionChips = new OpenCodeComposerMentionChips(Composer, ComposerMentionLayer, () => view.MentionSpans, view.MentionColor);
+        _mentionChips = new OpenCodeComposerMentionChips(Composer, ComposerMentionLayer, () => view.MentionSpans, view.MentionColor,
+            () => view.LinkSpans, () => view.ImageSpans);
         // Context spans change on the controller (choose / edit / undo restore); repaint on the UI thread.
         controller.SnapshotChanged += (_, _) => DispatcherQueue.TryEnqueue(() => _mentionChips.Refresh());
     }

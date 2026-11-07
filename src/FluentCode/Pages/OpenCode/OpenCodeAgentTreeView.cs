@@ -250,9 +250,9 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             var children = OpenCodeAgentTreeProjection.VisibleInstances(agent.Children, _showAll);
             var rows = children.Select(instance => Row(instance.Title, instance.Model, instance.Status, instance, agent)).ToArray();
             var working = agent.Children.Count(c => c.Status == OpenCodeTreeStatus.Running);
-            Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Name),
+            Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Id),
                 OpenCodeAgentTreeProjection.CountLabel(working, agent.Children.Count, _showAll), rows,
-                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty), agent.Color, agent.Name);
+                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty), agent.Color, agent.Id);
         }
         var shells = OpenCodeAgentTreeProjection.VisibleShells(_shells, _showAll);
         if (shells.Count > 0)
@@ -344,7 +344,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         if (agent is not null)
         {
-            var agentIcon = OpenCodeAgentIconTheme.Create(agent.Name, agent.Color);
+            var agentIcon = OpenCodeAgentIconTheme.Create(agent.Id, agent.Color);
             Grid.SetColumn(agentIcon, 1);
             row.Children.Add(agentIcon);
         }

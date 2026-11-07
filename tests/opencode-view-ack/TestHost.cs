@@ -90,6 +90,9 @@ namespace FluentCode.Pages.OpenCode
         internal int InvalidatedListeners => IdleViewportInvalidated?.GetInvocationList().Length ?? 0;
         internal void ApplyMessages(IReadOnlyList<OpenCodeMessage> rows)
         { RenderVersion++; _candidate = null; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
+        internal bool TryApplyRefreshedMessages(IReadOnlyList<OpenCodeMessage> rows) => false; // Geometry still requires explicit full apply/supply.
+        internal long EstimateMessageBytes(OpenCodeMessage message)
+            => 256 + 2L * System.Text.Json.JsonSerializer.Serialize(message, OpenCodeJson.Options).Length + 2L * (message.InstructionBody?.Length ?? 0);
         internal void ClearMessages() => ApplyMessages(Array.Empty<OpenCodeMessage>());
         internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) { Captures++; return new(RenderVersion, _candidate); }
         internal void SupplyGeometry(double? watermark, double x = 0)
@@ -155,6 +158,8 @@ namespace FluentCode.Pages
         private void UpdateEmptyState() { }
         private void UpdateComposerButtons() { }
         private void BindComposer() { } // Native composer binding is outside this acknowledgement fixture.
+        private void RecordRetainedSwitchApply(long started) { } // Native switch timing is outside this acknowledgement fixture.
+        private void RecordRestSwitchApply(long started) { }
         private void CancelSessionOperations() { _sessionCts?.Cancel(); _sessionCts = null; }
         internal object Diagnostics => (_isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow,
             _refreshQueuedExplicit, _firstMessagesLoading, _messagesResponseEmpty, _messagesLoadError, _historyExecutionRebaseline);

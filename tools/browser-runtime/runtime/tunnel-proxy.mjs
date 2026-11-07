@@ -46,8 +46,13 @@ export async function createTunnelProxy(rpc) {
       return;
     }
     if (!lease || lease.abort.signal.aborted) { response.writeHead(503); response.end(); return; }
-    void forward(incoming, response, (target, signal) => connect(lease, target, signal)).catch(() => {
-      if (!response.headersSent) { response.writeHead(502); response.end(); }
+    void forward(incoming, response, (target, signal) => connect(lease, target, signal)).catch(error => {
+      if (!response.headersSent) {
+        const body = errorPage(incoming.url, error);
+        response.writeHead(502, {'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length,
+          'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'", Connection: 'close'});
+        response.end(body);
+      }
       else response.destroy();
     });
   });
@@ -97,8 +102,9 @@ export async function createTunnelProxy(rpc) {
         tunnel.pipe(socket);
         socket.resume();
       } finally { socket.off('close', cancel); }
-    })().catch(() => {
-      if (!socket.destroyed) socket.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+    })().catch(error => {
+      const body = errorPage(incoming.url, error);
+      if (!socket.destroyed) socket.end(Buffer.concat([Buffer.from(`HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n`), body]));
     });
   };
   server.on('connect', (incoming, socket, head) => upgrade(incoming, socket, head, true));
@@ -133,6 +139,11 @@ export async function createTunnelProxy(rpc) {
       await new Promise(resolve => server.close(resolve));
     },
   };
+}
+
+function errorPage(target, error) {
+  const escape = value => String(value).slice(0, 4096).replace(/[&<>"']/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch]));
+  return Buffer.from(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>服务端无法连接</title><style>body{font:16px system-ui;margin:48px;overflow-wrap:anywhere}pre{white-space:pre-wrap}</style><h1>服务端无法连接此页面</h1><p>${escape(target)}</p><pre>${escape(error?.message ?? error)}</pre><p>localhost 指向 OpenCode 服务端。请检查服务端的监听端口与网络。</p></html>`);
 }
 
 async function forward(incoming, response, connect) {

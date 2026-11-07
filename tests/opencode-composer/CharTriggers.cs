@@ -111,6 +111,11 @@ internal static partial class Program
         Check(found[0].Color == "#A1B2C3" && found[1].Color is null && found[2].Color is null, "agent rows carry the runtime colour for the picker-identical icon; skills none");
         var filtered = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "REVIEW", CancellationToken.None);
         Check(filtered.Count == 1 && filtered[0].Id == "review" && filtered[0].IsSkill, "case-insensitive context filtering");
+        uris.Clear();
+        var scoped = await OpenCodeComposerMentions.SearchAsync(f.Client, "/repo", "", CancellationToken.None, "primary");
+        Check(uris.Count == 2 && uris.All(u => u.Contains("location[directory]=/repo") && !u.Contains("/fs/"))
+            && scoped.Select(c => (c.Id, c.IsSkill)).SequenceEqual(found.Select(c => (c.Id, c.IsSkill))),
+            "primary-scoped lookup retains exact active directory for both catalogs");
 
         var queries = new OpenCodeComposerMentionQueries();
         var oldStarted = new TaskCompletionSource<CancellationToken>();
@@ -152,7 +157,10 @@ internal static partial class Program
             .All(removed => !view.Contains(removed)), "DD1 no discard entry or confirmation remains in the + menu or draft/recovery status");
         Check(!view.Contains("DiscardRequested") && !page.Contains("DiscardRequested") && !view.Contains("offerDiscard"),
             "DD1 discard-only event, page subscription and status offer wiring removed");
-        Check(page.Contains("_composerView.MentionSearchProvider = ComposerMentionSearch;") && page.Contains("OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct)"), "real provider wired to active binding directory");
+        // The fifth argument scopes agents; client and directory still come from the captured active binding.
+        Check(page.Contains("_composerView.MentionSearchProvider = ComposerMentionSearch;")
+            && page.Contains("OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct, ComposerMentionAgentId())"),
+            "real provider wired to active binding directory");
         Check(view.Contains("_attachItem.Click += (_, _) => RequestPick();") && page.Contains("_composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);"), "existing attachment picker handoff intact");
         Check(view.Contains("没有匹配的 agent 或 skill") && view.Contains("result.Error") && view.Contains("_mentionQueries.IsCurrent(result)"), "view exposes empty/error and rejects queued stale results");
         Check(view.Contains("trigger != _mentionTrigger") && view.Contains("_mentionArmed = false;"), "acceptance requires exact query and application writes disarm triggers");
@@ -197,7 +205,7 @@ internal static partial class Program
             "Undo restoring the identical text re-attaches the same context at the same span (view re-raises ContextChosen)");
         Check(view.Contains("RestoreUndoneMention();") && view.Contains("if (text != deleted.Before || !deleted.Mention.Matches(text)) return;")
             && view.Contains("editor.SelectedText = string.Empty;") && view.Contains("if (_editor is { SelectionLength: 0 } editor && !_composing && !_guardedWrite)")
-            && view.Contains("e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && TryDeleteMentionToken("),
+            && view.Contains("e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && (TryDeleteMentionToken(") && view.Contains("|| TryDeleteChipToken("),
             "atomic delete is native/undoable, never during IME composition; caret snapping skips composition and guarded writes");
         Console.WriteLine($"PASS: B7 {checks - before} menu/trigger/context/cancellation/empty/error/wiring assertions; synthetic HTTP, no native UI execution.");
     }

@@ -20,6 +20,12 @@ public sealed partial class OpenCodePage
     private readonly object? _treeParentTarget = null;
     private readonly bool _treeParentReturnBusy = false;
     private readonly string? _treeHint = null;
+    private IReadOnlyList<OpenCodeModelInfo>? _treeModels;
+    private readonly BackgroundAgentSelector _agentSelector = new();
+    private sealed class BackgroundAgentSelector
+    {
+        internal IReadOnlyList<OpenCodeModelInfo> ModelChoices { get; } = Array.Empty<OpenCodeModelInfo>();
+    }
     private readonly BackgroundTreeSurface _agentTree = new();
     private sealed class BackgroundTreeSurface
     {
@@ -29,6 +35,7 @@ public sealed partial class OpenCodePage
     }
     private bool IsTreeCurrent(TreeBinding binding) => _pageActive && binding.SessionId == _selectedSessionId;
     private void OnBrowserAgentTreeChanged() { }
+    private Func<string, bool>? AgentTreeScope() => null;
     private void QueueAgentTreeRefresh() { }
     private void SyncShellTerminalEntries() { }
     internal int TestBackgroundCount { get; private set; }

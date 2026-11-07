@@ -12,8 +12,9 @@ using FluentCode.Services.OpenCode.Browser;
 
 internal static class Program
 {
+    private static int checks;
     private static void Check(bool condition, string message)
-    { if (!condition) throw new InvalidOperationException(message); }
+    { if (!condition) throw new InvalidOperationException(message); Interlocked.Increment(ref checks); }
 
     public static async Task Main(string[] args)
     {
@@ -35,6 +36,17 @@ internal static class Program
         };
         using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
         Check(await http.GetStringAsync("http://controlled.invalid/", lifetime.Token) == "hello", "C# callbacks did not supply HTTP tunnel bytes");
+        rpc.OpenError = "connect ECONNREFUSED controlled.invalid:80 secret-server-credential";
+        var errorPage = await http.GetAsync("http://controlled.invalid/failure", lifetime.Token);
+        var errorText = await errorPage.Content.ReadAsStringAsync(lifetime.Token);
+        Check((int)errorPage.StatusCode == 502 && errorText.Contains("ECONNREFUSED", StringComparison.Ordinal)
+            && errorText.Contains("controlled.invalid:80", StringComparison.Ordinal), "tunnel.open failure page includes server-side diagnostic");
+        Check(!errorText.Contains("secret-server-credential", StringComparison.Ordinal), "raw RPC details never cross into browser content");
+        Check(OpenCodeBrowserTunnelTransport.Error(lease, "https://controlled.invalid:80/probe")?.Contains("ECONNREFUSED", StringComparison.Ordinal) == true, "CONNECT failures expose server diagnostics to the native error surface");
+        Check(OpenCodeBrowserTunnelTransport.Error(lease, "https://other.invalid:80/") is null, "diagnostic is target-specific");
+        rpc.OpenError = null;
+        Check(await http.GetStringAsync("http://controlled.invalid/recovered", lifetime.Token) == "hello"
+            && OpenCodeBrowserTunnelTransport.Error(lease, "http://controlled.invalid/") is null, "successful reconnect clears stale server error");
         tunnels.Retire(lease);
         await protocol.CallAsync("attachment.set", new JsonObject { ["leaseId"] = null }, lifetime.Token);
         Check((int)(await http.GetAsync("http://controlled.invalid/detached", lifetime.Token)).StatusCode == 503, "Detached proxy did not fail closed");
@@ -52,6 +64,7 @@ internal static class Program
         tunnels.RetireAll();
         Console.WriteLine("PASS C# JSON-lines sidecar callbacks, authenticated proxy, detach, and late-open original-lease cleanup");
         await CheckWorkspaceRuntimeAsync(args[0], lifetime.Token);
+        Console.WriteLine($"PASS {checks} C# browser-runtime assertions");
     }
 
     private static HttpClient ProxyClient(OpenCodeBrowserProxyOptions proxy) => new(new HttpClientHandler
@@ -180,12 +193,14 @@ internal static class Program
         private int sequence;
         private readonly ConcurrentDictionary<string, bool> delivered = new();
         public bool DelayOpen;
+        public string? OpenError;
         public int Closed;
         public readonly TaskCompletionSource OpenStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public readonly TaskCompletionSource OpenRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async Task<string> OpenAsync(OpenCodeBrowserTunnelTarget target, CancellationToken cancellationToken = default)
         {
             Check(target.Host == "controlled.invalid" && target.Port == 80, "Tunnel target mismatch");
+            if (OpenError is not null) throw new IOException(OpenError);
             OpenStarted.TrySetResult();
             if (DelayOpen) await OpenRelease.Task; // Deliberately complete after cancellation to test cleanup.
             var id = "original-" + Interlocked.Increment(ref sequence);

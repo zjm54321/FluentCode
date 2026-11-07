@@ -342,7 +342,12 @@ public sealed partial class OpenCodePage
             IReadOnlyList<OpenCodeMessage> window;
             if (incremental)
             {
-                foreach (var update in changes.Updates) _latestMessages[update.Index] = update.Message;
+                foreach (var update in changes.Updates)
+                {
+                    var previous = _latestMessages[update.Index];
+                    _latestMessages[update.Index] = update.Message;
+                    UpdateMessageWindowBudget(previous, update.Message);
+                }
                 OnContextMessagesAccepted(_latestMessages, changedMessages);
                 window = _latestMessages;
             }
@@ -350,6 +355,7 @@ public sealed partial class OpenCodePage
             {
                 _latestMessages.Clear();
                 _latestMessages.AddRange(_eventReducer.Messages);
+                UpdateMessageWindowBudget();
                 var history = MergeMessageHistory();
                 // Merge appends the latest window unchanged; equal counts mean no older rows were added.
                 var historyIsLatestWindow = history.Count == _latestMessages.Count;

@@ -10,6 +10,10 @@ $sources=@(Get-ChildItem "$repo/src/FluentCode/Models/*.cs"|ForEach-Object FullN
 $sources+="$repo/src/FluentCode/Services/Appearance/AppFontSettings.cs"
 $sources+="$repo/src/FluentCode/Services/OpenCode/OpenCodeAuthenticationMode.cs"
 $sources+="$PSScriptRoot/Program.cs"
+$sources+="$PSScriptRoot/PreviewResourceTests.cs"
+$sources+="$PSScriptRoot/ChromePresentationTests.cs"
+$sources+="$repo/src/FluentCode/Pages/OpenCode/OpenCodeBrowserChromePresentation.cs"
+@('OpenCodeBrowserPreviewPolicy.cs','OpenCodeBrowserPreviewResources.cs')|ForEach-Object{$sources+="$repo/src/FluentCode/Services/OpenCode/Browser/$_"}
 $dll=Join-Path $EvidenceRoot 'BrowserSettingsTests.dll';$rsp=Join-Path $EvidenceRoot 'compile.rsp'
 $refs=@(Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll"|ForEach-Object FullName)
 $arguments=@('/nologo','/target:exe','/langversion:latest','/nullable:enable','/warnaserror+',('/out:"'+$dll+'"'))

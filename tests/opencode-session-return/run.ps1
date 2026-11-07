@@ -81,10 +81,10 @@ $production = @()
     $production += Join-Path "$repo/src/FluentCode/Services/Notifications" $_
 }
 @('OpenCodePage.SessionReturn.cs', 'OpenCodePage.SubagentNavigation.cs',
-    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs') | ForEach-Object {
+    'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs', 'OpenCodePage.SwitchPerformance.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/FluentCode/Pages" $_
 }
-@('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs',
+@('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs', 'OpenCodeAgentIcons.cs',
     'OpenCodeBrowserToolPresentation.cs', 'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeSessionToolData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
     'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs',
     'OpenCodeShellTerminalText.cs', 'OpenCodeShellTerminalPreview.cs', 'OpenCodeMessageRollbackPolicy.cs') | ForEach-Object {
@@ -103,6 +103,8 @@ $commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
 [IO.File]::WriteAllText($commonHost, $commonText)
 $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'SubagentCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'PtyCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'GroupFinalizeTests.cs'), (Join-Path $PSScriptRoot 'TranscriptMenuTests.cs'), (Join-Path $PSScriptRoot 'PopupRowTests.cs'))
 $tests += Join-Path $PSScriptRoot 'StreamingApplyTests.cs'
+$tests += Join-Path $PSScriptRoot 'SubagentUpdateTests.cs'
+$tests += Join-Path $PSScriptRoot 'SwitchPerformanceTests.cs'
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))

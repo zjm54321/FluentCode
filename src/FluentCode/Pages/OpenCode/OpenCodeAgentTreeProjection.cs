@@ -17,17 +17,28 @@ internal sealed record OpenCodeTreeShell(string Id, string Command, string? Cwd,
 /// <summary>Read-only projection. Never derives completion or ownership from message text.</summary>
 internal static class OpenCodeAgentTreeProjection
 {
+    /// <param name="inScope">Whether the current primary may call an agent ID; null shows every agent.
+    /// An agent with a run in this session always stays, so a running child never disappears.</param>
     internal static IReadOnlyList<OpenCodeTreeAgent> Agents(IEnumerable<OpenCodeAgentInfo> agents,
         IEnumerable<OpenCodeSessionInfo> sessions, string parentId,
-        IReadOnlyDictionary<string, OpenCodeTreeStatus> live)
+        IReadOnlyDictionary<string, OpenCodeTreeStatus> live, Func<string, bool>? inScope = null,
+        IReadOnlyList<OpenCodeModelInfo>? models = null)
     {
         var children = sessions.Where(s => s.ParentId == parentId && !string.IsNullOrWhiteSpace(s.Id)).ToArray();
         return agents.Where(a => !string.IsNullOrWhiteSpace(a.Id) && a.Mode != "primary").GroupBy(a => a.Id!, StringComparer.Ordinal)
             .Select(g => g.First()).Select(a => new OpenCodeTreeAgent(a.Id!, a.Name ?? a.Id!, a.Description, a.Mode, a.Hidden,
                 children.Where(s => string.Equals(s.Agent, a.Id, StringComparison.Ordinal)).OrderBy(s => s.Time?.Created)
                     .Select(s => new OpenCodeTreeInstance(s.Id!, string.IsNullOrWhiteSpace(s.Title) ? s.Id! : s.Title,
-                        s.Model?.Id ?? "模型不可用", live.TryGetValue(s.Id!, out var state) ? state : Outcome(s.Outcome))).ToArray(), a.Color))
-            .Where(a => !a.Hidden || a.Children.Count > 0).ToArray();
+                        ModelName(s.Model, models), live.TryGetValue(s.Id!, out var state) ? state : Outcome(s.Outcome))).ToArray(), a.Color))
+            .Where(a => a.Children.Count > 0 || !a.Hidden && (inScope is null || inScope(a.Id))).ToArray();
+    }
+
+    private static string ModelName(OpenCodeModelRef? model, IReadOnlyList<OpenCodeModelInfo>? models)
+    {
+        if (model?.Id is not { } id) return "模型不可用";
+        var name = models?.FirstOrDefault(candidate => candidate.Id == id
+            && (string.IsNullOrWhiteSpace(model.ProviderId) || candidate.ProviderId == model.ProviderId))?.Name;
+        return string.IsNullOrWhiteSpace(name) ? id : name;
     }
 
     internal static IReadOnlyList<OpenCodeTreeAgent> VisibleAgents(IEnumerable<OpenCodeTreeAgent> agents, bool showAll)

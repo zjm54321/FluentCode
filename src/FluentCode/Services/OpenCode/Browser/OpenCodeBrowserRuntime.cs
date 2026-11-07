@@ -50,7 +50,10 @@ internal sealed class OpenCodeBrowserRuntime : IOpenCodeBrowserRuntime
             address.UserInfo.Length != 0 || address.AbsolutePath != "/" || address.Query.Length != 0 || address.Fragment.Length != 0)
             throw new InvalidOperationException("Browser runtime did not provide an exact loopback proxy endpoint.");
         Proxy = new(address, proxy["username"]!.GetValue<string>(), proxy["password"]!.GetValue<string>(),
-            proxy["realm"]!.GetValue<string>(), proxy["bypassList"]!.GetValue<string>());
+            proxy["realm"]!.GetValue<string>(), proxy["bypassList"]!.GetValue<string>())
+        {
+            TunnelError = url => { lock (gate) return OpenCodeBrowserTunnelTransport.Error(attachment, url); }
+        };
         if (string.IsNullOrEmpty(Proxy.Username) || string.IsNullOrEmpty(Proxy.Password) ||
             Proxy.Realm != "OpenCode Browser Proxy" || Proxy.BypassList != "<-loopback>")
             throw new InvalidOperationException("Invalid browser runtime proxy authentication options.");

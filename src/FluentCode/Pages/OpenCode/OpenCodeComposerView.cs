@@ -67,7 +67,7 @@ public sealed class OpenCodeComposerTextEditedEventArgs(OpenCodeComposerToken to
 /// <para>目录权限全部来自控制器能力：视图持有自己的 <see cref="OpenCodeComposerCatalogLifetime"/>，打开事件携带它，
 /// 关闭携带显示中的 <see cref="OpenCodeComposerCatalogHandle"/>，选择携带显示中的句柄 + 类型化标识 + 刷新后的令牌。</para>
 /// </remarks>
-internal sealed class OpenCodeComposerView : StackPanel
+internal sealed partial class OpenCodeComposerView : StackPanel
 {
     private static FontFamily MonoFont => AppFonts.Monospace;
     private readonly Func<OpenCodeComposerSnapshot> _source;
@@ -526,6 +526,8 @@ internal sealed class OpenCodeComposerView : StackPanel
         }
         CloseMention();
         _mentionArmed = false;
+        AttachChipHandlers(editor, _editor);
+        _pasteArmed = null;
         _editor = editor;
         _editorPlaceholder = editor.PlaceholderText;
         _composition.Reset();
@@ -892,6 +894,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         // menu's filter in step with the text, so key evidence is captured against what the user actually sees.
         if (_menuSession.EvaluateAcknowledged(this) || _menuShown) Render(_source());
         RestoreUndoneMention();
+        ConvertPastedLink(); // A single pasted link becomes a chip (its own undo step).
         EvaluateMentionTrigger(); // After the command menu settled: the two lists are never shown together.
     }
 
@@ -933,7 +936,7 @@ internal sealed class OpenCodeComposerView : StackPanel
     {
         ArgumentNullException.ThrowIfNull(e);
         if (isComposing || _composing) return OpenCodeComposerKeyDecision.Pass;
-        if (e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && TryDeleteMentionToken(e.Key == VirtualKey.Back))
+        if (e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && (TryDeleteMentionToken(e.Key == VirtualKey.Back) || TryDeleteChipToken(e.Key == VirtualKey.Back)))
         {
             e.Handled = true;
             return new(OpenCodeComposerKeyAction.Swallow, true, false);
@@ -1295,6 +1298,7 @@ internal sealed class OpenCodeComposerView : StackPanel
         {
             var caret = editor.SelectionStart;
             var snapped = OpenCodeComposerCharTriggers.SnapCaret(editor.Text, caret, _lastCaret, _source().Mentions);
+            snapped = SnapChipCaret(editor.Text ?? string.Empty, snapped, _lastCaret);
             _lastCaret = snapped;
             if (snapped != caret) { editor.Select(snapped, 0); return; }
         }
@@ -1336,6 +1340,15 @@ internal sealed class OpenCodeComposerView : StackPanel
         if (_editor is not null && !AutomationProperties.GetControlledPeers(_editor).Contains(_mentionList))
             AutomationProperties.GetControlledPeers(_editor).Add(_mentionList);
         RequestRender(); // Margin/eligibility follow the visible list.
+    }
+
+    internal void RefreshMentionCandidates()
+    {
+        if (!_dispatcher.HasThreadAccess) { _dispatcher.TryEnqueue(RefreshMentionCandidates); return; }
+        if (!_mentionShown) return;
+        CloseMention();
+        _mentionArmed = true;
+        EvaluateMentionTrigger();
     }
 
     private void CloseMention()

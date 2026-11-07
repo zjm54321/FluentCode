@@ -19,7 +19,7 @@ $sources = @(
     'OpenCodeClient.BillionDiscovery.cs', 'OpenCodeDtos.BillionDiscovery.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs',
-    'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs',
+    'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeClient.Browser.cs', 'OpenCodeBrowserTransportErrors.cs',
     'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Messages.cs',
     'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs'
@@ -29,6 +29,9 @@ $sources += @(
     'NotificationSource.cs', 'OpenCodeExecutionProjection.cs', 'OpenCodePageSource.cs'
 ) | ForEach-Object { Join-Path "$repo/src/FluentCode/Services/Notifications" $_ }
 $sources += Join-Path $PSScriptRoot 'Program.cs'
+$sources += Join-Path $PSScriptRoot 'PreviewReadTests.cs'
+$sources += Join-Path $PSScriptRoot 'TunnelErrorTests.cs'
+@('OpenCodeBrowserPreviewRead.cs','OpenCodeBrowserPreviewPolicy.cs','OpenCodeBrowserPreviewResources.cs') | ForEach-Object { $sources += Join-Path "$repo/src/FluentCode/Services/OpenCode/Browser" $_ }
 $assembly = Join-Path $output 'DesktopBridgeQolTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | Sort-Object FullName | ForEach-Object { '/reference:"' + $_.FullName + '"' }

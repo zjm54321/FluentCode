@@ -197,7 +197,8 @@ internal sealed class OpenCodeBrowserRuntimeProtocol : IAsyncDisposable
             catch (Exception ex)
             {
                 // Tunnel exceptions may contain authenticated HTTP details; never serialize those to Node.
-                var text = method.StartsWith("tunnel.", StringComparison.Ordinal) ? "Browser tunnel operation failed." : ex.Message;
+                var text = method == "tunnel.open" && ex is OpenCodeBrowserTunnelOpenException ? ex.Message
+                    : method.StartsWith("tunnel.", StringComparison.Ordinal) ? "Browser tunnel operation failed." : ex.Message;
                 response = new() { ["id"] = id, ["error"] = new JsonObject { ["message"] = text.Length > 2048 ? text[..2048] : text } };
             }
             Send(response);

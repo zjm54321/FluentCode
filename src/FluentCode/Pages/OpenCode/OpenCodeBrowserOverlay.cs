@@ -19,15 +19,18 @@ namespace FluentCode.Pages.OpenCode;
 /// <summary>One-row native browser chrome in a whole-content overlay.</summary>
 public sealed class OpenCodeBrowserOverlay : Grid
 {
-    private readonly FontIcon _siteIcon = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18 };
+    private const double OriginLabelMinWidth = 720, CommandLabelMinWidth = 1000;
     private readonly StackPanel _actions = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
     private readonly FlyoutPresenter _presenter;
-    private readonly TextBox _address = new() { CornerRadius = new(16), MinWidth = 0, Height = 32, FontSize = 13, Padding = new(32, 4, 12, 4), VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _displayAddress = new() { VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false, Margin = new(36, 0, 36, 0), TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly FontIcon _security = new() { FontFamily = new("Segoe Fluent Icons"), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left, Margin = new(12, 0, 0, 0), IsHitTestVisible = false };
-    private readonly Image _favicon = new() { Width = 18, Height = 18, Visibility = Visibility.Collapsed };
-    private readonly Border _network;
-    private readonly Button _back, _forward, _refresh;
+    private readonly Grid _toolbar = new() { Padding = new(8, 0, 8, 0), BorderThickness = new(0, 0, 0, 1) };
+    private readonly TextBox _address = new() { CornerRadius = new(16), MinWidth = 0, Height = 32, FontSize = 13, Padding = new(36, 4, 12, 4), VerticalAlignment = VerticalAlignment.Center };
+    private readonly OpenCodeBrowserAddressLine _displayAddress = new() { Margin = new(11, 0, 0, 0) };
+    private readonly FontIcon _originIcon = new() { FontFamily = new("Segoe Fluent Icons"), FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _originLabel = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _originChip = new() { Orientation = Orientation.Horizontal, Margin = new(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly Border _windowDivider = new() { Width = 1, Height = 20, Margin = new(6, 0, 6, 0) };
+    private readonly ProgressBar _loadingLine = new() { IsIndeterminate = true, VerticalAlignment = VerticalAlignment.Bottom, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+    private readonly Button _back, _forward, _refresh, _openExternal;
     private readonly Border _agentOutline = new() { BorderThickness = new(3), IsHitTestVisible = false, Opacity = 0 };
     private readonly Border _agentPill;
     private readonly TextBlock _activity = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
@@ -38,7 +41,6 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly TextBlock _errorCode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly OpenCodeBrowserPreviewView _preview = new();
     private readonly OpenCodeBrowserExternalView _external = new();
-    private readonly TextBlock _serverFile = new() { Text = "服务器文件", VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 0, 12, 0), Visibility = Visibility.Collapsed };
     private readonly Grid _body = new();
     private readonly Canvas _pointerLayer = new() { IsHitTestVisible = false };
     private readonly StackPanel _pointer = new() { Orientation = Orientation.Horizontal, Spacing = 4, Visibility = Visibility.Collapsed };
@@ -47,6 +49,8 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private OpenCodeBrowserWorkspace? _workspace;
     private OpenCodeBrowserPage? _page;
     private bool _editing;
+    private bool _compactToolbar;
+    private string? _faviconUri;
     private UIElement? _returnFocus;
     private Storyboard? _outlineFade;
     private bool _wasAgentActive;
@@ -58,39 +62,59 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var layout = new Grid();
         layout.RowDefinitions.Add(new() { Height = new(OpenCodeBrowserOverlayLayout.ToolbarHeight) });
         layout.RowDefinitions.Add(new() { Height = new(1, GridUnitType.Star) });
-        _actions.Children.Add(Button("\uE8A7", "在外部浏览器打开", async () =>
+        _openExternal = Button("\uE8A7", "在外部浏览器打开", async () =>
         {
             if (_page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow) await RunPageActionAsync(page => page.FocusAsync(page.Lifetime));
             else if (_page?.PreviewPath is null && Uri.TryCreate(_page?.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") await Launcher.LaunchUriAsync(uri);
-        }));
+        });
+        _actions.Children.Add(_openExternal);
         var more = Button("\uE712", "更多", () => { }); more.Flyout = MoreMenu(); _actions.Children.Add(more);
-        var divider = new Border { Width = 1, Height = 20, Margin = new(8, 0, 8, 0) };
-        Theme(divider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _actions.Children.Add(divider);
+        Theme(_windowDivider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _actions.Children.Add(_windowDivider);
         var close = Button("\uE8BB", "关闭浏览器浮窗", () => _workspace?.HideOverlay());
         _actions.Children.Add(close);
 
-        var toolbar = new Grid { Padding = new(8, 0, 8, 0), ColumnSpacing = 6, BorderThickness = new(0, 0, 0, 1) };
-        Theme(toolbar, Grid.BorderBrushProperty, "DividerStrokeColorDefaultBrush");
-        toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
-        toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        var siteIcon = new Grid { Width = 24, VerticalAlignment = VerticalAlignment.Center };
-        siteIcon.Children.Add(_siteIcon); siteIcon.Children.Add(_favicon); toolbar.Children.Add(siteIcon);
-        var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        // Reading order: navigation | address | preview commands | page tools | more and close.
+        Theme(_toolbar, Grid.BorderBrushProperty, "DividerStrokeColorDefaultBrush");
+        foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto, GridLength.Auto }) _toolbar.ColumnDefinitions.Add(new() { Width = width });
+        // Native button hover is nearly invisible on this surface in the light theme, and disabled buttons would keep a faint box.
+        Services.Appearance.ThemeResources.Aliases(_toolbar,
+            ("ButtonBackgroundPointerOver", "SubtleFillColorSecondaryBrush"),
+            ("ButtonBackgroundPressed", "SubtleFillColorTertiaryBrush"),
+            ("ButtonBackgroundDisabled", "SubtleFillColorTransparentBrush"));
+        var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 6, 0) };
         _back = Button("\uE72B", "后退", () => _page?.GoBack()); _forward = Button("\uE72A", "前进", () => _page?.GoForward());
         _refresh = Button("\uE72C", "刷新", () => { if (_page?.PreviewPath is not null) _ = _preview.ReadAsync(); else if (_page?.Loading == true) _page.Stop(); else _page?.Reload(); });
-        nav.Children.Add(_back); nav.Children.Add(_forward); nav.Children.Add(_refresh); Grid.SetColumn(nav, 1); toolbar.Children.Add(nav);
-        var addressHost = new Grid { VerticalAlignment = VerticalAlignment.Center };
-        addressHost.Children.Add(_address); addressHost.Children.Add(_displayAddress); addressHost.Children.Add(_security);
-        var networkRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { new FontIcon { Glyph = "\uE968", FontFamily = new("Segoe Fluent Icons"), FontSize = 10 }, new TextBlock { Text = "WSL 网络", FontSize = 11 } } };
-        _network = new Border { Child = networkRow, Height = 22, Padding = new(8, 0, 8, 0), CornerRadius = new(11), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 6, 0), IsHitTestVisible = false, Visibility = Visibility.Collapsed };
-        Theme(_network, Border.BackgroundProperty, "SubtleFillColorSecondaryBrush"); addressHost.Children.Add(_network);
-        addressHost.Children.Add(_serverFile);
-        Grid.SetColumn(addressHost, 2); toolbar.Children.Add(addressHost);
+        nav.Children.Add(_back); nav.Children.Add(_forward); nav.Children.Add(_refresh); _toolbar.Children.Add(nav);
+        var addressHost = new Grid { VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 8, 0) };
+        // The address text is painted over the empty TextBox until it gets focus; Narrator reads it from the field's help text instead.
+        var addressDisplay = new Grid { IsHitTestVisible = false, Margin = new(12, 0, 14, 0) };
+        AutomationProperties.SetAccessibilityView(addressDisplay, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        foreach (var width in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star) }) addressDisplay.ColumnDefinitions.Add(new() { Width = width });
+        OpenCodeToolTheme.Apply(_originIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary)); addressDisplay.Children.Add(_originIcon);
+        OpenCodeToolTheme.Apply(_originLabel, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary)); _originChip.Children.Add(_originLabel);
+        var originDivider = new Border { Width = 1, Height = 16, Margin = new(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        Theme(originDivider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _originChip.Children.Add(originDivider);
+        Grid.SetColumn(_originChip, 1); addressDisplay.Children.Add(_originChip);
+        Grid.SetColumn(_displayAddress, 2); addressDisplay.Children.Add(_displayAddress);
+        addressHost.Children.Add(_address); addressHost.Children.Add(addressDisplay);
+        Grid.SetColumn(addressHost, 1); _toolbar.Children.Add(addressHost);
         AutomationProperties.SetName(_address, "页面地址");
-        _address.GotFocus += (_, _) => { _editing = true; _displayAddress.Visibility = Visibility.Collapsed; _network.Visibility = Visibility.Collapsed; _address.Text = _page?.PreviewPath ?? _page?.Url ?? ""; _address.SelectAll(); };
+        // Quiet pill at rest, solid field with an accent ring while editing. High contrast keeps the native field brushes.
+        Services.Appearance.ThemeResources.Aliases(_address,
+            ("TextControlBackground", "SubtleFillColorSecondaryBrush"),
+            ("TextControlBorderBrush", "SubtleFillColorTransparentBrush"),
+            ("TextControlBackgroundPointerOver", "ControlAltFillColorQuarternaryBrush"),
+            ("TextControlBorderBrushPointerOver", "ControlStrokeColorDefaultBrush"),
+            ("TextControlBackgroundFocused", "ControlFillColorInputActiveBrush"),
+            ("TextControlBorderBrushFocused", "AccentFillColorDefaultBrush"));
+        _address.Resources["TextControlBorderThemeThicknessFocused"] = new Thickness(2);
+        _address.GotFocus += (_, _) =>
+        {
+            _editing = true; _displayAddress.Visibility = Visibility.Collapsed;
+            _address.Text = _page?.PreviewPath ?? _page?.Url ?? "";
+            if (_address.Text == "about:blank") _address.Text = "";
+            _address.SelectAll(); UpdateToolbarLayout();
+        };
         _address.LostFocus += (_, _) => { _editing = false; Render(); };
         _address.KeyDown += (_, key) =>
         {
@@ -98,20 +122,17 @@ public sealed class OpenCodeBrowserOverlay : Grid
             try { _page.Navigate(OpenCodeBrowserPolicy.NormalizeUrl(_address.Text)); key.Handled = true; if (_page.EmbeddedView is Control view) view.Focus(FocusState.Programmatic); }
             catch (OpenCodeBrowserException ex) { ToolTipService.SetToolTip(_address, ex.Message); }
         };
+        _preview.Commands.Margin = new(0, 0, 4, 0); _preview.Commands.Visibility = Visibility.Collapsed;
+        Grid.SetColumn(_preview.Commands, 2); _toolbar.Children.Add(_preview.Commands);
         // The selection owner adds exactly the element and region tools here.
         PageTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-        PageTools.Resources = (ResourceDictionary)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Width\" Value=\"34\"/><Setter Property=\"Height\" Value=\"32\"/><Setter Property=\"Padding\" Value=\"0\"/></Style><Style TargetType=\"SplitButton\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Height\" Value=\"32\"/></Style></ResourceDictionary>");
-        var toolGroup = new Border { Child = PageTools, Padding = new(4, 2, 4, 2), CornerRadius = new(6), VerticalAlignment = VerticalAlignment.Center };
-        Theme(toolGroup, Border.BackgroundProperty, "SubtleFillColorSecondaryBrush");
-        Grid.SetColumn(toolGroup, 3); toolbar.Children.Add(toolGroup);
-        Grid.SetColumn(_actions, 4); toolbar.Children.Add(_actions); layout.Children.Add(toolbar);
-        toolbar.SizeChanged += (_, _) =>
-        {
-            var compact = toolbar.ActualWidth < 560;
-            _back.Visibility = _forward.Visibility = siteIcon.Visibility = divider.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-            _actions.Children[0].Visibility = compact || _page?.PreviewPath is not null ? Visibility.Collapsed : Visibility.Visible;
-        };
+        ApplyToolToggleStyle(PageTools);
+        Grid.SetColumn(PageTools, 3); _toolbar.Children.Add(PageTools);
+        _actions.Margin = new(2, 0, 0, 0);
+        Grid.SetColumn(_actions, 4); _toolbar.Children.Add(_actions); layout.Children.Add(_toolbar);
+        AutomationProperties.SetAccessibilityView(_loadingLine, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        layout.Children.Add(_loadingLine);
+        _toolbar.SizeChanged += (_, _) => UpdateToolbarLayout();
         var content = new OpenCodeBrowserContentHost(_body);
         _body.Children.Add(shownHost);
         _preview.Visibility = Visibility.Collapsed; _body.Children.Add(_preview);
@@ -179,11 +200,6 @@ public sealed class OpenCodeBrowserOverlay : Grid
         AutomationProperties.SetAutomationId(this, "OpenCodeBrowserOverlay");
         KeyDown += (_, key) => { if (key.Key == VirtualKey.Escape) { if (ExitPageTool?.Invoke() != true) _workspace?.HideOverlay(); key.Handled = true; } };
         _body.SizeChanged += (_, _) => { _agentPill.MaxWidth = Math.Max(0, Math.Min(900, _body.ActualWidth - 28)); ContentSizeChanged?.Invoke(this, EventArgs.Empty); };
-        Services.Appearance.ThemeResources.Aliases(PageTools,
-            ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),
-            ("ToggleButtonBackgroundCheckedPointerOver", "SubtleFillColorSecondaryBrush"),
-            ("ToggleButtonForegroundChecked", "AccentTextFillColorPrimaryBrush"),
-            ("ToggleButtonForegroundCheckedPointerOver", "AccentTextFillColorPrimaryBrush"));
         // Keep background and border in one ThemeResource style; no application-theme brush snapshot.
         _agentPill.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\"><Setter Property=\"Background\" Value=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource FlyoutBorderThemeBrush}\"/></Style>");
@@ -230,38 +246,39 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private void Render()
     {
         var page = _page; if (page is null) { _external.Bind(null); return; }
-        Uri.TryCreate(page.Url, UriKind.Absolute, out var uri);
         var preview = page.PreviewPath is not null;
-        _siteIcon.Glyph = preview ? "\uE8A5" : "\uE774";
         var external = !preview && page.Presentation == OpenCodeBrowserPresentation.ExternalWindow;
         _external.PickElementAsync = PickExternalElementAsync;
         _external.Bind(external ? page : null);
         var favicon = (page.EmbeddedView as WebView2)?.CoreWebView2?.FaviconUri;
         var hasFavicon = !preview && page.LoadError is null && Uri.TryCreate(favicon, UriKind.Absolute, out _);
-        _favicon.Source = hasFavicon ? new BitmapImage(new Uri(favicon!)) : null;
-        _favicon.Visibility = hasFavicon ? Visibility.Visible : Visibility.Collapsed;
-        _siteIcon.Visibility = hasFavicon ? Visibility.Collapsed : Visibility.Visible;
-        _actions.Children[0].Visibility = preview || _presenter.ActualWidth is > 0 and < 560 ? Visibility.Collapsed : Visibility.Visible;
-        AutomationProperties.SetName(_actions.Children[0], external ? "在 Chrome 中显示" : "在外部浏览器打开");
-        ToolTipService.SetToolTip(_actions.Children[0], external ? "在 Chrome 中显示（独立窗口）" : "在外部浏览器打开");
-        _serverFile.Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
-        var local = !preview && uri is { IsLoopback: true };
-        _network.Visibility = local && !_editing ? Visibility.Visible : Visibility.Collapsed;
-        _displayAddress.Margin = new(32, 0, preview ? 110 : local ? 100 : 12, 0);
+        var shownFavicon = hasFavicon ? favicon : null;
+        if (shownFavicon != _faviconUri)
+        {
+            _faviconUri = shownFavicon;
+            _displayAddress.Favicon.Source = shownFavicon is null ? null : new BitmapImage(new Uri(shownFavicon));
+        }
+        _displayAddress.Favicon.Visibility = hasFavicon ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetName(_openExternal, external ? "在 Chrome 中显示" : "在外部浏览器打开");
+        ToolTipService.SetToolTip(_openExternal, external ? "在 Chrome 中显示（独立窗口）" : "在外部浏览器打开");
+        var address = OpenCodeBrowserChromePresentation.Describe(page.Url, page.Title, page.PreviewPath, page.LoadError, FluentCode.Services.Configuration.AppServices.Settings.Current?.OpenCode.Kind);
+        _originIcon.Glyph = address.Glyph; _originLabel.Text = address.OriginLabel ?? "";
         _preview.UpdateActions();
-        ToolTipService.SetToolTip(_refresh, preview ? "重新读取服务器文件" : page.Loading ? "停止加载" : "刷新");
+        var refreshName = preview ? "重新读取服务器文件" : page.Loading ? "停止加载" : "刷新";
+        ToolTipService.SetToolTip(_refresh, refreshName); AutomationProperties.SetName(_refresh, refreshName);
         _back.IsEnabled = page.CanGoBack; _forward.IsEnabled = page.CanGoForward;
         (_refresh.Content as FontIcon)!.Glyph = !preview && page.Loading ? "\uE711" : "\uE72C";
+        _loadingLine.Visibility = !preview && page.Loading && FluentCode.Motion.FluentMotion.Enabled ? Visibility.Visible : Visibility.Collapsed;
         _address.IsReadOnly = page.PreviewPath is not null;
+        _address.PlaceholderText = address.IsBlank ? "输入网址" : "";
         if (!_editing)
         {
-            _address.Text = ""; _security.Visibility = Visibility.Visible; _security.Glyph = uri?.Scheme == "https" ? "\uE72E" : "\uE946";
-            _displayAddress.Inlines.Clear();
-            if (page.PreviewPath is not null) { _displayAddress.Text = page.PreviewPath; _security.Glyph = "\uE8A5"; }
-            else _displayAddress.Text = page.LoadError is not null ? "无法访问此页面" : string.IsNullOrWhiteSpace(page.Title) ? page.Url : page.Title;
-            ToolTipService.SetToolTip(_address, page.PreviewPath ?? page.Url);
-            _displayAddress.Visibility = Visibility.Visible;
+            _address.Text = "";
+            _displayAddress.Show(address);
+            ToolTipService.SetToolTip(_address, address.ToolTip);
+            AutomationProperties.SetHelpText(_address, address.ToolTip);
         }
+        UpdateToolbarLayout();
         ErrorSurface.Visibility = page.LoadError is null || page.PreviewPath is not null ? Visibility.Collapsed : Visibility.Visible;
         _errorReason.Text = page.LoadError is "CannotConnect" or "HostNameNotResolved" or "Timeout" ? ErrorReason(page.LoadError, page.Url) : page.LoadError ?? "";
         _errorCode.Text = (page.LoadError ?? "") + " · GET " + page.Url;
@@ -294,6 +311,20 @@ public sealed class OpenCodeBrowserOverlay : Grid
         else _agentOutline.Opacity = 0; // A running fade keeps animating toward the same 0.
         _wasAgentActive = active;
     }
+    /// <summary>Hides what does not apply to the page, then what no longer fits. Anything hidden for width stays reachable from the more menu.</summary>
+    private void UpdateToolbarLayout()
+    {
+        var preview = _page?.PreviewPath is not null;
+        var width = _toolbar.ActualWidth;
+        var compact = width > 0 && _toolbar.ActualWidth < 560;
+        _compactToolbar = compact;
+        _back.Visibility = _forward.Visibility = _openExternal.Visibility = compact || preview ? Visibility.Collapsed : Visibility.Visible;
+        _windowDivider.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        _originChip.Visibility = _editing || width < OriginLabelMinWidth || _originLabel.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        _displayAddress.ShowSide = !compact;
+        _preview.Commands.Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
+        _preview.SetCommandDensity(compact, width >= CommandLabelMinWidth);
+    }
     private async void AgentPointerMoved(object? sender, OpenCodeBrowserPointer pointer)
     {
         if (_page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow) return;
@@ -317,14 +348,17 @@ public sealed class OpenCodeBrowserOverlay : Grid
     {
         var menu = new MenuFlyout();
         MenuFlyoutItem Item(string text, Action action, string glyph) { var item = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } }; item.Click += (_, _) => action(); menu.Items.Add(item); return item; }
+        var previewEditor = Item("在编辑器中打开", () => _ = _preview.OpenAsync(true), "\uE70F");
+        var previewExplorer = Item("在文件资源管理器中显示", () => _ = _preview.OpenAsync(false), "\uE838");
+        var previewSeparator = new MenuFlyoutSeparator(); menu.Items.Add(previewSeparator);
         var back = Item("后退", () => _page?.GoBack(), "\uE72B"); var forward = Item("前进", () => _page?.GoForward(), "\uE72A");
-        menu.Items.Add(new MenuFlyoutSeparator());
+        var navSeparator = new MenuFlyoutSeparator(); menu.Items.Add(navSeparator);
         var open = Item("在外部浏览器打开", () => _ = RunPageActionAsync(async page =>
         {
             if (page.Presentation == OpenCodeBrowserPresentation.ExternalWindow) await page.FocusAsync(page.Lifetime);
             else if (Uri.TryCreate(page.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") await Launcher.LaunchUriAsync(uri);
         }), "\uE8A7");
-        Item("复制链接", () => Copy(_page?.Url ?? ""), "\uE71B");
+        var copyAddress = Item("复制链接", () => Copy(_page?.PreviewPath ?? _page?.Url ?? ""), "\uE71B");
         var devtools = Item("开发者工具", () => _ = RunPageActionAsync(async page =>
         {
             if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.OpenDevToolsWindow();
@@ -338,9 +372,9 @@ public sealed class OpenCodeBrowserOverlay : Grid
             if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.ShowPrintUI(Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
             else { await page.FocusAsync(page.Lifetime); await page.ExecuteScriptAsync("window.print()"); }
         }), "\uE749");
-        menu.Items.Add(new MenuFlyoutSeparator());
+        var pageSeparator = new MenuFlyoutSeparator(); menu.Items.Add(pageSeparator);
         Item("把此页面加到对话", () => { if (_page is not null) AddPageRequested?.Invoke(this, _page); }, "\uE710");
-        Item("清除此站点的数据", async () =>
+        var clearSite = Item("清除此站点的数据", async () =>
         {
             if (_page is not null && Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
                 await _page.CdpAsync("Storage.clearDataForOrigin", new() { ["origin"] = uri.GetLeftPart(UriPartial.Authority), ["storageTypes"] = "all" });
@@ -348,6 +382,13 @@ public sealed class OpenCodeBrowserOverlay : Grid
         menu.Opening += (_, _) =>
         {
             var external = _page?.Presentation == OpenCodeBrowserPresentation.ExternalWindow;
+            var preview = _page?.PreviewPath is not null;
+            // A file preview has no history, site data or page zoom; only the commands that act on the file remain.
+            back.Visibility = forward.Visibility = navSeparator.Visibility = open.Visibility = devtools.Visibility = zoom.Visibility = print.Visibility = pageSeparator.Visibility = clearSite.Visibility
+                = preview ? Visibility.Collapsed : Visibility.Visible;
+            previewEditor.Visibility = previewExplorer.Visibility = previewSeparator.Visibility = preview && _compactToolbar ? Visibility.Visible : Visibility.Collapsed;
+            previewEditor.IsEnabled = _preview.CanOpen(true); previewExplorer.IsEnabled = _preview.CanOpen(false);
+            copyAddress.Text = preview ? "复制路径" : "复制链接";
             back.IsEnabled = _page?.CanGoBack == true; forward.IsEnabled = _page?.CanGoForward == true;
             open.Text = external ? "在 Chrome 中显示" : "在外部浏览器打开";
             devtools.Text = external ? "开发者工具 · 在 Chrome 中按 F12" : "开发者工具";
@@ -365,9 +406,25 @@ public sealed class OpenCodeBrowserOverlay : Grid
     }
     private static Button Button(string glyph, string name, Action click)
     {
-        var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, Width = 34, Height = 32, MinWidth = 0, Padding = new(0), BorderThickness = new(0) };
+        var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 16 }, Width = 36, Height = 32, MinWidth = 0, Padding = new(0), BorderThickness = new(0) };
         if (Application.Current.Resources.TryGetValue("OpenCodeTransparentToolButtonStyle", out var style)) button.Style = (Style)style;
         AutomationProperties.SetName(button, name); ToolTipService.SetToolTip(button, name); button.Click += (_, _) => click(); return button;
+    }
+    /// <summary>Icon toggles in the toolbar share the size and checked look of its icon buttons.</summary>
+    internal static void ApplyToolToggleStyle(FrameworkElement host)
+    {
+        host.Resources = (ResourceDictionary)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Width\" Value=\"36\"/><Setter Property=\"Height\" Value=\"32\"/><Setter Property=\"Padding\" Value=\"0\"/></Style></ResourceDictionary>");
+        Services.Appearance.ThemeResources.Aliases(host,
+            ("ToggleButtonBackgroundPointerOver", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundPressed", "SubtleFillColorTertiaryBrush"),
+            ("ToggleButtonBackgroundDisabled", "SubtleFillColorTransparentBrush"),
+            ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPointerOver", "SubtleFillColorSecondaryBrush"),
+            ("ToggleButtonBackgroundCheckedPressed", "SubtleFillColorTertiaryBrush"),
+            ("ToggleButtonForegroundChecked", "AccentTextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPointerOver", "AccentTextFillColorPrimaryBrush"),
+            ("ToggleButtonForegroundCheckedPressed", "AccentTextFillColorPrimaryBrush"));
     }
     private static Button TextButton(string text, Action click, string glyph)
     {

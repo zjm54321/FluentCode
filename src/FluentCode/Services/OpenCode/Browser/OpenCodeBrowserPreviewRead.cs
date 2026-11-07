@@ -11,7 +11,8 @@ namespace FluentCode.Services.OpenCode;
 public sealed partial class OpenCodeClient
 {
     /// <summary>Verified fs.read raw response, confined to location; preview text <=64 MiB, media <=5 MiB.</summary>
-    public async Task<OpenCodeBrowserPreviewContent> ReadBrowserPreviewAsync(string directory, string path, CancellationToken cancellationToken)
+    public async Task<OpenCodeBrowserPreviewContent> ReadBrowserPreviewAsync(string directory, string path, CancellationToken cancellationToken,
+        int maximumBytes = OpenCodeBrowserPreviewPolicy.TextLimit)
     {
         var relative = RelativeTextFilePath(directory, path);
         var segments = relative.Split('/');
@@ -24,7 +25,7 @@ public sealed partial class OpenCodeClient
             if (!response.IsSuccessStatusCode) throw new OpenCodeApiException((int)response.StatusCode, null, null,
                 $"OpenCode 文件读取失败（HTTP {(int)response.StatusCode}，fs.read）。");
             var mime = response.Content.Headers.ContentType?.MediaType;
-            var limit = OpenCodeBrowserPreviewPolicy.Limit(OpenCodeBrowserPreviewPolicy.Detect(path, mime));
+            var limit = Math.Min(maximumBytes, OpenCodeBrowserPreviewPolicy.Limit(OpenCodeBrowserPreviewPolicy.Detect(path, mime)));
             if (response.Content.Headers.ContentLength > limit) throw new IOException($"文件超过 {limit / 1024 / 1024} MiB 预览上限");
             await using var input = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
             using var output = new MemoryStream(); var buffer = new byte[65536];

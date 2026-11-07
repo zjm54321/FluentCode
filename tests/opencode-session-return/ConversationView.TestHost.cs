@@ -89,6 +89,7 @@ namespace FluentCode.Pages.OpenCode
         public FrameworkElement Element { get; } = new StackPanel();
         public OpenCodeRichTextPresenter() => ConversationViewTestProbe.Record("Construct", this, Element);
         internal Microsoft.UI.Xaml.Controls.Flyout? TextContextFlyout { get; set; }
+        internal (int Images, int Pdfs) AttachmentCounts { get; set; }
         public void Render(string? source, OpenCodeRichTextStyle style)
             => ConversationViewTestProbe.Record("Render", this, source, style);
     }
@@ -320,7 +321,7 @@ namespace FluentCode.Pages.OpenCode
     internal sealed class OpenCodeTimelineChipView
     {
         private readonly string _glyph;
-        internal string Glyph => _glyph;
+        internal string Glyph => Content.AgentName is { } agent ? OpenCodeAgentIcons.Glyph(agent) : _glyph;
         internal FrameworkElement? DetailAnchorOverride { get; private set; }
         internal void SetDetailAnchor(FrameworkElement? anchor) => DetailAnchorOverride = anchor;
         internal void OpenDetail() => ConversationViewTestProbe.Record("OpenLeaf", this);
@@ -353,9 +354,8 @@ namespace FluentCode.Pages.OpenCode
         internal void Update(string label, string accessibleName, string detailTitle,
             IReadOnlyList<OpenCodeToolProperty>? properties, string? detailText)
         {
-            Label = label;
-            DetailText = detailText;
-            ConversationViewTestProbe.Record("Update", this, label, detailText);
+            UpdateRow(new(label, string.Empty, string.Empty, null, accessibleName, detailTitle,
+                properties ?? Array.Empty<OpenCodeToolProperty>(), detailText));
         }
         internal void Dispose()
         {

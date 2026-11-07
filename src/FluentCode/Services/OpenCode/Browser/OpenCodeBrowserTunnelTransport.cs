@@ -22,6 +22,7 @@ internal sealed class OpenCodeBrowserTunnelTransport
         internal readonly OpenCodeBrowserAttachmentLease Attachment;
         internal readonly CancellationTokenSource Detached = new();
         internal readonly HashSet<string> Tunnels = new(StringComparer.Ordinal);
+        internal readonly Dictionary<(string Host, int Port), (DateTimeOffset At, string Message)> Errors = new();
         internal bool Retired;
         internal int Active;
         internal Lease(OpenCodeBrowserAttachmentLease attachment) => Attachment = attachment;
@@ -89,11 +90,23 @@ internal sealed class OpenCodeBrowserTunnelTransport
                 var port = target["port"]!.GetValue<int>();
                 if (string.IsNullOrWhiteSpace(host) || host.Length > 253 || port is < 1 or > 65535)
                     throw new ArgumentException("Invalid browser tunnel target.");
-                var id = await rpc.OpenAsync(new(host, port), ct).ConfigureAwait(false);
+                string id;
+                try { id = await rpc.OpenAsync(new(host, port), ct).ConfigureAwait(false); }
+                catch (Exception ex) when (!ct.IsCancellationRequested)
+                {
+                    var failure = new OpenCodeBrowserTunnelOpenException(host, port, OpenCodeBrowserTunnelOpenException.SocketCode(ex.Message));
+                    lock (lease)
+                    {
+                        if (lease.Errors.Count >= 64) lease.Errors.Clear();
+                        lease.Errors[(host.ToLowerInvariant(), port)] = (DateTimeOffset.UtcNow, failure.Message);
+                    }
+                    throw failure;
+                }
                 bool abandoned;
                 lock (lease)
                 {
                     abandoned = lease.Retired || ct.IsCancellationRequested;
+                    lease.Errors.Remove((host.ToLowerInvariant(), port));
                     if (!abandoned) lease.Tunnels.Add(id);
                 }
                 if (abandoned)
@@ -125,6 +138,14 @@ internal sealed class OpenCodeBrowserTunnelTransport
             throw new ArgumentException("Unknown browser tunnel operation.");
         }
         finally { Release(lease); }
+    }
+
+    internal static string? Error(Lease? lease, string url)
+    {
+        if (lease is null || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return null;
+        lock (lease)
+            return !lease.Retired && lease.Errors.TryGetValue((uri.Host.Trim('[', ']').ToLowerInvariant(), uri.Port), out var error)
+                && DateTimeOffset.UtcNow - error.At < TimeSpan.FromSeconds(30) ? error.Message : null;
     }
 
     private static async Task CloseOriginalAsync(Lease lease, string id)

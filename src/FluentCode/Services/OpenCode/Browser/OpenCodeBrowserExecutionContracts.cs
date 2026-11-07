@@ -39,6 +39,7 @@ public sealed record OpenCodeBrowserProxyOptions(
     string Realm = "OpenCode Browser Proxy",
     string BypassList = "<-loopback>")
 {
+    public Func<string, string?>? TunnelError { get; init; }
     public override string ToString() => $"Browser proxy {Address.Scheme}://{Address.Host}:{Address.Port}";
 }
 

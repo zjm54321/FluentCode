@@ -43,7 +43,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     internal void HoverExit() => OpenCodeToolDetailPopup.Shared.HoverExit(Source);
     internal OpenCodeTimelineRowContent Content => _content;
     internal string Glyph => EffectiveGlyph;
-    private IOpenCodeDetailContentSource Source => (_completionNotice || OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name)) && _linkInvoked is not null ? _childSource : this;
+    private IOpenCodeDetailContentSource Source => (_completionNotice || _content.AgentName is not null || OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name)) && _linkInvoked is not null ? _childSource : this;
     /// <summary>Segoe Fluent “Completed” (circle check, same as other async-completion rows).</summary>
     internal const string CompletionNoticeDoneGlyph = "\uE930";
 
@@ -52,6 +52,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
 
     private string EffectiveGlyph => _completionNotice
         ? _content.Status == OpenCodeToolRowStatus.Completed ? CompletionNoticeDoneGlyph : CompletionNoticeFailedGlyph
+        : _content.AgentName is { } agent ? OpenCodeAgentIcons.Glyph(agent)
         : OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name) ? OpenCodeStepRunPresentation.SubagentGlyph
         : _content.Name == "终端（后台）" ? OpenCodeStepRunPresentation.TerminalGlyph : _glyph;
 
@@ -157,7 +158,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             Grid.SetColumn(_status.Element, 3);
             _root.Children.Add(_status.Element);
         }
-        _root.ActualThemeChanged += (_, _) => ApplyRowStyle();
+        _root.ActualThemeChanged += (_, _) => { ApplyRowStyle(); ApplyAgentColor(); };
         ApplyRowStyle();
     }
 
@@ -273,7 +274,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _targetText.Text = _completionNotice && content.Target.Length > 0 ? "· " + content.Target : content.Target;
         _targetText.Visibility = content.Target.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         // B14: unrecovered failure = whole-row red semantic instead of a lone red X.
-        var chrome = OpenCodeToolRowChrome.For(content.Status);
+        var chrome = OpenCodeToolRowChrome.For(content.Status, content.IsEscalation);
         var summary = chrome.IsFailure ? chrome.ComposeSummary(content.Summary) : content.Summary;
         _summaryText.Text = summary;
         _summaryText.Visibility = summary.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -321,6 +322,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             OpenCodeToolPartView.ApplyRowChrome(_rowChrome, OpenCodeToolRowChrome.For(null));
             _summaryText.Visibility = Visibility.Collapsed;
         }
+        ApplyAgentColor();
         ApplyRowStyle();
 
         AutomationProperties.SetName(_chip, content.AccessibleName);
@@ -333,6 +335,14 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
 
     private void ApplyRowStyle()
         => OpenCodeTimelineRowStyle.Apply(_root, _chip, _content.Status, _label, _targetText, _summaryText);
+
+    private void ApplyAgentColor()
+    {
+        if (_content.AgentName is { } agent)
+            _icon.Foreground = new SolidColorBrush(OpenCodeAgentPresentation.Color(
+                OpenCodeAgentIcons.Color(agent, null, _root.ActualTheme == ElementTheme.Dark))!.Value);
+        else _icon.ClearValue(FontIcon.ForegroundProperty);
+    }
 
     internal void Dispose()
     {

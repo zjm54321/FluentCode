@@ -111,19 +111,34 @@ public sealed partial class OpenCodePage
     {
         if (changedMessages is null)
         {
-            UpdateShellTerminalTranscript(messages);
-            OnAgentTreeMessages(messages);
+            var source = _source;
+            var revision = _sourceRevision;
+            var pageGeneration = _pageGeneration;
+            var sessionGeneration = _sessionGeneration;
+            RunAfterTranscriptFirstFrame(() =>
+            {
+                if (!_pageActive || !ReferenceEquals(source, _source) || revision != _sourceRevision
+                    || pageGeneration != _pageGeneration || sessionGeneration != _sessionGeneration) return;
+                UpdateShellTerminalTranscript(messages);
+                OnAgentTreeMessages(messages);
+            });
         }
         OnRuntimeMessagesAccepted(messages);
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
         {
             var complete = IsLoadedMessageHistoryComplete();
             var history = CaptureTodoHistory();
-            if (changedMessages is null) insights.UpdateContext(binding!, messages, complete, history);
+            // The transcript has removed the revert boundary itself. Context/counting needs the
+            // accepted raw window so it can prove membership before excluding the reverted suffix.
+            if (changedMessages is null) insights.UpdateContext(binding!, _messageRevertBoundary is null ? messages : MergeMessageHistory(), complete, history);
             else if (!insights.TryUpdateContextMessages(binding!, changedMessages, complete, history))
-                insights.UpdateContext(binding!, ProjectMessageHistory(MergeMessageHistory()), complete, history);
-            if (_insightsVisible) _ = EnsureSessionTodoAsync(insights, binding!);
-            if (_insightsVisible && !insights.HasResultFor(binding!)) OpenSessionInsightsPane();
+                insights.UpdateContext(binding!, MergeMessageHistory(), complete, history);
+            if (_insightsVisible) RunAfterTranscriptFirstFrame(() =>
+            {
+                if (!_insightsVisible || !IsCurrentInsightsBinding(binding!)) return;
+                _ = EnsureSessionTodoAsync(insights, binding!);
+                if (!insights.HasResultFor(binding!)) OpenSessionInsightsPane();
+            });
         }
     }
 
@@ -134,7 +149,10 @@ public sealed partial class OpenCodePage
     partial void OnContextSessionMetadata(OpenCodeModelRef? model, string directory, long version)
     {
         if (_insights is { } insights && TryCaptureInsightsBinding(out var binding))
-            _ = RefreshContextMetadataAsync(insights, binding!, model, directory, version);
+            RunAfterTranscriptFirstFrame(() =>
+            {
+                if (IsCurrentInsightsBinding(binding!)) _ = RefreshContextMetadataAsync(insights, binding!, model, directory, version);
+            });
     }
 
     private async Task RefreshContextMetadataAsync(OpenCodeSessionInsightsController insights, OpenCodeInsightsBinding binding,
@@ -162,7 +180,7 @@ public sealed partial class OpenCodePage
 
         _insights?.Reset(clearBillionOrigin: clearOrigin);
         // Selection/source installation finishes in the current UI turn. Read only the live binding afterwards.
-        if (_insightsVisible) DispatcherQueue.TryEnqueue(() =>
+        if (_insightsVisible) RunAfterTranscriptFirstFrame(() =>
         {
             if (_insightsVisible && TryCaptureInsightsBinding(out _)) OpenSessionInsightsPane();
         });

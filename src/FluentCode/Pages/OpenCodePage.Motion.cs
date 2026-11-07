@@ -13,6 +13,36 @@ public sealed partial class OpenCodePage
     private int _transcriptRevealGeneration;
     private bool _transcriptHidden;
 
+    partial void QueueTranscriptFirstFrame(Action acceptedFrame, ref bool queued)
+    {
+        if (!IsLoaded || !_pageActive || !_hostWindowVisible) return;
+        queued = true;
+        void Detach()
+        {
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnFrame;
+            Unloaded -= OnUnload;
+        }
+        void OnFrame(object? sender, object args)
+        {
+            Detach();
+            // Rendering supplies the first transcript frame; side panels run at low priority afterwards.
+            if (!DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => acceptedFrame()))
+                acceptedFrame();
+        }
+        void OnUnload(object sender, RoutedEventArgs args) { Detach(); acceptedFrame(); }
+        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnFrame;
+        Unloaded += OnUnload;
+    }
+
+    partial void QueueAfterTranscriptFirstFrame(Action action, ref bool queued)
+    {
+        queued = DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
+        {
+            await WaitForTranscriptFirstFrameAsync();
+            action();
+        });
+    }
+
     private void InitializePageMotion()
     {
         AttachInfoBarEntrance(PermissionBar);

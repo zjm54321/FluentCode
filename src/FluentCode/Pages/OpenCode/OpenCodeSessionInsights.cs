@@ -134,8 +134,10 @@ public sealed record OpenCodeSessionInsightsSnapshot(
     public string BillionOriginNote { get; init; } = "打开概况或刷新时通过当前 OpenCode 来源发现地址；也可手动覆盖，不猜测默认端口。";
     public OpenCodeBillionDiscoveryResult? BillionDiscovery { get; init; }
     public bool BillionDiscoveryLoading { get; init; }
-    /// <summary>所选会话撤回点之前的 user 消息数；历史或撤回边界未确认时不伪造 0。</summary>
+    /// <summary>所选会话撤回点之前已接纳的 user 消息数；撤回边界不可确认时不伪造 0。</summary>
     public int? Turns { get; init; }
+    /// <summary>历史已完整加载时为精确计数；否则 Turns 是已加载后缀的下限。</summary>
+    public bool TurnsExact { get; init; }
     public OpenCodeInsightSection<OpenCodeSessionPresetState> Preset { get; init; }
         = OpenCodeInsightSection<OpenCodeSessionPresetState>.NotLoaded;
 
@@ -554,11 +556,11 @@ public sealed class OpenCodeSessionInsightsController
         return index < 0 ? Array.Empty<OpenCodeMessage>() : _contextMessages.Take(index).ToArray();
     }
 
-    private int? ContextTurns() => !_contextHasMessages || !_contextHistoryComplete
+    private int? ContextTurns() => !_contextHasMessages
         || !_todoHistory.RevertKnown || _todoHistory.ReadFailed
         || (_todoHistory.RevertMessageId is { } revert && !_contextMessages.Any(message => message.Id == revert))
         ? null : ContextMessagesBeforeRevert().Where(message => message.Type == OpenCodeMessageTypes.User)
-            .Select(message => message.Id).Distinct(StringComparer.Ordinal).Count();
+            .Select(message => message.Id).Where(id => !string.IsNullOrEmpty(id)).Distinct(StringComparer.Ordinal).Count();
 
     private bool SetContextSnapshot()
     {
@@ -568,11 +570,12 @@ public sealed class OpenCodeSessionInsightsController
         var before = Snapshot.Context.Value;
         var after = context.Value!;
         var turns = ContextTurns();
+        var turnsExact = turns is not null && _contextHistoryComplete;
         if (Snapshot.Context.State == context.State && before is not null
             && before.CurrentModel == after.CurrentModel && before.LatestAssistantUsage == after.LatestAssistantUsage
             && before.ContextLimit == after.ContextLimit && before.StaleReasons.SequenceEqual(after.StaleReasons)
-            && Snapshot.HistoryComplete == _contextHistoryComplete && Snapshot.Turns == turns) return false;
-        SetSnapshot(Snapshot with { Context = context, HistoryComplete = _contextHistoryComplete, Turns = turns });
+            && Snapshot.HistoryComplete == _contextHistoryComplete && Snapshot.Turns == turns && Snapshot.TurnsExact == turnsExact) return false;
+        SetSnapshot(Snapshot with { Context = context, HistoryComplete = _contextHistoryComplete, Turns = turns, TurnsExact = turnsExact });
         return true; // Text-only deltas retain inputs without rebuilding the header/flyout/insights view.
     }
 
@@ -944,11 +947,13 @@ public sealed class OpenCodeSessionInsightsController
             capabilitySection = capabilitySection with { Value = capabilities };
 
             var omoAvailable = capabilities.Omo.Availability == OpenCodeCapabilityAvailability.Available;
+            var turns = ContextTurns();
             Publish(Snapshot with
             {
                 SampledAt = sampledAt,
                 HistoryComplete = _contextHistoryComplete,
-                Turns = ContextTurns(),
+                Turns = turns,
+                TurnsExact = turns is not null && _contextHistoryComplete,
                 Context = context,
                 Cost = cost,
                 Pricing = pricing,

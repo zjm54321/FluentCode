@@ -23,6 +23,8 @@ public sealed partial class OpenCodePage
     private bool _firstMessagesLoading;
     private bool _messagesResponseEmpty;
     private string? _messagesLoadError;
+    internal long MessageWindowSerializationCount { get; private set; }
+    private long _messageWindowEstimatedBytes;
 
     private sealed class MessageRefreshOwner
     {
@@ -73,6 +75,7 @@ public sealed partial class OpenCodePage
         _messageBinding = null; // Reset must not evict the outgoing transferred window.
         _olderMessages = new();
         _latestMessages = new();
+        _messageWindowEstimatedBytes = 0;
         _conversationView.ClearMessages();
         ResetMessagePaginationState();
         if (_source is { IsRevoked: false } source && _client is { } client)
@@ -102,16 +105,9 @@ public sealed partial class OpenCodePage
             || _messageRevertBoundary is not null || _messageHistoryWorkflowOwner is not null) return;
         var rows = _olderMessages.Count + _latestMessages.Count;
         if (rows == 0 || rows > RetainedMessageRows) return;
-        // Count serialized payload without keeping a second message/byte buffer. Oversized windows
-        // stay fully available for live pagination but are not retained across bindings.
-        var budget = new MessageWindowBudget();
-        try
-        {
-            System.Text.Json.JsonSerializer.Serialize(budget, _olderMessages);
-            System.Text.Json.JsonSerializer.Serialize(budget, _latestMessages);
-        }
-        catch (MessageWindowOverBudgetException) { return; }
-        var bytes = budget.Length;
+        // Acceptance maintains this estimate. Switching transfers buffers without serializing them.
+        var bytes = _messageWindowEstimatedBytes;
+        if (bytes > RetainedMessageBytes) return;
         _retainedMessageWindows.RemoveAll(slot => slot.Binding == binding);
         _retainedMessageWindows.Add(new(binding, _olderMessages, _latestMessages, _messageNextCursor,
             _messageChainState, new(_messageUsedCursors, StringComparer.Ordinal), _messageCursorWarningShown, _messageHistoryGap, bytes));
@@ -121,24 +117,31 @@ public sealed partial class OpenCodePage
             _retainedMessageWindows.RemoveAt(0);
     }
 
-    private sealed class MessageWindowOverBudgetException : Exception { }
-    private sealed class MessageWindowBudget : System.IO.Stream
+    private void UpdateMessageWindowBudget()
     {
-        private long _length;
-        public override long Length => _length;
-        public override bool CanRead => false;
-        public override bool CanSeek => false;
-        public override bool CanWrite => true;
-        public override long Position { get => _length; set => throw new NotSupportedException(); }
-        public override void Flush() { }
-        public override void Write(byte[] buffer, int offset, int count)
+        _messageWindowEstimatedBytes = 0;
+        if (_olderMessages.Count + _latestMessages.Count > RetainedMessageRows)
         {
-            _length += count;
-            if (_length > RetainedMessageBytes) throw new MessageWindowOverBudgetException();
+            _messageWindowEstimatedBytes = RetainedMessageBytes + 1;
+            return;
         }
-        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-        public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
+        foreach (var message in _olderMessages.Concat(_latestMessages))
+        {
+            if (message?.Id is not { Length: > 0 })
+            {
+                _messageWindowEstimatedBytes = RetainedMessageBytes + 1;
+                return; // Invalid authoritative rows cannot become a retained visual window.
+            }
+            _messageWindowEstimatedBytes += _conversationView.EstimateMessageBytes(message);
+            if (_messageWindowEstimatedBytes > RetainedMessageBytes) return;
+        }
+    }
+
+    private void UpdateMessageWindowBudget(OpenCodeMessage previous, OpenCodeMessage accepted)
+    {
+        if (_messageWindowEstimatedBytes > RetainedMessageBytes) UpdateMessageWindowBudget();
+        else _messageWindowEstimatedBytes += _conversationView.EstimateMessageBytes(accepted)
+            - _conversationView.EstimateMessageBytes(previous);
     }
 
     private void RestoreMessageWindow()
@@ -159,11 +162,14 @@ public sealed partial class OpenCodePage
         _messageUsedCursors.UnionWith(window.Used);
         _messageCursorWarningShown = window.Warning;
         _messageHistoryGap = window.Gap;
+        _messageWindowEstimatedBytes = window.Bytes;
         _messageHistoryBoundaryKnown = true; // Saved windows have no rollback boundary.
         // Visual only: no reducer, execution observation, context publication or ACK.
         EnsureConversationImages();
         var visibleHistory = MergeMessageHistory();
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         _conversationView.ApplyMessages(visibleHistory);
+        RecordRetainedSwitchApply(started);
         NotifyViewAcknowledgementRendered(visibleHistory, _hostWindowVisible);
         UpdateLoadOlderMessagesUi();
         UpdateEmptyState();
@@ -180,6 +186,7 @@ public sealed partial class OpenCodePage
         else if (_messageBinding is { } binding)
             _retainedMessageWindows.RemoveAll(slot => slot.Binding == binding);
         _messageWindowAccepted = false;
+        _messageWindowEstimatedBytes = 0;
         _firstMessagesLoading = _selectedSessionId is not null;
         _messagesResponseEmpty = false;
         _messagesLoadError = null;

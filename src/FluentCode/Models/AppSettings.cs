@@ -124,10 +124,26 @@ public sealed record AppSettings
     /// <summary>Session browser preferences, independent of OpenCode connection credentials.</summary>
     public BrowserSettings Browser { get; init; } = new();
 
+    /// <summary>链接与图片芯片：联网补全（站点图标）默认关闭；可改单色图标。</summary>
+    public LinkChipSettings LinkChips { get; init; } = new();
+
     /// <summary>每个稳定 Source/profile 的已添加目录；null 为旧版/默认，省略序列化。</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public IReadOnlyList<OpenCodeProjectBookmark>? OpenCodeProjectDirectories { get; init; }
 
     /// <summary>默认空设置（无任何虚构 provider/模型）。</summary>
     public static AppSettings Empty { get; } = new();
+}
+
+/// <summary>
+/// Link / image chips. <see cref="OnlineMetadata"/> (off by default) lets generic public https sites show their own
+/// favicon instead of the globe; local / intranet hosts never go online. <see cref="MonochromeIcons"/> drops brand colours.
+/// </summary>
+public sealed record LinkChipSettings
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool OnlineMetadata { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool MonochromeIcons { get; init; }
 }

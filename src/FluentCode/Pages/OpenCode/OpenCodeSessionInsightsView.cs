@@ -443,7 +443,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     internal static readonly string[] UsageLabels = ["输入", "输出", "思考", "缓存读", "缓存写", "命中率"];
     internal static readonly string[] UsageGlyphs = ["\uE896", "\uE898", "\uEA80", "\uE736", "\uE70F", "\uE1D2"];
 
-    internal static string TurnsText(int? turns) => OpenCodeContextHeader.TurnTooltip(turns);
+    internal static string TurnsText(int? turns, bool exact = true) => OpenCodeContextHeader.TurnTooltip(turns, exact);
 
     internal static UIElement ContextUsageSection(OpenCodeSessionInsightsSnapshot snapshot)
     {
@@ -462,9 +462,10 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         var turn = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4,
             VerticalAlignment = VerticalAlignment.Center, Visibility = snapshot.Turns is null ? Visibility.Collapsed : Visibility.Visible };
         turn.Children.Add(new FontIcon { Glyph = OpenCodeContextHeader.TurnGlyph, FontSize = 12 });
-        turn.Children.Add(OpenCodeInteractionUi.StyledText(OpenCodeContextHeader.TurnNumber(snapshot.Turns), OpenCodeInteractionUi.CaptionStyleKey));
-        ToolTipService.SetToolTip(turn, TurnsText(snapshot.Turns));
-        AutomationProperties.SetName(turn, TurnsText(snapshot.Turns));
+        turn.Children.Add(OpenCodeInteractionUi.StyledText(OpenCodeContextHeader.TurnNumber(snapshot.Turns, snapshot.TurnsExact), OpenCodeInteractionUi.CaptionStyleKey));
+        ToolTipService.SetToolTip(turn, TurnsText(snapshot.Turns, snapshot.TurnsExact));
+        AutomationProperties.SetName(turn, snapshot.Turns is null ? string.Empty : snapshot.TurnsExact
+            ? TurnsText(snapshot.Turns) : "至少 " + snapshot.Turns + " 轮，" + TurnsText(snapshot.Turns, exact: false));
         AutomationProperties.SetAutomationId(turn, "OpenCodeInsightsTurns");
         Grid.SetRow(turn, OpenCodeContextHeader.TitleRow);
         Grid.SetColumn(turn, 1);

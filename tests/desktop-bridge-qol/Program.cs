@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using FluentCode.Services.Notifications;
 using FluentCode.Services.OpenCode;
 
-internal static class Program
+internal static partial class Program
 {
     // Independent literals from opencode-qol/kernel/plugins/desktop-bridge/src/protocol.ts:
     // :3 identity, :5-7 hello, :53-75 origin/favorites, :78-99 methods (no legacy alias).
@@ -188,6 +188,8 @@ internal static class Program
         await CanonicalBoundary();
         await UnsupportedBoundary();
         await CancellationBoundary();
+        await PreviewReadBoundary();
+        await TunnelErrorBoundary();
         Console.WriteLine($"PASS QOL bridge boundary: {_cases} cases, {_checks} checks; offline HttpMessageHandler, production transport and source ownership.");
     }
 }

@@ -45,7 +45,9 @@ internal static class OpenCodeAgentPickerDialog
         var grid = new Grid { ColumnSpacing = 10 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.Children.Add(new FontIcon { Glyph = OpenCodeAgentIcons.Glyph(row.Id), FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+        var icon = OpenCodeAgentIconTheme.Create(row.Id, row.Color, 16);
+        icon.VerticalAlignment = VerticalAlignment.Center;
+        grid.Children.Add(icon);
         var name = new TextBlock { Text = OpenCodeAgentIcons.DisplayName(row.Name), TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(name, 1);

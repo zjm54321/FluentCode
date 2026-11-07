@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -94,6 +95,18 @@ public sealed class OpenCodeRichTextPresenter
     private readonly List<Func<Task>> _pendingImageLoads = new();
     private string? _lastSource;
     private OpenCodeRichTextStyle _lastStyle;
+    // Link chips: a URL at the very end of a still-growing source stays text until the source is idle (no flicker).
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _chipSettleTimer;
+    private string? _settledSource;
+
+    /// <summary>
+    /// Files of the rendered user message: "[Image N]" / "[PDF N]" become chips only when backed by an N-th file of that
+    /// kind (spec §5). Zero for assistant text.
+    /// </summary>
+    internal (int Images, int Pdfs) AttachmentCounts { get; set; }
+
+    [ThreadStatic] private static ChipContext? _chips;
+    private sealed record ChipContext(bool Dark, int PendingTailStart, int Images, int Pdfs);
     internal long FullRenderCount { get; private set; }
     internal long IncrementalRenderCount => 0; // Coalescing preserves the full parser/sanitizer contract.
     internal long CoalescedRenderCount { get; private set; }
@@ -217,13 +230,22 @@ public sealed class OpenCodeRichTextPresenter
         try
         {
             blocks = new List<UIElement>();
+            // A link glued to the end of a growing message may still be streaming: keep it text until idle.
+            var tail = OpenCodeLinkChipParser.Find(source, markdown: true);
+            var pendingTail = tail.Count > 0 && tail[^1].End == source.Length && !string.Equals(_settledSource, source, StringComparison.Ordinal);
+            if (pendingTail) ScheduleChipSettle(source, style);
+            _chips = new ChipContext(_root.ActualTheme == ElementTheme.Dark
+                || _root.ActualTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark,
+                pendingTail ? 1 : 0, AttachmentCounts.Images, AttachmentCounts.Pdfs);
+            _pendingTailUrl = pendingTail ? tail[^1].Url : null;
             foreach (var segment in OpenCodeMarkdownImagePlan.Build(source))
             {
                 if (segment.IsImage)
                     blocks.Add(CreateMarkdownImage(segment.Text, segment.Alt, segment.Title, generation, renderToken));
                 else
                 {
-                    var (html, safe) = OpenCodeMarkdownTextPlan.Build(segment.Text);
+                    // The sanitizer drops every href: surface real [text](https://…) targets as text the chip pass sees.
+                    var (html, safe) = OpenCodeMarkdownTextPlan.Build(OpenCodeLinkChipParser.RewriteMarkdownLinks(segment.Text));
                     blocks.AddRange(BuildBlocks(safe, style, html));
                 }
             }
@@ -242,11 +264,13 @@ public sealed class OpenCodeRichTextPresenter
         }
         catch (Exception)
         {
+            _chips = null;
             // 绝不截断/丢失原文：完整原文以可选择纯文本展示，并显式标注未渲染。
             blocks = new List<UIElement> { BuildPlainFallback(source) };
             IsPlainFallback = true;
         }
 
+        _chips = null;
         _root.Children.Clear();
         foreach (var block in blocks)
         {
@@ -255,6 +279,30 @@ public sealed class OpenCodeRichTextPresenter
         OpenCodeMessageContextMenu.Apply(_root, _textContextFlyout ?? (_textOnlyFlyout ??= OpenCodeMessageContextMenu.CreateTextOnly()));
         ConstrainBlocks();
     }
+
+    [ThreadStatic] private static string? _pendingTailUrl;
+
+    private void ScheduleChipSettle(string source, OpenCodeRichTextStyle style)
+    {
+        if (_chipSettleTimer is null)
+        {
+            _chipSettleTimer = _root.DispatcherQueue.CreateTimer();
+            _chipSettleTimer.IsRepeating = false;
+            _chipSettleTimer.Interval = TimeSpan.FromMilliseconds(1500);
+            _chipSettleTimer.Tick += (_, _) =>
+            {
+                // Still the same text after the idle window: the message ended; form the tail chip now.
+                if (_renderLifetime.IsCanceled || !string.Equals(_lastSource, _pendingSettle, StringComparison.Ordinal)) return;
+                _settledSource = _lastSource;
+                RenderCore(_lastSource, _lastStyle);
+            };
+        }
+        _pendingSettle = source;
+        _ = style;
+        _chipSettleTimer.Stop();
+        _chipSettleTimer.Start();
+    }
+    private string? _pendingSettle;
 
     private void ConstrainBlocks()
     {
@@ -799,7 +847,7 @@ public sealed class OpenCodeRichTextPresenter
 
     // ------------------------------------------------------------------ 行内构造
 
-    private static void AppendInlines(InlineCollection target, IEnumerable<INode> nodes, int depth)
+    private static void AppendInlines(InlineCollection target, IEnumerable<INode> nodes, int depth, bool inCode = false)
     {
         foreach (var node in nodes)
         {
@@ -810,7 +858,7 @@ public sealed class OpenCodeRichTextPresenter
                     var text = NormalizeInlineText(node.TextContent ?? string.Empty);
                     if (text.Length > 0)
                     {
-                        target.Add(new Run { Text = text });
+                        AppendTextWithChips(target, text, inCode);
                     }
 
                     break;
@@ -819,7 +867,7 @@ public sealed class OpenCodeRichTextPresenter
                 case NodeType.Element:
                     if (node is IElement element)
                     {
-                        AppendInlineElement(target, element, depth);
+                        AppendInlineElement(target, element, depth, inCode);
                     }
 
                     break;
@@ -827,7 +875,46 @@ public sealed class OpenCodeRichTextPresenter
         }
     }
 
-    private static void AppendInlineElement(InlineCollection target, IElement element, int depth)
+    /// <summary>
+    /// Plain text with http(s) links and file-backed "[Image N]" tokens as inline chips. Never inside code; a URL that
+    /// may still be streaming stays text. The underlying message text (copy, "复制整段") is untouched.
+    /// </summary>
+    private static void AppendTextWithChips(InlineCollection target, string text, bool inCode)
+    {
+        var context = _chips;
+        if (inCode || context is null)
+        {
+            target.Add(new Run { Text = text });
+            return;
+        }
+        var pieces = new List<(int Start, int Length, Func<UIElement> Create)>();
+        foreach (var link in OpenCodeLinkChipParser.Find(text))
+        {
+            if (_pendingTailUrl is { } pending && link.Url == pending && link.End == text.Length) continue;
+            if (OpenCodeLinkChipParser.Parse(link.Url) is not { } chip) continue;
+            pieces.Add((link.Start, link.Length, () => OpenCodeLinkChipView.CreateTranscriptChip(chip, context.Dark)));
+        }
+        foreach (var token in OpenCodeComposerChips.AttachmentTokens(text, context.Images, context.Pdfs))
+        {
+            if (pieces.Any(p => token.Start < p.Start + p.Length && p.Start < token.Start + token.Length)) continue;
+            pieces.Add((token.Start, token.Length, () => OpenCodeLinkChipView.CreateAttachmentChip(token.Number, token.Pdf, context.Dark)));
+        }
+        if (pieces.Count == 0)
+        {
+            target.Add(new Run { Text = text });
+            return;
+        }
+        var at = 0;
+        foreach (var piece in pieces.OrderBy(p => p.Start))
+        {
+            if (piece.Start > at) target.Add(new Run { Text = text[at..piece.Start] });
+            target.Add(new InlineUIContainer { Child = piece.Create() });
+            at = piece.Start + piece.Length;
+        }
+        if (at < text.Length) target.Add(new Run { Text = text[at..] });
+    }
+
+    private static void AppendInlineElement(InlineCollection target, IElement element, int depth, bool inCode = false)
     {
         if (depth > MaximumDepth)
         {
@@ -847,19 +934,19 @@ public sealed class OpenCodeRichTextPresenter
                 break;
             case "strong":
             case "b":
-                AddSpan(target, new Bold(), element, depth);
+                AddSpan(target, new Bold(), element, depth, inCode);
                 break;
             case "em":
             case "i":
-                AddSpan(target, new Italic(), element, depth);
+                AddSpan(target, new Italic(), element, depth, inCode);
                 break;
             case "u":
-                AddSpan(target, new Underline(), element, depth);
+                AddSpan(target, new Underline(), element, depth, inCode);
                 break;
             case "code":
             {
                 var span = new Span { FontFamily = MonospaceFont, FontSize = 12 };
-                AppendInlines(span.Inlines, element.ChildNodes, depth + 1);
+                AppendInlines(span.Inlines, element.ChildNodes, depth + 1, inCode: true);
                 if (span.Inlines.Count > 0)
                 {
                     target.Add(span);
@@ -871,14 +958,14 @@ public sealed class OpenCodeRichTextPresenter
             default:
                 // a（href 已被移除，仅保留文字、不可点击）、s/del、sub/sup、span 及其他内联：
                 // 直接透传其安全后代（不做删除线/上下标/链接跳转）。
-                AppendInlines(target, element.ChildNodes, depth + 1);
+                AppendInlines(target, element.ChildNodes, depth + 1, inCode);
                 break;
         }
     }
 
-    private static void AddSpan(InlineCollection target, Span span, IElement element, int depth)
+    private static void AddSpan(InlineCollection target, Span span, IElement element, int depth, bool inCode = false)
     {
-        AppendInlines(span.Inlines, element.ChildNodes, depth + 1);
+        AppendInlines(span.Inlines, element.ChildNodes, depth + 1, inCode);
         if (span.Inlines.Count > 0)
         {
             target.Add(span);

@@ -30,7 +30,7 @@ internal sealed partial class OpenCodeComposerController
             {
                 if (!Current(expected) || !Equals(_binding, binding)) return;
                 basis = new(binding, Token, _text, _command, _files.Count != 0, DescribeDraft(delivery), delivery)
-                { Contexts = _contexts.ToArray() };
+                { Contexts = _contexts.ToArray(), SendText = SendText(_text), SendContexts = SendContexts(_text) };
                 _draftBases.Add(basis, new());
             }
         });
@@ -47,6 +47,7 @@ internal sealed partial class OpenCodeComposerController
             files = _files.Select(f => new { id = f.Id, name = f.Name, mime = f.Mime, bytes = f.Bytes.Length }).ToArray(),
             contexts = _contexts.Select(c => new { c.Id, c.IsSkill, c.Start }).ToArray()
         });
+        // Chip binding is covered by _edit (every bind/unbind is an edit) and the sent text; the schema stays version 2.
         return new(delivery is null ? hash : SessionControlJson.Hash(new { draft = hash, delivery }),
             _text.Length == 0 && _command is null && _files.Count == 0);
     }

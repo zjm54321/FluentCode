@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -22,12 +23,17 @@ internal sealed class OpenCodeComposerMentionChips
     private readonly Canvas _layer;
     private readonly Func<IReadOnlyList<OpenCodePromptContext>> _mentions;
     private readonly Func<string, string?> _runtimeColor;
+    private readonly Func<IReadOnlyList<OpenCodeComposerLinkSpan>>? _links;
+    private readonly Func<IReadOnlyList<OpenCodeComposerImageSpan>>? _images;
     private ScrollViewer? _scroller;
     private string? _signature;
 
     internal OpenCodeComposerMentionChips(TextBox editor, Canvas layer, Func<IReadOnlyList<OpenCodePromptContext>> mentions,
-        Func<string, string?> runtimeColor)
+        Func<string, string?> runtimeColor, Func<IReadOnlyList<OpenCodeComposerLinkSpan>>? links = null,
+        Func<IReadOnlyList<OpenCodeComposerImageSpan>>? images = null)
     {
+        _links = links;
+        _images = images;
         _editor = editor;
         _layer = layer;
         _mentions = mentions;
@@ -79,7 +85,10 @@ internal sealed class OpenCodeComposerMentionChips
     {
         var text = _editor.Text ?? string.Empty;
         var mentions = _mentions();
-        var signature = text.GetHashCode() + "|" + string.Join(",", Spans(mentions, text)) + "|" + _scroller?.VerticalOffset + "|"
+        var links = _links?.Invoke() ?? Array.Empty<OpenCodeComposerLinkSpan>();
+        var images = _images?.Invoke() ?? Array.Empty<OpenCodeComposerImageSpan>();
+        var signature = text.GetHashCode() + "|" + string.Join(",", Spans(mentions, text)) + "|" + string.Join(",", links.Select(l => l.Start + ":" + l.Url.GetHashCode()))
+            + "|" + string.Join(",", images.Select(i => i.Start + ":" + i.Number)) + "|" + _scroller?.VerticalOffset + "|"
             + _scroller?.HorizontalOffset + "|" + _editor.ActualWidth + "|" + _editor.ActualHeight;
         if (!force && signature == _signature) return;
         _signature = signature;
@@ -96,11 +105,10 @@ internal sealed class OpenCodeComposerMentionChips
         var b = _editor.BorderThickness; var p = _editor.Padding;
         _layer.Clip = new RectangleGeometry { Rect = new Rect(b.Left + p.Left - 3, b.Top + 2, Math.Max(0, _editor.ActualWidth - b.Left - b.Right - p.Left - p.Right + 6),
             Math.Max(0, _editor.ActualHeight - b.Top - b.Bottom - 4)) };
-        foreach (var m in mentions)
+        List<Rect> Rects(int start, int end)
         {
-            if (!m.Matches(text)) continue;
             var rects = new List<Rect>();
-            for (var i = m.Start; i < m.End; i++)
+            for (var i = start; i < end; i++)
             {
                 try
                 {
@@ -110,6 +118,44 @@ internal sealed class OpenCodeComposerMentionChips
                 }
                 catch (ArgumentException) { rects.Clear(); break; } // Not laid out yet; the next refresh draws it.
             }
+            return rects;
+        }
+        // Link chips: neutral box (same geometry as "@") + 14 px icon in the reserved gap; the label is editor text.
+        foreach (var link in links)
+        {
+            if (!link.Matches(text) || OpenCodeLinkChipParser.Parse(link.Url) is not { } chip) continue;
+            var first = true;
+            foreach (var seg in Segments(Rects(link.Start, link.End)))
+            {
+                var box = OpenCodeLinkChipView.CreateOverlayRect(seg.Width + 6, Math.Max(0, seg.Height + 2), dark);
+                Canvas.SetLeft(box, seg.Left - 3);
+                Canvas.SetTop(box, seg.Top - 1);
+                _layer.Children.Add(box);
+                if (!first) continue;
+                first = false;
+                var icon = OpenCodeLinkChipView.CreateIcon(chip, dark);
+                icon.IsHitTestVisible = false;
+                Canvas.SetLeft(icon, seg.Left + 1);
+                Canvas.SetTop(icon, seg.Top + Math.Max(0, (seg.Height - 14) / 2));
+                _layer.Children.Add(icon);
+            }
+        }
+        // "[Image N]": the literal TUI text inside the same neutral chip.
+        foreach (var image in images)
+        {
+            if (!image.Matches(text)) continue;
+            foreach (var seg in Segments(Rects(image.Start, image.End)))
+            {
+                var box = OpenCodeLinkChipView.CreateOverlayRect(seg.Width + 6, Math.Max(0, seg.Height + 2), dark);
+                Canvas.SetLeft(box, seg.Left - 3);
+                Canvas.SetTop(box, seg.Top - 1);
+                _layer.Children.Add(box);
+            }
+        }
+        foreach (var m in mentions)
+        {
+            if (!m.Matches(text)) continue;
+            var rects = Rects(m.Start, m.End);
             var color = Color(m, dark);
             foreach (var seg in Segments(rects))
             {

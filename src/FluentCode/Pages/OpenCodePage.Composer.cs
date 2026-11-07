@@ -20,6 +20,7 @@ public sealed partial class OpenCodePage
     private bool _composerPickerPending;
     private bool _composerAgentApplyPending;
     private bool _suppressComposerFocus;
+    private string? _mentionPrimaryAgentId;
     // Redesign §3 (L2): the blank "新会话" layout is shown with no selected session. The same composer then binds
     // an UNBOUND binding (controller never sends it); Enter asks OpenCodePage.NewSessionTab.cs to create first.
     private bool _newSessionDraftActive;
@@ -63,6 +64,9 @@ public sealed partial class OpenCodePage
             _composerController.TryApplyEditorInput(e.Token, e.Text, e.AllowUnboundCarry);
         _composerView.ContextChosen += (token, id, isSkill, start) =>
             _composerController.TryAddContext(token, id, isSkill, start);
+        // Link / image chips: the view inserts the label or "[Image N]" natively; the controller binds it to the URL / file.
+        _composerView.LinkChosen += (token, start, url) => _composerController.TryAddLink(token, start, url);
+        _composerView.ImageChosen += (token, start, number, id) => _composerController.TryAddImage(token, start, number, id);
         _composerView.CatalogOpenRequested += (_, e) =>
         {
             if (_pageActive && !_isSending && !_composerPickerPending && !_nativeDialogPending && _nativeActionOwner is null)
@@ -88,7 +92,7 @@ public sealed partial class OpenCodePage
         _composerView.PickRequested += (_, e) => _ = PickComposerFilesAsync(e.Token);
         InitializeComposerPaste();
         InitializeShellComposer();
-        _agentSelector.DisplayChanged += (_, _) => RefreshChildComposerVisibility();
+        _agentSelector.DisplayChanged += (_, _) => { RefreshChildComposerVisibility(); RefreshMentionScope(); };
     }
 
     private string? ComposerSplashModelId()
@@ -116,10 +120,26 @@ public sealed partial class OpenCodePage
         {
             ct.ThrowIfCancellationRequested();
             if (!OwnsComposerBinding(binding)) throw new OperationCanceledException(ct);
-            var rows = await OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct);
+            var rows = await OpenCodeComposerMentions.SearchAsync(binding.Client, slot.Directory, query, ct, ComposerMentionAgentId());
             if (!OwnsComposerBinding(binding)) throw new OperationCanceledException(ct);
             return rows;
         };
+    }
+
+    private string? ComposerMentionAgentId()
+    {
+        if (_newSessionDraftActive) return _blankPreferences?.Agent;
+        if (ReferenceEquals(_agentSelectorSource, _source) && _agentSelectorRevision == _sourceRevision
+            && _agentSelectorSessionId == _selectedSessionId) return _agentSelector.CurrentAgentId;
+        return _selectedSessionId is { } id && _sessionItems.TryGetValue(id, out var session) ? session.Agent : null;
+    }
+
+    private void RefreshMentionScope()
+    {
+        var primary = ComposerMentionAgentId();
+        if (_mentionPrimaryAgentId == primary) return;
+        _mentionPrimaryAgentId = primary;
+        _composerView?.RefreshMentionCandidates();
     }
 
     // Called under the controller/source locks and on worker threads: ONLY captured page field comparisons.
@@ -166,6 +186,7 @@ public sealed partial class OpenCodePage
     private void RefreshComposerView()
     {
         if (_composerView is null) return;
+        RefreshMentionScope();
         RefreshChildComposerVisibility();
         // RequestRender is coalesced and pulls the latest snapshot on the UI dispatcher. It does not
         // focus the editor. An unloaded page can render its inactive snapshot, never its old context.
@@ -478,7 +499,7 @@ public sealed partial class OpenCodePage
             try
             {
                 var sentModel = prepared.State?.Model;
-                var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.Text, null, Start, ct, basis.Delivery, basis.Contexts);
+                var receipt = await basis.Binding.Client.SendPromptGuardedAsync(origin.SessionId, basis.SendText, null, Start, ct, basis.Delivery, basis.SendContexts);
                 outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
                 try { promptAccepted?.Invoke(sentModel); }
                 catch (Exception) { /* Local usage tracking cannot rewrite admission. */ }

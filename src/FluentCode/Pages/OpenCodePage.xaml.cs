@@ -810,6 +810,7 @@ public sealed partial class OpenCodePage : Page
             return;
         }
 
+        var switchPerformance = BeginSessionSwitchPerformance();
         InvalidateViewAcknowledgement();
         ClearSessionReturnContext();
         _homeActive = false;
@@ -818,7 +819,11 @@ public sealed partial class OpenCodePage : Page
         _sessionGeneration++;
         BeginTranscriptSwitchMotion();
         BeginSessionMessageBinding(sessionId, directory);
-        if (_conversationView.Children.Count > 0) RevealTranscript(); // Retained window restored synchronously.
+        if (_conversationView.Children.Count > 0)
+        {
+            RevealTranscript(); // Retained window restored synchronously.
+            QueueSessionSwitchFirstFrame();
+        }
         BindComposer();
         onBound?.Invoke(); // Capture the new binding before refresh or externally observable callbacks.
 
@@ -849,8 +854,13 @@ public sealed partial class OpenCodePage : Page
 
         RaiseSessionTracked(sessionId, OpenCodeSessionTrackReason.Selected);
         QueueChildInteractionDiscovery();
+        RecordSessionSwitchPrelude(switchPerformance);
         await RefreshMessagesAsync(initial: true);
-        if (!_firstMessagesLoading) RevealTranscript(); // Loaded, failed or empty; a queued refresh reveals on accept.
+        if (!_firstMessagesLoading && IsCurrentSwitchPerformance(switchPerformance))
+        {
+            RevealTranscript(); // Loaded, failed or empty; a queued refresh reveals on accept.
+            QueueSessionSwitchFirstFrame();
+        }
     }
 
     private void CancelSessionOperations()
@@ -1058,6 +1068,7 @@ public sealed partial class OpenCodePage : Page
             _messageWindowAccepted = true;
             _messagesLoadError = null;
             RevealTranscript();
+            QueueSessionSwitchFirstFrame();
             RetainHistoryChildEvidence(sessionId, MergeMessageHistory());
             var projectedWindow = ProjectMessageHistory(orderedMessages);
             ObserveExecutionState(sessionId, projectedWindow);
@@ -1073,6 +1084,8 @@ public sealed partial class OpenCodePage : Page
                 ScrollToBottom(animated: !(initial || forceFollow));
             }
 
+            await TranscriptFirstFrame.ConfigureAwait(true);
+            if (!OwnsMessageRefresh(refreshOwner) || !IsCurrentMessageHistoryRead(historyRead)) return;
             if (auxiliaryRead is not null)
                 await RefreshAuxiliaryAsync(auxiliaryRead, sessionId,
                     () => OwnsMessageRefresh(refreshOwner) && IsCurrentMessageHistoryRead(historyRead));

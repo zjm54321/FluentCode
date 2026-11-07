@@ -155,6 +155,9 @@ public sealed partial class OpenCodePage : FrameworkElement
     private IReadOnlyList<OpenCodeMessage> ProjectMessageHistory(IReadOnlyList<OpenCodeMessage> messages) => messages;
     private void EnsureConversationImages() { }
     private void OnContextMessagesAccepted(IReadOnlyList<OpenCodeMessage> messages, IReadOnlyList<OpenCodeMessage>? changedMessages = null) { }
+    private void UpdateMessageWindowBudget() { }
+    private void UpdateMessageWindowBudget(OpenCodeMessage previous, OpenCodeMessage accepted) { }
+    private int _pageGeneration = 1; // Native page lifetime boundary; child-permission tests keep one loaded page.
     private bool _messageHistoryBoundaryKnown = true, _isLoadingOlderMessages = false;
     private string? _messageRevertBoundary = null;
     private void ObserveExecutionState(string session, IReadOnlyList<OpenCodeMessage> messages) { }
@@ -191,6 +194,12 @@ public sealed partial class OpenCodePage : FrameworkElement
     private sealed class ConversationSurface
     {
         internal readonly List<FrameworkElement> Children = new();
+        internal long FullApplyCount => 0;
+        internal long FastApplyCount => 0;
+        internal long UnchangedApplyCount => 0;
+        internal long UpdateLayoutCount => 0;
+        internal void BeginSessionSwitchLayout() { }
+        internal void EndSessionSwitchLayout() { }
         internal void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { }
         internal bool TryApplyMessageChanges(IReadOnlyList<OpenCodeMessage> changed, object owner, long baseline, long version) => false;
         internal void BindIncrementalSnapshot(object owner, long version) { }

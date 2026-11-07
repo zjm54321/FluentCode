@@ -31,9 +31,10 @@ internal static class OpenCodeExecuteInnerCatalog
         ["ast_grep_search"] = new("AST 搜索", "code", "pattern lang"),
         ["task_result"] = new("获取子智能体结果", "agent", "task_id"),
         ["task_message"] = new("给子智能体发消息", "agent", "task_id message"),
-        ["task_cancel"] = new("取消子智能体", "agent", "task_id reason"),
+        ["task_report"] = new("汇报", "agent", "kind message", "\uE8F2"),
+        ["task_cancel"] = new("取消子智能体", "agent", "sessionID task_id reason"),
         ["task_revive"] = new("恢复子智能体", "agent", "task_id prompt"),
-        ["task_status"] = new("查看子智能体状态", "agent", "task_id"),
+        ["task_status"] = new("查看子智能体状态", "agent", "sessionID task_id"),
         ["wait_for_user"] = new("等待你的确认", "agent", "reason"),
         ["pty_read"] = new("读取终端输出", "pty", "id pattern"),
         ["pty_write"] = new("写入终端输入", "pty", "id data"),
@@ -85,6 +86,8 @@ internal static class OpenCodeExecuteInnerCatalog
         using var document = JsonDocument.Parse(call.Input);
         var input = document.RootElement;
         if (input.ValueKind != JsonValueKind.Object) return input.GetArrayLength() + " 个参数";
+        if (call.Tool == "task_report" && input.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+            return OpenCodeToolRowPresentation.TaskReportSummary(message.GetString());
         var entry = Find(call.Tool);
         var values = new List<string>();
         if (entry is not null)

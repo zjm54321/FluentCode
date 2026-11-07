@@ -142,6 +142,9 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                 {
                     CatalogHandle = _catalogOwner?.Handle,
                     Mentions = _contexts.ToArray(),
+                    Links = _links.ToArray(),
+                    Images = _images.ToArray(),
+                    SendText = SendText(_text),
                     IsUnboundDraft = active && IsUnbound(_binding),
                     ClientIntent = _clientIntent,
                     CanInvokeClientAction = active && !Busy && _clientIntent is not null
@@ -263,6 +266,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             else if (c.End > prefix) { _contexts.RemoveAt(i); continue; }
             if (!c.Matches(text)) _contexts.RemoveAt(i);
         }
+        UpdateChipText(_text, text);
         _text = text;
     }
 
@@ -697,6 +701,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         lock (_sync)
         {
             if (!Current(token) || _files.RemoveAll(f => f.Id == id) == 0) return;
+            RemoveImageTextFor(id);
             Edited();
         }
         Publish();
@@ -721,6 +726,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     {
         _text = string.Empty;
         _contexts.Clear();
+        ResetChips(null, null, 0);
         _command = null;
         _files.Clear();
         _origin = null;
@@ -751,7 +757,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             binding = _binding!;
             scopeCancellation = _scopeCancellation.Token;
             var browserContext = string.Join("\n\n", _files.Select(f => f.Presentation?.Context).Where(s => !string.IsNullOrWhiteSpace(s)));
-            text = _text + (browserContext.Length == 0 ? "" : (_text.Length == 0 ? "" : "\n\n") + browserContext);
+            text = SendText(_text) + (browserContext.Length == 0 ? "" : (_text.Length == 0 ? "" : "\n\n") + browserContext);
             command = _command;
             attachments = _files.Select(f => f.Encoded).ToArray();
             _submissionOwner = operation;
@@ -803,7 +809,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                         if (command is null)
                         {
                             var sentModel = preparation.State?.Model;
-                            var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token, context.Basis.Delivery, context.Basis.Contexts).ConfigureAwait(false);
+                            var receipt = await binding.Client.SendPromptGuardedAsync(binding.SessionId, text, encoded, Start, linked.Token, context.Basis.Delivery, context.Basis.SendContexts).ConfigureAwait(false);
                             outcome = new OpenCodeComposerSubmitOutcome.PromptAccepted(receipt);
                             // Admission remains real even when settlement/UI ownership subsequently goes stale.
                             try { promptAccepted?.Invoke(sentModel); }

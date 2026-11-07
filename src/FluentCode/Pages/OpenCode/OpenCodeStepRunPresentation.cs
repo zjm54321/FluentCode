@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using FluentCode.Services.OpenCode;
 
 namespace FluentCode.Pages.OpenCode;
@@ -71,6 +72,12 @@ internal sealed record OpenCodeAsyncCompletion(
         || Kind == OpenCodeAsyncCompletionKind.Pty && State == "exited" && ExitCode == 0;
 }
 
+/// <summary>A queued child update, never a completion notification or parent processing receipt.</summary>
+internal sealed record OpenCodeSubagentUpdate(string Id, string Kind, string Agent, string ChildSessionId, string Message)
+{
+    internal bool IsEscalation => Kind == "escalation";
+}
+
 /// <summary>时间线中工具样式的单行（指令 / 异步完成 / 内部消息）的展示内容（纯数据，无 UI 依赖）。</summary>
 /// <param name="Name">行名称（BodyStrong，例如“指令”“终端完成”）。</param>
 /// <param name="Target">目标（等宽、省略号；可空串）。</param>
@@ -92,7 +99,9 @@ internal sealed record OpenCodeTimelineRowContent(
     IReadOnlyList<OpenCodeToolProperty> Properties,
     string? DetailText,
     bool DetailMarkdown = false,
-    string? LinkText = null);
+    string? LinkText = null,
+    string? AgentName = null,
+    bool IsEscalation = false);
 
 /// <summary>
 /// 时间线“处理过程”分组与紧凑提示行的纯展示算法（F4 / F5 / F8）：耗时文案、分组摘要、
@@ -126,6 +135,53 @@ internal static class OpenCodeStepRunPresentation
 
     /// <summary>内部触发消息提示行的短标签。</summary>
     internal const string InternalInitiatorLabel = "内部自动消息";
+
+    private static readonly Regex SubagentUpdateEnvelope = new(
+        "\\A<subagent-update(?:\\s+(?:id=\"(?<id>[^\"]+)\"|kind=\"(?<kind>[^\"]+)\")){2}\\s*>\\r?\\n"
+        + "From @(?<agent>[^\\s<>()]+) \\(session (?<session>[^\\s<>()]+)\\):\\r?\\n"
+        + "(?<message>[\\s\\S]+)\\r?\\n</subagent-update>\\s*(?:<!-- SLIM_INTERNAL_INITIATOR -->)?\\z",
+        RegexOptions.CultureInvariant);
+
+    internal static bool TryParseSubagentUpdateText(string? text, out OpenCodeSubagentUpdate update)
+    {
+        update = null!;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var match = SubagentUpdateEnvelope.Match(text.Trim());
+        if (!match.Success || match.Groups["id"].Captures.Count != 1 || match.Groups["kind"].Captures.Count != 1
+            || !Guid.TryParseExact(match.Groups["id"].Value, "D", out _)
+            || match.Groups["kind"].Value is not ("progress" or "escalation")
+            || !OpenCodeSubagentPresentation.IsOpaqueSessionId(match.Groups["session"].Value)) return false;
+        var body = match.Groups["message"].Value.Trim();
+        if (body.Length is 0 or > 2000) return false;
+        update = new(match.Groups["id"].Value, match.Groups["kind"].Value, match.Groups["agent"].Value,
+            match.Groups["session"].Value, body);
+        return true;
+    }
+
+    internal static bool TryReadSubagentUpdate(OpenCodeMessage? message, out OpenCodeSubagentUpdate update)
+    {
+        update = null!;
+        if (!IsInternalInitiator(message)) return false;
+        if (TryParseSubagentUpdateText(message!.Text, out update)) return true;
+        if (message.Content is { } content)
+            foreach (var part in content)
+                if (part?.Type == OpenCodePartTypes.Text && TryParseSubagentUpdateText(part.Text, out update)) return true;
+        return TryParseSubagentUpdateText(message.Description, out update);
+    }
+
+    internal static OpenCodeTimelineRowContent DescribeSubagentUpdate(OpenCodeSubagentUpdate update)
+    {
+        var label = "@" + update.Agent + " " + OpenCodeToolRowPresentation.TaskReportName(update.Kind);
+        var excerpt = OpenCodeToolRowPresentation.TaskReportSummary(update.Message);
+        if (excerpt.Length > 80) excerpt = excerpt[..80] + "…";
+        return new(label, "· " + excerpt, string.Empty, null, label + " · " + excerpt, label,
+            new[]
+            {
+                new OpenCodeToolProperty(0, "类型", update.IsEscalation ? "问题（escalation）" : "进度（progress）", OpenCodeToolPropertyKind.Text),
+                new OpenCodeToolProperty(0, "智能体", "@" + update.Agent, OpenCodeToolPropertyKind.Text),
+                new OpenCodeToolProperty(0, "子会话", update.ChildSessionId, OpenCodeToolPropertyKind.Code),
+            }, update.Message, LinkText: "打开子智能体会话", AgentName: update.Agent, IsEscalation: update.IsEscalation);
+    }
 
     /// <summary>
     /// 时间戳是否可信（按毫秒 Unix 时间戳理解，约 1973 ~ 5138 年）；单位未核实或缺失（0）时不参与计时。

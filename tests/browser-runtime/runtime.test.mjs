@@ -33,7 +33,7 @@ async function fixture() {
     calls.push({method, ...input});
     if (method === 'tunnel.open') {
       if (holdOpen) await holdOpen(signal);
-      if (rejected) throw new Error('Controlled tunnel failure');
+      if (rejected) throw new Error(typeof rejected === 'string' ? rejected : 'Controlled tunnel failure');
       const port = mappings.get(input.target.host);
       assert.ok(port, `Unmapped target ${input.target.host}`);
       const socket = net.connect({host: '127.0.0.1', port, allowHalfOpen: true});
@@ -151,6 +151,29 @@ test('authenticated HTTP, bounded ordered chunks, and no target-network fallback
     assert.equal(hits, 1, 'Rejected tunnel must not connect directly even to a reachable target');
     assert.ok(f.ready.cdpEventNames.includes('Target.attachedToTarget'));
   } finally { await f.dispose(); await close(origin); }
+});
+
+test('tunnel.open failures render the target and escaped server error, including CONNECT diagnostics', {timeout: 15000}, async () => {
+  const f = await fixture();
+  try {
+    f.reject = 'connect ECONNREFUSED 127.0.0.1:18931 <script>alert(1)</script>';
+    const page = await get(f, 'http://127.0.0.1:18931/probe?x=%3C');
+    assert.equal(page.status, 502);
+    assert.match(page.headers['content-type'], /^text\/html; charset=utf-8$/);
+    assert.match(page.headers['content-security-policy'], /default-src 'none'/);
+    assert.match(page.body, /服务端无法连接此页面/);
+    assert.match(page.body, /http:\/\/127.0.0.1:18931\/probe/);
+    assert.match(page.body, /connect ECONNREFUSED 127\.0\.0\.1:18931/);
+    assert.match(page.body, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+    assert.ok(!page.body.includes('<script>'));
+    const connected = await raw(f, 'CONNECT 127.0.0.1:18931 HTTP/1.1');
+    assert.match(connected.headers, /^HTTP\/1.1 502/);
+    assert.match(connected.headers, /Content-Length: [1-9]/);
+    connected.socket.destroy();
+    assert.deepEqual(f.calls.filter(call => call.method === 'tunnel.open').map(call => call.target), [
+      {host: '127.0.0.1', port: 18931}, {host: '127.0.0.1', port: 18931},
+    ]);
+  } finally { await f.dispose(); }
 });
 
 test('self-listener destinations never open tunnels; other remote loopback remains routable', {timeout: 15000}, async () => {

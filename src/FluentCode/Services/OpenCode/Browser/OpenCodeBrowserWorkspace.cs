@@ -98,6 +98,7 @@ public sealed class OpenCodeBrowserWorkspace : IOpenCodeBrowserWorkspace, IDispo
     public string? AvailabilityReason => _availability().Reason;
     public Func<string, CancellationToken, Task<string>>? ReadPreviewTextAsync { get; set; }
     public Func<string, CancellationToken, Task<OpenCodeBrowserPreviewContent>>? ReadPreviewAsync { get; set; }
+    public Func<string, string, CancellationToken, Task<OpenCodeBrowserPreviewContent>>? ReadPreviewResourceAsync { get; set; }
     public Func<string, bool, string?>? PreviewPathUnavailableReason { get; set; }
     public Func<string, bool, Task>? OpenPreviewPathAsync { get; set; }
     public event EventHandler? PagesChanged;

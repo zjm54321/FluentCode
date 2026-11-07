@@ -59,6 +59,7 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/FluentCode/Services/Notifications/NotificationInteractions.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.MessagePagination.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.MessageBinding.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.SwitchPerformance.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewAcknowledgement.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewVisibility.cs'),
     (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'),

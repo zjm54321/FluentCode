@@ -141,7 +141,7 @@ public sealed class OpenCodeBrowserWebView2Driver : IOpenCodeBrowserPageDriver
     {
         if (_navigationId != args.NavigationId) return;
         _pendingUrl = null;
-        Update(_state with { Loading = false, LoadError = args.IsSuccess ? null : args.WebErrorStatus.ToString() });
+        Update(_state with { Loading = false, LoadError = args.IsSuccess ? null : _options.Proxy.TunnelError?.Invoke(_state.Url) ?? args.WebErrorStatus.ToString() });
         Refresh();
         NavigationChanged?.Invoke(this, new(args.NavigationId, OpenCodeBrowserNavigationPhase.Completed, _state.Url,
             args.IsSuccess, _state.LoadError));

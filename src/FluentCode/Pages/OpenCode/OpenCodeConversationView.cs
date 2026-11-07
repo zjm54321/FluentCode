@@ -61,6 +61,9 @@ public sealed class OpenCodeConversationView : StackPanel
     internal event EventHandler? IdleViewportInvalidated;
     internal long RenderVersion { get; private set; }
     internal long FullApplyCount { get; private set; }
+    internal long UnchangedApplyCount { get; private set; }
+    internal static long MessageProjectionsComputed { get; private set; }
+    internal long UnrealizedPartsSkipped { get; private set; }
     internal long FastApplyCount { get; private set; }
     internal long MessageFingerprintRequestCount { get; private set; }
     internal static long MessageFingerprintsComputed { get; private set; }
@@ -435,8 +438,8 @@ public sealed class OpenCodeConversationView : StackPanel
             }
             // A settled frame already supplies actual heights. Only realization or an unmeasured
             // retained-anchor/bottom correction needs a synchronous layout; never force it during inertia.
-            if (replacements.Count > 0 || (measureAnchor && !_userScrolling && _idleLayoutVersion != RenderVersion
-                && (_followingBottom || _readAnchor is not null))) ForceWindowLayout(viewport);
+            if (_entries.Count > 0 && (replacements.Count > 0 || (measureAnchor && !_userScrolling && _idleLayoutVersion != RenderVersion
+                && (_followingBottom || _readAnchor is not null))) && !ForceWindowLayout(viewport)) return;
             // Realization, deferred Markdown and tool expansion can change heights in this
             // very layout pass. Accept them BEFORE restoring the anchor, not next frame.
             if (MeasureRealizedRows())
@@ -445,7 +448,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 ChangeIdleContent(AlignWindow);
                 // New realized rows can replace estimated spacer heights. Their new extent must
                 // be committed before clamping an anchor; unchanged realized sets need no second pass.
-                if (replacements.Count > 0) ForceWindowLayout(viewport);
+                if (replacements.Count > 0 && !ForceWindowLayout(viewport)) return;
             }
             // Realize at the live logical position during a pan, but let native input own
             // the offset until its final ViewChanged. Do not retain a pre-pan anchor for
@@ -462,7 +465,15 @@ public sealed class OpenCodeConversationView : StackPanel
                 ScrollViewport(viewport, _requestedOffset.Value, animated);
             }
         }
-        finally { _updatingWindow = false; }
+        finally
+        {
+            _updatingWindow = false;
+            if (_switchLayoutEnding && !changed && _idleLayoutVersion == RenderVersion)
+            {
+                _switchLayoutBudget = -1;
+                _switchLayoutEnding = false;
+            }
+        }
         if (changed) QueueWindowUpdate();
     }
 
@@ -475,10 +486,23 @@ public sealed class OpenCodeConversationView : StackPanel
         return changed;
     }
 
-    private void ForceWindowLayout(ScrollView viewport)
+    private int _switchLayoutBudget = -1;
+    private bool _switchLayoutEnding;
+    internal void BeginSessionSwitchLayout() { _switchLayoutBudget = 1; _switchLayoutEnding = false; }
+    internal void EndSessionSwitchLayout() => _switchLayoutEnding = true;
+
+    private bool ForceWindowLayout(ScrollView viewport)
     {
+        if (_switchLayoutBudget == 0)
+        {
+            // The next native frame commits spacer extents before restoring the same reader anchor.
+            QueueWindowUpdate();
+            return false;
+        }
+        if (_switchLayoutBudget > 0) _switchLayoutBudget--;
         UpdateLayoutCount++;
         viewport.UpdateLayout();
+        return true;
     }
 
     private bool KeepVisual(Entry entry)
@@ -519,6 +543,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private static void CopyEntrySnapshot(Entry from, Entry to)
     {
         to.Snapshot = from.Snapshot; to.MessageType = from.MessageType; to.Fingerprint = from.Fingerprint;
+        to.RawSnapshot = from.RawSnapshot; to.RawFingerprint = from.RawFingerprint;
         to.TaskTitle = from.TaskTitle; to.AsyncSignature = from.AsyncSignature; to.RecoverySignature = from.RecoverySignature;
         to.IdleMessageId = from.IdleMessageId; to.IdleWatermark = from.IdleWatermark;
     }
@@ -877,6 +902,8 @@ public sealed class OpenCodeConversationView : StackPanel
         public FrameworkElement Element { get; init; } = null!;
         internal bool Realized => Element is not null;
         internal OpenCodeMessage? Snapshot { get; set; }
+        internal OpenCodeMessage? RawSnapshot { get; set; }
+        internal string RawFingerprint { get; set; } = string.Empty;
         public required Action<OpenCodeMessage> Update { get; init; }
 
         /// <summary>该条目是否为指令通知的安全呈现；呈现方式改变时据其整体替换旧条目。</summary>
@@ -1151,8 +1178,9 @@ public sealed class OpenCodeConversationView : StackPanel
     private Dictionary<string, OpenCodeAsyncCompletion> _asyncCompletions = new(StringComparer.Ordinal);
     private readonly HashSet<string> _subagentInvocationKeys = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string? Agent, string? Description)> _childToolTargets = new(StringComparer.Ordinal);
+    internal Func<string, (string? Agent, string? Description)?>? ChildSessionTarget { get; set; }
     private (string? Agent, string? Description)? FindChildTool(string child)
-        => _childToolTargets.TryGetValue(child, out var target) ? target : null;
+        => ChildSessionTarget?.Invoke(child) ?? (_childToolTargets.TryGetValue(child, out var target) ? target : null);
     public event Action<OpenCodeShellTerminalRequest>? TerminalRequested;
     public event Action<string?, string>? BrowserPageRequested;
 
@@ -1284,26 +1312,21 @@ public sealed class OpenCodeConversationView : StackPanel
     private void ApplyMessagesCore(IReadOnlyList<OpenCodeMessage> messages)
     {
         FullApplyCount++;
+        var rawMessages = messages;
+        var projections = new MessageProjection[messages.Count];
         _childToolTargets.Clear();
-        foreach (var message in messages)
-            if (message.Content is { } parts)
-                foreach (var part in parts)
-                    try
-                    {
-                        if (OpenCodeSubagentPresentation.TryReadToolPart(part, out var child) && child.ChildSessionId is { } id)
-                            _childToolTargets[id] = (child.Agent, child.Description);
-                    }
-                    catch (OpenCodeProtocolException) { } // Malformed invocations cannot supply a related-child identity.
+        for (var index = 0; index < messages.Count; index++)
+        {
+            var projection = projections[index] = ProjectMessage(messages[index]);
+            foreach (var child in projection.Children) _childToolTargets[child.Id] = (child.Agent, child.Description);
+        }
         _messageIdCounts.Clear();
         // Accepted raw order, before safe presentation copies and before any provisional chat rows.
         _manualBackground.Update(messages);
 
         // 客户端安全化：不改动调用方集合，逐条投影为净化副本（顺序与数量不变）。
         var sanitizedMessages = new List<OpenCodeMessage>(messages.Count);
-        foreach (var message in messages)
-        {
-            sanitizedMessages.Add(SanitizeSyntheticInstruction(OpenCodeInstructionNoticeProjection.SanitizeForClient(message)));
-        }
+        foreach (var projection in projections) sanitizedMessages.Add(projection.Message);
 
         messages = sanitizedMessages;
 
@@ -1319,11 +1342,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
         // 异步完成通知索引：原始后台调用行（终端 / 子任务）据此显示最终状态。
         var completions = new Dictionary<string, OpenCodeAsyncCompletion>(StringComparer.Ordinal);
-        foreach (var message in messages)
+        foreach (var projection in projections)
         {
-            if (!IsInstructionMessage(message)
-                && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out var completion)
-                && completion.Key.Length > 0)
+            if (projection.Completion is { Key.Length: > 0 } completion)
             {
                 completions[completion.Key] = completion;
             }
@@ -1331,11 +1352,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
         _asyncCompletions = completions;
         _subagentInvocationKeys.Clear();
-        foreach (var message in messages)
-            if (!IsInstructionMessage(message) && message.Content is { } parts)
-                foreach (var part in parts)
-                    if (part.Type == OpenCodePartTypes.Tool && OpenCodeToolRowPresentation.Classify(part.Name) == OpenCodeToolKind.Subagent)
-                        foreach (var invocationKey in OpenCodeStepRunPresentation.AsyncKeys(part)) _subagentInvocationKeys.Add(invocationKey);
+        foreach (var projection in projections) _subagentInvocationKeys.UnionWith(projection.InvocationKeys);
 
         // 完成卡片标题来源：按本次快照重建映射（只读消费；标题算法由 OpenCodeSubagentTaskTitles 提供）。
         _subagentTaskTitles = OpenCodeSubagentTaskTitles.Build(messages);
@@ -1384,10 +1401,11 @@ public sealed class OpenCodeConversationView : StackPanel
             // 呈现方式改变（普通/subagent ↔ 指令通知 ↔ 内部触发提示行）时同 key 不能就地复用：旧条目须整体替换。
             // 先移除旧条目（Dispose → Children → _entries → _byKey），使末尾 retained 清理不会二次
             // Dispose，也不会因 _byKey.Remove(旧 key) 误删随后新建的同 key 条目。
-            var isNotice = IsInstructionMessage(message);
-            var isAsync = !isNotice && OpenCodeStepRunPresentation.TryReadAsyncCompletion(message, out _);
-            var isManual = !isNotice && !isAsync && OpenCodeManualBackgroundIndex.TryReadNotice(message, out _);
-            var isInitiator = !isNotice && !isAsync && !isManual && OpenCodeStepRunPresentation.IsInternalInitiator(message);
+            var projection = projections[i];
+            var isNotice = projection.Instruction;
+            var isAsync = projection.Completion is not null;
+            var isManual = projection.Manual;
+            var isInitiator = projection.Initiator;
             if (_byKey.ContainsKey(key)) lastKnownIndex = i;
             var retainedVisual = _byKey.TryGetValue(key, out var prior) && prior.Realized;
             var realize = i >= range.Start && i < range.End && (_window.Height(key) > 0 || retainedVisual)
@@ -1437,6 +1455,8 @@ public sealed class OpenCodeConversationView : StackPanel
             }
             newEntries[^1].IdleMessageId = message.Id;
             newEntries[^1].Snapshot = message;
+            newEntries[^1].RawSnapshot = rawMessages[i];
+            newEntries[^1].RawFingerprint = ComputeFingerprint(rawMessages[i]);
             newEntries[^1].IdleWatermark = message.Type == OpenCodeMessageTypes.Idle ? message.Time?.Created : null;
         }
 
@@ -1487,8 +1507,53 @@ public sealed class OpenCodeConversationView : StackPanel
     /// <summary>Only the reducer's known text/reasoning-part publications may use this latest-turn path.</summary>
     internal bool TryApplyMessageChanges(IReadOnlyList<OpenCodeMessage> changed, object owner, long baselineVersion, long version)
     {
-        if (!ReferenceEquals(owner, _incrementalOwner) || baselineVersion != _incrementalVersion || _recoverySensitive
-            || (_scrollOwnerCurrent is { } current && !current())) return false;
+        if (!ReferenceEquals(owner, _incrementalOwner) || baselineVersion != _incrementalVersion) return false;
+        if (!TryApplyMessageChangesCore(changed)) return false;
+        _incrementalVersion = version;
+        return true;
+    }
+
+    /// <summary>Authoritative same-membership refresh: compare versions, not all-history presentation work.</summary>
+    internal bool TryApplyRefreshedMessages(IReadOnlyList<OpenCodeMessage> messages)
+    {
+        if (messages.Count != _entries.Count || (_scrollOwnerCurrent is { } current && !current())) return false;
+        List<OpenCodeMessage>? changed = null;
+        for (var index = 0; index < messages.Count; index++)
+        {
+            var message = messages[index];
+            var entry = _entries[index];
+            if (entry.RawSnapshot is not { } previous || previous.Id != message.Id) return false;
+            if (ReferenceEquals(previous, message)) continue;
+            var fingerprint = MessageFingerprint(message);
+            if (entry.RawFingerprint == fingerprint && previous.InstructionBody == message.InstructionBody)
+            {
+                ReuseMessageProjection(previous, message);
+                continue;
+            }
+            // Only text/reasoning growth may bypass snapshot-relative completion/recovery/child projections.
+            if (previous.InstructionBody != message.InstructionBody || message.Content is not { } parts
+                || previous.Content is not { } oldParts || parts.Count != oldParts.Count
+                || ComputeFingerprint(message with { Content = oldParts }) != entry.RawFingerprint) return false;
+            for (var part = 0; part < parts.Count; part++)
+                if (parts[part].Type != oldParts[part].Type || parts[part].Id != oldParts[part].Id
+                    || (parts[part].Type is not (OpenCodePartTypes.Text or OpenCodePartTypes.Reasoning)
+                        && ComputeFingerprint(parts[part]) != ComputeFingerprint(oldParts[part]))) return false;
+            (changed ??= new()).Add(message);
+        }
+        if (changed is not null && !TryApplyMessageChangesCore(changed)) return false;
+        _incrementalOwner = null; // REST acceptance retires the reducer baseline even when visuals did not change.
+        if (changed is null) UnchangedApplyCount++;
+        for (var index = 0; index < messages.Count; index++)
+        {
+            _entries[index].RawSnapshot = messages[index];
+            _entries[index].RawFingerprint = ComputeFingerprint(messages[index]);
+        }
+        return true;
+    }
+
+    private bool TryApplyMessageChangesCore(IReadOnlyList<OpenCodeMessage> changed)
+    {
+        if (_recoverySensitive || (_scrollOwnerCurrent is { } current && !current())) return false;
         foreach (var message in changed)
         {
             if (message.Id is not { } id || !_entryIndexes.TryGetValue(id, out var index) || index < _latestTurnStart
@@ -1510,12 +1575,13 @@ public sealed class OpenCodeConversationView : StackPanel
                 if (!string.Equals(entry.Fingerprint, fingerprint, StringComparison.Ordinal)) entry.Update(message);
                 entry.Fingerprint = fingerprint;
                 entry.Snapshot = message;
+                entry.RawSnapshot = message;
+                entry.RawFingerprint = fingerprint;
             }
             ApplyStepChains(_latestTurnStart);
             AlignWindow();
             RaiseQuestionAnchorsChangedIfNeeded();
         });
-        _incrementalVersion = version;
         // An entirely offscreen latest turn cannot change the reader's measured anchor above it.
         UpdateWindow(measureAnchor: _followingBottom || _realizedEntries.Any(entry => _entryIndexes[entry.Key] >= _latestTurnStart));
         return true;
@@ -1707,6 +1773,46 @@ public sealed class OpenCodeConversationView : StackPanel
     private sealed record SnapshotFingerprint(string Value);
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<OpenCodeMessage, SnapshotFingerprint> MessageFingerprints = new();
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<OpenCodeContentPart, SnapshotFingerprint> PartFingerprints = new();
+    private sealed record MessageProjection(OpenCodeMessage Message, bool Instruction, OpenCodeAsyncCompletion? Completion,
+        bool Manual, bool Initiator, List<(string Id, string? Agent, string? Description)> Children, HashSet<string> InvocationKeys);
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<OpenCodeMessage, MessageProjection> MessageProjections = new();
+
+    private static MessageProjection ProjectMessage(OpenCodeMessage message) => MessageProjections.GetValue(message, static raw =>
+    {
+        MessageProjectionsComputed++;
+        var sanitized = SanitizeSyntheticInstruction(OpenCodeInstructionNoticeProjection.SanitizeForClient(raw));
+        var instruction = IsInstructionMessage(sanitized);
+        OpenCodeAsyncCompletion? completion = !instruction && OpenCodeStepRunPresentation.TryReadAsyncCompletion(sanitized, out var notice) ? notice : null;
+        var manual = !instruction && completion is null && OpenCodeManualBackgroundIndex.TryReadNotice(sanitized, out _);
+        var initiator = !instruction && completion is null && !manual && OpenCodeStepRunPresentation.IsInternalInitiator(sanitized);
+        var children = new List<(string Id, string? Agent, string? Description)>();
+        var invocationKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var part in raw.Content ?? Enumerable.Empty<OpenCodeContentPart>())
+            try
+            {
+                if (OpenCodeSubagentPresentation.TryReadToolPart(part, out var child) && child.ChildSessionId is { } id)
+                    children.Add((id, child.Agent, child.Description));
+            }
+            catch (OpenCodeProtocolException) { } // Malformed invocations cannot supply a related-child identity.
+        if (!instruction && sanitized.Content is { } parts)
+            foreach (var part in parts)
+                if (part.Type == OpenCodePartTypes.Tool && OpenCodeToolRowPresentation.Classify(part.Name) == OpenCodeToolKind.Subagent)
+                    invocationKeys.UnionWith(OpenCodeStepRunPresentation.AsyncKeys(part));
+        return new(sanitized, instruction, completion, manual, initiator, children, invocationKeys);
+    });
+
+    private static void ReuseMessageProjection(OpenCodeMessage previous, OpenCodeMessage accepted)
+    {
+        if (!MessageProjections.TryGetValue(previous, out var projection)) return;
+        // Equal authoritative versions share derived work, without pinning an old ordinary DTO in the new cache key.
+        var shared = ReferenceEquals(projection.Message, previous) ? projection with { Message = accepted } : projection;
+        MessageProjections.GetValue(accepted, _ => shared);
+    }
+
+    // Approximate retained payload/fingerprint storage, computed at acceptance and reused by identity.
+    // InstructionBody is intentionally absent from JSON fingerprints but still belongs to the byte budget.
+    internal long EstimateMessageBytes(OpenCodeMessage message)
+        => 256 + 2L * ComputeFingerprint(message).Length + 2L * (message.InstructionBody?.Length ?? 0);
 
     private static string ComputeFingerprint(OpenCodeMessage message)
     {
@@ -1763,8 +1869,21 @@ public sealed class OpenCodeConversationView : StackPanel
             state.Message = current;
             if (!process)
             {
-                var parts = new List<PartEntry>();
                 var content = current.Content ?? new List<OpenCodeContentPart>();
+                if (content.All(part => part.Type is not (OpenCodePartTypes.Tool or OpenCodePartTypes.Reasoning))
+                    && !OpenCodeSubagentPresentation.TryReadCompletionMetadata(current.Metadata, out _))
+                {
+                    // Offscreen prose/files only need their chain boundary, not part serialization or layout.
+                    UnrealizedPartsSkipped += content.Count;
+                    state.Runs.Clear();
+                    previousParts.Clear();
+                    state.CompletionShown = false;
+                    state.HasBoundary = content.Any(part => part.Type != OpenCodePartTypes.Text || !string.IsNullOrWhiteSpace(part.Text))
+                        || current.Error is not null && !_recoveredErrorMessages.Contains(current)
+                        || current.Retry is not null && !_recoveredRetryMessages.Contains(current);
+                    return;
+                }
+                var parts = new List<PartEntry>();
                 foreach (var (part, partKey, fileIndex) in TimelineParts(content))
                 {
                     var kind = part.Type ?? "?";
@@ -2035,12 +2154,28 @@ public sealed class OpenCodeConversationView : StackPanel
     }
 
     /// <summary>构造内部触发消息的紧凑提示行（图标 + 短标签；全文只在悬停详情中显示）。</summary>
-    private static Entry CreateInitiatorChipEntry(string key, OpenCodeMessage message)
+    private Entry CreateInitiatorChipEntry(string key, OpenCodeMessage message)
     {
         var chip = new OpenCodeTimelineChipView("OpenCodeInternalInitiator", "\uE8BD");
+        string? parentId = message.Id;
+        string? childId = null;
+
+        void OpenChild()
+        {
+            if (parentId is { Length: > 0 } messageId && childId is { } child)
+                SubagentSessionRequested?.Invoke(this, new OpenCodeSubagentSessionRequestedEventArgs(messageId, child));
+        }
 
         void Apply(OpenCodeMessage m)
         {
+            parentId = m.Id;
+            childId = null;
+            if (OpenCodeStepRunPresentation.TryReadSubagentUpdate(m, out var update))
+            {
+                childId = update.ChildSessionId;
+                chip.UpdateRow(OpenCodeStepRunPresentation.DescribeSubagentUpdate(update), OpenChild);
+                return;
+            }
             var properties = new List<OpenCodeToolProperty>
             {
                 new(0, "来源", "oh-my-opencode-slim 插件（内部自动发送）", OpenCodeToolPropertyKind.Text),
@@ -2061,7 +2196,7 @@ public sealed class OpenCodeConversationView : StackPanel
             Element = chip.Element,
             Update = Apply,
             IsInitiatorChip = true,
-            Dispose = chip.Dispose,
+            Dispose = () => { childId = null; chip.Dispose(); },
         };
     }
 
@@ -2127,9 +2262,21 @@ public sealed class OpenCodeConversationView : StackPanel
             represented: () => childId is not null && _subagentInvocationKeys.Contains(childId));
     }
 
+    // "[Image N]" / "[PDF N]" in a user message are chips only when an N-th file of that kind is attached.
+    private static (int Images, int Pdfs) UserAttachmentCounts(OpenCodeMessage message)
+    {
+        try
+        {
+            var files = OpenCodeUserAttachments.FromMessage(message);
+            return (files.Count(f => f.Image is not null),
+                files.Count(f => f.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)));
+        }
+        catch (Exception) { return (0, 0); }
+    }
+
     private Entry CreateUserEntry(string key, OpenCodeMessage message)
     {
-        var presenter = new OpenCodeRichTextPresenter();
+        var presenter = new OpenCodeRichTextPresenter { AttachmentCounts = UserAttachmentCounts(message) };
         presenter.Render(message.Text, OpenCodeRichTextStyle.Body);
 
         var attachments = new OpenCodeUserAttachmentsView();
@@ -2148,7 +2295,7 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             Key = key,
             Element = bubble.Element,
-            Update = m => { text = m.Text; presenter.Render(m.Text, OpenCodeRichTextStyle.Body); attachments.Update(m); },
+            Update = m => { text = m.Text; presenter.AttachmentCounts = UserAttachmentCounts(m); presenter.Render(m.Text, OpenCodeRichTextStyle.Body); attachments.Update(m); },
             Dispose = () => { _rowExpansion[key] = bubble.IsExpanded; attachments.Dispose(); },
         };
     }

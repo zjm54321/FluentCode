@@ -17,8 +17,9 @@ $arguments += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Wher
 }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'StreamingPerformanceTests.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'TurnCountTests.cs') + '"'
 # Pure production presenter scheduling/conversion and insights: no WinUI runtime or app build.
-foreach ($name in @('OpenCodeSessionInsights.cs', 'OpenCodeRichTextRenderGate.cs', 'OpenCodeMarkdownImagePlan.cs')) {
+foreach ($name in @('OpenCodeSessionInsights.cs', 'OpenCodeContextHeader.cs', 'OpenCodeRichTextRenderGate.cs', 'OpenCodeMarkdownImagePlan.cs')) {
     $arguments += '"' + "$repo/src/FluentCode/Pages/OpenCode/$name" + '"'
 }
 $arguments += '"' + "$repo/src/FluentCode/Services/Rendering/SafeContentRenderer.cs" + '"'
@@ -89,13 +90,13 @@ namespace FluentCode.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $childAssembly = Join-Path $output 'ChildPermissionTests.dll'
-$childArguments = $arguments | Where-Object { !($_.StartsWith('/out:')) -and !($_.EndsWith('Program.cs"')) -and !($_.EndsWith('StreamingPerformanceTests.cs"')) }
+$childArguments = $arguments | Where-Object { !($_.StartsWith('/out:')) -and !($_.EndsWith('Program.cs"')) -and !($_.EndsWith('StreamingPerformanceTests.cs"')) -and !($_.EndsWith('TurnCountTests.cs"')) }
 $childArguments += '/out:"' + $childAssembly + '"'
 foreach ($file in @('OpenCodeInteractionsView.cs', 'OpenCodePermissionCard.cs', 'OpenCodePermissionOverlay.cs',
     'OpenCodePermissionPresentation.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeInteractionPolicy.cs', 'OpenCodeSessionTracking.cs')) {
     $childArguments += '"' + "$repo/src/FluentCode/Pages/OpenCode/$file" + '"'
 }
-foreach ($file in @('OpenCodePage.ChildInteractions.cs', 'OpenCodePage.QuestionOverlay.cs')) { $childArguments += '"' + "$repo/src/FluentCode/Pages/$file" + '"' }
+foreach ($file in @('OpenCodePage.ChildInteractions.cs', 'OpenCodePage.QuestionOverlay.cs', 'OpenCodePage.SwitchPerformance.cs')) { $childArguments += '"' + "$repo/src/FluentCode/Pages/$file" + '"' }
 foreach ($file in @('InteractionUi.TestHost.cs', 'ChildInteractions.TestHost.cs', 'ChildInteractionsTests.cs')) { $childArguments += '"' + (Join-Path $PSScriptRoot $file) + '"' }
 $childArguments += '"' + $generated + '"'
 $childRsp = Join-Path $output 'child-permissions.compile.rsp'

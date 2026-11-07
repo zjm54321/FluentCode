@@ -96,8 +96,18 @@ namespace FluentCode.Pages
         public bool? TurnActivity { get; private set; }
         public int ActivityPublications { get; private set; }
         public void SetCurrentTurnActivity(bool? active) { TurnActivity = active; ActivityPublications++; }
+        internal long FullApplyCount { get; private set; }
+        internal long FastApplyCount => 0;
+        internal long UnchangedApplyCount => 0;
+        internal long UpdateLayoutCount => 0;
+        internal void BeginSessionSwitchLayout() { }
+        internal void EndSessionSwitchLayout() { }
+        internal long EstimateMessageBytes(OpenCodeMessage message)
+            => 256 + 2L * System.Text.Json.JsonSerializer.Serialize(message, OpenCodeJson.Options).Length
+                + 2L * (message.InstructionBody?.Length ?? 0);
 
-        public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { Applied.Add(messages); Children = messages; InvalidateGeometry(); }
+        public void ApplyMessages(IReadOnlyList<OpenCodeMessage> messages) { FullApplyCount++; Applied.Add(messages); Children = messages; InvalidateGeometry(); }
+        public bool TryApplyRefreshedMessages(IReadOnlyList<OpenCodeMessage> messages) => false; // No actual entry/fingerprint projection in this native-boundary fake.
         public bool TryApplyMessageChanges(IReadOnlyList<OpenCodeMessage> changed, object owner, long baseline, long version) => false;
         public void BindIncrementalSnapshot(object owner, long version) { }
 

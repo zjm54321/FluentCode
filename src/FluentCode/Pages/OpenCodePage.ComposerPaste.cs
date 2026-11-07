@@ -83,7 +83,15 @@ public sealed partial class OpenCodePage
                 // Complete the original ticket exactly once through the existing atomic/error path.
                 batch = new[] { new OpenCodeComposerFileSource("clipboard.png", "image/png", _ => Task.FromException<Stream>(error)) };
             }
+            var staged = controller.Snapshot.Attachments.Select(a => a.Id).ToHashSet();
             await controller.AddFilesAsync(ticket, batch, ct);
+            // Each pasted image also gets the TUI placeholder "[Image N]" at the caret, bound to its attachment.
+            if (Current() && controller.Snapshot.Token != token)
+            {
+                RefreshComposerView(); // Leave the pick's read-only state before the native insertion.
+                foreach (var row in controller.Snapshot.Attachments.Where(a => !staged.Contains(a.Id) && a.Mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
+                    if (!view.InsertImageChip(controller.NextImageNumber, row.Id)) break;
+            }
             if (fallbackText is not null && Current() && controller.Snapshot.Token == token
                 && Composer.Text == editorText && Composer.SelectionStart == selectionStart && Composer.SelectionLength == selectionLength)
                 Composer.SelectedText = fallbackText;

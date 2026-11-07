@@ -956,6 +956,10 @@ namespace FluentCode.Pages
         private void RaiseExecutionState(OpenCodeExecutionStateChangedEventArgs args) { }
         private bool _deliveredNoticeShown;
         private readonly OpenCodeConversationView _conversationView = new();
+        // Native switch timing/frame scheduling is outside this composer-only host.
+        private Task TranscriptFirstFrame => Task.CompletedTask;
+        private void RecordRetainedSwitchApply(long started) { }
+        private void RecordRestSwitchApply(long started) { }
         private enum ConnectionState { Connected, Failed }
         internal readonly TextBox Composer = new();
         internal readonly Button SendStopButton = new();
@@ -1209,6 +1213,9 @@ namespace FluentCode.Pages.OpenCode
         public List<OpenCodeMessage> Last = new();
         public bool ContainsRenderedMessage(string id) => Last.Any(message => message.Id == id);
         public void ApplyMessages(List<OpenCodeMessage> messages) => Last = messages;
+        internal bool TryApplyRefreshedMessages(IReadOnlyList<OpenCodeMessage> messages) => false; // Keep the explicit full-apply boundary.
+        internal long EstimateMessageBytes(OpenCodeMessage message)
+            => 256 + 2L * System.Text.Json.JsonSerializer.Serialize(message, OpenCodeJson.Options).Length + 2L * (message.InstructionBody?.Length ?? 0);
         public void ClearMessages() => Last.Clear();
     }
     public sealed class OpenCodeAgentSwitchReportedEventArgs : EventArgs { public AgentSwitchStatus Status; public string Message = ""; }
@@ -1220,6 +1227,7 @@ namespace FluentCode.Pages.OpenCode
         internal Func<Task<bool>> ApplySelection = () => Task.FromResult(true);
         internal int ApplyCalls;
         public bool HasPendingModel { get; private set; }
+        public string? CurrentAgentId { get; set; }
         public OpenCodeModelRef? CurrentModel { get; private set; }
         public IReadOnlyList<OpenCodeModelInfo> ModelChoices { get; set; } = Array.Empty<OpenCodeModelInfo>();
         public void SelectPendingModel(OpenCodeModelRef model) { CurrentModel = model; HasPendingModel = true; HasPendingSelection = true; }
@@ -1228,7 +1236,7 @@ namespace FluentCode.Pages.OpenCode
         public void CompletePendingSelection() { HasPendingSelection = false; HasPendingModel = false; SelectionCompleted?.Invoke(); }
         internal bool Pending;
         public void Clear() => Pending = false;
-        public void Configure(OpenCodePageSource source, long revision, string session, long generation) { }
+        public void Configure(OpenCodePageSource source, long revision, string session, long generation, Task? transcriptFrame = null) { }
         public void SetLocalSubmissionPending(bool value) => Pending = value;
         public int Opens;
         internal bool OpenSelection() { Opens++; return true; }
@@ -1254,8 +1262,12 @@ namespace FluentCode.Pages.OpenCode
         internal event EventHandler? StateChanged;
         internal event EventHandler? CompositionSettled;
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
+        internal void RefreshMentionCandidates() { } // Native mention-list requery is outside this inert view.
         internal Func<string?>? SplashModelIdProvider { get; set; }
         internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
+        internal event Action<OpenCodeComposerToken, int, string>? LinkChosen;
+        internal event Action<OpenCodeComposerToken, int, int, Guid>? ImageChosen;
+        internal void RaiseChipEventsForCompile() { LinkChosen?.Invoke(default, 0, ""); ImageChosen?.Invoke(default, 0, 0, Guid.Empty); }
         internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
         internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, PickRequested;
         internal event EventHandler<OpenCodeComposerCatalogOpenRequestedEventArgs>? CatalogOpenRequested;

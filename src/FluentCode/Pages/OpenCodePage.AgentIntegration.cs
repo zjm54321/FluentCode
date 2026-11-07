@@ -112,7 +112,7 @@ public sealed partial class OpenCodePage
 
         // 先 Clear 复位 pending/清旧 UI，再以新代际 Configure 安装新上下文（旧 origin 自此失效）。
         _agentSelector.Clear();
-        _agentSelector.Configure(source, _sourceRevision, sessionId, _agentSelectionGeneration);
+        _agentSelector.Configure(source, _sourceRevision, sessionId, _agentSelectionGeneration, TranscriptFirstFrame);
     }
 
     /// <summary>清空控件上下文并作废其身份（来源撤销 / 页面卸载 / 会话缺失）：绝不以旧事件污染新 UI。</summary>

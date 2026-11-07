@@ -214,7 +214,7 @@ internal static class OpenCodeComposerMentions
     /// Both bare "@" and filtered queries use agent + skill catalogs, never the filesystem.
     /// </summary>
     internal static async Task<IReadOnlyList<OpenCodeComposerMentionCandidate>> SearchAsync(OpenCodeClient client, string directory,
-        string query, CancellationToken cancellationToken)
+        string query, CancellationToken cancellationToken, string? primaryAgentId = null)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
@@ -222,7 +222,9 @@ internal static class OpenCodeComposerMentions
         var agentsTask = client.ListAgentsAsync(directory, cancellationToken);
         var skillsTask = client.ListSkillsAsync(directory, cancellationToken);
         await Task.WhenAll(agentsTask, skillsTask).ConfigureAwait(false);
+        var primary = agentsTask.Result.Data!.FirstOrDefault(a => a.Id == primaryAgentId);
         var agents = agentsTask.Result.Data!.Where(a => !a.Hidden && a.Mode is OpenCodeAgentModes.Subagent or OpenCodeAgentModes.All)
+            .Where(a => OpenCodeAgentMentionScope.AllowsMention(primary, a.Id!))
             .Select(a => new OpenCodeComposerMentionCandidate(a.Id!, false, a.Description, a.Color));
         var skills = skillsTask.Result.Data!.Select(s => new OpenCodeComposerMentionCandidate(s.Id!, true, s.Description));
         return agents.Concat(skills).Where(c => c.Id.Contains(query, StringComparison.OrdinalIgnoreCase)

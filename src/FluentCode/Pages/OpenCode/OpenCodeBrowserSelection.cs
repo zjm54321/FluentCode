@@ -51,10 +51,10 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     {
         _overlay = overlay; _register = register; _attach = attach;
         overlay.PageTools.Children.Clear();
-        foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素并批注", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选并批注", "\uE7EF") })
+        foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素并批注", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选并批注", "\uEF20") })
         {
             var tool = entry.Item1;
-            var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, MinWidth = 0 };
+            var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontFamily = new("Segoe Fluent Icons"), FontSize = 16 }, MinWidth = 0 };
             AutomationProperties.SetName(button, entry.Item2); ToolTipService.SetToolTip(button, entry.Item2);
             button.Click += (_, _) => Run(() => ActivateAsync(button.IsChecked == true ? tool : OpenCodeBrowserSelectionTool.None));
             _buttons.Add(tool, button); overlay.PageTools.Children.Add(button);
@@ -238,7 +238,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         _pill.Visibility = _tool == OpenCodeBrowserSelectionTool.None ? Visibility.Collapsed : Visibility.Visible;
         _annotationTools.Visibility = _tool == OpenCodeBrowserSelectionTool.Annotate ? Visibility.Visible : Visibility.Collapsed;
         _modeLabel.Text = _tool switch { OpenCodeBrowserSelectionTool.Element => "选择元素", OpenCodeBrowserSelectionTool.Region => "框选", OpenCodeBrowserSelectionTool.Annotate => "标注", _ => "截图" };
-        _modeIcon.Glyph = _tool switch { OpenCodeBrowserSelectionTool.Element => "\uE8B0", OpenCodeBrowserSelectionTool.Region => "\uE7EF", OpenCodeBrowserSelectionTool.Annotate => "\uE70F", _ => "\uE722" };
+        _modeIcon.Glyph = _tool switch { OpenCodeBrowserSelectionTool.Element => "\uE8B0", OpenCodeBrowserSelectionTool.Region => "\uEF20", OpenCodeBrowserSelectionTool.Annotate => "\uE70F", _ => "\uE722" };
         if (State is { } state) _list.Render(state.List); else _list.Visibility = Visibility.Collapsed;
     }
     private async Task MessageReceivedAsync(OpenCodeBrowserPage page, OpenCodeBrowserCdpEvent args)
