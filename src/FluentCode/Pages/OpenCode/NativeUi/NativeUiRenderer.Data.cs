@@ -26,27 +26,19 @@ internal sealed partial class NativeUiRenderer
         internal object?[] Values { get; } = new object?[columns];
         internal Border[] Cells { get; } = Enumerable.Range(0, columns).Select(_ => new Border { Padding = new Thickness(NativeUiTheme.Gap(2)) }).ToArray();
     }
-    private sealed class ComponentCell(TableRow row, int index) : IComparable
-    {
-        internal Border Element => row.Cells[index];
-        internal object? Value => row.Values[index] is NativeUiElement node ? S(node, "text") : row.Values[index];
-        public int CompareTo(object? other)
-        {
-            var value = other is ComponentCell cell ? cell.Value : other;
-            return Value is double number && value is double second ? number.CompareTo(second) : StringComparer.CurrentCulture.Compare(NativeUiValues.Text(Value), NativeUiValues.Text(value));
-        }
-    }
     private sealed partial class ComponentColumn(int index) : TableViewColumn
     {
         public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
         {
-            var content = dataItem is TableRow row ? row.Cells[index] : dataItem is ComponentCell component ? component.Element : null;
+            var content = dataItem is TableRow row ? row.Cells[index] : null;
             if (content is null) return new TextBlock { Text = NativeUiValues.Text(dataItem) };
             Detach(content); return content;
         }
         public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem) => GenerateElement(cell, dataItem);
-        public override object? GetCellContent(object? dataItem) => dataItem is TableRow row ? new ComponentCell(row, index) : null;
-        public override object? GetClipboardContent(object? dataItem) => GetCellContent(dataItem) is ComponentCell cell ? NativeUiValues.Text(cell.Value) : "";
+        // TableView initially creates cells before the row Content is assigned, then refreshes them.
+        public override void RefreshElement(TableViewCell cell, object? dataItem) => cell.Content = GenerateElement(cell, dataItem);
+        public override object? GetCellContent(object? dataItem) => dataItem is TableRow row ? row.Values[index] is NativeUiElement element ? S(element, "text") : row.Values[index] : null;
+        public override object? GetClipboardContent(object? dataItem) => NativeUiValues.Text(GetCellContent(dataItem));
     }
     private SKColor ChartColor(int index)
     {

@@ -25,7 +25,7 @@ try {
     if (!$process.WaitForExit(120000)) { throw 'Offline native UI capture timed out.' }
     if (Test-Path (Join-Path $root 'failed.txt')) { throw ([IO.File]::ReadAllText((Join-Path $root 'failed.txt'))) }
     if (!(Test-Path (Join-Path $root 'ready.txt'))) { throw 'Offline capture did not finish.' }
-    # Keep the committed Windows-generated metadata LF-only for the repository whitespace contract.
+    # Keep generated evidence metadata LF-only; artifacts are never committed.
     $manifest = Join-Path $root 'demos.json'
     [IO.File]::WriteAllText($manifest, [IO.File]::ReadAllText($manifest).Replace("`r`n", "`n").TrimEnd("`n") + "`n", [Text.UTF8Encoding]::new($false))
     foreach ($name in @('dashboard', 'form', 'mixed')) {

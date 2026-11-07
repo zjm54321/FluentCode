@@ -82,9 +82,15 @@ internal sealed partial class NativeUiRenderer
                 var path = new Path(); var pathVisual = new Visual(path);
                 pathVisual.Apply = node =>
                 {
-                    var d = S(node, "d"); path.Data = null;
+                    var d = S(node, "d"); path.Data = null; path.Width = path.Height = 0;
                     if (d.Length < 20000 && Regex.IsMatch(d, @"^[MmLlHhVvCcSsQqTtAaZz\d\s,.eE+-]*$"))
-                        try { path.Data = ((Path)XamlReader.Load("<Path xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Data=\"" + d.Replace("\r", " ").Replace("\n", " ") + "\" />")).Data; } catch (Exception) { /* Malformed numeric path is empty, never executable markup. */ }
+                        try
+                        {
+                            var parsed = (Path)XamlReader.Load("<Path xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Data=\"" + d.Replace("\r", " ").Replace("\n", " ") + "\" />");
+                            var geometry = parsed.Data; parsed.Data = null; path.Data = geometry;
+                            if (geometry is not null) { path.Width = Math.Clamp(geometry.Bounds.Right, 0, 20000); path.Height = Math.Clamp(geometry.Bounds.Bottom, 0, 20000); }
+                        }
+                        catch (Exception) { /* Malformed numeric path is empty, never executable markup. */ }
                     Paint(path, node, P(node, "fill") is not null);
                 }; return pathVisual;
             case "Polyline": case "Polygon":
