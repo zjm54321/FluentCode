@@ -33,10 +33,10 @@ public sealed partial class OpenCodePage
             _shellBinding = null;
             ShellComposer.Text = string.Empty;
         };
-        Composer.CharacterReceived += (_, e) =>
+        Composer.PreviewCharacterReceived += e =>
         {
             if (_shellComposer.Active || _composerView is null || _isSending || !GetComposerSnapshot().IsActive
-                || e.Character != '!' || !OpenCodeComposerShellState.IsEntry(Composer.Text, "!" + Composer.Text, Composer.SelectionStart,
+                || e.Character != '!' || Composer.SelectionStart != 0 || !OpenCodeComposerShellState.IsEntry(Composer.Text, "!" + Composer.Text, Composer.SelectionStart,
                     Composer.SelectionLength, _isComposing || _suppressComposerFocus || !_pageActive,
                     _composerView.IsAutocompleteVisible)) return;
             e.Handled = true; // Consume the character BEFORE the native document or its receipt changes.

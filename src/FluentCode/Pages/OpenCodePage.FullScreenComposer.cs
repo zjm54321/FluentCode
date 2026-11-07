@@ -59,6 +59,7 @@ public sealed partial class OpenCodePage
         Composer.MaxHeight = double.PositiveInfinity;
         Composer.MinHeight = 0;
         Composer.Padding = new Thickness(16);
+        ScrollViewer.SetVerticalScrollBarVisibility(Composer, ScrollBarVisibility.Auto);
         _fullScreenComposer!.Visibility = Visibility.Visible;
         RefreshComposerToolbar();
         UpdateFullScreenCount();

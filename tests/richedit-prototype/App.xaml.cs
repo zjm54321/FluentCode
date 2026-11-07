@@ -38,7 +38,7 @@ public partial class App : Application
         ProbeLog.Path = logIndex >= 0 ? arguments[logIndex + 1] :
             System.IO.Path.Combine(AppContext.BaseDirectory, "rep1-runtime.log");
         ProbeLog.Reset();
-        _window = arguments.Contains("--adapter") ? new ProductionAdapterProbe(arguments.Contains("--manual")) : new ProbeWindow(arguments.Contains("--manual"));
+        _window = arguments.Contains("--adapter") ? new ProductionAdapterProbe(arguments.Contains("--manual"), arguments.Contains("--alignment-only")) : new ProbeWindow(arguments.Contains("--manual"));
         _window.Activate();
     }
 }

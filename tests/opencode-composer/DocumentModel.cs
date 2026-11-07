@@ -40,6 +40,15 @@ internal static partial class Program
         Check(OpenCodeComposerDocument.Text(wire.Text).Serialize().Text == wire.Text && OpenCodeComposerDocument.Text(wire.Text).Objects.Count == 0,
             "plain-copy round trip preserves raw values without restoring token authority");
         Check(rich.Replace(4, 1, "").ImageHighWater == 1 && rich.Replace(4, 1, "").WithHighWater(3).ImageHighWater == 3, "image high-water survives deletion");
+        var imageB = image with { Id = Guid.NewGuid(), AttachmentId = Guid.NewGuid(), Number = 19, Label = "图片 19" };
+        var images = OpenCodeComposerDocument.Empty.InsertToken(0, 0, image).InsertToken(1, 0, imageB);
+        var surviving = images.Replace(0, 1, "");
+        Check(surviving.RawText == "[Image 1]" && surviving.Objects.Single().Token is { Number: 1, Label: "图片 1" } survivor
+            && survivor.Id == imageB.Id && survivor.AttachmentId == imageB.AttachmentId, "deletion renumbers the surviving image without changing identity/attachment");
+        var pdf = image with { Id = Guid.NewGuid(), Kind = OpenCodeComposerInlineKind.Pdf, Number = 8 };
+        var ordered = surviving.InsertToken(0, 0, image).InsertToken(1, 0, pdf);
+        Check(ordered.RawText == "[Image 1][PDF 1][Image 2]" && ordered.Objects.Select(x => x.Token.Number).SequenceEqual(new[] { 1, 1, 2 }),
+            "image/PDF ordinals are contiguous per kind in document order, including insertion before an existing image");
         var unicode = OpenCodeComposerDocument.Text("a\r\n😀z \n");
         Check(unicode.Story == "a\n😀z \n" && unicode.Length == 7, "UTF-16 positions, CRLF, user trailing space/newline preserved");
         Check(!OpenCodeComposerEditReceipt.TryCreate(unicode.Story, "a\n\ude00z \n", new(3, 3), new(2, 2), out _), "receipt cannot split a surrogate pair");

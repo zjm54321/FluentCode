@@ -16,7 +16,7 @@ namespace FluentCode.Pages.OpenCode;
 /// <summary>UI-thread bitmap cache. No editor mutations; the adapter applies prepared images in one guarded patch.</summary>
 internal static class OpenCodeComposerBitmapCache
 {
-    internal sealed record Bitmap(byte[] Png, double Width, double Height, string Alt);
+    internal sealed record Bitmap(byte[] Png, double Width, double Height, int Ascent, string Alt);
     private readonly record struct Key(OpenCodeComposerInlineKind Kind, string Value, string Label, bool Skill, int Number, Guid? Attachment,
         string? Color, ElementTheme Theme, bool HighContrast, bool Online, string Options, string Font, double Size, double TextScale, double RasterScale, long Colors);
     private static readonly Dictionary<Key, Bitmap> Cache = new();
@@ -29,12 +29,15 @@ internal static class OpenCodeComposerBitmapCache
     internal static async Task<Bitmap> GetAsync(OpenCodeComposerEditor editor, OpenCodeComposerInlineToken token, byte[]? thumbnail)
     {
         var scale = editor.XamlRoot?.RasterizationScale ?? 1;
-        var textScale = editor.TextScale;
+        var textScale = editor.IsTextScaleFactorEnabled ? editor.TextScale : 1;
+        var metrics = editor.LineMetrics;
+        var iconSize = Math.Min(14 * textScale, metrics.Height - 2);
         var key = new Key(token.Kind, token.Value, token.Label, token.IsSkill, token.Number, token.AttachmentId, token.Color, editor.ActualTheme,
             new AccessibilitySettings().HighContrast, OnlineEnabled(), IconOptions(), editor.FontFamily.Source, editor.FontSize, textScale, scale, _colors);
         if (Cache.TryGetValue(key, out var cached)) return cached;
         if (editor.Parent is not Panel parent) throw new InvalidOperationException("Composer bitmap rendering requires its editor panel.");
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, VerticalAlignment = VerticalAlignment.Center };
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 6, 0) };
         var dark = key.Theme == ElementTheme.Dark;
         var foreground = editor.Foreground is SolidColorBrush solid ? new SolidColorBrush(solid.Color) : editor.Foreground;
         FrameworkElement icon;
@@ -46,11 +49,11 @@ internal static class OpenCodeComposerBitmapCache
             var favicon = await OpenCodeFaviconCache.Shared.GetAsync(link, key.Online, default);
             icon = favicon is { Length: > 0 } ? await ImageAsync(favicon, 16) : fallback;
         }
-        else if (token.Kind == OpenCodeComposerInlineKind.Image)
+        else if (token.Kind is OpenCodeComposerInlineKind.Image or OpenCodeComposerInlineKind.Pdf)
         {
             alt = token.Label;
-            icon = thumbnail is { Length: > 0 } ? await ImageAsync(thumbnail, 28)
-                : new FontIcon { Glyph = "\uEB9F", FontSize = 16 };
+            icon = thumbnail is { Length: > 0 } ? await ImageAsync(thumbnail, (int)Math.Ceiling(iconSize))
+                : new FontIcon { Glyph = token.Kind == OpenCodeComposerInlineKind.Pdf ? "\uEA90" : "\uEB9F", FontSize = 16 };
         }
         else
         {
@@ -61,12 +64,17 @@ internal static class OpenCodeComposerBitmapCache
             icon = new FontIcon { Glyph = token.IsSkill ? "\uE8A5" : OpenCodeAgentIcons.Glyph(token.Value), FontSize = 14,
                 FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = foreground };
         }
-        content.Children.Add(icon);
-        content.Children.Add(new TextBlock { Text = token.Label, FontFamily = new FontFamily(key.Font), FontSize = key.Size * key.TextScale,
+        content.Children.Add(new Viewbox { Child = icon, Width = iconSize, Height = iconSize, VerticalAlignment = VerticalAlignment.Center });
+        var label = new TextBlock { Text = token.Label, FontFamily = new FontFamily(key.Font), FontSize = key.Size * key.TextScale,
             IsTextScaleFactorEnabled = false,
+            LineHeight = metrics.Height, LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             Foreground = foreground, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 260,
-            TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap });
-        var border = new Border { Child = content, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(4),
+            TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+        label.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
+        var ascent = (int)Math.Round(label.BaselineOffset);
+        label.RenderTransform = new TranslateTransform { Y = ascent - label.BaselineOffset };
+        content.Children.Add(label);
+        var border = new Border { CornerRadius = new CornerRadius(4),
             BorderThickness = new Thickness(1), RequestedTheme = key.Theme,
             Background = key.HighContrast ? ThemeBrush("SystemColorWindowColorBrush", dark ? Colors.Black : Colors.White)
                 : new SolidColorBrush(dark ? Windows.UI.Color.FromArgb(0x13, 255, 255, 255) : Windows.UI.Color.FromArgb(0x0B, 0, 0, 0)),
@@ -75,19 +83,21 @@ internal static class OpenCodeComposerBitmapCache
         // A connected offscreen staging visual, never a per-character overlay or hit-test surface.
         var staging = new Grid { Width = 0, Height = 0, IsHitTestVisible = false,
             RenderTransform = new TranslateTransform { X = -10000, Y = -10000 } };
-        staging.Children.Add(border);
+        var visual = new Grid { Height = metrics.Height, RequestedTheme = key.Theme };
+        visual.Children.Add(border);
+        visual.Children.Add(content);
+        staging.Children.Add(visual);
         parent.Children.Add(staging);
         try
         {
-            border.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-            var width = Math.Ceiling(border.DesiredSize.Width);
-            var height = Math.Ceiling(border.DesiredSize.Height);
-            border.Width = width;
-            border.Height = height;
+            visual.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
+            var width = Math.Ceiling(visual.DesiredSize.Width);
+            var height = metrics.Height;
+            visual.Width = width;
             staging.UpdateLayout();
-            border.Arrange(new(0, 0, width, height));
+            visual.Arrange(new(0, 0, width, height));
             var target = new RenderTargetBitmap();
-            await target.RenderAsync(border, Math.Max(1, (int)Math.Ceiling(width * scale)), Math.Max(1, (int)Math.Ceiling(height * scale)));
+            await target.RenderAsync(visual, Math.Max(1, (int)Math.Ceiling(width * scale)), Math.Max(1, (int)Math.Ceiling(height * scale)));
             var pixels = await target.GetPixelsAsync();
             var bytes = new byte[pixels.Length];
             using (var reader = DataReader.FromBuffer(pixels)) reader.ReadBytes(bytes);
@@ -105,7 +115,7 @@ internal static class OpenCodeComposerBitmapCache
             await pngReader.LoadAsync((uint)stream.Size);
             var png = new byte[(int)stream.Size];
             pngReader.ReadBytes(png);
-            var result = new Bitmap(png, width, height, alt);
+            var result = new Bitmap(png, width, height, ascent, alt);
             if (Cache.Count >= 256) { using var keys = Cache.Keys.GetEnumerator(); if (keys.MoveNext()) Cache.Remove(keys.Current); }
             Cache[key] = result;
             return result;

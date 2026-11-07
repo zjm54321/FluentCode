@@ -51,6 +51,13 @@ public sealed partial class OpenCodePage
         ComposerCompanionHost.Visibility = Visibility.Visible;
         // Subscribed once for this page's lifetime, not once per load/session. Both ends are page-owned.
         _composerController.SnapshotChanged += OnComposerSnapshotChanged;
+        _composerView.CompositionChanged += composing =>
+        {
+            _isComposing = composing;
+            // RichEdit preedit intentionally emits no model DocumentChanged/StateChanged.
+            // Refresh toolbar visuals without reconciling, disabling or refocusing the editor.
+            QueueSessionControlCardRefresh();
+        };
         _composerView.CompositionSettled += (_, _) =>
         {
             _isComposing = false;

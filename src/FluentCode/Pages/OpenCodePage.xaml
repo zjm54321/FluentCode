@@ -637,7 +637,7 @@
                                                         Padding="12,9,12,9"
                                                         MinHeight="40"
                                                         MaxHeight="140"
-                                                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                        ScrollViewer.VerticalScrollBarVisibility="Hidden"
                                                         PlaceholderText="你的下一个好主意是?"
                                                         KeyDown="Composer_KeyDown"
                                                         KeyUp="Composer_KeyUp"

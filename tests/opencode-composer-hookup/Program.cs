@@ -1295,6 +1295,7 @@ namespace FluentCode.Pages.OpenCode
         // WinUI event delivery or rendering. Immediate scheduling is deliberate, with a hold seam below.
         internal event EventHandler? StateChanged;
         internal event EventHandler? CompositionSettled;
+        internal event Action<bool>? CompositionChanged;
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
         internal void RefreshMentionCandidates() { } // Native mention-list requery is outside this inert view.
         internal Func<string?>? SplashModelIdProvider { get; set; }

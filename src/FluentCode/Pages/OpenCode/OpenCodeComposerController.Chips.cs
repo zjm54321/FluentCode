@@ -9,7 +9,7 @@ namespace FluentCode.Pages.OpenCode;
 
 /// <summary>Private staged bytes plus one exact document transaction. Publication happens only in its ACK.</summary>
 internal sealed class OpenCodeComposerImagePaste(OpenCodeComposerToken token, int start, int length,
-    string beforeText, string insertionText, string text, OpenCodeComposerDocument document,
+    string beforeText, string insertionText, string text, OpenCodeComposerDocument document, int nativeCaret,
     Func<OpenCodeComposerToken, string, OpenCodeComposerEditorAck?> apply)
 {
     internal OpenCodeComposerToken Token { get; } = token;
@@ -19,6 +19,7 @@ internal sealed class OpenCodeComposerImagePaste(OpenCodeComposerToken token, in
     internal string InsertionText { get; } = insertionText;
     internal string Text { get; } = text;
     internal OpenCodeComposerDocument Document { get; } = document;
+    internal int NativeCaret { get; } = nativeCaret;
     internal OpenCodeComposerEditorAck? TryApply(OpenCodeComposerToken basis, string editedText) => apply(basis, editedText);
 }
 
@@ -35,7 +36,14 @@ internal sealed partial class OpenCodeComposerController
         .Select(x => new OpenCodeComposerImageSpan(_document.TextOffset(x.Position), x.Token.Number, x.Token.AttachmentId!.Value)).ToArray();
     private string SendText(string _) => _document.Serialize().Text;
     private OpenCodePromptContext[] SendContexts(string _) => _document.Serialize().Contexts;
-    internal int NextImageNumber { get { lock (_sync) return _document.ImageHighWater + 1; } }
+    internal int NextImageNumber { get { lock (_sync) return _images.Count + 1; } }
+    private IEnumerable<StoredFile> OrderedFiles()
+    {
+        var referenced = _document.Objects.Where(x => x.Token.AttachmentId is not null)
+            .Select(x => x.Token.AttachmentId!.Value).Distinct().ToArray();
+        return referenced.Select(id => _files.Single(f => f.Id == id))
+            .Concat(_files.Where(f => !referenced.Contains(f.Id)));
+    }
     private void RememberDocument()
     {
         _undo.Push(new(_document, _selection, _files.ToArray()));
@@ -44,7 +52,7 @@ internal sealed partial class OpenCodeComposerController
     private void CommitDocument(OpenCodeComposerDocument next, OpenCodeComposerSelection selection, bool remember = true)
     {
         if (remember && !_document.SameContent(next)) RememberDocument();
-        var removed = _document.Objects.Where(x => x.Token.Kind == OpenCodeComposerInlineKind.Image
+        var removed = _document.Objects.Where(x => x.Token.Kind is OpenCodeComposerInlineKind.Image or OpenCodeComposerInlineKind.Pdf
             && next.Objects.All(y => y.Token.Id != x.Token.Id)).Select(x => x.Token.AttachmentId).ToHashSet();
         _files.RemoveAll(file => removed.Contains(file.Id));
         _document = next;
@@ -151,7 +159,7 @@ internal sealed partial class OpenCodeComposerController
                 var raw = before.Serialize().Text;
                 var runs = new List<OpenCodeComposerRun>();
                 if (start > 0 && !char.IsWhiteSpace(raw[start - 1])) runs.Add(new OpenCodeComposerTextRun(" "));
-                var number = before.ImageHighWater + 1;
+                var number = before.Objects.Count(x => x.Token.Kind == OpenCodeComposerInlineKind.Image) + 1;
                 foreach (var file in files)
                 {
                     runs.Add(new OpenCodeComposerInlineToken(Guid.NewGuid(), OpenCodeComposerInlineKind.Image,
@@ -163,11 +171,12 @@ internal sealed partial class OpenCodeComposerController
                 var end = before.NativeOffset(start + length, true);
                 var document = before.Replace(from, end - from, runs);
                 var text = document.Serialize().Text;
-                var insertion = text.Substring(start, text.Length - (raw.Length - length));
+                var caret = from + document.Length - (before.Length - (end - from));
+                var insertion = document.Serialize(from, caret - from).Text;
                 retained = true;
-                return new(ticket.Token, start, length, raw, insertion, text, document,
+                return new(ticket.Token, start, length, raw, insertion, text, document, caret,
                     (basis, editedText) => ApplyImagePaste(basis, editedText, ticket, before, document, files,
-                        from + document.Length - (before.Length - (end - from))));
+                        caret));
             }
         }
         catch (Exception)

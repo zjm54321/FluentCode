@@ -61,6 +61,9 @@ internal static partial class Program
         foreach (var text in new[] { "body/re", "https://host/re", "//host", "C:/path" })
             Check(OpenCodeComposerCharTriggers.Classify(text, text.Length) == OpenCodeComposerCharTriggerKind.None, "no slash trigger in word/url/path " + text);
         Check(OpenCodeComposerCharTriggers.Classify("/nested/docs", 12) == OpenCodeComposerCharTriggerKind.Command, "nested server name can open a command filter without becoming execution authority");
+        Check(OpenCodeComposerInputPolicy.CompletionPrefix(new[] { "review", "review-all" }, "rev") == "review"
+            && OpenCodeComposerInputPolicy.CompletionPrefix(new[] { "review", "review-all" }, "review") is null,
+            "native slash fixture has multiple matches for prefix completion, then no longer prefix so Tab confirms the row");
         var insert = OpenCodeComposerCharTriggers.ContextInsertion("wordmore", 4);
         Check(insert == (" @ ", 2), "explicit context inserts legal token without destroying neighbouring text");
         Check(OpenCodeComposerCharTriggers.MentionInsertion(new("explorer", false)) == "@explorer "
@@ -76,6 +79,50 @@ internal static partial class Program
             "raw mention serialization offsets are distinct from native one-character caret coordinates");
 
         using var f = new Fixture();
+        var nativeDocument = f.Core.Snapshot.Document;
+        OpenCodeComposerDocumentObservation? nativeObservation = null;
+        var mentionArmed = false;
+        var snapshots = 0;
+        OpenCodeComposerEditorSync? richSync = null;
+        richSync = new(() => f.Core.Snapshot, () => nativeDocument.RawText, _ => throw new InvalidOperationException("document adapter required"),
+            () => false, (token, text, carry) => f.Core.TryApplyDocumentObservation(token, richSync!.SubmittedObservation!, carry),
+            () => nativeObservation, snapshot =>
+            {
+                snapshots++;
+                if (richSync?.IsWriting == true) mentionArmed = false;
+                nativeDocument = snapshot.Document;
+            });
+        var typed = nativeDocument.Replace(0, 0, "@");
+        nativeObservation = new(nativeDocument, typed, new(1, 1));
+        nativeDocument = typed; // RichEdit publishes the new model BEFORE DocumentChanging.
+        richSync.OnTextChanging();
+        mentionArmed = true;
+        Check(richSync.Flush() == OpenCodeComposerInputState.Clean, "RichEdit typed @ receipt flushes Clean before trigger evaluation");
+        richSync.Reconcile(); // Identical ACK snapshot, previously disarmed @ unconditionally in the view.
+        Check(snapshots > 0 && mentionArmed && OpenCodeComposerCharTriggers.FindMention(nativeDocument.RawText, 1).Present,
+            "ACK-only RichEdit snapshot delivery preserves the typed @ arm through Reconcile");
+        richSync.WriteSnapshot(f.Core.Snapshot);
+        Check(!mentionArmed, "actual guarded snapshot writes never manufacture a mention trigger");
+        var viewSource = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs"));
+        Check(viewSource.Contains("if (_sync?.IsWriting == true) _mentionArmed = false;", StringComparison.Ordinal),
+            "production rich snapshot callback disarms only application writes, not identical ACK delivery");
+        Check(viewSource.Contains("editor.NativeLayoutReady += NotifyEditorTextChanged;", StringComparison.Ordinal)
+            && viewSource.Contains("if (_mentionArmed && _editor?.NativeLayoutPending == true) return;", StringComparison.Ordinal),
+            "model-staged @ intent waits for native paint readiness without losing its user-edit arm");
+        var pointerSource = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCode/OpenCodeComposerEditor.Pointer.cs"));
+        Check(pointerSource.Contains("AddHandler(PointerPressedEvent, new PointerEventHandler(OnChipPointerPressed), true)")
+            && pointerSource.Contains("AddHandler(DoubleTappedEvent, new DoubleTappedEventHandler(OnChipDoubleTapped), true)"),
+            "chip pointer and double-tap guards also handle native-consumed events");
+        Check(pointerSource.Contains("if (_composing || _writing != 0) return;") && pointerSource.Contains("SetPointerSelection(edge, edge);")
+            && pointerSource.Contains("_chipPointerAnchor") && !pointerSource.Contains("SelectionChanged +="),
+            "pointer-only caret/range control respects composition and leaves keyboard selection extension alone");
+        Check(pointerSource.Contains("QueueNativeRender(); // Canonical model projection")
+            && viewSource.Contains("editor.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnChipPointerReleased), true)"),
+            "extent repair uses guarded projection while existing Ctrl-link release behavior stays connected");
+        var triggerFixture = File.ReadAllText(Path.Combine(SplashRepo(), "tests/richedit-prototype/ProductionAdapterTriggers.cs"));
+        Check(triggerFixture.Contains("BindingFlags Constructors = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;")
+            && triggerFixture.Contains("Activator.CreateInstance(type, Constructors"), "offline native fixture constructor audit excludes static initializers");
+        f.Text("");
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NoContent));
         await f.Client.ExecuteSessionShellAsync("ses_test", "printf '你好'", CancellationToken.None);
         Check(f.Handler.LastBody is not null && System.Text.Json.JsonDocument.Parse(f.Handler.LastBody).RootElement.EnumerateObject().Count() == 1
@@ -141,10 +188,14 @@ internal static partial class Program
         var blankPage = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.NewSessionTab.cs"));
         Check(page.IndexOf("TrySubmitShell(delivery, ref shellHandled)", StringComparison.Ordinal) < page.IndexOf("if (TryHandleSideQuestionSubmission(snapshot))", StringComparison.Ordinal)
             && shellPage.Contains("delivery == OpenCodeDeliveryModes.Queue") && !shellPage.Contains("SendPromptAsync("), "shell intercepted before all normal submission and queue routes");
-        Check(shellPage.Contains("Composer.CharacterReceived +=") && shellPage.Contains("e.Handled = true;")
+        Check(shellPage.Contains("Composer.PreviewCharacterReceived +=") && shellPage.Contains("Composer.SelectionStart != 0") && shellPage.Contains("e.Handled = true;")
             && !shellPage.Contains("BeforeTextChanging") && !shellPage.Contains("\n        Composer.Text =")
             && shellPage.Contains("ComposerNormalSurface.Opacity = 0;") && shellPage.Contains("ComposerNormalSurface.IsEnabled = false;")
-            && !shellPage.Contains("ComposerInputLayout.Visibility ="), "bang canceled before ledger; terminal hides and disables normal controls while retaining their measured layout and draft");
+             && !shellPage.Contains("ComposerInputLayout.Visibility ="), "bang canceled before ledger; terminal hides and disables normal controls while retaining their measured layout and draft");
+        var editorSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeComposerEditor.cs"));
+        Check(editorSource.Contains("protected override void OnCharacterReceived(CharacterReceivedRoutedEventArgs args)")
+            && editorSource.IndexOf("PreviewCharacterReceived?.Invoke(args)", StringComparison.Ordinal) < editorSource.IndexOf("base.OnCharacterReceived(args)", StringComparison.Ordinal),
+            "shell character preview precedes the RichEdit class handler, rather than observing an already consumed event");
         Check(shellPage.Contains("CreateSessionAndSubmitAsync(_composerController!.Snapshot.Token, _shellComposer.Text)")
             && blankPage.Contains("if (shellCommand is not null) OnCreatedShellSubmit(shellCommand);"), "blank shell uses existing configured creation and exact handoff, never normal prompt");
         Check(view.Contains("foreach (var entry in OpenCodeComposerPlusMenu.Entries)") && view.Contains("new MenuFlyoutSeparator()"), "view uses tested menu definition and native divider");

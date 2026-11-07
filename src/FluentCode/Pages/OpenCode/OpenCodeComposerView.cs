@@ -189,6 +189,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
     /// <summary>Raised on the UI thread after a render whose visible/eligibility state changed (page refreshes Send/Stop).</summary>
     internal event EventHandler? StateChanged;
+    internal event Action<bool>? CompositionChanged;
     /// <summary>The native composition's final text/selection callbacks have drained; page overlays may resume.</summary>
     internal event EventHandler? CompositionSettled;
 
@@ -220,6 +221,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         _lifetime.Invalidated += CloseMention;
         // Read-only input evidence over the EXISTING ledger (no second ledger/timer); lifetime changes invalidate captures.
         _inputEvidence = new OpenCodeComposerInputEvidenceSource(() => _sync, () => _lifetime.IsLive, () => _lifetime.Generation, () => _composing);
+        _composition.Changed += active => CompositionChanged?.Invoke(active);
         _lifetime.Invalidated += _inputEvidence.LifetimeChanged;
         Loaded += (_, _) =>
         {
@@ -531,8 +533,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         {
             previous.DocumentChanging -= OnEditorDocumentChanging;
             previous.DocumentChanged -= NotifyEditorTextChanged;
+            previous.NativeLayoutReady -= NotifyEditorTextChanged;
             previous.UndoRequested -= OnModelUndoRequested;
-            previous.PointerReleased -= OnChipPointerReleased;
+            previous.RemoveHandler(PointerReleasedEvent, new PointerEventHandler(OnChipPointerReleased));
             previous.PointerMoved -= OnChipPointerMoved;
             previous.PointerExited -= OnChipPointerExited;
             previous.PrepareModelOperation = null;
@@ -566,15 +569,18 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             }, () => _composing, ApplyEditorInput, () => editor.Observation, snapshot =>
             {
                 _guardedWrite = true;
-                _mentionArmed = false;
+                // Reconcile also delivers an identical ACKed snapshot with IsWriting=false.
+                // That is not an application edit: keep the user's @ observation until evaluated.
+                if (_sync?.IsWriting == true) _mentionArmed = false;
                 try { editor.ApplySnapshot(snapshot); }
                 finally { _guardedWrite = false; }
             });
         // Early, synchronous input observation (records only; no rendering, flyouts, focus or tree changes).
         editor.DocumentChanging += OnEditorDocumentChanging;
         editor.DocumentChanged += NotifyEditorTextChanged;
+        editor.NativeLayoutReady += NotifyEditorTextChanged;
         editor.UndoRequested += OnModelUndoRequested;
-        editor.PointerReleased += OnChipPointerReleased;
+        editor.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnChipPointerReleased), true);
         editor.PointerMoved += OnChipPointerMoved;
         editor.PointerExited += OnChipPointerExited;
         editor.TextCompositionStarted += OnEditorCompositionStarted;
@@ -1347,6 +1353,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     /// </summary>
     private void EvaluateMentionTrigger()
     {
+        // Model-originated user edits (e.g. + > 上下文 or typing during chip paint) ACK before
+        // the native surface is writable. Keep their arm until NativeLayoutReady rechecks it.
+        if (_mentionArmed && _editor?.NativeLayoutPending == true) return;
         var armed = _mentionArmed;
         _mentionArmed = false;
         if (!armed && !_mentionShown) return;

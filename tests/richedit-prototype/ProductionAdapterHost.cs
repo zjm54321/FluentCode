@@ -17,3 +17,12 @@ namespace FluentCode.Pages.OpenCode
     internal sealed record OpenCodeComposerSnapshot(OpenCodeComposerToken Token, OpenCodeComposerDocument Document,
         OpenCodeComposerSelection Selection, IReadOnlyList<AdapterAttachment> Attachments, bool CanUndo = false, bool CanRedo = false);
 }
+
+namespace FluentCode.Services.Configuration
+{
+    // Settings boundary only: the linked transcript chip keeps offline, brand-colour defaults.
+    internal static class AppServices { internal static AdapterSettings Settings { get; } = new(); }
+    internal sealed class AdapterSettings { internal AdapterPreferences? Current => null; }
+    internal sealed class AdapterPreferences { internal AdapterLinkChips? LinkChips => null; }
+    internal sealed class AdapterLinkChips { internal bool OnlineMetadata => false; internal bool MonochromeIcons => false; }
+}

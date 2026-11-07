@@ -530,6 +530,7 @@ internal sealed record OpenCodeComposerImageSpan(int Start, int Number, Guid Att
 internal static class OpenCodeComposerChips
 {
     internal static string ImageToken(int number) => "[Image " + number.ToString(CultureInfo.InvariantCulture) + "]";
+    internal static string PdfToken(int number) => "[PDF " + number.ToString(CultureInfo.InvariantCulture) + "]";
 
     /// <summary>Clipboard text that is exactly one link (surrounding whitespace allowed) → that URL; else null.</summary>
     internal static string? SingleLink(string? clipboard)

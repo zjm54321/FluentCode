@@ -16,9 +16,8 @@ using Windows.System;
 namespace FluentCode.Pages.OpenCode;
 
 /// <summary>
-/// Link chip visuals shared by the transcript (real focusable buttons) and the composer overlay (icon only; the label is
-/// editor text). Geometry matches the "@" chip: 20 px high, radius 4, 1 px stroke, 4/6 padding, 14 px icon + 4 px gap,
-/// body font and colour. Neutral fill (spec §1), brand-coloured icons unless "单色图标" or High Contrast.
+/// Focusable transcript chips. The inherited text metrics own their height and inline baseline;
+/// icons fit inside that line. Neutral fill and brand-coloured icons unless monochrome/High Contrast.
 /// </summary>
 internal static class OpenCodeLinkChipView
 {
@@ -168,9 +167,10 @@ internal static class OpenCodeLinkChipView
     {
         var hc = HighContrast;
         var (fill, stroke, hover) = Colors(dark);
-        var label = new TextBlock { Text = chip.Label, VerticalAlignment = VerticalAlignment.Center, TextLineBounds = TextLineBounds.Tight };
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        content.Children.Add(CreateIcon(chip, dark));
+        var label = new TextBlock { Text = chip.Label, VerticalAlignment = VerticalAlignment.Center, TextLineBounds = TextLineBounds.Full };
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(0, -1, 0, -1) };
+        var icon = new Viewbox { Child = CreateIcon(chip, dark), VerticalAlignment = VerticalAlignment.Center };
+        content.Children.Add(icon);
         content.Children.Add(label);
         if (chip.IsConfusable || chip.HasCredentials)
             content.Children.Add(new FontIcon { Glyph = chip.IsConfusable ? "\uE7BA" : "\uE72E", FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
@@ -178,11 +178,10 @@ internal static class OpenCodeLinkChipView
         {
             Content = content,
             Padding = new Thickness(4, 0, 6, 0),
-            MinHeight = 0, MinWidth = 0, Height = 20,
+            MinHeight = 0, MinWidth = 0,
             CornerRadius = new CornerRadius(4),
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, -4),
             UseSystemFocusVisuals = true,
         };
         if (!hc)
@@ -210,6 +209,7 @@ internal static class OpenCodeLinkChipView
         menu.Items.Add(Item("复制链接", "\uE8C8", () => Copy(chip.Url)));
         menu.Items.Add(Item("复制为 Markdown", "\uE943", () => Copy(Markdown(chip))));
         button.ContextFlyout = menu;
+        AlignInline(button, label, icon);
         return button;
     }
 
@@ -224,19 +224,42 @@ internal static class OpenCodeLinkChipView
     internal static Border CreateAttachmentChip(int number, bool pdf, bool dark)
     {
         var (fill, stroke, _) = Colors(dark);
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        content.Children.Add(new FontIcon { Glyph = pdf ? "\uEA90" : "\uEB9F", FontSize = 14 });
-        content.Children.Add(new TextBlock { Text = (pdf ? "PDF " : "图片 ") + number, VerticalAlignment = VerticalAlignment.Center, TextLineBounds = TextLineBounds.Tight });
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(0, -1, 0, -1) };
+        var icon = new Viewbox { Child = new FontIcon { Glyph = pdf ? "\uEA90" : "\uEB9F", FontSize = 14 }, VerticalAlignment = VerticalAlignment.Center };
+        var label = new TextBlock { Text = (pdf ? "PDF " : "图片 ") + number, VerticalAlignment = VerticalAlignment.Center, TextLineBounds = TextLineBounds.Full };
+        content.Children.Add(icon);
+        content.Children.Add(label);
         var chip = new Border
         {
-            Child = content, Height = 20, Padding = new Thickness(4, 0, 6, 0), CornerRadius = new CornerRadius(4),
-            BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 0, -4),
+            Child = content, Padding = new Thickness(4, 0, 6, 0), CornerRadius = new CornerRadius(4),
+            BorderThickness = new Thickness(1),
         };
         if (!HighContrast) { chip.Background = new SolidColorBrush(fill); chip.BorderBrush = new SolidColorBrush(stroke); }
         else chip.BorderBrush = ThemeBrush("SystemColorWindowTextColorBrush", Windows.UI.Color.FromArgb(255, 255, 255, 255));
         AutomationProperties.SetName(chip, (pdf ? "PDF " : "图片 ") + number + "，已附加的" + (pdf ? "文件" : "图片"));
         ToolTipService.SetToolTip(chip, (pdf ? "[PDF " : "[Image ") + number + "]");
+        AlignInline(chip, label, icon);
         return chip;
+    }
+
+    private static void AlignInline(FrameworkElement chip, TextBlock label, Viewbox icon)
+    {
+        void Update()
+        {
+            label.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
+            var height = label.DesiredSize.Height;
+            if (height <= 0) return;
+            chip.Height = height;
+            // InlineUIContainer puts the child's bottom on the baseline. Keep the label's
+            // descent BELOW it, rather than guessing -4 for every font, CJK fallback and scale.
+            chip.Margin = new Thickness(0, 0, 0, label.BaselineOffset - height);
+            icon.Width = icon.Height = Math.Min(height - 2, label.FontSize);
+        }
+        chip.Loaded += (_, _) => Update();
+        label.SizeChanged += (_, _) => Update();
+        label.RegisterPropertyChangedCallback(TextBlock.FontSizeProperty, (_, _) => Update());
+        label.RegisterPropertyChangedCallback(TextBlock.FontFamilyProperty, (_, _) => Update());
+        Update();
     }
 
 }

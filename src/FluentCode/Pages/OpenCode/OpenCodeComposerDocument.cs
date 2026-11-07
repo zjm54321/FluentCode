@@ -6,7 +6,7 @@ using FluentCode.Services.OpenCode;
 
 namespace FluentCode.Pages.OpenCode;
 
-internal enum OpenCodeComposerInlineKind { Mention, Link, Image }
+internal enum OpenCodeComposerInlineKind { Mention, Link, Image, Pdf }
 internal abstract record OpenCodeComposerRun;
 internal sealed record OpenCodeComposerTextRun(string Text) : OpenCodeComposerRun;
 internal sealed record OpenCodeComposerInlineToken(Guid Id, OpenCodeComposerInlineKind Kind,
@@ -39,6 +39,8 @@ internal sealed class OpenCodeComposerDocument
         var story = new StringBuilder();
         var objects = new List<(int, OpenCodeComposerInlineToken)>();
         var ids = new HashSet<Guid>();
+        var images = 0;
+        var pdfs = 0;
         foreach (var run in runs)
         {
             if (run is OpenCodeComposerTextRun text)
@@ -53,6 +55,12 @@ internal sealed class OpenCodeComposerDocument
             else if (run is OpenCodeComposerInlineToken token)
             {
                 if (token.Id == Guid.Empty || !ids.Add(token.Id)) throw new ArgumentException("Duplicate or empty composer token identity.");
+                // Numbers are presentation/wire ordinals, never identities. Rebuild them after
+                // every transaction (including deletion, insertion before a chip and undo).
+                if (token.Kind == OpenCodeComposerInlineKind.Image)
+                    token = token with { Number = ++images, Label = "图片 " + images };
+                else if (token.Kind == OpenCodeComposerInlineKind.Pdf)
+                    token = token with { Number = ++pdfs, Label = "PDF " + pdfs };
                 objects.Add((story.Length, token));
                 normalized.Add(token);
                 story.Append(ObjectCharacter);
@@ -115,6 +123,7 @@ internal sealed class OpenCodeComposerDocument
                 {
                     OpenCodeComposerInlineKind.Mention => "@" + token.Value,
                     OpenCodeComposerInlineKind.Image => OpenCodeComposerChips.ImageToken(token.Number),
+                    OpenCodeComposerInlineKind.Pdf => OpenCodeComposerChips.PdfToken(token.Number),
                     _ => token.Value,
                 });
             }
@@ -147,6 +156,7 @@ internal sealed class OpenCodeComposerDocument
     {
         OpenCodeComposerInlineKind.Mention => "@" + token.Value,
         OpenCodeComposerInlineKind.Image => OpenCodeComposerChips.ImageToken(token.Number),
+        OpenCodeComposerInlineKind.Pdf => OpenCodeComposerChips.PdfToken(token.Number),
         _ => token.Value,
     };
     internal static bool SplitsSurrogate(string value, int position)

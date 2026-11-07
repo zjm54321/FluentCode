@@ -1,3 +1,5 @@
+using System;
+
 namespace FluentCode.Pages.OpenCode;
 
 /// <summary>
@@ -8,29 +10,37 @@ internal sealed class OpenCodeComposerComposition
 {
     private long _version;
     internal bool IsActive { get; private set; }
+    internal event Action<bool>? Changed;
+
+    private void SetActive(bool active)
+    {
+        if (IsActive == active) return;
+        IsActive = active;
+        Changed?.Invoke(active);
+    }
 
     internal void Start()
     {
         _version++;
-        IsActive = true;
+        SetActive(true);
     }
 
     internal long End()
     {
-        IsActive = true; // Also protect a final commit when the start event was missed on focus transfer.
+        SetActive(true); // Also protect a final commit when the start event was missed on focus transfer.
         return ++_version;
     }
 
     internal bool TryComplete(long version)
     {
         if (version != _version) return false;
-        IsActive = false;
+        SetActive(false);
         return true;
     }
 
     internal void Reset()
     {
         _version++;
-        IsActive = false;
+        SetActive(false);
     }
 }

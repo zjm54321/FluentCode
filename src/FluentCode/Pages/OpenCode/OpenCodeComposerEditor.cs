@@ -6,6 +6,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
@@ -20,7 +21,7 @@ namespace FluentCode.Pages.OpenCode;
 /// The same native editor/adapter in both composer surfaces. Native positions are UTF-16 with one position
 /// per image. Text/selection projections are raw send text for existing page commands, never label-to-URL spans.
 /// </summary>
-public sealed class OpenCodeComposerEditor : RichEditBox
+public sealed partial class OpenCodeComposerEditor : RichEditBox
 {
     private OpenCodeComposerDocument _model = OpenCodeComposerDocument.Empty;
     private OpenCodeComposerDocument _native = OpenCodeComposerDocument.Empty;
@@ -51,7 +52,11 @@ public sealed class OpenCodeComposerEditor : RichEditBox
     private bool _restoreFocus;
     private bool _restoreSelectionPending;
     private char? _pendingHighSurrogate;
+    private ScrollViewer? _contentScroller;
+    private TextBlock? _placeholder;
     private bool NativeBehindModel => !_native.SameContent(_model) || ReadStory() != _model.Story;
+    internal bool NativeLayoutPending => NativeBehindModel || _renderJobs != 0;
+    internal event Action<CharacterReceivedRoutedEventArgs>? PreviewCharacterReceived;
     private bool CanEditModel => !_composing && !_requestedReadOnly && NativeFailure is null;
     internal event Action? DocumentChanging;
     internal event Action? DocumentChanged;
@@ -74,9 +79,15 @@ public sealed class OpenCodeComposerEditor : RichEditBox
     public OpenCodeComposerEditor()
     {
         DefaultStyleKey = typeof(RichEditBox);
+        // A subclass does not receive WinUI's implicit RichEditBox style. Select the SAME modern
+        // TextControl resources as the old stock TextBox, rather than the legacy fallback template.
+        Style = (Style)Application.Current.Resources["DefaultRichEditBoxStyle"];
+        ScrollViewer.SetHorizontalScrollBarVisibility(this, ScrollBarVisibility.Disabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(this, ScrollBarVisibility.Hidden);
         Document.UndoLimit = 0;
         AllowDrop = false;
         CanDrag = false;
+        InitializeChipPointerInput();
         DragStarting += (_, args) => args.Cancel = true;
         DragOver += (_, args) => { args.AcceptedOperation = DataPackageOperation.None; args.Handled = true; };
         Drop += (_, args) => { args.AcceptedOperation = DataPackageOperation.None; args.Handled = true; };
@@ -86,29 +97,6 @@ public sealed class OpenCodeComposerEditor : RichEditBox
         PreviewKeyDown += OnPreviewKey;
         KeyDown += (_, _) => CaptureBefore();
         KeyUp += (_, _) => { _armed = false; CaptureBefore(); };
-        CharacterReceived += (_, args) =>
-        {
-            if (CanEditModel && (NativeBehindModel || _pendingHighSurrogate is not null))
-            {
-                var code = (int)args.Character;
-                if (code >= 32 || code is '\r' or '\n')
-                {
-                    args.Handled = true;
-                    string text;
-                    if (code > char.MaxValue) text = char.ConvertFromUtf32(code);
-                    else if (char.IsHighSurrogate((char)code)) { _pendingHighSurrogate = (char)code; return; }
-                    else
-                    {
-                        text = _pendingHighSurrogate is { } high && char.IsLowSurrogate((char)code)
-                            ? new string(new[] { high, (char)code }) : ((char)code).ToString();
-                    }
-                    _pendingHighSurrogate = null;
-                    ReplaceSelection(text); // Native is painting an ACKed model operation; never lose fast follow-up typing.
-                    return;
-                }
-            }
-            CaptureBefore(arm: true);
-        };
         SelectionChanged += (_, _) =>
         {
             if (_writing != 0 || _composing || !_native.SameContent(_model) || ReadStory() != _model.Story) return;
@@ -117,7 +105,8 @@ public sealed class OpenCodeComposerEditor : RichEditBox
         };
         TextChanging += (_, args) =>
         {
-            if (_writing != 0 || _composing || !args.IsContentChanging) return;
+            if (_writing != 0 || _composing) return;
+            if (!args.IsContentChanging) { QueueChipGeometryCheck(); return; }
             ObserveNative(_native, _before);
         };
         TextChanged += (_, _) => { if (_writing == 0 && !_composing) DocumentChanged?.Invoke(); };
@@ -147,6 +136,64 @@ public sealed class OpenCodeComposerEditor : RichEditBox
         LayoutUpdated += (_, _) => { if (_restoreSelectionPending) RestoreReparentedFocus(); };
         RegisterPropertyChangedCallback(FontSizeProperty, (_, _) => QueueNativeRender());
         RegisterPropertyChangedCallback(FontFamilyProperty, (_, _) => QueueNativeRender());
+    }
+
+    protected override void OnCharacterReceived(CharacterReceivedRoutedEventArgs args)
+    {
+        // The RichEdit class handler consumes ordinary CharacterReceived before instance handlers.
+        // Offer page-owned literal intents (notably !) BEFORE that native insertion, not after it.
+        if (!_composing) PreviewCharacterReceived?.Invoke(args);
+        if (args.Handled) return;
+        if (CanEditModel && (NativeBehindModel || _pendingHighSurrogate is not null))
+        {
+            var code = (int)args.Character;
+            if (code >= 32 || code is '\r' or '\n')
+            {
+                args.Handled = true;
+                string text;
+                if (code > char.MaxValue) text = char.ConvertFromUtf32(code);
+                else if (char.IsHighSurrogate((char)code)) { _pendingHighSurrogate = (char)code; return; }
+                else text = _pendingHighSurrogate is { } high && char.IsLowSurrogate((char)code)
+                    ? new string(new[] { high, (char)code }) : ((char)code).ToString();
+                _pendingHighSurrogate = null;
+                ReplaceSelection(text);
+                return;
+            }
+        }
+        CaptureBefore(arm: true);
+        base.OnCharacterReceived(args);
+    }
+
+    protected override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        _contentScroller = GetTemplateChild("ContentElement") as ScrollViewer;
+        _placeholder = GetTemplateChild("PlaceholderTextContentPresenter") as TextBlock;
+        UpdateLineMetrics();
+    }
+
+    internal OpenCodeComposerLineMetrics LineMetrics => OpenCodeComposerLineMetrics.Measure(FontFamily, FontSize,
+        IsTextScaleFactorEnabled ? TextScale : 1);
+
+    private void UpdateLineMetrics()
+    {
+        if (_composing) return; // Never change TOM formatting inside a TSF composition.
+        var line = LineMetrics;
+        var format = Document.GetDefaultParagraphFormat();
+        // TOM linear spacing is in points (72/in), not the DIPs (96/in) used by XAML/InsertImage.
+        // RichEdit applies text scaling itself, so store the unscaled paragraph metric.
+        var scale = IsTextScaleFactorEnabled ? TextScale : 1;
+        format.SetLineSpacing(LineSpacingRule.Exactly, (float)(line.Height * 72 / 96 / scale));
+        format.SpaceBefore = 0;
+        format.SpaceAfter = 0;
+        Document.SetDefaultParagraphFormat(format);
+        Document.GetRange(0, ReadStory().Length + 1).ParagraphFormat = format;
+        if (_placeholder is { } placeholder)
+        {
+            placeholder.LineHeight = line.Height / scale;
+            placeholder.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            placeholder.TextWrapping = TextWrapping.NoWrap;
+        }
     }
 
     // Raw-text compatibility is a derived projection. The immutable document is the only token authority.
@@ -203,7 +250,7 @@ public sealed class OpenCodeComposerEditor : RichEditBox
     public void SelectAll() => Select(0, Text.Length);
     internal OpenCodeComposerInlineToken? HitToken(Point point)
     {
-        if (_composing || _renderJobs != 0) return null;
+        if (_composing || NativeBehindModel) return null;
         // TOM client coordinates start at the inner text surface, excluding RichEditBox chrome.
         point = new(point.X - Padding.Left - BorderThickness.Left, point.Y - Padding.Top - BorderThickness.Top);
         var position = Document.GetRangeFromPoint(point, PointOptions.ClientCoordinates).StartPosition;
@@ -259,6 +306,7 @@ public sealed class OpenCodeComposerEditor : RichEditBox
             if (ReadStory() != before.Story) ObserveNative(before, _imeSelection);
             DocumentChanged?.Invoke();
             QueueNativeRender();
+            QueueChipGeometryCheck();
         });
     }
     internal bool TryReparent(Panel target, int? index = null)
@@ -532,8 +580,9 @@ public sealed class OpenCodeComposerEditor : RichEditBox
                 // after every await/ownership check; no native input can interleave in this UI turn.
                 base.IsReadOnly = false;
                 Document.SetText(TextSetOptions.None, string.Concat(document.Runs.OfType<OpenCodeComposerTextRun>().Select(x => x.Text)).Replace('\n', '\r'));
+                UpdateLineMetrics();
                 foreach (var image in images)
-                    Document.GetRange(image.Position, image.Position).InsertImage((int)image.Bitmap.Width, (int)image.Bitmap.Height, 0,
+                    Document.GetRange(image.Position, image.Position).InsertImage((int)image.Bitmap.Width, (int)image.Bitmap.Height, image.Bitmap.Ascent,
                         VerticalCharacterAlignment.Baseline, image.Bitmap.Alt, image.Stream);
                 _selection = _selection.Clamp(document.Length);
                 SetNativeSelection();
@@ -543,13 +592,15 @@ public sealed class OpenCodeComposerEditor : RichEditBox
                 _nativeStyle = style;
                 _before = _selection;
                 ObjectMap = document.Objects.Select(x => (x.Position, x.Token.Id)).ToArray();
+                _canonicalChipSizes.Clear();
+                for (var i = 0; i < document.Objects.Count; i++)
+                    _canonicalChipSizes.Add(document.Objects[i].Token.Id, new(images[i].Bitmap.Width, images[i].Bitmap.Height));
             }
             finally
             {
                 RefreshReadOnly();
                 _writing--;
             }
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => NativeLayoutReady?.Invoke());
         }
         catch (Exception error)
         {
@@ -566,28 +617,54 @@ public sealed class OpenCodeComposerEditor : RichEditBox
             _renderJobs--;
             RefreshReadOnly();
             RestoreReparentedFocus();
-            if (_renderJobs == 0) QueueNativeRender(); // A canceled unload render must not strand the next loaded host.
+            if (_renderJobs == 0)
+            {
+                QueueNativeRender(); // A canceled unload render must not strand the next loaded host.
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => NativeLayoutReady?.Invoke());
+            }
         }
     }
 
-    internal double MeasureContentHeight(double width)
+    internal double MeasureContentHeight()
     {
-        var maximum = MaxHeight;
-        var minimum = MinHeight;
-        var scroll = ScrollViewer.GetVerticalScrollBarVisibility(this);
-        try
+        // RichEdit reflows at Arrange, not at a speculative child.Measure(width). Get the first
+        // and last laid-out lines from TOM, including off-viewport text. The surface DesiredSize
+        // is clipped to its viewport once scrolling is enabled; it is NOT the document extent.
+        var chrome = Padding.Top + Padding.Bottom + BorderThickness.Top + BorderThickness.Bottom;
+        var line = LineMetrics.Height;
+        if (_contentScroller is null || !IsLoaded) return line + chrome;
+        const PointOptions options = PointOptions.ClientCoordinates | PointOptions.Start | PointOptions.AllowOffClient;
+        Document.GetRange(0, 0).GetPoint(HorizontalCharacterAlignment.Left, VerticalCharacterAlignment.Top, options, out var first);
+        var end = ReadStory().Length;
+        Document.GetRange(end, end).GetPoint(HorizontalCharacterAlignment.Left, VerticalCharacterAlignment.Top, options, out var last);
+        return Math.Max(line, last.Y - first.Y + line) + chrome;
+    }
+
+    internal double MeasureCompactContentHeight(double width)
+    {
+        // This projection chooses toolbar ROWS only, never the editor's height. Its invariant
+        // compact width prevents the wide/compact row choice from measuring its own output.
+        var line = LineMetrics.Height;
+        var text = new TextBlock { FontFamily = FontFamily, FontSize = FontSize * (IsTextScaleFactorEnabled ? TextScale : 1), FontWeight = FontWeight,
+            FontStyle = FontStyle, CharacterSpacing = CharacterSpacing, FlowDirection = FlowDirection, Language = Language,
+            IsTextScaleFactorEnabled = false, TextWrapping = TextWrapping.Wrap,
+            LineHeight = line, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        var offset = 0;
+        foreach (var run in _native.Runs)
         {
-            MaxHeight = double.PositiveInfinity;
-            MinHeight = 0;
-            ScrollViewer.SetVerticalScrollBarVisibility(this, ScrollBarVisibility.Disabled);
-            Measure(new(Math.Max(1, width), double.PositiveInfinity));
-            return DesiredSize.Height;
+            if (run is OpenCodeComposerTextRun plain)
+            {
+                text.Inlines.Add(new Run { Text = plain.Text });
+                offset += plain.Text.Length;
+            }
+            else
+            {
+                Document.GetRange(offset, offset + 1).GetRect(PointOptions.ClientCoordinates, out var rect, out _);
+                text.Inlines.Add(new InlineUIContainer { Child = new Border { Width = rect.Width, Height = 0 } });
+                offset++;
+            }
         }
-        finally
-        {
-            MaxHeight = maximum;
-            MinHeight = minimum;
-            ScrollViewer.SetVerticalScrollBarVisibility(this, scroll);
-        }
+        text.Measure(new(Math.Max(1, width), double.PositiveInfinity));
+        return Math.Max(line, text.DesiredSize.Height);
     }
 }

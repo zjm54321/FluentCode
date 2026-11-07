@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using FluentCode.Pages.OpenCode;
 
@@ -10,6 +12,8 @@ internal static partial class Program
         var before = checks;
         using var f = new Fixture();
         var composition = new OpenCodeComposerComposition();
+        var toolbar = new List<bool>();
+        composition.Changed += composing => toolbar.Add(!composing);
         var text = string.Empty;
         var writes = 0;
         OpenCodeComposerEditorSync? sync = null;
@@ -53,6 +57,8 @@ internal static partial class Program
 
         Compose("你好");
         Compose("你好");
+        Check(toolbar.SequenceEqual(new[] { false, true, false, true }),
+            "composition start dims agent/model/effort; drained commit undims, including consecutive Pinyin cycles");
         Check(text == "你好你好", "second pinyin composition appends rather than losing the IME context");
 
         var submitted = f.Core.Snapshot.Token;
@@ -89,6 +95,13 @@ internal static partial class Program
         composition.Reset();
         Check(!composition.TryComplete(secondEnd) && !composition.IsActive,
             "reattachment invalidates a queued composition completion");
+        toolbar.Clear();
+        composition.Start();
+        var canceled = composition.End();
+        Check(toolbar.SequenceEqual(new[] { false }) && composition.IsActive,
+            "cancel/Ended keeps toolbar dim until native callbacks drain");
+        composition.TryComplete(canceled);
+        Check(toolbar.SequenceEqual(new[] { false, true }), "canceled composition undims the toolbar even with no text edit");
 
         var view = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs"));
         Check(view.Contains("DispatcherQueuePriority.Low") && view.Contains("!_composition.TryComplete(version)")
@@ -101,6 +114,10 @@ internal static partial class Program
         var page = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCodePage.Composer.cs"));
         Check(page.Contains("_composerView.CompositionSettled +=") && page.Contains("QueueDeferredComposerOverlayRefresh();"),
             "page overlays resume at the same drained composition boundary, never the raw Ended callback");
+        Check(view.Contains("_composition.Changed += active => CompositionChanged?.Invoke(active)")
+            && page.Contains("_composerView.CompositionChanged += composing =>")
+            && page.Contains("_isComposing = composing;") && page.Contains("QueueSessionControlCardRefresh();"),
+            "native view composition state reaches the page and refreshes both toolbar locations independently of model text changes");
         Console.WriteLine($"PASS IME composition regression: {checks - before} assertions; production composition state + editor ledger/controller, simulated native event ordering, no physical IME automation.");
     }
 }

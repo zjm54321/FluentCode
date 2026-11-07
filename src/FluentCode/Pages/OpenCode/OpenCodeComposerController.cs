@@ -777,7 +777,7 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             var browserContext = string.Join("\n\n", _files.Select(f => f.Presentation?.Context).Where(s => !string.IsNullOrWhiteSpace(s)));
             text = SendText(_text) + (browserContext.Length == 0 ? "" : (_text.Length == 0 ? "" : "\n\n") + browserContext);
             command = _command;
-            attachments = _files.Select(f => f.Encoded).ToArray();
+            attachments = OrderedFiles().Select(f => f.Encoded).ToArray();
             _submissionOwner = operation;
             _note = null;
         }

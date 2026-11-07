@@ -3,7 +3,6 @@ using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.Foundation;
 
 namespace FluentCode.Pages;
 
@@ -29,7 +28,6 @@ public sealed partial class OpenCodePage
         if (FullScreenComposerActive && (child || _fullScreenBinding is not { } binding || !OwnsComposerBinding(binding)))
             CloseFullScreenComposer(focus: false);
     }
-    private readonly TextBlock _composerMeasure = new() { TextWrapping = TextWrapping.Wrap };
     private bool _composerLayoutPending;
     private bool _composerOverFiveLines;
     private bool _composerOverTwoLines;
@@ -95,19 +93,8 @@ public sealed partial class OpenCodePage
     private void UpdateComposerLayout()
     {
         UpdateConversationColumns();
-        var measure = _composerMeasure;
-        measure.FontFamily = Composer.FontFamily;
-        measure.FontSize = Composer.FontSize;
-        measure.FontWeight = Composer.FontWeight;
-        measure.FontStyle = Composer.FontStyle;
-        measure.CharacterSpacing = Composer.CharacterSpacing;
-        measure.IsTextScaleFactorEnabled = Composer.IsTextScaleFactorEnabled;
-        measure.FlowDirection = Composer.FlowDirection;
-        measure.Language = Composer.Language;
-        measure.Text = "Mg";
-        measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var line = Math.Max(1, measure.DesiredSize.Height);
-        // Measure against the base (no-button) inset so the expand decision never depends on its own padding change.
+        var line = Composer.LineMetrics.Height;
+        // The compact toolbar-row projection always uses the base inset, independent of its output.
         var padding = ComposerTextPadding(expandVisible: false);
         var stroke = Composer.BorderThickness;
         var chrome = padding.Top + padding.Bottom + stroke.Top + stroke.Bottom;
@@ -116,22 +103,25 @@ public sealed partial class OpenCodePage
         // Testing the expanded editor would otherwise bounce between two and three wrapped lines.
         var singleRowWidth = ComposerSingleRowTextWidth(ComposerInputLayout.ActualWidth,
             ComposerToolbarLeft.ActualWidth, ComposerActions.ActualWidth, ComposerInputLayout.ColumnSpacing, horizontalChrome);
-        var contentHeight = Math.Max(line, Composer.MeasureContentHeight(singleRowWidth + horizontalChrome) - chrome);
+        var compactHeight = Composer.MeasureCompactContentHeight(singleRowWidth);
         _composerOverTwoLines = !_newSessionDraftActive && _sidebarLayout.IsWide
-            && ComposerOverTwoLines(contentHeight, line, _composerOverTwoLines);
+            && ComposerOverTwoLines(compactHeight, line, _composerOverTwoLines);
         var singleRow = UseSingleRowComposer(_newSessionDraftActive, _sidebarLayout.IsWide, _composerOverTwoLines);
         ArrangeComposerRows(singleRow);
         UpdateComposerToolbarLayout();
-        // The expand affordance still follows the editor's actual (possibly full-width) wrapping.
-        if (!singleRow)
-            contentHeight = Math.Max(line, Composer.MeasureContentHeight(ComposerInputLayout.ActualWidth) - chrome);
+        // Grow/expand/scrollbar decisions use only the native surface's actually arranged width.
+        var contentHeight = Math.Max(line, Composer.MeasureContentHeight() - chrome);
         var maximum = OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
-        Composer.MinHeight = line + chrome;
+        Composer.MinHeight = OpenCodeComposerHeightPolicy.MinimumHeight(contentHeight, line, chrome);
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
         _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(contentHeight, line);
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;
         var textPadding = ComposerTextPadding(_composerOverFiveLines);
         if (Composer.Padding != textPadding) Composer.Padding = textPadding; // Shell editor binds to this padding.
+        // Hidden scrollbars reserve no width. Only a capped draft needs a vertical scrollbar;
+        // unlike Disabled, Hidden still permits native caret scrolling.
+        ScrollViewer.SetVerticalScrollBarVisibility(Composer, contentHeight + chrome > maximum
+            ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
     }
 
     // Symmetric 12 so text fills the editor; the right inset grows to 44 (button 32 + margin 4 + gap 8) only while the

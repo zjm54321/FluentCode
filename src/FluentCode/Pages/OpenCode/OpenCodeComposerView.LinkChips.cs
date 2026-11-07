@@ -68,7 +68,7 @@ internal sealed partial class OpenCodeComposerView
         _imagePaste = paste;
         try
         {
-            var caret = paste.Document.NativeOffset(paste.SelectionStart + paste.InsertionText.Length, end: true);
+            var caret = paste.NativeCaret;
             editor.StageDocument(paste.Document, new(caret, caret));
             var accepted = FlushForIntent() && _sync?.BaselineToken == _source().Token;
             if (accepted) _sync!.Reconcile();

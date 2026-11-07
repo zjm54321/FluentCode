@@ -141,7 +141,7 @@ internal static partial class Program
             Check(f.Core.Snapshot.Links.Count == 0 && f.Core.Snapshot.Images.Count == 0, "discard clears chips");
         }
 
-        // ---- [Image N]: numbering, linkage, no renumbering
+        // ---- [Image N]: contiguous document ordinals and opaque attachment linkage
         using (var f = new Fixture())
         {
             async Task<Guid> Paste(string after)
@@ -163,18 +163,41 @@ internal static partial class Program
             var full = f.Core.Snapshot.Text;
             Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, f.Core.Snapshot.Document.NativeOffset(full.IndexOf("[Image 1]", StringComparison.Ordinal)), 1, ""), "explicit first image deletion");
             Check(f.Core.Snapshot.Images.Count == 1, "other image survives: " + string.Join(",", f.Core.Snapshot.Images.Select(i => i.Start + ":" + i.Number)) + " text=" + f.Core.Snapshot.Text);
-            Check(f.Core.Snapshot.Attachments.All(a => a.Id != one) && f.Core.Snapshot.Images.Single().Number == 2, "deleting the chip removes the attachment; no renumbering");
+            Check(f.Core.Snapshot.Attachments.All(a => a.Id != one) && f.Core.Snapshot.Images.Single().Number == 1
+                && f.Core.Snapshot.Document.Objects.Single().Token.Label == "图片 1", "deleting the chip removes its attachment and renumbers the survivor");
             Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token), "model undo restores image and bytes atomically");
             Check(f.Core.Snapshot.Attachments.Any(a => a.Id == one) && f.Core.Snapshot.Images.Count == 2, "Undo restores chip + attachment");
             f.Core.RemoveAttachment(f.Core.Snapshot.Token, one);
             Check(f.Core.Snapshot.Images.Count == 1, "x keeps other: " + f.Core.Snapshot.Text);
-            Check(f.Core.Snapshot.Text == "look [Image 2] " && f.Core.Snapshot.Images.Single().Number == 2, "× on the attachment removes [Image 1] text");
+            Check(f.Core.Snapshot.Text == "look [Image 1] " && f.Core.Snapshot.Images.Single().Number == 1, "× on the attachment also renumbers the remaining image");
             var three = await Paste("");
-            Check(f.Core.Snapshot.Text.EndsWith("[Image 3]", StringComparison.Ordinal) && f.Core.Snapshot.Images.Any(i => i.Number == 3 && i.AttachmentId == three), "next number is max+1, never reused");
+            Check(f.Core.Snapshot.Text.EndsWith("[Image 2]", StringComparison.Ordinal) && f.Core.Snapshot.Images.Any(i => i.Number == 2 && i.AttachmentId == three), "new images continue the current contiguous ordinals");
             Check(f.Core.Snapshot.SendText == f.Core.Snapshot.Text, "[Image N] is sent verbatim (TUI parity)");
             f.Core.DiscardDraft(f.Core.Snapshot.Token);
             f.Text("again ");
             Check(f.Core.NextImageNumber == 1, "a fresh message restarts at 1");
+        }
+        using (var f = new Fixture())
+        {
+            var editor = new ImagePasteEditor(f);
+            await editor.Paste(FileSource("A.png", 1), 0);
+            await editor.Paste(FileSource("B.png", 2), 0); // File insertion order A,B; document order B,A.
+            Check(f.Core.Snapshot.SendText == "[Image 1] [Image 2] ", "paste-before renumbers both labels in document order");
+            Check(await f.SubmitAsync(f.Core.Snapshot.Token, () => true) is OpenCodeComposerSubmitOutcome.PromptAccepted, "ordered image draft sends");
+            using var body = JsonDocument.Parse(f.Handler.LastBody!);
+            Check(body.RootElement.GetProperty("files").EnumerateArray().Select(x => x.GetProperty("name").GetString())
+                .SequenceEqual(new[] { "B.png", "A.png" }), "wire file order follows the document, not attachment creation order");
+            editor = new ImagePasteEditor(f); // The accepted send cleared the previous draft.
+            await editor.Paste(FileSource("A.png", 1), 0);
+            await editor.Paste(FileSource("B.png", 2), 0);
+            var first = f.Core.Snapshot.Document.Objects.First().Position;
+            Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, first, 1, ""), "delete first pasted image");
+            Check(await f.SubmitAsync(f.Core.Snapshot.Token, () => true) is OpenCodeComposerSubmitOutcome.PromptAccepted, "delete-A/send regression stays sendable");
+            using var after = JsonDocument.Parse(f.Handler.LastBody!);
+            Check(after.RootElement.GetProperty("text").GetString()!.Contains("[Image 1]", StringComparison.Ordinal)
+                && !after.RootElement.GetProperty("text").GetString()!.Contains("[Image 2]", StringComparison.Ordinal)
+                && after.RootElement.GetProperty("files").GetArrayLength() == 1
+                && after.RootElement.GetProperty("files")[0].GetProperty("name").GetString() == "A.png", "one surviving file is sent as renderable [Image 1]");
         }
 
         // ---- production wiring (source checks; WinUI surfaces are not executed here)

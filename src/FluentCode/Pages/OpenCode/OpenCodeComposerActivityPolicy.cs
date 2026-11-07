@@ -13,6 +13,8 @@ internal static class OpenCodeComposerHeightPolicy
         => textHeight > lineHeight * MaxVisualLines + 1;
     internal static double ViewportHeight(double lineHeight, double verticalChrome)
         => Math.Max(40, lineHeight * MaxVisualLines + verticalChrome);
+    internal static double MinimumHeight(double textHeight, double lineHeight, double verticalChrome)
+        => Math.Min(ViewportHeight(lineHeight, verticalChrome), Math.Max(40, textHeight + verticalChrome));
 }
 
 /// <summary>Authoritative foreground observations supersede local request tracking, including explicit idle.</summary>
