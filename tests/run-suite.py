@@ -24,6 +24,7 @@ ROOT_PREFIXES = (
 RUNNERS = (
     'opencode-auth/run.ps1',
     'opencode-connection/run.ps1',
+    'opencode-ssh/run.ps1',
     'opencode-pairing/run.ps1',
     'opencode-event-sync/run.ps1',
     'message-pagination/run.ps1',
