@@ -1,10 +1,10 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Win32.SafeHandles;
 
 namespace FluentCode.Services.OpenCode.Connection;
 
@@ -20,32 +20,80 @@ internal static class WindowsSshProcess
 {
     internal static async Task<SshProcessResult> RunAsync(ProcessStartInfo start, string? input, TimeSpan timeout, CancellationToken ct)
     {
-        Process process;
-        try { process = Process.Start(start) ?? throw new SshOpenCodeException(SshFailureKind.Unavailable); }
+        SshOwnedProcess process;
+        try { process = SshOwnedProcess.Start(start); }
         catch (Win32Exception) { throw new SshOpenCodeException(SshFailureKind.Unavailable); }
         using (process)
         {
-            SshProcessJob? job = null;
             using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
             budget.CancelAfter(timeout);
+            using var cancel = budget.Token.Register(process.KillJob);
+            var limit = new SshOutputLimit(process.KillJob);
             try
             {
-                job = new(process);
-                var output = process.StandardOutput.ReadToEndAsync(budget.Token);
-                var error = process.StandardError.ReadToEndAsync(budget.Token);
-                if (input is not null) await process.StandardInput.WriteAsync(input.AsMemory(), budget.Token).ConfigureAwait(false);
-                process.StandardInput.Close();
+                var output = SshOutputLimit.ReadAsync(process.Output, limit, budget.Token);
+                var error = SshOutputLimit.ReadAsync(process.Error, limit, budget.Token);
+                if (input is not null) await process.Input.WriteAsync(Encoding.UTF8.GetBytes(input), budget.Token).ConfigureAwait(false);
+                process.Input.Close();
                 await process.WaitForExitAsync(budget.Token).ConfigureAwait(false);
+                process.KillJob(); // Retire any owned configuration children before draining their inherited pipes.
+                await Task.WhenAll(output, error).ConfigureAwait(false);
+                budget.Token.ThrowIfCancellationRequested();
                 return new(process.ExitCode, await output.ConfigureAwait(false), await error.ConfigureAwait(false));
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new SshOpenCodeException(SshFailureKind.Timeout); }
             catch (Win32Exception) { throw new SshOpenCodeException(SshFailureKind.Unavailable); }
             finally
             {
-                job?.Dispose();
-                try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { }
+                process.KillJob();
             }
         }
+    }
+
+    internal static async Task<byte[]> RunHostKeyProbeAsync(ProcessStartInfo start, string keyFile, CancellationToken ct)
+    {
+        using var process = SshOwnedProcess.Start(start);
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        budget.CancelAfter(TimeSpan.FromSeconds(20));
+        using var cancel = budget.Token.Register(process.KillJob);
+        var limit = new SshOutputLimit(process.KillJob);
+        var output = SshOutputLimit.ReadAsync(process.Output, limit, budget.Token);
+        var error = SshOutputLimit.ReadAsync(process.Error, limit, budget.Token);
+        process.Input.Close();
+        try
+        {
+            while (true)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                if (output.IsFaulted) await output.ConfigureAwait(false);
+                if (error.IsFaulted) await error.ConfigureAwait(false);
+                if (File.Exists(keyFile))
+                {
+                    if (new FileInfo(keyFile).Length > SshOutputLimit.CommandBytes) throw new SshOpenCodeException(SshFailureKind.OutputLimit);
+                    byte[] keys = await File.ReadAllBytesAsync(keyFile, budget.Token).ConfigureAwait(false);
+                    if (keys.Length > 0 && keys[^1] == (byte)'\n')
+                    {
+                        // -N -T never creates a session, even if the server accepts initial 'none' auth.
+                        // Stop our own Job once ssh has committed its captured key; no auth-result assumption.
+                        process.KillJob();
+                        await process.WaitForExitAsync(budget.Token).ConfigureAwait(false);
+                        await Task.WhenAll(output, error).ConfigureAwait(false);
+                        budget.Token.ThrowIfCancellationRequested();
+                        return keys;
+                    }
+                }
+                if (!process.IsAlive)
+                {
+                    await process.WaitForExitAsync(budget.Token).ConfigureAwait(false);
+                    process.KillJob();
+                    await Task.WhenAll(output, error).ConfigureAwait(false);
+                    throw new SshOpenCodeException(Classify(await error.ConfigureAwait(false)));
+                }
+                await Task.Delay(50, budget.Token).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new SshOpenCodeException(SshFailureKind.Timeout); }
+        finally { process.KillJob(); }
     }
 
     internal static SshFailureKind Classify(string error)
@@ -64,57 +112,6 @@ internal static class WindowsSshProcess
         if (error.Contains("timed out", StringComparison.OrdinalIgnoreCase)) return SshFailureKind.Timeout;
         return SshFailureKind.Unavailable;
     }
-}
-
-/// <summary>每个 SSH 子进程均加入 kill-on-close Job；退出/崩溃关闭句柄只杀本地进程，不停远程服务。</summary>
-internal sealed class SshProcessJob : IDisposable
-{
-    private readonly SafeFileHandle _handle;
-
-    internal SshProcessJob(Process process)
-    {
-        _handle = CreateJobObjectW(IntPtr.Zero, null);
-        if (_handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error());
-        var limits = new ExtendedLimits { Basic = new BasicLimits { LimitFlags = 0x00002000 } }; // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-        if (!SetInformationJobObject(_handle, 9, ref limits, (uint)Marshal.SizeOf<ExtendedLimits>())
-            || !AssignProcessToJobObject(_handle, process.Handle))
-        {
-            int error = Marshal.GetLastWin32Error();
-            _handle.Dispose();
-            throw new Win32Exception(error);
-        }
-    }
-
-    public void Dispose() => _handle.Dispose();
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BasicLimits
-    {
-        internal long PerProcessUserTimeLimit, PerJobUserTimeLimit;
-        internal uint LimitFlags;
-        internal UIntPtr MinimumWorkingSetSize, MaximumWorkingSetSize;
-        internal uint ActiveProcessLimit;
-        internal UIntPtr Affinity;
-        internal uint PriorityClass, SchedulingClass;
-    }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct IoCounters
-    { internal ulong ReadOperationCount, WriteOperationCount, OtherOperationCount, ReadTransferCount, WriteTransferCount, OtherTransferCount; }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct ExtendedLimits
-    {
-        internal BasicLimits Basic;
-        internal IoCounters Io;
-        internal UIntPtr ProcessMemoryLimit, JobMemoryLimit, PeakProcessMemoryUsed, PeakJobMemoryUsed;
-    }
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern SafeFileHandle CreateJobObjectW(IntPtr attributes, string? name);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetInformationJobObject(SafeFileHandle job, int infoClass, ref ExtendedLimits info, uint length);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AssignProcessToJobObject(SafeFileHandle job, IntPtr process);
 }
 
 public interface ISshOpenCodeCommandRunner

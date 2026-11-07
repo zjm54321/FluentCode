@@ -13,6 +13,7 @@ public sealed record OpenCodeCommitOutcome(OpenCodeCommitStage Stage, string Mes
 {
     public bool Succeeded => Stage == OpenCodeCommitStage.Succeeded;
     public bool RefreshDiscovery { get; init; }
+    public string? Warning { get; init; }
 }
 
 /// <summary>
@@ -82,7 +83,7 @@ public sealed class OpenCodeConnectionCommitter
             }
 
             string? stagedId = null;
-            if (options.AuthenticationMode != OpenCodeAuthenticationMode.None)
+            if (kind != OpenCodeConnectionKind.Ssh && options.AuthenticationMode != OpenCodeAuthenticationMode.None)
             {
                 stagedId = "opencode-" + Guid.NewGuid().ToString("N");
                 try { await _writeSecret(stagedId, secret!, cancellationToken).ConfigureAwait(false); }
@@ -90,6 +91,7 @@ public sealed class OpenCodeConnectionCommitter
                 catch (Exception ex) { return new(OpenCodeCommitStage.SecretFailed, "凭据保存失败：" + Describe(ex)); }
             }
 
+            string? obsoleteSshSecret = null;
             try
             {
                 try
@@ -98,7 +100,9 @@ public sealed class OpenCodeConnectionCommitter
                     {
                         OpenCodeSettings next = OpenCodeConnectionProfile.Replace(latest.OpenCode, kind, options.BaseUrl,
                             options.AuthenticationMode, options.Username, wslDistribution, sshHost, sshCommand);
-                        next = next with { CredentialId = stagedId ?? latest.OpenCode.CredentialId };
+                        obsoleteSshSecret = latest.OpenCode.Kind == OpenCodeConnectionKind.Ssh ? latest.OpenCode.CredentialId : null;
+                        next = next with { CredentialId = kind == OpenCodeConnectionKind.Ssh ? null
+                            : stagedId ?? (obsoleteSshSecret is null ? latest.OpenCode.CredentialId : null) };
                         return latest with { OpenCode = next };
                     }, cancellationToken).ConfigureAwait(false);
                 }
@@ -121,12 +125,39 @@ public sealed class OpenCodeConnectionCommitter
                 return new(ex is OperationCanceledException ? OpenCodeCommitStage.Cancelled : OpenCodeCommitStage.SaveFailed, message);
             }
 
-            return new(OpenCodeCommitStage.Succeeded, "已连接 OpenCode。");
+            string successMessage = kind == OpenCodeConnectionKind.Ssh ? "已保存 SSH 连接设置；服务密码仅在内存中使用，未持久化。" : "已连接 OpenCode。";
+            if (obsoleteSshSecret is not null)
+            {
+                try { await _removeSecret(obsoleteSshSecret, CancellationToken.None).ConfigureAwait(false); }
+                catch { successMessage += " 旧 SSH 凭据密文清理失败，请稍后重试。"; }
+            }
+            return new(OpenCodeCommitStage.Succeeded, successMessage) { Warning = options.ConnectionWarning };
         }
         finally
         {
             Volatile.Write(ref _busy, 0);
         }
+    }
+
+    /// <summary>下一次设置保存后，原子清除 SSH 旧引用，再仅删除已不被当前连接引用的密文。</summary>
+    public static async Task RemoveStoredSshSecretAsync(AppSettings observed,
+        Func<Func<AppSettings, AppSettings>, CancellationToken, Task<AppSettings>> update,
+        Func<AppSettings?> current, Func<string, CancellationToken, Task> remove, CancellationToken ct)
+    {
+        if (observed.OpenCode is not { Kind: OpenCodeConnectionKind.Ssh, CredentialId: { } id }) return;
+        string? obsolete = null;
+        try
+        {
+            await update(latest =>
+            {
+                if (latest.OpenCode.Kind != OpenCodeConnectionKind.Ssh || latest.OpenCode.CredentialId != id) return latest;
+                obsolete = id;
+                return latest with { OpenCode = latest.OpenCode with { CredentialId = null } };
+            }, ct).ConfigureAwait(false);
+        }
+        catch (SettingsChangeNotificationException) { }
+        if (obsolete is not null && current()?.OpenCode.CredentialId != obsolete)
+            await remove(obsolete, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>OpenCode 异常消息为固定模板（不含凭据/响应体）；其他异常只给类型名与 HRESULT。</summary>

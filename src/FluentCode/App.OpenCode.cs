@@ -80,8 +80,24 @@ public partial class App
         RequestOpenCodeConfiguration(_settingsService.Current);
     }
 
-    private void OnAppSettingsChanged(object? sender, AppSettingsChangedEventArgs args) =>
+    private void OnAppSettingsChanged(object? sender, AppSettingsChangedEventArgs args)
+    {
+        if (_settingsService?.Current is { } saved) _ = RemoveStoredSshSecretAsync(saved);
         PostToApp(() => RequestOpenCodeConfiguration(_settingsService?.Current));
+    }
+
+    private async Task RemoveStoredSshSecretAsync(AppSettings saved)
+    {
+        try
+        {
+            if (_settingsService is null || _secretStore is null) return;
+            await OpenCodeConnectionCommitter.RemoveStoredSshSecretAsync(saved,
+                (transform, ct) => _settingsService.UpdateAsync(transform, ct), () => _settingsService.Current,
+                (id, ct) => _secretStore.RemoveAsync(id, ct), _appLifetime.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { RecordDiagnostic("opencode-ssh-old-credential-cleanup-failed", error: ex); }
+    }
 
     private void RequestOpenCodeConfiguration(AppSettings? settings, OpenCodeClientOptions? recoveredOptions = null,
         SshOpenCodeConnection? recoveredSsh = null)
@@ -205,7 +221,7 @@ public partial class App
                 liveSsh.Tunnel.Exited += (_, _) => PostToApp(() => BeginSshRecovery(liveSshOwner));
                 // The process may have exited between verification and event subscription.
                 if (!liveSsh.Tunnel.IsAlive) PostToApp(() => BeginSshRecovery(liveSshOwner));
-                PostToApp(() => { if (OwnsSshRecovery(liveSshOwner)) SetOpenCodeRecoveryStatus(null); });
+                PostToApp(() => { if (OwnsSshRecovery(liveSshOwner)) SetOpenCodeRecoveryStatus(liveSsh.Service.Warning); });
                 sshOwner = null; // Published owner now owns its cancellation source.
             }
             bool started = monitor.Start(); // State observation is independent of native notification registration.

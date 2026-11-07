@@ -42,6 +42,12 @@ public sealed record OpenCodeClientOptions
     // App-owned recovery notification only; the failed HTTP request is never retried here.
     internal Action<bool>? ConnectionFailure { get; init; }
 
+    /// <summary>SSH 来源自有的直接 socket 传输；HTTP/SSE/WS 共用其所有权与失效策略。其他连接保持默认传输。</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public OpenCodeSocketTransport? SocketTransport { get; init; }
+    internal bool RequiresSshTransport { get; init; }
+    internal string? ConnectionWarning { get; init; }
+
     /// <summary>避免 record 默认 ToString 回显凭据。</summary>
     public override string ToString() => "OpenCodeClientOptions { [redacted] }";
 }

@@ -129,8 +129,9 @@ public sealed partial class OpenCodeClient
             new("attachment_id", attachmentId), new("role", requestControl ? "controller" : "observer"), new("takeover", "false"), new("input_protocol", "1"),
         })) { Scheme = _baseUri.Scheme == "https" ? "wss" : "ws" };
         var socket = new ClientWebSocket();
+        if (_socketTransport is not null) { _socketTransport.ThrowIfInvalidated(); socket.Options.Proxy = null; }
         // ConnectAsync's custom invoker is essential: the default WS handler may follow redirects.
-        var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, Credentials = null };
+        var handler = _socketTransport?.CreateHandler() ?? new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, Credentials = null };
         var invoker = new HttpMessageInvoker(handler);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_timeout);
@@ -173,6 +174,7 @@ public sealed partial class OpenCodeClient
         bool ticketRequest, CancellationToken cancellationToken, string? unsupportedFeature = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        _socketTransport?.ThrowIfInvalidated();
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_timeout);
         var uri = new Uri(_baseUri, path);

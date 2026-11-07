@@ -6,11 +6,11 @@ using System.IO;
 
 namespace FluentCode.Services.OpenCode.Connection;
 
-public enum SshOpenCodeCommand { ServiceStatus, ServicePassword, ServiceStart }
+public enum SshOpenCodeCommand { ServiceStatus, ServicePassword, ServiceStart, ServiceHostname, ServiceRemoteAccess, ServiceBindingEnvironment }
 
 /// <summary>测试可指定独立 config / key / known_hosts；生产使用 Windows OpenSSH 的全部默认配置。</summary>
 internal sealed record SshInvocationOptions(string? ConfigFile = null, string? IdentityFile = null,
-    string? UserKnownHostsFile = null, string? GlobalKnownHostsFile = null, string? ProbeRoot = null);
+    string? UserKnownHostsFile = null, string? GlobalKnownHostsFile = null, string? ProbeRoot = null, Action<int>? BeforeTunnelStart = null);
 
 internal static class SshCommandBuilder
 {
@@ -18,14 +18,14 @@ internal static class SshCommandBuilder
     internal const string BeginMarker = "__FLUENTCODE_SSH_BEGIN__";
     internal const string EndMarker = "__FLUENTCODE_SSH_END__";
     internal static string Executable(string name = "ssh.exe") => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.System), "OpenSSH", name);
+        Environment.SystemDirectory, "OpenSSH", name);
 
-    internal static ProcessStartInfo Command(SshConnectionTarget target, SshInvocationOptions options, string command = "sh -s",
-        string checking = "yes", string? hostKeyAlgorithms = null)
+    internal static ProcessStartInfo Command(SshConnectionTarget target, SshInvocationOptions options, string command = "sh -s", bool diagnostic = false)
     {
         var start = StartInfo();
-        AddCommon(start, options, checking);
-        if (hostKeyAlgorithms is not null) Add(start, "-o", "HostKeyAlgorithms=" + hostKeyAlgorithms);
+        AddCommon(start, options, "yes", sessionless: false);
+        Add(start, "-o", "ClearAllForwardings=yes");
+        if (diagnostic) Add(start, "-o", "LogLevel=DEBUG3");
         AddTarget(start, target);
         start.ArgumentList.Add(command);
         return start;
@@ -35,7 +35,8 @@ internal static class SshCommandBuilder
     {
         var start = StartInfo();
         start.ArgumentList.Add("-G");
-        AddCommon(start, options, "yes");
+        AddCommon(start, options, "yes", sessionless: true);
+        // Deliberately do not clear forwards here: inspection must reject inherited additions before tunneling.
         AddTarget(start, target);
         return start;
     }
@@ -44,26 +45,24 @@ internal static class SshCommandBuilder
         string knownHosts, string emptyGlobalHosts)
     {
         var start = StartInfo();
-        AddCommon(start, options with { IdentityFile = null, UserKnownHostsFile = knownHosts, GlobalKnownHostsFile = emptyGlobalHosts }, "accept-new");
+        AddCommon(start, options with { IdentityFile = null, UserKnownHostsFile = knownHosts, GlobalKnownHostsFile = emptyGlobalHosts }, "accept-new", sessionless: true);
         Add(start, "-o", "PubkeyAuthentication=no", "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
             "-o", "GSSAPIAuthentication=no", "-o", "HostbasedAuthentication=no", "-o", "IdentityAgent=none",
-            "-o", "ClearAllForwardings=yes", "-o", "RequestTTY=no");
+            "-o", "ClearAllForwardings=yes");
         AddTarget(start, target);
-        start.ArgumentList.Add("exit"); // Authentication must fail before this command could run.
         return start;
     }
 
     internal static ProcessStartInfo Tunnel(SshConnectionTarget target, int localPort, int remotePort, SshInvocationOptions options,
-        string remoteHost = "127.0.0.1", string? proxyJump = null)
+        string remoteHost = "127.0.0.1")
     {
         ValidatePort(localPort);
         ValidatePort(remotePort);
         var start = StartInfo();
-        Add(start, "-N", "-L", "127.0.0.1:" + localPort.ToString(CultureInfo.InvariantCulture) + ":"
+        Add(start, "-L", "127.0.0.1:" + localPort.ToString(CultureInfo.InvariantCulture) + ":"
             + (remoteHost.Contains(':') ? "[" + remoteHost + "]" : remoteHost) + ":" + remotePort.ToString(CultureInfo.InvariantCulture));
         Add(start, "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3");
-        AddCommon(start, options, "yes");
-        if (proxyJump is not null) Add(start, "-J", proxyJump);
+        AddCommon(start, options, "yes", sessionless: true);
         AddTarget(start, target);
         return start;
     }
@@ -77,6 +76,9 @@ internal static class SshCommandBuilder
             SshOpenCodeCommand.ServiceStatus => "service status",
             SshOpenCodeCommand.ServicePassword => "service get password",
             SshOpenCodeCommand.ServiceStart => "service start",
+            SshOpenCodeCommand.ServiceHostname => "service get hostname",
+            SshOpenCodeCommand.ServiceRemoteAccess => "service get remote",
+            SshOpenCodeCommand.ServiceBindingEnvironment => "service get env",
             _ => throw new ArgumentOutOfRangeException(nameof(command)),
         };
         string name = executable ?? "opencode";
@@ -108,18 +110,25 @@ internal static class SshCommandBuilder
         StandardOutputEncoding = new System.Text.UTF8Encoding(false), StandardErrorEncoding = new System.Text.UTF8Encoding(false),
     };
 
-    private static void AddCommon(ProcessStartInfo start, SshInvocationOptions options, string checking)
+    private static void AddCommon(ProcessStartInfo start, SshInvocationOptions options, string checking, bool sessionless)
     {
         Add(start, "-o", "BatchMode=yes", "-o", "ConnectTimeout=" + ConnectTimeoutSeconds,
             "-o", "ForwardAgent=no", "-o", "StrictHostKeyChecking=" + checking,
             "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ForkAfterAuthentication=no",
-            "-o", "RequestTTY=no", "-o", "RemoteCommand=none", "-o", "StdinNull=no");
+            "-o", "RequestTTY=no", "-o", "RemoteCommand=none", "-o", "StdinNull=no",
+            "-o", "NoHostAuthenticationForLocalhost=no", "-o", "VerifyHostKeyDNS=no", "-o", "PermitLocalCommand=no",
+            "-o", "ForwardX11=no", "-o", "UpdateHostKeys=no", "-o", "KnownHostsCommand=none",
+            "-o", "SessionType=" + (sessionless ? "none" : "default"), "-T");
+        if (sessionless) start.ArgumentList.Add("-N");
         // No user-owned multiplexed/daemonized master: the Job must actually own every managed tunnel.
         if (options.ConfigFile is not null) Add(start, "-F", options.ConfigFile);
         if (options.IdentityFile is not null) Add(start, "-i", options.IdentityFile, "-o", "IdentitiesOnly=yes");
-        if (options.UserKnownHostsFile is not null) Add(start, "-o", "UserKnownHostsFile=" + options.UserKnownHostsFile);
-        if (options.GlobalKnownHostsFile is not null) Add(start, "-o", "GlobalKnownHostsFile=" + options.GlobalKnownHostsFile);
+        if (options.UserKnownHostsFile is not null) Add(start, "-o", "UserKnownHostsFile=" + QuoteConfigFilename(options.UserKnownHostsFile));
+        if (options.GlobalKnownHostsFile is not null) Add(start, "-o", "GlobalKnownHostsFile=" + QuoteConfigFilename(options.GlobalKnownHostsFile));
     }
+
+    internal static string QuoteConfigFilename(string path) => path == "none" ? "none"
+        : "\"" + path.Replace('\\', '/').Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
 
     private static void AddTarget(ProcessStartInfo start, SshConnectionTarget target)
     {

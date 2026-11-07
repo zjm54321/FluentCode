@@ -10,22 +10,31 @@ namespace FluentCode.Services.OpenCode.Connection;
 
 public sealed record SshHostKeyConfirmation(string Host, IReadOnlyList<string> Fingerprints, string? ResolvedHost = null);
 
-/// <summary>由 ssh.exe 学习未知公钥（目标认证全部禁用）；确认后只追加已展示的公钥，实际连接一律 strict=yes。</summary>
+/// <summary>由无会话的 ssh.exe 学习未知公钥；确认后只追加已展示的公钥，实际连接一律 strict=yes。</summary>
 internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
 {
     internal async Task EnsureTrustedAsync(SshConnectionTarget target,
         Func<SshHostKeyConfirmation, CancellationToken, Task<bool>>? confirm, Action<string> progress, CancellationToken ct)
     {
+        var config = await ReadSafeConfigAsync(target, options, ct).ConfigureAwait(false);
         progress("正在检查 SSH 主机密钥与公钥认证…");
         var check = await StrictAsync().ConfigureAwait(false);
         if (check.ExitCode == 0) return;
         var failure = WindowsSshProcess.Classify(check.Error);
         if (failure != SshFailureKind.UnknownHostKey || confirm is null) throw new SshOpenCodeException(failure);
 
-        var configResult = await WindowsSshProcess.RunAsync(SshCommandBuilder.EffectiveConfig(target, options), null,
-            TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
-        if (configResult.ExitCode != 0) throw new SshOpenCodeException(SshFailureKind.HostKeyProbe);
-        var config = EffectiveSshConfig.Parse(configResult.Output);
+        string acceptedFile;
+        try { acceptedFile = config.FirstResolvedUserKnownHostsFile(check.Error); }
+        catch (SshOpenCodeException ex) when (ex.Kind == SshFailureKind.TrustFile && config.UserKnownHostsFiles is not ("" or "none"))
+        {
+            // Literal filenames do not get an expansion trace on Windows OpenSSH. On an already-unknown host,
+            // perform a strict, read-only resolution attempt with global files excluded so the first native
+            // load_hostkeys record unambiguously identifies the first effective *user* file.
+            var resolution = await WindowsSshProcess.RunAsync(SshCommandBuilder.Command(target,
+                options with { GlobalKnownHostsFile = "none" }, "true", diagnostic: true), null, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+            acceptedFile = config.FirstResolvedUserKnownHostsFile(resolution.Error, userFilesOnly: true);
+        }
+        await SshKnownHostsAppender.EnsureWritableAsync(acceptedFile, ct).ConfigureAwait(false);
         string root = options.ProbeRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FluentCode", "Temp", "Ssh");
         string directory = Path.Combine(root, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -34,15 +43,9 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
         try
         {
             await File.WriteAllBytesAsync(emptyGlobal, Array.Empty<byte>(), ct).ConfigureAwait(false);
-            progress("正在读取 SSH 主机指纹（目标认证已禁用，尚未信任）…");
-            var probe = await WindowsSshProcess.RunAsync(SshCommandBuilder.HostKeyProbe(target, options, probeFile, emptyGlobal), null,
-                TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
-            // The outer client cannot use keys, passwords, agent, GSSAPI or host-based auth. It must stop at
-            // authentication failure, without executing 'exit'. Jump clients retain their normal config/auth.
-            if (probe.ExitCode == 0 || WindowsSshProcess.Classify(probe.Error) != SshFailureKind.Authentication || !File.Exists(probeFile))
-                throw new SshOpenCodeException(SshFailureKind.HostKeyProbe);
-            byte[] keys = await File.ReadAllBytesAsync(probeFile, ct).ConfigureAwait(false);
-            if (keys.Length == 0) throw new SshOpenCodeException(SshFailureKind.HostKeyProbe);
+            progress("正在读取 SSH 主机指纹（无会话探测，尚未信任）…");
+            byte[] keys = await WindowsSshProcess.RunHostKeyProbeAsync(SshCommandBuilder.HostKeyProbe(target, options, probeFile, emptyGlobal),
+                probeFile, ct).ConfigureAwait(false);
 
             var keygen = SshCommandBuilder.StartInfo(SshCommandBuilder.Executable("ssh-keygen.exe"));
             foreach (string argument in new[] { "-lf", probeFile, "-E", "sha256" }) keygen.ArgumentList.Add(argument);
@@ -56,7 +59,6 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
 
             // Exactly the byte sequences ssh.exe learned and the user saw. No second accept-new handshake,
             // no algorithm substitution, no overwrite/remove, and no duplicate lines on concurrent acceptance.
-            string acceptedFile = options.UserKnownHostsFile ?? SshKnownHostsAppender.DefaultPath;
             await SshKnownHostsAppender.AppendAsync(acceptedFile, keys, ct).ConfigureAwait(false);
             check = await StrictAsync().ConfigureAwait(false);
             if (check.ExitCode != 0) throw new SshOpenCodeException(WindowsSshProcess.Classify(check.Error));
@@ -64,7 +66,17 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
         finally { Directory.Delete(directory, recursive: true); }
 
         Task<SshProcessResult> StrictAsync() => WindowsSshProcess.RunAsync(
-            SshCommandBuilder.Command(target, options, "true"), null, TimeSpan.FromSeconds(20), ct);
+            SshCommandBuilder.Command(target, options, "true", diagnostic: true), null, TimeSpan.FromSeconds(20), ct);
+    }
+
+    internal static async Task<EffectiveSshConfig> ReadSafeConfigAsync(SshConnectionTarget target, SshInvocationOptions options, CancellationToken ct)
+    {
+        var result = await WindowsSshProcess.RunAsync(SshCommandBuilder.EffectiveConfig(target, options), null, TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+        if (result.ExitCode != 0) throw new SshOpenCodeException(SshFailureKind.UnsafeConfiguration);
+        var config = EffectiveSshConfig.Parse(result.Output);
+        if (config.ProxyJump is not null) throw new SshOpenCodeException(SshFailureKind.ProxyJump);
+        if (config.HasInheritedForwards) throw new SshOpenCodeException(SshFailureKind.UnsafeConfiguration);
+        return config;
     }
 
     internal static IReadOnlyList<string> ParseFingerprints(string output) => output.Split('\n')
@@ -74,12 +86,17 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
 
 internal sealed record EffectiveSshConfig(string HostName, int Port, string? HostKeyAlias)
 {
+    internal string? ProxyJump { get; init; }
+    internal bool HasInheritedForwards { get; init; }
+    internal string UserKnownHostsFiles { get; init; } = string.Empty;
     internal string DisplayHost => (HostName.Contains(':') ? "[" + HostName + "]" : HostName) + ":" + Port
         + (HostKeyAlias is null ? string.Empty : "（密钥别名：" + HostKeyAlias + "）");
 
     internal static EffectiveSshConfig Parse(string output)
     {
-        string? host = null, alias = null;
+        string? host = null, alias = null, jump = null;
+        string files = string.Empty;
+        bool forwards = false;
         int port = 0;
         // Ignore all other ssh -G values, including environment settings which may contain secrets.
         foreach (string line in output.Split('\n'))
@@ -92,10 +109,56 @@ internal sealed record EffectiveSshConfig(string HostName, int Port, string? Hos
                 case "hostname": host = value; break;
                 case "port": int.TryParse(value, out port); break;
                 case "hostkeyalias": alias = value == "none" ? null : value; break;
+                case "proxyjump": jump = value == "none" ? null : value; break;
+                case "userknownhostsfile": files = value; break;
+                case "localforward": case "remoteforward": case "dynamicforward": forwards |= value.Length > 0 && value != "none"; break;
             }
         }
         if (string.IsNullOrEmpty(host) || port is < 1 or > 65535) throw new SshOpenCodeException(SshFailureKind.HostKeyProbe);
-        return new(host, port, alias);
+        return new(host, port, alias) { ProxyJump = jump, HasInheritedForwards = forwards, UserKnownHostsFiles = files };
+    }
+
+    internal string FirstResolvedUserKnownHostsFile(string nativeDiagnostics, bool userFilesOnly = false)
+    {
+        if (UserKnownHostsFiles.Length == 0 || UserKnownHostsFiles == "none") throw new SshOpenCodeException(SshFailureKind.TrustFile);
+        // ssh -G joins filenames without quotes. The strict native attempt's DEBUG3 expansion records preserve
+        // each boundary and use OpenSSH's own token/tilde/environment expansion; never guess a path from spaces.
+        const string prefix = "debug3: expanded UserKnownHostsFile '";
+        foreach (string line in nativeDiagnostics.Split('\n'))
+        {
+            string text = line.TrimEnd('\r');
+            if (!text.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            int marker = text.LastIndexOf("' -> '", StringComparison.Ordinal);
+            if (marker < prefix.Length || !text.EndsWith('\'')) throw new SshOpenCodeException(SshFailureKind.TrustFile);
+            string path = text[(marker + 6)..^1];
+            if (path.Length == 0 || path == "none" || path.Any(char.IsControl)) throw new SshOpenCodeException(SshFailureKind.TrustFile);
+            try { return Path.GetFullPath(path); }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { throw new SshOpenCodeException(SshFailureKind.TrustFile); }
+        }
+        if (userFilesOnly)
+        {
+            foreach (string line in nativeDiagnostics.Split('\n'))
+            {
+                string text = line.TrimEnd('\r');
+                const string open = "debug1: load_hostkeys: fopen ";
+                string? path = null;
+                if (text.StartsWith(open, StringComparison.Ordinal))
+                {
+                    int error = text.LastIndexOf(": ", StringComparison.Ordinal);
+                    if (error > open.Length) path = text[open.Length..error];
+                }
+                else
+                {
+                    var loaded = Regex.Match(text, @"^debug1: load_hostkeys: loaded \d+ keys from (.+)$");
+                    if (loaded.Success) path = loaded.Groups[1].Value;
+                }
+                if (path is null) continue;
+                if (path.Length == 0 || path == "none" || path.Any(char.IsControl)) throw new SshOpenCodeException(SshFailureKind.TrustFile);
+                try { return Path.GetFullPath(path); }
+                catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { throw new SshOpenCodeException(SshFailureKind.TrustFile); }
+            }
+        }
+        throw new SshOpenCodeException(SshFailureKind.TrustFile);
     }
 }
 
@@ -104,26 +167,56 @@ internal static class SshKnownHostsAppender
     private static readonly SemaphoreSlim Gate = new(1, 1);
     internal static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh", "known_hosts");
 
-    internal static async Task AppendAsync(string path, byte[] probeBytes, CancellationToken ct)
+    internal static async Task EnsureWritableAsync(string path, CancellationToken ct)
+    {
+        try
+        {
+            string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+            Directory.CreateDirectory(directory);
+            if (File.Exists(path)) { using var existing = await OpenAsync(path, FileMode.Open, ct).ConfigureAwait(false); return; }
+            string marker = Path.Combine(directory, ".fluentcode-write-test-" + Guid.NewGuid().ToString("N"));
+            using var test = new FileStream(marker, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+            ct.ThrowIfCancellationRequested(); // No user known_hosts file is created before consent.
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException) { throw new SshOpenCodeException(SshFailureKind.TrustFile); }
+    }
+
+    private static async Task<FileStream> OpenAsync(string path, FileMode mode, CancellationToken ct)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            try { return new(path, mode, FileAccess.ReadWrite, FileShare.Read, 4096, FileOptions.Asynchronous); }
+            catch (IOException ex) when ((ex.HResult & 0xffff) is 32 or 33 && attempt < 4)
+            { await Task.Delay(TimeSpan.FromMilliseconds(50 * (attempt + 1)), ct).ConfigureAwait(false); }
+        }
+    }
+
+    internal static async Task AppendAsync(string path, byte[] probeBytes, CancellationToken ct, Action? recordStarted = null)
     {
         await Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-            using var file = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read, 4096, FileOptions.Asynchronous);
+            using var file = await OpenAsync(path, FileMode.OpenOrCreate, ct).ConfigureAwait(false);
             byte[] existing = new byte[checked((int)file.Length)];
             await file.ReadExactlyAsync(existing, ct).ConfigureAwait(false);
             var seen = new HashSet<string>(Lines(existing).Select(line => line.Identity), StringComparer.Ordinal);
-            using var append = new MemoryStream();
+            bool separator = existing.Length > 0 && existing[^1] != (byte)'\n';
             foreach (var line in Lines(probeBytes))
             {
                 if (!seen.Add(line.Identity)) continue;
-                if (append.Length == 0 && existing.Length > 0 && existing[^1] != (byte)'\n') append.WriteByte((byte)'\n');
-                append.Write(line.Bytes.Span);
+                ct.ThrowIfCancellationRequested();
+                using var record = new MemoryStream();
+                if (separator) record.WriteByte((byte)'\n');
+                record.Write(line.Bytes.Span);
+                recordStarted?.Invoke();
+                // Once a record begins, caller cancellation cannot interrupt its bytes or flush. Other failures
+                // (disk/crash) are not claimed transactional; never replace a shared user trust file.
+                await file.WriteAsync(record.ToArray(), CancellationToken.None).ConfigureAwait(false);
+                await file.FlushAsync(CancellationToken.None).ConfigureAwait(false);
+                separator = line.Bytes.Span[^1] != (byte)'\n';
             }
-            if (append.Length == 0) return;
-            await file.WriteAsync(append.ToArray(), ct).ConfigureAwait(false);
-            await file.FlushAsync(ct).ConfigureAwait(false);
         }
         finally { Gate.Release(); }
     }

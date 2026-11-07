@@ -8,7 +8,8 @@ namespace FluentCode.Services.OpenCode.Connection;
 public sealed record SshConnectionTarget(string Host, string? User, int? Port)
 {
     public string Destination => (User is null ? string.Empty : User + "@") + Host;
-    public string DisplayName => Destination + (Port is null ? string.Empty : ":" + Port.Value.ToString(CultureInfo.InvariantCulture));
+    public string DisplayName => (User is null ? string.Empty : User + "@") + (Host.Contains(':') ? "[" + Host + "]" : Host)
+        + (Port is null ? string.Empty : ":" + Port.Value.ToString(CultureInfo.InvariantCulture));
 
     public static bool TryParse(string? value, out SshConnectionTarget? target)
     {
@@ -29,12 +30,12 @@ public sealed record SshConnectionTarget(string Host, string? User, int? Port)
             int end = host.IndexOf(']');
             if (end < 0) return false;
             string address = host[1..end];
-            if (!IPAddress.TryParse(address, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6) return false;
+            if (!TryCanonicalIPv6(address, out string? canonical)) return false;
             if (end + 1 < host.Length)
             {
                 if (host[end + 1] != ':' || !TryPort(host[(end + 2)..], out port)) return false;
             }
-            host = address;
+            host = canonical!;
         }
         else
         {
@@ -60,7 +61,22 @@ public sealed record SshConnectionTarget(string Host, string? User, int? Port)
         if (command.Contains(' ') && (!command.Contains('/') || command.Contains(" -", StringComparison.Ordinal))) return false;
         // An executable name/path, not an arbitrary shell command. Spaces in a path are quoted as one value.
         foreach (char ch in command)
-            if (char.IsControl(ch) || ch is '\\' or ';' or '&' or '|' or '`' or '$' or '<' or '>' or '"' or '\'') return false;
+            if (char.IsControl(ch) || ch is '\\' or ';' or '&' or '|' or '`' or '$' or '<' or '>' or '"') return false;
+        return true;
+    }
+
+    internal static bool TryCanonicalIPv6(string value, out string? canonical)
+    {
+        canonical = null;
+        int percent = value.IndexOf('%');
+        uint scope = 0;
+        string address = percent < 0 ? value : value[..percent];
+        if (percent >= 0 && (!uint.TryParse(value[(percent + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out scope)
+            || value.IndexOf('%', percent + 1) >= 0)) return false;
+        foreach (char ch in address) if (!(char.IsAsciiHexDigit(ch) || ch is ':' or '.')) return false;
+        if (!IPAddress.TryParse(address, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6) return false;
+        ip.ScopeId = scope;
+        canonical = ip.ToString();
         return true;
     }
 
@@ -81,7 +97,7 @@ public sealed record SshConnectionTarget(string Host, string? User, int? Port)
     }
 }
 
-public enum SshFailureKind { Unavailable, UnknownHostKey, ChangedHostKey, Authentication, Timeout, Forward, RemoteCommand, MissingOpenCode, HostKeyProbe }
+public enum SshFailureKind { Unavailable, UnknownHostKey, ChangedHostKey, Authentication, Timeout, Forward, RemoteCommand, MissingOpenCode, HostKeyProbe, TransportOwner, OutputLimit, UnsafeConfiguration, TrustFile, ProxyJump }
 
 /// <summary>固定中文模板；不得把进程 stderr、服务配置或密码拼入异常。</summary>
 public sealed class SshOpenCodeException(SshFailureKind kind) : OpenCodeException(MessageFor(kind))
@@ -98,7 +114,12 @@ public sealed class SshOpenCodeException(SshFailureKind kind) : OpenCodeExceptio
         SshFailureKind.Forward => "SSH 本地端口转发失败，请检查远端服务监听地址与 SSH 转发权限。",
         SshFailureKind.MissingOpenCode => "远端未找到 opencode。请填写远程命令或路径，或先自行安装；FluentCode 不会安装或升级远程软件。",
         SshFailureKind.RemoteCommand => "远程 OpenCode 命令失败，请在远端检查 opencode service status / start；不会重启或停止已有服务。",
-        SshFailureKind.HostKeyProbe => "未能取得 SSH 主机指纹。请检查网络和 SSH 配置；探测不会认证到目标主机、执行远程命令或修改 Windows known_hosts。",
+        SshFailureKind.HostKeyProbe => "未能取得 SSH 主机指纹。请检查网络和 SSH 配置；无会话探测不会执行远程命令或修改用户 known_hosts。",
+        SshFailureKind.TransportOwner => "SSH 隧道监听者不属于本次 ssh.exe，或进程已退出；连接已关闭，未发送请求或凭据。",
+        SshFailureKind.OutputLimit => "SSH 输出超过安全缓冲限制；已结束本次连接，未记录输出内容。",
+        SshFailureKind.UnsafeConfiguration => "SSH 配置含本版本无法安全管理的跳板机或额外转发；请使用直接主机配置后重试。",
+        SshFailureKind.TrustFile => "SSH 首个 UserKnownHostsFile 为 none、不可写或无法可靠解析；请配置可写的用户信任文件后重试。",
+        SshFailureKind.ProxyJump => "暂不支持跳板机配置（ProxyJump）：本版本无法对自动创建的跳板进程统一实施严格主机密钥策略，请使用不含跳板机的直接主机配置。",
         _ => "无法建立 SSH 连接。请确认 Windows OpenSSH 客户端已安装，且主机、端口和 SSH 配置可用。",
     };
 }
