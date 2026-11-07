@@ -1,0 +1,1 @@
+root = Card([Text(Query("bad", {}, 1)), Text(Mutation("bad", {})), Text("valid")])

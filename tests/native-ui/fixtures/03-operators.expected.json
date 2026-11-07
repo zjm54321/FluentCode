@@ -1,0 +1,826 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "3d68d98ea7306083d6c4abe434209d091b27cee450e0df00064c3bc697e740a3",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Result "
+                },
+                "right": {
+                  "k": "BinOp",
+                  "op": "+",
+                  "left": {
+                    "k": "Num",
+                    "v": 2
+                  },
+                  "right": {
+                    "k": "BinOp",
+                    "op": "*",
+                    "left": {
+                      "k": "Num",
+                      "v": 3
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Ternary",
+                "cond": {
+                  "k": "BinOp",
+                  "op": "&&",
+                  "left": {
+                    "k": "BinOp",
+                    "op": ">",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    },
+                    "right": {
+                      "k": "Num",
+                      "v": 2
+                    }
+                  },
+                  "right": {
+                    "k": "StateRef",
+                    "n": "$flag"
+                  }
+                },
+                "then": {
+                  "k": "Str",
+                  "v": "yes"
+                },
+                "else": {
+                  "k": "Str",
+                  "v": "no"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "divide "
+                },
+                "right": {
+                  "k": "BinOp",
+                  "op": "/",
+                  "left": {
+                    "k": "Num",
+                    "v": 10
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 0
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "equal "
+                },
+                "right": {
+                  "k": "BinOp",
+                  "op": "==",
+                  "left": {
+                    "k": "Num",
+                    "v": 5
+                  },
+                  "right": {
+                    "k": "Str",
+                    "v": "5"
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "not "
+                },
+                "right": {
+                  "k": "UnaryOp",
+                  "op": "!",
+                  "operand": {
+                    "k": "StateRef",
+                    "n": "$flag"
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "negative "
+                },
+                "right": {
+                  "k": "UnaryOp",
+                  "op": "-",
+                  "operand": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "mod "
+                },
+                "right": {
+                  "k": "BinOp",
+                  "op": "%",
+                  "left": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 3
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 3,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$n": 4,
+      "$flag": true
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Result 14"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "yes"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "divide 0"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "equal true"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "not false"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "negative -4"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "mod 1"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 78,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Result "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Num",
+                        "v": 2
+                      },
+                      "right": {
+                        "k": "BinOp",
+                        "op": "*",
+                        "left": {
+                          "k": "Num",
+                          "v": 3
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": ">",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    },
+                    "right": {
+                      "k": "Num",
+                      "v": 2
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 4,
+          "$flag": true
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 157,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Result "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Num",
+                        "v": 2
+                      },
+                      "right": {
+                        "k": "BinOp",
+                        "op": "*",
+                        "left": {
+                          "k": "Num",
+                          "v": 3
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Ternary",
+                    "cond": {
+                      "k": "BinOp",
+                      "op": "&&",
+                      "left": {
+                        "k": "BinOp",
+                        "op": ">",
+                        "left": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 2
+                        }
+                      },
+                      "right": {
+                        "k": "StateRef",
+                        "n": "$flag"
+                      }
+                    },
+                    "then": {
+                      "k": "Str",
+                      "v": "yes"
+                    },
+                    "else": {
+                      "k": "Str",
+                      "v": "no"
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "divide "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "/",
+                      "left": {
+                        "k": "Num",
+                        "v": 10
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 0
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "equal "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "Num",
+                        "v": 5
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "5"
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 4,
+          "$flag": true
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 236,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Result "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Num",
+                        "v": 2
+                      },
+                      "right": {
+                        "k": "BinOp",
+                        "op": "*",
+                        "left": {
+                          "k": "Num",
+                          "v": 3
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Ternary",
+                    "cond": {
+                      "k": "BinOp",
+                      "op": "&&",
+                      "left": {
+                        "k": "BinOp",
+                        "op": ">",
+                        "left": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 2
+                        }
+                      },
+                      "right": {
+                        "k": "StateRef",
+                        "n": "$flag"
+                      }
+                    },
+                    "then": {
+                      "k": "Str",
+                      "v": "yes"
+                    },
+                    "else": {
+                      "k": "Str",
+                      "v": "no"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "divide "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "/",
+                      "left": {
+                        "k": "Num",
+                        "v": 10
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 0
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "equal "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "Num",
+                        "v": 5
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "5"
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "not "
+                    },
+                    "right": {
+                      "k": "UnaryOp",
+                      "op": "!",
+                      "operand": {
+                        "k": "StateRef",
+                        "n": "$flag"
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "negative "
+                    },
+                    "right": {
+                      "k": "UnaryOp",
+                      "op": "-",
+                      "operand": {
+                        "k": "StateRef",
+                        "n": "$n"
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "mod "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "%",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$n"
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 3
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 4,
+          "$flag": true
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

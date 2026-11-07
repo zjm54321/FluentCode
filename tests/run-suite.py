@@ -48,6 +48,7 @@ RUNNERS = (
     'opencode-persistent-pty/run.ps1',
     'opencode-persistent-pty-transport/run-backend.ps1',
     'opencode-tool-presentation/run.ps1',
+    'native-ui/run.ps1',
 )
 NODE_TESTS = ('runtime.test.mjs', 'audit.test.mjs')
 

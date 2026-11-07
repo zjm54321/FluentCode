@@ -1,0 +1,6 @@
+root = Col([heading, body, heading])
+heading = Title(label)
+body = Text(data.person.name + " / " + data["amount"])
+label = "Forward references"
+data = {person:{name:"Ada"},amount:42}
+unused = Text("orphan")

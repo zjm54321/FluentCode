@@ -1,0 +1,3 @@
+a = Query("a", {id:b.id}, {})
+b = Query("b", {id:a.id}, {})
+root = Card([Text("unavailable")])

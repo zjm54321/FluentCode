@@ -1,0 +1,408 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "cc3a43727f28d72359599fc622ae0efbb1bb4266a911cb6a8ab0577b510c1599",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "unavailable"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 3,
+      "errors": [
+        {
+          "code": "query-cycle",
+          "component": "Query",
+          "path": "",
+          "message": "Queries a, b read each other's results, so none of them can run first. They do not run",
+          "statementId": "a"
+        }
+      ]
+    },
+    "stateDeclarations": {},
+    "queryStatements": [
+      {
+        "statementId": "a",
+        "toolAST": {
+          "k": "Str",
+          "v": "a"
+        },
+        "argsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "id",
+              {
+                "k": "Member",
+                "obj": {
+                  "k": "RuntimeRef",
+                  "n": "b",
+                  "refType": "query"
+                },
+                "field": "id"
+              }
+            ]
+          ]
+        },
+        "defaultsAST": {
+          "k": "Obj",
+          "entries": []
+        },
+        "refreshAST": null,
+        "waitFor": [
+          "b"
+        ],
+        "complete": true
+      },
+      {
+        "statementId": "b",
+        "toolAST": {
+          "k": "Str",
+          "v": "b"
+        },
+        "argsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "id",
+              {
+                "k": "Member",
+                "obj": {
+                  "k": "RuntimeRef",
+                  "n": "a",
+                  "refType": "query"
+                },
+                "field": "id"
+              }
+            ]
+          ]
+        },
+        "defaultsAST": {
+          "k": "Obj",
+          "entries": []
+        },
+        "refreshAST": null,
+        "waitFor": [
+          "a"
+        ],
+        "complete": true
+      }
+    ],
+    "mutationStatements": []
+  },
+  "evaluated": null,
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 31,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "b"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [
+          {
+            "statementId": "a",
+            "toolAST": {
+              "k": "Str",
+              "v": "a"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "Ph",
+                      "n": "b"
+                    },
+                    "field": "id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": []
+            },
+            "refreshAST": null,
+            "complete": true
+          }
+        ],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 63,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "query-cycle",
+              "component": "Query",
+              "path": "",
+              "message": "Queries a, b read each other's results, so none of them can run first. They do not run",
+              "statementId": "a"
+            },
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [
+          {
+            "statementId": "a",
+            "toolAST": {
+              "k": "Str",
+              "v": "a"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "b",
+                      "refType": "query"
+                    },
+                    "field": "id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": []
+            },
+            "refreshAST": null,
+            "waitFor": [
+              "b"
+            ],
+            "complete": true
+          },
+          {
+            "statementId": "b",
+            "toolAST": {
+              "k": "Str",
+              "v": "b"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "a",
+                      "refType": "query"
+                    },
+                    "field": "id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": []
+            },
+            "refreshAST": null,
+            "waitFor": [
+              "a"
+            ],
+            "complete": true
+          }
+        ],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 95,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "unavailable"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": [
+            {
+              "code": "query-cycle",
+              "component": "Query",
+              "path": "",
+              "message": "Queries a, b read each other's results, so none of them can run first. They do not run",
+              "statementId": "a"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [
+          {
+            "statementId": "a",
+            "toolAST": {
+              "k": "Str",
+              "v": "a"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "b",
+                      "refType": "query"
+                    },
+                    "field": "id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": []
+            },
+            "refreshAST": null,
+            "waitFor": [
+              "b"
+            ],
+            "complete": true
+          },
+          {
+            "statementId": "b",
+            "toolAST": {
+              "k": "Str",
+              "v": "b"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "a",
+                      "refType": "query"
+                    },
+                    "field": "id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": []
+            },
+            "refreshAST": null,
+            "waitFor": [
+              "a"
+            ],
+            "complete": true
+          }
+        ],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

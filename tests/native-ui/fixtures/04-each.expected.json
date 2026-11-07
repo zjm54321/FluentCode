@@ -1,0 +1,826 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "0af650b6432f614746087a325d2b4dbaa34f886026dead86fc7946a584bb953d",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "k": "Comp",
+            "name": "Each",
+            "args": [
+              {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Obj",
+                    "entries": [
+                      [
+                        "id",
+                        {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      ],
+                      [
+                        "label",
+                        {
+                          "k": "Str",
+                          "v": "One"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "k": "Obj",
+                    "entries": [
+                      [
+                        "id",
+                        {
+                          "k": "Num",
+                          "v": 2
+                        }
+                      ],
+                      [
+                        "label",
+                        {
+                          "k": "Str",
+                          "v": "Two"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              },
+              {
+                "k": "Ref",
+                "n": "item"
+              },
+              {
+                "k": "Comp",
+                "name": "Button",
+                "args": [
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "Ref",
+                      "n": "item"
+                    },
+                    "field": "label"
+                  },
+                  {
+                    "k": "Comp",
+                    "name": "Action",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$selected"
+                              },
+                              {
+                                "k": "Member",
+                                "obj": {
+                                  "k": "Ref",
+                                  "n": "item"
+                                },
+                                "field": "label"
+                              }
+                            ]
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "ToAssistant",
+                            "args": [
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "Choose "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "item"
+                                  },
+                                  "field": "id"
+                                }
+                              }
+                            ],
+                            "mappedProps": {
+                              "message": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "Choose "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "item"
+                                  },
+                                  "field": "id"
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "mappedProps": {
+                  "label": {
+                    "k": "Member",
+                    "obj": {
+                      "k": "Ref",
+                      "n": "item"
+                    },
+                    "field": "label"
+                  },
+                  "action": {
+                    "k": "Comp",
+                    "name": "Action",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$selected"
+                              },
+                              {
+                                "k": "Member",
+                                "obj": {
+                                  "k": "Ref",
+                                  "n": "item"
+                                },
+                                "field": "label"
+                              }
+                            ]
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "ToAssistant",
+                            "args": [
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "Choose "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "item"
+                                  },
+                                  "field": "id"
+                                }
+                              }
+                            ],
+                            "mappedProps": {
+                              "message": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "Choose "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "item"
+                                  },
+                                  "field": "id"
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Picked "
+                },
+                "right": {
+                  "k": "StateRef",
+                  "n": "$selected"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 3,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$selected": ""
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        [
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "One",
+              "action": {
+                "steps": [
+                  {
+                    "type": "set",
+                    "target": "$selected",
+                    "valueAST": {
+                      "k": "Str",
+                      "v": "One"
+                    }
+                  },
+                  {
+                    "type": "continue_conversation",
+                    "message": "Choose 1"
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Two",
+              "action": {
+                "steps": [
+                  {
+                    "type": "set",
+                    "target": "$selected",
+                    "valueAST": {
+                      "k": "Str",
+                      "v": "Two"
+                    }
+                  },
+                  {
+                    "type": "continue_conversation",
+                    "message": "Choose 2"
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ],
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Picked "
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 73,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "Col"
+          ],
+          "orphaned": [
+            "items"
+          ],
+          "statementCount": 3,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "root does not evaluate to a component",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$selected": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 146,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "k": "Comp",
+                "name": "Each",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "id",
+                            {
+                              "k": "Num",
+                              "v": 1
+                            }
+                          ],
+                          [
+                            "label",
+                            {
+                              "k": "Str",
+                              "v": "One"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "id",
+                            {
+                              "k": "Num",
+                              "v": 2
+                            }
+                          ],
+                          [
+                            "label",
+                            {
+                              "k": "Str",
+                              "v": "Two"
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "k": "Ref",
+                    "n": "item"
+                  },
+                  {
+                    "k": "Comp",
+                    "name": "Button",
+                    "args": [
+                      {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Ref",
+                          "n": "item"
+                        },
+                        "field": "label"
+                      },
+                      {
+                        "k": "Comp",
+                        "name": "Action",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$selected"
+                                  },
+                                  {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "item"
+                                    },
+                                    "field": "labe"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "mappedProps": {
+                      "label": {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Ref",
+                          "n": "item"
+                        },
+                        "field": "label"
+                      },
+                      "action": {
+                        "k": "Comp",
+                        "name": "Action",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$selected"
+                                  },
+                                  {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "item"
+                                    },
+                                    "field": "labe"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$selected": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 219,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "k": "Comp",
+                "name": "Each",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "id",
+                            {
+                              "k": "Num",
+                              "v": 1
+                            }
+                          ],
+                          [
+                            "label",
+                            {
+                              "k": "Str",
+                              "v": "One"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "id",
+                            {
+                              "k": "Num",
+                              "v": 2
+                            }
+                          ],
+                          [
+                            "label",
+                            {
+                              "k": "Str",
+                              "v": "Two"
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "k": "Ref",
+                    "n": "item"
+                  },
+                  {
+                    "k": "Comp",
+                    "name": "Button",
+                    "args": [
+                      {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Ref",
+                          "n": "item"
+                        },
+                        "field": "label"
+                      },
+                      {
+                        "k": "Comp",
+                        "name": "Action",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$selected"
+                                  },
+                                  {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "item"
+                                    },
+                                    "field": "label"
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Comp",
+                                "name": "ToAssistant",
+                                "args": [
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": "Choose "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "item"
+                                      },
+                                      "field": "id"
+                                    }
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "message": {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": "Choose "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "item"
+                                      },
+                                      "field": "id"
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "mappedProps": {
+                      "label": {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Ref",
+                          "n": "item"
+                        },
+                        "field": "label"
+                      },
+                      "action": {
+                        "k": "Comp",
+                        "name": "Action",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$selected"
+                                  },
+                                  {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "item"
+                                    },
+                                    "field": "label"
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Comp",
+                                "name": "ToAssistant",
+                                "args": [
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": "Choose "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "item"
+                                      },
+                                      "field": "id"
+                                    }
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "message": {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": "Choose "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "item"
+                                      },
+                                      "field": "id"
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Picked "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$selected"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$selected": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

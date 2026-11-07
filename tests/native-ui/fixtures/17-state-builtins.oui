@@ -1,0 +1,4 @@
+$numbers = [1,2,3]
+$sum = @Sum($numbers)
+$rounded = @Round([1.25,-1.25], 1)
+root = Col([Text("Count " + @Count($numbers)), Text("Avg " + @Avg($numbers)), Text("Min " + @Min($numbers)), Text("Max " + @Max($numbers)), Text("First " + @First($numbers)), Text("Last " + @Last($numbers)), Text("Abs " + @Abs(-4)), Text("Floor " + @Floor(1.9)), Text("Ceil " + @Ceil(1.1)), Text("Sort " + @Sort([3,1,2], "")), Text("Filter " + @Count(@Filter($numbers, "", ">", 1)))])

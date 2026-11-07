@@ -1,0 +1,453 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "b25d4b12fe0535c3e63b055d68428a84a53f84dcc97cc9353c37466d31e08f13",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": 42
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "ok"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Extra",
+              "action": null,
+              "variant": null,
+              "color": null,
+              "size": null,
+              "icon": null,
+              "disabled": null,
+              "block": null
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Slider",
+            "props": {
+              "value": 0,
+              "min": 0,
+              "max": 10,
+              "step": 1,
+              "label": "Value",
+              "unit": "",
+              "marks": []
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": [
+        {
+          "code": "missing-required",
+          "component": "Title",
+          "path": "/text",
+          "message": "missing required field \"/text\" — signature: Title(text*: string, size: \"sm\"|\"md\"|\"lg\"|\"xl\"|\"2xl\"|\"3xl\", color: string)",
+          "statementId": "root"
+        },
+        {
+          "code": "type-mismatch",
+          "component": "Text",
+          "path": "/size",
+          "message": "field \"/size\" expects one of [\"xs\", \"sm\", \"md\", \"lg\"] but got \"wrong\"",
+          "statementId": "root"
+        },
+        {
+          "code": "unknown-component",
+          "component": "HtmlView",
+          "path": "",
+          "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox",
+          "statementId": "root"
+        },
+        {
+          "code": "excess-args",
+          "component": "Button",
+          "path": "",
+          "message": "Button takes 8 arg(s), got 9 (1 excess dropped)",
+          "statementId": "root"
+        },
+        {
+          "code": "missing-required",
+          "component": "Slider",
+          "path": "/marks/0/value",
+          "message": "missing required field \"/marks/0/value\"",
+          "statementId": "root"
+        }
+      ]
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": 42
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "ok"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Extra",
+            "action": null,
+            "variant": null,
+            "color": null,
+            "size": null,
+            "icon": null,
+            "disabled": null,
+            "block": null
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Slider",
+          "props": {
+            "value": 0,
+            "min": 0,
+            "max": 10,
+            "step": 1,
+            "label": "Value",
+            "unit": "",
+            "marks": []
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 66,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": 42
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "ok",
+                  "size": "wrong"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Title",
+              "path": "/text",
+              "message": "missing required field \"/text\" — signature: Title(text*: string, size: \"sm\"|\"md\"|\"lg\"|\"xl\"|\"2xl\"|\"3xl\", color: string)",
+              "statementId": "root"
+            },
+            {
+              "code": "unknown-component",
+              "component": "HtmlView",
+              "path": "",
+              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 133,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": 42
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "ok",
+                  "size": "wrong"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Extra",
+                  "action": null,
+                  "variant": null,
+                  "color": null,
+                  "size": null,
+                  "icon": null,
+                  "disabled": null,
+                  "block": null
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Title",
+              "path": "/text",
+              "message": "missing required field \"/text\" — signature: Title(text*: string, size: \"sm\"|\"md\"|\"lg\"|\"xl\"|\"2xl\"|\"3xl\", color: string)",
+              "statementId": "root"
+            },
+            {
+              "code": "unknown-component",
+              "component": "HtmlView",
+              "path": "",
+              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 200,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": 42
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "ok"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Extra",
+                  "action": null,
+                  "variant": null,
+                  "color": null,
+                  "size": null,
+                  "icon": null,
+                  "disabled": null,
+                  "block": null
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": 0,
+                  "min": 0,
+                  "max": 10,
+                  "step": 1,
+                  "label": "Value",
+                  "unit": "",
+                  "marks": []
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Title",
+              "path": "/text",
+              "message": "missing required field \"/text\" — signature: Title(text*: string, size: \"sm\"|\"md\"|\"lg\"|\"xl\"|\"2xl\"|\"3xl\", color: string)",
+              "statementId": "root"
+            },
+            {
+              "code": "type-mismatch",
+              "component": "Text",
+              "path": "/size",
+              "message": "field \"/size\" expects one of [\"xs\", \"sm\", \"md\", \"lg\"] but got \"wrong\"",
+              "statementId": "root"
+            },
+            {
+              "code": "unknown-component",
+              "component": "HtmlView",
+              "path": "",
+              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox",
+              "statementId": "root"
+            },
+            {
+              "code": "excess-args",
+              "component": "Button",
+              "path": "",
+              "message": "Button takes 8 arg(s), got 9 (1 excess dropped)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Slider",
+              "path": "/marks/0/value",
+              "message": "missing required field \"/marks/0/value\"",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

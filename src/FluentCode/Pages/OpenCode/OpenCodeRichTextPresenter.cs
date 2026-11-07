@@ -98,6 +98,9 @@ public sealed class OpenCodeRichTextPresenter
     // Link chips: a URL at the very end of a still-growing source stays text until the source is idle (no flicker).
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _chipSettleTimer;
     private string? _settledSource;
+    // A native UI card may inherit the transcript's image scope, but must never use it.
+    // This fixed host policy disables images, link/attachment chips and Mermaid's browser renderer.
+    private readonly bool _nativeUiSandbox;
 
     /// <summary>
     /// Files of the rendered user message: "[Image N]" / "[PDF N]" become chips only when backed by an N-th file of that
@@ -133,8 +136,11 @@ public sealed class OpenCodeRichTextPresenter
     private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase? _textOnlyFlyout;
 
     /// <summary>创建空的呈现器；通过 <see cref="Render"/> 填充内容。</summary>
-    public OpenCodeRichTextPresenter()
+    public OpenCodeRichTextPresenter() : this(nativeUiSandbox: false) { }
+
+    internal OpenCodeRichTextPresenter(bool nativeUiSandbox)
     {
+        _nativeUiSandbox = nativeUiSandbox;
         _root.SizeChanged += (_, _) => ConstrainBlocks();
         // Reparenting can deliver the old Unloaded after the new Loaded.
         _root.Unloaded += (_, _) =>
@@ -162,7 +168,7 @@ public sealed class OpenCodeRichTextPresenter
     /// <param name="style">正文或思考样式。</param>
     public void Render(string? source, OpenCodeRichTextStyle style)
     {
-        var imageScope = OpenCodeImageContext.Find(_root);
+        var imageScope = _nativeUiSandbox ? null : OpenCodeImageContext.Find(_root);
         var force = _renderLifetime.IsCanceled || style != _lastStyle || !ReferenceEquals(imageScope, _lastImageScope)
             || AttachmentCounts != _lastAttachmentCounts;
         _lastSource = source;
@@ -197,7 +203,7 @@ public sealed class OpenCodeRichTextPresenter
     {
         _renderTimer?.Stop();
         using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(_expandCodeBlocks);
-        var imageScope = OpenCodeImageContext.Find(_root);
+        var imageScope = _nativeUiSandbox ? null : OpenCodeImageContext.Find(_root);
         if (!_renderGate.ShouldRender(source, (style, AttachmentCounts), imageScope, _renderLifetime.IsCanceled)) return;
         var started = Stopwatch.GetTimestamp();
         FullRenderCount++;
@@ -235,21 +241,22 @@ public sealed class OpenCodeRichTextPresenter
             blocks = new List<UIElement>();
             // A link glued to the end of a growing message may still be streaming: keep it text until idle.
             var tail = OpenCodeLinkChipParser.Find(source, markdown: true);
-            var pendingTail = tail.Count > 0 && tail[^1].End == source.Length && !string.Equals(_settledSource, source, StringComparison.Ordinal);
+            var pendingTail = !_nativeUiSandbox && tail.Count > 0 && tail[^1].End == source.Length && !string.Equals(_settledSource, source, StringComparison.Ordinal);
             if (pendingTail) ScheduleChipSettle(source, style);
-            _chips = new ChipContext(_root.ActualTheme == ElementTheme.Dark
+            _chips = _nativeUiSandbox ? null : new ChipContext(_root.ActualTheme == ElementTheme.Dark
                 || _root.ActualTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark,
                 pendingTail ? 1 : 0, AttachmentCounts.Images, AttachmentCounts.Pdfs);
             _pendingTailUrl = pendingTail ? tail[^1].Url : null;
             foreach (var segment in OpenCodeMarkdownImagePlan.Build(source))
             {
                 if (segment.IsImage)
-                    blocks.Add(CreateMarkdownImage(segment.Text, segment.Alt, segment.Title, generation, renderToken));
+                    blocks.Add(_nativeUiSandbox ? CreatePlainTextBlock("［图片未支持：" + segment.Alt + "］")
+                        : CreateMarkdownImage(segment.Text, segment.Alt, segment.Title, generation, renderToken));
                 else
                 {
                     // The sanitizer drops every href: surface real [text](https://…) targets as text the chip pass sees.
                     var (html, safe) = OpenCodeMarkdownTextPlan.Build(OpenCodeLinkChipParser.RewriteMarkdownLinks(segment.Text));
-                    blocks.AddRange(BuildBlocks(safe, style, html));
+                    blocks.AddRange(BuildBlocks(safe, style, html, _nativeUiSandbox));
                 }
             }
 
@@ -394,7 +401,7 @@ public sealed class OpenCodeRichTextPresenter
     private sealed record CodeLanguage(string Name);
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<IElement, CodeLanguage> CodeLanguages = new();
 
-    private static List<UIElement> BuildBlocks(string safeHtml, OpenCodeRichTextStyle style, string generatedHtml)
+    private static List<UIElement> BuildBlocks(string safeHtml, OpenCodeRichTextStyle style, string generatedHtml, bool nativeUiSandbox = false)
     {
         var parser = new HtmlParser();
         var document = parser.ParseDocument("<body></body>");
@@ -419,7 +426,7 @@ public sealed class OpenCodeRichTextPresenter
                         if (name.StartsWith("language-", StringComparison.OrdinalIgnoreCase))
                         {
                             CodeLanguages.Add(pre, new CodeLanguage(name[9..].Equals("mermaid", StringComparison.OrdinalIgnoreCase)
-                                ? "mermaid" : OpenCodeFileDetailPolicy.NormalizeLanguage(name[9..])));
+                                ? nativeUiSandbox ? "text" : "mermaid" : OpenCodeFileDetailPolicy.NormalizeLanguage(name[9..])));
                             break;
                         }
                 }

@@ -1,0 +1,489 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "7998206bf31fc1ed5cc8011553a8b52831ff9f262fa13aabf56c3f46deb262e0",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Forward references"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "heading"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "BinOp",
+                  "op": "+",
+                  "left": {
+                    "k": "Member",
+                    "obj": {
+                      "k": "Member",
+                      "obj": {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "person",
+                            {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "name",
+                                  {
+                                    "k": "Str",
+                                    "v": "Ada"
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          [
+                            "amount",
+                            {
+                              "k": "Num",
+                              "v": 42
+                            }
+                          ]
+                        ]
+                      },
+                      "field": "person"
+                    },
+                    "field": "name"
+                  },
+                  "right": {
+                    "k": "Str",
+                    "v": " / "
+                  }
+                },
+                "right": {
+                  "k": "Index",
+                  "obj": {
+                    "k": "Obj",
+                    "entries": [
+                      [
+                        "person",
+                        {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "name",
+                              {
+                                "k": "Str",
+                                "v": "Ada"
+                              }
+                            ]
+                          ]
+                        }
+                      ],
+                      [
+                        "amount",
+                        {
+                          "k": "Num",
+                          "v": 42
+                        }
+                      ]
+                    ]
+                  },
+                  "index": {
+                    "k": "Str",
+                    "v": "amount"
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "body"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Forward references"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "heading"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [
+        "unused"
+      ],
+      "statementCount": 6,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Forward references"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "heading"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Ada / 42"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "body"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Forward references"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "heading"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 69,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": []
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "label",
+            "Te",
+            "label"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Title",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Title(text*: string, size: \"sm\"|\"md\"|\"lg\"|\"xl\"|\"2xl\"|\"3xl\", color: string)",
+              "statementId": "heading"
+            },
+            {
+              "code": "null-required",
+              "component": "Title",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Title(text*: string, size: \"sm\"|\"md\"|\"lg\"|\"xl\"|\"2xl\"|\"3xl\", color: string)",
+              "statementId": "heading"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 138,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Forward refere"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "heading"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Member",
+                          "obj": {
+                            "k": "Ph",
+                            "n": "data"
+                          },
+                          "field": "person"
+                        },
+                        "field": "name"
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": " / "
+                      }
+                    },
+                    "right": {
+                      "k": "Index",
+                      "obj": {
+                        "k": "Ph",
+                        "n": "data"
+                      },
+                      "index": {
+                        "k": "Str",
+                        "v": "amount"
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "body"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Forward refere"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "heading"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "data",
+            "data"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 207,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Forward references"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "heading"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Member",
+                          "obj": {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "person",
+                                {
+                                  "k": "Obj",
+                                  "entries": [
+                                    [
+                                      "name",
+                                      {
+                                        "k": "Str",
+                                        "v": "Ada"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ],
+                              [
+                                "amount",
+                                {
+                                  "k": "Num",
+                                  "v": 42
+                                }
+                              ]
+                            ]
+                          },
+                          "field": "person"
+                        },
+                        "field": "name"
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": " / "
+                      }
+                    },
+                    "right": {
+                      "k": "Index",
+                      "obj": {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "person",
+                            {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "name",
+                                  {
+                                    "k": "Str",
+                                    "v": "Ada"
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          [
+                            "amount",
+                            {
+                              "k": "Num",
+                              "v": 42
+                            }
+                          ]
+                        ]
+                      },
+                      "index": {
+                        "k": "Str",
+                        "v": "amount"
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "body"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Forward references"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "heading"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [
+            "unused"
+          ],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

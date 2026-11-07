@@ -1,0 +1,393 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "bec8784676db91a560207ac00b4310c8d17d2b27a3ef2b42b232ea0281809ccd",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Count: "
+                },
+                "right": {
+                  "k": "Ph",
+                  "n": "Count"
+                }
+              },
+              "size": [
+                1,
+                2
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Comp",
+                "name": "Sum",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Num",
+                        "v": 1
+                      },
+                      {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    ]
+                  }
+                ],
+                "mappedProps": {
+                  "numbers": {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Num",
+                        "v": 1
+                      },
+                      {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [
+        "Count"
+      ],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": [
+        {
+          "code": "unknown-function",
+          "component": "NoSuchFunction",
+          "path": "",
+          "message": "Unknown function \"@NoSuchFunction\": not a built-in or action step. The call evaluates to null",
+          "statementId": "root"
+        },
+        {
+          "code": "null-required",
+          "component": "Text",
+          "path": "/text",
+          "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+          "statementId": "root"
+        }
+      ]
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Count: ",
+            "size": [
+              1,
+              2
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 30,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "Null"
+                    }
+                  },
+                  "size": null
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 60,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "Ph",
+                      "n": "Count"
+                    }
+                  },
+                  "size": [
+                    1,
+                    2
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Count",
+            "NoSuchFun"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 91,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "Ph",
+                      "n": "Count"
+                    }
+                  },
+                  "size": [
+                    1,
+                    2
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Comp",
+                    "name": "Sum",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Num",
+                            "v": 1
+                          },
+                          {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        ]
+                      }
+                    ],
+                    "mappedProps": {
+                      "numbers": {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Num",
+                            "v": 1
+                          },
+                          {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "Count"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "unknown-function",
+              "component": "NoSuchFunction",
+              "path": "",
+              "message": "Unknown function \"@NoSuchFunction\": not a built-in or action step. The call evaluates to null",
+              "statementId": "root"
+            },
+            {
+              "code": "null-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

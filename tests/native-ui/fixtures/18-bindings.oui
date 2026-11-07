@@ -1,0 +1,4 @@
+$amount = 0
+$done = false
+$choice = "a"
+root = Col([Input($amount = $value * 2, "Double", "number"), Slider($amount, 0, 100, 1, "Amount"), Checkbox($done, "Done", true), Select($choice, ["a",{value:"b",label:"Bee"}], "Choice"), Button("Reset", @Reset($amount,$done,$choice))])

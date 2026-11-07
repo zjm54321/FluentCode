@@ -1,0 +1,803 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "93b1c05c5cf0cf8bec4a302214690c6ca5ed47486d7eb4194b45da0db958f5fd",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Default "
+                },
+                "right": {
+                  "k": "Member",
+                  "obj": {
+                    "k": "RuntimeRef",
+                    "n": "first",
+                    "refType": "query"
+                  },
+                  "field": "amount"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Member",
+                "obj": {
+                  "k": "RuntimeRef",
+                  "n": "second",
+                  "refType": "query"
+                },
+                "field": "label"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Member",
+                "obj": {
+                  "k": "RuntimeRef",
+                  "n": "save",
+                  "refType": "mutation"
+                },
+                "field": "status"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Run",
+              "action": {
+                "k": "Comp",
+                "name": "Action",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Comp",
+                        "name": "Run",
+                        "args": [
+                          {
+                            "k": "RuntimeRef",
+                            "n": "save",
+                            "refType": "mutation"
+                          }
+                        ]
+                      },
+                      {
+                        "k": "Comp",
+                        "name": "Run",
+                        "args": [
+                          {
+                            "k": "RuntimeRef",
+                            "n": "first",
+                            "refType": "query"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$id": 42
+    },
+    "queryStatements": [
+      {
+        "statementId": "first",
+        "toolAST": {
+          "k": "Str",
+          "v": "first"
+        },
+        "argsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "id",
+              {
+                "k": "StateRef",
+                "n": "$id"
+              }
+            ]
+          ]
+        },
+        "defaultsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "amount",
+              {
+                "k": "Num",
+                "v": 12
+              }
+            ]
+          ]
+        },
+        "refreshAST": null,
+        "deps": [
+          "$id"
+        ],
+        "complete": true
+      },
+      {
+        "statementId": "second",
+        "toolAST": {
+          "k": "Str",
+          "v": "second"
+        },
+        "argsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "amount",
+              {
+                "k": "Member",
+                "obj": {
+                  "k": "RuntimeRef",
+                  "n": "first",
+                  "refType": "query"
+                },
+                "field": "amount"
+              }
+            ]
+          ]
+        },
+        "defaultsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "label",
+              {
+                "k": "Str",
+                "v": "default"
+              }
+            ]
+          ]
+        },
+        "refreshAST": {
+          "k": "Num",
+          "v": 30
+        },
+        "waitFor": [
+          "first"
+        ],
+        "complete": true
+      }
+    ],
+    "mutationStatements": [
+      {
+        "statementId": "save",
+        "toolAST": {
+          "k": "Str",
+          "v": "save"
+        },
+        "argsAST": {
+          "k": "Obj",
+          "entries": [
+            [
+              "id",
+              {
+                "k": "StateRef",
+                "n": "$id"
+              }
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Default 12"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "default"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "idle"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Run",
+            "action": {
+              "steps": [
+                {
+                  "type": "run",
+                  "statementId": "save",
+                  "refType": "mutation"
+                },
+                {
+                  "type": "run",
+                  "statementId": "first",
+                  "refType": "query"
+                }
+              ]
+            }
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 98,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$id": 42
+        },
+        "queryStatements": [
+          {
+            "statementId": "first",
+            "toolAST": {
+              "k": "Str",
+              "v": "first"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "StateRef",
+                    "n": "$id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "amount",
+                  {
+                    "k": "Num",
+                    "v": 12
+                  }
+                ]
+              ]
+            },
+            "refreshAST": null,
+            "deps": [
+              "$id"
+            ],
+            "complete": true
+          },
+          {
+            "statementId": "second",
+            "toolAST": {
+              "k": "Str",
+              "v": "second"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "amount",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "first",
+                      "refType": "query"
+                    },
+                    "field": "amou"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": null,
+            "refreshAST": null,
+            "waitFor": [
+              "first"
+            ],
+            "complete": true
+          }
+        ],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 197,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Default "
+                    },
+                    "right": {
+                      "k": "Member",
+                      "obj": {
+                        "k": "RuntimeRef",
+                        "n": "first",
+                        "refType": "query"
+                      },
+                      "field": "?"
+                    }
+                  },
+                  "size": null
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$id": 42
+        },
+        "queryStatements": [
+          {
+            "statementId": "first",
+            "toolAST": {
+              "k": "Str",
+              "v": "first"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "StateRef",
+                    "n": "$id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "amount",
+                  {
+                    "k": "Num",
+                    "v": 12
+                  }
+                ]
+              ]
+            },
+            "refreshAST": null,
+            "deps": [
+              "$id"
+            ],
+            "complete": true
+          },
+          {
+            "statementId": "second",
+            "toolAST": {
+              "k": "Str",
+              "v": "second"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "amount",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "first",
+                      "refType": "query"
+                    },
+                    "field": "amount"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "label",
+                  {
+                    "k": "Str",
+                    "v": "default"
+                  }
+                ]
+              ]
+            },
+            "refreshAST": {
+              "k": "Num",
+              "v": 30
+            },
+            "waitFor": [
+              "first"
+            ],
+            "complete": true
+          }
+        ],
+        "mutationStatements": [
+          {
+            "statementId": "save",
+            "toolAST": {
+              "k": "Str",
+              "v": "save"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "StateRef",
+                    "n": "$id"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "length": 296,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Default "
+                    },
+                    "right": {
+                      "k": "Member",
+                      "obj": {
+                        "k": "RuntimeRef",
+                        "n": "first",
+                        "refType": "query"
+                      },
+                      "field": "amount"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "second",
+                      "refType": "query"
+                    },
+                    "field": "label"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "save",
+                      "refType": "mutation"
+                    },
+                    "field": "status"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Run",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Action",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Run",
+                            "args": [
+                              {
+                                "k": "RuntimeRef",
+                                "n": "save",
+                                "refType": "mutation"
+                              }
+                            ]
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "Run",
+                            "args": [
+                              {
+                                "k": "RuntimeRef",
+                                "n": "first",
+                                "refType": "query"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$id": 42
+        },
+        "queryStatements": [
+          {
+            "statementId": "first",
+            "toolAST": {
+              "k": "Str",
+              "v": "first"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "StateRef",
+                    "n": "$id"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "amount",
+                  {
+                    "k": "Num",
+                    "v": 12
+                  }
+                ]
+              ]
+            },
+            "refreshAST": null,
+            "deps": [
+              "$id"
+            ],
+            "complete": true
+          },
+          {
+            "statementId": "second",
+            "toolAST": {
+              "k": "Str",
+              "v": "second"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "amount",
+                  {
+                    "k": "Member",
+                    "obj": {
+                      "k": "RuntimeRef",
+                      "n": "first",
+                      "refType": "query"
+                    },
+                    "field": "amount"
+                  }
+                ]
+              ]
+            },
+            "defaultsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "label",
+                  {
+                    "k": "Str",
+                    "v": "default"
+                  }
+                ]
+              ]
+            },
+            "refreshAST": {
+              "k": "Num",
+              "v": 30
+            },
+            "waitFor": [
+              "first"
+            ],
+            "complete": true
+          }
+        ],
+        "mutationStatements": [
+          {
+            "statementId": "save",
+            "toolAST": {
+              "k": "Str",
+              "v": "save"
+            },
+            "argsAST": {
+              "k": "Obj",
+              "entries": [
+                [
+                  "id",
+                  {
+                    "k": "StateRef",
+                    "n": "$id"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+$choice = "balanced"
+options = [{value:"fast",label:"最快完成"},{value:"balanced",label:"平衡质量与速度"},{value:"careful",label:"优先质量"}]
+choiceLabel = $choice == "fast" ? "最快完成" : $choice == "careful" ? "优先质量" : "平衡质量与速度"
+root = Col([Card([Title("选择一个方案", "lg"), Markdown("选择你的优先项，再交给 AI 继续。\n\n- 所选方案会成为普通会话消息。\n- AI 工作中时自动排队。"), Select($choice, options, "你的偏好"), Badge(choiceLabel, "info"), Button("将选择发给 AI", @ToAssistant("请按「" + choiceLabel + "」方案继续。", {choice:$choice}), "solid", null, null, null, null, true), Caption("仅通过现有受保护的输入区发送，不直接调用后台工具。")], "outline", 4, 3)])

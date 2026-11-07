@@ -1,0 +1,6 @@
+$quantity = 5
+$unit = 29
+$annual = false
+subtotal = $quantity * $unit
+total = @Round(subtotal * ($annual ? 0.8 : 1), 2)
+root = Col([Card([Row([Title("团队预算", "lg"), Badge("即时计算", "success")], 2, "center", "between"), Text("调节人数与单价，预算会立即重算。"), Divider(), Slider($quantity, 1, 40, 1, "团队人数", " 人", [{value:1,label:"1"},{value:20,label:"20"},{value:40,label:"40"}]), Input($unit, "每人每月单价", "number", "29"), Checkbox($annual, "年付优惠 20%"), Row([Caption("每月合计"), Title("¥" + total, "2xl")], 2, "center", "between"), Caption("年度预算 ¥" + @Round(total * 12, 2)), Button("恢复默认", @Reset($quantity,$unit,$annual), "outline")], "outline", 4, 3)])

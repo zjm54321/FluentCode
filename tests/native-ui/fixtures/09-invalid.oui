@@ -1,0 +1,1 @@
+root = Card([Title(), Text(42), Text("ok", "wrong"), HtmlView("forbidden"), Button("Extra", null, null, null, null, null, null, null, 9), Slider(0, 0, 10, 1, "Value", "", [{label:"missing value"}])])

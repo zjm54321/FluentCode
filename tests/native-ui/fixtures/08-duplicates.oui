@@ -1,0 +1,5 @@
+$n = 1
+$n = 2
+label = Text("Old")
+root = Col([label])
+label = Text("New")

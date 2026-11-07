@@ -1,0 +1,5 @@
+$id = 42
+first = Query("first", {id:$id}, {amount:12})
+second = Query("second", {amount:first.amount}, {label:"default"}, 30)
+save = Mutation("save", {id:$id})
+root = Card([Text("Default " + first.amount), Text(second.label), Text(save.status), Button("Run", Action([@Run(save), @Run(first)]))])

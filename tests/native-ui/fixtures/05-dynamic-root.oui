@@ -1,0 +1,4 @@
+$compact = true
+root = $compact ? compact : full
+compact = Card([Text("Small")])
+full = Col([Title("Full"), Card([Text("More")])])

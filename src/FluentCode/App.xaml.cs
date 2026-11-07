@@ -43,6 +43,7 @@ public partial class App : Application
         if (_closing) return;
         try
         {
+            if (TryStartNativeUiCapture()) return; // Explicit offline showcase; no primary-instance/backend ownership.
             if (_window is not null) { ShowMainWindow(); return; }
             if (!await BecomePrimaryInstanceAsync()) { Exit(); return; }
             if (_closing) return;

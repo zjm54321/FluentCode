@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 using FluentCode.Services.OpenCode;
+using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -58,6 +59,8 @@ public sealed class OpenCodeConversationView : StackPanel
 {
     private readonly OpenCodeManualBackgroundIndex _manualBackground = new();
     internal event EventHandler? BindingCleared;
+    internal event EventHandler<NativeUiAssistantRequestedEventArgs>? NativeUiAssistantRequested;
+    private long _nativeUiGeneration;
     internal event EventHandler? IdleViewportInvalidated;
     internal long RenderVersion { get; private set; }
     internal long FullApplyCount { get; private set; }
@@ -1282,6 +1285,7 @@ public sealed class OpenCodeConversationView : StackPanel
         _manualBackground.Clear();
         _recoveredErrorMessages.Clear();
         _recoveredRetryMessages.Clear();
+        _nativeUiGeneration++;
         BindingCleared?.Invoke(this, EventArgs.Empty);
         ApplyAdmittedSteer(null, null);
         _renderedUserMessageIds.Clear();
@@ -1925,7 +1929,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     }
                     parts.Add(new PartEntry
                     {
-                        Key = partKey, FileIndex = fileIndex, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool,
+                        Key = partKey, FileIndex = fileIndex, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool && part.Name != "native_ui",
                         LastPart = part, LastCompletion = partCompletion, Fingerprint = fingerprint,
                         ManualBackground = background,
                         Update = (_, _, _) => { },
@@ -2474,7 +2478,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
             }
 
-            if (existing is not null && existing.Kind == kind)
+            if (existing is not null && existing.Kind == kind && (existing.LastPart?.Name == "native_ui") == (part.Name == "native_ui"))
             {
                 if (!string.Equals(existing.Fingerprint, fingerprint, StringComparison.Ordinal))
                 {
@@ -2497,7 +2501,7 @@ public sealed class OpenCodeConversationView : StackPanel
                     partEntries.Remove(existing);
                 }
 
-                var entry = kind is OpenCodePartTypes.Tool or OpenCodePartTypes.Reasoning
+                var entry = kind is OpenCodePartTypes.Tool or OpenCodePartTypes.Reasoning && part.Name != "native_ui"
                     ? CreateLazyPartEntry(partKey, kind, part, message.Id, completion, fileIndex)
                     : CreatePartEntry(partKey, kind, part, message.Id, completion);
                 entry.Fingerprint = fingerprint;
@@ -3212,7 +3216,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
         descriptor = new PartEntry
         {
-            Key = key, FileIndex = fileIndex, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool,
+            Key = key, FileIndex = fileIndex, Kind = kind, IsGroupableTool = kind == OpenCodePartTypes.Tool && part.Name != "native_ui",
             EnsureVisual = Ensure,
             RefreshVisual = () => { if (visual is not null) Ensure(); },
             Update = (current, id, finished) =>
@@ -3279,6 +3283,31 @@ public sealed class OpenCodeConversationView : StackPanel
                     // 文本由 LayoutParts 按合并结果写入（LastPart 已由调用方更新）。
                     Update = (_, _, _) => { },
                     Dispose = row.Dispose,
+                };
+            }
+
+            case OpenCodePartTypes.Tool when part.Name == "native_ui":
+            {
+                // Unlike process tools this is a visible answer, never hidden in a collapsed generic tool group.
+                var view = new OpenCodeNativeUiPartView();
+                var generation = _nativeUiGeneration;
+                var alive = true;
+                var parent = parentMessageId;
+                var id = part.Id;
+                view.ToAssistant = request =>
+                {
+                    if (!alive || generation != _nativeUiGeneration || string.IsNullOrEmpty(parent) || string.IsNullOrEmpty(id))
+                        return System.Threading.Tasks.Task.FromResult(new NativeUiHostResult(false, "卡片所属会话已失效，未发送"));
+                    var args = new NativeUiAssistantRequestedEventArgs(parent, id, request);
+                    NativeUiAssistantRequested?.Invoke(this, args);
+                    return System.Threading.Tasks.Task.FromResult(new NativeUiHostResult(args.Accepted, args.Notice));
+                };
+                view.Update(part);
+                return new PartEntry
+                {
+                    Key = partKey, Kind = kind, IsGroupableTool = false, Element = view.Element,
+                    Update = (current, messageId, _) => { parent = messageId; id = current.Id; view.Update(current); },
+                    Dispose = () => { alive = false; view.Dispose(); },
                 };
             }
 

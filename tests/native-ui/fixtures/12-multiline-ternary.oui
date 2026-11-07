@@ -1,0 +1,4 @@
+$flag = false
+root = $flag
+  ? Card([Text("true")])
+  : Card([Text("false")])

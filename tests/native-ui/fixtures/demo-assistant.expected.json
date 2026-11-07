@@ -1,0 +1,934 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "5e4175e20a297b78b00a222db28fcc1d8338fb3440eb1a4add182b7527062520",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "选择一个方案",
+                    "size": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Markdown",
+                  "props": {
+                    "text": "选择你的优先项，再交给 AI 继续。\n\n- 所选方案会成为普通会话消息。\n- AI 工作中时自动排队。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Select",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$choice"
+                    },
+                    "options": [
+                      {
+                        "value": "fast",
+                        "label": "最快完成"
+                      },
+                      {
+                        "value": "balanced",
+                        "label": "平衡质量与速度"
+                      },
+                      {
+                        "value": "careful",
+                        "label": "优先质量"
+                      }
+                    ],
+                    "label": "你的偏好"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": {
+                      "k": "Ternary",
+                      "cond": {
+                        "k": "BinOp",
+                        "op": "==",
+                        "left": {
+                          "k": "StateRef",
+                          "n": "$choice"
+                        },
+                        "right": {
+                          "k": "Str",
+                          "v": "fast"
+                        }
+                      },
+                      "then": {
+                        "k": "Str",
+                        "v": "最快完成"
+                      },
+                      "else": {
+                        "k": "Ternary",
+                        "cond": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$choice"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "careful"
+                          }
+                        },
+                        "then": {
+                          "k": "Str",
+                          "v": "优先质量"
+                        },
+                        "else": {
+                          "k": "Str",
+                          "v": "平衡质量与速度"
+                        }
+                      }
+                    },
+                    "color": "info"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "将选择发给 AI",
+                    "action": {
+                      "k": "Comp",
+                      "name": "ToAssistant",
+                      "args": [
+                        {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "请按「"
+                            },
+                            "right": {
+                              "k": "Ternary",
+                              "cond": {
+                                "k": "BinOp",
+                                "op": "==",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$choice"
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "fast"
+                                }
+                              },
+                              "then": {
+                                "k": "Str",
+                                "v": "最快完成"
+                              },
+                              "else": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "BinOp",
+                                  "op": "==",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$choice"
+                                  },
+                                  "right": {
+                                    "k": "Str",
+                                    "v": "careful"
+                                  }
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "优先质量"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "平衡质量与速度"
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "」方案继续。"
+                          }
+                        },
+                        {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "choice",
+                              {
+                                "k": "StateRef",
+                                "n": "$choice"
+                              }
+                            ]
+                          ]
+                        }
+                      ],
+                      "mappedProps": {
+                        "message": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "请按「"
+                            },
+                            "right": {
+                              "k": "Ternary",
+                              "cond": {
+                                "k": "BinOp",
+                                "op": "==",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$choice"
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "fast"
+                                }
+                              },
+                              "then": {
+                                "k": "Str",
+                                "v": "最快完成"
+                              },
+                              "else": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "BinOp",
+                                  "op": "==",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$choice"
+                                  },
+                                  "right": {
+                                    "k": "Str",
+                                    "v": "careful"
+                                  }
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "优先质量"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "平衡质量与速度"
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "」方案继续。"
+                          }
+                        },
+                        "context": {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "choice",
+                              {
+                                "k": "StateRef",
+                                "n": "$choice"
+                              }
+                            ]
+                          ]
+                        }
+                      }
+                    },
+                    "variant": "solid",
+                    "color": null,
+                    "size": null,
+                    "icon": null,
+                    "disabled": null,
+                    "block": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "仅通过现有受保护的输入区发送，不直接调用后台工具。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 4,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$choice": "balanced"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "选择一个方案",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Markdown",
+                "props": {
+                  "text": "选择你的优先项，再交给 AI 继续。\n\n- 所选方案会成为普通会话消息。\n- AI 工作中时自动排队。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Select",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$choice",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "fast",
+                      "label": "最快完成"
+                    },
+                    {
+                      "value": "balanced",
+                      "label": "平衡质量与速度"
+                    },
+                    {
+                      "value": "careful",
+                      "label": "优先质量"
+                    }
+                  ],
+                  "label": "你的偏好"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "平衡质量与速度",
+                  "color": "info"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "将选择发给 AI",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "continue_conversation",
+                        "message": "请按「平衡质量与速度」方案继续。",
+                        "context": {
+                          "choice": "balanced"
+                        }
+                      }
+                    ]
+                  },
+                  "variant": "solid",
+                  "color": null,
+                  "size": null,
+                  "icon": null,
+                  "disabled": null,
+                  "block": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "仅通过现有受保护的输入区发送，不直接调用后台工具。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 188,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$choice": "balanced"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 376,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "选择一个方案",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Markdown",
+                      "props": {
+                        "text": "选择你的优先项，再交给 AI 继续。\n\n- 所选方案会成为普通会话消息。\n- AI 工作中时自动排队。"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Select",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$choice"
+                        },
+                        "options": [
+                          {
+                            "value": "fast",
+                            "label": "最快完成"
+                          },
+                          {
+                            "value": "balanced",
+                            "label": "平衡质量与速度"
+                          },
+                          {
+                            "value": "careful",
+                            "label": "优先质量"
+                          }
+                        ],
+                        "label": "你的偏好"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": {
+                          "k": "Ternary",
+                          "cond": {
+                            "k": "BinOp",
+                            "op": "==",
+                            "left": {
+                              "k": "StateRef",
+                              "n": "$choice"
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": "fast"
+                            }
+                          },
+                          "then": {
+                            "k": "Str",
+                            "v": "最快完成"
+                          },
+                          "else": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "BinOp",
+                              "op": "==",
+                              "left": {
+                                "k": "StateRef",
+                                "n": "$choice"
+                              },
+                              "right": {
+                                "k": "Str",
+                                "v": "careful"
+                              }
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "优先质量"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "平衡质量与速度"
+                            }
+                          }
+                        },
+                        "color": "i"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$choice": "balanced"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 564,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "选择一个方案",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Markdown",
+                      "props": {
+                        "text": "选择你的优先项，再交给 AI 继续。\n\n- 所选方案会成为普通会话消息。\n- AI 工作中时自动排队。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Select",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$choice"
+                        },
+                        "options": [
+                          {
+                            "value": "fast",
+                            "label": "最快完成"
+                          },
+                          {
+                            "value": "balanced",
+                            "label": "平衡质量与速度"
+                          },
+                          {
+                            "value": "careful",
+                            "label": "优先质量"
+                          }
+                        ],
+                        "label": "你的偏好"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": {
+                          "k": "Ternary",
+                          "cond": {
+                            "k": "BinOp",
+                            "op": "==",
+                            "left": {
+                              "k": "StateRef",
+                              "n": "$choice"
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": "fast"
+                            }
+                          },
+                          "then": {
+                            "k": "Str",
+                            "v": "最快完成"
+                          },
+                          "else": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "BinOp",
+                              "op": "==",
+                              "left": {
+                                "k": "StateRef",
+                                "n": "$choice"
+                              },
+                              "right": {
+                                "k": "Str",
+                                "v": "careful"
+                              }
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "优先质量"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "平衡质量与速度"
+                            }
+                          }
+                        },
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "将选择发给 AI",
+                        "action": {
+                          "k": "Comp",
+                          "name": "ToAssistant",
+                          "args": [
+                            {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "请按「"
+                                },
+                                "right": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "BinOp",
+                                    "op": "==",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$choice"
+                                    },
+                                    "right": {
+                                      "k": "Str",
+                                      "v": "fast"
+                                    }
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "最快完成"
+                                  },
+                                  "else": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "StateRef",
+                                        "n": "$choice"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "careful"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Str",
+                                      "v": "优先质量"
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": "平衡质量与速度"
+                                    }
+                                  }
+                                }
+                              },
+                              "right": {
+                                "k": "Str",
+                                "v": "」方案继续。"
+                              }
+                            },
+                            {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "choice",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$choice"
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          "mappedProps": {
+                            "message": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "请按「"
+                                },
+                                "right": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "BinOp",
+                                    "op": "==",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$choice"
+                                    },
+                                    "right": {
+                                      "k": "Str",
+                                      "v": "fast"
+                                    }
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "最快完成"
+                                  },
+                                  "else": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "StateRef",
+                                        "n": "$choice"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "careful"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Str",
+                                      "v": "优先质量"
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": "平衡质量与速度"
+                                    }
+                                  }
+                                }
+                              },
+                              "right": {
+                                "k": "Str",
+                                "v": "」方案继续。"
+                              }
+                            },
+                            "context": {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "choice",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$choice"
+                                  }
+                                ]
+                              ]
+                            }
+                          }
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": null,
+                        "disabled": null,
+                        "block": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "仅通过现有受保护的输入区发送，不直接调用后台工具。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$choice": "balanced"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

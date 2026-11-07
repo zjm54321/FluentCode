@@ -1,0 +1,1117 @@
+{
+  "formatVersion": 1,
+  "langCoreVersion": "1.1.0",
+  "library": "fluentcode-native-ui@0.1.0",
+  "root": "Col",
+  "limits": {
+    "sourceLength": 65536,
+    "nodes": 4096,
+    "depth": 64,
+    "stringLength": 16384
+  },
+  "definitions": {
+    "Col": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "gap": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Vertical layout."
+    },
+    "Row": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "gap": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "justify": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "between"
+          ]
+        },
+        "wrap": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Horizontal layout."
+    },
+    "Card": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "outline",
+            "soft"
+          ]
+        },
+        "padding": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Native panel."
+    },
+    "Divider": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "Title": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "3xl"
+          ]
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Heading or large number."
+    },
+    "Text": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "xs",
+            "sm",
+            "md",
+            "lg"
+          ]
+        },
+        "color": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "medium",
+            "semibold"
+          ]
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "lineThrough": {
+          "type": "boolean"
+        },
+        "tabularNums": {
+          "type": "boolean"
+        },
+        "maxLines": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Paragraph; text can mix strings and nodes."
+    },
+    "Caption": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Secondary text."
+    },
+    "Badge": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "neutral",
+            "info",
+            "success",
+            "warning",
+            "danger",
+            "purple",
+            "pink"
+          ]
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Small tag."
+    },
+    "Markdown": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Native prose, lists, code and tables; no external resources."
+    },
+    "Button": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ActionExpression"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "solid",
+            "outline",
+            "soft",
+            "ghost"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "danger",
+            "success"
+          ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
+        },
+        "icon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "block": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false,
+      "description": "Click action. With no action, sends its label to the assistant."
+    },
+    "ActionExpression": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "open_url"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "continue_conversation"
+            },
+            "context": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Input": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "number"
+          ]
+        },
+        "placeholder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "Text/number input bound to a $variable."
+    },
+    "Select": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "label": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "options"
+      ],
+      "additionalProperties": false,
+      "description": "Dropdown bound to a $variable."
+    },
+    "Slider": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "value",
+        "min",
+        "max"
+      ],
+      "additionalProperties": false,
+      "description": "Numeric range bound to a $variable."
+    },
+    "Checkbox": {
+      "type": "object",
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "lineThrough": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checked",
+        "label"
+      ],
+      "additionalProperties": false,
+      "description": "Boolean input bound to a $variable."
+    }
+  },
+  "components": {
+    "Col": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "align",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch"
+            ]
+          }
+        }
+      ]
+    },
+    "Row": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "align",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch"
+            ]
+          }
+        },
+        {
+          "name": "justify",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "between"
+            ]
+          }
+        },
+        {
+          "name": "wrap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Card": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "variant",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "outline",
+              "soft"
+            ]
+          }
+        },
+        {
+          "name": "padding",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Divider": {
+      "props": []
+    },
+    "Title": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg",
+              "xl",
+              "2xl",
+              "3xl"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Text": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "xs",
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "weight",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "medium",
+              "semibold"
+            ]
+          }
+        },
+        {
+          "name": "italic",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "lineThrough",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "tabularNums",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "maxLines",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Caption": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Badge": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger",
+              "purple",
+              "pink"
+            ]
+          }
+        },
+        {
+          "name": "icon",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Markdown": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Button": {
+      "props": [
+        {
+          "name": "label",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "action",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "$ref": "#/$defs/ActionExpression"
+          }
+        },
+        {
+          "name": "variant",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "outline",
+              "soft",
+              "ghost"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "danger",
+              "success"
+            ]
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        {
+          "name": "icon",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "disabled",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "block",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Input": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": [
+              "string",
+              "number"
+            ]
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "type",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "number"
+            ]
+          }
+        },
+        {
+          "name": "placeholder",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Select": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "options",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "placeholder",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Slider": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "step",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "unit",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "marks",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "Checkbox": {
+      "props": [
+        {
+          "name": "checked",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "label",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "lineThrough",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    }
+  }
+}

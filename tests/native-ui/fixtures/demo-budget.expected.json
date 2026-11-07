@@ -1,0 +1,1464 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "ecb601a81138b22749c4d9a8451661fa26e2cc5937c124b95cfd2d6816e8b8d1",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "团队预算",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "即时计算",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "调节人数与单价，预算会立即重算。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Divider",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$quantity"
+                    },
+                    "min": 1,
+                    "max": 40,
+                    "step": 1,
+                    "label": "团队人数",
+                    "unit": " 人",
+                    "marks": [
+                      {
+                        "value": 1,
+                        "label": "1"
+                      },
+                      {
+                        "value": 20,
+                        "label": "20"
+                      },
+                      {
+                        "value": 40,
+                        "label": "40"
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Input",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$unit"
+                    },
+                    "label": "每人每月单价",
+                    "type": "number",
+                    "placeholder": "29"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$annual"
+                    },
+                    "label": "年付优惠 20%"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "每月合计"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "¥"
+                            },
+                            "right": {
+                              "k": "Comp",
+                              "name": "Round",
+                              "args": [
+                                {
+                                  "k": "BinOp",
+                                  "op": "*",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$quantity"
+                                    },
+                                    "right": {
+                                      "k": "StateRef",
+                                      "n": "$unit"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "StateRef",
+                                      "n": "$annual"
+                                    },
+                                    "then": {
+                                      "k": "Num",
+                                      "v": 0.8
+                                    },
+                                    "else": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                },
+                                {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              ],
+                              "mappedProps": {
+                                "number": {
+                                  "k": "BinOp",
+                                  "op": "*",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$quantity"
+                                    },
+                                    "right": {
+                                      "k": "StateRef",
+                                      "n": "$unit"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "StateRef",
+                                      "n": "$annual"
+                                    },
+                                    "then": {
+                                      "k": "Num",
+                                      "v": 0.8
+                                    },
+                                    "else": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                },
+                                "decimals": {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              }
+                            }
+                          },
+                          "size": "2xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 2,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "年度预算 ¥"
+                      },
+                      "right": {
+                        "k": "Comp",
+                        "name": "Round",
+                        "args": [
+                          {
+                            "k": "BinOp",
+                            "op": "*",
+                            "left": {
+                              "k": "Comp",
+                              "name": "Round",
+                              "args": [
+                                {
+                                  "k": "BinOp",
+                                  "op": "*",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$quantity"
+                                    },
+                                    "right": {
+                                      "k": "StateRef",
+                                      "n": "$unit"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "StateRef",
+                                      "n": "$annual"
+                                    },
+                                    "then": {
+                                      "k": "Num",
+                                      "v": 0.8
+                                    },
+                                    "else": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                },
+                                {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              ],
+                              "mappedProps": {
+                                "number": {
+                                  "k": "BinOp",
+                                  "op": "*",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$quantity"
+                                    },
+                                    "right": {
+                                      "k": "StateRef",
+                                      "n": "$unit"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "StateRef",
+                                      "n": "$annual"
+                                    },
+                                    "then": {
+                                      "k": "Num",
+                                      "v": 0.8
+                                    },
+                                    "else": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                },
+                                "decimals": {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 12
+                            }
+                          },
+                          {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        ],
+                        "mappedProps": {
+                          "number": {
+                            "k": "BinOp",
+                            "op": "*",
+                            "left": {
+                              "k": "Comp",
+                              "name": "Round",
+                              "args": [
+                                {
+                                  "k": "BinOp",
+                                  "op": "*",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$quantity"
+                                    },
+                                    "right": {
+                                      "k": "StateRef",
+                                      "n": "$unit"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "StateRef",
+                                      "n": "$annual"
+                                    },
+                                    "then": {
+                                      "k": "Num",
+                                      "v": 0.8
+                                    },
+                                    "else": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                },
+                                {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              ],
+                              "mappedProps": {
+                                "number": {
+                                  "k": "BinOp",
+                                  "op": "*",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$quantity"
+                                    },
+                                    "right": {
+                                      "k": "StateRef",
+                                      "n": "$unit"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "StateRef",
+                                      "n": "$annual"
+                                    },
+                                    "then": {
+                                      "k": "Num",
+                                      "v": 0.8
+                                    },
+                                    "else": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                },
+                                "decimals": {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 12
+                            }
+                          },
+                          "decimals": {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "恢复默认",
+                    "action": {
+                      "k": "Comp",
+                      "name": "Reset",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$quantity"
+                        },
+                        {
+                          "k": "StateRef",
+                          "n": "$unit"
+                        },
+                        {
+                          "k": "StateRef",
+                          "n": "$annual"
+                        }
+                      ]
+                    },
+                    "variant": "outline"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 6,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$quantity": 5,
+      "$unit": 29,
+      "$annual": false
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "团队预算",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "即时计算",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "调节人数与单价，预算会立即重算。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$quantity",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 1,
+                  "max": 40,
+                  "step": 1,
+                  "label": "团队人数",
+                  "unit": " 人",
+                  "marks": [
+                    {
+                      "value": 1,
+                      "label": "1"
+                    },
+                    {
+                      "value": 20,
+                      "label": "20"
+                    },
+                    {
+                      "value": 40,
+                      "label": "40"
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$unit",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "每人每月单价",
+                  "type": "number",
+                  "placeholder": "29"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$annual",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "年付优惠 20%"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "每月合计"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "¥145",
+                        "size": "2xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "年度预算 ¥1740"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "恢复默认",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "reset",
+                        "targets": [
+                          "$quantity",
+                          "$unit",
+                          "$annual"
+                        ]
+                      }
+                    ]
+                  },
+                  "variant": "outline"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 210,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "团队预算",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "即时计算",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "betwe"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [
+            "subtotal",
+            "total"
+          ],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$quantity": 5,
+          "$unit": 29,
+          "$annual": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 421,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "团队预算",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "即时计算",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "调节人数与单价，预算会立即重算。"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$quantity"
+                        },
+                        "min": 1,
+                        "max": 40,
+                        "step": 1,
+                        "label": "团队人数",
+                        "unit": " 人",
+                        "marks": [
+                          {
+                            "value": 1,
+                            "label": "1"
+                          },
+                          {
+                            "value": 20,
+                            "label": "20"
+                          },
+                          {
+                            "value": 40,
+                            "label": "40"
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$unit"
+                        },
+                        "label": "每人每月单价",
+                        "type": "number",
+                        "placeholder": "29"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [
+            "subtotal",
+            "total"
+          ],
+          "statementCount": 6,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Checkbox",
+              "path": "/label",
+              "message": "missing required field \"/label\" — signature: Checkbox(checked*: boolean, label*: string, lineThrough: boolean)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$quantity": 5,
+          "$unit": 29,
+          "$annual": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 632,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "团队预算",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "即时计算",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "调节人数与单价，预算会立即重算。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$quantity"
+                        },
+                        "min": 1,
+                        "max": 40,
+                        "step": 1,
+                        "label": "团队人数",
+                        "unit": " 人",
+                        "marks": [
+                          {
+                            "value": 1,
+                            "label": "1"
+                          },
+                          {
+                            "value": 20,
+                            "label": "20"
+                          },
+                          {
+                            "value": 40,
+                            "label": "40"
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$unit"
+                        },
+                        "label": "每人每月单价",
+                        "type": "number",
+                        "placeholder": "29"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$annual"
+                        },
+                        "label": "年付优惠 20%"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "每月合计"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "¥"
+                                },
+                                "right": {
+                                  "k": "Comp",
+                                  "name": "Round",
+                                  "args": [
+                                    {
+                                      "k": "BinOp",
+                                      "op": "*",
+                                      "left": {
+                                        "k": "BinOp",
+                                        "op": "*",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$quantity"
+                                        },
+                                        "right": {
+                                          "k": "StateRef",
+                                          "n": "$unit"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "StateRef",
+                                          "n": "$annual"
+                                        },
+                                        "then": {
+                                          "k": "Num",
+                                          "v": 0.8
+                                        },
+                                        "else": {
+                                          "k": "Num",
+                                          "v": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "number": {
+                                      "k": "BinOp",
+                                      "op": "*",
+                                      "left": {
+                                        "k": "BinOp",
+                                        "op": "*",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$quantity"
+                                        },
+                                        "right": {
+                                          "k": "StateRef",
+                                          "n": "$unit"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "StateRef",
+                                          "n": "$annual"
+                                        },
+                                        "then": {
+                                          "k": "Num",
+                                          "v": 0.8
+                                        },
+                                        "else": {
+                                          "k": "Num",
+                                          "v": 1
+                                        }
+                                      }
+                                    },
+                                    "decimals": {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  }
+                                }
+                              },
+                              "size": "2xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "Str",
+                            "v": "年度预算 ¥"
+                          },
+                          "right": {
+                            "k": "Comp",
+                            "name": "Round",
+                            "args": [
+                              {
+                                "k": "BinOp",
+                                "op": "*",
+                                "left": {
+                                  "k": "Comp",
+                                  "name": "Round",
+                                  "args": [
+                                    {
+                                      "k": "BinOp",
+                                      "op": "*",
+                                      "left": {
+                                        "k": "BinOp",
+                                        "op": "*",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$quantity"
+                                        },
+                                        "right": {
+                                          "k": "StateRef",
+                                          "n": "$unit"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "StateRef",
+                                          "n": "$annual"
+                                        },
+                                        "then": {
+                                          "k": "Num",
+                                          "v": 0.8
+                                        },
+                                        "else": {
+                                          "k": "Num",
+                                          "v": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "number": {
+                                      "k": "BinOp",
+                                      "op": "*",
+                                      "left": {
+                                        "k": "BinOp",
+                                        "op": "*",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$quantity"
+                                        },
+                                        "right": {
+                                          "k": "StateRef",
+                                          "n": "$unit"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "StateRef",
+                                          "n": "$annual"
+                                        },
+                                        "then": {
+                                          "k": "Num",
+                                          "v": 0.8
+                                        },
+                                        "else": {
+                                          "k": "Num",
+                                          "v": 1
+                                        }
+                                      }
+                                    },
+                                    "decimals": {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  }
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 12
+                                }
+                              },
+                              {
+                                "k": "Num",
+                                "v": 2
+                              }
+                            ],
+                            "mappedProps": {
+                              "number": {
+                                "k": "BinOp",
+                                "op": "*",
+                                "left": {
+                                  "k": "Comp",
+                                  "name": "Round",
+                                  "args": [
+                                    {
+                                      "k": "BinOp",
+                                      "op": "*",
+                                      "left": {
+                                        "k": "BinOp",
+                                        "op": "*",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$quantity"
+                                        },
+                                        "right": {
+                                          "k": "StateRef",
+                                          "n": "$unit"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "StateRef",
+                                          "n": "$annual"
+                                        },
+                                        "then": {
+                                          "k": "Num",
+                                          "v": 0.8
+                                        },
+                                        "else": {
+                                          "k": "Num",
+                                          "v": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "number": {
+                                      "k": "BinOp",
+                                      "op": "*",
+                                      "left": {
+                                        "k": "BinOp",
+                                        "op": "*",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$quantity"
+                                        },
+                                        "right": {
+                                          "k": "StateRef",
+                                          "n": "$unit"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "StateRef",
+                                          "n": "$annual"
+                                        },
+                                        "then": {
+                                          "k": "Num",
+                                          "v": 0.8
+                                        },
+                                        "else": {
+                                          "k": "Num",
+                                          "v": 1
+                                        }
+                                      }
+                                    },
+                                    "decimals": {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  }
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 12
+                                }
+                              },
+                              "decimals": {
+                                "k": "Num",
+                                "v": 2
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "恢复默认",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Reset",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$quantity"
+                            },
+                            {
+                              "k": "StateRef",
+                              "n": "$unit"
+                            },
+                            {
+                              "k": "StateRef",
+                              "n": "$annual"
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$quantity": 5,
+          "$unit": 29,
+          "$annual": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

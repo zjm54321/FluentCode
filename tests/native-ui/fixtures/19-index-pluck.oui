@@ -1,0 +1,2 @@
+$rows = [{name:"A",amount:10},{name:"B",amount:20}]
+root = Col([Text($rows[1].name), Text("Sum " + @Sum($rows.amount)), Text("Length " + $rows.length), Text("Key " + {"x":12}.$x), Text("single " + 'a\tb')])

@@ -239,12 +239,17 @@ public sealed class OpenCodeEventReducer
             var state = tool["state"]!.AsObject();
             switch (type)
             {
-                case "session.tool.input.delta": AppendString(messageId, state, "input", String(data, "delta")); break;
+                case "session.tool.input.delta":
+                    if (String(tool, "name") == "native_ui") state["_inputComplete"] = false;
+                    AppendString(messageId, state, "input", String(data, "delta")); break;
                 case "session.tool.input.ended":
-                    ForgetString(messageId, state); tool.Remove("_partial"); state["input"] = data["text"]?.DeepClone(); break;
+                    ForgetString(messageId, state); tool.Remove("_partial"); state["input"] = data["text"]?.DeepClone();
+                    if (String(tool, "name") == "native_ui") state["_inputComplete"] = true;
+                    break;
                 case "session.tool.called":
                     ForgetString(messageId, state);
                     tool.Remove("_partial");
+                    state.Remove("_inputComplete");
                     state["status"] = "running"; state["input"] = data["input"]?.DeepClone();
                     tool["time"]!.AsObject()["ran"] = item.ReceivedAt.ToUnixTimeMilliseconds(); break;
                 case "session.tool.progress": state["metadata"] = data["metadata"]?.DeepClone(); break;
