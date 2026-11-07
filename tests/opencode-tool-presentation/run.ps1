@@ -1,4 +1,4 @@
-# Focused source-linked tool naming, generic detail, header-affordance and detail-preview theme/placement regressions. No app build or live UI.
+# Focused source-linked tool naming, generic detail, home layout, header-affordance and detail-preview regressions. No app build or live UI.
 param([string]$EvidenceRoot = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -21,8 +21,19 @@ function Extract-Method([string]$File, [string]$Name) {
 }
 $hover = Extract-Method 'OpenCodeToolGroupView.cs' 'UpdateChevronAffordance'
 $generic = Extract-Method 'OpenCodeToolDetailContent.cs' 'BuildGeneric'
+$homeLayout = Extract-Method 'OpenCodeHomeView.cs' 'ApplyLayout'
+$homeSettingsLayout = Extract-Method 'OpenCodeHomeView.cs' 'ApplySettingsButtonLayout'
+$homeSource = [IO.File]::ReadAllText((Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeHomeView.cs'))
+$homeGeometry = [regex]::Match($homeSource, '(?ms)^    internal const double SideCardWidth\b.*?^    internal const double WideThreshold[^\r\n]*')
+if (!$homeGeometry.Success) { throw 'Missing production home geometry constants.' }
 $extracted = Join-Path $output 'ViewMethods.cs'
-('using FluentCode.Pages.OpenCode;' + "`ninternal sealed partial class HoverProbe {`n" + $hover + "`n}`ninternal static partial class GenericProbe {`n" + $generic + "`n}") | Set-Content -Encoding UTF8 $extracted
+(@(
+    'using System;'
+    'using FluentCode.Pages.OpenCode;'
+    "internal sealed partial class HoverProbe {`n$hover`n}"
+    "internal static partial class GenericProbe {`n$generic`n}"
+    "internal sealed partial class HomeLayoutProbe {`n$($homeGeometry.Value)`n$homeLayout`n$homeSettingsLayout`n}"
+) -join "`n") | Set-Content -Encoding UTF8 $extracted
 
 $production = @()
 foreach ($name in @('OpenCodeConstants.cs', 'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeDtos.Common.cs',

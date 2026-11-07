@@ -6,6 +6,33 @@ internal class FrameworkElement
 {
     internal string? Title { get; init; }
     internal object? Value { get; init; }
+    internal virtual Visibility Visibility { get; set; } = Visibility.Visible;
+    internal bool IsTabStop { get; set; } = true;
+    internal double Width { get; set; }
+    internal double MaxHeight { get; set; }
+}
+internal enum Visibility { Visible, Collapsed }
+internal enum FocusState { Unfocused, Keyboard, Pointer, Programmatic }
+internal sealed class ContentControl : FrameworkElement { internal object? Content { get; set; } }
+internal sealed class Button : FrameworkElement
+{
+    internal FocusState FocusState { get; set; }
+    internal int FocusCalls { get; private set; }
+    internal override Visibility Visibility
+    {
+        get => base.Visibility;
+        set
+        {
+            base.Visibility = value;
+            if (value == Visibility.Collapsed) FocusState = FocusState.Unfocused;
+        }
+    }
+    internal bool Focus(FocusState state)
+    {
+        FocusState = state;
+        FocusCalls++;
+        return true;
+    }
 }
 internal sealed class StackPanel : FrameworkElement
 {
@@ -39,6 +66,21 @@ internal sealed partial class HoverProbe
     internal readonly Border _headerSurface = new();
     internal readonly FontIcon _chevron = new();
     internal void Update() => UpdateChevronAffordance();
+}
+internal sealed partial class HomeLayoutProbe
+{
+    internal double ActualWidth { get; private set; }
+    internal double ActualHeight { get; private set; } = 900;
+    internal bool _narrow;
+    internal readonly FrameworkElement _leftCard = new(), _right = new(), _chipScroller = new(), _chipRow = new(), _center = new();
+    internal readonly ContentControl _settingsHost = new() { Content = new Button(), IsTabStop = false };
+    internal readonly Button _wideSettingsButton = new();
+    internal Button NarrowSettingsButton => (Button)_settingsHost.Content!;
+    internal void Resize(double width)
+    {
+        ActualWidth = width;
+        ApplyLayout();
+    }
 }
 internal static partial class GenericProbe
 {

@@ -76,7 +76,8 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly Border _connectionCard = Card();
     private readonly Grid _right = new() { Width = SideCardWidth, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Stretch };
     private readonly Grid _center = new() { RowSpacing = 12, HorizontalAlignment = HorizontalAlignment.Center };
-    private readonly ContentControl _settingsHost = new();
+    private readonly ContentControl _settingsHost = new() { IsTabStop = false, Visibility = Visibility.Collapsed, Margin = new Thickness(10, 0, 0, 0) };
+    private Button? _wideSettingsButton;
     private readonly Border _wordmarkHost = new() { Height = 30, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly Border _connectedDot = Dot(OpenCodeToolTheme.Success, 8);
     private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
@@ -176,7 +177,8 @@ public sealed class OpenCodeHomeView : UserControl
         for (var i = 0; i < 4; i++) _center.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _center.RowDefinitions[2].Height = new GridLength(1, GridUnitType.Star);
 
-        var searchRow = new Grid { ColumnSpacing = 10 };
+        // Action margins preserve the 10px gaps without reserving a trailing gap for hidden settings in wide mode.
+        var searchRow = new Grid();
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -192,7 +194,7 @@ public sealed class OpenCodeHomeView : UserControl
             RefreshSessions();
             Search?.Invoke(this, new(_snapshot.Revision, SelectedProject, _search.Text));
         };
-        var create = new Button { Content = IconText("\uE710", "新建", 12), MinHeight = 36, Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
+        var create = new Button { Content = IconText("\uE710", "新建", 12), MinHeight = 36, Margin = new Thickness(10, 0, 0, 0), Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
         SetIdentity(create, "OpenCodeHomeNewSession", "新建会话");
         create.Click += (_, _) => NewSession?.Invoke(this, Context());
         Grid.SetColumn(create, 1);
@@ -273,7 +275,13 @@ public sealed class OpenCodeHomeView : UserControl
 
     /// <summary>Page-owned theme-aware wordmark (an Image of the OpenCode SVG); the view only places it.</summary>
     public void SetWordmark(UIElement wordmark) => _wordmarkHost.Child = wordmark;
-    public void SetSettingsButton(Button button) => _settingsHost.Content = button;
+    /// <summary>Page-owned settings entrances: search-row icon in narrow mode, bottom-right overlay in wide mode.</summary>
+    public void SetSettingsButtons(Button narrowButton, Button wideButton)
+    {
+        _settingsHost.Content = narrowButton;
+        _wideSettingsButton = wideButton;
+        ApplySettingsButtonLayout();
+    }
 
     /// <summary>Real connection facts only: server-reported version, live connected state, and the configured
     /// connection identity (e.g. "WSL · NixOS" / remote host). Unknown parts are omitted, never invented.</summary>
@@ -508,6 +516,7 @@ public sealed class OpenCodeHomeView : UserControl
     {
         var width = ActualWidth;
         _narrow = width > 0 && width < WideThreshold;
+        ApplySettingsButtonLayout();
         var side = _narrow ? Visibility.Collapsed : Visibility.Visible;
         _leftCard.Visibility = side;
         _right.Visibility = side;
@@ -517,6 +526,21 @@ public sealed class OpenCodeHomeView : UserControl
             : Math.Max(0, _narrow ? width - 2 * 40 : Math.Min(CenterMaxWidth, width - 2 * SideColumnWidth - CenterPadding));
         var height = ActualHeight;
         if (height > 0) _leftCard.MaxHeight = Math.Max(0, height - 2 * SideMargin);
+    }
+
+    private void ApplySettingsButtonLayout()
+    {
+        if (_settingsHost.Content is not Button narrowButton || _wideSettingsButton is not { } wideButton) return;
+        var shown = _narrow ? narrowButton : wideButton;
+        var hidden = _narrow ? wideButton : narrowButton;
+        var focusState = hidden.FocusState;
+        hidden.Visibility = Visibility.Collapsed;
+        hidden.IsTabStop = false;
+        _settingsHost.Visibility = _narrow ? Visibility.Visible : Visibility.Collapsed;
+        shown.Visibility = Visibility.Visible;
+        shown.IsTabStop = true;
+        // Keep keyboard/Narrator focus on the same action when resizing replaces its visual entrance.
+        if (focusState != FocusState.Unfocused) shown.Focus(focusState);
     }
 
     private void RefreshSessions()

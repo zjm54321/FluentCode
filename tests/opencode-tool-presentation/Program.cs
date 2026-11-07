@@ -27,10 +27,11 @@ internal static partial class Program
         QuestionAndDuration();
         RedesignSourceContracts(args[0]);
         HeaderAffordance(args[0]);
+        HomeSettingsLayouts(args[0]);
         PreviewThemeAndPlacement(args[0]);
         LargeViewFitsContent(args[0]);
         UnifiedRunningIndicator(args[0]);
-        Console.WriteLine($"PASS {_checks} focused tool naming, glyph, OMO reports/controls/mention scopes, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, header-affordance, preview theme/placement and unified running-indicator checks.");
+        Console.WriteLine($"PASS {_checks} focused tool naming, glyph, OMO reports/controls/mention scopes, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, home-settings layout, header-affordance, preview theme/placement and unified running-indicator checks.");
     }
 
     private const string ListOutput = "[\n  {\n    \"id\": \"ses_a1\",\n    \"title\": \"Fix login\",\n    \"directory\": \"C:\\\\src\\\\app\",\n    \"updated\": 1700000000000\n  },\n"
@@ -396,19 +397,76 @@ internal static partial class Program
         Check(Read("OpenCodeToolPartView.cs").Contains("model.GlyphOverride ?? KindGlyph(model.Kind)", StringComparison.Ordinal), "row consumes existing glyph override contract");
         Check(Read("OpenCodeHomeView.cs").Contains("OpenCodeHomeTone.Unread => \"\\uE8F2\"", StringComparison.Ordinal), "session glyph reused from home session list");
         var home = Read("OpenCodeHomeView.cs");
+        Check(home.Contains("indicator.Visibility = row.ShowStatusIndicator", StringComparison.Ordinal)
+            && home.Contains("unread.Visibility = row.ShowUnreadIndicator", StringComparison.Ordinal), "home consumes mutually exclusive indicator policy");
+    }
+
+    private static void HomeSettingsLayouts(string repo)
+    {
+        var home = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeHomeView.cs"));
         var page = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Home.cs"));
         var settings = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.SettingsTab.cs"));
         Check(home.Contains("Grid.SetColumn(_settingsHost, 2)", StringComparison.Ordinal)
             && home.Contains("searchRow.Children.Add(_settingsHost)", StringComparison.Ordinal)
-            && home.Contains("SetSettingsButton(Button button)", StringComparison.Ordinal), "settings stays in shared search row after New at narrow and wide widths");
-        Check(page.Contains("_homeView.SetSettingsButton(CreateHomeSettingsButton())", StringComparison.Ordinal)
-            && !page.Contains("HomePageHost.Children.Add(CreateHomeSettingsButton())", StringComparison.Ordinal), "floating settings overlay removed");
-        var settingsButton = settings[settings.IndexOf("private Button CreateHomeSettingsButton()", StringComparison.Ordinal)..];
-        Check(settingsButton.Contains("MinWidth = 36", StringComparison.Ordinal) && settingsButton.Contains("MinHeight = 36", StringComparison.Ordinal)
-            && settingsButton.Contains("Content = new FontIcon", StringComparison.Ordinal) && !settingsButton.Contains("new TextBlock", StringComparison.Ordinal), "settings is icon-only with 36px touch target");
-        Check(settingsButton.Contains("SetName(button, \"设置\")", StringComparison.Ordinal)
-            && settingsButton.Contains("SetToolTip(button, \"设置\")", StringComparison.Ordinal), "settings tooltip and Narrator name retained");
-        Check(home.Contains("indicator.Visibility = row.ShowStatusIndicator", StringComparison.Ordinal)
-            && home.Contains("unread.Visibility = row.ShowUnreadIndicator", StringComparison.Ordinal), "home consumes mutually exclusive indicator policy");
+            && home.Contains("SetSettingsButtons(Button narrowButton, Button wideButton)", StringComparison.Ordinal), "narrow settings stays beside New in the search row");
+        Check(home.Contains("ContentControl _settingsHost = new() { IsTabStop = false", StringComparison.Ordinal)
+            && home.IndexOf("searchRow.Children.Add(create)", StringComparison.Ordinal) < home.IndexOf("searchRow.Children.Add(_settingsHost)", StringComparison.Ordinal),
+            "narrow settings follows New in keyboard order without a focusable host");
+        Check(home.Contains("var searchRow = new Grid();", StringComparison.Ordinal)
+            && home.Contains("Visibility = Visibility.Collapsed, Margin = new Thickness(10, 0, 0, 0)", StringComparison.Ordinal)
+            && home.Contains("MinHeight = 36, Margin = new Thickness(10, 0, 0, 0)", StringComparison.Ordinal), "action gaps stay 10px without an empty-column gap in wide mode");
+        Check(page.Contains("HomePageHost.Children.Add(wideSettingsButton)", StringComparison.Ordinal)
+            && page.Contains("_homeView.SetSettingsButtons(CreateHomeSettingsButton(), wideSettingsButton)", StringComparison.Ordinal), "wide settings overlay and narrow icon registered together");
+        Check(home.Contains("SizeChanged += (_, _) => ApplyLayout()", StringComparison.Ordinal)
+            && home.Contains("Loaded += (_, _) => { ApplyLayout();", StringComparison.Ordinal), "home settings layout follows load and live resize");
+        var narrowStart = settings.IndexOf("private Button CreateHomeSettingsButton()", StringComparison.Ordinal);
+        var wideStart = settings.IndexOf("private Button CreateWideHomeSettingsButton()", StringComparison.Ordinal);
+        Check(narrowStart >= 0 && wideStart > narrowStart, "separate narrow and wide settings factories");
+        var narrowButton = settings[narrowStart..wideStart];
+        var wideButton = settings[wideStart..];
+        Check(narrowButton.Contains("MinWidth = 36", StringComparison.Ordinal) && narrowButton.Contains("MinHeight = 36", StringComparison.Ordinal)
+            && narrowButton.Contains("Content = new FontIcon { Glyph = \"\\uE713\", FontSize = 16 }", StringComparison.Ordinal)
+            && !narrowButton.Contains("new TextBlock", StringComparison.Ordinal), "narrow settings remains icon-only with 36px touch target");
+        Check(wideButton.Contains("HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal)
+            && wideButton.Contains("VerticalAlignment = VerticalAlignment.Bottom", StringComparison.Ordinal)
+            && wideButton.Contains("Margin = new Thickness(0, 0, 24, 24)", StringComparison.Ordinal)
+            && wideButton.Contains("Padding = new Thickness(12, 6, 12, 7)", StringComparison.Ordinal), "wide settings restores original bottom-right alignment, margins and padding");
+        Check(wideButton.Contains("Orientation = Orientation.Horizontal", StringComparison.Ordinal) && wideButton.Contains("Spacing = 8", StringComparison.Ordinal)
+            && wideButton.Contains("new FontIcon { Glyph = \"\\uE713\", FontSize = 14, VerticalAlignment = VerticalAlignment.Center }", StringComparison.Ordinal)
+            && wideButton.Contains("new TextBlock { Text = \"设置\", VerticalAlignment = VerticalAlignment.Center }", StringComparison.Ordinal), "wide settings restores original 14px icon and text");
+        Check(narrowButton.Contains("SetAutomationId(button, \"FluentCodeHomeSettingsButton\")", StringComparison.Ordinal)
+            && wideButton.Contains("SetAutomationId(button, \"FluentCodeHomeWideSettingsButton\")", StringComparison.Ordinal), "settings buttons have distinct automation identities");
+        Check(narrowButton.Contains("SetName(button, \"设置\")", StringComparison.Ordinal) && wideButton.Contains("SetName(button, \"设置\")", StringComparison.Ordinal)
+            && narrowButton.Contains("SetToolTip(button, \"设置\")", StringComparison.Ordinal)
+            && wideButton.Contains("SetToolTip(button, \"设置 (Ctrl+,)\")", StringComparison.Ordinal), "both settings buttons retain Narrator names and mode-specific tooltips");
+        Check(narrowButton.Contains("button.Click += HomeSettingsButton_Click", StringComparison.Ordinal)
+            && wideButton.Contains("button.Click += HomeSettingsButton_Click", StringComparison.Ordinal), "both settings buttons open the existing singleton settings tab");
+
+        var probe = new HomeLayoutProbe();
+        foreach (var width in new[] { 0d, HomeLayoutProbe.WideThreshold - 1, HomeLayoutProbe.WideThreshold, HomeLayoutProbe.WideThreshold + 1, 600d, 1600d })
+        {
+            probe.Resize(width);
+            var narrow = width > 0 && width < HomeLayoutProbe.WideThreshold;
+            Check(probe._narrow == narrow && probe.NarrowSettingsButton.Visibility == (narrow ? Visibility.Visible : Visibility.Collapsed)
+                && probe._wideSettingsButton.Visibility == (narrow ? Visibility.Collapsed : Visibility.Visible), "settings follows actual home threshold at width " + width);
+            Check((probe.NarrowSettingsButton.Visibility == Visibility.Visible ? 1 : 0)
+                + (probe._wideSettingsButton.Visibility == Visibility.Visible ? 1 : 0) == 1, "exactly one settings button visible at width " + width);
+            Check(probe._settingsHost.Visibility == (narrow ? Visibility.Visible : Visibility.Collapsed)
+                && probe.NarrowSettingsButton.IsTabStop == narrow && probe._wideSettingsButton.IsTabStop == !narrow, "hidden settings and host leave keyboard/layout order at width " + width);
+        }
+        probe._wideSettingsButton.Focus(FocusState.Keyboard);
+        probe.Resize(HomeLayoutProbe.WideThreshold - 1);
+        Check(probe.NarrowSettingsButton.FocusState == FocusState.Keyboard && probe._wideSettingsButton.FocusState == FocusState.Unfocused,
+            "wide-to-narrow resize preserves settings keyboard focus");
+        var narrowFocusCalls = probe.NarrowSettingsButton.FocusCalls;
+        probe.Resize(600);
+        Check(probe.NarrowSettingsButton.FocusCalls == narrowFocusCalls, "same-mode resize does not re-focus settings");
+        probe.Resize(HomeLayoutProbe.WideThreshold);
+        Check(probe._wideSettingsButton.FocusState == FocusState.Keyboard && probe.NarrowSettingsButton.FocusState == FocusState.Unfocused,
+            "narrow-to-wide resize preserves settings keyboard focus");
+        probe._wideSettingsButton.FocusState = FocusState.Unfocused;
+        probe.Resize(HomeLayoutProbe.WideThreshold - 1);
+        Check(probe.NarrowSettingsButton.FocusCalls == narrowFocusCalls && probe.NarrowSettingsButton.FocusState == FocusState.Unfocused,
+            "resizing does not steal focus from another home control");
     }
 }

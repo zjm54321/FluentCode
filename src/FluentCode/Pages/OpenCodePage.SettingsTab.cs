@@ -175,7 +175,7 @@ public sealed partial class OpenCodePage
 
     private void HomeSettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsTab();
 
-    /// <summary>首页搜索行“新建”右侧的纯图标设置入口。</summary>
+    /// <summary>首页窄布局搜索行“新建”右侧的纯图标设置入口。</summary>
     private Button CreateHomeSettingsButton()
     {
         var button = new Button
@@ -188,6 +188,33 @@ public sealed partial class OpenCodePage
         AutomationProperties.SetAutomationId(button, "FluentCodeHomeSettingsButton");
         AutomationProperties.SetName(button, "设置");
         ToolTipService.SetToolTip(button, "设置");
+        button.Click += HomeSettingsButton_Click;
+        return button;
+    }
+
+    /// <summary>首页宽布局右下角的“设置”按钮。</summary>
+    private Button CreateWideHomeSettingsButton()
+    {
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 24, 24),
+            Padding = new Thickness(12, 6, 12, 7),
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children =
+                {
+                    new FontIcon { Glyph = "\uE713", FontSize = 14, VerticalAlignment = VerticalAlignment.Center },
+                    new TextBlock { Text = "设置", VerticalAlignment = VerticalAlignment.Center },
+                },
+            },
+        };
+        AutomationProperties.SetAutomationId(button, "FluentCodeHomeWideSettingsButton");
+        AutomationProperties.SetName(button, "设置");
+        ToolTipService.SetToolTip(button, "设置 (Ctrl+,)");
         button.Click += HomeSettingsButton_Click;
         return button;
     }
