@@ -1,0 +1,336 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "3a2247072c244acc60bffbce533583f688bff81dfd2a36cad971cc13dcf17733",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Count: "
+                },
+                "right": {
+                  "k": "StateRef",
+                  "n": "$n"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Add",
+              "action": {
+                "k": "Comp",
+                "name": "Set",
+                "args": [
+                  {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    },
+                    "right": {
+                      "k": "Num",
+                      "v": 1
+                    }
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$n": 0
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Count: 0"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Add",
+            "action": {
+              "steps": [
+                {
+                  "type": "set",
+                  "target": "$n",
+                  "valueAST": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    },
+                    "right": {
+                      "k": "Num",
+                      "v": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 25,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": ""
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 50,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "A"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 75,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Add",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Set",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$n"
+                      },
+                      {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      }
+                    ]
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

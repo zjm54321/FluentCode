@@ -1,0 +1,1 @@
+root = Svg([Rect(10,10,80,40,"success",null,null,null,8)], "0 0 100 100")

@@ -1,0 +1,1 @@
+root = Col([Text("Hello"), Caption("Ready")])

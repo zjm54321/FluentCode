@@ -1,0 +1,339 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "4c62b7dfc0ad11f400c4a82dd03157585359399b32b900d4f06ccc71b195c9f0",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Count: "
+                },
+                "right": {
+                  "k": "StateRef",
+                  "n": "$n"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "IconButton",
+            "props": {
+              "icon": "plus",
+              "action": {
+                "k": "Comp",
+                "name": "Set",
+                "args": [
+                  {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    },
+                    "right": {
+                      "k": "Num",
+                      "v": 1
+                    }
+                  }
+                ]
+              },
+              "label": "Add"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$n": 0
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Count: 0"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "IconButton",
+          "props": {
+            "icon": "plus",
+            "action": {
+              "steps": [
+                {
+                  "type": "set",
+                  "target": "$n",
+                  "valueAST": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    },
+                    "right": {
+                      "k": "Num",
+                      "v": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "label": "Add"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 29,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Coun"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 58,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "plus"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 87,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count: "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$n"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "plus",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Set",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$n"
+                      },
+                      {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "StateRef",
+                          "n": "$n"
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      }
+                    ]
+                  },
+                  "label": "Add"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

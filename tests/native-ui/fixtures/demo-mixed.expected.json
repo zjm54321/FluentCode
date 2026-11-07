@@ -1,0 +1,1325 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "61ccb8b7accb181e50b4300e0815d1ab3a531f4789b9b5364d48307644c194f1",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "周末城市漫游",
+              "size": "xl"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": "布局、内容与矢量图 · 无自动网络访问"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "map-pin",
+                          "size": "lg",
+                          "color": "info"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "里斯本",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "沿河散步，走进旧城。"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "轻松路线",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": "col",
+                    "gap": 2,
+                    "padding": 4,
+                    "background": "surface",
+                    "radius": "lg",
+                    "border": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Svg",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 0,
+                          "y": 0,
+                          "width": 200,
+                          "height": 120,
+                          "fill": "info",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 0.12,
+                          "rx": 12
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 45,
+                                "cy": 50,
+                                "r": 22,
+                                "fill": "success"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Path",
+                              "props": {
+                                "d": "M85 90 L115 30 L150 90 Z",
+                                "fill": "warning"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 155,
+                                "cy": 35,
+                                "r": 12,
+                                "fill": "purple"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "SvgText",
+                        "props": {
+                          "text": "探索 · 发现",
+                          "x": 100,
+                          "y": 108,
+                          "size": 13,
+                          "fill": "ink",
+                          "anchor": "middle"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "viewBox": "0 0 200 120",
+                    "width": 280,
+                    "height": 168
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 220,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "List",
+            "props": {
+              "items": [
+                {
+                  "type": "element",
+                  "typeName": "ListItem",
+                  "props": {
+                    "title": "上午 · 老城",
+                    "description": "巷弄、咖啡与观景台",
+                    "marker": "09:00"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "ListItem",
+                  "props": {
+                    "title": "下午 · 河岸",
+                    "description": "慢走到贝伦塔",
+                    "marker": "14:00"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "marker": "none",
+              "timeline": true
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Popover",
+                  "props": {
+                    "trigger": "行前提示",
+                    "content": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "穿舒适的鞋，带上水。"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "卡片内原生浮层"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Link",
+                  "props": {
+                    "text": "城市指南",
+                    "url": "https://www.visitlisboa.com/"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Flashcard",
+            "props": {
+              "front": "葡萄牙语的「谢谢」怎么说？",
+              "back": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Obrigado / Obrigada",
+                    "size": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "点击返回"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "hint": "点击查看答案"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "gap": 3
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "周末城市漫游",
+            "size": "xl"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "布局、内容与矢量图 · 无自动网络访问"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "map-pin",
+                        "size": "lg",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "里斯本",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "沿河散步，走进旧城。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "轻松路线",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": "col",
+                  "gap": 2,
+                  "padding": 4,
+                  "background": "surface",
+                  "radius": "lg",
+                  "border": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 200,
+                        "height": 120,
+                        "fill": "info",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 0.12,
+                        "rx": 12
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 45,
+                              "cy": 50,
+                              "r": 22,
+                              "fill": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Path",
+                            "props": {
+                              "d": "M85 90 L115 30 L150 90 Z",
+                              "fill": "warning"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 155,
+                              "cy": 35,
+                              "r": 12,
+                              "fill": "purple"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SvgText",
+                      "props": {
+                        "text": "探索 · 发现",
+                        "x": 100,
+                        "y": 108,
+                        "size": 13,
+                        "fill": "ink",
+                        "anchor": "middle"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "viewBox": "0 0 200 120",
+                  "width": 280,
+                  "height": 168
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 220,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "List",
+          "props": {
+            "items": [
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "上午 · 老城",
+                  "description": "巷弄、咖啡与观景台",
+                  "marker": "09:00"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "下午 · 河岸",
+                  "description": "慢走到贝伦塔",
+                  "marker": "14:00"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "marker": "none",
+            "timeline": true
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Popover",
+                "props": {
+                  "trigger": "行前提示",
+                  "content": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "穿舒适的鞋，带上水。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "卡片内原生浮层"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Link",
+                "props": {
+                  "text": "城市指南",
+                  "url": "https://www.visitlisboa.com/"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Flashcard",
+          "props": {
+            "front": "葡萄牙语的「谢谢」怎么说？",
+            "back": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Obrigado / Obrigada",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "点击返回"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "hint": "点击查看答案"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "gap": 3
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 259,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "周末城市漫游",
+                  "size": "xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "布局、内容与矢量图 · 无自动网络访问"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "map-pin",
+                              "size": "lg",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "里斯本",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "沿河散步，走进旧城。"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "轻松路线",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": "col",
+                        "gap": 2,
+                        "padding": 4,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 518,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "周末城市漫游",
+                  "size": "xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "布局、内容与矢量图 · 无自动网络访问"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "map-pin",
+                              "size": "lg",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "里斯本",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "沿河散步，走进旧城。"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "轻松路线",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": "col",
+                        "gap": 2,
+                        "padding": 4,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 200,
+                              "height": 120,
+                              "fill": "info",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.12,
+                              "rx": 12
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 45,
+                                    "cy": 50,
+                                    "r": 22,
+                                    "fill": "success"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Path",
+                                  "props": {
+                                    "d": "M85 90 L115 30 L150 90 Z",
+                                    "fill": "warning"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 155,
+                                    "cy": 35,
+                                    "r": 12,
+                                    "fill": "purple"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "探索 · 发现",
+                              "x": 100,
+                              "y": 108,
+                              "size": 13,
+                              "fill": "ink",
+                              "anchor": "middle"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 120",
+                        "width": 280,
+                        "height": 168
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "上午 · 老城",
+                        "description": "巷弄、咖啡与观景台",
+                        "marker": "09:00"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "下"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 778,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "周末城市漫游",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "布局、内容与矢量图 · 无自动网络访问"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "map-pin",
+                              "size": "lg",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "里斯本",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "沿河散步，走进旧城。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "轻松路线",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": "col",
+                        "gap": 2,
+                        "padding": 4,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 200,
+                              "height": 120,
+                              "fill": "info",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.12,
+                              "rx": 12
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 45,
+                                    "cy": 50,
+                                    "r": 22,
+                                    "fill": "success"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Path",
+                                  "props": {
+                                    "d": "M85 90 L115 30 L150 90 Z",
+                                    "fill": "warning"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 155,
+                                    "cy": 35,
+                                    "r": 12,
+                                    "fill": "purple"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "探索 · 发现",
+                              "x": 100,
+                              "y": 108,
+                              "size": 13,
+                              "fill": "ink",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 120",
+                        "width": 280,
+                        "height": 168
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "上午 · 老城",
+                        "description": "巷弄、咖啡与观景台",
+                        "marker": "09:00"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "下午 · 河岸",
+                        "description": "慢走到贝伦塔",
+                        "marker": "14:00"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "marker": "none",
+                  "timeline": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Popover",
+                      "props": {
+                        "trigger": "行前提示",
+                        "content": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "穿舒适的鞋，带上水。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "卡片内原生浮层"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Link",
+                      "props": {
+                        "text": "城市指南",
+                        "url": "https://www.visitlisboa.com/"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Flashcard",
+                "props": {
+                  "front": "葡萄牙语的「谢谢」怎么说？",
+                  "back": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Obrigado / Obrigada",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "点击返回"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "hint": "点击查看答案"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

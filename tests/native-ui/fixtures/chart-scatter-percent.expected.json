@@ -1,0 +1,235 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "1a952d7bf1696d45f08a287872ed976593deac31a062b519c35293fb20bb452e",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Chart",
+      "props": {
+        "type": "scatter",
+        "data": [
+          {
+            "x": 1,
+            "y": 12
+          },
+          {
+            "x": 2,
+            "y": 24
+          },
+          {
+            "x": 3,
+            "y": 18
+          }
+        ],
+        "x": "x",
+        "series": [
+          "y"
+        ],
+        "format": "percent",
+        "currency": "EUR",
+        "stacked": true,
+        "height": 220
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Chart",
+    "props": {
+      "type": "scatter",
+      "data": [
+        {
+          "x": 1,
+          "y": 12
+        },
+        {
+          "x": 2,
+          "y": 24
+        },
+        {
+          "x": 3,
+          "y": 18
+        }
+      ],
+      "x": "x",
+      "series": [
+        "y"
+      ],
+      "format": "percent",
+      "currency": "EUR",
+      "stacked": true,
+      "height": 220
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 33,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "scatter",
+            "data": [
+              {
+                "x": 1,
+                "y": 1
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 67,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "scatter",
+            "data": [
+              {
+                "x": 1,
+                "y": 12
+              },
+              {
+                "x": 2,
+                "y": 24
+              },
+              {
+                "x": 3,
+                "y": 18
+              }
+            ],
+            "x": "x",
+            "series": [
+              ""
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 101,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "scatter",
+            "data": [
+              {
+                "x": 1,
+                "y": 12
+              },
+              {
+                "x": 2,
+                "y": 24
+              },
+              {
+                "x": 3,
+                "y": 18
+              }
+            ],
+            "x": "x",
+            "series": [
+              "y"
+            ],
+            "format": "percent",
+            "currency": "EUR",
+            "stacked": true,
+            "height": 220
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

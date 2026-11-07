@@ -26,21 +26,32 @@ internal sealed partial class NativeUiRenderer
         internal object?[] Values { get; } = new object?[columns];
         internal Border[] Cells { get; } = Enumerable.Range(0, columns).Select(_ => new Border { Padding = new Thickness(NativeUiTheme.Gap(2)) }).ToArray();
     }
+    private sealed class ComponentCell(TableRow row, int index) : IComparable
+    {
+        internal Border Element => row.Cells[index];
+        internal object? Value => row.Values[index] is NativeUiElement node ? S(node, "text") : row.Values[index];
+        public int CompareTo(object? other)
+        {
+            var value = other is ComponentCell cell ? cell.Value : other;
+            return Value is double number && value is double second ? number.CompareTo(second) : StringComparer.CurrentCulture.Compare(NativeUiValues.Text(Value), NativeUiValues.Text(value));
+        }
+    }
     private sealed partial class ComponentColumn(int index) : TableViewColumn
     {
         public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
         {
-            if (dataItem is not TableRow row) return new TextBlock();
-            var content = row.Cells[index]; Detach(content); return content;
+            var content = dataItem is TableRow row ? row.Cells[index] : dataItem is ComponentCell component ? component.Element : null;
+            if (content is null) return new TextBlock { Text = NativeUiValues.Text(dataItem) };
+            Detach(content); return content;
         }
         public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem) => GenerateElement(cell, dataItem);
-        public override object? GetCellContent(object? dataItem) => dataItem is TableRow row ? row.Values[index] is NativeUiElement element ? S(element, "text") : row.Values[index] : null;
-        public override object? GetClipboardContent(object? dataItem) => NativeUiValues.Text(GetCellContent(dataItem));
+        public override object? GetCellContent(object? dataItem) => dataItem is TableRow row ? new ComponentCell(row, index) : null;
+        public override object? GetClipboardContent(object? dataItem) => GetCellContent(dataItem) is ComponentCell cell ? NativeUiValues.Text(cell.Value) : "";
     }
-    private static SKColor ChartColor(int index)
+    private SKColor ChartColor(int index)
     {
         var token = new[] { "info", "success", "warning", "purple", "danger", "pink" }[index % 6];
-        var brush = NativeUiComponentTheme.Brush(token) as SolidColorBrush;
+        var brush = ComponentBrush(token) as SolidColorBrush;
         var color = brush?.Color ?? Microsoft.UI.Colors.Gray;
         return new SKColor(color.R, color.G, color.B, color.A);
     }
@@ -99,7 +110,7 @@ internal sealed partial class NativeUiRenderer
             if (series is null || series.Length == 0) series = first.Where(entry => entry.Key != x && entry.Value is double).Select(entry => entry.Key).ToArray();
             series = series.Take(8).ToArray(); if (series.Length == 0) { host.Children.Add(NativeUiComponentTheme.Text("没有数值序列", true)); return; }
             double Value(IReadOnlyDictionary<string, object?> row, string name) { var value = NativeUiValues.Number(row.GetValueOrDefault(name)); return double.IsFinite(value) ? value : 0; }
-            var textBrush = NativeUiComponentTheme.Brush("ink") as SolidColorBrush; var textColor = textBrush?.Color ?? Microsoft.UI.Colors.Gray;
+            var textBrush = ComponentBrush("ink") as SolidColorBrush; var textColor = textBrush?.Color ?? Microsoft.UI.Colors.Gray;
             var labelsPaint = new SolidColorPaint(new SKColor(textColor.R, textColor.G, textColor.B));
             if (kind is "pie" or "donut")
             {

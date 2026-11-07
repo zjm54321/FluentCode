@@ -1,0 +1,1 @@
+root = Carousel([Card([Text("One")]), Card([Text("Two")])], 240, 3)

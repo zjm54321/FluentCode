@@ -27,10 +27,17 @@ internal sealed partial class NativeUiRenderer : IDisposable
     private readonly Dictionary<string, Visual> _visuals = new(StringComparer.Ordinal);
     private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
     private NativeUiBudget? _budget;
+    private NativeUiElement? _lastRoot;
+    private bool _disposed;
     internal FrameworkElement Element => _root;
-    internal NativeUiRenderer(NativeUiRuntime runtime) { _runtime = runtime; NativeUiTheme.Host(_root); _runtime.OpenUrl = ConfirmUrlAsync; }
+    internal NativeUiRenderer(NativeUiRuntime runtime)
+    {
+        _runtime = runtime; NativeUiTheme.Host(_root); _runtime.OpenUrl = ConfirmUrlAsync;
+        _root.ActualThemeChanged += (_, _) => _root.DispatcherQueue.TryEnqueue(() => { if (!_disposed && _lastRoot is { } root) Render(root); });
+    }
     internal void Render(NativeUiElement root)
     {
+        _lastRoot = root;
         _seen.Clear(); _budget = new(NativeUiCatalog.Default.Limits);
         var element = Node(root, "root", 0);
         if (!ReferenceEquals(_root.Child, element)) { Detach(element); _root.Child = element; }
@@ -233,6 +240,7 @@ internal sealed partial class NativeUiRenderer : IDisposable
     }
     public void Dispose()
     {
+        _disposed = true; _lastRoot = null;
         _confirmation?.Hide(); _confirmation = null;
         foreach (var visual in _visuals.Values) { visual.Disposed = true; visual.Cleanup?.Invoke(); }
         _visuals.Clear(); _root.Child = null;

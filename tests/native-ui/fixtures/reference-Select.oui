@@ -1,0 +1,2 @@
+$v = "A"
+root = Col([Select($v, ["A", "B"], "Plan"), Text($v)])

@@ -1,0 +1,266 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "ddbf1e0ad7cda7a5f6db4c1bc1d00192f033eabac6180975eea9c00f09283694",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "SegmentedControl",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$v"
+              },
+              "options": [
+                "Day",
+                "Week",
+                "Month"
+              ],
+              "block": true
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "StateRef",
+                "n": "$v"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$v": "Day"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "SegmentedControl",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$v",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "options": [
+              "Day",
+              "Week",
+              "Month"
+            ],
+            "block": true
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Day"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 29,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": []
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Segmen"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": "Day"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 58,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$v"
+                  },
+                  "options": [
+                    "Day",
+                    "Week"
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": "Day"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 88,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$v"
+                  },
+                  "options": [
+                    "Day",
+                    "Week",
+                    "Month"
+                  ],
+                  "block": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "StateRef",
+                    "n": "$v"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": "Day"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

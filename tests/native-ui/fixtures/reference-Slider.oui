@@ -1,0 +1,2 @@
+$n = 2
+root = Col([Slider($n, 1, 10, 1, "Quantity"), Text("Total: " + $n * 12)])

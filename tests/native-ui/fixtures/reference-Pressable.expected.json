@@ -1,0 +1,385 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "344d2fe201a4c410e7c6efd8dc1f2107a69f34ac30ce5cc5b7f5afbe600c76bd",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Pressable",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Choose"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "action": {
+                "k": "Comp",
+                "name": "Set",
+                "args": [
+                  {
+                    "k": "StateRef",
+                    "n": "$v"
+                  },
+                  {
+                    "k": "UnaryOp",
+                    "op": "!",
+                    "operand": {
+                      "k": "StateRef",
+                      "n": "$v"
+                    }
+                  }
+                ]
+              },
+              "selected": {
+                "k": "StateRef",
+                "n": "$v"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Ternary",
+                "cond": {
+                  "k": "StateRef",
+                  "n": "$v"
+                },
+                "then": {
+                  "k": "Str",
+                  "v": "Chosen"
+                },
+                "else": {
+                  "k": "Str",
+                  "v": "Choose a tile"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$v": false
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Pressable",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Choose"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "action": {
+              "steps": [
+                {
+                  "type": "set",
+                  "target": "$v",
+                  "valueAST": {
+                    "k": "UnaryOp",
+                    "op": "!",
+                    "operand": {
+                      "k": "StateRef",
+                      "n": "$v"
+                    }
+                  }
+                }
+              ]
+            },
+            "selected": false
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Choose a tile"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 37,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": []
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Tex"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 74,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Choose"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": {
+                    "k": "Comp",
+                    "name": "Set",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$v"
+                      },
+                      {
+                        "k": "UnaryOp",
+                        "op": "!",
+                        "operand": {
+                          "k": "StateRef",
+                          "n": "$v"
+                        }
+                      }
+                    ]
+                  },
+                  "selected": {
+                    "k": "StateRef",
+                    "n": "$v"
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Tex"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 111,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Choose"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": {
+                    "k": "Comp",
+                    "name": "Set",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$v"
+                      },
+                      {
+                        "k": "UnaryOp",
+                        "op": "!",
+                        "operand": {
+                          "k": "StateRef",
+                          "n": "$v"
+                        }
+                      }
+                    ]
+                  },
+                  "selected": {
+                    "k": "StateRef",
+                    "n": "$v"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Ternary",
+                    "cond": {
+                      "k": "StateRef",
+                      "n": "$v"
+                    },
+                    "then": {
+                      "k": "Str",
+                      "v": "Chosen"
+                    },
+                    "else": {
+                      "k": "Str",
+                      "v": "Choose a tile"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$v": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

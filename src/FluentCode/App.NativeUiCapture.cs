@@ -63,7 +63,7 @@ public partial class App
         foreach (var theme in new[] { ElementTheme.Light, ElementTheme.Dark })
         {
             surface.RequestedTheme = theme;
-            foreach (var name in new[] { "calculator", "budget", "assistant" })
+            foreach (var name in new[] { "dashboard", "form", "mixed" })
             {
                 timeline.ClearMessages();
                 var source = File.ReadAllText(Path.Combine(fixtures, "demo-" + name + ".oui"));
@@ -72,7 +72,7 @@ public partial class App
                 {
                     Id = "msg_native_ui_demo_" + name, Type = "assistant", Agent = "primary",
                     Time = new() { Created = 1, Completed = 2 },
-                    Content = [new() { Type = "tool", Name = "native_ui", Id = "tool_native_ui_demo_" + name, State = input, Time = new() { Created = 1, Completed = 2 } }],
+                    Content = [new() { Type = "tool", Name = "native_ui", Id = "tool_native_ui_v1_" + name + "_" + theme, State = input, Time = new() { Created = 1, Completed = 2 } }],
                 } });
                 await Task.Delay(250); surface.UpdateLayout();
                 var view = Descendants(timeline).OfType<FrameworkElement>().Select(element => element.Tag).OfType<OpenCodeNativeUiPartView>().FirstOrDefault()
@@ -84,38 +84,38 @@ public partial class App
                     if (new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke) is not IInvokeProvider invoke) throw new InvalidOperationException("No native Invoke provider: " + label);
                     invoke.Invoke(); await Task.Delay(25);
                 }
-                if (name == "calculator")
+                if (name == "form")
                 {
-                    foreach (var key in new[] { "1", "2", "+", "5", "=", "M+", "C", "8", "+", "MR", "=", "M+" }) await Press(key);
-                    if (NativeUiValues.Number(view.Runtime.Get("$entry")) != 25 || NativeUiValues.Number(view.Runtime.Get("$memory")) != 42) throw new InvalidOperationException("Native calculator memory/arithmetic failed.");
+                    Descendants(timeline).OfType<TextBox>().First(control => control.AcceptsReturn).Text = "回顾交付，讨论风险，明确负责人。";
+                    await Task.Delay(75);
+                    if (!Equals(view.Runtime.Get("$note"), "回顾交付，讨论风险，明确负责人。")) throw new InvalidOperationException("Native TextArea did not update bound state.");
+                    Descendants(timeline).OfType<CommunityToolkit.WinUI.Controls.Segmented>().First().SelectedIndex = 2;
+                    Descendants(timeline).OfType<CalendarDatePicker>().Single().Date = new DateTimeOffset(2026, 11, 12, 0, 0, 0, TimeSpan.Zero);
+                    await Task.Delay(75);
+                    await Press("请帮我完善议程");
+                    if (!Equals(view.Runtime.Get("$period"), "每月") || !Equals(view.Runtime.Get("$date"), "2026-11-12") || lastRequest?.Message != "请帮我完善「产品周会」的议程。") throw new InvalidOperationException("Native v1 form inputs failed.");
+                    // Dispose/re-realize the same part to exercise app-run state rather than only runtime snapshots.
+                    timeline.ClearMessages(); timeline.ApplyMessages(new[] { new OpenCodeMessage { Id = "msg_native_ui_demo_" + name, Type = "assistant", Agent = "primary", Time = new() { Created = 1, Completed = 2 }, Content = [new() { Type = "tool", Name = "native_ui", Id = "tool_native_ui_v1_" + name + "_" + theme, State = input, Time = new() { Created = 1, Completed = 2 } }] } });
+                    await Task.Delay(100); surface.UpdateLayout();
+                    view = Descendants(timeline).OfType<FrameworkElement>().Select(element => element.Tag).OfType<OpenCodeNativeUiPartView>().First();
+                    if (!Equals(view.Runtime?.Get("$period"), "每月") || !Equals(view.Runtime?.Get("$date"), "2026-11-12") || !Equals(view.Runtime?.Get("$note"), "回顾交付，讨论风险，明确负责人。")) throw new InvalidOperationException("Native v1 state did not survive re-realization.");
                 }
-                else if (name == "budget")
+                else if (name == "dashboard")
                 {
-                    Descendants(timeline).OfType<Slider>().Single().Value = 12;
-                    await Task.Delay(75);
-                    Descendants(timeline).OfType<TextBox>().Single().Text = "35";
-                    await Task.Delay(75);
-                    var checkbox = Descendants(timeline).OfType<CheckBox>().Single();
-                    if (new CheckBoxAutomationPeer(checkbox).GetPattern(PatternInterface.Toggle) is not IToggleProvider toggle) throw new InvalidOperationException("No native Checkbox Toggle provider.");
-                    toggle.Toggle(); await Task.Delay(75);
-                    if (NativeUiValues.Number(view.Runtime.Get("$quantity")) != 12 || NativeUiValues.Number(view.Runtime.Get("$unit")) != 35 || !Equals(view.Runtime.Get("$annual"), true))
-                        throw new InvalidOperationException("Native budget inputs failed: " + NativeUiValues.ToJson(view.Runtime.State)?.ToJsonString());
+                    var table = Descendants(timeline).OfType<WinUI.TableView.TableView>().Single();
+                    if (!Descendants(table).OfType<TextBlock>().Any(text => text.Text == "团队版") || !Descendants(table).OfType<TextBlock>().Any(text => text.Text == "增长")) throw new InvalidOperationException("Native table scalar/component cells are empty.");
+                    var chart = Descendants(timeline).OfType<LiveChartsCore.SkiaSharpView.WinUI.CartesianChart>().Single();
+                    if (!chart.Series.OfType<LiveChartsCore.SkiaSharpView.StackedColumnSeries<double>>().Any(series => series.Values?.Any(value => value > 0) is true)) throw new InvalidOperationException("Native chart numeric series are empty.");
                 }
-                else
-                {
-                    Descendants(timeline).OfType<ComboBox>().Single().SelectedIndex = 2;
-                    await Task.Delay(75);
-                    await Press("将选择发给 AI");
-                    if (!Equals(view.Runtime.Get("$choice"), "careful") || sent.Count == 0 || lastRequest?.Message != "请按「优先质量」方案继续。") throw new InvalidOperationException("Native assistant choice failed.");
-                }
+                else if (name == "mixed" && Descendants(timeline).OfType<Microsoft.UI.Xaml.Shapes.Path>().Single().Data is null) throw new InvalidOperationException("Native numeric SVG path did not materialize.");
                 await Task.Delay(100); surface.UpdateLayout();
                 var file = name + "-" + theme.ToString().ToLowerInvariant() + ".png";
                 await CaptureNativeUiPngAsync(surface, Path.Combine(root, file));
-                records.Add(new { program = name, theme = theme.ToString(), png = file, state = view.Runtime.State });
+                records.Add(new { program = name, theme = theme.ToString(), png = file, state = view.Runtime!.State });
             }
         }
         File.WriteAllText(Path.Combine(root, "demos.json"), JsonSerializer.Serialize(new { parser = "lang-core 1.1.0 C# port", offline = true, captures = records, assistantIntents = sent }, new JsonSerializerOptions { WriteIndented = true }));
-        File.WriteAllText(Path.Combine(root, "ready.txt"), "Six native light/dark PNGs captured; calculator and controls exercised; offline only.");
+        File.WriteAllText(Path.Combine(root, "ready.txt"), "Six native v1 light/dark PNGs captured; charts/table, form controls and same-part state replay exercised; offline only.");
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {

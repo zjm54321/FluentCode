@@ -1,0 +1,212 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "7eceb8bc832948d3c1eb8536eb9d11bd4bd298a9631218d726528bb18b8e357b",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Svg",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Line",
+            "props": {
+              "x1": 0,
+              "y1": 0,
+              "x2": 100,
+              "y2": 100,
+              "stroke": "info",
+              "strokeWidth": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "viewBox": "0 0 100 100"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Svg",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Line",
+          "props": {
+            "x1": 0,
+            "y1": 0,
+            "x2": 100,
+            "y2": 100,
+            "stroke": "info",
+            "strokeWidth": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "viewBox": "0 0 100 100"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 18,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Line",
+              "path": "/y1",
+              "message": "missing required field \"/y1\" — signature: Line(x1*: number, y1*: number, x2*: number, y2*: number, stroke: string, strokeWidth: number, opacity: number)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Line",
+              "path": "/x2",
+              "message": "missing required field \"/x2\" — signature: Line(x1*: number, y1*: number, x2*: number, y2*: number, stroke: string, strokeWidth: number, opacity: number)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Line",
+              "path": "/y2",
+              "message": "missing required field \"/y2\" — signature: Line(x1*: number, y1*: number, x2*: number, y2*: number, stroke: string, strokeWidth: number, opacity: number)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 37,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 56,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Line",
+                "props": {
+                  "x1": 0,
+                  "y1": 0,
+                  "x2": 100,
+                  "y2": 100,
+                  "stroke": "info",
+                  "strokeWidth": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "viewBox": "0 0 100 100"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

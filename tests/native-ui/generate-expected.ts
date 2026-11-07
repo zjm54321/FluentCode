@@ -7,6 +7,12 @@ const qol = path.resolve(process.argv[2] ?? process.env.NUI_QOL_ROOT ?? "/home/m
 const core = await import(pathToFileURL(path.join(qol, "kernel/node_modules/@openuidev/lang-core/dist/index.mjs")).href);
 const { library, librarySchema } = await import(pathToFileURL(path.join(qol, "kernel/plugins/native-ui/src/library.ts")).href);
 const folder = path.join(import.meta.dir, "fixtures");
+const { examples } = await import(pathToFileURL(path.join(qol, "kernel/plugins/native-ui/src/reference.ts")).href);
+for (const [name, source] of Object.entries(examples)) await Bun.write(path.join(folder, `reference-${name}.oui`), source + "\n");
+for (const type of ["bar", "line", "area", "pie", "donut", "scatter"]) for (const format of ["number", "currency", "percent"]) {
+  const data = type === "scatter" ? '[{x:1,y:12},{x:2,y:24},{x:3,y:18}]' : '[{x:"A",y:12},{x:"B",y:24},{x:"C",y:18}]';
+  await Bun.write(path.join(folder, `chart-${type}-${format}.oui`), `root = Chart("${type}", ${data}, "x", ["y"], "${format}", "EUR", true, 220)\n`);
+}
 const names = [...new Bun.Glob("*.oui").scanSync(folder)].sort();
 for (const name of names) {
   const source = await Bun.file(path.join(folder, name)).text();

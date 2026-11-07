@@ -15,6 +15,7 @@ namespace FluentCode.Pages.OpenCode;
 internal sealed partial class NativeUiRenderer
 {
     private Flyout? _confirmation;
+    private Brush ComponentBrush(string token, bool background = false) => NativeUiComponentTheme.Brush(token, background, _root.ActualTheme);
     private static void ApplySpacers(Grid row)
     {
         foreach (var spacer in row.Children.OfType<FrameworkElement>().Where(child => Equals(child.Tag, "native-ui-spacer")))
@@ -46,8 +47,8 @@ internal sealed partial class NativeUiRenderer
                     Sync(panel, Children(P(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray());
                     panel.Model = node; panel.InvalidateMeasure();
                     border.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 0)); border.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
-                    border.Background = S(node, "background").Length > 0 ? NativeUiComponentTheme.Brush(S(node, "background"), true) : null;
-                    border.BorderBrush = NativeUiComponentTheme.Brush("faint"); border.BorderThickness = new(B(node, "border") ? 1 : 0);
+                    border.Background = S(node, "background").Length > 0 ? ComponentBrush(S(node, "background"), true) : null;
+                    border.BorderBrush = ComponentBrush("faint"); border.BorderThickness = new(B(node, "border") ? 1 : 0);
                     NativeUiComponentTheme.Length(border, P(node, "width")); NativeUiComponentTheme.Length(border, P(node, "height"), true);
                     border.Tag = node;
                 }; return box;

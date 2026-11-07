@@ -1,0 +1,149 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "263efd5e4a2b38cb153dc6c7ef1b8a8e50eae2108b08f556704fcd928e986970",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Flashcard",
+      "props": {
+        "front": "Capital of France?",
+        "back": "Paris",
+        "hint": "点击翻面"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Flashcard",
+    "props": {
+      "front": "Capital of France?",
+      "back": "Paris",
+      "hint": "点击翻面"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 18,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Flashcard",
+              "path": "/back",
+              "message": "missing required field \"/back\" — signature: Flashcard(front*, back*, hint: string)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 37,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Flashcard",
+              "path": "/back",
+              "message": "missing required field \"/back\" — signature: Flashcard(front*, back*, hint: string)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 56,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Flashcard",
+          "props": {
+            "front": "Capital of France?",
+            "back": "Paris",
+            "hint": "点击翻面"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

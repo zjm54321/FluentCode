@@ -1,0 +1,1 @@
+root = Flashcard("Capital of France?", "Paris", "点击翻面")

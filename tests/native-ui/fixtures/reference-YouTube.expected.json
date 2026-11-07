@@ -1,0 +1,149 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "9d18ebbb3d788be048ceece9cdb38dbe46f0a19fb18289ad20a4754b06bce0b1",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "YouTube",
+      "props": {
+        "video": "dQw4w9WgXcQ",
+        "title": "Video"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "YouTube",
+    "props": {
+      "video": "dQw4w9WgXcQ",
+      "title": "Video"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 13,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "YouTub"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "root does not evaluate to a component",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 26,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "YouTube",
+          "props": {
+            "video": "dQw4w9WgXc"
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 39,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "YouTube",
+          "props": {
+            "video": "dQw4w9WgXcQ",
+            "title": "Video"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

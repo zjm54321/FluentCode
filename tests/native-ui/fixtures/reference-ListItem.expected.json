@@ -1,0 +1,186 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "9fcf38cb1998d92df1a918d2a6390d7d738e92890c0d6e278fdddb5e2d22a3b4",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "ListItem",
+      "props": {
+        "title": "Prepare",
+        "description": "Check inputs",
+        "marker": "1",
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Badge",
+            "props": {
+              "text": "Ready"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "ListItem",
+    "props": {
+      "title": "Prepare",
+      "description": "Check inputs",
+      "marker": "1",
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Badge",
+          "props": {
+            "text": "Ready"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 22,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "ListItem",
+          "props": {
+            "title": "Prepa"
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 44,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "ListItem",
+          "props": {
+            "title": "Prepare",
+            "description": "Check inputs",
+            "marker": ""
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 66,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "ListItem",
+          "props": {
+            "title": "Prepare",
+            "description": "Check inputs",
+            "marker": "1",
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "Ready"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

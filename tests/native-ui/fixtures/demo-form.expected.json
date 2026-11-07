@@ -1,0 +1,1099 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "51cf48405a22d0bbe77110b6b366c1488ae0111b63ab04d95d3fee52855b34b2",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "安排一次会议",
+              "size": "xl"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": "原生表单 · 修改后摘要即时更新"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Form",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Input",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$name"
+                    },
+                    "label": "会议名称"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "SegmentedControl",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$period"
+                    },
+                    "options": [
+                      "每天",
+                      "每周",
+                      "每月"
+                    ],
+                    "block": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "DatePicker",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$date"
+                    },
+                    "label": "开始日期",
+                    "min": "2026-11-01",
+                    "max": "2027-12-31"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$mode"
+                    },
+                    "options": [
+                      "线上",
+                      "现场"
+                    ],
+                    "label": "参与方式",
+                    "variant": "pills"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "TextArea",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$note"
+                    },
+                    "label": "议程",
+                    "placeholder": "写下讨论要点",
+                    "rows": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Divider",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$name"
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": " · "
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$period"
+                              }
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": " · "
+                            }
+                          },
+                          "right": {
+                            "k": "StateRef",
+                            "n": "$date"
+                          }
+                        },
+                        "right": {
+                          "k": "Str",
+                          "v": " · "
+                        }
+                      },
+                      "right": {
+                        "k": "StateRef",
+                        "n": "$mode"
+                      }
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "请帮我完善议程",
+                    "action": {
+                      "k": "Comp",
+                      "name": "ToAssistant",
+                      "args": [
+                        {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "请帮我完善「"
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$name"
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "」的议程。"
+                          }
+                        },
+                        {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "date",
+                              {
+                                "k": "StateRef",
+                                "n": "$date"
+                              }
+                            ],
+                            [
+                              "period",
+                              {
+                                "k": "StateRef",
+                                "n": "$period"
+                              }
+                            ],
+                            [
+                              "mode",
+                              {
+                                "k": "StateRef",
+                                "n": "$mode"
+                              }
+                            ],
+                            [
+                              "note",
+                              {
+                                "k": "StateRef",
+                                "n": "$note"
+                              }
+                            ]
+                          ]
+                        }
+                      ],
+                      "mappedProps": {
+                        "message": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "请帮我完善「"
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$name"
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "」的议程。"
+                          }
+                        },
+                        "context": {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "date",
+                              {
+                                "k": "StateRef",
+                                "n": "$date"
+                              }
+                            ],
+                            [
+                              "period",
+                              {
+                                "k": "StateRef",
+                                "n": "$period"
+                              }
+                            ],
+                            [
+                              "mode",
+                              {
+                                "k": "StateRef",
+                                "n": "$mode"
+                              }
+                            ],
+                            [
+                              "note",
+                              {
+                                "k": "StateRef",
+                                "n": "$note"
+                              }
+                            ]
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ],
+        "variant": "outline"
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 6,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$name": "产品周会",
+      "$note": "梳理本周进展，确认下一步。",
+      "$period": "每周",
+      "$date": "2026-11-09",
+      "$mode": "线上"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "安排一次会议",
+            "size": "xl"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "原生表单 · 修改后摘要即时更新"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Form",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$name",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "会议名称"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$period",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    "每天",
+                    "每周",
+                    "每月"
+                  ],
+                  "block": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "DatePicker",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$date",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "开始日期",
+                  "min": "2026-11-01",
+                  "max": "2027-12-31"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$mode",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    "线上",
+                    "现场"
+                  ],
+                  "label": "参与方式",
+                  "variant": "pills"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "TextArea",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$note",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "议程",
+                  "placeholder": "写下讨论要点",
+                  "rows": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "产品周会 · 每周 · 2026-11-09 · 线上"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "请帮我完善议程",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "continue_conversation",
+                        "message": "请帮我完善「产品周会」的议程。",
+                        "context": {
+                          "date": "2026-11-09",
+                          "period": "每周",
+                          "mode": "线上",
+                          "note": "梳理本周进展，确认下一步。"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ],
+      "variant": "outline"
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 197,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "安排一次会议",
+                  "size": "xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "原生表单 · 修改后摘要即时更新"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Form",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        },
+                        "label": "会议名称"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "SegmentedCo"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": "产品周会",
+          "$note": "梳理本周进展，确认下一步。",
+          "$period": "每周",
+          "$date": "2026-11-09",
+          "$mode": "线上"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 394,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "安排一次会议",
+                  "size": "xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "原生表单 · 修改后摘要即时更新"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Form",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        },
+                        "label": "会议名称"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$period"
+                        },
+                        "options": [
+                          "每天",
+                          "每周",
+                          "每月"
+                        ],
+                        "block": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "DatePicker",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$date"
+                        },
+                        "label": "开始日期",
+                        "min": "2026-11-01",
+                        "max": "2027-12-31"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mode"
+                        },
+                        "options": [
+                          "线上",
+                          "现场"
+                        ],
+                        "label": "参与方式",
+                        "variant": "pills"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "TextArea",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$note"
+                        },
+                        "label": "议程",
+                        "placeholder": "写下讨论要点",
+                        "rows": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": "产品周会",
+          "$note": "梳理本周进展，确认下一步。",
+          "$period": "每周",
+          "$date": "2026-11-09",
+          "$mode": "线上"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 591,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "安排一次会议",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "原生表单 · 修改后摘要即时更新"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Form",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        },
+                        "label": "会议名称"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$period"
+                        },
+                        "options": [
+                          "每天",
+                          "每周",
+                          "每月"
+                        ],
+                        "block": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "DatePicker",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$date"
+                        },
+                        "label": "开始日期",
+                        "min": "2026-11-01",
+                        "max": "2027-12-31"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mode"
+                        },
+                        "options": [
+                          "线上",
+                          "现场"
+                        ],
+                        "label": "参与方式",
+                        "variant": "pills"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "TextArea",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$note"
+                        },
+                        "label": "议程",
+                        "placeholder": "写下讨论要点",
+                        "rows": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$name"
+                                    },
+                                    "right": {
+                                      "k": "Str",
+                                      "v": " · "
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$period"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": " · "
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$date"
+                              }
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": " · "
+                            }
+                          },
+                          "right": {
+                            "k": "StateRef",
+                            "n": "$mode"
+                          }
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "请帮我完善议程",
+                        "action": {
+                          "k": "Comp",
+                          "name": "ToAssistant",
+                          "args": [
+                            {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "请帮我完善「"
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$name"
+                                }
+                              },
+                              "right": {
+                                "k": "Str",
+                                "v": "」的议程。"
+                              }
+                            },
+                            {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "date",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$date"
+                                  }
+                                ],
+                                [
+                                  "period",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$period"
+                                  }
+                                ],
+                                [
+                                  "mode",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$mode"
+                                  }
+                                ],
+                                [
+                                  "note",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$note"
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          "mappedProps": {
+                            "message": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": "请帮我完善「"
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$name"
+                                }
+                              },
+                              "right": {
+                                "k": "Str",
+                                "v": "」的议程。"
+                              }
+                            },
+                            "context": {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "date",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$date"
+                                  }
+                                ],
+                                [
+                                  "period",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$period"
+                                  }
+                                ],
+                                [
+                                  "mode",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$mode"
+                                  }
+                                ],
+                                [
+                                  "note",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$note"
+                                  }
+                                ]
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "outline"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": "产品周会",
+          "$note": "梳理本周进展，确认下一步。",
+          "$period": "每周",
+          "$date": "2026-11-09",
+          "$mode": "线上"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

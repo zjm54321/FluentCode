@@ -1,0 +1,1 @@
+root = Chart("line", [{x:"A",y:12},{x:"B",y:24},{x:"C",y:18}], "x", ["y"], "percent", "EUR", true, 220)

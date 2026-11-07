@@ -29,7 +29,7 @@ internal sealed partial class NativeUiRenderer
                 codeVisual.Apply = node => { var source = S(node, "code"); var fence = new string('`', Math.Max(3, Regex.Matches(source, "`+").Select(match => match.Length + 1).DefaultIfEmpty(3).Max())); var language = Regex.Replace(S(node, "language"), "[^a-zA-Z0-9_+-]", ""); code.Render(fence + language + "\n" + source + "\n" + fence, OpenCodeRichTextStyle.Body); }; return codeVisual;
             case "Quote":
                 var quoteText = NativeUiComponentTheme.Text(""); var cite = NativeUiComponentTheme.Text("", true); var quotePanel = new StackPanel { Spacing = NativeUiTheme.Gap(2), Children = { quoteText, cite } }; var quote = new Border { Child = quotePanel, BorderThickness = new(3, 0, 0, 0), Padding = new(NativeUiTheme.Gap(3), NativeUiTheme.Gap(1), 0, NativeUiTheme.Gap(1)) }; var quoteVisual = new Visual(quote);
-                quoteVisual.Apply = node => { quoteText.Text = S(node, "text"); cite.Text = S(node, "cite"); cite.Visibility = cite.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed; quote.BorderBrush = NativeUiComponentTheme.Brush("info"); }; return quoteVisual;
+                quoteVisual.Apply = node => { quoteText.Text = S(node, "text"); cite.Text = S(node, "cite"); cite.Visibility = cite.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed; quote.BorderBrush = ComponentBrush("info"); }; return quoteVisual;
             case "Link":
                 var link = new HyperlinkButton(); var linkVisual = new Visual(link);
                 link.Click += async (_, _) => { if (!linkVisual.Disposed) await OpenAsync(S(linkVisual.Model, "url")); };
@@ -48,7 +48,7 @@ internal sealed partial class NativeUiRenderer
                         var custom = values[i] is NativeUiElement entry ? S(entry, "marker") : "";
                         var marker = custom.Length > 0 ? custom : S(node, "marker") switch { "none" => "", "number" => (i + 1).ToString(CultureInfo.InvariantCulture), _ => "•" };
                         var markerText = NativeUiComponentTheme.Text(marker, true); var rail = new StackPanel { MinWidth = 20 }; rail.Children.Add(markerText);
-                        if (B(node, "timeline") && i < values.Count - 1) rail.Children.Add(new Border { Width = 1, MinHeight = 24, Background = NativeUiComponentTheme.Brush("faint"), HorizontalAlignment = HorizontalAlignment.Center });
+                        if (B(node, "timeline") && i < values.Count - 1) rail.Children.Add(new Border { Width = 1, MinHeight = 24, Background = ComponentBrush("faint"), HorizontalAlignment = HorizontalAlignment.Center });
                         row.Children.Add(rail); var body = Slot(values[i], key + "/items/" + i, depth); Grid.SetColumn(body, 1); row.Children.Add(body); children.Add(row);
                     }
                     Sync(list, children);
@@ -66,7 +66,7 @@ internal sealed partial class NativeUiRenderer
                     storyboard.Stop(); storyboard.Children.Clear(); celebration.Children.Clear(); celebration.Height = 100;
                     for (var i = 0; i < 24; i++)
                     {
-                        var transform = new TranslateTransform(); var confetti = new Rectangle { Width = 5 + i % 4, Height = 8, Fill = NativeUiComponentTheme.Brush(new[] { "info", "success", "warning", "purple", "pink", "danger" }[i % 6]), RenderTransform = transform }; Canvas.SetLeft(confetti, (i * 29) % 600); Canvas.SetTop(confetti, -12); celebration.Children.Add(confetti);
+                        var transform = new TranslateTransform(); var confetti = new Rectangle { Width = 5 + i % 4, Height = 8, Fill = ComponentBrush(new[] { "info", "success", "warning", "purple", "pink", "danger" }[i % 6]), RenderTransform = transform }; Canvas.SetLeft(confetti, (i * 29) % 600); Canvas.SetTop(confetti, -12); celebration.Children.Add(confetti);
                         var fall = new DoubleAnimation { From = -12, To = 110, Duration = new(TimeSpan.FromSeconds(1.2 + i % 4 * 0.15)), EnableDependentAnimation = true }; Storyboard.SetTarget(fall, transform); Storyboard.SetTargetProperty(fall, "Y"); storyboard.Children.Add(fall);
                     }
                     storyboard.Begin();
@@ -74,7 +74,7 @@ internal sealed partial class NativeUiRenderer
                 storyboard.Completed += (_, _) => { celebration.Height = 0; celebration.Children.Clear(); }; celebrationVisual.Cleanup = storyboard.Stop; return celebrationVisual;
             case "Icon":
                 var iconHost = new ContentControl(); var iconVisual = new Visual(iconHost);
-                iconVisual.Apply = node => { var icon = NativeUiComponentTheme.Icon(S(node, "name")); icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 18 }; icon.Foreground = NativeUiComponentTheme.Brush(S(node, "color")); iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
+                iconVisual.Apply = node => { var icon = NativeUiComponentTheme.Icon(S(node, "name")); icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 18 }; icon.Foreground = ComponentBrush(S(node, "color")); iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
             case "Image": return CreateImage(key);
             case "SearchImage":
                 var searchPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var searchText = NativeUiComponentTheme.Text(""); var searchButton = new Button { Content = "在浏览器中搜索图片" }; searchPanel.Children.Add(searchText); searchPanel.Children.Add(searchButton); var searchVisual = new Visual(searchPanel);

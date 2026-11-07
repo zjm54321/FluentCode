@@ -45,10 +45,10 @@ internal sealed partial class NativeUiRenderer
         }
         return group;
     }
-    private static void Paint(Shape shape, NativeUiElement node, bool filled)
+    private void Paint(Shape shape, NativeUiElement node, bool filled)
     {
-        shape.Fill = P(node, "fill") is not null ? NativeUiComponentTheme.Brush(S(node, "fill")) : filled && P(node, "stroke") is null ? NativeUiComponentTheme.Brush("ink") : null;
-        shape.Stroke = P(node, "stroke") is not null ? NativeUiComponentTheme.Brush(S(node, "stroke")) : !filled ? NativeUiComponentTheme.Brush("ink") : null;
+        shape.Fill = P(node, "fill") is not null ? ComponentBrush(S(node, "fill")) : filled && P(node, "stroke") is null ? ComponentBrush("ink") : null;
+        shape.Stroke = P(node, "stroke") is not null ? ComponentBrush(S(node, "stroke")) : !filled ? ComponentBrush("ink") : null;
         shape.StrokeThickness = Math.Clamp(N(node, "strokeWidth", filled ? 1 : 2), 0, 1000); shape.Opacity = Math.Clamp(N(node, "opacity", 1), 0, 1); shape.StrokeLineJoin = PenLineJoin.Round; shape.StrokeStartLineCap = shape.StrokeEndLineCap = PenLineCap.Round;
     }
     private Visual? CreateDrawing(string type, string key, int depth)
@@ -92,7 +92,7 @@ internal sealed partial class NativeUiRenderer
                 pointsVisual.Apply = node => { var coordinates = Coordinates(S(node, "points")); var points = new PointCollection(); for (var i = 0; i + 1 < coordinates.Length; i += 2) points.Add(new(coordinates[i], coordinates[i + 1])); if (pointsShape is Polygon polygon) polygon.Points = points; else ((Polyline)pointsShape).Points = points; Paint(pointsShape, node, type == "Polygon"); }; return pointsVisual;
             case "SvgText":
                 var svgText = NativeUiComponentTheme.Text(""); svgText.IsTextSelectionEnabled = false; var svgTextVisual = new Visual(svgText);
-                svgTextVisual.Apply = node => { svgText.Text = S(node, "text"); svgText.FontSize = Math.Clamp(N(node, "size", 12), 1, 500); svgText.Foreground = NativeUiComponentTheme.Brush(S(node, "fill")); svgText.FontWeight = S(node, "weight") switch { "semibold" => FontWeights.SemiBold, "medium" => FontWeights.Medium, _ => FontWeights.Normal }; svgText.Measure(new(double.PositiveInfinity, double.PositiveInfinity)); var offset = S(node, "anchor") switch { "middle" => svgText.DesiredSize.Width / 2, "end" => svgText.DesiredSize.Width, _ => 0 }; Canvas.SetLeft(svgText, N(node, "x") - offset); Canvas.SetTop(svgText, N(node, "y") - svgText.FontSize); }; return svgTextVisual;
+                svgTextVisual.Apply = node => { svgText.Text = S(node, "text"); svgText.FontSize = Math.Clamp(N(node, "size", 12), 1, 500); svgText.Foreground = ComponentBrush(S(node, "fill")); svgText.FontWeight = S(node, "weight") switch { "semibold" => FontWeights.SemiBold, "medium" => FontWeights.Medium, _ => FontWeights.Normal }; svgText.Measure(new(double.PositiveInfinity, double.PositiveInfinity)); var offset = S(node, "anchor") switch { "middle" => svgText.DesiredSize.Width / 2, "end" => svgText.DesiredSize.Width, _ => 0 }; Canvas.SetLeft(svgText, N(node, "x") - offset); Canvas.SetTop(svgText, N(node, "y") - svgText.FontSize); }; return svgTextVisual;
             default: return null;
         }
     }

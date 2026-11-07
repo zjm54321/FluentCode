@@ -1,0 +1,255 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "c02d1a79402250c286ce87ba30029bcbff394f210f3feb340d466f63d524a84b",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "DatePicker",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$date"
+              },
+              "label": "Date",
+              "min": "2026-01-01",
+              "max": "2026-12-31"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "StateRef",
+                "n": "$date"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$date": "2026-11-07"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "DatePicker",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$date",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "label": "Date",
+            "min": "2026-01-01",
+            "max": "2026-12-31"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "2026-11-07"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 34,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": []
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "D"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$date": "2026-11-07"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 68,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "DatePicker",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$date"
+                  },
+                  "label": "Date",
+                  "min": "2026-01-"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$date": "2026-11-07"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 102,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "DatePicker",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$date"
+                  },
+                  "label": "Date",
+                  "min": "2026-01-01",
+                  "max": "2026-12-31"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "StateRef",
+                    "n": "$date"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$date": "2026-11-07"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

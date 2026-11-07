@@ -1,0 +1,179 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "ff8f717d56ca77394d02dd09eb3da824daebe378f77b3a2086b9ec102c1a9e3c",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Svg",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Polygon",
+            "props": {
+              "points": "50,0 100,100 0,100",
+              "fill": "warning"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "viewBox": "0 0 100 100"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Svg",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Polygon",
+          "props": {
+            "points": "50,0 100,100 0,100",
+            "fill": "warning"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "viewBox": "0 0 100 100"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 23,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 46,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 69,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Polygon",
+                "props": {
+                  "points": "50,0 100,100 0,100",
+                  "fill": "warning"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "viewBox": "0 0 100 100"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

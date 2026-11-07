@@ -1,0 +1,6 @@
+root = Col([
+  Title("运营概览", "xl"), Caption("2026 · 最近四个月"),
+  Grid([Card([Caption("总收入"), Title("¥128,400", "2xl"), Badge("↑ 18.6%", "success", "arrow-up-right")], "soft"), Card([Caption("活跃用户"), Title("2,840", "2xl"), Caption("较上月 +320")], "outline")], 2, 200, 3),
+  Chart("bar", [{month:"7月","订阅":18,"服务":8},{month:"8月","订阅":24,"服务":10},{month:"9月","订阅":27,"服务":12},{month:"10月","订阅":34,"服务":15}], "month", ["订阅","服务"], "currency", "CNY", true, 220),
+  Table(["方案", "状态", "月收入"], [["团队版",Badge("增长", "success"),68400],["专业版",Badge("稳定", "info"),42000],["入门版",Badge("试用", "warning"),18000]])
+], 3)

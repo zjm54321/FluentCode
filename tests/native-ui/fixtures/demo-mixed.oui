@@ -1,0 +1,7 @@
+root = Col([Title("周末城市漫游", "xl"), Caption("布局、内容与矢量图 · 无自动网络访问"),
+  Grid([Box([Icon("map-pin","lg","info"), Title("里斯本", "lg"), Text("沿河散步，走进旧城。"), Badge("轻松路线", "success")], "col", 2, 4, "surface", "lg", true),
+        Svg([Rect(0,0,200,120,"info",null,null,0.12,12),G([Circle(45,50,22,"success"),Path("M85 90 L115 30 L150 90 Z","warning"),Circle(155,35,12,"purple")]),SvgText("探索 · 发现",100,108,13,"ink","middle")], "0 0 200 120", 280, 168)], 2, 220, 3),
+  List([ListItem("上午 · 老城", "巷弄、咖啡与观景台", "09:00"),ListItem("下午 · 河岸", "慢走到贝伦塔", "14:00")], "none", true),
+  Row([Popover("行前提示", [Text("穿舒适的鞋，带上水。"),Caption("卡片内原生浮层")]), Link("城市指南", "https://www.visitlisboa.com/")], 3),
+  Flashcard("葡萄牙语的「谢谢」怎么说？", [Title("Obrigado / Obrigada", "lg"),Caption("点击返回")], "点击查看答案")
+], 3)

@@ -1,0 +1,181 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "9ace1fad4034741fe262ad9c0296f3d6d5ab69ee003a7d99a2df1f259b43a14f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Text",
+      "props": {
+        "text": [
+          "Ready ",
+          {
+            "type": "element",
+            "typeName": "Badge",
+            "props": {
+              "text": "OK"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Text",
+    "props": {
+      "text": [
+        "Ready ",
+        {
+          "type": "element",
+          "typeName": "Badge",
+          "props": {
+            "text": "OK"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 12,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "missing required field \"/text\" — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 24,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": [
+              "Ready "
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "B"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 37,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": [
+              "Ready ",
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "OK"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

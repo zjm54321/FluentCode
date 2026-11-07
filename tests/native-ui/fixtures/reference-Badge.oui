@@ -1,0 +1,1 @@
+root = Badge("Complete", "success", "check")

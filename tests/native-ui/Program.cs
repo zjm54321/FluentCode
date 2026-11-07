@@ -98,6 +98,17 @@ internal static class Program
             using var urlInput = new NativeUiRuntime(parser.Parse("$url = \"https://example.org\"\nroot = Input($url, \"URL\")"), catalog);
             Require(!urlInput.TrySetField("URL", urlInput.EvaluateRoot()!.Props["value"], "file:///etc/passwd")
                 && Equals(urlInput.Get("$url"), "https://example.org") && urlInput.Status.Contains("http(s)"), "Rejected native input preserves state and reports locally");
+            Require(catalog.Components.Count == 54 && !catalog.Components.ContainsKey("HtmlView"), "Complete native catalog without HTML");
+            using var form = Demo("form"); form.Set("$period", "每月"); form.Set("$date", "2026-11-12");
+            form.TrySetField("$ui:flash", null, true); NativeUiStateStore.Save("part-1", form.Program.Source, form.Snapshot());
+            using var reopened = Demo("form"); reopened.Restore(NativeUiStateStore.Read("part-1", form.Program.Source)!);
+            Require(Equals(reopened.Get("$period"), "每月") && Equals(reopened.Get("$date"), "2026-11-12") && Equals(reopened.Field("$ui:flash", false), true), "Part ID snapshot survives runtime disposal/recreation including local UI state");
+            Require(NativeUiStateStore.Read("part-other", form.Program.Source) is null && NativeUiStateStore.Read("part-1", "different source") is null, "Part/source state isolation");
+            using var external = new NativeUiRuntime(parser.Parse("$n = 0\nroot = Button(\"Open\", Action([@OpenUrl(\"https://example.org/full?query=1#anchor\"), @Set($n, 1)]))"), catalog);
+            string? asked = null; external.OpenUrl = url => { asked = url; return Task.FromResult(new NativeUiHostResult(false, "cancelled")); };
+            await Press(external, "Open"); Require(asked == "https://example.org/full?query=1#anchor" && NativeUiValues.Number(external.Get("$n")) == 0, "Cancelled URL preserves full URL and stops action sequence");
+            external.OpenUrl = _ => Task.FromResult(new NativeUiHostResult(true, "opened")); await Press(external, "Open"); Require(NativeUiValues.Number(external.Get("$n")) == 1, "Accepted URL continues ordered actions");
+            Require(NativeUiImages.Https("https://example.org/image.png") && !NativeUiImages.Https("http://example.org/image.png") && !NativeUiImages.Https("file:///image.png"), "Image HTTPS-only policy");
             var payload = new NativeUiAssistantRequest("Continue with this option", new Dictionary<string, object?> { ["id"] = 1d }, new Dictionary<string, object?>());
             Require(NativeUiComposerPolicy.Create(payload, true, true, catalog.Limits).Delivery == "queue", "Busy assistant queues through composer policy");
             Require(!NativeUiComposerPolicy.Create(payload, true, false, catalog.Limits).Allowed, "Unsupported queue fails closed");
@@ -116,6 +127,8 @@ internal static class Program
             var markdownSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
             Require(markdownSource.Contains("_nativeUiSandbox ? null : OpenCodeImageContext.Find(_root)") && markdownSource.Contains("_nativeUiSandbox ? null : new ChipContext")
                 && markdownSource.Contains("? nativeUiSandbox ? \"text\" : \"mermaid\""), "Native Markdown has no inherited files/network/browser capability");
+            var confirmationSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Components.cs"));
+            Require(confirmationSource.Contains("NativeUiComponentTheme.Text(url)") && confirmationSource.Contains("await completion.Task") && confirmationSource.Contains("Launcher.LaunchUriAsync"), "Full URL confirmation precedes external launch");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }

@@ -13,6 +13,10 @@ $saved = @{}
 foreach ($key in @('FC_NATIVE_UI_CAPTURE_ROOT', 'FC_NATIVE_UI_FIXTURES', 'FC_STARTUP_SMOKE_ROOT')) { $saved[$key] = [Environment]::GetEnvironmentVariable($key) }
 $process = $null
 try {
+    for ($attempt = 0; Get-Process RichEditPrototype -ErrorAction SilentlyContinue; $attempt++) {
+        if ($attempt -ge 20) { throw 'Native composer test still running after 20 minutes; no window launched.' }
+        Start-Sleep -Seconds 60
+    }
     $env:FC_NATIVE_UI_CAPTURE_ROOT = $root
     $env:FC_NATIVE_UI_FIXTURES = Join-Path $PSScriptRoot 'fixtures'
     $env:FC_STARTUP_SMOKE_ROOT = Join-Path $root 'profile'
@@ -24,13 +28,13 @@ try {
     # Keep the committed Windows-generated metadata LF-only for the repository whitespace contract.
     $manifest = Join-Path $root 'demos.json'
     [IO.File]::WriteAllText($manifest, [IO.File]::ReadAllText($manifest).Replace("`r`n", "`n").TrimEnd("`n") + "`n", [Text.UTF8Encoding]::new($false))
-    foreach ($name in @('calculator', 'budget', 'assistant')) {
+    foreach ($name in @('dashboard', 'form', 'mixed')) {
         foreach ($theme in @('light', 'dark')) {
             $file = Join-Path $root "$name-$theme.png"
             if (!(Test-Path $file) -or (Get-Item $file).Length -eq 0) { throw "Missing PNG: $file" }
         }
     }
-    Write-Output "PASS six native UI demo PNGs: $root"
+    Write-Output "PASS six native UI v1 demo PNGs: $root"
 }
 finally {
     if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id }

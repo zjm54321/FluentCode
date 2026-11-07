@@ -1,0 +1,233 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "bc4684c98fa52675bfce0a4e259a53ea0eee20eb483a74d079d741ef5292e739",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Chart",
+      "props": {
+        "type": "pie",
+        "data": [
+          {
+            "x": "A",
+            "y": 12
+          },
+          {
+            "x": "B",
+            "y": 24
+          },
+          {
+            "x": "C",
+            "y": 18
+          }
+        ],
+        "x": "x",
+        "series": [
+          "y"
+        ],
+        "format": "percent",
+        "currency": "EUR",
+        "stacked": true,
+        "height": 220
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Chart",
+    "props": {
+      "type": "pie",
+      "data": [
+        {
+          "x": "A",
+          "y": 12
+        },
+        {
+          "x": "B",
+          "y": 24
+        },
+        {
+          "x": "C",
+          "y": 18
+        }
+      ],
+      "x": "x",
+      "series": [
+        "y"
+      ],
+      "format": "percent",
+      "currency": "EUR",
+      "stacked": true,
+      "height": 220
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 34,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "pie",
+            "data": [
+              {
+                "x": "A",
+                "y": 12
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 68,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "pie",
+            "data": [
+              {
+                "x": "A",
+                "y": 12
+              },
+              {
+                "x": "B",
+                "y": 24
+              },
+              {
+                "x": "C",
+                "y": 18
+              }
+            ],
+            "x": "x",
+            "series": []
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 103,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "pie",
+            "data": [
+              {
+                "x": "A",
+                "y": 12
+              },
+              {
+                "x": "B",
+                "y": 24
+              },
+              {
+                "x": "C",
+                "y": 18
+              }
+            ],
+            "x": "x",
+            "series": [
+              "y"
+            ],
+            "format": "percent",
+            "currency": "EUR",
+            "stacked": true,
+            "height": 220
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+$done = false
+root = Col([Checkbox($done, "Done"), Text($done ? "Ready" : "Pending")])

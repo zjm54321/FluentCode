@@ -1,0 +1,228 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "97a1190d655159d6456d4294fa2e66bd6a8457632a69616d6b93b1c4a2f6cc1c",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Svg",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "G",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Rect",
+                  "props": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 20,
+                    "height": 20,
+                    "fill": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "transform": "translate(10 10)"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "viewBox": "0 0 100 100"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Svg",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "G",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Rect",
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 20,
+                  "height": 20,
+                  "fill": "success"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "transform": "translate(10 10)"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "viewBox": "0 0 100 100"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 26,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Rect",
+              "path": "/height",
+              "message": "missing required field \"/height\" — signature: Rect(x*: number, y*: number, width*: number, height*: number, fill: string, stroke: string, strokeWidth: number, opacity: number, rx: number)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 53,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 80,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "G",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 20,
+                        "height": 20,
+                        "fill": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "transform": "translate(10 10)"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "viewBox": "0 0 100 100"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

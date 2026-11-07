@@ -1,0 +1,2 @@
+$name = ""
+root = Form([Input($name, "Name"), Button("Ask", @ToAssistant("Help me plan for " + $name))])

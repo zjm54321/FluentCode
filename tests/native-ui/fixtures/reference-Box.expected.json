@@ -1,0 +1,217 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "15c2d6eb04d0afe5de8d4acbc3034988aa2fe3c6b2c1fdcfbd4b6f53d1e8d02f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Box",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Panel"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "direction": "col",
+        "gap": 3,
+        "padding": 4,
+        "background": "surface",
+        "radius": "lg",
+        "border": true
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Box",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Panel"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "direction": "col",
+      "gap": 3,
+      "padding": 4,
+      "background": "surface",
+      "radius": "lg",
+      "border": true
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 21,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Pan"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 42,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Panel"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "direction": "col",
+            "gap": 3,
+            "padding": 4,
+            "background": ""
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 64,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Panel"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "direction": "col",
+            "gap": 3,
+            "padding": 4,
+            "background": "surface",
+            "radius": "lg",
+            "border": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

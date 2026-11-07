@@ -1,0 +1,182 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "44d68ec8b21a5db193938d75f05443cf483c297ede15f5ab1f1ac9c9e3633631",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Svg",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Polyline",
+            "props": {
+              "points": "0,0 50,50 100,0",
+              "stroke": "info",
+              "strokeWidth": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "viewBox": "0 0 100 100"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Svg",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Polyline",
+          "props": {
+            "points": "0,0 50,50 100,0",
+            "stroke": "info",
+            "strokeWidth": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "viewBox": "0 0 100 100"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 22,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 44,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 66,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Polyline",
+                "props": {
+                  "points": "0,0 50,50 100,0",
+                  "stroke": "info",
+                  "strokeWidth": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "viewBox": "0 0 100 100"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

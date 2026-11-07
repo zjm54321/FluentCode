@@ -1,0 +1,14 @@
+$name = "产品周会"
+$note = "梳理本周进展，确认下一步。"
+$period = "每周"
+$date = "2026-11-09"
+$mode = "线上"
+root = Card([Title("安排一次会议", "xl"), Caption("原生表单 · 修改后摘要即时更新"), Form([
+  Input($name, "会议名称"),
+  SegmentedControl($period, ["每天","每周","每月"], true),
+  DatePicker($date, "开始日期", "2026-11-01", "2027-12-31"),
+  RadioGroup($mode, ["线上","现场"], "参与方式", "pills"),
+  TextArea($note, "议程", "写下讨论要点", 3),
+  Divider(), Text($name + " · " + $period + " · " + $date + " · " + $mode),
+  Button("请帮我完善议程", @ToAssistant("请帮我完善「" + $name + "」的议程。", {date:$date, period:$period, mode:$mode, note:$note}))
+])], "outline")

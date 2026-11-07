@@ -1,0 +1,1 @@
+root = Chart("donut", [{x:"A",y:12},{x:"B",y:24},{x:"C",y:18}], "x", ["y"], "number", "EUR", true, 220)
