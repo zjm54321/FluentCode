@@ -13,7 +13,7 @@
 
 FluentCode 为 OpenCode 及 opencode-qol 后端提供原生 Windows 桌面界面。应用基于 WinUI 3 开发，使用资源管理器风格的单行标签栏、Windows Terminal 原生控件、离线 Node.js 浏览器运行时以及系统通知与任务栏状态指示。
 
-本项目是保留完整历史的独立 Git 仓库；`opencode-qol` 通过 `clients/windows` 子模块锁定具体提交，父仓库只保存链接，不合并客户端历史，也不将客户端纳入 Linux Nix 构建。当前版本为 **1.2611.9**，父仓库的 Windows 发布标签使用 `fluentcode-v*`（例如 `fluentcode-v1.2611.9`）。已签名 MSIX 的完整文件夹中可双击 `Install.cmd`：先核验安装包和证书，经你确认后仅为证书信任请求 UAC，再以原普通用户安装。不要以管理员身份运行整个安装脚本。构建、签名及故障排查见 [MSIX 指南](docs/msix.md)；自动更新待提供真实发布端点后配置。
+本项目是保留完整历史的独立 Git 仓库；`opencode-qol` 通过 `clients/windows` 子模块锁定具体提交，父仓库只保存链接，不合并客户端历史，也不将客户端纳入 Linux Nix 构建。当前版本为 **1.2611.10**，父仓库的 Windows 发布标签使用 `fluentcode-v*`（例如 `fluentcode-v1.2611.10`）。已签名 MSIX 的完整文件夹中可双击 `Install.cmd`：先核验安装包和证书，经你确认后仅为证书信任请求 UAC，再以原普通用户安装。不要以管理员身份运行整个安装脚本。构建、签名及故障排查见 [MSIX 指南](docs/msix.md)；自动更新待提供真实发布端点后配置。
 
 ---
 
