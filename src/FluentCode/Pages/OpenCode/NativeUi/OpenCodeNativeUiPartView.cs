@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using FluentCode.Services.NativeUi;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 
 namespace FluentCode.Pages.OpenCode;
@@ -29,7 +30,7 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
     {
         if (_disposed) return;
         var input = NativeUiToolInput.Read(state, _catalog.Limits);
-        if (input.Streaming) { ClearRuntime(); _source = null; _root.Children.Clear(); _root.Children.Add(NativeUiTheme.Notice("正在生成交互卡片…", "输入完成后显示原生控件")); return; }
+        if (input.Streaming) { ClearRuntime(); _source = null; if (_root.Children.Count != 1 || _root.Children[0] is not FrameworkElement { Tag: NativeUiTheme.PlaceholderTag }) { _root.Children.Clear(); _root.Children.Add(NativeUiTheme.Placeholder(input.Title)); } return; }
         if (input.Error is { } inputError) { Error(inputError); return; }
         if (_runtime is not null && input.Source == _source && input.Title == _title) return; // Tool progress/success must not reset local state.
         ClearRuntime(); _source = input.Source; _title = input.Title;
@@ -45,10 +46,8 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
             _runtime = new(parsed, _catalog) { ToAssistant = request => ToAssistant?.Invoke(request) ?? Task.FromResult(new NativeUiHostResult(false, "当前输入区不可用")) };
             _renderer = new(_runtime); _runtime.Changed += Refresh;
             _root.Children.Clear();
-            if (!string.IsNullOrWhiteSpace(input.Title))
-            {
-                var heading = new TextBlock { Text = input.Title }; NativeUiTheme.Text(heading, new("Caption", new Dictionary<string, object?>())); _root.Children.Add(heading);
-            }
+            // The tool title names the card for assistive tech; the card's own Title is the visible heading.
+            AutomationProperties.SetName(_renderer.Element, string.IsNullOrWhiteSpace(input.Title) ? "交互卡片" : input.Title);
             _root.Children.Add(_renderer.Element); _root.Children.Add(_status); Refresh();
         }
         catch (NativeUiLimitException error) { Error(error.Message); }
