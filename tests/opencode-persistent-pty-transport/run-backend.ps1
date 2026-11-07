@@ -10,7 +10,7 @@ $dll = Join-Path $EvidenceRoot 'PtyBackendTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', "/out:`"$dll`"")
 $arguments += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 @(
- 'OpenCodeAuthenticationMode.cs','OpenCodeClientOptions.cs','OpenCodeExceptions.cs','OpenCodeJson.cs','OpenCodeConstants.cs',
+ 'OpenCodeAuthenticationMode.cs','OpenCodeClientOptions.cs','OpenCodeSocketTransport.cs','OpenCodeExceptions.cs','OpenCodeJson.cs','OpenCodeConstants.cs',
  'OpenCodeClient.cs','OpenCodeClient.Interactions.cs','OpenCodeClient.Agents.cs','OpenCodeClient.SessionControls.cs',
  'OpenCodeDtos.SessionControls.cs','OpenCodeDtos.Common.cs','OpenCodeDtos.Location.cs','OpenCodeDtos.Sessions.cs',
  'OpenCodeDtos.Messages.cs','OpenCodeDtos.Inbox.cs','OpenCodeDtos.Permissions.cs','OpenCodeDtos.Forms.cs','OpenCodeDtos.Agents.cs',

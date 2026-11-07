@@ -10,4 +10,5 @@ IFS= read -r active < "$fixture/sshd.pid"
 if [ ! -r "/proc/$active/cmdline" ]; then exit 0; fi
 command=$(tr '\000' ' ' < "/proc/$active/cmdline")
 case "$command" in *"$fixture/sshd_config"*) ;; '') exit 0 ;; *) exit 1 ;; esac
+printf 'SIGNAL fixture sshd PID=%s\n' "$active" >&2
 kill -TERM "$active" 2>/dev/null || true

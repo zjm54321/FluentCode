@@ -30,7 +30,7 @@ $sources += Join-Path $repo 'src/FluentCode/Services/Appearance/AppFontSettings.
 foreach ($name in @('OpenCodeSshQuickAccess.cs', 'OpenCodeWslQuickAccess.cs', 'OpenCodeWslQuickAccess.PathMapping.cs', 'WslQuickAccessHome.cs')) {
     $sources += Join-Path $repo "src/FluentCode/Pages/OpenCode/$name"
 }
-$sources += Join-Path $PSScriptRoot 'Program.cs'
+$sources += Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object FullName
 $refs = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object FullName) + @($dpapi)
 $compiler = Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll'
 $inputs = @($sources + $refs + $compiler + $PSCommandPath)

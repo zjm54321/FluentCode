@@ -19,7 +19,7 @@ $sources = @(
     'OpenCodeClient.SessionPreset.cs', 'OpenCodeSessionPresetState.cs',
     'OpenCodeClient.PluginMutations.cs', 'OpenCodeDtos.PluginMutations.cs',
     'PluginMutations/OpenCodePluginMutationDtos.cs', 'PluginMutations/OpenCodePluginMutationCoordinator.cs',
-    'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
+    'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeSocketTransport.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs',
     'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs',
     'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Messages.cs',

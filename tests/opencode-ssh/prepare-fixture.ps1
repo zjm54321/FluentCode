@@ -17,7 +17,7 @@ Host fixture
     HostName 127.0.0.1
     Port 2222
     User $RemoteUser
-    UserKnownHostsFile "$($FixtureDirectory.Replace('\','/'))/known_hosts"
+    UserKnownHostsFile "$($FixtureDirectory.Replace('\','/'))/custom_hosts"
     GlobalKnownHostsFile none
     IdentityAgent none
     IdentityFile "$($key.Replace('\','/'))"

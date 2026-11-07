@@ -18,7 +18,7 @@ using FluentCode.Services.Configuration;
 using FluentCode.Services.OpenCode;
 using FluentCode.Services.OpenCode.Connection;
 
-internal static class Program
+internal static partial class Program
 {
     private const string Secret = "fixture-only-opaque-password";
     private static int _assertions;
@@ -29,6 +29,7 @@ internal static class Program
     {
         try
         {
+            SshOwnedProcess.SignalObserver = pid => Console.WriteLine("SIGNAL owned Job PID=" + pid);
             if (args[0] == "--job-child")
             {
                 var tunnel = await WindowsSshOpenCodeTunnel.OpenAsync(SshConnectionTarget.Parse("fixture"), 49375, FixtureOptions(args[1]), CancellationToken.None);
@@ -51,7 +52,8 @@ internal static class Program
             await Persistence(Path.Combine(args[0], "settings"));
             await KnownHostsAppending(Path.Combine(args[0], "known-hosts"));
             QuickOpen();
-            Console.WriteLine($"9 SSH groups passed; {_assertions} assertions; isolated files, fake CLI and recovery, loopback ports only.");
+            await SecurityRegression(Path.Combine(args[0], "security"));
+            Console.WriteLine($"SSH groups passed; {_assertions} assertions; isolated files, fake CLI, owned native processes and loopback sockets only.");
             return 0;
         }
         catch (Exception ex)
@@ -130,8 +132,9 @@ internal static class Program
         foreach (string disabled in new[] { "PubkeyAuthentication=no", "PasswordAuthentication=no", "KbdInteractiveAuthentication=no", "GSSAPIAuthentication=no", "HostbasedAuthentication=no", "IdentityAgent=none", "ForwardAgent=no", "ClearAllForwardings=yes", "ControlMaster=no", "ControlPath=none", "RequestTTY=no" })
             Check(probe.ArgumentList.Contains(disabled), "host-key probe disables authentication, forwarding, control sockets and TTY: " + disabled);
         Check(probe.ArgumentList.Contains("BatchMode=yes") && probe.ArgumentList.Contains("StrictHostKeyChecking=accept-new")
-            && probe.ArgumentList.Contains("UserKnownHostsFile=C:\\probe\\known_hosts") && probe.ArgumentList.Contains("GlobalKnownHostsFile=C:\\probe\\empty"), "probe writes only isolated trust files");
-        Check(!probe.ArgumentList.Contains("-i") && !string.Join(' ', probe.ArgumentList).Contains(Secret) && probe.ArgumentList.Last() == "exit", "probe contains no key/secret arguments and cannot reach its command without authentication");
+            && probe.ArgumentList.Contains("UserKnownHostsFile=\"C:/probe/known_hosts\"") && probe.ArgumentList.Contains("GlobalKnownHostsFile=\"C:/probe/empty\""), "probe writes only isolated quoted trust files");
+        Check(!probe.ArgumentList.Contains("-i") && !string.Join(' ', probe.ArgumentList).Contains(Secret) && probe.ArgumentList.Contains("-N") && probe.ArgumentList.Contains("-T")
+            && !probe.ArgumentList.Contains("exit") && probe.ArgumentList.Contains("SessionType=none"), "probe remains sessionless even if none authentication succeeds");
         Console.WriteLine("PASS SSH commands: strict trust, argv safety/no secrets, login shells + Nix paths, safe failure messages");
     }
 
@@ -163,11 +166,14 @@ internal static class Program
         {
             SshOpenCodeCommand.ServiceStatus => ++statusReads < 3 ? "stopped\n" : "http://127.0.0.1:49375\n",
             SshOpenCodeCommand.ServicePassword => Secret + "\n",
+            SshOpenCodeCommand.ServiceHostname => "127.0.0.1\n",
+            SshOpenCodeCommand.ServiceRemoteAccess => "false\n",
+            SshOpenCodeCommand.ServiceBindingEnvironment => "{}\n",
             _ => "http://127.0.0.1:49375\n",
         });
         service = await new SshOpenCodeServiceLocator(stopped, (_, _) => Task.CompletedTask).DiscoverAsync(target, null, progress.Add, CancellationToken.None);
         Check(stopped.Calls.Count(command => command == SshOpenCodeCommand.ServiceStart) == 1 && service.RemotePort == 49375, "stopped service start once, poll readiness");
-        var neverReady = new FakeRunner((_, _) => "stopped\n");
+        var neverReady = new FakeRunner((command, _) => command switch { SshOpenCodeCommand.ServiceHostname => "127.0.0.1", SshOpenCodeCommand.ServiceRemoteAccess => "false", SshOpenCodeCommand.ServiceBindingEnvironment => "{}", _ => "stopped\n" });
         await Throws<OpenCodeConfigurationException>(() => new SshOpenCodeServiceLocator(neverReady, (_, _) => Task.CompletedTask).DiscoverAsync(target, null, progress.Add, CancellationToken.None), "start has a bounded polling failure");
         Check(neverReady.Calls.Count(command => command == SshOpenCodeCommand.ServiceStatus) == 1 + SshOpenCodeServiceLocator.StartPollLimit, "polling cap");
         var invalid = new FakeRunner((_, _) => "unrecognized\n");
@@ -285,19 +291,22 @@ internal static class Program
     }
 
     private static SshInvocationOptions FixtureOptions(string directory) => new(ConfigFile: Path.Combine(directory, "config"),
-        IdentityFile: Path.Combine(directory, "client-key"), UserKnownHostsFile: Path.Combine(directory, "known_hosts"), GlobalKnownHostsFile: "none",
-        ProbeRoot: Path.Combine(directory, "probes"));
+        IdentityFile: Path.Combine(directory, "client-key"), GlobalKnownHostsFile: "none",
+        ProbeRoot: Path.Combine(directory, "probe dir's"));
 
     private static async Task LiveFixture(string directory, int fixturePid, string evidence)
     {
         Check(fixturePid > 1, "temporary sshd PidFile PID supplied");
+        using var proxy = new ProbeListener();
+        using var proxySettings = new ProxyScope(proxy.Url);
         var options = FixtureOptions(directory);
+        string trustFile = Path.Combine(directory, "custom_hosts");
         var target = SshConnectionTarget.Parse("fixture");
         var verifier = new SshHostKeyVerifier(options);
         int rejected = 0;
         await Throws<OperationCanceledException>(() => verifier.EnsureTrustedAsync(target, (_, _) => { rejected++; return Task.FromResult(false); },
             text => Console.WriteLine("Fixture progress: " + text), CancellationToken.None), "declined fingerprint does not connect");
-        Check(rejected == 1 && (!File.Exists(options.UserKnownHostsFile) || new FileInfo(options.UserKnownHostsFile!).Length == 0), "rejected fingerprint never writes fixture known_hosts");
+        Check(rejected == 1 && !File.Exists(trustFile), "rejected fingerprint never writes fixture known_hosts");
         using (var cancellation = new CancellationTokenSource())
         {
             await Throws<OperationCanceledException>(() => verifier.EnsureTrustedAsync(target, (_, _) =>
@@ -306,16 +315,20 @@ internal static class Program
                 return new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
             }, _ => { }, cancellation.Token), "canceling the owner ends confirmation even if its UI callback cannot complete");
         }
-        Check(!File.Exists(options.UserKnownHostsFile) && !Directory.EnumerateDirectories(options.ProbeRoot!).Any(), "canceled confirmation cleans probe directory and leaves known_hosts untouched");
+        Check(!File.Exists(trustFile) && !Directory.EnumerateDirectories(options.ProbeRoot!).Any(), "canceled confirmation cleans probe directory and leaves known_hosts untouched");
         IReadOnlyList<string>? accepted = null;
         var primarySettings = SshSettings with { SshCommand = File.ReadAllText(Path.Combine(directory, "real-opencode")).Trim() };
         using var connection = await new SshOpenCodeConnector(options).ConnectAsync(primarySettings,
             (confirmation, _) => { accepted = confirmation.Fingerprints; return Task.FromResult(true); }, text => Console.WriteLine("Fixture progress: " + text), CancellationToken.None);
         Check(accepted is { Count: > 0 } && connection.Service.RemotePort == 49375, "Windows ssh fingerprint confirmation + real WSL discovery");
-        Check(File.Exists(options.UserKnownHostsFile), "accepted keys saved only to fixture known_hosts");
+        Check(File.Exists(trustFile), "accepted keys saved to the configured custom trust file, not default known_hosts");
         int ownedTunnelPid = ((WindowsSshOpenCodeTunnel)connection.Tunnel).ProcessId;
+        Console.WriteLine("TRACK owned tunnel PID=" + ownedTunnelPid);
         Check(!Directory.EnumerateDirectories(options.ProbeRoot!).Any(), "all reject/accept probe directories cleaned up");
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        using var http = connection.Tunnel.SocketTransport!.CreateClient();
+        http.Timeout = TimeSpan.FromSeconds(5);
+        using (var unauthorized = await http.GetAsync(connection.ToClientOptions().BaseUrl + "/api/info"))
+            Check(unauthorized.StatusCode == HttpStatusCode.Unauthorized, "unauthenticated API request through the owned tunnel returns 401");
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes("opencode:" + connection.Service.Secret)));
         using var response = await http.GetAsync(connection.ToClientOptions().BaseUrl + "/api/info");
         Check(response.StatusCode == HttpStatusCode.OK, "HTTP GET through Windows OpenSSH tunnel returned 200");
@@ -323,10 +336,31 @@ internal static class Program
         string version = payload.RootElement.GetProperty("version").GetString() ?? "reported";
         if (!Regex.IsMatch(version, @"^\d+\.\d+\.\d+[\w.-]*$")) version = "reported";
         Console.WriteLine("PASS live tunnel: Windows ssh.exe -> fixture 127.0.0.1:2222 -> WSL 127.0.0.1:49375; GET /api/info = 200; version=" + version);
-        using var fakeStart = await new SshOpenCodeConnector(options).ConnectAsync(SshSettings with { SshCommand = "/tmp/opencode/ssh-fixture/bin/opencode" }, null, _ => { }, CancellationToken.None);
+        Check(connection.Service.Warning is not null, "already-running wildcard WSL service emits a non-blocking exposure warning");
+        using var fakeStart = await new SshOpenCodeConnector(options).ConnectAsync(SshSettings with { SshCommand = "/tmp/opencode/ssh-fixture/bin/opencode o'connor" }, null, _ => { }, CancellationToken.None);
         Check(fakeStart.Service.RemotePort == 49375, "fake stopped service was auto-started through shim, real service unchanged");
         Console.WriteLine("PASS live auto-start: fixture shim status=stopped -> service start -> status=running; real WSL service not restarted/stopped");
         fakeStart.Dispose();
+        foreach (string extra in new[] { "ProxyJump gateway", "LocalForward 127.0.0.1:9229 127.0.0.1:9229" })
+        {
+            string unsafeConfig = Path.Combine(directory, "unsafe config");
+            await File.WriteAllTextAsync(unsafeConfig, await File.ReadAllTextAsync(options.ConfigFile!) + "\nHost fixture\n    " + extra + "\n");
+            SshFailureKind? refusal = null;
+            try { await new SshHostKeyVerifier(options with { ConfigFile = unsafeConfig }).EnsureTrustedAsync(target, null, _ => { }, CancellationToken.None); }
+            catch (SshOpenCodeException ex) { refusal = ex.Kind; }
+            Check(refusal is SshFailureKind.ProxyJump or SshFailureKind.UnsafeConfiguration, "inherited jump/extra forward rejected before network/authentication");
+        }
+        var squatters = new List<ProbeListener>();
+        try
+        {
+            SshFailureKind? failure = null;
+            try { using var unsafeTunnel = await WindowsSshOpenCodeTunnel.OpenAsync(target, 49375,
+                options with { BeforeTunnelStart = port => squatters.Add(new(port)) }, CancellationToken.None); }
+            catch (SshOpenCodeException ex) { failure = ex.Kind; }
+            Check(failure == SshFailureKind.TransportOwner, "a real squatter wins the released port but fails readiness ownership");
+            Check(squatters.Count == 1 && squatters[0].Bytes == 0, "pre-start squatter receives no application byte or Authorization");
+        }
+        finally { foreach (var listener in squatters) listener.Dispose(); }
 
         string dotnet = Environment.ProcessPath!;
         var child = new ProcessStartInfo(dotnet) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
@@ -355,19 +389,24 @@ internal static class Program
         if (connection.Tunnel.IsAlive)
         {
             _fixturePhase = "terminate captured Windows client PID";
-            using var ownedSsh = Process.GetProcessById(ownedTunnelPid);
-            ownedSsh.Kill();
+            ((WindowsSshOpenCodeTunnel)connection.Tunnel).StopOwnedProcess();
         }
         _fixturePhase = "await own tunnel exit";
         await died.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Check(!connection.Tunnel.IsAlive, "tunnel death detected");
+        Check(connection.Tunnel.SocketTransport!.IsInvalidated, "transport invalidated synchronously before UI recovery dispatch");
+        using (var postExitSquatter = new ProbeListener(connection.Tunnel.LocalPort))
+        {
+            await Throws<Exception>(async () => { using var result = await http.GetAsync(connection.ToClientOptions().BaseUrl + "/api/info"); }, "old authenticated client cannot reach a post-exit port squatter");
+            Check(postExitSquatter.Connections == 0 && postExitSquatter.Bytes == 0, "post-exit squatter receives no Authorization or request");
+        }
         int recoveryAttempts = 0;
         var recovery = new SshOpenCodeRecovery(async (settings, progress, ct) =>
         { recoveryAttempts++; return await new SshOpenCodeConnector(options).ConnectAsync(settings, null, progress, ct); }, (_, _) => Task.CompletedTask);
         _fixturePhase = "bounded reconnect against stopped fixture";
         Check(await recovery.RecoverAsync(primarySettings, _ => { }, CancellationToken.None) is null && recoveryAttempts == 3, "dead fixture recovery stops after three attempts");
         Console.WriteLine("PASS live death/recovery: fixture listener stopped by PidFile, own ssh.exe terminated by captured PID, exit observed, three-attempt recovery failed closed");
-        byte[] trustedBefore = await File.ReadAllBytesAsync(options.UserKnownHostsFile!);
+        byte[] trustedBefore = await File.ReadAllBytesAsync(trustFile);
         int changedPrompts = 0;
         _fixturePhase = "rekey fixture";
         int rekeyedPid = int.Parse((await RunFixtureHelper("rekey-fixture.sh")).Trim());
@@ -377,30 +416,32 @@ internal static class Program
             try { await verifier.EnsureTrustedAsync(target, (_, _) => { changedPrompts++; return Task.FromResult(true); }, _ => { }, CancellationToken.None); }
             catch (SshOpenCodeException ex) { changed = ex.Kind; }
             Check(changed == SshFailureKind.ChangedHostKey && changedPrompts == 0, "changed fixture host key is rejected before any probe/confirmation");
-            Check((await File.ReadAllBytesAsync(options.UserKnownHostsFile!)).SequenceEqual(trustedBefore), "changed key never overwrites/appends trusted known_hosts");
+            Check((await File.ReadAllBytesAsync(trustFile)).SequenceEqual(trustedBefore), "changed key never overwrites/appends trusted known_hosts");
         }
         finally { await RunFixtureHelper("stop-fixture.sh", rekeyedPid.ToString()); }
         Console.WriteLine("PASS live changed key: swapped fixture host key -> strict refusal; no probe/dialog/known_hosts writes");
+        Check(proxy.Connections == 0 && proxy.Bytes == 0, "ambient non-bypassing proxy receives no live HTTP/SSE/WS traffic or credentials");
         await File.WriteAllTextAsync(Path.Combine(evidence, "live-tunnel.json"), JsonSerializer.Serialize(new
         {
             sshClient = SshCommandBuilder.Executable(), sshEndpoint = "127.0.0.1:2222", localPort = connection.Tunnel.LocalPort,
             remotePort = connection.Service.RemotePort, method = "GET", path = "/api/info", status = 200, version,
             fingerprints = accepted, fakeAutoStart = true, realServiceRestarted = false, jobKillOnOwnerExit = true,
-            tunnelDeathDetected = true, recoveryAttempts, changedKeyRejected = true, canceledProbeCleaned = true, defaultSshdKex = true, realUserSshFilesTouched = false,
+            tunnelDeathDetected = true, recoveryAttempts, changedKeyRejected = true, canceledProbeCleaned = true, defaultSshdKex = true,
+            ownershipVerified = true, squatterReceivedAuthorization = false, proxyReceivedTraffic = false, unauthenticatedStatus = 401, wildcardWarning = true, customTrustFile = true, realUserSshFilesTouched = false,
         }, new JsonSerializerOptions { WriteIndented = true }));
         Console.WriteLine($"Live SSH fixture passed; {_assertions} assertions; evidence contains no credentials.");
     }
 
     private static async Task<string> RunFixtureHelper(string script, params string[] arguments)
     {
-        var start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe"))
+        var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "wsl.exe"))
         { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (string arg in new[] { "--exec", "sh", "/tmp/opencode/ssh-fixture/" + script }.Concat(arguments)) start.ArgumentList.Add(arg);
         using var process = Process.Start(start)!;
         var stdout = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
-        await stderr;
+        foreach (string line in (await stderr).Split('\n')) if (Regex.IsMatch(line.Trim(), @"^SIGNAL fixture sshd PID=\d+$")) Console.WriteLine(line.Trim());
         Check(process.ExitCode == 0, "owned fixture helper completed: " + script);
         return await stdout;
     }
