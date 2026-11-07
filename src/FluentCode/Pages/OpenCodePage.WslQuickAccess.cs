@@ -204,9 +204,9 @@ public sealed partial class OpenCodePage
     private string? DetailPathUnavailableReason(MessageHistoryRead read, string path, bool directory)
     {
         var state = ResolveDetailPath(read, path);
-        if (state.IsSsh && directory) return "SSH v1 不支持在 Windows 资源管理器中打开远端路径；请使用 Zed / VS Code";
+        if (state.IsSsh && directory) return "SSH 连接的文件夹不能在资源管理器中打开，请用 Zed 或 VS Code";
         return state.Target is null ? state.Reason ?? "当前路径不可用"
-            : !directory && DetailPathEditor() is null ? state.IsSsh ? "未检测到可用于打开此 SSH 文件的主机编辑器" : "未检测到可用于打开此 WSL 文件的主机编辑器" : null;
+            : !directory && DetailPathEditor() is null ? state.IsSsh ? "未找到可打开此文件的 VS Code 或 Zed" : "未检测到可用于打开此 WSL 文件的主机编辑器" : null;
     }
 
     private async Task LaunchDetailPathAsync(MessageHistoryRead read, string path, bool directory, bool reveal, int? line,
