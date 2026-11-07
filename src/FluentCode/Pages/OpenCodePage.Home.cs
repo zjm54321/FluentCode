@@ -105,6 +105,7 @@ public sealed partial class OpenCodePage
         var kind = settings.Kind ?? (settings.BaseUrl is { Length: > 0 } ? OpenCodeConnectionKind.Remote : null);
         if (kind == OpenCodeConnectionKind.Wsl)
             return OpenCodeSettings.IsValidWslDistributionName(settings.WslDistribution) ? "WSL · " + settings.WslDistribution : "WSL";
+        if (kind == OpenCodeConnectionKind.Ssh) return "SSH · " + settings.SshHost;
         if (kind != OpenCodeConnectionKind.Remote) return null;
         try
         {

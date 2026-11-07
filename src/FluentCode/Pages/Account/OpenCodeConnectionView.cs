@@ -15,7 +15,7 @@ namespace FluentCode.Pages.Account;
 
 /// <summary>唯一 OpenCode 连接表单（设置 › 账号与连接、首次运行欢迎页）。秘密仅留在密码控件/内存中；离开即清空，不自动兑换或重试。</summary>
 /// <remarks>
-/// 视觉层级（仅原生控件 + 主题画刷）：当前连接卡片 → 三种连接方式（原生 RadioButtons，一眼可见）→ 所选方式的表单
+/// 视觉层级（仅原生控件 + 主题画刷）：当前连接卡片 → 连接方式（原生 RadioButtons，一眼可见）→ 所选方式的表单
 /// → 唯一主操作“连接 OpenCode”（强调色按钮）→ 状态条（失败 / 待保存 / 成功按 InfoBar 语义着色，并配图标，不只靠颜色）。
 /// 说明文字一律使用次要 Caption 样式降低密度；滚动交给 ContentDialog 自带的滚动视图（不再嵌套第二个 ScrollViewer）。
 /// </remarks>
@@ -27,6 +27,9 @@ public sealed class OpenCodeConnectionView : UserControl
     private readonly RadioButtons _flow = new() { Header = "连接方式", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly ComboBox _distributions = new() { Header = "WSL 发行版", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Button _refresh = new() { Content = "刷新 WSL 发行版" };
+    private readonly ComboBox _sshHost = new() { Header = "SSH 主机", IsEditable = true, PlaceholderText = "配置别名或 user@host:port", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly Button _refreshSsh = new() { Content = "刷新 SSH 主机" };
+    private readonly TextBox _sshCommand = new() { Header = "远程 OpenCode 命令或路径（可选）", PlaceholderText = "opencode 或 ~/bin/opencode" };
     private readonly TextBox _address = new() { Header = "远程地址（绝对 http/https URL）", PlaceholderText = "https://服务器" };
     private readonly TextBox _username = new() { Header = "用户名" };
     private readonly PasswordBox _password = new() { Header = "密码（不回显已保存凭据）", PasswordRevealMode = PasswordRevealMode.Hidden };
@@ -44,6 +47,7 @@ public sealed class OpenCodeConnectionView : UserControl
     private readonly StackPanel _wsl = new() { Spacing = 12 };
     private readonly StackPanel _remote = new() { Spacing = 12 };
     private readonly StackPanel _pairing = new() { Spacing = 12 };
+    private readonly StackPanel _ssh = new() { Spacing = 12 };
     private CancellationTokenSource? _operation;
     private OpenCodePairingResult? _pairingResult;
     private bool _closed;
@@ -64,10 +68,12 @@ public sealed class OpenCodeConnectionView : UserControl
         AutomationProperties.SetAutomationId(_username, "AccountOpenCodeUsername");
         AutomationProperties.SetAutomationId(_password, "AccountOpenCodePassword");
         AutomationProperties.SetAutomationId(_pairLink, "AccountOpenCodePairLink");
+        AutomationProperties.SetAutomationId(_sshHost, "AccountOpenCodeSshHost");
+        AutomationProperties.SetAutomationId(_sshCommand, "AccountOpenCodeSshCommand");
         AutomationProperties.SetAutomationId(_connect, "AccountOpenCodeConnect");
         AutomationProperties.SetAutomationId(_status, "AccountOpenCodeStatus");
 
-        foreach (string name in new[] { "WSL 自动发现", "远程地址 + 用户名 + 密码", "远程配对链接" }) _flow.Items.Add(name);
+        foreach (string name in new[] { "WSL 自动发现", "远程地址 + 用户名 + 密码", "远程配对链接", "SSH 自动发现" }) _flow.Items.Add(name);
 
         // ① WSL：发行版选择与刷新同一行（刷新按钮与输入框底边对齐），说明为次要 Caption。
         _wsl.Children.Add(Hint("通过所选发行版中的 opencode 命令连接当前后台服务，不启动或修改 OpenCode。"));
@@ -91,6 +97,19 @@ public sealed class OpenCodeConnectionView : UserControl
         _pairing.Children.Add(_pairLink);
         _pairing.Children.Add(_pairPending);
         _pairing.Children.Add(_discardPair);
+
+        // ④ SSH：沿用 WSL 的原生选择框 + 刷新行与同样的间距；不新增视觉样式。
+        _ssh.Children.Add(Hint("使用 Windows OpenSSH 与现有 SSH 配置连接；服务未运行时自动启动，不安装、升级或重启。"));
+        var sshRow = new Grid { ColumnSpacing = 8 };
+        sshRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        sshRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _refreshSsh.VerticalAlignment = VerticalAlignment.Bottom;
+        Grid.SetColumn(_refreshSsh, 1);
+        sshRow.Children.Add(_sshHost);
+        sshRow.Children.Add(_refreshSsh);
+        _ssh.Children.Add(sshRow);
+        _ssh.Children.Add(_sshCommand);
+        _ssh.Children.Add(Hint("主机建议读取 %USERPROFILE%\\.ssh\\config 及 Include。首次连接需核对指纹；带密码短语的密钥请先通过 Windows ssh-agent / ssh-add 加载。"));
 
         // 当前连接：卡片中“当前配置”为强调正文，单账号规则为次要说明。
         var currentPanel = new StackPanel { Spacing = 4 };
@@ -121,6 +140,7 @@ public sealed class OpenCodeConnectionView : UserControl
         body.Children.Add(_wsl);
         body.Children.Add(_remote);
         body.Children.Add(_pairing);
+        body.Children.Add(_ssh);
         body.Children.Add(actions);
         body.Children.Add(_statusCard);
         // 宿主（设置分类滚动区 / 欢迎页滚动区）负责纵向滚动，不出现嵌套滚动条。
@@ -142,6 +162,7 @@ public sealed class OpenCodeConnectionView : UserControl
             }
         });
         _connect.Click += async (_, _) => await RunAsync(ConnectAsync);
+        _refreshSsh.Click += async (_, _) => await RunAsync(RefreshSshHostsAsync);
         _cancel.Click += (_, _) => _operation?.Cancel();
         _discardPair.Click += (_, _) => { _pairingResult = null; UpdatePairing(); SetStatus("已放弃配对结果；继续配对需要新链接。"); };
         _flow.SelectedIndex = 0;
@@ -155,7 +176,11 @@ public sealed class OpenCodeConnectionView : UserControl
                 ShowSummary(current.OpenCode);
                 _address.Text = SafeAddress(current.OpenCode.BaseUrl);
                 _username.Text = current.OpenCode.Username ?? string.Empty;
-                await RefreshDistributionsAsync(ct);
+                await RefreshSshHostsAsync(ct);
+                _sshHost.Text = current.OpenCode.SshHost ?? string.Empty;
+                _sshCommand.Text = current.OpenCode.SshCommand ?? string.Empty;
+                if (current.OpenCode.Kind == OpenCodeConnectionKind.Ssh) _flow.SelectedIndex = 3;
+                else await RefreshDistributionsAsync(ct);
             });
         };
     }
@@ -221,6 +246,7 @@ public sealed class OpenCodeConnectionView : UserControl
         _wsl.Visibility = _flow.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         _remote.Visibility = _flow.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         _pairing.Visibility = _flow.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        _ssh.Visibility = _flow.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         SetStatus(string.Empty);
     }
 
@@ -265,7 +291,7 @@ public sealed class OpenCodeConnectionView : UserControl
     private void SetBusy(bool busy)
     {
         _flow.IsEnabled = !busy;
-        foreach (var control in new Control[] { _distributions, _refresh, _address, _username, _password, _pairLink, _discardPair })
+        foreach (var control in new Control[] { _distributions, _refresh, _address, _username, _password, _pairLink, _discardPair, _sshHost, _sshCommand, _refreshSsh })
             control.IsEnabled = !busy;
         _connect.IsEnabled = !busy;
         _cancel.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
@@ -293,6 +319,7 @@ public sealed class OpenCodeConnectionView : UserControl
 
     private async Task ConnectAsync(CancellationToken ct)
     {
+        if (_flow.SelectedIndex == 3) { await ConnectSshAsync(ct); return; }
         OpenCodeClientOptions options;
         WslOpenCodeService? discovered = null;
         string? distribution = null;
@@ -351,6 +378,70 @@ public sealed class OpenCodeConnectionView : UserControl
         // The new credential reference causes the existing App settings owner to reconnect exactly once.
     }
 
+    private async Task RefreshSshHostsAsync(CancellationToken ct)
+    {
+        string text = _sshHost.Text;
+        SetStatus("正在读取 Windows SSH 配置中的主机…");
+        var hosts = await Task.Run(SshConfigHostCatalog.ReadDefault, ct);
+        ct.ThrowIfCancellationRequested();
+        if (_closed) return;
+        _sshHost.Items.Clear();
+        foreach (string host in hosts) _sshHost.Items.Add(host);
+        _sshHost.Text = text;
+        SetStatus(hosts.Count == 0 ? "未找到具体的 Host 别名；仍可直接输入 user@host[:port]。"
+            : "已读取 SSH 主机（包含 Include）；选择或输入主机后点击“连接 OpenCode”。");
+    }
+
+    private async Task ConnectSshAsync(CancellationToken ct)
+    {
+        string host = _sshHost.Text.Trim();
+        string? command = string.IsNullOrWhiteSpace(_sshCommand.Text) ? null : _sshCommand.Text.Trim();
+        var settings = new OpenCodeSettings { Kind = OpenCodeConnectionKind.Ssh, SshHost = host, SshCommand = command };
+        using var connection = await new SshOpenCodeConnector().ConnectAsync(settings, ConfirmSshHostKeyAsync,
+            text => DispatcherQueue.TryEnqueue(() => { if (!_closed && !ct.IsCancellationRequested) SetStatus(text); }), ct);
+        ct.ThrowIfCancellationRequested();
+        if (_closed) return;
+        SetStatus("正在安全保存 SSH 连接（成功后替换当前唯一连接）…");
+        var outcome = await _committer.CommitAsync(OpenCodeConnectionKind.Ssh, connection.ToClientOptions(), null, ct, host, command);
+        if (_closed) return;
+        if (!outcome.Succeeded) { SetStatus(outcome.Message, StatusTone.Error); return; }
+        _password.Password = string.Empty;
+        _pairLink.Password = string.Empty;
+        _pairingResult = null;
+        ShowSummary(_settings.Current!.OpenCode);
+        SetStatus("已保存 SSH 连接。隧道由 FluentCode 管理；退出应用不会停止远程 OpenCode。", StatusTone.Success);
+        FluentCode.Motion.ActionFeedback.Success(_connect, "已保存并连接 OpenCode");
+        // The app settings owner opens its own tunnel; this preflight tunnel is always disposed, including failures.
+    }
+
+    private Task<bool> ConfirmSshHostKeyAsync(SshHostKeyConfirmation confirmation, CancellationToken ct)
+    {
+        var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                if (_closed || ct.IsCancellationRequested || XamlRoot is null) { answer.TrySetResult(false); return; }
+                var body = new StackPanel { Spacing = 12, MaxWidth = 520 };
+                body.Children.Add(Text("主机：" + confirmation.Host, OpenCodeInteractionUi.BodyStrongStyleKey));
+                if (confirmation.ResolvedHost is { } resolved) body.Children.Add(Hint("实际主机：" + resolved));
+                body.Children.Add(Hint("请通过独立渠道向服务器管理员核对下列指纹。只有一致时才确认；探测不会认证到目标主机或执行远程命令。"));
+                foreach (string fingerprint in confirmation.Fingerprints)
+                    body.Children.Add(Text(fingerprint, OpenCodeInteractionUi.BodyStyleKey));
+                body.Children.Add(Hint("确认后将这些公钥加入 Windows known_hosts；不会覆盖已有密钥。"));
+                var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = "确认 SSH 主机密钥？", Content = body,
+                    PrimaryButtonText = "指纹一致，信任并连接", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close,
+                    Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle") };
+                AutomationProperties.SetAutomationId(dialog, "AccountOpenCodeSshHostKeyConfirmation");
+                using var registration = ct.Register(() => DispatcherQueue.TryEnqueue(() => { try { dialog.Hide(); } catch (Exception) { } }));
+                var result = await dialog.ShowAsync();
+                answer.TrySetResult(result == ContentDialogResult.Primary && !_closed && !ct.IsCancellationRequested);
+            }
+            catch (Exception) { answer.TrySetResult(false); }
+        })) answer.TrySetResult(false);
+        return answer.Task;
+    }
+
     // ---- Opt-in shell capture (FC_SHELL_CAPTURE_TEST, isolated startup-smoke profile only) ----
     internal int TestDistributionCount => _distributions.Items.Count;
     internal string TestStatusText => _status.Text;
@@ -362,6 +453,7 @@ public sealed class OpenCodeConnectionView : UserControl
         _password.Password = password;
     }
     internal void TestSelectWsl() => _flow.SelectedIndex = 0;
+    internal void TestSelectSsh() => _flow.SelectedIndex = 3;
     internal Task TestConnectAsync() => RunAsync(ConnectAsync);
 
     public void Close()

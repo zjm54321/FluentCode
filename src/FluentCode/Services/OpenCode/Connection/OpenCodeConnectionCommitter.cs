@@ -51,7 +51,8 @@ public sealed class OpenCodeConnectionCommitter
     public bool IsBusy => Volatile.Read(ref _busy) != 0;
 
     public async Task<OpenCodeCommitOutcome> CommitAsync(
-        OpenCodeConnectionKind kind, OpenCodeClientOptions options, string? wslDistribution, CancellationToken cancellationToken)
+        OpenCodeConnectionKind kind, OpenCodeClientOptions options, string? wslDistribution, CancellationToken cancellationToken,
+        string? sshHost = null, string? sshCommand = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         if (Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
@@ -65,7 +66,7 @@ public sealed class OpenCodeConnectionCommitter
             {
                 // 先做纯校验，确保验证与写入使用同一组合法值。
                 OpenCodeConnectionProfile.Replace(new OpenCodeSettings(), kind, options.BaseUrl, options.AuthenticationMode,
-                    options.Username, wslDistribution);
+                    options.Username, wslDistribution, sshHost, sshCommand);
             }
             catch (OpenCodeConfigurationException ex) { return new(OpenCodeCommitStage.Invalid, ex.Message); }
 
@@ -96,7 +97,7 @@ public sealed class OpenCodeConnectionCommitter
                     await _update(latest =>
                     {
                         OpenCodeSettings next = OpenCodeConnectionProfile.Replace(latest.OpenCode, kind, options.BaseUrl,
-                            options.AuthenticationMode, options.Username, wslDistribution);
+                            options.AuthenticationMode, options.Username, wslDistribution, sshHost, sshCommand);
                         next = next with { CredentialId = stagedId ?? latest.OpenCode.CredentialId };
                         return latest with { OpenCode = next };
                     }, cancellationToken).ConfigureAwait(false);
