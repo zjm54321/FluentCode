@@ -42,6 +42,9 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <PackageReference Include="Markdig" Version="1.4.0" />
     <PackageReference Include="HtmlSanitizer" Version="9.2.1039" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.5" />
+    <PackageReference Include="WinUI.TableView" Version="1.5.1" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Segmented" Version="8.2.251219" />
     <ProjectReference Include="..\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -61,6 +64,8 @@
     <Content Include="..\ThirdParty\WindowsTerminalControl\PATCHES.md" Link="ThirdPartyNotices\WindowsTerminalControl-PATCHES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\OpenCode.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\OpenUI.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="ThirdPartyNotices\NativeUiComponents.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="ThirdPartyNotices\NativeUiGraphics.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\AppIcon\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

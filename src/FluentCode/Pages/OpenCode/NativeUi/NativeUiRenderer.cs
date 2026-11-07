@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Documents;
 namespace FluentCode.Pages.OpenCode;
 
 // UI-thread owned. Reconcile by structural path so inputs retain focus/caret and slider drag identity.
-internal sealed class NativeUiRenderer : IDisposable
+internal sealed partial class NativeUiRenderer : IDisposable
 {
     private sealed class Visual(FrameworkElement element)
     {
@@ -20,6 +20,7 @@ internal sealed class NativeUiRenderer : IDisposable
         internal NativeUiElement Model { get; set; } = new("", new Dictionary<string, object?>());
         internal Action<NativeUiElement> Apply { get; set; } = _ => { };
         internal bool Updating, Disposed;
+        internal Action? Cleanup;
     }
     private readonly NativeUiRuntime _runtime;
     private readonly Border _root = new();
@@ -27,13 +28,13 @@ internal sealed class NativeUiRenderer : IDisposable
     private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
     private NativeUiBudget? _budget;
     internal FrameworkElement Element => _root;
-    internal NativeUiRenderer(NativeUiRuntime runtime) { _runtime = runtime; NativeUiTheme.Host(_root); }
+    internal NativeUiRenderer(NativeUiRuntime runtime) { _runtime = runtime; NativeUiTheme.Host(_root); _runtime.OpenUrl = ConfirmUrlAsync; }
     internal void Render(NativeUiElement root)
     {
         _seen.Clear(); _budget = new(NativeUiCatalog.Default.Limits);
         var element = Node(root, "root", 0);
         if (!ReferenceEquals(_root.Child, element)) { Detach(element); _root.Child = element; }
-        foreach (var key in _visuals.Keys.Where(key => !_seen.Contains(key)).ToArray()) { _visuals[key].Disposed = true; _visuals.Remove(key); }
+        foreach (var key in _visuals.Keys.Where(key => !_seen.Contains(key)).ToArray()) { var old = _visuals[key]; old.Disposed = true; old.Cleanup?.Invoke(); _visuals.Remove(key); }
     }
     private FrameworkElement Node(NativeUiElement node, string path, int depth)
     {
@@ -96,8 +97,8 @@ internal sealed class NativeUiRenderer : IDisposable
                 return colVisual;
             case "Row":
                 var row = new Grid(); var rowVisual = new Visual(row);
-                row.SizeChanged += (_, _) => { if (!rowVisual.Disposed) NativeUiTheme.Row(row, rowVisual.Model); };
-                rowVisual.Apply = node => { Sync(row, Children(NativeUiTheme.Prop(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray()); NativeUiTheme.Row(row, node); };
+                row.SizeChanged += (_, _) => { if (!rowVisual.Disposed) { NativeUiTheme.Row(row, rowVisual.Model); ApplySpacers(row); } };
+                rowVisual.Apply = node => { Sync(row, Children(NativeUiTheme.Prop(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray()); NativeUiTheme.Row(row, node); ApplySpacers(row); };
                 return rowVisual;
             case "Title": case "Caption":
                 var title = new TextBlock(); var titleVisual = new Visual(title);
@@ -227,12 +228,13 @@ internal sealed class NativeUiRenderer : IDisposable
                     AutomationProperties.SetName(checkbox, NativeUiTheme.String(node, "label"));
                 };
                 return checkboxVisual;
-            default: return new(NativeUiTheme.Notice("未支持", type));
+            default: return CreateComponent(type, key, depth);
         }
     }
     public void Dispose()
     {
-        foreach (var visual in _visuals.Values) visual.Disposed = true;
+        _confirmation?.Hide(); _confirmation = null;
+        foreach (var visual in _visuals.Values) { visual.Disposed = true; visual.Cleanup?.Invoke(); }
         _visuals.Clear(); _root.Child = null;
     }
 }
