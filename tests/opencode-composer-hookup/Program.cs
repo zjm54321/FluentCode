@@ -156,7 +156,30 @@ internal static class Program
         await BlankConfiguredPreferences();
         BlankResolvedSelection();
         PermissionDismissalFocus();
+        await StuckImagePasteHookup();
         Console.WriteLine($"PASS: 5 production-linked page-partial groups, {checks} assertions ({first}/{second}/{third}/{fourth}/{checks-first-second-third-fourth}); real core/editor helpers, fake HTTP, WinUI/view/scheduler doubles; no live UI/service.");
+    }
+    private static async Task StuckImagePasteHookup()
+    {
+        var before = checks;
+        using var f = new Fixture();
+        f.Page.Text("look ");
+        var ticket = f.Page.Controller.BeginPick(f.Page.Snapshot.Token)!;
+        var paste = await f.Page.Controller.StageImagePasteAsync(ticket,
+            new[] { new OpenCodeComposerFileSource("clipboard.png", "image/png", _ => Task.FromResult<Stream>(new MemoryStream(new byte[4]))) }, 5, 0);
+        Check(paste is not null && f.Page.ApplyStagedImage(paste), "real page TextEdited handler acknowledges text/chip/file together");
+        f.Page.AppendDocumentText("x");
+        Check(f.Page.InputState == OpenCodeComposerInputState.Clean && f.Page.Snapshot.Images.Count == 1,
+            "real page accepts immediate typing after image paste before queued render");
+        f.Page.Controller.SetText(f.Page.Snapshot.Token, "controller edit " + f.Page.Composer.Text);
+        f.Page.AppendDocumentText("z");
+        Check(f.Page.InputState == OpenCodeComposerInputState.HeldStale, "real page still holds genuinely stale input");
+        f.Page.ClearHeldFromView();
+        Check(f.Page.InputState == OpenCodeComposerInputState.Clean && f.Page.Composer.Text.Length == 0
+            && f.Page.Snapshot.Attachments.Count == 0, "real page clear-and-recover action discards held text/chips/files and releases editor sync");
+        f.Page.Text("works");
+        Check(f.Page.InputState == OpenCodeComposerInputState.Clean, "real page accepts typing after recovery");
+        Console.WriteLine($"PASS stuck image page hookup: {checks - before} assertions; production TextEdited and recovery action handlers.");
     }
     private static async Task DeferredAgentSubmission()
     {
@@ -967,6 +990,11 @@ namespace FluentCode.Pages
         private bool _composerOverFiveLines = false;
         private void InitializeComposerLayout() { }
         private bool FullScreenComposerActive => false; // Native overlay boundary, exercised by app-open check.
+        private bool FullScreenControlDown => false;
+        private void TryPendingFullScreenClose() { }
+        private void CloseFullScreenComposer(bool focus) => throw new InvalidOperationException("Native full-screen close is outside this inert page host.");
+        private void SubmitFullScreenComposer() => throw new InvalidOperationException("Native full-screen submit is outside this inert page host.");
+        private void Composer_TextChanged(object sender, TextChangedEventArgs args) => Composer_TextChanged();
         internal bool IsChildComposerSession { get; set; }
         internal readonly Panel ChildStopHost = new();
         internal readonly Button ChildStopButton = new();
@@ -1044,6 +1072,9 @@ namespace FluentCode.Pages
         internal void InitializeAgain() { InitializeComposer(); _composerView!.RequestCount = 0; }
         internal void ObserveText(string text) { Composer.Text = text; _composerView!.Evidence.RecordTextChanging(); }
         internal void Text(string text) { ObserveText(text); Composer_TextChanged(Composer, new()); }
+        internal bool ApplyStagedImage(OpenCodeComposerImagePaste paste) => _composerView!.ApplyStagedImage(paste);
+        internal void AppendDocumentText(string text) => _composerView!.AppendDocumentText(text);
+        internal void ClearHeldFromView() => _composerView!.ClearHeldFromView();
         internal async Task Command(string args) { Text("/review " + args); await Controller.LoadCatalogAsync(Snapshot.Token, _composerView!.Lifetime); _composerView.Choose(Snapshot.Token, Snapshot.CatalogHandle!, new OpenCodeComposerCommandIdentity.Server("review")); DrainView(); UpdateComposerButtons(); }
         internal async Task File() { var ticket = Controller.BeginPick(Snapshot.Token)!; await Controller.AddFilesAsync(ticket, new[] { new OpenCodeComposerFileSource("synthetic.txt", null, _ => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3 }))) }); DrainView(); UpdateComposerButtons(); }
         internal void RemoveCommand() { Controller.RemoveCommand(Snapshot.Token); DrainView(); UpdateComposerButtons(); }
@@ -1249,6 +1280,9 @@ namespace FluentCode.Pages.OpenCode
         public OpenCodeComposerToken Token => token;
         public string Text => text;
         internal bool AllowUnboundCarry { get; init; }
+        internal OpenCodeComposerImagePaste? ImagePaste { get; init; }
+        internal OpenCodeComposerLinkSpan? LinkPaste { get; init; }
+        internal OpenCodeComposerDocumentObservation? Observation { get; init; }
         internal OpenCodeComposerEditorAck? Acknowledgment { get; set; }
     }
     public sealed class OpenCodeComposerAttachmentRemovedEventArgs(OpenCodeComposerToken token, Guid id) : EventArgs { public OpenCodeComposerToken Token => token; public Guid Id => id; }
@@ -1264,10 +1298,27 @@ namespace FluentCode.Pages.OpenCode
         internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
         internal void RefreshMentionCandidates() { } // Native mention-list requery is outside this inert view.
         internal Func<string?>? SplashModelIdProvider { get; set; }
+        internal bool IsAutocompleteVisible => false;
         internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
-        internal event Action<OpenCodeComposerToken, int, string>? LinkChosen;
-        internal event Action<OpenCodeComposerToken, int, int, Guid>? ImageChosen;
-        internal void RaiseChipEventsForCompile() { LinkChosen?.Invoke(default, 0, ""); ImageChosen?.Invoke(default, 0, 0, Guid.Empty); }
+        internal event Action<OpenCodeComposerToken, bool>? ModelUndoRequested;
+        internal event Action<OpenCodeComposerToken, OpenCodeComposerSelection>? DocumentSelectionChanged;
+        internal void UndoDocument(bool redo = false) => ModelUndoRequested?.Invoke(source().Token, redo);
+        internal void SelectDocument(OpenCodeComposerSelection selection) => DocumentSelectionChanged?.Invoke(source().Token, selection);
+        internal event Action? RecoveryClearRequested;
+        internal void ClearHeldFromView() => RecoveryClearRequested?.Invoke();
+        internal bool TryClearHeldInput(Func<OpenCodeComposerToken, OpenCodeComposerEditorAck?> clear)
+        { var ok = Sync.TryClearHeldInput(clear); Evidence.Refresh(); return ok; }
+        private OpenCodeComposerImagePaste? imagePaste;
+        internal bool ApplyStagedImage(OpenCodeComposerImagePaste paste)
+        {
+            if (!Sync.Prepare() || source().Token != paste.Token || editor!.Text != paste.BeforeText) return false;
+            imagePaste = paste;
+            editor.Text = paste.Text;
+            Evidence.RecordTextChanging();
+            var clean = Sync.Flush() == OpenCodeComposerInputState.Clean;
+            imagePaste = null;
+            return clean;
+        }
         internal event EventHandler<OpenCodeComposerTextEditedEventArgs>? TextEdited;
         internal event EventHandler<OpenCodeComposerTokenEventArgs>? CommandRemoved, PickRequested;
         internal event EventHandler<OpenCodeComposerCatalogOpenRequestedEventArgs>? CatalogOpenRequested;
@@ -1311,6 +1362,22 @@ namespace FluentCode.Pages.OpenCode
         internal OpenCodeComposerToken HandoffToken;
         internal Func<OpenCodeComposerDraftFinalization>? CapturedFinalizer;
         internal OpenCodeComposerEditorAck? LastAck;
+        private OpenCodeComposerDocumentObservation? documentObservation;
+        private OpenCodeComposerDocumentObservation? ReadDocumentObservation()
+        {
+            var observation = documentObservation;
+            documentObservation = null;
+            return observation;
+        }
+        internal void AppendDocumentText(string text)
+        {
+            var before = LastAck?.Document ?? source().Document;
+            var next = before.Replace(before.Length, 0, text);
+            documentObservation = new(before, next, new(next.Length, next.Length));
+            editor!.Text = next.Serialize().Text;
+            Evidence.RecordTextChanging();
+            NotifyEditorTextChanged();
+        }
         internal sealed class HandoffScheduler : IOpenCodeComposerUiScheduler
         {
             internal bool Hold;
@@ -1323,10 +1390,12 @@ namespace FluentCode.Pages.OpenCode
             editor = value; composing = isComposing;
             Sync = new(source, () => editor.Text, text => { editor.Text = text; Evidence?.RecordTextChanging(); },
                 composing, (token, text, carry) => {
-                    var e = new OpenCodeComposerTextEditedEventArgs(token, text) { AllowUnboundCarry = carry };
+                    var paste = imagePaste; imagePaste = null;
+                    var e = new OpenCodeComposerTextEditedEventArgs(token, text) { AllowUnboundCarry = carry, ImagePaste = paste,
+                        Observation = Sync.SubmittedObservation };
                     TextEdited?.Invoke(this, e);
                     return LastAck = e.Acknowledgment;
-                });
+                }, ReadDocumentObservation);
             handoffs = new(new OpenCodeComposerViewLifetime(Scheduler, () => { }), () => Sync);
             Evidence = new(() => Sync, () => Live, () => LifetimeGeneration, composing);
             Evidence.LifetimeChanged();

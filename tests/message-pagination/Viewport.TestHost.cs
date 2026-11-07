@@ -75,6 +75,7 @@ namespace FluentCode.Pages
     }
     public sealed partial class OpenCodePage
     {
+        private bool IsViewAcknowledgementSessionTabSelected() => _selectedSessionId is { Length: > 0 };
         private readonly FluentCode.App _ackApp = new();
         private bool _newSessionDraftActive = false;
         public bool IsLoaded => true;
@@ -83,6 +84,9 @@ namespace FluentCode.Pages
         public double ActualWidth => 800;
         public double ActualHeight => 600;
         internal void TestViewportLayout(double? watermark) => _conversationView.TestGeometry(watermark);
+        // Supplied layout proof can be the visible answer bottom, with separator offscreen;
+        // the real ConversationView geometry walk is covered by session-return.
+        internal void TestViewportContentBottom(double watermark) => _conversationView.TestGeometry(watermark);
         internal void TestViewportFrame() => Microsoft.UI.Xaml.Media.CompositionTarget.Frame();
         internal int TestViewportFrames => Microsoft.UI.Xaml.Media.CompositionTarget.Count;
         internal double? TestAckWatermark => _ackApp.Last;

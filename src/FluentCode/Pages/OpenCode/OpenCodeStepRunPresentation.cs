@@ -128,10 +128,10 @@ internal static class OpenCodeStepRunPresentation
             : "正在重试…";
     }
     /// <summary>oh-my-opencode-slim 内部触发消息的机器标记。</summary>
-    internal const string InternalInitiatorMarker = "SLIM_INTERNAL_INITIATOR";
+    internal const string InternalInitiatorMarker = OpenCodeMessage.InternalInitiatorMarker;
 
     /// <summary>oh-my-opencode-slim 内部触发消息的可读标记。</summary>
-    internal const string InternalInitiatorPhrase = "oh-my-opencode-slim internal initiator";
+    internal const string InternalInitiatorPhrase = OpenCodeMessage.InternalInitiatorPhrase;
 
     /// <summary>内部触发消息提示行的短标签。</summary>
     internal const string InternalInitiatorLabel = "内部自动消息";
@@ -171,14 +171,16 @@ internal static class OpenCodeStepRunPresentation
 
     internal static OpenCodeTimelineRowContent DescribeSubagentUpdate(OpenCodeSubagentUpdate update)
     {
-        var label = "@" + update.Agent + " " + OpenCodeToolRowPresentation.TaskReportName(update.Kind);
+        var label = OpenCodeToolRowPresentation.TaskReportName(update.Kind);
+        var agent = OpenCodeToolRowPresentation.SubagentDisplayName(update.Agent)!;
         var excerpt = OpenCodeToolRowPresentation.TaskReportSummary(update.Message);
         if (excerpt.Length > 80) excerpt = excerpt[..80] + "…";
-        return new(label, "· " + excerpt, string.Empty, null, label + " · " + excerpt, label,
+        var target = agent + " · " + excerpt;
+        return new(label, target, string.Empty, null, label + " " + target, label + " · " + agent,
             new[]
             {
                 new OpenCodeToolProperty(0, "类型", update.IsEscalation ? "问题（escalation）" : "进度（progress）", OpenCodeToolPropertyKind.Text),
-                new OpenCodeToolProperty(0, "智能体", "@" + update.Agent, OpenCodeToolPropertyKind.Text),
+                new OpenCodeToolProperty(0, "智能体", agent, OpenCodeToolPropertyKind.Text),
                 new OpenCodeToolProperty(0, "子会话", update.ChildSessionId, OpenCodeToolPropertyKind.Code),
             }, update.Message, LinkText: "打开子智能体会话", AgentName: update.Agent, IsEscalation: update.IsEscalation);
     }
@@ -773,44 +775,14 @@ internal static class OpenCodeStepRunPresentation
 
     /// <summary>文本是否为 oh-my-opencode-slim 内部触发消息（含机器标记或可读标记）。</summary>
     internal static bool IsInternalInitiatorText(string? text)
-        => !string.IsNullOrEmpty(text)
-            && (text.Contains(InternalInitiatorMarker, StringComparison.Ordinal)
-                || text.Contains(InternalInitiatorPhrase, StringComparison.OrdinalIgnoreCase));
+        => OpenCodeMessage.IsInternalInitiatorText(text);
 
     /// <summary>
     /// 消息是否为内部触发消息（user / synthetic / system 的文本、说明或任一文本部件命中标记）。
     /// 只识别，不改写、不执行其内容。
     /// </summary>
     internal static bool IsInternalInitiator(OpenCodeMessage? message)
-    {
-        if (message is null)
-        {
-            return false;
-        }
-
-        if (message.Type is not (OpenCodeMessageTypes.User or OpenCodeMessageTypes.Synthetic or OpenCodeMessageTypes.System))
-        {
-            return false;
-        }
-
-        if (IsInternalInitiatorText(message.Text) || IsInternalInitiatorText(message.Description))
-        {
-            return true;
-        }
-
-        if (message.Content is { } content)
-        {
-            foreach (var part in content)
-            {
-                if (IsInternalInitiatorText(part?.Text))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
+        => message?.IsInternalInitiator == true;
 
     /// <summary>内部触发消息的完整文本（仅用于悬停详情；按原文，不解析）。</summary>
     internal static string DescribeInternalInitiatorText(OpenCodeMessage message)

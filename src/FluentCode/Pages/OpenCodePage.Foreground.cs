@@ -12,6 +12,10 @@ public sealed partial class OpenCodePage
     private OpenCodePageSource? _publishedForegroundSource;
     private string? _publishedForegroundSession;
 
+    private bool IsViewAcknowledgementSessionTabSelected()
+        => SessionTabs.SelectedItem is TabViewItem { Tag: string session } selected && session == _selectedSessionId
+        && _sessionTabs.TryGetValue(session, out var entry) && ReferenceEquals(entry.Item, selected);
+
     partial void UpdateForegroundNotificationSession()
     {
         if (!DispatcherQueue.HasThreadAccess) return;
@@ -19,7 +23,12 @@ public sealed partial class OpenCodePage
         {
             _foregroundTrackingInitialized = true;
             // Self-owned subscriptions also cover silent tab changes and collapsed cached pages.
-            SessionTabs.SelectionChanged += (_, _) => UpdateForegroundNotificationSession();
+            SessionTabs.SelectionChanged += (_, _) =>
+            {
+                InvalidateViewAcknowledgement(); // Revoke worker fences before background-tab work.
+                UpdateForegroundNotificationSession();
+                RequestViewAcknowledgementReview();
+            };
             SizeChanged += (_, _) => UpdateForegroundNotificationSession();
             RegisterPropertyChangedCallback(VisibilityProperty, (_, _) => UpdateForegroundNotificationSession());
         }

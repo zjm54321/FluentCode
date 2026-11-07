@@ -115,6 +115,8 @@ internal static partial class Program
     private static TaskCompletionSource<T> Signal<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     private static async Task Main()
     {
+        DocumentModel();
+        DocumentProtocol();
         await Ownership();
         await Outcomes();
         await FilesAndDraft();
@@ -153,6 +155,10 @@ internal static partial class Program
             var row = f.Core.Snapshot.Attachments.Single();
             Check(row.Mime == "image/png" && row.Name.EndsWith(".png") && row.Presentation?.Name == capture.Name, "browser chip uses existing image attachment and rich presentation");
             Check(f.Core.Snapshot.Text == "please fix", "browser metadata never overwrites editor text");
+            Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token) && f.Core.Snapshot.Attachments.Count == 0 && f.Core.Snapshot.Text == "please fix",
+                "model undo removes capture bytes/context without touching text or existing tokens");
+            Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token, redo: true) && f.Core.Snapshot.Attachments.Single().Id == row.Id,
+                "model redo restores the exact captured attachment identity");
             Check(!f.Core.TryAddCapturedImages(token, new[] { capture }), "browser stale token rejected");
             var before = f.Core.Snapshot.Token;
             try { f.Core.TryAddCapturedImages(before, Enumerable.Repeat(capture, OpenCodeAttachment.MaxFiles).ToArray()); throw new Exception("expected quantity failure"); }

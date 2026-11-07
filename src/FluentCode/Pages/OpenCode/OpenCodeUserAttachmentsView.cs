@@ -30,14 +30,16 @@ internal sealed class OpenCodeUserAttachmentsView : IDisposable
     internal FrameworkElement Element => _root;
 
     internal void Update(OpenCodeMessage message)
+        => Update(OpenCodeUserAttachments.FromMessage(message), !string.IsNullOrEmpty(message.Text));
+
+    internal void Update(IReadOnlyList<OpenCodeUserAttachment> attachments, bool hasText)
     {
-        var attachments = OpenCodeUserAttachments.FromMessage(message);
+        _root.Margin = new Thickness(0, hasText ? 8 : 0, 0, 0);
         if (_attachments.SequenceEqual(attachments)) return;
         Dispose();
         _attachments = attachments;
         _root.Children.Clear();
         _root.Visibility = attachments.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _root.Margin = new Thickness(0, string.IsNullOrEmpty(message.Text) ? 0 : 8, 0, 0);
         // Fixed square cells: wraps at the bubble width, each row exactly one tile (+gap) tall.
         var images = new VariableSizedWrapGrid
         {

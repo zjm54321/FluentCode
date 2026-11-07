@@ -50,7 +50,7 @@ public sealed partial class OpenCodePage
     {
         InitializePinnedHomeTab();
         HomePageHost.Children.Add(_homeView);
-        HomePageHost.Children.Add(CreateHomeSettingsButton());
+        _homeView.SetSettingsButton(CreateHomeSettingsButton());
         Loaded += (_, _) => { if (_homeActive) ShowHomePage(); };
         Unloaded += (_, _) => { if (!IsLoaded) ResetHomeSource(); };
         SessionLayoutRoot.SizeChanged += (_, _) => { UpdateConversationColumns(); if (_blankComposerPlacement) QueueComposerLayout(); };
@@ -318,7 +318,8 @@ public sealed partial class OpenCodePage
 
     private static OpenCodeHomeStatus? CreateHomeStatus(OpenCodeSessionUiState? state, OpenCodeSessionInfo info)
         => state is null ? null : new OpenCodeHomeStatus(state.Working, state.PendingAction, state.IsUnread,
-            state.Completion?.Outcome ?? info.Outcome) { QuestionPending = state.QuestionPending, MutationProtected = state.MutationProtected };
+            state.Completion?.Outcome ?? info.Outcome) { QuestionPending = state.QuestionPending, MutationProtected = state.MutationProtected,
+                CompletedAt = state.Completion?.IdleWatermark };
 
     private void RefreshHomeProjection()
     {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
@@ -10,13 +11,21 @@ using Microsoft.UI.Xaml.Media;
 namespace FluentCode.Pages;
 
 /// <summary>Applied content only requests a viewport review. Only a current, layout/frame-verified
-/// idle label can initiate the existing exact-watermark ACK. Background fences never read XAML.</summary>
+/// content proof can initiate the exact-watermark ACK. Background fences never read XAML.</summary>
 public sealed partial class OpenCodePage
 {
-    // Deliberately excludes revision/render generation: unknown POST results must never be retried.
+    // Successful receipts deduplicate across reflow. Unconfirmed receipts are safe to repeat for
+    // the SAME covered watermark; unlike permission/form mutations they acknowledge no action.
     private readonly record struct ViewAcknowledgementKey(string Identity, string SessionId, double Watermark);
     private const int ViewAcknowledgementAttemptCap = 512;
-    private readonly HashSet<ViewAcknowledgementKey> _viewAcknowledgementAttempted = new();
+    private sealed class ViewAcknowledgementAttempt
+    {
+        internal int Count;
+        internal bool InFlight, Confirmed;
+        internal DateTimeOffset RetryAfter;
+    }
+    private readonly Dictionary<ViewAcknowledgementKey, ViewAcknowledgementAttempt> _viewAcknowledgementAttempted = new();
+    private CancellationTokenSource? _viewAcknowledgementRetry;
 
     private sealed record ViewportOwner(string Identity, MessageHistoryRead Read, OpenCodeConversationView Conversation);
     private sealed record ViewAcknowledgementLive(ViewportOwner Owner, OpenCodeIdleViewportSnapshot Snapshot, long ProofVersion);
@@ -80,6 +89,9 @@ public sealed partial class OpenCodePage
     internal void UpdateViewAcknowledgementVisibility(bool windowVisible)
     {
         if (!DispatcherQueue.HasThreadAccess) return;
+        if (windowVisible && !_viewAcknowledgementWindowVisible)
+            foreach (var attempt in _viewAcknowledgementAttempted.Values)
+                if (!attempt.Confirmed && !attempt.InFlight) { attempt.Count = 0; attempt.RetryAfter = default; }
         _viewAcknowledgementWindowVisible = windowVisible;
         if (!windowVisible) InvalidateViewAcknowledgement();
         else
@@ -95,6 +107,8 @@ public sealed partial class OpenCodePage
         UpdateForegroundNotificationSession();
         _viewAcknowledgementLive = null;
         _viewAcknowledgementAwaitingReview = null;
+        _viewAcknowledgementRetry?.Cancel();
+        _viewAcknowledgementRetry = null;
         CancelViewAcknowledgementFrame();
     }
 
@@ -107,6 +121,7 @@ public sealed partial class OpenCodePage
 
     private bool IsViewAcknowledgementPageVisible()
         => _viewAcknowledgementWindowVisible && _pageActive && !_homeActive && !_newSessionDraftActive
+        && IsViewAcknowledgementSessionTabSelected()
         && IsLoaded && Visibility == Visibility.Visible && XamlRoot is not null && ActualWidth > 0 && ActualHeight > 0;
 
     private bool IsViewportOwnerCurrent(ViewportOwner owner)
@@ -162,21 +177,75 @@ public sealed partial class OpenCodePage
         if (!ReferenceEquals(_viewAcknowledgementLive, proof) || !IsViewportOwnerCurrent(proof.Owner)
             || proof.Snapshot.Candidate is not { } candidate || !double.IsFinite(candidate.Watermark) || candidate.Watermark < 0) return;
         var key = new ViewAcknowledgementKey(proof.Owner.Identity, proof.Owner.Read.SessionId, candidate.Watermark);
-        if (_viewAcknowledgementAttempted.Count >= ViewAcknowledgementAttemptCap || !_viewAcknowledgementAttempted.Add(key)) return;
-        _ = AcknowledgeRenderedAsync(proof);
+        if (!_viewAcknowledgementAttempted.TryGetValue(key, out var attempt))
+        {
+            if (_viewAcknowledgementAttempted.Count >= ViewAcknowledgementAttemptCap) return;
+            _viewAcknowledgementAttempted.Add(key, attempt = new());
+        }
+        if (attempt.Confirmed || attempt.InFlight || attempt.Count >= 4) return;
+        if (DateTimeOffset.UtcNow < attempt.RetryAfter) { ScheduleViewAcknowledgementRetry(proof, attempt); return; }
+        attempt.InFlight = true;
+        attempt.Count++;
+        _ = AcknowledgeRenderedAsync(proof, attempt);
     }
 
-    private async Task AcknowledgeRenderedAsync(ViewAcknowledgementLive proof)
+    private async Task AcknowledgeRenderedAsync(ViewAcknowledgementLive proof, ViewAcknowledgementAttempt attempt)
     {
+        double? receipt = null;
         try
         {
             if (Application.Current is not App app || proof.Owner.Read.Source is not { } source) return;
             using var operationCts = CreateOperationToken(source);
             // Thread-safe source state + immutable volatile reference only; never XAML/Transform/layout.
             bool IsStillVisible() => !source.IsRevoked && ReferenceEquals(_viewAcknowledgementLive, proof);
-            await app.AcknowledgeOpenCodeSessionAsync(source, proof.Owner.Read.Revision, proof.Owner.Read.SessionId,
-                proof.Snapshot.Candidate!.Watermark, IsStillVisible, operationCts.Token).ConfigureAwait(false);
+            receipt = await app.AcknowledgeOpenCodeSessionAsync(source, proof.Owner.Read.Revision, proof.Owner.Read.SessionId,
+                proof.Snapshot.Candidate!.Watermark, IsStillVisible, operationCts.Token);
         }
-        catch (Exception) { /* Unknown/local failure retains its attempt key; never retry automatically. */ }
+        catch (Exception) { /* An uncertain receipt can be retried, but only with fresh visibility proof. */ }
+        finally
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                attempt.InFlight = false;
+                attempt.Confirmed = receipt == proof.Snapshot.Candidate!.Watermark;
+                if (!attempt.Confirmed && attempt.Count < 4)
+                {
+                    attempt.RetryAfter = DateTimeOffset.UtcNow.AddMilliseconds(attempt.Count switch { 1 => 250, 2 => 1000, _ => 4000 });
+                    if (IsViewportOwnerCurrent(proof.Owner)) ScheduleViewAcknowledgementRetry(proof, attempt);
+                }
+            });
+        }
+    }
+
+    private void ScheduleViewAcknowledgementRetry(ViewAcknowledgementLive proof, ViewAcknowledgementAttempt attempt)
+    {
+        if (_viewAcknowledgementRetry is not null || attempt.Confirmed || attempt.InFlight || attempt.Count >= 4
+            || !IsViewportOwnerCurrent(proof.Owner) || proof.Owner.Read.Source is not { } source) return;
+        var cancellation = _viewAcknowledgementRetry = CreateOperationToken(source);
+        _ = ReviewAfterBackoffAsync();
+        async Task ReviewAfterBackoffAsync()
+        {
+            var elapsed = false;
+            try
+            {
+                var delay = attempt.RetryAfter - DateTimeOffset.UtcNow;
+                if (delay > TimeSpan.Zero) await Task.Delay(delay, cancellation.Token).ConfigureAwait(false);
+                elapsed = true;
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                // Clear/dispose on the owning UI thread. A worker must not dispose a CTS
+                // still reachable by synchronous visibility/layout invalidation's Cancel().
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    var current = ReferenceEquals(_viewAcknowledgementRetry, cancellation);
+                    if (current) _viewAcknowledgementRetry = null;
+                    var review = current && elapsed && !cancellation.IsCancellationRequested;
+                    cancellation.Dispose();
+                    if (review) RequestViewAcknowledgementReview(); // Always a new frame/current owner.
+                });
+            }
+        }
     }
 }

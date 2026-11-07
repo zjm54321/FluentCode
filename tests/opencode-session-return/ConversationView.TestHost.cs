@@ -90,8 +90,9 @@ namespace FluentCode.Pages.OpenCode
         public OpenCodeRichTextPresenter() => ConversationViewTestProbe.Record("Construct", this, Element);
         internal Microsoft.UI.Xaml.Controls.Flyout? TextContextFlyout { get; set; }
         internal (int Images, int Pdfs) AttachmentCounts { get; set; }
+        internal string? Source { get; private set; }
         public void Render(string? source, OpenCodeRichTextStyle style)
-            => ConversationViewTestProbe.Record("Render", this, source, style);
+        { Source = source; ConversationViewTestProbe.Record("Render", this, source, style); }
     }
 
     internal sealed class OpenCodeToolDetailOptions { }
@@ -382,8 +383,12 @@ namespace FluentCode.Pages.OpenCode
     internal sealed class OpenCodeUserAttachmentsView : IDisposable
     {
         internal FrameworkElement Element { get; } = new StackPanel();
-        internal void Update(OpenCodeMessage message) => ConversationViewTestProbe.Record("Attachments", this, message);
-        public void Dispose() { }
+        internal IReadOnlyList<OpenCodeUserAttachment> Attachments { get; private set; } = Array.Empty<OpenCodeUserAttachment>();
+        internal int DisposeCount { get; private set; }
+        internal void Update(OpenCodeMessage message) => Update(OpenCodeUserAttachments.FromMessage(message), !string.IsNullOrEmpty(message.Text));
+        internal void Update(IReadOnlyList<OpenCodeUserAttachment> attachments, bool hasText)
+        { Attachments = attachments; ConversationViewTestProbe.Record("Attachments", this, attachments, hasText); }
+        public void Dispose() { DisposeCount++; }
     }
 
     internal sealed class OpenCodeTurnChipView

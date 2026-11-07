@@ -155,6 +155,7 @@ static partial class Checks
         internal readonly Channel<ObservationSse> Connections = Channel.CreateUnbounded<ObservationSse>();
         internal readonly ConcurrentDictionary<string, int> Reads = new(), Observations = new();
         internal readonly ConcurrentDictionary<string, OpenCodeMessage[]> History = new();
+        internal readonly ConcurrentDictionary<string, OpenCodeSessionInfo> Info = new();
         internal readonly ConcurrentDictionary<string, bool> Pending = new();
         internal readonly ConcurrentDictionary<string, string> Parents = new();
         internal readonly ConcurrentDictionary<string, OpenCodeSessionObservation> Latest = new();
@@ -207,6 +208,7 @@ static partial class Checks
             if (path.EndsWith("/form")) return Task.FromResult(Json(new { data = pending ? new[] { new OpenCodeFormDetail {
                 Id = "frm_push", SessionId = session, Title = "Questions", Metadata = JsonSerializer.SerializeToElement(new { kind = "question" }),
                 State = new() { Status = "pending" }, Fields = [new() { Key = "answer", Type = "string", Title = "Continue?", Required = true }] } } : [] }));
+            if (fields.Length == 4 && Info.TryGetValue(session, out var info)) return Task.FromResult(Json(new { data = info }));
             if (fields.Length == 4) return Task.FromResult(Json(new { data = new { id = session,
                 parentID = Parents.TryGetValue(session, out var parent) ? parent : session == "ses_child" ? "ses_root" : null } }));
             return Task.FromResult(Json(new { data = Array.Empty<object>() }));

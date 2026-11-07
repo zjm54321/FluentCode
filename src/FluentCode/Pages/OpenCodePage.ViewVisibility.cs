@@ -6,7 +6,7 @@ namespace FluentCode.Pages;
 /// </summary>
 /// <remarks>
 /// <para>恢复可见只请求当前真实 view 的布局/视口复核，不提交消息 DTO 水位；隐藏立即撤销在途 proof。
-/// 每个 (来源身份, 会话, 水位) 仍至多自动尝试一次。</para>
+/// 未确认回执按有限退避重试，再次恢复可见时重新允许尝试；已确认水位不重复提交。</para>
 /// <para>
 /// 只覆盖窗口最小化与激活状态，<strong>不检测窗口被其他窗口遮挡</strong>（XAML / AppWindow 无法判定）。
 /// 全部入口要求 UI 线程调用，非 UI 调用直接拒绝（与 ACK 入口同一契约）。

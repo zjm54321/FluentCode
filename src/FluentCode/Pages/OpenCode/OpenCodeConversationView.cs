@@ -597,7 +597,8 @@ public sealed class OpenCodeConversationView : StackPanel
         }
     }
 
-    /// <summary>Conservative actual-label proof, not message-list membership. No layout/visibility fallback.
+    /// <summary>Actual visible layout proof, not message-list membership: a visible idle label OR
+    /// the bottom edge of the completed turn's latest content. The separator may be below the viewport.
     /// Call on the UI thread at the Page's one-shot rendered-frame review, after layout.
     /// No candidate is returned during mutation or before this version's LayoutUpdated.</summary>
     internal bool IsIdleLayoutCurrent => !_idleContentChanging && _idleSnapshotComplete && _idleLayoutVersion == RenderVersion;
@@ -609,27 +610,43 @@ public sealed class OpenCodeConversationView : StackPanel
         // transforms across layout/scroll frames: that would turn stale geometry into ACK evidence.
         var transforms = new Dictionary<FrameworkElement, GeneralTransform>();
         if (!_idleContentChanging && _idleSnapshotComplete && _idleLayoutVersion == RenderVersion)
-            foreach (var entry in _entries)
+            for (var index = 0; index < _entries.Count; index++)
             {
-                if (entry.MessageType != OpenCodeMessageTypes.Idle || entry.IdleLabel is not { } label
+                var entry = _entries[index];
+                if (entry.MessageType != OpenCodeMessageTypes.Idle
                     || string.IsNullOrWhiteSpace(entry.IdleMessageId) || _messageIdCounts.GetValueOrDefault(entry.IdleMessageId) != 1
-                    || entry.IdleWatermark is not { } water || !double.IsFinite(water) || water < 0
-                    || string.IsNullOrWhiteSpace(label.Text) || !ReferenceEquals(entry.Element.Parent, this)
-                    || !ReferenceEquals(VisualTreeHelper.GetParent(label), entry.Element)) continue;
-                if (!TryIdleBounds(label, viewport, transforms, out var bounds, out var clip)) continue;
+                    || entry.IdleWatermark is not { } water || !double.IsFinite(water) || water < 0) continue;
+                Rect bounds = default, clip = default;
+                var visible = entry.IdleLabel is { } label && !string.IsNullOrWhiteSpace(label.Text)
+                    && ReferenceEquals(entry.Element.Parent, this) && ReferenceEquals(VisualTreeHelper.GetParent(label), entry.Element)
+                    && TryIdleBounds(label, viewport, transforms, out bounds, out clip);
+                if (!visible)
+                    for (var prior = index - 1; prior >= 0; prior--)
+                    {
+                        var content = _entries[prior];
+                        if (content.MessageType == OpenCodeMessageTypes.Idle) break;
+                        if (content.Snapshot?.IsInternalInitiator == true || content.MessageType is "agent-switched" or "model-switched" or "location-switched") continue;
+                        // Never substitute an older row for an unrealized latest message.
+                        visible = content.Realized && ReferenceEquals(content.Element.Parent, this)
+                            && TryIdleBounds(content.Element, viewport, transforms, out bounds, out clip, bottomOnly: true);
+                        break;
+                    }
+                if (!visible) continue;
                 if (best is null || water > best.Watermark || (water == best.Watermark && string.CompareOrdinal(entry.IdleMessageId, best.MessageId) < 0))
                     best = new(entry.IdleMessageId, water, bounds, clip, new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight));
             }
         return new(RenderVersion, best);
     }
 
-    private bool TryIdleBounds(TextBlock label, ScrollView viewport, Dictionary<FrameworkElement, GeneralTransform> transforms, out Rect bounds, out Rect clip)
+    private bool TryIdleBounds(FrameworkElement label, ScrollView viewport, Dictionary<FrameworkElement, GeneralTransform> transforms, out Rect bounds, out Rect clip, bool bottomOnly = false)
     {
         bounds = clip = default;
         try
         {
             if (viewport.XamlRoot is not { } root || !Positive(viewport.ActualWidth) || !Positive(viewport.ActualHeight)
-                || !TryBounds(label, viewport, new Rect(0, 0, label.ActualWidth, label.ActualHeight), transforms, out bounds)) return false;
+                || !TryBounds(label, viewport, bottomOnly
+                    ? new Rect(0, Math.Max(0, label.ActualHeight - 1), label.ActualWidth, Math.Min(1, label.ActualHeight))
+                    : new Rect(0, 0, label.ActualWidth, label.ActualHeight), transforms, out bounds)) return false;
             clip = new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight);
             var hasView = false;
             var hasScroll = false;
@@ -714,6 +731,7 @@ public sealed class OpenCodeConversationView : StackPanel
             HorizontalContentAlignment = HorizontalAlignment.Stretch, IsTabStop = false };
         internal readonly StackPanel Content = new() { Spacing = 4 };
         internal readonly OpenCodeRichTextPresenter Presenter = new();
+        internal readonly OpenCodeUserAttachmentsView Attachments = new();
         internal string Signature = string.Empty;
         internal JsonElement? RenderedPayload;
     }
@@ -749,7 +767,7 @@ public sealed class OpenCodeConversationView : StackPanel
                 {
                     row = new SteerRow { Item = item };
                     row.Content.Children.Add(row.Presenter.Element);
-                    var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false);
+                    var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false, attachments: row.Attachments.Element);
                     row.Element.Content = bubble.Element;
                     AutomationProperties.SetAutomationId(row.Element, "OpenCodeAdmittedSteer." + id);
                     _steerRows[id] = row;
@@ -761,6 +779,7 @@ public sealed class OpenCodeConversationView : StackPanel
         foreach (var pair in _steerRows) if (!retained.Contains(pair.Key))
         {
             Children.Remove(pair.Value.Element);
+            pair.Value.Attachments.Dispose();
             stale.Add(pair.Key);
         }
         foreach (var id in stale) _steerRows.Remove(id);
@@ -790,10 +809,13 @@ public sealed class OpenCodeConversationView : StackPanel
         row.Signature = signature;
         row.RenderedPayload = item.Payload;
         var rawText = OpenCodeQueuedPromptsView.ReadText(item.Payload);
+        var files = OpenCodeUserAttachments.FromInbox(item);
+        row.Presenter.AttachmentCounts = OpenCodeUserAttachments.Counts(files);
         row.Presenter.Render(rawText, OpenCodeRichTextStyle.Body);
+        row.Attachments.Update(files, !string.IsNullOrEmpty(rawText));
         while (row.Content.Children.Count > 1) row.Content.Children.RemoveAt(1);
         if (item.Payload is { ValueKind: JsonValueKind.Object } payload)
-            foreach (var attachmentKind in new[] { "files", "agents", "skills" })
+            foreach (var attachmentKind in new[] { "agents", "skills" })
                 if (payload.TryGetProperty(attachmentKind, out var attachments) && attachments.ValueKind == JsonValueKind.Array)
                 {
                     var index = 0;
@@ -801,11 +823,11 @@ public sealed class OpenCodeConversationView : StackPanel
                     {
                         index++;
                         var name = attachment.ValueKind == JsonValueKind.Object && attachment.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
-                        var label = attachmentKind == "files" ? "附件" : attachmentKind == "agents" ? "智能体附件" : "技能附件";
+                        var label = attachmentKind == "agents" ? "智能体附件" : "技能附件";
                         row.Content.Children.Add(OpenCodeInteractionUi.StyledText(label + "：" + (string.IsNullOrWhiteSpace(name) ? index.ToString(CultureInfo.InvariantCulture) : name), OpenCodeInteractionUi.CaptionStyleKey, selectable: true));
                     }
                 }
-        if (string.IsNullOrEmpty(rawText) && row.Content.Children.Count == 1)
+        if (string.IsNullOrEmpty(rawText) && files.Count == 0 && row.Content.Children.Count == 1)
             row.Content.Children.Add(OpenCodeInteractionUi.StyledText("（空消息）", OpenCodeInteractionUi.CaptionStyleKey));
         row.Element.IsTabStop = withdraw || change;
         // Same shared menu shape as delivered messages: copy row on the text, then this row's own actions.
@@ -841,7 +863,10 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             if (_renderedUserMessageIds.Contains(id)) _deliveredSteerIds.Add(id);
             if (_deliveredSteerIds.Contains(id))
+            {
+                _steerRows[id].Attachments.Dispose();
                 Children.Remove(_steerRows[id].Element);
+            }
         }
         var index = 0;
         foreach (var element in Children) if (!projected.Contains(element)) index++;
@@ -958,6 +983,9 @@ public sealed class OpenCodeConversationView : StackPanel
 
         /// <summary>即使是链中唯一一行也收进“已处理”组头（子智能体完成通知：不留孤立行）。</summary>
         public bool ForceGroup { get; init; }
+
+        /// <summary>内部汇报只是分组中的提示行，不是回合边界或正在执行的步骤。</summary>
+        public bool IsInitiator { get; init; }
 
         /// <summary>元素当前所在容器（消息部件面板或某个工具组的列表）；未入树为 null。</summary>
         public Panel? Host { get; set; }
@@ -1481,7 +1509,7 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             var entry = _entries[index];
             _entryIndexes[entry.Key] = index;
-            if (entry.MessageType is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !entry.IsManualBackgroundNotice)
+            if (entry.MessageType is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !entry.IsManualBackgroundNotice && !entry.IsInitiatorChip)
                 _latestTurnStart = index + 1;
             _recoverySensitive |= entry.Snapshot?.Error is not null || entry.Snapshot?.Retry is not null;
         }
@@ -1858,7 +1886,7 @@ public sealed class OpenCodeConversationView : StackPanel
             && notice.Kind == OpenCodeAsyncCompletionKind.Subagent;
         var manual = !instruction && !async && OpenCodeManualBackgroundIndex.TryReadNotice(message, out _);
         var initiator = !instruction && !async && !manual && OpenCodeStepRunPresentation.IsInternalInitiator(message);
-        var process = !instruction && (async || manual || message.Type is OpenCodeMessageTypes.Shell or OpenCodeMessageTypes.LocationSwitched);
+        var process = !instruction && (async || manual || initiator || message.Type is OpenCodeMessageTypes.Shell or OpenCodeMessageTypes.LocationSwitched);
         var state = !subagentNotice && (process || !instruction && message.Type == OpenCodeMessageTypes.Assistant && !initiator)
             ? new AssistantState { Message = message, IsProcessNotice = process } : null;
         var groups = new Dictionary<string, OpenCodeToolGroupView>(StringComparer.Ordinal);
@@ -1937,6 +1965,15 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
                 if (run.Leaves.Count > 0) state.Runs.Add(run);
             }
+            else if (initiator)
+            {
+                var content = OpenCodeStepRunPresentation.TryReadSubagentUpdate(current, out var update)
+                    ? OpenCodeStepRunPresentation.DescribeSubagentUpdate(update)
+                    : new OpenCodeTimelineRowContent(OpenCodeStepRunPresentation.InternalInitiatorLabel, string.Empty, string.Empty, null,
+                        OpenCodeStepRunPresentation.InternalInitiatorLabel, OpenCodeStepRunPresentation.InternalInitiatorLabel,
+                        Array.Empty<OpenCodeToolProperty>(), null);
+                AddProcess(key + "/process", ChipModel(content), "notice:" + key, initiator: true);
+            }
             else if (async && OpenCodeStepRunPresentation.TryReadAsyncCompletion(current, out var notification))
             {
                 if (!_subagentInvocationKeys.Contains(notification.Key))
@@ -1961,16 +1998,17 @@ public sealed class OpenCodeConversationView : StackPanel
             if (!groups.TryGetValue(groupId, out var group)) groups[groupId] = group = new(groupId, OnStepGroupToggled);
             return new() { Group = group, Owner = state!, StartsMessage = true, EndsMessage = true };
         }
-        static void AddLeaf(StepRun run, OpenCodeToolRowModel model, string operation, bool inline)
+        static void AddLeaf(StepRun run, OpenCodeToolRowModel model, string operation, bool inline, bool initiator = false)
         {
-            run.Tools.Add(model);
+            if (!initiator) run.Tools.Add(model);
             run.Leaves.Add(new PartEntry { Key = operation, Kind = "process", Update = (_, _, _) => { },
-                Presentation = () => model, OperationKey = () => operation, InlinePresentation = inline });
+                Presentation = () => model, OperationKey = () => operation, InlinePresentation = inline,
+                IsInitiator = initiator, ForceGroup = initiator });
         }
-        void AddProcess(string groupId, OpenCodeToolRowModel model, string operation, bool inline = false)
+        void AddProcess(string groupId, OpenCodeToolRowModel model, string operation, bool inline = false, bool initiator = false)
         {
             var run = NewRun(groupId);
-            AddLeaf(run, model, operation, inline);
+            AddLeaf(run, model, operation, inline, initiator);
             state!.Runs.Add(run);
         }
         Apply(message);
@@ -2122,7 +2160,7 @@ public sealed class OpenCodeConversationView : StackPanel
         Action<OpenCodeMessage> apply, Func<OpenCodeToolRowModel> presentation,
         Action open, Action enter, Action exit, Action<FrameworkElement?> anchor, Func<string> glyph,
         Action dispose, bool instruction = false, bool async = false, Func<string>? operationKey = null, bool inline = false, Func<bool>? represented = null,
-        bool forceGroup = false)
+        bool forceGroup = false, bool initiator = false)
     {
         var group = new OpenCodeToolGroupView(key + "/process", OnStepGroupToggled);
         var state = new AssistantState { Element = group.Element, Message = message, IsProcessNotice = true };
@@ -2131,20 +2169,21 @@ public sealed class OpenCodeConversationView : StackPanel
             Key = key, Kind = "process", Element = content, Update = (_, _, _) => { },
             OpenDetail = open, HoverEnter = enter, HoverExit = exit, SetDetailAnchor = anchor,
             Presentation = presentation, Glyph = glyph, OperationKey = operationKey ?? (() => "notice:" + key),
-            InlinePresentation = inline, ForceGroup = forceGroup,
+            InlinePresentation = inline, ForceGroup = forceGroup, IsInitiator = initiator,
         };
         var run = new StepRun { Group = group, Owner = state, StartsMessage = true, EndsMessage = true };
         run.Leaves.Add(leaf);
-        run.Tools.Add(presentation());
+        if (!initiator) run.Tools.Add(presentation());
         if (represented?.Invoke() != true) state.Runs.Add(run);
         group.Element.Visibility = state.Runs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         group.ItemsHost.Children.Add(content);
         return new Entry
         {
-            Key = key, Element = group.Element, Assistant = state, IsInstructionNotice = instruction, IsAsyncCompletion = async,
+            Key = key, Element = group.Element, Assistant = state, IsInstructionNotice = instruction, IsAsyncCompletion = async, IsInitiatorChip = initiator,
             Update = m =>
             {
-                apply(m); state.Message = m; run.Tools.Clear(); run.Tools.Add(presentation());
+                apply(m); state.Message = m; run.Tools.Clear();
+                if (!initiator) run.Tools.Add(presentation());
                 state.Runs.Clear();
                 if (represented?.Invoke() != true) state.Runs.Add(run);
                 group.Element.Visibility = state.Runs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -2190,14 +2229,9 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         Apply(message);
-        return new Entry
-        {
-            Key = key,
-            Element = chip.Element,
-            Update = Apply,
-            IsInitiatorChip = true,
-            Dispose = () => { childId = null; chip.Dispose(); },
-        };
+        return CreateProcessEntry(key, message, chip.Element, Apply, () => ChipModel(chip.Content),
+            chip.OpenDetail, chip.HoverEnter, chip.HoverExit, chip.SetDetailAnchor, () => chip.Glyph,
+            () => { childId = null; chip.Dispose(); }, forceGroup: true, initiator: true);
     }
 
     /// <summary>
@@ -2267,9 +2301,7 @@ public sealed class OpenCodeConversationView : StackPanel
     {
         try
         {
-            var files = OpenCodeUserAttachments.FromMessage(message);
-            return (files.Count(f => f.Image is not null),
-                files.Count(f => f.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)));
+            return OpenCodeUserAttachments.Counts(OpenCodeUserAttachments.FromMessage(message));
         }
         catch (Exception) { return (0, 0); }
     }
@@ -2852,6 +2884,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private void ApplyStepChains(int startIndex = 0)
     {
         var chains = new List<List<StepRun>>();
+        var leadingInitiators = new List<StepRun>();
         List<StepRun>? open = null;
         // Only the newest chain with nothing visible after it may stay live. Any later text / boundary / chain
         // means the model has moved on: earlier groups finalize ("已处理", frozen duration) and collapse by default.
@@ -2860,6 +2893,13 @@ public sealed class OpenCodeConversationView : StackPanel
         {
             StepChainEntriesVisited++;
             var state = _entries[index].Assistant;
+            if (_entries[index].IsInitiatorChip && state is not null)
+            {
+                // Fold into the surrounding chain without opening/closing it or moving its live tail.
+                if (chains.Count > 0) chains[^1].AddRange(state.Runs);
+                else leadingInitiators.AddRange(state.Runs);
+                continue;
+            }
             if (state is null)
             {
                 open = null;
@@ -2890,7 +2930,8 @@ public sealed class OpenCodeConversationView : StackPanel
                 }
                 else
                 {
-                    open = new List<StepRun> { run };
+                    open = new List<StepRun>(leadingInitiators) { run };
+                    leadingInitiators.Clear();
                     chains.Add(open);
                 }
                 trailing = open;
@@ -2904,6 +2945,9 @@ public sealed class OpenCodeConversationView : StackPanel
             }
         }
 
+        // With no surrounding work yet, keep internal rows under one neutral processed header.
+        if (leadingInitiators.Count > 0) chains.Add(leadingInitiators);
+
         // A completed assistant message is only a step boundary. Latch activity for the whole
         // latest turn until idle/new user or an authoritative selected-session terminal signal.
         var turnStart = startIndex;
@@ -2911,13 +2955,13 @@ public sealed class OpenCodeConversationView : StackPanel
         for (var index = startIndex; index < _entries.Count; index++)
         {
             var type = _entries[index].MessageType;
-            if (type is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !_entries[index].IsManualBackgroundNotice)
+            if (type is OpenCodeMessageTypes.User or OpenCodeMessageTypes.Idle && !_entries[index].IsManualBackgroundNotice && !_entries[index].IsInitiatorChip)
             {
                 turnStart = index + 1;
                 lastBoundaryIdle = type == OpenCodeMessageTypes.Idle;
             }
         }
-        var turnKey = turnStart > 0 ? _entries[turnStart - 1].Key : (_entries.Count > 0 ? _entries[0].Key : string.Empty);
+        var turnKey = turnStart > 0 ? _entries[turnStart - 1].Key : _entries.FirstOrDefault(entry => !entry.IsInitiatorChip)?.Key ?? string.Empty;
         if (_observedTurnKey != turnKey) { _observedTurnKey = turnKey; _observedTurnActive = false; }
         var currentOwners = new HashSet<AssistantState>();
         OpenCodeMessage? executingAssistant = null;
@@ -2941,7 +2985,8 @@ public sealed class OpenCodeConversationView : StackPanel
             var leader = chain[0];
             bool? expansionChoice = _groupExpansion.TryGetValue(leader.Group.GroupId, out var chosen) ? chosen : null;
             // Live only while the turn runs AND this chain is still the trailing segment of the transcript.
-            var activeTurn = wholeTurnActive && ReferenceEquals(chain, trailing) && currentOwners.Contains(leader.Owner);
+            var activeTurn = wholeTurnActive && ReferenceEquals(chain, trailing)
+                && chain.Exists(run => run.Leaves.Exists(part => !part.IsInitiator) && currentOwners.Contains(run.Owner));
             var sameRevision = !activeTurn && !leader.AppliedActive && leader.AppliedConfiguration == _stepConfiguration
                 && leader.AppliedExpansion == expansionChoice && leader.AppliedRuns?.Length == chain.Count;
             for (var i = 0; sameRevision && i < chain.Count; i++)
@@ -3003,7 +3048,8 @@ public sealed class OpenCodeConversationView : StackPanel
 
             var tools = new List<OpenCodeToolRowModel>();
             foreach (var part in leaves)
-                if (part.Presentation is { } presentation) tools.Add(presentation());
+                if (part.IsInitiator) continue;
+                else if (part.Presentation is { } presentation) tools.Add(presentation());
                 else if (part.LastPart is { } snapshot && !part.IsReasoning)
                     tools.Add(StepModel(part)!);
 
@@ -3018,12 +3064,13 @@ public sealed class OpenCodeConversationView : StackPanel
             var expanded = ResolveExpansion(leaderId, summary.IsActive, nowActive);
             // B17: decorative working phrases follow only real state — the latest visible step and the model
             // that is actually executing (including a new assistant with no visible parts yet), never the UI dropdown.
-            var latestLeaf = leaves.Count > 0 ? leaves[^1] : null;
+            var latestLeaf = leaves.FindLast(part => !part.IsInitiator);
             // Prefer the newest still-running real step; a later completed background notification must not mask it.
             var currentLeaf = latestLeaf;
             for (var p = leaves.Count - 1; p >= 0; p--)
             {
                 var candidate = leaves[p];
+                if (candidate.IsInitiator) continue;
                 var model = StepModel(candidate);
                 if (candidate.IsReasoning && candidate.ReasoningStatus == OpenCodeToolRowStatus.Streaming
                     || model is { Status: OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming, IsBackground: false })

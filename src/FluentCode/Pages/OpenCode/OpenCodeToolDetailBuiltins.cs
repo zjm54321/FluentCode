@@ -87,7 +87,7 @@ internal static partial class OpenCodeToolDetailBuiltins
 
     private static FrameworkElement Thinking()
     {
-        var ring = new ProgressRing { IsActive = true, Width = 12, Height = 12, MinWidth = 12, MinHeight = 12 };
+        var ring = OpenCodeProgressRingSync.Create(12); // Default ring, in phase with the row's ring.
         return StateLine(ring, "正在思考…", OpenCodeToolTheme.TextSecondary);
     }
 
@@ -256,7 +256,7 @@ internal static partial class OpenCodeToolDetailBuiltins
             if (!answered)
             {
                 var (icon, text, brush) = model.IsActive
-                    ? ((FrameworkElement)new ProgressRing { IsActive = true, Width = 12, Height = 12, MinWidth = 12, MinHeight = 12 }, "等待回答…", OpenCodeToolTheme.TextSecondary)
+                    ? ((FrameworkElement)OpenCodeProgressRingSync.Create(12), "等待回答…", OpenCodeToolTheme.TextSecondary)
                     : model.Status == OpenCodeToolRowStatus.Error
                         ? (StatusGlyph("\uE711", OpenCodeToolTheme.Caution), "已跳过，没有作答", OpenCodeToolTheme.TextSecondary)
                         : (StatusGlyph("\uE9CE", OpenCodeToolTheme.TextSecondary), "未回答", OpenCodeToolTheme.TextSecondary);
@@ -531,7 +531,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         var state = call.Status?.ToLowerInvariant();
         FrameworkElement? icon = state switch
         {
-            "running" or "pending" => new ProgressRing { IsActive = true, Width = 12, Height = 12, MinWidth = 12, MinHeight = 12 },
+            "running" or "pending" => OpenCodeProgressRingSync.Create(12),
             _ => null, // unknown ≠ failure: no icon.
         };
         if (icon is not null)

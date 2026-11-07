@@ -54,7 +54,7 @@ FluentCode 是基于 .NET 10 与 WinUI 3（Windows App SDK 1.8）构建的原生
 - **消息与时间线（`OpenCodeConversationView.cs`）**：
   按逻辑回合增量合并消息。思考过程、工具调用与子代理分别分流至专用呈现器。
 - **输入区（`OpenCodePage.Composer.cs`）**：
-  支持单行自增高、多模态附件上传、输入法防误触发送、智能体/模型快速选择以及字符快捷触发器（`@`、`/`、`!`）。
+  使用一个不可变的文本/内联 token 文档；`RichEditBox` 中的图片对象各占一个字符，带编辑收据的适配器只呈现文档，不能由标签或原生 live range 推断身份。普通/全屏重挂同一个编辑器并共享输入账本、组合输入边界及模型撤销/重做；高度读取实际富文本布局。保留多模态附件、智能体/模型选择和 `@`、`/`、`!` 触发器。详见 [Composer 文档与原生适配器](composer.md)。
 - **右侧面板（`OpenCodeRightPanelView.cs`）**：
   承载只读工作目录、WSL 主机快速启动器（Explorer / VS Code / VSCodium / Zed）、上下文圆环（`OpenCodeContextRing`）与实时 To-Do 列表。
 

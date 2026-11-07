@@ -24,6 +24,7 @@ public sealed record OpenCodeSessionObservation(string EndpointIdentity, string 
 
     // 联合完成证明的最早时间。
     public DateTimeOffset? CompletionObservedAt { get; init; }
+    public double? CompletionAbsentThrough { get; init; }
     internal Func<bool>? EventStateCurrent { get; init; }
 }
 public sealed class OpenCodeSessionObservationEventArgs(OpenCodeSessionObservation observation) : EventArgs
@@ -102,7 +103,7 @@ public sealed partial class OpenCodeNotificationMonitor
             && !protectedSession && !projection.KnownUnresolvedBackground && idle is not null
             && watermark == idle.Created && info?.Outcome == idle.Outcome ? info?.Outcome : null;
         bool neutral = projection.CanSwitchAgent && Fresh(infoAt) && info is not null
-            && info.Outcome is null && idle is null;
+            && idle is null && (info.Outcome is null || window.Messages.Any(m => m.IsInternalInitiator));
         // Never renew evidence at publication. Working from active needs only active; Waiting needs
         // both complete pending reads; terminal/neutral absence depends on EVERY auxiliary snapshot.
         var evidenceAt = projection.WaitingKnown && projection.Waiting
@@ -155,7 +156,10 @@ public sealed partial class OpenCodeNotificationMonitor
             PendingActionFact = pendingActionFact,
             QuestionPendingFact = questionPendingFact,
             InfoObservedAt = infoObservedAt,
-            CompletionObservedAt = completionObservedAt
+            CompletionObservedAt = completionObservedAt,
+            // A later internal report after a genuine idle never erases that unread result.
+            CompletionAbsentThrough = neutral && window.IsComplete && window.IsChronological
+                && window.Messages.Length > 0 ? window.Messages[^1].Created : null,
         });
         if (_sink.IsReady && viewed is { } covered && state.History is { } history && Fresh(state.HistoryAt))
             await _sink.ReconcileViewAsync(_source, session, covered, history.Messages).ConfigureAwait(false);
@@ -206,7 +210,7 @@ public sealed partial class OpenCodeNotificationMonitor
     }
 
     /// <summary>Explicit opened-and-visible session only. Reads the server watermark anew; never DateTime.Now.
-    /// The caller's source/selection fence guards POST initiation. No retry of an uncertain receipt.</summary>
+    /// The caller's source/selection fence guards POST initiation, including exact-watermark receipt retries.</summary>
     internal async Task<double?> AcknowledgeSessionAsync(string session, double coveredIdle, Func<Action, bool> fence, CancellationToken token)
     {
         if (!double.IsFinite(coveredIdle)) return null;
@@ -218,8 +222,11 @@ public sealed partial class OpenCodeNotificationMonitor
             if (state is null || !Active(session, state)) return null;
             var at = DateTimeOffset.UtcNow;
             var info = await ReadSessionAsync(session, token).ConfigureAwait(false);
-            if (!Active(session, state) || !Fresh(at) || info?.Time?.Idle is not { } idle
+            if (!Active(session, state) || !Fresh(at) || info?.Id != session || info.Time?.Idle is not { } idle
                 || !double.IsFinite(idle) || coveredIdle > idle) return null;
+            // Reconcile an uncertain successful POST before repeating the same monotone receipt.
+            if (info.Time.Viewed is { } viewed && double.IsFinite(viewed) && viewed >= coveredIdle)
+                return fence(() => { }) ? coveredIdle : null;
             Task? post = null;
             lock (_sync)
             {

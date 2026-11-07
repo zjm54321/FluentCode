@@ -381,7 +381,8 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             });
             indicator = dot;
         }
-        else if (status == OpenCodeTreeStatus.Running) indicator = new ProgressRing { IsActive = true, Width = 14, Height = 14, MinWidth = 0, MinHeight = 0 };
+        // The default ring, phase-locked with every timeline ring (same shared clock, same 14px default look).
+        else if (status == OpenCodeTreeStatus.Running) indicator = OpenCodeProgressRingSync.Create(accessibleName: statusText);
         else
         {
             var resource = status == OpenCodeTreeStatus.Succeeded ? "SystemFillColorSuccessBrush"

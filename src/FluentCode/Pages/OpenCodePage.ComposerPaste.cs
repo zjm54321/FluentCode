@@ -16,20 +16,7 @@ namespace FluentCode.Pages;
 
 public sealed partial class OpenCodePage
 {
-    partial void InitializeComposerPaste() => Composer.Paste += Composer_Paste;
-
-    private void Composer_Paste(object sender, TextControlPasteEventArgs e)
-    {
-        DataPackageView content;
-        try { content = Clipboard.GetContent(); }
-        catch (Exception) { return; } // Leave ordinary native paste in charge if the clipboard is unavailable.
-        if (!content.Contains(StandardDataFormats.Bitmap) && !content.Contains(StandardDataFormats.StorageItems)) return;
-
-        // Paste has no deferral: consume image/file representations synchronously, before any await.
-        // Plain text never enters this path and keeps the native TextBox paste behavior.
-        e.Handled = true;
-        _ = PasteComposerImagesAsync(content);
-    }
+    partial void InitializeComposerPaste() => Composer.SpecialPasteRequested += (editor, content) => { _ = PasteComposerImagesAsync(content); };
 
     private async Task PasteComposerImagesAsync(DataPackageView content)
     {
@@ -83,21 +70,15 @@ public sealed partial class OpenCodePage
                 // Complete the original ticket exactly once through the existing atomic/error path.
                 batch = new[] { new OpenCodeComposerFileSource("clipboard.png", "image/png", _ => Task.FromException<Stream>(error)) };
             }
-            var staged = controller.Snapshot.Attachments.Select(a => a.Id).ToHashSet();
-            await controller.AddFilesAsync(ticket, batch, ct);
-            // Each pasted image also gets the TUI placeholder "[Image N]" at the caret, bound to its attachment.
-            if (Current() && controller.Snapshot.Token != token)
-            {
-                RefreshComposerView(); // Leave the pick's read-only state before the native insertion.
-                foreach (var row in controller.Snapshot.Attachments.Where(a => !staged.Contains(a.Id) && a.Mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
-                    if (!view.InsertImageChip(controller.NextImageNumber, row.Id)) break;
-            }
+            var paste = await controller.StageImagePasteAsync(ticket, batch, selectionStart, selectionLength, ct);
+            if (paste is not null && Current()) view.InsertImagePaste(paste);
             if (fallbackText is not null && Current() && controller.Snapshot.Token == token
                 && Composer.Text == editorText && Composer.SelectionStart == selectionStart && Composer.SelectionLength == selectionLength)
-                Composer.SelectedText = fallbackText;
+                view.InsertPlainPaste(token, fallbackText);
         }
         finally
         {
+            controller.CancelPick(ticket); // Also releases a staged paste whose source/selection changed before insertion.
             if (operation == _composerPickEpoch && activation == _draftActivationVersion)
             {
                 _composerPickerPending = false;

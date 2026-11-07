@@ -103,6 +103,7 @@ public sealed partial class OpenCodePage
         _settingsSurfaceShown = shown;
         SettingsTabHost.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
         SessionPane.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
+        UpdateViewAcknowledgementVisibility(!shown && _hostWindowVisible);
         if (shown)
         {
             _browserOverlayVisibilityBeforeSettings = BrowserOverlayHost.Visibility;
@@ -174,29 +175,19 @@ public sealed partial class OpenCodePage
 
     private void HomeSettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsTab();
 
-    /// <summary>首页右下角“设置”按钮（首页样式不变，只叠加这一处入口）。</summary>
+    /// <summary>首页搜索行“新建”右侧的纯图标设置入口。</summary>
     private Button CreateHomeSettingsButton()
     {
         var button = new Button
         {
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 24, 24),
-            Padding = new Thickness(12, 6, 12, 7),
-            Content = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                Children =
-                {
-                    new FontIcon { Glyph = "\uE713", FontSize = 14, VerticalAlignment = VerticalAlignment.Center },
-                    new TextBlock { Text = "设置", VerticalAlignment = VerticalAlignment.Center },
-                },
-            },
+            MinWidth = 36,
+            MinHeight = 36,
+            Padding = new Thickness(8),
+            Content = new FontIcon { Glyph = "\uE713", FontSize = 16 },
         };
         AutomationProperties.SetAutomationId(button, "FluentCodeHomeSettingsButton");
         AutomationProperties.SetName(button, "设置");
-        ToolTipService.SetToolTip(button, "设置 (Ctrl+,)");
+        ToolTipService.SetToolTip(button, "设置");
         button.Click += HomeSettingsButton_Click;
         return button;
     }

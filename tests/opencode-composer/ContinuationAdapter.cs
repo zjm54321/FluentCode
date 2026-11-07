@@ -51,8 +51,8 @@ internal static partial class Program
             f.Text(" exact\r\n文本 "); await f.File("first.txt", 5); await f.File("second.txt", 2);
             var one = f.Core.CaptureDraft(f.Core.Snapshot.Token)!;
             var two = f.Core.CaptureDraft(f.Core.Snapshot.Token)!;
-            Check(one.Draft == two.Draft && one.Token == two.Token && one.Text == " exact\r\n文本 " && !one.Draft.Empty,
-                "identical authoritative captures preserve exact strings/token and canonical fingerprint");
+            Check(one.Draft == two.Draft && one.Token == two.Token && one.Text == " exact\n文本 " && !one.Draft.Empty,
+                "identical authoritative captures preserve normalized native newlines, whitespace, token and canonical fingerprint");
             var expected = SessionControlJson.Hash(new
             {
                 version = 2, scope = one.Token.Scope, draftId = one.Token.Draft, edit = one.Token.Edit,

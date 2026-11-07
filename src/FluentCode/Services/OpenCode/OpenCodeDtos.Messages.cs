@@ -62,6 +62,29 @@ public sealed record OpenCodeSessionMessagesResponse
 /// </remarks>
 public sealed record OpenCodeMessage
 {
+    internal const string InternalInitiatorMarker = "SLIM_INTERNAL_INITIATOR";
+    internal const string InternalInitiatorPhrase = "oh-my-opencode-slim internal initiator";
+
+    internal static bool IsInternalInitiatorText(string? text)
+        => !string.IsNullOrEmpty(text) && (text.Contains(InternalInitiatorMarker, System.StringComparison.Ordinal)
+            || text.Contains(InternalInitiatorPhrase, System.StringComparison.OrdinalIgnoreCase)
+            || text.TrimStart().StartsWith("<subagent-update", System.StringComparison.Ordinal));
+
+    /// <summary>Shared timeline/execution recognition; assistant output never becomes an initiator.</summary>
+    [JsonIgnore]
+    internal bool IsInternalInitiator
+    {
+        get
+        {
+            if (Type is not (OpenCodeMessageTypes.User or OpenCodeMessageTypes.Synthetic or OpenCodeMessageTypes.System)) return false;
+            if (IsInternalInitiatorText(Text) || IsInternalInitiatorText(Description)) return true;
+            if (Content is not null)
+                foreach (var part in Content)
+                    if (IsInternalInitiatorText(part?.Text)) return true;
+            return false;
+        }
+    }
+
     /// <summary>消息 id（模式 ^msg_）。</summary>
     [JsonPropertyName("id")]
     public string? Id { get; init; }

@@ -239,16 +239,4 @@ internal static class OpenCodeLinkChipView
         return chip;
     }
 
-    /// <summary>Composer overlay chip rectangle (same drawing as the "@" chip; neutral palette).</summary>
-    internal static Rectangle CreateOverlayRect(double width, double height, bool dark)
-    {
-        var (fill, stroke, _) = Colors(dark);
-        var hc = HighContrast;
-        return new Rectangle
-        {
-            Width = width, Height = height, RadiusX = 4, RadiusY = 4, StrokeThickness = 1,
-            Fill = hc ? new SolidColorBrush(Microsoft.UI.Colors.Transparent) : new SolidColorBrush(fill),
-            Stroke = hc ? ThemeBrush("SystemColorWindowTextColorBrush", Windows.UI.Color.FromArgb(255, 255, 255, 255)) : new SolidColorBrush(stroke),
-        };
-    }
 }

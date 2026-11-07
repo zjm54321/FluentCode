@@ -25,6 +25,7 @@ internal sealed partial class OpenCodeComposerController
             var context = string.Join("\n\n", _files.Concat(staged).Select(f => f.Presentation?.Context).Where(s => !string.IsNullOrWhiteSpace(s)));
             OpenCodeAttachment.ValidateRequestSize(new OpenCodeAttachedPromptBody(_text + "\n\n" + context, combined));
             if (staged.Length == 0) return false;
+            RememberDocument();
             _origin ??= _binding;
             _files.AddRange(staged); Edited();
         }

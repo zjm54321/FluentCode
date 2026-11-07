@@ -113,7 +113,7 @@ public partial class App
     /// callback must read a thread-safe selection snapshot, not XAML; false cancels a changed selection.
     /// Pass the idle watermark actually rendered by the page, never a subsequently refreshed watermark.
     /// Returns that exact acknowledged watermark, or null if no safe receipt was obtained.
-    /// No permission/form acknowledgement; no automatic retry after an uncertain POST.</summary>
+    /// No permission/form acknowledgement; the page may retry this exact receipt with fresh visibility proof.</summary>
     public async Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
         string sessionId, double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
     {
@@ -155,7 +155,7 @@ public partial class App
                 if (IsCurrentOpenCodeCallback(monitor, source, revision))
                     RecordDiagnostic("opencode-session-view-unconfirmed", error: ex);
             });
-            return null; // The server may have accepted the receipt. Never retry automatically.
+            return null; // Unconfirmed; the page owns bounded retry with a new visibility proof.
         }
     }
 

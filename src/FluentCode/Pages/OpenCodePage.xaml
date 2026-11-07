@@ -630,7 +630,7 @@
                                                 </Grid.Resources>
                                                 <Grid x:Name="ComposerEditorHost" Grid.ColumnSpan="3">
                                                     <!-- 左右内边距对称 12，文字排满输入框；只有展开按钮出现时右侧才让出 44（ComposerTextPadding）。 -->
-                                                    <TextBox
+                                                    <openCode:OpenCodeComposerEditor
                                                         x:Name="Composer"
                                                         AcceptsReturn="True"
                                                         TextWrapping="Wrap"
@@ -643,9 +643,6 @@
                                                         KeyUp="Composer_KeyUp"
                                                         AutomationProperties.AutomationId="OpenCodeComposer"
                                                         AutomationProperties.Name="消息输入" />
-                                                    <!-- Inline "@" mention chips painted over the plain-text editor (OpenCodeComposerMentionChips); never hit-testable. -->
-                                                    <Canvas x:Name="ComposerMentionLayer" IsHitTestVisible="False"
-                                                            AutomationProperties.AccessibilityView="Raw" />
                                                     <Button x:Name="ComposerExpandButton" Width="32" Height="32" MinWidth="0" Padding="0"
                                                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
                                                             Visibility="Collapsed" Click="ComposerExpandButton_Click"

@@ -149,7 +149,7 @@ namespace FluentCode.Pages
         private void RaiseExecutionState(OpenCodeExecutionStateChangedEventArgs args) => ExecutionEvents.Add(args);
         internal bool AckInvalidated => _viewAcknowledgementLive is null;
         internal int AttemptKeys => _viewAcknowledgementAttempted.Count;
-        internal void SeedUnknownAck() => _viewAcknowledgementAttempted.Add(new("endpoint", SessionForTests, 42));
+        internal void SeedUnknownAck() => _viewAcknowledgementAttempted.Add(new("endpoint", SessionForTests, 42), new() { Count = 4 });
         private const string SessionForTests = "ses_test";
         private bool IsScrolledToBottom() => false;
         private void ScrollToBottom(bool animated) { }

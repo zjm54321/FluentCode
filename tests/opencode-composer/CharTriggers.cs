@@ -65,21 +65,15 @@ internal static partial class Program
         Check(insert == (" @ ", 2), "explicit context inserts legal token without destroying neighbouring text");
         Check(OpenCodeComposerCharTriggers.MentionInsertion(new("explorer", false)) == "@explorer "
             && OpenCodeComposerCharTriggers.MentionInsertion(new("review", true)) == "@review ", "official agent and skill insertion uses registered ID");
-        var spans = new[] { new FluentCode.Services.OpenCode.OpenCodePromptContext("explorer", false, 2) };
-        Check(OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 11, true, spans) is { Id: "explorer" }
-            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 2, false, spans) is { Id: "explorer" },
-            "chosen mention deletes as one token: Backspace at its end, Delete at its start");
-        Check(OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 12, true, spans) is null
-            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer 继续", 7, true, spans) is null
-            && OpenCodeComposerCharTriggers.MentionAt("看 @explorex 继续", 11, true, spans) is null
-            && OpenCodeComposerCharTriggers.MentionAt("看 @explorer", 11, true, Array.Empty<FluentCode.Services.OpenCode.OpenCodePromptContext>()) is null,
-            "trailing space, mid-token caret, stale span (text no longer matches) and typed-only @text stay ordinary characters");
-        Check(OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 6, 5, spans) == 11
-            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 6, 11, spans) == 2
-            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 11, 3, spans) == 11
-            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorer 继续", 2, 9, spans) == 2
-            && OpenCodeComposerCharTriggers.SnapCaret("看 @explorex 继续", 6, 5, spans) == 6,
-            "caret never rests inside a chosen mention: it hops to the edge it was moving towards; edges and stale spans untouched");
+        var mentionDocument = OpenCodeComposerDocument.Text("看  继续").InsertToken(2, 0,
+            new(Guid.NewGuid(), OpenCodeComposerInlineKind.Mention, "explorer", "explorer"));
+        Check(mentionDocument.Story == "看 \ufffc 继续" && mentionDocument.Objects.Single().Position == 2,
+            "chosen mention occupies one actual native character, not a long-text snap range");
+        Check(OpenCodeComposerDocument.Text("看 @explorer 继续").Objects.Count == 0,
+            "typed-only mention and its trailing space stay ordinary text");
+        Check(mentionDocument.NativeOffset(2) == 2 && mentionDocument.NativeOffset(11) == 3
+            && mentionDocument.TextOffset(3) == 11,
+            "raw mention serialization offsets are distinct from native one-character caret coordinates");
 
         using var f = new Fixture();
         f.Handler.Send = (_, _) => Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.NoContent));
@@ -147,7 +141,8 @@ internal static partial class Program
         var blankPage = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.NewSessionTab.cs"));
         Check(page.IndexOf("TrySubmitShell(delivery, ref shellHandled)", StringComparison.Ordinal) < page.IndexOf("if (TryHandleSideQuestionSubmission(snapshot))", StringComparison.Ordinal)
             && shellPage.Contains("delivery == OpenCodeDeliveryModes.Queue") && !shellPage.Contains("SendPromptAsync("), "shell intercepted before all normal submission and queue routes");
-        Check(shellPage.Contains("e.Cancel = true;") && !shellPage.Contains("\n        Composer.Text =")
+        Check(shellPage.Contains("Composer.CharacterReceived +=") && shellPage.Contains("e.Handled = true;")
+            && !shellPage.Contains("BeforeTextChanging") && !shellPage.Contains("\n        Composer.Text =")
             && shellPage.Contains("ComposerNormalSurface.Opacity = 0;") && shellPage.Contains("ComposerNormalSurface.IsEnabled = false;")
             && !shellPage.Contains("ComposerInputLayout.Visibility ="), "bang canceled before ledger; terminal hides and disables normal controls while retaining their measured layout and draft");
         Check(shellPage.Contains("CreateSessionAndSubmitAsync(_composerController!.Snapshot.Token, _shellComposer.Text)")
@@ -178,9 +173,10 @@ internal static partial class Program
             && body.RootElement.GetProperty("skills")[0].GetProperty("id").GetString() == "review"
             && body.RootElement.GetProperty("agents")[0].GetProperty("mention").GetProperty("start").GetInt32() == 8
             && !body.RootElement.TryGetProperty("files", out _), "prompt sends official agent name + skill id mention attachments, no file upload or eager skill activation");
-        f.Text("Prefix " + referenceText);
+        Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, 0, 0, "Prefix "), "explicit insertion before mention tokens");
         Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts[0].Start == 15, "edit before context moves mention span");
-        f.Text("Prefix Inspect @changed @review ");
+        var firstMention = f.Core.Snapshot.Document.Objects.First();
+        Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, firstMention.Position, 1, "@changed"), "explicit replacement of a mention converts only that token to text");
         Check(f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts is { Count: 1 } remaining && remaining[0].IsSkill, "editing a mention removes its typed part, preserves other contexts");
         var key = Key(f, Guid.NewGuid(), "/repo");
         var retained = Capture(f);
@@ -195,18 +191,18 @@ internal static partial class Program
         Check(f.Core.TryAddContext(f.Core.Snapshot.Token, "review", true, 24) && f.Core.TryAddContext(f.Core.Snapshot.Token, "explorer", false, 32) && f.Core.Snapshot.Mentions.Count == 2
             && f.Core.Snapshot.Mentions.Any(m => m.Id == "explorer" && m.Start == 32), "snapshot exposes the exact chosen mention spans for the chip layer");
         var beforeDelete = f.Core.Snapshot.Text;
-        var token = OpenCodeComposerCharTriggers.MentionAt(beforeDelete, 41, true, f.Core.Snapshot.Mentions)!;
-        f.Text(beforeDelete.Remove(token.Start, token.End - token.Start));
+        var token = f.Core.Snapshot.Mentions.Single(mention => mention.Id == "explorer");
+        var nativeDelete = f.Core.Snapshot.Document.NativeOffset(token.Start);
+        Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, nativeDelete, 1, ""), "native one-character token deletion is an explicit model transaction");
         Check(f.Core.Snapshot.Text == "Prefix Inspect @changed @review  " && f.Core.Snapshot.Mentions.Count == 1,
             "one Backspace removes all of @explorer and its sent agent part; the other mention keeps its span");
-        f.Text(beforeDelete);
-        Check(f.Core.Snapshot.Mentions.Count == 1 && f.Core.TryAddContext(f.Core.Snapshot.Token, token.Id, token.IsSkill, token.Start)
+        Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token) && f.Core.Snapshot.Text == beforeDelete
             && f.Core.CaptureDraft(f.Core.Snapshot.Token)!.Contexts.Count == 2,
-            "Undo restoring the identical text re-attaches the same context at the same span (view re-raises ContextChosen)");
-        Check(view.Contains("RestoreUndoneMention();") && view.Contains("if (text != deleted.Before || !deleted.Mention.Matches(text)) return;")
-            && view.Contains("editor.SelectedText = string.Empty;") && view.Contains("if (_editor is { SelectionLength: 0 } editor && !_composing && !_guardedWrite)")
-            && view.Contains("e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && (TryDeleteMentionToken(") && view.Contains("|| TryDeleteChipToken("),
-            "atomic delete is native/undoable, never during IME composition; caret snapping skips composition and guarded writes");
+            "model undo restores both exact mention identities without re-binding labels");
+        Check(!view.Contains("_deletedMention") && !view.Contains("TryDeleteMentionToken") && !view.Contains("SnapChipCaret")
+            && view.Contains("editor.StageDocument(next,") && view.Contains("ModelUndoRequested")
+            && page.Contains("TryUndoDocument") && page.Contains("TryApplyDocumentObservation"),
+            "native one-character chip movement/deletion is untouched; model history and explicit observations replace text-guess restoration");
         Console.WriteLine($"PASS: B7 {checks - before} menu/trigger/context/cancellation/empty/error/wiring assertions; synthetic HTTP, no native UI execution.");
     }
 }

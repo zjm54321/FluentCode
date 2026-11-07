@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Pages.OpenCode;
@@ -12,6 +13,7 @@ internal static partial class Program
 
     private static async Task LinkChips()
     {
+        await ImagePasteEditorRegression();
         // ---- §2 label rules (spec table + catalogue)
         Check(Label("https://github.com/alvinunreal/oh-my-opencode-slim") == "oh-my-opencode-slim", "repo label");
         Check(Label("https://github.com/alvinunreal/oh-my-opencode-slim/issues/1591") == "oh-my-opencode-slim #1591", "issue label repo #N (approved form)");
@@ -109,28 +111,24 @@ internal static partial class Program
             var text = "fix " + span.Display + " @explorer ";
             f.Text(text);
             Check(f.Core.TryAddLink(f.Core.Snapshot.Token, 4, url) && f.Core.Snapshot.Links.Count == 1, "link chip bound to label span");
-            var mentionAt = text.IndexOf('@');
+            var mentionAt = f.Core.Snapshot.Text.IndexOf('@');
             Check(f.Core.TryAddContext(f.Core.Snapshot.Token, "explorer", false, mentionAt), "mention after chip");
             Check(f.Core.Snapshot.SendText == "fix " + url + " @explorer ", "send text restores the raw URL");
             var basis = f.Core.CaptureDraft(f.Core.Snapshot.Token)!;
             Check(basis.SendText.Contains(url) && basis.SendContexts[0].Start == ("fix " + url + " ").Length && basis.SendContexts[0].Matches(basis.SendText), "mention span re-based onto sent text");
             await f.Client.SendPromptGuardedAsync("ses_test", basis.SendText, null, send => { send(); return true; }, CancellationToken.None, contexts: basis.SendContexts);
             Check(f.Handler.LastBody!.Contains(url) && !f.Handler.LastBody.Contains("\\u2003"), "wire carries the full URL, never the label");
-            Check(OpenCodeComposerChips.ExpandRange(text, 0, 6, f.Core.Snapshot.Links) == "fix " + url, "copy of a partial chip selection yields the whole URL");
-            Check(OpenCodeComposerChips.ExpandRange(text, mentionAt, 9, f.Core.Snapshot.Links) == "@explorer", "copy without chips unchanged");
-            var deleted = text.Remove(span.Start, span.Display.Length);
-            f.Text(deleted);
+            Check(f.Core.Snapshot.Document.Serialize(0, 5).Text == "fix " + url, "copy serializes one whole native link object as raw URL");
+            var fullText = f.Core.Snapshot.Text;
+            var deleted = fullText.Remove(span.Start, url.Length);
+            Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, 4, 1, ""), "delete exact native link position");
             Check(f.Core.Snapshot.Links.Count == 0 && f.Core.Snapshot.SendText == deleted, "whole-chip delete drops the link");
-            f.Text(text);
+            Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token), "model undo link deletion");
             Check(f.Core.Snapshot.Links.Count == 1 && f.Core.Snapshot.SendText.Contains(url), "Ctrl+Z restores the chip");
-            f.Text(text.Insert(span.Start + 5, "x"));
-            Check(f.Core.Snapshot.Links.Count == 0 && !f.Core.Snapshot.SendText.Contains(url), "edit inside chip un-chips it");
-            f.Text(text);
-            Check(f.Core.Snapshot.Links.Count == 1, "undo again re-chips");
-            f.Text("fix " + url + " @explorer ");
+            Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, 4, 1, url), "convert token to its raw text explicitly");
             Check(f.Core.Snapshot.Links.Count == 0 && f.Core.Snapshot.Text.Contains(url), "convert back to text = raw URL in editor");
-            f.Text(text);
-            f.Text("Please " + text);
+            Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token), "undo conversion restores opaque token ID");
+            Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, 0, 0, "Please "), "insert before native chip");
             Check(f.Core.Snapshot.Links.Count == 1, "chip survives edit before it: " + f.Core.Snapshot.Links.Count);
             Check(f.Core.Snapshot.Links.Single().Start == 11 && f.Core.Snapshot.SendText.StartsWith("Please fix " + url, StringComparison.Ordinal), "edit before chip moves span");
             var key = Key(f, Guid.NewGuid(), "/repo");
@@ -153,7 +151,8 @@ internal static partial class Program
                 var id = f.Core.Snapshot.Attachments.Select(a => a.Id).First(x => !before.Contains(x));
                 var n = f.Core.NextImageNumber;
                 var start = f.Core.Snapshot.Text.Length;
-                f.Text(f.Core.Snapshot.Text + OpenCodeComposerChips.ImageToken(n) + after);
+                Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, f.Core.Snapshot.Document.Length, 0,
+                    OpenCodeComposerChips.ImageToken(n) + after), "explicit image placeholder insertion preserves existing objects");
                 Check(f.Core.TryAddImage(f.Core.Snapshot.Token, start, n, id), "image chip bound " + n);
                 return id;
             }
@@ -162,10 +161,10 @@ internal static partial class Program
             await Paste(" ");
             Check(f.Core.Snapshot.Text == "look [Image 1] [Image 2] " && f.Core.Snapshot.Images.Count == 2, "[Image N] counts from 1 in TUI text form");
             var full = f.Core.Snapshot.Text;
-            f.Text(full.Replace("[Image 1]", "", StringComparison.Ordinal));
+            Check(f.Core.TryReplaceDocument(f.Core.Snapshot.Token, f.Core.Snapshot.Document.NativeOffset(full.IndexOf("[Image 1]", StringComparison.Ordinal)), 1, ""), "explicit first image deletion");
             Check(f.Core.Snapshot.Images.Count == 1, "other image survives: " + string.Join(",", f.Core.Snapshot.Images.Select(i => i.Start + ":" + i.Number)) + " text=" + f.Core.Snapshot.Text);
             Check(f.Core.Snapshot.Attachments.All(a => a.Id != one) && f.Core.Snapshot.Images.Single().Number == 2, "deleting the chip removes the attachment; no renumbering");
-            f.Text(full);
+            Check(f.Core.TryUndoDocument(f.Core.Snapshot.Token), "model undo restores image and bytes atomically");
             Check(f.Core.Snapshot.Attachments.Any(a => a.Id == one) && f.Core.Snapshot.Images.Count == 2, "Undo restores chip + attachment");
             f.Core.RemoveAttachment(f.Core.Snapshot.Token, one);
             Check(f.Core.Snapshot.Images.Count == 1, "x keeps other: " + f.Core.Snapshot.Text);
@@ -182,8 +181,11 @@ internal static partial class Program
         var repo = Environment.GetEnvironmentVariable("FC_SPLASH_REPO")!;
         string Src(string name) => File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode", name));
         var view = Src("OpenCodeComposerView.cs") + Src("OpenCodeComposerView.LinkChips.cs");
-        Check(view.Contains("CopyingToClipboard") && view.Contains("CuttingToClipboard") && view.Contains("OpenCodeComposerChips.ExpandRange"), "copy/cut restore raw URLs");
-        Check(view.Contains("TryDeleteChipToken") && view.Contains("转回文字") && view.Contains("VirtualKey.Control"), "atomic delete, convert-back menu, Ctrl+click open");
+        var adapter = Src("OpenCodeComposerEditor.cs");
+        Check(adapter.Contains("data.SetText(SelectedText)") && adapter.Contains("_model.Serialize(_selection.Start")
+            && adapter.Contains("args.Handled = true; RequestPaste();"), "copy/cut serialize raw values; native rich paste is synchronously consumed");
+        Check(!view.Contains("TryDeleteChipToken") && view.Contains("ReplaceLink") && view.Contains("OpenCodeLinkChipView.OpenAsync(token.Value)"),
+            "native atomic delete, model convert-back menu and Ctrl+click open");
         var presenter = Src("OpenCodeRichTextPresenter.cs");
         Check(presenter.Contains("OpenCodeLinkChipParser.Find(") && presenter.Contains("inCode") && presenter.Contains("RewriteMarkdownLinks"), "transcript chips skip code and see real markdown targets");
         var chipView = Src("OpenCodeLinkChipView.cs");
@@ -191,5 +193,297 @@ internal static partial class Program
             && chipView.Contains("HighContrast"), "click opens http/https only; Narrator name; HC");
         var fav = Src("OpenCodeFaviconCache.cs");
         Check(fav.Contains("ConnectCallback") && fav.Contains("IsPrivateAddress"), "favicon fetch refuses private addresses after DNS");
+    }
+
+    private static async Task ImagePasteEditorRegression()
+    {
+        var before = checks;
+        // The former production sequence was AddFiles -> native text ACK -> bool TryAddImage (+unacknowledged edit).
+        // This adapter runs the new production staged transaction through the REAL input ledger, without a render.
+        using (var f = new Fixture())
+        {
+            Activate(f, Key(f, Guid.NewGuid(), "/workspace"), f.Core.CreateEmptySlotData());
+            f.Text("look ");
+            var editor = new ImagePasteEditor(f);
+            await editor.Paste(FileSource("clipboard.png", 4), editor.Text.Length);
+            Check(editor.Text == "look [Image 1] " && f.Core.Snapshot.Images.Single().AttachmentId == f.Core.Snapshot.Attachments.Single().Id,
+                "one acknowledged paste owns text, image span and attachment");
+            Check(editor.Edit(editor.Text + "x") == OpenCodeComposerInputState.Clean,
+                "image paste followed by typing before queued render must stay editable");
+            Check(editor.Edit(editor.Text[..^1]) == OpenCodeComposerInputState.Clean, "Backspace after pasted image stays editable");
+            var full = editor.Text;
+            var span = f.Core.Snapshot.Images.Single();
+            Check(editor.Edit(full.Remove(span.Start, span.End - span.Start)) == OpenCodeComposerInputState.Clean
+                && f.Core.Snapshot.Images.Count == 0 && f.Core.Snapshot.Attachments.Count == 0, "whole-chip delete removes its attachment in the same native ACK");
+            Check(editor.Undo() && f.Core.Snapshot.Attachments.Count == 1,
+                "model Undo of chip deletion restores ID and attachment");
+            Check(editor.Edit(full.Remove(span.Start, span.End - span.Start)) == OpenCodeComposerInputState.Clean && editor.Sync.Prepare(),
+                "delete again leaves a sendable text draft");
+            var submitted = f.Core.Snapshot.Token;
+            Check(await LegacyAttempt(f, f.Context()) is OpenCodeComposerSubmitOutcome.PromptAccepted && f.Handler.Posts == 1,
+                "send after paste/type/Backspace/chip delete takes the real ordinary guarded sender once");
+            await f.Core.FinalizeAcceptedLegacyDraftAsync(submitted, f.Binding, () => true, default, (_, finalize, _) =>
+            {
+                Check(editor.Sync.FinalizeAccepted(submitted, finalize, out var waiting) == OpenCodeComposerDraftFinalization.Cleared && !waiting,
+                    "accepted plain send clears through the real editor handoff");
+                return Task.CompletedTask;
+            });
+            Check(editor.Text.Length == 0 && editor.Sync.Prepare(), "composer remains editable after accepted send");
+        }
+        using (var f = new Fixture())
+        {
+            Activate(f, Key(f, Guid.NewGuid(), "/workspace"), f.Core.CreateEmptySlotData());
+            var editor = new ImagePasteEditor(f);
+            await editor.Paste(FileSource("clipboard.png", 4), 0);
+            Check(editor.Text == "[Image 1] " && editor.Sync.Prepare(), "image paste into empty composer is acknowledged and sendable");
+            Check(editor.Edit(editor.Text + "explain") == OpenCodeComposerInputState.Clean, "empty-composer paste accepts immediate typing");
+            Check(await f.SubmitAsync(f.Core.Snapshot.Token, () => true) is OpenCodeComposerSubmitOutcome.PromptAccepted
+                && f.Handler.Posts == 1 && f.Handler.LastBody!.Contains("[Image 1] explain", StringComparison.Ordinal)
+                && f.Handler.LastBody.Contains("image/png", StringComparison.Ordinal), "empty-composer image sends literal TUI token and its actual file together");
+        }
+        await ImagePasteSwitchRegression();
+        await ImagePasteHeldRecovery();
+        LinkPasteAcknowledgmentRegression();
+        PendingImageProjectionRegression();
+        Console.WriteLine($"PASS stuck composer: {checks - before} assertions; real controller/EditorSync/slots, staged image transaction, edit/delete/undo/send, switch cancellation, held recovery and pending attachment projection.");
+    }
+
+    private static void LinkPasteAcknowledgmentRegression()
+    {
+        using var f = new Fixture();
+        const string url = "https://github.com/example/project/issues/1";
+        f.Text("see " + url + " now");
+        var editor = f.Core.Snapshot.Text;
+        var before = f.Core.Snapshot.Document;
+        var document = before.InsertToken(4, url.Length, new(Guid.NewGuid(), OpenCodeComposerInlineKind.Link, url, OpenCodeLinkChipParser.Parse(url)!.Label));
+        OpenCodeComposerDocumentObservation observation = new(before, document, new(5, 5));
+        OpenCodeComposerEditorSync? sync = null;
+        sync = new(() => f.Core.Snapshot, () => editor, text => editor = text, () => false,
+            (basis, text, carry) => f.Core.TryApplyDocumentObservation(basis, sync!.SubmittedObservation!, carry), () => observation);
+        var token = f.Core.Snapshot.Token;
+        sync.OnTextChanging();
+        Check(sync.Flush() == OpenCodeComposerInputState.Clean && f.Core.Snapshot.Token.Edit == token.Edit + 1
+            && f.Core.Snapshot.Links.Count == 1 && sync.BaselineToken == f.Core.Snapshot.Token,
+            "one model link transaction acknowledges token identity under one revision even when raw text is unchanged");
+        editor = f.Core.Snapshot.Text + "x";
+        document = f.Core.Snapshot.Document;
+        var next = document.Replace(document.Length, 0, "x");
+        observation = new(document, next, new(next.Length, next.Length));
+        sync.OnTextChanging();
+        Check(sync.Flush() == OpenCodeComposerInputState.Clean
+            && f.Core.Snapshot.SendText == "see " + url + " nowx",
+            "typing immediately after URL chip conversion keeps the accepted baseline and raw URL send text");
+    }
+
+    private sealed class ImagePasteEditor
+    {
+        private readonly Fixture _fixture;
+        private OpenCodeComposerImagePaste? _paste;
+        private OpenCodeComposerDocument _document;
+        private OpenCodeComposerDocumentObservation? _observation;
+        internal string Text;
+        internal bool Composing;
+        internal readonly OpenCodeComposerEditorSync Sync;
+
+        internal ImagePasteEditor(Fixture fixture)
+        {
+            _fixture = fixture;
+            Text = fixture.Core.Snapshot.Text;
+            _document = fixture.Core.Snapshot.Document;
+            OpenCodeComposerEditorSync? sync = null;
+            Sync = sync = new(() => fixture.Core.Snapshot, () => Text, text => { Text = text; _document = fixture.Core.Snapshot.Document; sync!.OnTextChanging(); },
+                () => Composing, (basis, text, carry) =>
+                {
+                    var paste = _paste;
+                    _paste = null;
+                    return paste is not null ? paste.TryApply(basis, text)
+                        : sync!.SubmittedObservation is { } observation ? fixture.Core.TryApplyDocumentObservation(basis, observation, carry)
+                        : fixture.Core.TryApplyEditorInput(basis, text, carry);
+                }, () => _observation);
+        }
+
+        internal OpenCodeComposerInputState Edit(string text)
+        {
+            var before = _document;
+            OpenCodeComposerDocument next;
+            if (_paste is { } paste) next = paste.Document;
+            else if (Sync.State is OpenCodeComposerInputState.HeldStale or OpenCodeComposerInputState.HeldUnbound)
+            {
+                before = _fixture.Core.Snapshot.Document;
+                next = OpenCodeComposerDocument.Text(text); // Recovery is plain text, never old attachment authority.
+            }
+            else
+            {
+                // Test-driver receipt: callers supply the exact requested replacement string; this is not product inference.
+                var prefix = 0;
+                while (prefix < Text.Length && prefix < text.Length && Text[prefix] == text[prefix]) prefix++;
+                var suffix = 0;
+                while (suffix < Text.Length - prefix && suffix < text.Length - prefix && Text[Text.Length - 1 - suffix] == text[text.Length - 1 - suffix]) suffix++;
+                var from = before.NativeOffset(prefix);
+                var end = before.NativeOffset(Text.Length - suffix, true);
+                next = before.Replace(from, end - from, text.Substring(prefix, text.Length - prefix - suffix));
+            }
+            _document = next;
+            _observation = new(before, next, new(next.Length, next.Length));
+            Text = text;
+            Sync.OnTextChanging();
+            return Sync.Flush();
+        }
+        internal bool Undo()
+        {
+            if (!_fixture.Core.TryUndoDocument(_fixture.Core.Snapshot.Token)) return false;
+            Sync.Reconcile();
+            _document = _fixture.Core.Snapshot.Document;
+            return Sync.Prepare();
+        }
+
+        internal async Task Paste(OpenCodeComposerFileSource file, int start, int length = 0)
+        {
+            var basis = _fixture.Core.Snapshot;
+            var ticket = _fixture.Core.BeginPick(basis.Token)!;
+            try
+            {
+                var paste = await _fixture.Core.StageImagePasteAsync(ticket, new[] { file }, start, length);
+                Check(paste is not null && _fixture.Core.Snapshot.Token == basis.Token
+                    && _fixture.Core.Snapshot.Attachments.Count == basis.Attachments.Count, "staging publishes no placeholder, chip or attachment edit");
+                var publications = 0;
+                void Published(object? _, OpenCodeComposerSnapshotChangedEventArgs e)
+                {
+                    publications++;
+                    Check(e.Snapshot.Text == paste!.Text && e.Snapshot.Images.Count == e.Snapshot.Attachments.Count
+                        && e.Snapshot.Token.Edit == basis.Token.Edit + 1, "paste has one complete text/span/file publication under one edit revision");
+                }
+                _fixture.Core.SnapshotChanged += Published;
+                try { Check(Apply(paste!), "native image insertion is acknowledged as one transaction"); }
+                finally { _fixture.Core.SnapshotChanged -= Published; }
+                Check(publications == 1 && Sync.LastAcknowledgment?.Revision == Sync.InputRevision
+                    && Sync.BaselineToken == _fixture.Core.Snapshot.Token, "paste ACK advances displayed baseline before another native edit");
+            }
+            finally { _fixture.Core.CancelPick(ticket); }
+        }
+
+        internal bool Apply(OpenCodeComposerImagePaste paste)
+        {
+            if (!Sync.Prepare() || _fixture.Core.Snapshot.Token != paste.Token || Text != paste.BeforeText) return false;
+            _paste = paste;
+            return Edit(paste.Text) == OpenCodeComposerInputState.Clean && Sync.BaselineToken == _fixture.Core.Snapshot.Token;
+        }
+    }
+
+    private static async Task ImagePasteSwitchRegression()
+    {
+        using var f = new Fixture();
+        var epoch = Guid.NewGuid();
+        var a = Key(f, epoch, "/workspace", "ses_a");
+        var b = Key(f, epoch, "/workspace", "ses_b");
+        Activate(f, a, f.Core.CreateEmptySlotData());
+        f.Text("draft A");
+        var savedA = Capture(f);
+        var editor = new ImagePasteEditor(f);
+        var opened = Signal<bool>();
+        var release = Signal<bool>();
+        var ticket = f.Core.BeginPick(f.Core.Snapshot.Token)!;
+        var delayed = new OpenCodeComposerFileSource("clipboard.png", "image/png", async ct =>
+        {
+            opened.TrySetResult(true);
+            await release.Task.WaitAsync(ct);
+            return new MemoryStream(new byte[4]);
+        });
+        var pending = f.Core.StageImagePasteAsync(ticket, new[] { delayed }, editor.Text.Length, 0);
+        await opened.Task;
+        var activated = Activate(f, b, f.Core.CreateEmptySlotData());
+        Check(editor.Sync.TryActivateClean(activated), "active session switch installs the new editor baseline");
+        release.TrySetResult(true);
+        Check(await pending is null && f.Core.Snapshot.Text.Length == 0 && f.Core.Snapshot.Attachments.Count == 0
+            && !f.Core.Snapshot.IsBusy && editor.Sync.Prepare(), "in-flight paste cannot attach, insert or hold the newly activated session");
+        Check(editor.Edit("draft B") == OpenCodeComposerInputState.Clean, "new session remains editable after canceled image paste");
+        var savedB = Capture(f);
+        activated = Activate(f, a, savedA);
+        Check(editor.Sync.TryActivateClean(activated), "return to origin draft after canceled paste");
+        ticket = f.Core.BeginPick(f.Core.Snapshot.Token)!;
+        var staged = await f.Core.StageImagePasteAsync(ticket, new[] { FileSource("clipboard.png", 4) }, editor.Text.Length, 0);
+        Check(staged is not null, "image bytes can finish staging before a session switch");
+        activated = Activate(f, b, savedB);
+        Check(editor.Sync.TryActivateClean(activated) && !editor.Apply(staged!), "completed old paste is rejected before native insertion after switch");
+        Check(staged!.TryApply(staged.Token, staged.Text) is null, "late transaction cannot mutate another slot even if its native guard is bypassed");
+        f.Core.CancelPick(ticket);
+        Check(editor.Text == "draft B" && f.Core.Snapshot.Attachments.Count == 0 && !f.Core.Snapshot.IsBusy,
+            "staged old paste leaves target text, attachments and picker ownership intact");
+        await editor.Paste(FileSource("new.png", 4), editor.Text.Length);
+        Check(f.Core.Snapshot.Images.Single().Number == 1, "target draft has its own image numbering and acknowledged paste");
+    }
+
+    private static async Task ImagePasteHeldRecovery()
+    {
+        using var f = new Fixture();
+        Activate(f, Key(f, Guid.NewGuid(), "/workspace"), f.Core.CreateEmptySlotData());
+        f.Text("held ");
+        var editor = new ImagePasteEditor(f);
+        await editor.Paste(FileSource("clipboard.png", 4), editor.Text.Length);
+        f.Text("changed " + editor.Text); // Controller-side edit with its render deliberately delayed.
+        Check(editor.Edit(editor.Text + "x") == OpenCodeComposerInputState.HeldStale && !editor.Sync.Prepare(),
+            "a genuinely stale observation is held and cannot send or auto-rebase on render");
+        Check(editor.Edit(editor.Text + "y") == OpenCodeComposerInputState.Clean && editor.Sync.Prepare()
+            && f.Core.Snapshot.Text == editor.Text, "a NEW genuine edit explicitly rebinds ordinary held input to the active draft");
+        f.Text("changed again " + editor.Text);
+        Check(editor.Edit(editor.Text + "z") == OpenCodeComposerInputState.HeldStale, "second real desync enters held recovery");
+        editor.Composing = true;
+        Check(!editor.Sync.TryClearHeldInput(f.Core.TryDiscardDraftForRecovery), "clear recovery does not interrupt native composition");
+        editor.Composing = false;
+        Check(editor.Sync.TryClearHeldInput(f.Core.TryDiscardDraftForRecovery) && editor.Text.Length == 0
+            && f.Core.Snapshot.Attachments.Count == 0 && f.Core.Snapshot.Images.Count == 0 && editor.Sync.Prepare(),
+            "clear-and-recover is acknowledged, removes text/chips/files, and releases ordinary held state");
+        Check(editor.Edit("recovered") == OpenCodeComposerInputState.Clean, "typing works after explicit clear recovery");
+        f.Text("delayed core change");
+        Check(editor.Edit(string.Empty) == OpenCodeComposerInputState.HeldStale, "first stale native clear stays held until explicit new intent");
+        Check(editor.Edit("restart") == OpenCodeComposerInputState.Clean, "typing after a held native clear recovers without a read-only trap");
+        editor.Sync.SuspendForRecovery();
+        Check(editor.Edit("old source readonly text") == OpenCodeComposerInputState.HeldStale
+            && !editor.Sync.TryClearHeldInput(f.Core.TryDiscardDraftForRecovery), "forced recovery never adopts old-source text through ordinary typing/clear");
+        f.Core.DiscardDraft(f.Core.Snapshot.Token);
+        editor.Sync.ResolveRecovery(); // The page's existing explicit forced-recovery discard route.
+        Check(editor.Sync.TryActivateClean(f.Core.Snapshot.Token) && editor.Text.Length == 0
+            && editor.Edit("new source draft") == OpenCodeComposerInputState.Clean, "explicit forced-recovery discard releases the hold and permits a clean active draft");
+    }
+
+    private static void PendingImageProjectionRegression()
+    {
+        using var json = JsonDocument.Parse("""{"text":"[Image 1] [Image 2] [PDF 1]","files":[{"name":"clipboard","mime":"image/png","data":"AA=="},{"filename":"note.pdf","mime":"application/pdf","url":"file:///note.pdf"}]}""");
+        var payload = json.RootElement.Clone();
+        foreach (var delivery in new[] { OpenCodeDeliveryModes.Queue, OpenCodeDeliveryModes.Steer })
+        {
+            var item = new OpenCodeInboxItem { Id = "msg_pending", Type = OpenCodeInboxItemTypes.User, Delivery = delivery, Payload = payload };
+            var pending = OpenCodeUserAttachments.FromInbox(item);
+            var sent = OpenCodeUserAttachments.FromMessage(new() { Id = item.Id, Files = payload.GetProperty("files") });
+            Check(pending.SequenceEqual(sent) && OpenCodeUserAttachments.Counts(pending) == (1, 1), "pending and delivered messages share image/PDF projection: " + delivery);
+            Check(pending[0].Image?.Reference == "data:image/png;base64,AA==" && pending[0].Name == "图片",
+                "clipboard source name becomes a proper image label and the actual shared thumbnail source");
+            var counts = OpenCodeUserAttachments.Counts(pending);
+            var chips = OpenCodeComposerChips.AttachmentTokens(payload.GetProperty("text").GetString(), counts.Images, counts.Pdfs);
+            Check(chips.Count == 2 && chips[0].Number == 1 && chips[1].Pdf, "pending bubble chips require that message's own N-th attachment");
+            Check(OpenCodeUserAttachments.FromInbox(item with { Payload = JsonSerializer.SerializeToElement(new { text = "[Image 1]" }) }).Count == 0,
+                "typed image placeholder in another pending message does not inherit attachments");
+            Check(OpenCodeUserAttachments.FromInbox(item with { Type = "synthetic" }).Count == 0, "non-user work does not acquire pending user image chips");
+        }
+        var repo = Environment.GetEnvironmentVariable("FC_SPLASH_REPO")!;
+        string Src(string relative) => File.ReadAllText(Path.Combine(repo, "src/FluentCode", relative));
+        var view = Src("Pages/OpenCode/OpenCodeComposerView.cs");
+        var page = Src("Pages/OpenCodePage.Composer.cs");
+        var pastePage = Src("Pages/OpenCodePage.ComposerPaste.cs");
+        Check(pastePage.Contains("StageImagePasteAsync") && pastePage.Contains("InsertImagePaste") && !pastePage.Contains("AddFilesAsync"),
+            "production clipboard path stages then makes one acknowledged native transaction, not file/text/metadata edits");
+        Check(view.Contains("OpenCodeComposerRecoveryClear") && view.Contains("清空并恢复") && page.Contains("RecoveryClearRequested")
+            && page.Contains("DiscardDraftSlotRecovery") && !view.Contains("|| _sync.State == OpenCodeComposerInputState.HeldStale"),
+            "production recovery is editable or has an explicit wired clear/discard action, never ordinary held read-only");
+        foreach (var relative in new[] { "Pages/OpenCode/OpenCodeConversationView.cs", "Pages/OpenCode/OpenCodeQueuedPromptsView.cs" })
+        {
+            var source = Src(relative);
+            Check(source.Contains("OpenCodeUserAttachments.FromInbox(item)") && source.Contains("AttachmentCounts = OpenCodeUserAttachments.Counts(files)")
+                && source.Contains("OpenCodeUserAttachmentsView"),
+                "pending surface uses same owned-chip eligibility and shared thumbnails: " + relative);
+        }
+        var presenter = Src("Pages/OpenCode/OpenCodeRichTextPresenter.cs");
+        Check(presenter.Contains("AttachmentCounts != _lastAttachmentCounts") && presenter.Contains("(source, (style, AttachmentCounts),"),
+            "same-text pending attachment changes invalidate the real rich-text render cadence and duplicate-render key");
     }
 }

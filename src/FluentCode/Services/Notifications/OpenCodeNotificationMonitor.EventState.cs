@@ -18,6 +18,8 @@ public sealed partial class OpenCodeNotificationMonitor
         internal bool EventPermissionsKnown, EventFormsKnown, EventTerminal, EventNotificationBaseline;
         internal string? StartedEvent, TerminalEvent, EventOutcome, EventTitle;
         internal double? EventWatermark;
+        internal double? EventViewedWatermark;
+        internal DateTimeOffset? EventInfoAt;
         internal DateTimeOffset EventAt;
         internal Func<bool>? EventLease;
         internal readonly CancellationTokenSource EventLifetime = new();
@@ -74,6 +76,10 @@ public sealed partial class OpenCodeNotificationMonitor
             state.PreparedPermissions.Clear(); state.PreparedForms.Clear();
             state.PreparedPermissions.UnionWith(state.Permissions); state.PreparedForms.UnionWith(state.Forms);
             state.EventTerminal = false; state.StartedEvent = null; state.EventOutcome = null; state.EventWatermark = null;
+            // Reconnect is a baseline, never a new completion. Preserve the server's durable
+            // viewed watermark so an already-read result cannot become unread on rebind.
+            state.EventViewedWatermark = info?.Time?.Viewed is { } viewed && double.IsFinite(viewed) && viewed >= 0 ? viewed : null;
+            state.EventInfoAt = info?.Id == session ? observedAt : null;
             state.EventEpoch = epoch; state.EventAt = observedAt;
             lock (_sync) { state.EventRevision++; state.EventLease = null; }
             EnsureEventNotificationBaseline(session, state);
@@ -159,6 +165,9 @@ public sealed partial class OpenCodeNotificationMonitor
         if (item.Type is "session.execution.succeeded" or "session.execution.failed" or "session.execution.interrupted")
         {
             if (state.EventTerminal || item.Id is not null && state.TerminalEvent == item.Id) return false;
+            // Some servers announce idle sessions on startup/recovery. An idle baseline plus
+            // an orphan terminal event is not a newly completed execution.
+            if (state.IsChild != true && state.StartedEvent is null && state.EventWorking != true) return false;
             state.EventTerminal = true; state.TerminalEvent = item.Id; state.EventWorking = false;
             var terminal = TerminalMessage(item);
             state.EventOutcome = terminal?.Outcome; state.EventWatermark = terminal?.Time?.Created;
@@ -244,12 +253,13 @@ public sealed partial class OpenCodeNotificationMonitor
             new(state.EventWorking == true ? OpenCodeExecutionState.Working : state.EventWorking == false ? OpenCodeExecutionState.Idle : OpenCodeExecutionState.Unknown,
                 pending, pendingKnown, !state.UnresolvedChildren.IsDefaultOrEmpty, false,
                 state.UnresolvedChildren.IsDefault ? ImmutableArray<string>.Empty : state.UnresolvedChildren),
-            state.EventOutcome, state.EventWatermark, null, at, state.EventWorking == false && !pending && state.EventOutcome is null)
+            state.EventOutcome, state.EventWatermark, state.EventViewedWatermark, at, state.EventWorking == false && !pending && state.EventOutcome is null)
         {
             WorkingFact = state.EventWorking is { } working ? Fact(working) : null,
             PendingActionFact = pendingKnown ? Fact(pending) : null,
             QuestionPendingFact = state.QuestionForms.Count > 0 || state.EventFormsKnown ? Fact(state.QuestionForms.Count > 0) : null,
             CompletionObservedAt = state.EventOutcome is not null ? at : null,
+            InfoObservedAt = state.EventInfoAt,
             EventStateCurrent = current,
         });
     }

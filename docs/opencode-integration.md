@@ -50,7 +50,7 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 ### 智能体提及与 OMO 汇报
 - Agent.Info 保留 `id`, `name`, `model`, `request`, `system`, `description`, `mode`, `hidden`, `color`, `steps`, `permissions`。`permissions` 是有序的 `{ action, resource, effect }` 规则数组；OMO 的 `permission.task` 在 V2 中映射为 `action: "subagent"`，`resource` 匹配子智能体 ID。当前主智能体的最后一条匹配规则决定候选可见性，动作与资源支持 `*`，`deny` 隐藏，`allow` / `ask` 保留；没有当前主智能体或匹配规则时保留原候选，服务端继续负责授权。只筛选非隐藏的 `subagent` / `all` 智能体，不筛选 Skill，也不硬编码主智能体的允许名单。
 - `task_report` 的参数为 `kind: "progress" | "escalation"` 与经过修剪、非空、最多 2000 字符的 `message`。两个字符串结果仅说明已向主会话排队（可选“未唤醒”）；详情译为中文并保留“主会话尚未确认处理”，不据此确认子任务结束。
-- 主会话的合成文本 `<subagent-update id="uuid" kind="progress|escalation">` 包含 `From @agent (session child-id):` 与完整消息，末尾附有 `SLIM_INTERNAL_INITIATOR` 标记。有效更新复用内部提示行与现有子会话导航；缺少或异常的 UUID、类型、来源、子会话或闭合标签，以及空白 / 超长消息，回退为通用内部消息，不进入异步完成通知的状态或成功计数。
+- 主会话的合成文本 `<subagent-update id="uuid" kind="progress|escalation">` 包含 `From @agent (session child-id):` 与完整消息，末尾附有 `SLIM_INTERNAL_INITIATOR` 标记。有效更新以“汇报进度 / 上报问题”为行名，后接与子智能体行相同的显示名及消息摘要，复用现有子会话导航，并作为中性提示行折入相邻处理过程分组；不作为回合边界、不改变分组运行 / 终态或成功计数。缺少或异常的 UUID、类型、来源、子会话或闭合标签，以及空白 / 超长消息，回退为同样折入分组的通用内部消息。
 - `task_status` / `task_cancel` 同时读取 V2 `sessionID` 和旧 `task_id`，复用已知子会话的智能体 / 标题。缺失、未知、`(unconfirmed)` 或明确不确定的状态不作为终态成功；不根据自由文本推断子任务完成。
 
 ### 附件规范（Attachments）
@@ -58,6 +58,10 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 - **数量限制**：单次请求最多 10 个附件。
 - **容量上限**：单文件原始大小上限 10 MiB，单请求附件总上限 20 MiB，序列化后的整个 JSON 载荷严格限制在 28 MiB 以内。
 - **格式规范**：仅接受规范 Base64 编码的 `data:` URL，支持常见的图片（PNG/JPEG/GIF/WebP）、PDF、纯文本及 Markdown 文件。文件路径在发送前会被移除，确保不向服务端泄露本地文件系统结构。
+- **图片粘贴事务**：先在当前草稿令牌下读取、校验附件，不发布半成品；随后一次模型事务同时确认内联 token、`[Image N]` 发送文本与附件。确认返回的令牌立即成为编辑器基线，不等待位图异步渲染。读取或插入期间切换会话会撤销原粘贴，不能把附件带入新草稿；单链接粘贴也只有一次模型确认，没有“原生粘贴后再替换标签”的第二次编辑。
+- **文档与发送**：链接/提及/图片身份由不可变文档中的不透明 token ID 持有。按 run 一次序列化为原始 URL、`@id`、`[Image N]`，在同一次遍历中计算官方 agent/skill 的原始文本偏移；普通与带附件发送均使用这一结果。原生图片 alt text 仅供无障碍朗读，不是身份标记或发送文本。编辑收据、模型历史与全屏重挂约束见 [composer.md](composer.md)。
+- **未同步输入恢复**：被拒绝的输入保留显示且禁止发送，不在渲染时自动重放。当前草稿仍有效时，新的真实编辑可重新绑定文本；“清空并恢复”显式清除文本、芯片及附件。来源失效后的只读恢复仍走页面原有的显式放弃/新草稿流程，不把旧来源附件或发送权限转移到新会话；组合输入期间不能清空。
+- **排队消息展示**：待投递与已投递用户消息共享附件投影、图片缩略图及 `[Image N]` / `[PDF N]` 芯片规则，仅本条消息实际持有第 N 个对应附件时生成芯片。剪贴板图片的 `clipboard` 来源名显示为“图片”，不显示为原始附件名称。
 
 ---
 

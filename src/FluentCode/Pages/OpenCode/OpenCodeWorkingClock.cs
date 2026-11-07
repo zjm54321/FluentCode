@@ -30,11 +30,18 @@ internal sealed class OpenCodeWorkingClock
     /// <summary>一个完整流光周期（左 → 右扫过一次）。</summary>
     internal static readonly TimeSpan DefaultPeriod = TimeSpan.FromMilliseconds(1800);
 
+    /// <summary>
+    /// 进度环的一个循环：与 WinUI 1.8 默认不定进度环（ProgressRingIndeterminate 动画，弧线伸长 → 收缩）的时长相同（2 秒），
+    /// 同步后的环保持系统默认节奏。
+    /// </summary>
+    internal static readonly TimeSpan RingPeriod = TimeSpan.FromMilliseconds(2000);
+
     /// <summary>进程内共享实例（所有标签页同一时钟；仅在 UI 线程使用）。</summary>
     internal static OpenCodeWorkingClock Shared { get; } = new(Stopwatch.GetTimestamp, Stopwatch.Frequency, DefaultPeriod);
 
     private readonly Func<long> _timestamp;
     private readonly long _periodTicks;
+    private readonly long _ringPeriodTicks;
     private readonly HashSet<IOpenCodeWorkingClockSubscriber> _subscribers = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<Action<DateTimeOffset>> _secondSubscribers = new();
     private bool _motionEnabled = true;
@@ -47,6 +54,7 @@ internal sealed class OpenCodeWorkingClock
         _timestamp = timestamp ?? throw new ArgumentNullException(nameof(timestamp));
         Period = period;
         _periodTicks = Math.Max(1, (long)(period.TotalSeconds * frequency));
+        _ringPeriodTicks = Math.Max(1, (long)(RingPeriod.TotalSeconds * frequency));
     }
 
     internal TimeSpan Period { get; }
@@ -95,11 +103,18 @@ internal sealed class OpenCodeWorkingClock
     /// <summary>当前全局归一化相位 [0, 1)。</summary>
     internal double Phase => PhaseAt(_timestamp());
 
-    internal double PhaseAt(long timestamp)
+    internal double PhaseAt(long timestamp) => Normalize(timestamp, _periodTicks);
+
+    /// <summary>进度环的全局归一化相位 [0, 1)：同一单调时间戳、周期 <see cref="RingPeriod"/>，同样是绝对值。</summary>
+    internal double RingPhase => RingPhaseAt(_timestamp());
+
+    internal double RingPhaseAt(long timestamp) => Normalize(timestamp, _ringPeriodTicks);
+
+    private static double Normalize(long timestamp, long periodTicks)
     {
-        var t = timestamp % _periodTicks;
-        if (t < 0) t += _periodTicks;
-        return (double)t / _periodTicks;
+        var t = timestamp % periodTicks;
+        if (t < 0) t += periodTicks;
+        return (double)t / periodTicks;
     }
 
     internal bool IsJoined(IOpenCodeWorkingClockSubscriber subscriber) => _subscribers.Contains(subscriber);

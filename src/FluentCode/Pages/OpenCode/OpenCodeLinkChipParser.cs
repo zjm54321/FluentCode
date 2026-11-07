@@ -508,20 +508,17 @@ internal static class OpenCodeLinkChipParser
         => "https://" + chip.Host + (chip.Uri.IsDefaultPort ? "" : ":" + chip.Uri.Port.ToString(CultureInfo.InvariantCulture));
 }
 
-/// <summary>A composer link chip: <see cref="Display"/> (a label prefixed by an icon gap) stands in the editor text at
-/// <see cref="Start"/>; <see cref="Url"/> is what send/copy restore.</summary>
+/// <summary>Read-only RAW send-coordinate projection for link menus; never editor text, token identity or an anchor.</summary>
 internal sealed record OpenCodeComposerLinkSpan(int Start, string Display, string Url)
 {
-    /// <summary>Editor prefix that reserves room for the 14 px icon + 4 px gap drawn by the chip layer.</summary>
-    internal const string IconGap = "\u2003\u200A";
     internal int End => Start + Display.Length;
     internal bool Matches(string text) => Start >= 0 && End <= text.Length && text.AsSpan(Start, Display.Length).SequenceEqual(Display.AsSpan());
     internal static OpenCodeComposerLinkSpan? Create(int start, string url)
-        => OpenCodeLinkChipParser.Parse(url) is { } chip ? new(start, IconGap + chip.Label, url) : null;
+        => OpenCodeLinkChipParser.Parse(url) is not null ? new(start, url, url) : null;
     public override string ToString() => "OpenCodeComposerLinkSpan { [redacted] }";
 }
 
-/// <summary>A pasted image placeholder: literal TUI text "[Image N]" bound to one attachment.</summary>
+/// <summary>Read-only raw send-coordinate image reference. The document's one-position token owns identity.</summary>
 internal sealed record OpenCodeComposerImageSpan(int Start, int Number, Guid AttachmentId)
 {
     internal string Token => OpenCodeComposerChips.ImageToken(Number);
@@ -529,82 +526,10 @@ internal sealed record OpenCodeComposerImageSpan(int Start, int Number, Guid Att
     internal bool Matches(string text) => Start >= 0 && End <= text.Length && text.AsSpan(Start, Token.Length).SequenceEqual(Token.AsSpan());
 }
 
-/// <summary>Pure composer chip bookkeeping: span shifting, expansion for send/copy, image numbering.</summary>
+/// <summary>Plain clipboard URL recognition and wire/transcript attachment-token parsing. No editor span bookkeeping.</summary>
 internal static class OpenCodeComposerChips
 {
     internal static string ImageToken(int number) => "[Image " + number.ToString(CultureInfo.InvariantCulture) + "]";
-
-    /// <summary>Next number: max used in this draft + 1 (deleting never renumbers; a fresh draft restarts at 1).</summary>
-    internal static int NextImageNumber(IEnumerable<OpenCodeComposerImageSpan> images, int highWater)
-        => Math.Max(highWater, images.Select(i => i.Number).DefaultIfEmpty(0).Max()) + 1;
-
-    /// <summary>The single replacement between two texts as (prefix, oldEnd, delta).</summary>
-    internal static (int Prefix, int OldEnd, int Delta) Diff(string before, string after)
-    {
-        var prefix = 0;
-        while (prefix < before.Length && prefix < after.Length && before[prefix] == after[prefix]) prefix++;
-        var suffix = 0;
-        while (suffix < before.Length - prefix && suffix < after.Length - prefix
-            && before[before.Length - 1 - suffix] == after[after.Length - 1 - suffix]) suffix++;
-        return (prefix, before.Length - suffix, after.Length - before.Length);
-    }
-
-    /// <summary>
-    /// Moves spans after an edit and drops any span the edit touched (an edit inside a chip turns it back into text —
-    /// the chip is gone, its characters are ordinary).
-    /// </summary>
-    internal static void Shift<T>(List<T> spans, string before, string after, Func<T, int> start, Func<T, int> end,
-        Func<T, int, T> move, Func<T, string, bool> matches)
-    {
-        if (string.Equals(before, after, StringComparison.Ordinal))
-        {
-            spans.RemoveAll(s => !matches(s, after));
-            return;
-        }
-        var (prefix, oldEnd, delta) = Diff(before, after);
-        for (var i = spans.Count - 1; i >= 0; i--)
-        {
-            var s = spans[i];
-            if (start(s) >= oldEnd) spans[i] = s = move(s, start(s) + delta);
-            else if (end(s) > prefix) { spans.RemoveAt(i); continue; }
-            if (!matches(s, after)) spans.RemoveAt(i);
-        }
-    }
-
-    /// <summary>Editor text with every live link chip replaced by its URL (what the model receives).</summary>
-    internal static string Expand(string text, IEnumerable<OpenCodeComposerLinkSpan> links)
-        => ExpandRange(text, 0, text.Length, links);
-
-    /// <summary>
-    /// The selection [start, start+length) with chips restored to their URLs (copy/cut). A selection that only partly
-    /// covers a chip still yields the whole URL — never half a label.
-    /// </summary>
-    internal static string ExpandRange(string text, int start, int length, IEnumerable<OpenCodeComposerLinkSpan> links)
-    {
-        start = Math.Clamp(start, 0, text.Length);
-        var end = Math.Clamp(start + Math.Max(0, length), start, text.Length);
-        var live = links.Where(l => l.Matches(text) && l.End > start && l.Start < end).OrderBy(l => l.Start).ToArray();
-        if (live.Length == 0) return text[start..end];
-        var sb = new StringBuilder();
-        var at = start;
-        foreach (var l in live)
-        {
-            if (l.Start > at) sb.Append(text, at, l.Start - at);
-            sb.Append(l.Url);
-            at = Math.Max(at, l.End);
-        }
-        if (at < end) sb.Append(text, at, end - at);
-        return sb.ToString();
-    }
-
-    /// <summary>Maps an editor offset to the expanded (sent) text offset; mention spans move with their text.</summary>
-    internal static int ExpandOffset(string text, int offset, IEnumerable<OpenCodeComposerLinkSpan> links)
-    {
-        var shift = 0;
-        foreach (var l in links)
-            if (l.Matches(text) && l.End <= offset) shift += l.Url.Length - l.Display.Length;
-        return offset + shift;
-    }
 
     /// <summary>Clipboard text that is exactly one link (surrounding whitespace allowed) → that URL; else null.</summary>
     internal static string? SingleLink(string? clipboard)

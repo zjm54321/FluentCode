@@ -104,6 +104,7 @@ public sealed class OpenCodeRichTextPresenter
     /// kind (spec §5). Zero for assistant text.
     /// </summary>
     internal (int Images, int Pdfs) AttachmentCounts { get; set; }
+    private (int Images, int Pdfs) _lastAttachmentCounts;
 
     [ThreadStatic] private static ChipContext? _chips;
     private sealed record ChipContext(bool Dark, int PendingTailStart, int Images, int Pdfs);
@@ -162,10 +163,12 @@ public sealed class OpenCodeRichTextPresenter
     public void Render(string? source, OpenCodeRichTextStyle style)
     {
         var imageScope = OpenCodeImageContext.Find(_root);
-        var force = _renderLifetime.IsCanceled || style != _lastStyle || !ReferenceEquals(imageScope, _lastImageScope);
+        var force = _renderLifetime.IsCanceled || style != _lastStyle || !ReferenceEquals(imageScope, _lastImageScope)
+            || AttachmentCounts != _lastAttachmentCounts;
         _lastSource = source;
         _lastStyle = style;
         _lastImageScope = imageScope;
+        _lastAttachmentCounts = AttachmentCounts;
         if (!_renderSchedule.Request(source, force, RenderClockMilliseconds))
         {
             CoalescedRenderCount++;
@@ -195,7 +198,7 @@ public sealed class OpenCodeRichTextPresenter
         _renderTimer?.Stop();
         using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(_expandCodeBlocks);
         var imageScope = OpenCodeImageContext.Find(_root);
-        if (!_renderGate.ShouldRender(source, style, imageScope, _renderLifetime.IsCanceled)) return;
+        if (!_renderGate.ShouldRender(source, (style, AttachmentCounts), imageScope, _renderLifetime.IsCanceled)) return;
         var started = Stopwatch.GetTimestamp();
         FullRenderCount++;
         try

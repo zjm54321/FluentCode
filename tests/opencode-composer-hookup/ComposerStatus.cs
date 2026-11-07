@@ -13,6 +13,7 @@ internal sealed partial class ComposerStatusHost
     {
         internal Visibility Visibility;
         internal bool IsActive;
+        internal bool IsEnabled;
         internal string Text = "", Glyph = "";
         internal object? Style;
     }
@@ -21,10 +22,11 @@ internal sealed partial class ComposerStatusHost
         internal OpenCodeComposerInputState State;
     }
     private readonly ControlState _statusBar = new(), _statusText = new(), _statusRing = new(),
-        _statusIcon = new();
+        _statusIcon = new(), _recoveryClear = new();
     private SyncState? _sync;
     private string? _slotUnavailableReason, _localNote;
     private bool _picking;
+    private bool _composing;
     private int _sideQuestionPending;
     private static object ThemedForeground(string control, string key) => (control, key);
 
@@ -70,8 +72,12 @@ internal sealed partial class ComposerStatusHost
             "recovery explanation stays visible even while the page is busy");
         var held = new ComposerStatusHost { _sync = new() { State = OpenCodeComposerInputState.HeldStale } };
         held.RenderStatus(idle, false, false);
-        Program.Check(held._statusBar.Visibility == Visibility.Visible && held._statusText.Text.Contains("复制")
-            && !held._statusText.Text.Contains("丢弃"), "stale-input recovery retains copy guidance without advertising removed action");
+        Program.Check(held._statusBar.Visibility == Visibility.Visible && held._statusText.Text.Contains("继续编辑")
+            && held._recoveryClear.Visibility == Visibility.Visible && held._recoveryClear.IsEnabled,
+            "stale-input recovery explains editable recovery and exposes clear-and-recover action");
+        held._composing = true;
+        held.RenderStatus(idle, false, false);
+        Program.Check(!held._recoveryClear.IsEnabled, "recovery clear is disabled during composition");
         var local = new ComposerStatusHost { _localNote = "附件未添加；原附件保持不变。" };
         local.RenderStatus(sending, true, false);
         Program.Check(local._statusBar.Visibility == Visibility.Visible && local._statusText.Text == local._localNote,
@@ -84,7 +90,7 @@ internal sealed partial class ComposerStatusHost
         inactive.RenderStatus(idle with { IsActive = false, IsBoundDraft = true }, true, true);
         Program.Check(inactive._statusBar.Visibility == Visibility.Visible && inactive._statusText.Text.Contains("返回原会话")
             && !inactive._statusText.Text.Contains("丢弃"), "inactive draft retains return-to-origin recovery without discard action");
-        Console.WriteLine("PASS: 15 production status-renderer checks; in-memory UI seams, no native UI.");
+        Console.WriteLine("PASS: 16 production status-renderer checks; in-memory UI seams, no native UI.");
     }
 }
 

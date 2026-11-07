@@ -204,7 +204,7 @@ public sealed partial class OpenCodePage : Page
         Composer.LostFocus += Composer_LostFocus;
 
         // 单按钮与单/多行布局：内容变化刷新按钮模式；高度变化（行数/窗口宽度）切换按钮位置。
-        Composer.TextChanged += Composer_TextChanged;
+        Composer.TextChanged += (_, _) => Composer_TextChanged();
 
         this.Loaded += OnPageLoaded;
         this.Unloaded += OnPageUnloaded;
@@ -3582,10 +3582,19 @@ public sealed partial class OpenCodePage : Page
     private void TryHandleComposerEnter(KeyRoutedEventArgs e)
     {
         if (!_pageActive || _composerView is null || e.Handled) return;
+        if (FullScreenComposerActive && !_composerView.IsAutocompleteVisible && !_isComposing)
+        {
+            if (e.Key == VirtualKey.Escape) { e.Handled = true; CloseFullScreenComposer(focus: true); return; }
+            if (e.Key == VirtualKey.Enter && !FullScreenControlDown) return;
+        }
         var decision = _composerView.HandleEditorKey(e, IsShiftDown(), _isComposing,
             DateTimeOffset.UtcNow - _lastCompositionEndedAt, _enterDown, _isSending || _composerPickerPending);
         if (decision.LatchEnter) _enterDown = true;
-        if (decision.Action == OpenCodeComposerKeyAction.Submit) RequestComposerSubmission();
+        if (decision.Action == OpenCodeComposerKeyAction.Submit)
+        {
+            if (FullScreenComposerActive) SubmitFullScreenComposer();
+            else RequestComposerSubmission();
+        }
     }
 
     /// <summary>
@@ -3614,12 +3623,12 @@ public sealed partial class OpenCodePage : Page
         }
     }
 
-    private void Composer_TextCompositionStarted(TextBox sender, TextCompositionStartedEventArgs args)
+    private void Composer_TextCompositionStarted(RichEditBox sender, TextCompositionStartedEventArgs args)
     {
         _isComposing = true;
     }
 
-    private void Composer_TextCompositionEnded(TextBox sender, TextCompositionEndedEventArgs args)
+    private void Composer_TextCompositionEnded(RichEditBox sender, TextCompositionEndedEventArgs args)
     {
         _lastCompositionEndedAt = DateTimeOffset.UtcNow;
         // CompositionSettled resumes overlays/layout. Disabling/focusing here can terminate TSF's
@@ -3641,7 +3650,7 @@ public sealed partial class OpenCodePage : Page
         }
     }
 
-    private void Composer_TextChanged(object sender, TextChangedEventArgs e)
+    private void Composer_TextChanged()
     {
         _composerView?.NotifyEditorTextChanged();
         // 草稿变化直接决定单按钮模式（发送 / 停止 / 禁用）。

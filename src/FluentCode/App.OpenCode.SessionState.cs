@@ -93,6 +93,8 @@ public partial class App
         return new(source.Identity, source.Revision, observation.SessionId,
             observation.WorkingFact, observation.PendingActionFact, Completion: completion, ViewedWatermark: viewed)
         {
+            CompletionAbsentThrough = observation.IsNeutralIdle
+                && (continuous || IsFreshSessionUiEvidence(observation.ObservedAt, now)) ? observation.CompletionAbsentThrough : null,
             QuestionPending = observation.QuestionPendingFact is { } question
                 && (continuous || IsFreshSessionUiEvidence(question.ObservedAt, now)) ? question : null,
         };

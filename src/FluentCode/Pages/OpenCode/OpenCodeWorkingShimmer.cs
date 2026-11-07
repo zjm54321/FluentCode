@@ -11,13 +11,15 @@ using Windows.Foundation;
 namespace FluentCode.Pages.OpenCode;
 
 /// <summary>
-/// B13：共享工作时钟的合成层驱动。每个 Compositor 只有一个属性集 <c>Phase</c>，由一个线性、无限循环的
-/// 关键帧动画推进；所有流光指示器的表达式都引用同一属性集，因此同向、同速、同相由构造保证。
+/// B13：共享工作时钟的合成层驱动。每个 Compositor 只有一个属性集，含两个相位：<c>Phase</c>（流光 / 齿轮 / 省略号，
+/// 时钟周期）与 <c>RingPhase</c>（原生进度环，<see cref="OpenCodeWorkingClock.RingPeriod"/>），各由一个线性、无限循环的
+/// 关键帧动画推进；所有指示器的表达式都引用同一属性集，因此同向、同速、同相由构造保证。
 /// 时钟停止时停掉主动画（不再有任何帧驱动）；重新启动时把动画进度对齐到时钟的绝对相位。
 /// </summary>
 internal static class OpenCodeWorkingClockComposition
 {
     private const string PhaseProperty = "Phase";
+    private const string RingPhaseProperty = "RingPhase";
     private static readonly Dictionary<Compositor, CompositionPropertySet> PhaseSets = new();
     private static bool _hooked;
     private static DispatcherQueue? _dispatcher;
@@ -49,6 +51,7 @@ internal static class OpenCodeWorkingClockComposition
         if (PhaseSets.TryGetValue(compositor, out var set)) return set;
         set = compositor.CreatePropertySet();
         set.InsertScalar(PhaseProperty, (float)Clock.Phase);
+        set.InsertScalar(RingPhaseProperty, (float)Clock.RingPhase);
         PhaseSets[compositor] = set;
         if (Clock.IsRunning) Start(compositor, set);
         return set;
@@ -85,17 +88,23 @@ internal static class OpenCodeWorkingClockComposition
 
     private static void Start(Compositor compositor, CompositionPropertySet set)
     {
+        Loop(compositor, set, PhaseProperty, Clock.Period, Clock.Phase);
+        Loop(compositor, set, RingPhaseProperty, OpenCodeWorkingClock.RingPeriod, Clock.RingPhase);
+    }
+
+    private static void Loop(Compositor compositor, CompositionPropertySet set, string property, TimeSpan period, double phase)
+    {
         var linear = compositor.CreateLinearEasingFunction();
         var animation = compositor.CreateScalarKeyFrameAnimation();
         animation.InsertKeyFrame(0f, 0f, linear);
         animation.InsertKeyFrame(1f, 1f, linear);
-        animation.Duration = Clock.Period;
+        animation.Duration = period;
         animation.IterationBehavior = AnimationIterationBehavior.Forever;
-        set.StartAnimation(PhaseProperty, animation);
+        set.StartAnimation(property, animation);
         // 对齐绝对相位：重新启动（例如全部完成后又有新任务）也落在同一条全局时间线上。
-        if (set.TryGetAnimationController(PhaseProperty) is { } controller)
+        if (set.TryGetAnimationController(property) is { } controller)
         {
-            controller.Progress = (float)Clock.Phase;
+            controller.Progress = (float)phase;
         }
     }
 
@@ -103,6 +112,8 @@ internal static class OpenCodeWorkingClockComposition
     {
         set.StopAnimation(PhaseProperty);
         set.InsertScalar(PhaseProperty, (float)Clock.Phase);
+        set.StopAnimation(RingPhaseProperty);
+        set.InsertScalar(RingPhaseProperty, (float)Clock.RingPhase);
     }
 }
 

@@ -45,7 +45,7 @@ public sealed partial class OpenCodePage
         _composerView = new(GetComposerSnapshot, _composerController.BeginCatalogLifetime, _composerController.EndCatalogLifetime);
         _composerView.SplashModelIdProvider = ComposerSplashModelId;
         _composerView.MentionSearchProvider = ComposerMentionSearch;
-        _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || FullScreenComposerActive || !_pageActive);
+        _composerView.AttachEditor(Composer, () => _isComposing || _suppressComposerFocus || !_pageActive);
         InitializeComposerLayout();
         ComposerCompanionHost.Children.Add(_composerView);
         ComposerCompanionHost.Visibility = Visibility.Visible;
@@ -53,20 +53,26 @@ public sealed partial class OpenCodePage
         _composerController.SnapshotChanged += OnComposerSnapshotChanged;
         _composerView.CompositionSettled += (_, _) =>
         {
-            if (!FullScreenComposerActive) _isComposing = false;
+            _isComposing = false;
             QueueDeferredComposerOverlayRefresh();
             QueueComposerLayout();
+            TryPendingFullScreenClose();
         };
         _composerController.SubmitRequested += OnComposerSubmitRequested;
         _composerController.UnboundSubmitRequested += (_, e) => OnUnboundComposerSubmitRequested(e.Token);
-        _composerView.StateChanged += (_, _) => { if (_pageActive) { UpdateComposerButtons(); TryRestoreExpandedComposerSelection(); } };
+        _composerView.StateChanged += (_, _) => { if (_pageActive) { UpdateComposerButtons(); TryRestoreExpandedComposerSelection(); TryPendingFullScreenClose(); } };
+        _composerView.RecoveryClearRequested += () =>
+        {
+            if (_draftRecoveryPending) DiscardDraftSlotRecovery();
+            else _composerView.TryClearHeldInput(_composerController.TryDiscardDraftForRecovery);
+        };
         _composerView.TextEdited += (_, e) => e.Acknowledgment =
-            _composerController.TryApplyEditorInput(e.Token, e.Text, e.AllowUnboundCarry);
-        _composerView.ContextChosen += (token, id, isSkill, start) =>
-            _composerController.TryAddContext(token, id, isSkill, start);
-        // Link / image chips: the view inserts the label or "[Image N]" natively; the controller binds it to the URL / file.
-        _composerView.LinkChosen += (token, start, url) => _composerController.TryAddLink(token, start, url);
-        _composerView.ImageChosen += (token, start, number, id) => _composerController.TryAddImage(token, start, number, id);
+            e.ImagePaste is { } paste ? paste.TryApply(e.Token, e.Text)
+                : e.Observation is { } observation ? _composerController.TryApplyDocumentObservation(e.Token, observation, e.AllowUnboundCarry)
+                : _composerController.TryApplyEditorInput(e.Token, e.Text, e.AllowUnboundCarry);
+        _composerView.ModelUndoRequested += (token, redo) => _composerController.TryUndoDocument(token, redo);
+        _composerView.DocumentSelectionChanged += _composerController.SetDocumentSelection;
+        // Link/image paste is committed by TextEdited as one acknowledgment, never a second metadata edit.
         _composerView.CatalogOpenRequested += (_, e) =>
         {
             if (_pageActive && !_isSending && !_composerPickerPending && !_nativeDialogPending && _nativeActionOwner is null)

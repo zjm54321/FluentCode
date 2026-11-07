@@ -10,7 +10,8 @@ public enum OpenCodeExecutionState { Unknown, Idle, Working }
 public sealed record OpenCodeExecutionChildEvidence(string ChildSessionId, bool Terminal);
 public sealed record OpenCodeExecutionToolEvidence(string ToolId, bool Terminal);
 public sealed record OpenCodeExecutionMessageEvidence(string Id, string Type, double Created, string? Outcome,
-    ImmutableArray<OpenCodeExecutionChildEvidence> Children, ImmutableArray<OpenCodeExecutionToolEvidence> Tools);
+    ImmutableArray<OpenCodeExecutionChildEvidence> Children, ImmutableArray<OpenCodeExecutionToolEvidence> Tools,
+    bool IsInternalInitiator = false);
 /// <summary>Complete means a fresh full history (or a caller-maintained complete accumulated history),
 /// not merely the last page/turn. Caller attests same owner and reliable chronological order.</summary>
 public sealed record OpenCodeExecutionWindow(string SessionId, bool IsFresh, bool IsComplete,
@@ -74,7 +75,7 @@ public static class OpenCodeExecutionProjection
                     else tools.Add(new(part.Id!, status is "completed" or "error"));
                 }
             result.Add(new(message.Id!, message.Type!, message.Time.Created, message.Outcome,
-                children.ToImmutable(), tools.ToImmutable()));
+                children.ToImmutable(), tools.ToImmutable(), message.IsInternalInitiator));
         }
         return new(sessionId, isFresh, isComplete && valid, isChronological && valid, result.ToImmutable());
     }
@@ -113,14 +114,14 @@ public static class OpenCodeExecutionProjection
                     else children.Add(child.ChildSessionId);
                 foreach (var tool in message.Tools)
                     if (tool.Terminal) tools.Remove(tool.ToolId); else tools.Add(tool.ToolId);
-                // Configuration-only events do not start a turn; all other newer messages need a new idle.
+                // Configuration and internal wakeups/reports do not start user-relevant turns.
                 if (message.Type == "idle")
                 {
                     idle = message.Outcome is "succeeded" or "failed" or "interrupted";
                     if (idle) tools.Clear();
                     else reliable = false;
                 }
-                else if (message.Type is not ("agent-switched" or "model-switched" or "location-switched")) idle = false;
+                else if (!message.IsInternalInitiator && message.Type is not ("agent-switched" or "model-switched" or "location-switched")) idle = false;
             }
         bool background = children.Count != 0;
         bool fresh = reliable && input.ActiveIsFresh && input.PendingIsFresh && input.InboxIsFresh;

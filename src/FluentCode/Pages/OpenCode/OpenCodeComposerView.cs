@@ -49,6 +49,9 @@ public sealed class OpenCodeComposerTextEditedEventArgs(OpenCodeComposerToken to
     public string Text { get; } = text;
     /// <summary>Set by the view only for input recorded against an unbound baseline (navigation-carry request).</summary>
     internal bool AllowUnboundCarry { get; init; }
+    /// <summary>One staged clipboard transaction; its native text edit also owns the chip spans and attachments.</summary>
+    internal OpenCodeComposerImagePaste? ImagePaste { get; init; }
+    internal OpenCodeComposerDocumentObservation? Observation { get; init; }
     /// <summary>Set synchronously by the single page handler: <c>controller.TryApplyEditorInput(Token, Text, AllowUnboundCarry)</c>.</summary>
     internal OpenCodeComposerEditorAck? Acknowledgment { get; set; }
 }
@@ -107,6 +110,8 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     private readonly FontIcon _statusIcon;
     private readonly ProgressRing _statusRing;
     private readonly TextBlock _statusText;
+    private readonly Button _recoveryClear;
+    internal event Action? RecoveryClearRequested;
     private int _sideQuestionPending;
 
     internal void SetSideQuestionPending(int count)
@@ -124,7 +129,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     private readonly Button _menuRetry;
     private readonly ListView _menuList;
 
-    private TextBox? _editor;
+    private OpenCodeComposerEditor? _editor;
     private Func<bool> _isComposing = static () => false;
     private string? _editorPlaceholder;
     // Placeholder splash (B15): rotated only by an explicit slot activation; feeds PlaceholderText only, never editor text.
@@ -387,11 +392,17 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         var statusGrid = new Grid { ColumnSpacing = 8 };
         statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var glyphHost = new Grid();
         glyphHost.Children.Add(_statusIcon);
         glyphHost.Children.Add(_statusRing);
         Place(statusGrid, glyphHost, 0);
         Place(statusGrid, _statusText, 1);
+        _recoveryClear = new Button { Content = "清空并恢复", Padding = new Thickness(8, 2, 8, 3), Visibility = Visibility.Collapsed };
+        AutomationProperties.SetAutomationId(_recoveryClear, "OpenCodeComposerRecoveryClear");
+        AutomationProperties.SetName(_recoveryClear, "清空未同步输入并恢复编辑");
+        _recoveryClear.Click += (_, _) => RecoveryClearRequested?.Invoke(); // Explicit recovery must not pass the held submission gate.
+        Place(statusGrid, _recoveryClear, 2);
         _statusBar = new Border
         {
             CornerRadius = new CornerRadius(6),
@@ -512,13 +523,19 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     /// <paramref name="isComposing"/> is the page's focus-suppression predicate (IME/suppressed/inactive page).
     /// Reattaching detaches the previous editor and fences its pending callbacks and handoffs.
     /// </summary>
-    internal void AttachEditor(TextBox editor, Func<bool> isComposing)
+    internal void AttachEditor(OpenCodeComposerEditor editor, Func<bool> isComposing)
     {
         ArgumentNullException.ThrowIfNull(editor);
         _isComposing = isComposing ?? throw new ArgumentNullException(nameof(isComposing));
         if (_editor is { } previous)
         {
-            previous.TextChanging -= OnEditorTextChanging;
+            previous.DocumentChanging -= OnEditorDocumentChanging;
+            previous.DocumentChanged -= NotifyEditorTextChanged;
+            previous.UndoRequested -= OnModelUndoRequested;
+            previous.PointerReleased -= OnChipPointerReleased;
+            previous.PointerMoved -= OnChipPointerMoved;
+            previous.PointerExited -= OnChipPointerExited;
+            previous.PrepareModelOperation = null;
             previous.TextCompositionStarted -= OnEditorCompositionStarted;
             previous.TextCompositionEnded -= OnEditorCompositionEnded;
             previous.LostFocus -= OnEditorLostFocus;
@@ -526,9 +543,11 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         }
         CloseMention();
         _mentionArmed = false;
-        AttachChipHandlers(editor, _editor);
-        _pasteArmed = null;
         _editor = editor;
+        editor.PrepareModelOperation = PrepareSubmission;
+        OpenCodeComposerBitmapCache.SiteIcon = (link, dark) => OpenCodeLinkChipView.CreateIcon(link, dark);
+        OpenCodeComposerBitmapCache.OnlineEnabled = () => OpenCodeLinkChipView.OnlineEnabled;
+        OpenCodeComposerBitmapCache.IconOptions = () => OpenCodeLinkChipView.Monochrome.ToString();
         _editorPlaceholder = editor.PlaceholderText;
         _composition.Reset();
         // The ONLY application writer of editor.Text: guarded assign + actual read-back inside the sync.
@@ -540,14 +559,24 @@ internal sealed partial class OpenCodeComposerView : StackPanel
                 {
                     if (!string.Equals(editor.Text, text, StringComparison.Ordinal))
                     {
-                        editor.Text = text;
-                        editor.SelectionStart = (editor.Text ?? string.Empty).Length;
+                        editor.PresentPlainRecovery(text);
                     }
                 }
                 finally { _guardedWrite = false; }
-            }, () => _composing, ApplyEditorInput);
+            }, () => _composing, ApplyEditorInput, () => editor.Observation, snapshot =>
+            {
+                _guardedWrite = true;
+                _mentionArmed = false;
+                try { editor.ApplySnapshot(snapshot); }
+                finally { _guardedWrite = false; }
+            });
         // Early, synchronous input observation (records only; no rendering, flyouts, focus or tree changes).
-        editor.TextChanging += OnEditorTextChanging;
+        editor.DocumentChanging += OnEditorDocumentChanging;
+        editor.DocumentChanged += NotifyEditorTextChanged;
+        editor.UndoRequested += OnModelUndoRequested;
+        editor.PointerReleased += OnChipPointerReleased;
+        editor.PointerMoved += OnChipPointerMoved;
+        editor.PointerExited += OnChipPointerExited;
         editor.TextCompositionStarted += OnEditorCompositionStarted;
         editor.TextCompositionEnded += OnEditorCompositionEnded;
         editor.LostFocus += OnEditorLostFocus;
@@ -575,19 +604,21 @@ internal sealed partial class OpenCodeComposerView : StackPanel
 
     private OpenCodeComposerEditorAck? ApplyEditorInput(OpenCodeComposerToken basis, string text, bool allowCarry)
     {
-        var args = new OpenCodeComposerTextEditedEventArgs(basis, text) { AllowUnboundCarry = allowCarry };
+        var paste = _imagePaste;
+        _imagePaste = null; // Consume once; a reentrant later edit is an ordinary observation, not another paste commit.
+        var args = new OpenCodeComposerTextEditedEventArgs(basis, text) { AllowUnboundCarry = allowCarry, ImagePaste = paste,
+            Observation = _sync?.SubmittedObservation };
         TextEdited?.Invoke(this, args);
         return args.Acknowledgment; // Proof of acceptance; never a later snapshot comparison.
     }
 
-    private void OnEditorTextChanging(TextBox sender, TextBoxTextChangingEventArgs args)
+    private void OnEditorDocumentChanging()
     {
-        if (!ReferenceEquals(sender, _editor)) return;
         _inputEvidence.RecordTextChanging(); // Ledger record (unchanged logic) + synchronous C#-only evidence publication.
         if (!_guardedWrite) _mentionArmed = true; // A real user edit may open "@" candidates on the following TextChanged.
     }
 
-    private void OnEditorCompositionStarted(TextBox sender, TextCompositionStartedEventArgs args)
+    private void OnEditorCompositionStarted(RichEditBox sender, TextCompositionStartedEventArgs args)
     {
         if (!ReferenceEquals(sender, _editor)) return;
         _composition.Start();
@@ -595,7 +626,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     }
 
     // Composition end / focus loss are WAKE-UPS only: every check re-runs; nothing is authorised by them.
-    private void OnEditorCompositionEnded(TextBox sender, TextCompositionEndedEventArgs args)
+    private void OnEditorCompositionEnded(RichEditBox sender, TextCompositionEndedEventArgs args)
     {
         if (!ReferenceEquals(sender, _editor)) return;
         var version = _composition.End();
@@ -714,6 +745,14 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         _sync?.ResolveRecovery(); // Explicit resolution only; no write/adoption occurs here.
         _slotUnavailableReason = null;
         _inputEvidence.Refresh();
+    }
+
+    internal bool TryClearHeldInput(Func<OpenCodeComposerToken, OpenCodeComposerEditorAck?> clear)
+    {
+        if (_sync?.TryClearHeldInput(clear) != true) return false;
+        Render(_source());
+        _editor?.Focus(FocusState.Programmatic);
+        return true;
     }
 
     internal bool TryPresentDraftSlotRecovery(string text)
@@ -865,10 +904,11 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         // deferred by an active composition is retried by the composition-end wake-up (no timer).
         _sync.Reconcile();
 
-        // Inactive bound drafts and held-stale input are shown read-only; reading a picked batch also blocks edits
+        // Only forced source recovery is read-only. Ordinary held input remains editable so a new genuine edit
+        // can explicitly recover the current draft. Reading a picked batch also blocks edits
         // that would invalidate the pick ticket. Legacy sending never touches this flag.
         var readOnly = !s.IsActive || _slotUnavailableReason is not null || inactiveBound
-            || _sync.State == OpenCodeComposerInputState.HeldStale || (s.IsBusy && _picking);
+            || _sync.IsSuspendedForRecovery || (s.IsBusy && _picking);
         if (readOnly != _editorReadOnlyApplied)
         {
             _editorReadOnlyApplied = readOnly;
@@ -893,8 +933,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         // TextChanged (not TextChanging): the tree may change. Evaluate the acknowledged observation and keep a visible
         // menu's filter in step with the text, so key evidence is captured against what the user actually sees.
         if (_menuSession.EvaluateAcknowledged(this) || _menuShown) Render(_source());
-        RestoreUndoneMention();
-        ConvertPastedLink(); // A single pasted link becomes a chip (its own undo step).
+        _sync.Reconcile(); // Applies an ACKed model operation without creating a native undo step.
         EvaluateMentionTrigger(); // After the command menu settled: the two lists are never shown together.
     }
 
@@ -936,11 +975,6 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     {
         ArgumentNullException.ThrowIfNull(e);
         if (isComposing || _composing) return OpenCodeComposerKeyDecision.Pass;
-        if (e.Key is VirtualKey.Back or VirtualKey.Delete && !isComposing && !_composing && (TryDeleteMentionToken(e.Key == VirtualKey.Back) || TryDeleteChipToken(e.Key == VirtualKey.Back)))
-        {
-            e.Handled = true;
-            return new(OpenCodeComposerKeyAction.Swallow, true, false);
-        }
         var key = e.Key switch
         {
             VirtualKey.Enter => OpenCodeComposerKey.Enter,
@@ -1173,7 +1207,14 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     /// (then "上下文（@）" is disabled with an honest tooltip and a typed "@" stays plain text).
     /// </summary>
     internal Func<OpenCodeComposerMentionSearch?>? MentionSearchProvider { get; set; }
-    internal event Action<OpenCodeComposerToken, string, bool, int>? ContextChosen;
+    internal event Action<OpenCodeComposerToken, bool>? ModelUndoRequested;
+    internal event Action<OpenCodeComposerToken, OpenCodeComposerSelection>? DocumentSelectionChanged;
+    private void OnModelUndoRequested(bool redo)
+    {
+        if (_composing || !PrepareSubmission()) return;
+        ModelUndoRequested?.Invoke(_source().Token, redo);
+        RequestRender();
+    }
 
     private Grid _mentionSlot = null!;
     private Border _mentionPanel = null!;
@@ -1293,15 +1334,8 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     private void OnEditorSelectionChanged(object sender, RoutedEventArgs e)
     {
         if (!ReferenceEquals(sender, _editor)) return;
-        // The caret never rests inside a chosen mention: it hops to the edge it was moving towards.
-        if (_editor is { SelectionLength: 0 } editor && !_composing && !_guardedWrite)
-        {
-            var caret = editor.SelectionStart;
-            var snapped = OpenCodeComposerCharTriggers.SnapCaret(editor.Text, caret, _lastCaret, _source().Mentions);
-            snapped = SnapChipCaret(editor.Text ?? string.Empty, snapped, _lastCaret);
-            _lastCaret = snapped;
-            if (snapped != caret) { editor.Select(snapped, 0); return; }
-        }
+        if (_editor is { } editor && !_composing && !_guardedWrite)
+            DocumentSelectionChanged?.Invoke(_source().Token, editor.NativeSelection);
         if (!_mentionShown) return;
         if (MentionAtCaret() is not { Present: true } trigger || trigger.Start != _mentionTrigger.Start) CloseMention();
     }
@@ -1499,47 +1533,6 @@ internal sealed partial class OpenCodeComposerView : StackPanel
     /// TextBox (exactly like typing/paste): TextChanging records it in the existing ledger and TextChanged flushes it with
     /// its own token. Never a guarded application write, never a submission.
     /// </summary>
-    // Runtime agent colours seen in the "@" list (presentation only, for the inline mention chips).
-    private readonly Dictionary<string, string> _mentionColors = new(StringComparer.Ordinal);
-    private (string Before, string After, OpenCodePromptContext Mention)? _deletedMention;
-    private int _lastCaret;
-
-    /// <summary>The draft's chosen mentions (controller-tracked spans) for the inline chip layer.</summary>
-    internal IReadOnlyList<OpenCodePromptContext> MentionSpans => _source().Mentions;
-    internal string? MentionColor(string id) => _mentionColors.TryGetValue(id, out var c) ? c : null;
-
-    /// <summary>
-    /// Native, undoable removal (SelectedText) of one whole chosen mention, through the normal edit ledger: the controller
-    /// then drops that context exactly as for any edit inside it. Remembered so an Undo that restores the identical text
-    /// re-attaches the same context at the same place.
-    /// </summary>
-    private bool TryDeleteMentionToken(bool backward)
-    {
-        if (_editor is not { } editor || editor.IsReadOnly || editor.SelectionLength != 0 || !_lifetime.IsLive) return false;
-        if (!FlushForIntent()) return false;
-        var before = editor.Text ?? string.Empty;
-        if (OpenCodeComposerCharTriggers.MentionAt(before, editor.SelectionStart, backward, _source().Mentions) is not { } mention)
-            return false;
-        CloseMention();
-        editor.Select(mention.Start, mention.End - mention.Start);
-        editor.SelectedText = string.Empty;
-        editor.Select(mention.Start, 0);
-        _deletedMention = (before, editor.Text ?? string.Empty, mention);
-        return true;
-    }
-
-    /// <summary>After a clean flush: Undo of an atomic mention deletion restores its context; other edits forget it.</summary>
-    private void RestoreUndoneMention()
-    {
-        if (_deletedMention is not { } deleted || _editor is not { } editor) return;
-        var text = editor.Text ?? string.Empty;
-        if (text == deleted.After) return;
-        _deletedMention = null;
-        if (text != deleted.Before || !deleted.Mention.Matches(text)) return;
-        if (_source() is { IsActive: true, IsBusy: false } s)
-            ContextChosen?.Invoke(s.Token, deleted.Mention.Id, deleted.Mention.IsSkill, deleted.Mention.Start);
-    }
-
     private void AcceptMention(int index)
     {
         if (!FlushForIntent()) { CloseMention(); return; }
@@ -1553,13 +1546,17 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             return;
         }
         CloseMention();
-        var insertion = OpenCodeComposerCharTriggers.MentionInsertion(candidate);
-        if (candidate.Color is { } color) _mentionColors[candidate.Id] = color;
         editor.Select(trigger.Start, trigger.Length);
-        editor.SelectedText = insertion;
-        editor.Select(trigger.Start + insertion.Length, 0);
-        if (FlushForIntent() && _source() is { IsActive: true, IsBusy: false } chosen)
-            ContextChosen?.Invoke(chosen.Token, candidate.Id, candidate.IsSkill, trigger.Start);
+        var document = editor.ModelDocument;
+        var selection = editor.NativeSelection;
+        var next = document.Replace(selection.Start, selection.End - selection.Start, new OpenCodeComposerRun[]
+        {
+            new OpenCodeComposerInlineToken(Guid.NewGuid(), OpenCodeComposerInlineKind.Mention, candidate.Id, candidate.Id,
+                candidate.IsSkill, Color: candidate.Color), new OpenCodeComposerTextRun(" "),
+        });
+        editor.StageDocument(next, new(selection.Start + 2, selection.Start + 2));
+        FlushForIntent();
+        RequestRender();
         if (editor.FocusState == FocusState.Unfocused) editor.Focus(FocusState.Programmatic);
     }
 
@@ -2053,9 +2050,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             glyph = "\uE7BA";
             tone = "caution";
         }
-        else if (_sync?.State == OpenCodeComposerInputState.HeldStale)
+        else if (_sync?.State is OpenCodeComposerInputState.HeldStale or OpenCodeComposerInputState.HeldUnbound)
         {
-            text = "这段输入未能同步到当前草稿（会话或草稿已变化），已保留显示但不能发送；请先复制需要的内容。";
+            text = "这段输入未能同步到当前草稿，已保留但不能发送；继续编辑可恢复到当前草稿，也可清空并恢复。";
             glyph = "\uE7BA";
             tone = "caution";
         }
@@ -2090,6 +2087,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             if (text is null) busy = true;
             text = text is null ? pending : text + " · " + pending;
         }
+        _recoveryClear.Visibility = _sync?.State is OpenCodeComposerInputState.HeldStale or OpenCodeComposerInputState.HeldUnbound
+            ? Visibility.Visible : Visibility.Collapsed;
+        _recoveryClear.IsEnabled = !_composing;
         if (text is null) { _statusBar.Visibility = Visibility.Collapsed; _statusRing.IsActive = false; return; }
         _statusBar.Visibility = Visibility.Visible;
         _statusText.Text = text;

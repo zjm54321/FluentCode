@@ -124,28 +124,6 @@ internal static class OpenCodeComposerCharTriggers
     }
 
     /// <summary>
-    /// A chosen "@" mention is one token: Backspace with the caret at its end, or Delete at its start, removes all of
-    /// "@id". Only spans the controller tracks (and that still match the editor text) qualify; typed "@text" and the
-    /// trailing space inserted with a mention stay ordinary characters.
-    /// </summary>
-    internal static OpenCodePromptContext? MentionAt(string? text, int caret, bool backward, IEnumerable<OpenCodePromptContext> mentions)
-    {
-        text ??= string.Empty;
-        foreach (var m in mentions)
-            if (m.Matches(text) && (backward ? m.End == caret : m.Start == caret)) return m;
-        return null;
-    }
-
-    /// <summary>A caret strictly inside a mention moves to the edge it was travelling towards (end when moving right).</summary>
-    internal static int SnapCaret(string? text, int caret, int previous, IEnumerable<OpenCodePromptContext> mentions)
-    {
-        text ??= string.Empty;
-        foreach (var m in mentions)
-            if (m.Matches(text) && caret > m.Start && caret < m.End) return caret >= previous ? m.End : m.Start;
-        return caret;
-    }
-
-    /// <summary>
     /// "+ → 上下文（@）" inserts a literal "@" at the caret so that it is always a LEGAL trigger: a separating space before
     /// it after a non-space character, and one after it when the caret sits right before a non-space character.
     /// <c>CaretOffset</c> is where the caret goes (immediately after the "@").

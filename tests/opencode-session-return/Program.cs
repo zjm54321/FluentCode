@@ -28,6 +28,7 @@ internal static partial class Program
         PtyCompletionNotices();
         GroupFinalizesWhenFollowed();
         TranscriptMessageMenus();
+        PendingImageBubbles();
         await ImageBindings();
         await ChildPreviewLifecycle();
         await CardReturnAndFailures();

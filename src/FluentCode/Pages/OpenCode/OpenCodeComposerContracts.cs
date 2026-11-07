@@ -36,7 +36,10 @@ public readonly record struct OpenCodeComposerToken
     internal Guid Draft { get; }
     internal long Edit { get; }
 }
-internal readonly record struct OpenCodeComposerEditorAck(OpenCodeComposerToken Token, string Text);
+internal readonly record struct OpenCodeComposerEditorAck(OpenCodeComposerToken Token, string Text)
+{
+    internal OpenCodeComposerDocument? Document { get; init; }
+}
 
 internal sealed record OpenCodeComposerDraftBasis(
     OpenCodeComposerBinding Binding, OpenCodeComposerToken Token,
@@ -137,6 +140,10 @@ public sealed record OpenCodeComposerSnapshot(OpenCodeComposerToken Token, strin
     IReadOnlyList<OpenCodeComposerAttachmentRow> Attachments, bool HasDraft, bool IsBoundDraft, bool IsActive,
     bool IsBusy, bool CanSubmit, bool IsProtected, string? Note)
 {
+    internal OpenCodeComposerDocument Document { get; init; } = OpenCodeComposerDocument.Empty;
+    internal OpenCodeComposerSelection Selection { get; init; }
+    internal bool CanUndo { get; init; }
+    internal bool CanRedo { get; init; }
     public OpenCodeComposerCatalogHandle? CatalogHandle { get; init; }
     /// <summary>The draft's chosen "@" contexts with their exact spans in <see cref="Text"/> (presentation/atomic editing only).</summary>
     internal IReadOnlyList<OpenCodePromptContext> Mentions { get; init; } = Array.Empty<OpenCodePromptContext>();

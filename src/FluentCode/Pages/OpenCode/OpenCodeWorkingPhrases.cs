@@ -174,30 +174,26 @@ internal static class OpenCodeWorkingMotion
     internal static double GearAngle(double phase) => phase * 360;
 
     /// <summary>
-    /// 时间线行右侧统一“进行中”弧（<c>OpenCodeTimelineStatusCell</c>）：与齿轮同一表达式，每个时钟周期一圈，
-    /// 因此同屏所有进行中的行（前台 / 后台工具、思考、芯片）在任一时刻角度相同。
+    /// 进度环（时间线行右侧状态格、左侧子智能体列表、详情里的“进行中”行）一律是系统默认不定进度环（ProgressRing：
+    /// 默认尺寸比例、描边与弧线伸长 → 收缩的动画，2 秒一循环）；只把每个环的播放进度绑定到共享时钟的同一相位
+    /// （<c>OpenCodeProgressRingSync</c>），因此同屏所有环节奏、相位一致。
     /// </summary>
-    internal const string RingExpression = GearExpression;
+    internal const string RingProgressExpression = "clock.RingPhase";
 
-    /// <summary>状态格边长（与行状态列宽、状态字形格一致）。</summary>
-    internal const double RingSize = 16;
+    /// <summary>环直径：与左侧子智能体列表的原生环相同。</summary>
+    internal const double RingSize = 14;
 
-    /// <summary>弧线粗细（圆头）。</summary>
-    internal const double RingStroke = 2;
+    /// <summary>时间线状态格边长（行状态列宽，与结束态字形格一致）；环居中其中。</summary>
+    internal const double StatusCellSize = 16;
 
-    /// <summary>弧长：四分之三圈，缺口指示转动方向；静态（减少动画）时同样可辨认。</summary>
-    internal const double RingSweepDegrees = 270;
+    /// <summary>
+    /// 减少动画 / 窗口隐藏时环停留的帧：默认动画前半程弧线伸长到约 160° 的位置（不是起始的空白帧），
+    /// 静止时仍是可辨认的“进行中”环。
+    /// </summary>
+    internal const double RingStaticProgress = 0.45;
 
-    /// <summary>弧中心线半径：描边完整落在 16×16 方格内。</summary>
-    internal const double RingRadius = (RingSize - RingStroke) / 2;
-
-    /// <summary>弧上自 12 点方向顺时针 <paramref name="degrees"/> 度处的点（方格坐标，中心 = 边长 / 2）。</summary>
-    internal static (double X, double Y) RingArcPoint(double degrees)
-    {
-        var radians = degrees * Math.PI / 180;
-        var center = RingSize / 2;
-        return (Math.Round(center + RingRadius * Math.Sin(radians), 6), Math.Round(center - RingRadius * Math.Cos(radians), 6));
-    }
+    /// <summary>环的默认无障碍名称（宿主可传入更具体的状态文字）。</summary>
+    internal const string RingAccessibleName = "进行中";
 
     internal static double DotOpacity(double phase, int index) => Math.Floor(phase * 4) > index ? 1 : DotDimOpacity;
 

@@ -31,7 +31,6 @@ public sealed partial class OpenCodePage
         _insights!.Changed += (_, _) => QueueSessionControlCardRefresh();
         BindNativePickerChoices(BlankAgentButton, BlankModelButton, BlankStrengthButton);
         InitializeComposerContextMenu();
-        InitializeComposerMentionChips();
         RefreshComposerToolbar();
     }
 
@@ -151,17 +150,6 @@ public sealed partial class OpenCodePage
     {
         ComposerSubagentsGlyph.Glyph = SubagentGlyph(running);
         DescribeComposerIcon(ComposerSubagentsButton, SubagentsLabel(running));
-    }
-
-    private OpenCodeComposerMentionChips? _mentionChips;
-
-    private void InitializeComposerMentionChips()
-    {
-        if (_composerView is not { } view || _composerController is not { } controller) return;
-        _mentionChips = new OpenCodeComposerMentionChips(Composer, ComposerMentionLayer, () => view.MentionSpans, view.MentionColor,
-            () => view.LinkSpans, () => view.ImageSpans);
-        // Context spans change on the controller (choose / edit / undo restore); repaint on the UI thread.
-        controller.SnapshotChanged += (_, _) => DispatcherQueue.TryEnqueue(() => _mentionChips.Refresh());
     }
 
     private void ComposerSubagentsButton_Click(object sender, RoutedEventArgs e)

@@ -29,9 +29,10 @@ internal static class Program
                 ("Apply/layout/frame/old visible idle and coalesced geometry", Viewport),
                 ("Home/blank/hidden/unknown history and non-UI block ACK", Visibility),
                 ("owner/frame/reflow fences and listener lifecycle", Fences),
-                ("unknown same key never retries across source/revision/render", Unknown),
+                ("uncertain/failed receipts use bounded backoff and fresh visibility/focus", Unknown),
                 ("512 attempt cap never evicts", Cap),
                 ("foreground notification publisher follows selected tab and host/page visibility", ForegroundPublisher),
+                ("background and settings tabs revoke ACK proof", BackgroundTabs),
             })
             {
                 var before = _n; await run().WaitAsync(TimeSpan.FromSeconds(30));
@@ -64,6 +65,21 @@ internal static class Program
         page.Unload();
         Check(app.ForegroundSession is null, "page unload removes foreground scope");
         return Task.CompletedTask;
+    }
+
+    private static Task BackgroundTabs()
+    {
+        var (app, page) = Fixture("ep-background-tabs");
+        Render(page, 100); var fence = app.LastFence!;
+        page.TestForegroundSelectTab("ses_other");
+        Check(!fence(), "selecting another tab synchronously revokes in-flight ACK fence");
+        Render(page, 200);
+        Check(app.Calls == 1 && CompositionTarget.Count == 0, "background session cannot ACK before navigation catches up");
+        page.TestForegroundSelectTab(null); Render(page, 300);
+        Check(app.Calls == 1 && CompositionTarget.Count == 0, "settings/non-session tab never ACKs covered session");
+        page.TestForegroundSelectTab("ses_test"); CompositionTarget.Frame();
+        Check(app.Calls == 2 && app.LastSent == 300, "returning to the actual selected session rechecks visible content");
+        page.Unload(); return Task.CompletedTask;
     }
 
     private static Task Viewport()
@@ -153,19 +169,30 @@ internal static class Program
         Check(CompositionTarget.Count == 0 && p.ViewListeners == 0, "late host activation cannot resurrect unloaded view listeners");
         return Task.CompletedTask;
     }
-    private static Task Unknown()
+    private static async Task Unknown()
     {
         var (app, page) = Fixture("ep-unknown"); app.ResultUnknown = true; Render(page, 100);
         Check(app.Calls == 1 && app.Posts == 0, "unknown result records attempt without a receipt");
+        Check(page.RetryDelay > TimeSpan.Zero && page.RetryDelay <= TimeSpan.FromMilliseconds(250), "first uncertain receipt uses bounded 250ms backoff");
         Render(page, 100); page.InvalidateViewAcknowledgement(); page.RepeatLayout(); CompositionTarget.Frame();
-        Check(app.Calls == 1, "unknown never retries after apply/invalidate/review");
-        page.TestClearSource(); page.TestActivate(Source("ep-unknown"), "ses_test"); Render(page, 100);
-        Check(app.Calls == 1, "same endpoint source replacement cannot reset attempt");
-        page.TestActivate(Source("ep-unknown", 2), "ses_test"); Render(page, 100);
-        Check(app.Calls == 1, "revision/render generations never enter dedup key");
-        app.ResultUnknown = false; Render(page, 200);
-        Check(app.Calls == 2 && app.Posts == 1 && app.LastSent == 200, "new actually visible watermark still attempts once");
-        page.Unload(); return Task.CompletedTask;
+        Check(app.Calls == 1, "layout bursts cannot bypass backoff");
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(3);
+        while (CompositionTarget.Count == 0 && DateTimeOffset.UtcNow < deadline) await Task.Delay(10);
+        Check(CompositionTarget.Count == 1 && app.Calls == 1, "backoff only requests a new rendered-frame review");
+        CompositionTarget.Frame();
+        Check(app.Calls == 2 && page.RetryDelay > TimeSpan.FromMilliseconds(800), "second attempt waits 1000ms and reuses exact watermark");
+        app.ThrowReceipt = true; page.ExpireRetry();
+        Check(app.Calls == 3 && page.RetryDelay > TimeSpan.FromMilliseconds(3800), "local failure schedules 4000ms bounded backoff");
+        page.ExpireRetry(); page.ExpireRetry();
+        Check(app.Calls == 4, "four attempts exhaust automatic retry budget");
+        app.ThrowReceipt = false; app.ResultUnknown = false;
+        page.NotifyHostWindowVisibility(false); page.ExpireRetry();
+        Check(app.Calls == 4 && CompositionTarget.Count == 0, "hidden host cannot retry exhausted receipt");
+        page.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
+        Check(app.Calls == 5 && app.Posts == 1 && app.LastSent == 100, "next focus retries the same uncertain watermark with current proof");
+        page.NotifyHostWindowVisibility(false); page.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
+        Check(app.Calls == 5, "confirmed receipt never retries on focus");
+        page.Unload();
     }
     private static Task Cap()
     {

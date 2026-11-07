@@ -18,7 +18,15 @@ internal static partial class Program
             writes++;
             text = value;
             sync!.OnTextChanging(); // The real writer's synchronous native echo stays guarded.
-        }, () => composition.IsActive, f.Core.TryApplyEditorInput);
+        }, () => composition.IsActive, (token, value, carry) =>
+        {
+            var document = f.Core.Snapshot.Document;
+            if (document.Objects.Count == 0) return f.Core.TryApplyEditorInput(token, value, carry);
+            var prefix = document.Serialize().Text;
+            if (!value.StartsWith(prefix, StringComparison.Ordinal)) return null;
+            var next = document.Replace(document.Length, 0, value[prefix.Length..]);
+            return f.Core.TryApplyDocumentObservation(token, new(document, next, new(next.Length, next.Length)), carry);
+        });
 
         void Compose(string committed)
         {
@@ -87,7 +95,8 @@ internal static partial class Program
             && view.Contains("if (_composing) { RequestRender(); return; }")
             && view.Contains("if (_composing) return;")
             && view.Contains("if (isComposing || _composing) return OpenCodeComposerKeyDecision.Pass;")
-            && view.Contains("if (!string.Equals(editor.Text, text, StringComparison.Ordinal))"),
+            && view.Contains("if (!string.Equals(editor.Text, text, StringComparison.Ordinal))")
+            && view.Contains("editor.ApplySnapshot(snapshot)") && view.Contains("editor.Observation"),
             "WinUI hookup defers commit release, flush/reconciliation and redundant native Text/selection writes");
         var page = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCodePage.Composer.cs"));
         Check(page.Contains("_composerView.CompositionSettled +=") && page.Contains("QueueDeferredComposerOverlayRefresh();"),

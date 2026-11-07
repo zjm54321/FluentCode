@@ -37,7 +37,7 @@ internal static partial class Program
         page.NotifyHostWindowVisibility(false); backend.Rows["ses_A"] = new() { ViewIdle(600) };
         await page.TestLatestAsync(); page.NotifyHostWindowVisibility(true);
         Check(page.AckPublications == 3 && page.TestViewportFrames == 0, "reactivate never submits raw latest window before layout");
-        page.TestViewportLayout(600); page.TestViewportFrame(); Check(page.AckPublications == 4 && page.TestAckWatermark == 600, "reactivate reviews current view and exact candidate only");
+        page.TestViewportContentBottom(600); page.TestViewportFrame(); Check(page.AckPublications == 4 && page.TestAckWatermark == 600, "reactivate ACKs visible latest content bottom without requiring separator geometry");
         page.TestAcceptedHistory("msg_missing_boundary");
         page.NotifyHostWindowVisibility(true); page.TestViewportFrame();
         Check(page.TestAppliedCount == 0 && page.AckPublications == 4 && page.TestViewportFrames == 0,
@@ -56,5 +56,17 @@ internal static partial class Program
         Check(OpenCodeHomeProjection.Classify(row) == OpenCodeHomeTone.Unknown
             && new OpenCodeHomeSessionRow(row, "A", "P", OpenCodeHomeTone.Unknown, OpenCodeHomeDateGroup.Unknown, null).IsUnread,
             "unknown completion stays Unknown while independent row unread remains true");
+        foreach (var outcome in new[] { "succeeded", "failed", "interrupted" })
+        foreach (var unread in new[] { false, true })
+        {
+            var terminal = row with { Status = new(Working: false, IsUnread: unread, Outcome: outcome) { CompletedAt = 100 } };
+            var projected = OpenCodeHomeProjection.Rows(new(1, [], [terminal]), null, null, DateTimeOffset.UtcNow, TimeZoneInfo.Utc)[0];
+            Check(projected.ShowUnreadIndicator == unread && projected.ShowStatusIndicator != projected.ShowUnreadIndicator,
+                "terminal outcome and unread indicators are mutually exclusive: " + outcome);
+        }
+        var completed = row with { Info = new() { Id = "ses_time", Time = new() { Updated = 900 } },
+            Status = new(Working: false, IsUnread: false, Outcome: "succeeded") { CompletedAt = 100 } };
+        Check(OpenCodeHomeProjection.Rows(new(1, [], [completed]), null, null, DateTimeOffset.UtcNow, TimeZoneInfo.Utc)[0].Updated?.ToUnixTimeMilliseconds() == 100,
+            "ended row uses real completion time, never reconnect/internal updated time");
     }
 }

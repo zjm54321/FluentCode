@@ -18,9 +18,10 @@ namespace FluentCode.Pages.OpenCode
     internal sealed record OpenCodePendingDeliveryRequest(string InboxId, string Delivery);
     internal static class OpenCodeQueuedPromptsView
     {
-        // Queue rows are not supplied by these return/child-preview fixtures.
-        internal static bool IsSteerUser(OpenCodeInboxItem item) => false;
-        internal static string ReadText(System.Text.Json.JsonElement? payload) => string.Empty;
+        // Queue widget remains a boundary; pending transcript fixtures supply the same pure user/steer + payload shape.
+        internal static bool IsSteerUser(OpenCodeInboxItem item) => item.Type == OpenCodeInboxItemTypes.User && item.Delivery == OpenCodeDeliveryModes.Steer;
+        internal static string? ReadText(System.Text.Json.JsonElement? payload) => payload is { ValueKind: System.Text.Json.JsonValueKind.Object } value
+            && value.TryGetProperty("text", out var text) && text.ValueKind == System.Text.Json.JsonValueKind.String ? text.GetString() : null;
     }
 }
 
@@ -83,11 +84,11 @@ namespace FluentCode
     {
         internal sealed record Ack(string Endpoint, string Session, double Watermark, Func<bool> Fence);
         internal List<Ack> Acks { get; } = new();
-        public Task<bool?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
+        public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
             string sessionId, double watermark, Func<bool> fence, CancellationToken token)
         {
             Acks.Add(new(source.Identity, sessionId, watermark, fence));
-            return Task.FromResult<bool?>(null); // Unknown result; the real helper must still deduplicate.
+            return Task.FromResult<double?>(null); // Match the production exact-watermark receipt; unknown here.
         }
     }
 }
@@ -117,6 +118,7 @@ namespace FluentCode.Pages
 
     public sealed partial class OpenCodePage : FrameworkElement
     {
+        private bool IsViewAcknowledgementSessionTabSelected() => _selectedSessionId is { Length: > 0 };
         private OpenCodePageSource? _source;
         private OpenCodeClient? _client;
         private long _sourceRevision;

@@ -190,29 +190,61 @@ internal static partial class Program
 
     private static void UnifiedRunningIndicator(string repo)
     {
-        // Geometry: a 16px cell, 2px round-capped stroke fully inside it, 3/4 arc from 12 o'clock clockwise to 9 o'clock.
-        Check(OpenCodeWorkingMotion.RingSize == 16 && OpenCodeWorkingMotion.RingStroke == 2
-            && OpenCodeWorkingMotion.RingSweepDegrees == 270, "ring = 16px status column, 2px stroke, 270° sweep");
-        Check(OpenCodeWorkingMotion.RingRadius + OpenCodeWorkingMotion.RingStroke / 2 == OpenCodeWorkingMotion.RingSize / 2, "stroke outer edge touches, never exceeds, the 16px cell");
-        Check(OpenCodeWorkingMotion.RingArcPoint(0) == (8d, 1d) && OpenCodeWorkingMotion.RingArcPoint(90) == (15d, 8d)
-            && OpenCodeWorkingMotion.RingArcPoint(270) == (1d, 8d), "arc starts at 12 o'clock and sweeps clockwise to 9 o'clock");
-        // Motion: every running row shares the group gear's absolute clock phase (same angle at the same instant).
-        Check(OpenCodeWorkingMotion.RingExpression == OpenCodeWorkingMotion.GearExpression, "ring rotates on the shared working clock, in phase with the gear");
+        // Look: the system default ProgressRing — the sidebar subagent list's 14px ring — centred in the 16px status column.
+        Check(OpenCodeWorkingMotion.RingSize == 14 && OpenCodeWorkingMotion.StatusCellSize == 16, "ring = default 14px ring (as in the sidebar), centred in the 16px status column");
+        // Rhythm: one absolute ring phase with the default ring's own 2 s cycle; rings joining at any time read the same value.
+        Check(OpenCodeWorkingClock.RingPeriod == TimeSpan.FromSeconds(2), "ring cycle = the default indeterminate ProgressRing's 2 s");
+        var ticks = 500L;
+        var clock = new OpenCodeWorkingClock(() => ticks, 1000, OpenCodeWorkingClock.DefaultPeriod);
+        var early = clock.RingPhase;
+        ticks = 2500;
+        Check(early == 0.25 && clock.RingPhase == 0.25 && clock.RingPhaseAt(4000) == 0 && clock.RingPhaseAt(-500) == 0.75,
+            "ring phase is absolute: one cycle later it is the same, never restarted from zero");
+        Check(clock.PhaseAt(900) == 0.5, "the 1.8 s shimmer/gear phase is unchanged");
+        Check(OpenCodeWorkingMotion.RingProgressExpression == "clock.RingPhase", "every ring's playback progress reads the one shared phase");
+        double still = OpenCodeWorkingMotion.RingStaticProgress;
+        Check(still > 0.25 && still < 0.5, "reduced motion stops on a long-arc frame, never the empty first frame");
+        Check(OpenCodeWorkingMotion.RingAccessibleName == "进行中", "rings carry an accessible name");
 
         string Read(string name) => File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode", name));
+        var sync = Read("OpenCodeProgressRingSync.cs");
+        Check(sync.Contains("new ProgressRing { IsActive = true, Width = size, Height = size, MinWidth = 0, MinHeight = 0 }", StringComparison.Ordinal)
+            && !sync.Contains("ControlTemplate", StringComparison.Ordinal) && !sync.Contains("Template =", StringComparison.Ordinal)
+            && !sync.Contains("IndeterminateSource", StringComparison.Ordinal),
+            "the native default ring: no custom template or animation source");
+        Check(sync.Contains("AnimatedVisualPlayer.IsPlayingProperty", StringComparison.Ordinal) && sync.Contains("player.Pause();", StringComparison.Ordinal)
+            && sync.Contains("player.ProgressObject.TryGetAnimationController(ProgressProperty)", StringComparison.Ordinal)
+            && sync.Contains("controller.StartAnimation(ProgressProperty, progress);", StringComparison.Ordinal)
+            && sync.Contains("OpenCodeWorkingClockComposition.PhaseSet(compositor)", StringComparison.Ordinal),
+            "each native play is paused and its progress bound to the shared phase");
+        Check(sync.Contains("controller.Progress = (float)OpenCodeWorkingMotion.RingStaticProgress;", StringComparison.Ordinal)
+            && sync.Contains("clock.Join(this)", StringComparison.Ordinal) && sync.Contains("clock.Leave(this);", StringComparison.Ordinal)
+            && sync.Contains("_loaded && _ring.IsActive && _ring.IsIndeterminate", StringComparison.Ordinal),
+            "joins the clock only while loaded and active; reduced motion leaves a still arc");
+        Check(sync.Contains("AutomationProperties.SetName(ring, accessibleName);", StringComparison.Ordinal), "every synced ring is named");
+        var composition = Read("OpenCodeWorkingShimmer.cs");
+        Check(composition.Contains("Loop(compositor, set, RingPhaseProperty, OpenCodeWorkingClock.RingPeriod, Clock.RingPhase);", StringComparison.Ordinal)
+            && composition.Contains("set.StopAnimation(RingPhaseProperty);", StringComparison.Ordinal),
+            "one RingPhase per compositor, aligned to the absolute clock and stopped with it");
+
         var cell = Read("OpenCodeTimelineStatusCell.cs");
+        Check(cell.Contains("_ring = OpenCodeProgressRingSync.Create();", StringComparison.Ordinal) && cell.Contains("_cell.Children.Remove(ring);", StringComparison.Ordinal)
+            && !cell.Contains("ArcSegment", StringComparison.Ordinal) && !cell.Contains("RotationAngleInDegrees", StringComparison.Ordinal),
+            "status cell hosts the shared default ring only while running (no custom arc)");
         Check(cell.Contains("internal static readonly Thickness CellMargin = new(0, 0, OpenCodeTimelineRowMetrics.Padding, 0);", StringComparison.Ordinal)
-            && cell.Contains("Width = size,", StringComparison.Ordinal) && cell.Contains("HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal),
+            && cell.Contains("var size = OpenCodeWorkingMotion.StatusCellSize;", StringComparison.Ordinal) && cell.Contains("HorizontalAlignment = HorizontalAlignment.Right", StringComparison.Ordinal),
             "one fixed 16px cell, 8px from the row's right edge");
-        Check(cell.Contains("\"SystemColorHighlightTextColorBrush\" : OpenCodeToolTheme.Accent", StringComparison.Ordinal)
+        Check(cell.Contains("OpenCodeToolTheme.Ring(\"SystemColorHighlightTextColorBrush\")", StringComparison.Ordinal)
+            && cell.Contains("ring.ClearValue(FrameworkElement.StyleProperty);", StringComparison.Ordinal)
             && !cell.Contains("OpenCodeToolTheme.Caution", StringComparison.Ordinal) && !cell.Contains("IsBackground", StringComparison.Ordinal),
-            "one accent tone for foreground and background work (high-contrast highlight text)");
-        Check(cell.Contains("clock.Join(this)", StringComparison.Ordinal) && cell.Contains("clock.Leave(this);", StringComparison.Ordinal)
-            && cell.Contains("OpenCodeWorkingClockComposition.PhaseSet(compositor)", StringComparison.Ordinal)
-            && cell.Contains("visual.RotationAngleInDegrees = 0;", StringComparison.Ordinal),
-            "joins the shared clock only while running and loaded; reduced motion leaves a still arc");
-        Check(cell.Contains("StrokeStartLineCap = PenLineCap.Round", StringComparison.Ordinal) && cell.Contains("IsLargeArc = OpenCodeWorkingMotion.RingSweepDegrees > 180", StringComparison.Ordinal),
-            "arc drawn from the shared metrics with round caps");
+            "default accent for foreground and background work; high-contrast highlight text on the highlighted running row");
+        var tree = Read("OpenCodeAgentTreeView.cs");
+        Check(tree.Contains("OpenCodeProgressRingSync.Create(accessibleName: statusText)", StringComparison.Ordinal) && !tree.Contains("new ProgressRing", StringComparison.Ordinal),
+            "the sidebar subagent ring is the same synced ring");
+        var builtins = Read("OpenCodeToolDetailBuiltins.cs");
+        Check(!builtins.Contains("new ProgressRing", StringComparison.Ordinal) && builtins.Split("OpenCodeProgressRingSync.Create(12)").Length - 1 == 3
+            && Read("OpenCodeToolDetailSurface.cs").Contains("OpenCodeProgressRingSync.Create(16)", StringComparison.Ordinal),
+            "detail rings for the same running work share the phase");
         foreach (var name in new[] { "OpenCodeToolPartView.cs", "OpenCodeReasoningRowView.cs", "OpenCodeTimelineChipView.cs" })
         {
             var row = Read(name);
@@ -363,5 +395,20 @@ internal static partial class Program
         Check(detail.Contains("OpenCodeToolDetailBuiltins.Build(model, options) ?? BuildGeneric(model)", StringComparison.Ordinal), "default popup path uses generic builder when builtin resolver returns None");
         Check(Read("OpenCodeToolPartView.cs").Contains("model.GlyphOverride ?? KindGlyph(model.Kind)", StringComparison.Ordinal), "row consumes existing glyph override contract");
         Check(Read("OpenCodeHomeView.cs").Contains("OpenCodeHomeTone.Unread => \"\\uE8F2\"", StringComparison.Ordinal), "session glyph reused from home session list");
+        var home = Read("OpenCodeHomeView.cs");
+        var page = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Home.cs"));
+        var settings = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.SettingsTab.cs"));
+        Check(home.Contains("Grid.SetColumn(_settingsHost, 2)", StringComparison.Ordinal)
+            && home.Contains("searchRow.Children.Add(_settingsHost)", StringComparison.Ordinal)
+            && home.Contains("SetSettingsButton(Button button)", StringComparison.Ordinal), "settings stays in shared search row after New at narrow and wide widths");
+        Check(page.Contains("_homeView.SetSettingsButton(CreateHomeSettingsButton())", StringComparison.Ordinal)
+            && !page.Contains("HomePageHost.Children.Add(CreateHomeSettingsButton())", StringComparison.Ordinal), "floating settings overlay removed");
+        var settingsButton = settings[settings.IndexOf("private Button CreateHomeSettingsButton()", StringComparison.Ordinal)..];
+        Check(settingsButton.Contains("MinWidth = 36", StringComparison.Ordinal) && settingsButton.Contains("MinHeight = 36", StringComparison.Ordinal)
+            && settingsButton.Contains("Content = new FontIcon", StringComparison.Ordinal) && !settingsButton.Contains("new TextBlock", StringComparison.Ordinal), "settings is icon-only with 36px touch target");
+        Check(settingsButton.Contains("SetName(button, \"设置\")", StringComparison.Ordinal)
+            && settingsButton.Contains("SetToolTip(button, \"设置\")", StringComparison.Ordinal), "settings tooltip and Narrator name retained");
+        Check(home.Contains("indicator.Visibility = row.ShowStatusIndicator", StringComparison.Ordinal)
+            && home.Contains("unread.Visibility = row.ShowUnreadIndicator", StringComparison.Ordinal), "home consumes mutually exclusive indicator policy");
     }
 }

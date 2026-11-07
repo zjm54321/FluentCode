@@ -41,6 +41,7 @@ public sealed record OpenCodeHomeStatus(bool? Working = null, bool? PendingActio
 {
     public bool? QuestionPending { get; init; }
     public bool MutationProtected { get; init; }
+    public double? CompletedAt { get; init; }
 }
 
 public sealed record OpenCodeHomeSession(OpenCodeHomeProjectKey Project, OpenCodeSessionInfo Info,
@@ -61,6 +62,9 @@ public sealed record OpenCodeHomeSessionRow(OpenCodeHomeSession Session, string 
     OpenCodeHomeTone Tone, OpenCodeHomeDateGroup DateGroup, DateTimeOffset? Updated)
 {
     public bool IsUnread => Session.Status?.IsUnread == true;
+    public bool ShowUnreadIndicator => IsUnread && Tone is not (OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction
+        or OpenCodeHomeTone.NeedsAction or OpenCodeHomeTone.QuestionBlocked);
+    public bool ShowStatusIndicator => !ShowUnreadIndicator;
 
     /// <summary>需要你处理：被提问阻塞，或已结束但尚未查看。仍在运行的旧完成未读不算“已结束”。</summary>
     public bool NeedsAttention => Session.Status?.MutationProtected == true || Tone == OpenCodeHomeTone.QuestionBlocked
@@ -120,7 +124,8 @@ public static class OpenCodeHomeProjection
             .GroupBy(session => (session.Project, session.Info.Id)).Select(group => group.Last())
             .Select(session =>
             {
-                var updated = Updated(session.Info);
+                var updated = session.Status?.Working != true && session.Status?.CompletedAt is { } completed
+                    ? Updated(new OpenCodeSessionInfo { Time = new() { Updated = completed } }) : Updated(session.Info);
                 var title = string.IsNullOrWhiteSpace(session.Info.Title) ? "未命名会话" : SingleLine(session.Info.Title);
                 var name = names.TryGetValue(session.Project, out var supplied) && !string.IsNullOrWhiteSpace(supplied)
                     && supplied != session.Project.Directory ? supplied : ShortName(session.Project.Directory);

@@ -80,4 +80,7 @@ public sealed record OpenCodeSessionUiObservation(
     double? ViewedWatermark = null)
 {
     public OpenCodeSessionUiFact? QuestionPending { get; init; }
+    /// <summary>Fresh complete history proves there is no completion through this message watermark.
+    /// Unlike a null Completion (no update), this can retire a disproven historical mark, not a real unread result.</summary>
+    public double? CompletionAbsentThrough { get; init; }
 }

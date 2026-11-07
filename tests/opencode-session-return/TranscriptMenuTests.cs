@@ -1,10 +1,45 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 
 internal static partial class Program
 {
+    private static void PendingImageBubbles()
+    {
+        var before = _assertions;
+        ConversationViewTestProbe.Reset();
+        var view = new OpenCodeConversationView();
+        var payload = JsonSerializer.SerializeToElement(new { text = "[Image 1] [Image 2]", files = new[] { new { name = "clipboard", mime = "image/png", data = "AA==" } } });
+        var image = new OpenCodeInboxItem { Id = "msg_image_pending", SessionId = "ses_image", Type = "user", Delivery = "steer", Payload = payload };
+        var plain = image with { Id = "msg_plain_pending", Payload = JsonSerializer.SerializeToElement(new { text = "[Image 1]" }) };
+        view.ApplyAdmittedSteer("ses_image", new[] { image, plain });
+        var presenters = Constructed<OpenCodeRichTextPresenter>().ToArray();
+        var pending = presenters.Single(p => p.Source == "[Image 1] [Image 2]");
+        Check(pending.AttachmentCounts == (1, 0), "pending-image.real-transcript-supplies-own-attachment-count-to-shared-chip-renderer");
+        Check(presenters.Single(p => p.Source == "[Image 1]").AttachmentCounts == (0, 0),
+            "pending-image.another-message-with-literal-token-does-not-inherit-image-chip");
+        var thumbnails = ConversationViewTestProbe.Records.Where(c => c.Operation == "Attachments").Select(c => c.Subject)
+            .OfType<OpenCodeUserAttachmentsView>().Distinct().ToArray();
+        var imageView = thumbnails.Single(t => t.Attachments.Count == 1);
+        Check(imageView.Attachments[0] is { Name: "图片", Image.Reference: "data:image/png;base64,AA==" },
+            "pending-image.real-transcript-uses-shared-thumbnail-source-not-raw-clipboard-caption");
+        view.ApplyAdmittedSteer("ses_image", new[] { image with { Payload = JsonSerializer.SerializeToElement(new { text = "[Image 1] [Image 2]" }) }, plain });
+        Check(pending.AttachmentCounts == (0, 0) && imageView.Attachments.Count == 0,
+            "pending-image.same-text-removal-of-file-updates-chip-eligibility-and-thumbnail");
+        view.ApplyAdmittedSteer("ses_image", new[] { image, plain });
+        Check(pending.AttachmentCounts == (1, 0) && imageView.Attachments.Count == 1,
+            "pending-image.same-text-restoration-of-file-restores-chip-eligibility-and-thumbnail");
+        view.ApplyAdmittedSteer("ses_image", Array.Empty<OpenCodeInboxItem>());
+        Check(imageView.DisposeCount > 0, "pending-image.withdrawal-disposes-thumbnail-details");
+        view.ApplyMessages(new[] { new OpenCodeMessage { Id = image.Id, Type = "user", Text = "[Image 1] [Image 2]", Files = payload.GetProperty("files") } });
+        var sent = Constructed<OpenCodeRichTextPresenter>().Last();
+        Check(sent.AttachmentCounts == pending.AttachmentCounts && sent.Source == pending.Source,
+            "pending-image.delivered-bubble-receives-identical-text-and-attachment-chip-rule");
+        Console.WriteLine($"PASS pending image bubbles: {_assertions - before} assertions; production ConversationView/projection, inert rich-text and thumbnail UI boundaries.");
+    }
+
     // Transcript message menu (right-click == touch press-and-hold): 复制整段 text and the /undo-/redo gating.
     private static void TranscriptMessageMenus()
     {

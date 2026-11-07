@@ -133,6 +133,7 @@ public sealed class OpenCodeSessionUiStateStore
         var completion = FilterCompletion(observation.Completion);
         var viewed = FilterViewedWatermark(observation.ViewedWatermark);
         var mutationProtected = observation.MutationProtected;
+        var absentThrough = FilterViewedWatermark(observation.CompletionAbsentThrough);
 
         if (existing is null
             && working is null
@@ -140,7 +141,7 @@ public sealed class OpenCodeSessionUiStateStore
             && questionPending is null
             && completion is null
             && viewed is null
-            && mutationProtected is null)
+            && mutationProtected is null && absentThrough is null)
         {
             // 全空或全非法输入：不注册空会话。
             return false;
@@ -182,7 +183,15 @@ public sealed class OpenCodeSessionUiStateStore
             }
         }
 
-        if (completion is { } completionMark && ShouldReplaceCompletion(completionMark, existing.Completion))
+        if (absentThrough is { } absent && (existing.CompletionAbsentThrough is null || absent > existing.CompletionAbsentThrough))
+        {
+            existing.CompletionAbsentThrough = absent;
+            if (existing.Completion?.IdleWatermark <= absent) existing.Completion = null;
+            changed = true;
+        }
+
+        if (completion is { } completionMark && !(completionMark.IdleWatermark <= existing.CompletionAbsentThrough)
+            && ShouldReplaceCompletion(completionMark, existing.Completion))
         {
             existing.Completion = completionMark;
             changed = true;
@@ -440,6 +449,7 @@ public sealed class OpenCodeSessionUiStateStore
     /// <summary>单会话的待应用事实，可写属性供后续增量接口填充。</summary>
     internal sealed class Entry
     {
+        public double? CompletionAbsentThrough { get; set; }
         public OpenCodeSessionUiFact? Working { get; set; }
 
         public OpenCodeSessionUiFact? PendingAction { get; set; }

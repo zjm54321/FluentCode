@@ -394,6 +394,9 @@ internal static class OpenCodeToolRowPresentation
         _ => "汇报",
     };
 
+    internal static string? SubagentDisplayName(string? agent)
+        => agent is { Length: > 0 } ? char.ToUpperInvariant(agent[0]) + agent[1..] : null;
+
     internal static string TaskReportSummary(string? message)
         => (message?.Trim() ?? string.Empty).Split(new[] { '\r', '\n' }, 2)[0];
 
@@ -676,7 +679,7 @@ internal static class OpenCodeToolRowPresentation
             {
                 var agent = FirstString(input, "agent", "subagent_type");
                 var description = FirstString(input, "description");
-                var displayAgent = agent is { Length: > 0 } ? char.ToUpperInvariant(agent[0]) + agent[1..] : null;
+                var displayAgent = SubagentDisplayName(agent);
                 target = displayAgent is null ? description ?? string.Empty : description is null ? displayAgent : displayAgent + " · " + description;
                 break;
             }

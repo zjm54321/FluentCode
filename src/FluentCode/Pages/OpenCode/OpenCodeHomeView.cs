@@ -76,6 +76,7 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly Border _connectionCard = Card();
     private readonly Grid _right = new() { Width = SideCardWidth, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Stretch };
     private readonly Grid _center = new() { RowSpacing = 12, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly ContentControl _settingsHost = new();
     private readonly Border _wordmarkHost = new() { Height = 30, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly Border _connectedDot = Dot(OpenCodeToolTheme.Success, 8);
     private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
@@ -178,6 +179,7 @@ public sealed class OpenCodeHomeView : UserControl
         var searchRow = new Grid { ColumnSpacing = 10 };
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         SetIdentity(_search, "OpenCodeHomeSearch", "搜索会话、项目或 session ID");
         ToolTipService.SetToolTip(_search, "搜索会话、项目或 session ID (Ctrl+K)");
         var searchShortcut = new KeyboardAccelerator { Key = VirtualKey.K, Modifiers = VirtualKeyModifiers.Control };
@@ -195,6 +197,8 @@ public sealed class OpenCodeHomeView : UserControl
         create.Click += (_, _) => NewSession?.Invoke(this, Context());
         Grid.SetColumn(create, 1);
         searchRow.Children.Add(create);
+        Grid.SetColumn(_settingsHost, 2);
+        searchRow.Children.Add(_settingsHost);
         Grid.SetRow(searchRow, 0);
         _center.Children.Add(searchRow);
 
@@ -269,6 +273,7 @@ public sealed class OpenCodeHomeView : UserControl
 
     /// <summary>Page-owned theme-aware wordmark (an Image of the OpenCode SVG); the view only places it.</summary>
     public void SetWordmark(UIElement wordmark) => _wordmarkHost.Child = wordmark;
+    public void SetSettingsButton(Button button) => _settingsHost.Content = button;
 
     /// <summary>Real connection facts only: server-reported version, live connected state, and the configured
     /// connection identity (e.g. "WSL · NixOS" / remote host). Unknown parts are omitted, never invented.</summary>
@@ -687,24 +692,23 @@ public sealed class OpenCodeHomeView : UserControl
             indicator = icon;
         }
         indicator.VerticalAlignment = VerticalAlignment.Center;
-        var status = ToneLabel(row.Tone);
+        var status = ToneLabel(row.Tone) + (row.IsUnread ? "，未读" : row.Session.Status?.CompletedAt is not null ? "，已查看" : string.Empty);
         AutomationProperties.SetName(indicator, status);
         ToolTipService.SetToolTip(indicator, status);
-        // Reserve independent columns: unread never replaces the outcome/question/spinner glyph.
+        // One dominant indicator: unread replaces terminal outcome; questions/protection/spinners win.
         var badges = new Grid { ColumnSpacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        badges.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
-        badges.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+        badges.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
         indicator.HorizontalAlignment = HorizontalAlignment.Center;
+        indicator.Visibility = row.ShowStatusIndicator ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetAutomationId(indicator, "OpenCodeHomeStatus");
         badges.Children.Add(new ContentControl { Content = indicator, Tag = "session-action-feedback", Width = 20, Height = 20,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center });
         var unread = Dot(OpenCodeToolTheme.Accent, 6);
         unread.HorizontalAlignment = HorizontalAlignment.Center;
-        unread.Visibility = row.IsUnread ? Visibility.Visible : Visibility.Collapsed;
+        unread.Visibility = row.ShowUnreadIndicator ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetAutomationId(unread, "OpenCodeHomeUnread");
-        AutomationProperties.SetName(unread, "未读");
-        ToolTipService.SetToolTip(unread, "已结束，尚未查看");
-        Grid.SetColumn(unread, 1);
+        AutomationProperties.SetName(unread, status);
+        ToolTipService.SetToolTip(unread, status);
         badges.Children.Add(unread);
         grid.Children.Add(badges);
         var titleStyle = row.NeedsAttention ? "BodyStrongTextBlockStyle" : "BodyTextBlockStyle";
@@ -744,7 +748,7 @@ public sealed class OpenCodeHomeView : UserControl
         }
         item.Tag = row;
         item.Content = grid;
-        AutomationProperties.SetName(item, row.Title + "，" + row.ProjectName + "，" + status + (row.IsUnread ? "，未读" : string.Empty));
+        AutomationProperties.SetName(item, row.Title + "，" + row.ProjectName + "，" + status);
         ToolTipService.SetToolTip(item, row.Session.Project.Directory + Environment.NewLine + row.Session.Info.Id);
         return item;
     }

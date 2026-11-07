@@ -24,8 +24,7 @@ public sealed partial class OpenCodePage
 
     // Replaces the native text flyout (which hid 撤销 unless it could prove an undo step) with the app's shared
     // context-menu shape (Windows 11 text menu): list 撤销; bottom row 剪切 · 复制 · 粘贴 · 全选.
-    // Every action is the TextBox's own: Undo/Cut/Copy/SelectAll, and PasteFromClipboard raises the existing Paste
-    // handler (OpenCodePage.ComposerPaste.cs), so draft sync, IME and attachment paste keep their single paths.
+    // The shared RichEditBox adapter owns plain-copy/paste and model undo/redo, in both surfaces.
     // Items stay visible and are disabled when unavailable, so 撤销 is always discoverable.
     private void InitializeComposerContextMenu()
     {
@@ -56,6 +55,7 @@ public sealed partial class OpenCodePage
                 new("粘贴", "\uE77F", Composer.PasteFromClipboard) { Row = true, Accelerator = "Ctrl+V", Enabled = state.Paste },
                 new("全选", "\uE8B3", Composer.SelectAll) { Row = true, Accelerator = "Ctrl+A", Enabled = state.SelectAll },
                 new("撤销", "\uE7A7", () => { if (Composer.CanUndo) Composer.Undo(); }) { Accelerator = "Ctrl+Z", Enabled = state.Undo },
+                new("重做", "\uE7A6", Composer.Redo) { Accelerator = "Ctrl+Y", Enabled = Composer.CanRedo && !_isComposing && !Composer.IsReadOnly },
             }).ToArray();
         });
         // One menu per gesture: without this the touch selection bar (cut/copy/paste) can open beside the edit menu.

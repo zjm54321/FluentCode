@@ -13,12 +13,15 @@ internal enum OpenCodeComposerInputState
     Pending,
     /// <summary>Unbound-baseline input the controller could not take yet (no active binding); retried with carry.</summary>
     HeldUnbound,
-    /// <summary>Input the controller rejected for its basis. Kept visible/read-only; never retried; explicit discard only.</summary>
+    /// <summary>Rejected input stays visible and unsendable. A new genuine edit or explicit clear can recover an active draft.</summary>
     HeldStale,
 }
 
 /// <summary>Acknowledged user observation: <paramref name="Revision"/> is the submitted input revision (not a later one).</summary>
-internal readonly record struct OpenCodeComposerInputAcknowledgment(long Revision, OpenCodeComposerToken Token, string Text);
+internal readonly record struct OpenCodeComposerInputAcknowledgment(long Revision, OpenCodeComposerToken Token, string Text)
+{
+    internal OpenCodeComposerDocument? Document { get; init; }
+}
 
 // Read-only recovery data, never a pending input, token or edit authority. Selection belongs to the view.
 internal readonly record struct OpenCodeComposerEditorRecovery(string Text, OpenCodeComposerInputState State, bool IsComposing);
@@ -43,13 +46,18 @@ internal readonly record struct OpenCodeComposerEditorRecovery(string Text, Open
 /// </remarks>
 internal sealed class OpenCodeComposerEditorSync
 {
-    private sealed record PendingInput(OpenCodeComposerToken Basis, long Revision, string Text, bool CarryAllowed);
+    private sealed record PendingInput(OpenCodeComposerToken Basis, long Revision, string Text, bool CarryAllowed,
+        OpenCodeComposerDocumentObservation? Observation);
 
     private readonly Func<OpenCodeComposerSnapshot> _source;
     private readonly Func<string?> _readEditor;
     private readonly Action<string> _assignEditor;
     private readonly Func<bool> _isComposing;
     private readonly Func<OpenCodeComposerToken, string, bool, OpenCodeComposerEditorAck?> _apply;
+    private readonly Func<OpenCodeComposerDocumentObservation?>? _readObservation;
+    private readonly Action<OpenCodeComposerSnapshot>? _assignSnapshot;
+    private OpenCodeComposerDocument _controllerDocument = OpenCodeComposerDocument.Empty;
+    internal OpenCodeComposerDocumentObservation? SubmittedObservation { get; private set; }
 
     private OpenCodeComposerToken _baselineToken;
     private bool _baselineBound;
@@ -63,17 +71,22 @@ internal sealed class OpenCodeComposerEditorSync
     /// <param name="apply">Raises the view's TextEdited (single synchronous page handler) and returns its acknowledgment.</param>
     internal OpenCodeComposerEditorSync(Func<OpenCodeComposerSnapshot> source, Func<string?> readEditor,
         Action<string> assignEditor, Func<bool> isComposing,
-        Func<OpenCodeComposerToken, string, bool, OpenCodeComposerEditorAck?> apply)
+        Func<OpenCodeComposerToken, string, bool, OpenCodeComposerEditorAck?> apply,
+        Func<OpenCodeComposerDocumentObservation?>? readObservation = null,
+        Action<OpenCodeComposerSnapshot>? assignSnapshot = null)
     {
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _readEditor = readEditor ?? throw new ArgumentNullException(nameof(readEditor));
         _assignEditor = assignEditor ?? throw new ArgumentNullException(nameof(assignEditor));
         _isComposing = isComposing ?? throw new ArgumentNullException(nameof(isComposing));
         _apply = apply ?? throw new ArgumentNullException(nameof(apply));
+        _readObservation = readObservation;
+        _assignSnapshot = assignSnapshot;
         var snapshot = _source();
         _baselineToken = snapshot.Token;
         _baselineBound = snapshot.IsBoundDraft;
         _controllerText = snapshot.Text;
+        _controllerDocument = snapshot.Document;
         _editorText = _readEditor() ?? string.Empty;
         // Text already in the editor at attach time is an observation of pre-existing user content (the legacy
         // editor may hold it); it is recorded as input, never silently overwritten and never diff-inferred later.
@@ -158,21 +171,62 @@ internal sealed class OpenCodeComposerEditorSync
     internal void OnTextChanging()
     {
         if (_writeDepth > 0 || _suspendedForRecovery) return; // No recovery text gets a new basis.
-        Record(_readEditor() ?? string.Empty);
+        var text = _readEditor() ?? string.Empty;
+        OpenCodeComposerDocumentObservation? recovery = null;
+        if (State is OpenCodeComposerInputState.HeldStale or OpenCodeComposerInputState.HeldUnbound
+            && _source() is { IsActive: true } current)
+        {
+            // The rejected observation is never retried by render/send. A NEW user edit explicitly chooses
+            // the current draft; only text is recovered, never attachments or capabilities from the old owner.
+            _pending = null;
+            _baselineToken = current.Token;
+            _baselineBound = current.IsBoundDraft;
+            _controllerText = current.Text;
+            _controllerDocument = current.Document;
+            if (_readObservation is not null)
+            {
+                var observed = _readObservation();
+                var plain = OpenCodeComposerDocument.Text(text);
+                var selection = observed is { } input
+                    ? new OpenCodeComposerSelection(input.Document.TextOffset(input.Selection.Anchor), input.Document.TextOffset(input.Selection.Head))
+                    : new(plain.Length, plain.Length);
+                recovery = new(current.Document, plain, selection.Clamp(plain.Length));
+            }
+            LastAcknowledgment = null;
+            State = OpenCodeComposerInputState.Clean;
+        }
+        Record(text, recovery);
     }
 
-    private void Record(string text)
+    /// <summary>Explicit clear-and-recover intent, acknowledged by the current draft. Forced source recovery uses its page-owned discard.</summary>
+    internal bool TryClearHeldInput(Func<OpenCodeComposerToken, OpenCodeComposerEditorAck?> clear)
+    {
+        if (_suspendedForRecovery || _isComposing()
+            || State is not (OpenCodeComposerInputState.HeldStale or OpenCodeComposerInputState.HeldUnbound)) return false;
+        var acknowledgment = clear(_source().Token);
+        if (_suspendedForRecovery || acknowledgment is not { } accepted || _source().Token != accepted.Token) return false;
+        _pending = null;
+        LastAcknowledgment = null;
+        State = OpenCodeComposerInputState.Clean;
+        WriteSnapshot(_source());
+        return !_suspendedForRecovery && State == OpenCodeComposerInputState.Clean;
+    }
+
+    private void Record(string text, OpenCodeComposerDocumentObservation? recovered = null)
     {
         InputRevision++;
         _editorText = text;
+        var observation = recovered ?? _readObservation?.Invoke();
         if (_pending is null)
         {
-            _pending = new(_baselineToken, InputRevision, text, CarryAllowed: !_baselineBound);
+            _pending = new(_baselineToken, InputRevision, text, CarryAllowed: !_baselineBound, observation);
             State = OpenCodeComposerInputState.Pending;
         }
         else
         {
-            _pending = _pending with { Revision = InputRevision, Text = text }; // Ownership unchanged.
+            if (observation is not null && _pending.Observation is { } first)
+                observation = observation with { Before = first.Before, IsValid = first.IsValid && observation.IsValid };
+            _pending = _pending with { Revision = InputRevision, Text = text, Observation = observation }; // Ownership unchanged.
         }
     }
 
@@ -184,7 +238,10 @@ internal sealed class OpenCodeComposerEditorSync
         {
             if (State is OpenCodeComposerInputState.Clean or OpenCodeComposerInputState.HeldStale) return State;
             var submitted = _pending!;
-            var ack = _apply(submitted.Basis, submitted.Text, submitted.CarryAllowed);
+            OpenCodeComposerEditorAck? ack;
+            SubmittedObservation = submitted.Observation;
+            try { ack = _apply(submitted.Basis, submitted.Text, submitted.CarryAllowed); }
+            finally { SubmittedObservation = null; }
             if (_suspendedForRecovery) return State; // Forced invalidation may run reentrantly during publication.
             if (ack is not { } accepted)
             {
@@ -196,8 +253,9 @@ internal sealed class OpenCodeComposerEditorSync
             }
             _baselineToken = accepted.Token;
             _controllerText = accepted.Text;
+            if (accepted.Document is { } document) _controllerDocument = document;
             // Observation seam only: the acknowledgment belongs to the SUBMITTED revision, never to a later global one.
-            LastAcknowledgment = new(submitted.Revision, accepted.Token, accepted.Text);
+            LastAcknowledgment = new(submitted.Revision, accepted.Token, accepted.Text) { Document = accepted.Document };
             if (_pending!.Revision == submitted.Revision)
             {
                 _pending = null;
@@ -205,7 +263,9 @@ internal sealed class OpenCodeComposerEditorSync
                 return State;
             }
             // Newer reentrant observation: rebase ONLY onto its own predecessor's acknowledgment.
-            _pending = _pending with { Basis = accepted.Token };
+            var rebased = _pending.Observation is { } newer && accepted.Document is { } predecessor
+                ? newer with { Before = predecessor } : _pending.Observation;
+            _pending = _pending with { Basis = accepted.Token, Observation = rebased };
             State = OpenCodeComposerInputState.Pending;
         }
         return State;
@@ -221,8 +281,9 @@ internal sealed class OpenCodeComposerEditorSync
         if (_isComposing()) return true;
         if (Flush() != OpenCodeComposerInputState.Clean) return false;
         var snapshot = _source();
-        if (snapshot.Text == _controllerText)
+        if (snapshot.Text == _controllerText && (_assignSnapshot is null || _controllerDocument.SameContent(snapshot.Document)))
         {
+            _assignSnapshot?.Invoke(snapshot);
             _baselineToken = snapshot.Token;
             _baselineBound = snapshot.IsBoundDraft;
             return false;
@@ -239,11 +300,16 @@ internal sealed class OpenCodeComposerEditorSync
         // handoffs use this entry too. Even an identical Text assignment resets native IME state.
         if (_suspendedForRecovery || _isComposing()) return;
         _writeDepth++;
-        try { _assignEditor(snapshot.Text); }
+        try
+        {
+            if (_assignSnapshot is not null) _assignSnapshot(snapshot);
+            else _assignEditor(snapshot.Text);
+        }
         finally { _writeDepth--; }
         if (_suspendedForRecovery) return;
         _editorText = _readEditor() ?? string.Empty;
         _controllerText = snapshot.Text;
+        _controllerDocument = snapshot.Document;
         _baselineToken = snapshot.Token;
         _baselineBound = snapshot.IsBoundDraft;
     }

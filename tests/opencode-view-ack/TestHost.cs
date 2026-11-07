@@ -108,6 +108,7 @@ namespace FluentCode
     public class App : Microsoft.UI.Xaml.Application
     {
         public bool ResultUnknown { get; set; }
+        public bool ThrowReceipt { get; set; }
         public int Calls, Posts, FenceBlocked;
         public double? LastSent;
         public Func<bool>? LastFence;
@@ -122,6 +123,7 @@ namespace FluentCode
             double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
         {
             Calls++; LastSent = coveredIdle; LastFence = isStillVisible;
+            if (ThrowReceipt) throw new InvalidOperationException("synthetic receipt failure");
             if (isStillVisible?.Invoke() == false) { FenceBlocked++; return Task.FromResult<double?>(null); }
             var receipt = ResultUnknown ? null : (double?)coveredIdle;
             if (receipt is null || isStillVisible?.Invoke() == false) return Task.FromResult<double?>(null);
@@ -183,6 +185,13 @@ namespace FluentCode.Pages
         internal void Layout(double? watermark, double x = 0) => _conversationView.SupplyGeometry(watermark, x);
         internal void RepeatLayout() { _conversationView.Layout(); MessageScroll.Layout(); }
         internal void Scroll() => MessageScroll.Scroll();
+        internal void ExpireRetry()
+        {
+            _viewAcknowledgementRetry?.Cancel(); _viewAcknowledgementRetry = null;
+            foreach (var attempt in _viewAcknowledgementAttempted.Values) attempt.RetryAfter = DateTimeOffset.UtcNow;
+            RepeatLayout(); Microsoft.UI.Xaml.Media.CompositionTarget.Frame();
+        }
+        internal TimeSpan RetryDelay => System.Linq.Enumerable.First(_viewAcknowledgementAttempted.Values).RetryAfter - DateTimeOffset.UtcNow;
         internal void TestSetPageActive(bool active) { _pageActive = active; if (!active) InvalidateViewAcknowledgement(); }
         internal void TestSetPageVisible() { Visibility = Microsoft.UI.Xaml.Visibility.Visible; ActualWidth = 800; }
         internal void TestSetPageInvisible() { Visibility = Microsoft.UI.Xaml.Visibility.Collapsed; ActualWidth = 0; InvalidateViewAcknowledgement(); }

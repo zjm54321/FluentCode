@@ -33,13 +33,13 @@ public sealed partial class OpenCodePage
             _shellBinding = null;
             ShellComposer.Text = string.Empty;
         };
-        Composer.BeforeTextChanging += (_, e) =>
+        Composer.CharacterReceived += (_, e) =>
         {
             if (_shellComposer.Active || _composerView is null || _isSending || !GetComposerSnapshot().IsActive
-                || !OpenCodeComposerShellState.IsEntry(Composer.Text, e.NewText, Composer.SelectionStart,
+                || e.Character != '!' || !OpenCodeComposerShellState.IsEntry(Composer.Text, "!" + Composer.Text, Composer.SelectionStart,
                     Composer.SelectionLength, _isComposing || _suppressComposerFocus || !_pageActive,
                     _composerView.IsAutocompleteVisible)) return;
-            e.Cancel = true; // Consumed BEFORE the normal draft ledger sees it; the original text/selection is intact.
+            e.Handled = true; // Consume the character BEFORE the native document or its receipt changes.
             var binding = _composerBinding;
             DispatcherQueue.TryEnqueue(() => { if (ReferenceEquals(binding, _composerBinding)) EnterShellComposer(); });
         };

@@ -20,8 +20,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
     private CancellationTokenSource _scopeCancellation = new();
     private Guid _draft = Guid.NewGuid();
     private long _edit;
-    private string _text = string.Empty;
-    private readonly List<OpenCodePromptContext> _contexts = new();
+    private OpenCodeComposerDocument _document = OpenCodeComposerDocument.Empty;
+    private OpenCodeComposerSelection _selection;
+    private string _text => _document.RawText;
+    private IReadOnlyList<OpenCodePromptContext> _contexts => _document.RawContexts;
     private string? _command;
     private readonly List<StoredFile> _files = new();
     private CatalogRequest? _catalogOwner;
@@ -140,6 +142,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
                         ? (IsUnbound(_origin) ? "草稿属于“新会话”标签；请返回该标签继续。" : "草稿属于原会话；请返回原会话继续。")
                         : _note)
                 {
+                    Document = _document,
+                    Selection = _selection,
+                    CanUndo = _undo.Count != 0,
+                    CanRedo = _redo.Count != 0,
                     CatalogHandle = _catalogOwner?.Handle,
                     Mentions = _contexts.ToArray(),
                     Links = _links.ToArray(),
@@ -218,9 +224,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             if (!Current(basisToken)
                 && !(allowUnboundCarry && _binding?.Slot is null && Current(Token) && _origin is null && _command is null && _files.Count == 0
                     && basisToken.Draft == _draft && basisToken.Edit == _edit)) return null;
-            UpdateContextText(text);
+            if (_document.Objects.Count != 0 && text != _text) return null;
+            if (text != _text) UpdateContextText(text);
             Edited(); // Even an edit->original-text cycle invalidates unchanged-submission clearing.
-            acknowledgment = new(Token, _text);
+            acknowledgment = new(Token, _text) { Document = _document };
         }
         Publish();
         return acknowledgment;
@@ -239,8 +246,10 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         {
             var context = new OpenCodePromptContext(id, isSkill, start);
             if (!Current(token) || Busy || HasClientAction || !context.Matches(_text)) return false;
-            _contexts.RemoveAll(c => c.Start == start);
-            _contexts.Add(context);
+            var from = _document.NativeOffset(start);
+            var to = _document.NativeOffset(context.End, end: true);
+            CommitDocument(_document.InsertToken(from, to - from, new(Guid.NewGuid(),
+                OpenCodeComposerInlineKind.Mention, id, id, isSkill)), new(from + 1, from + 1));
             _origin ??= _binding; // Mentions belong to this workspace/session just like attachments.
             Edited(preserveOrigin: true);
         }
@@ -250,24 +259,9 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
 
     private void UpdateContextText(string text)
     {
-        // Track the single replacement represented by a native edit. Edits inside a mention remove its
-        // attachment; edits before it move its span. Never turn unrelated typed @text into a typed part.
-        var prefix = 0;
-        while (prefix < _text.Length && prefix < text.Length && _text[prefix] == text[prefix]) prefix++;
-        var suffix = 0;
-        while (suffix < _text.Length - prefix && suffix < text.Length - prefix
-            && _text[_text.Length - 1 - suffix] == text[text.Length - 1 - suffix]) suffix++;
-        var oldEnd = _text.Length - suffix;
-        var delta = text.Length - _text.Length;
-        for (var i = _contexts.Count - 1; i >= 0; i--)
-        {
-            var c = _contexts[i];
-            if (c.Start >= oldEnd) _contexts[i] = c = c with { Start = c.Start + delta };
-            else if (c.End > prefix) { _contexts.RemoveAt(i); continue; }
-            if (!c.Matches(text)) _contexts.RemoveAt(i);
-        }
-        UpdateChipText(_text, text);
-        _text = text;
+        // Explicit whole-document plain-text replacement. Native edits use validated document receipts.
+        var next = OpenCodeComposerDocument.Text(text).WithHighWater(_document.ImageHighWater);
+        CommitDocument(next, new(next.Length, next.Length));
     }
 
     public OpenCodeComposerCatalogLifetime BeginCatalogLifetime()
@@ -651,33 +645,15 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         try
         {
             if (fileSources.Count + existing.Length > OpenCodeAttachment.MaxFiles) throw new ArgumentException("Attachment limit.");
-            var sources = fileSources.ToArray();
-            var staged = await OpenCodeComposerAttachmentLoader.ReadAsync(sources, existing.Length,
-                existing.Sum(f => (long)f.Bytes.Length), () => { lock (_sync) return OwnsPick(); }, linked.Token).ConfigureAwait(false);
-            var encoded = await Task.Run(() =>
-            {
-                var prepared = staged.Select(draft => OpenCodeAttachment.Prepare(new[] { draft })).ToArray();
-                var combined = OpenCodeAttachment.Combine(existing.Select(f => f.Encoded).Concat(prepared).ToArray());
-                OpenCodeAttachment.ValidateRequestSize(new OpenCodeAttachedPromptBody(string.Empty, combined));
-                return prepared;
-            }, linked.Token).ConfigureAwait(false);
+            var staged = await ReadAttachmentFilesAsync(fileSources, existing,
+                () => { lock (_sync) return OwnsPick(); }, linked.Token).ConfigureAwait(false);
             lock (_sync)
             {
                 if (!OwnsPick() || linked.IsCancellationRequested) return;
-                if (staged.Count != 0) _origin ??= binding;
-                for (var i = 0; i < staged.Count; i++)
-                {
-                    var file = encoded[i][0];
-                    var mime = file.Uri[5..file.Uri.IndexOf(";base64,", StringComparison.Ordinal)];
-                    _files.Add(new(Guid.NewGuid(), file.Name!, mime, staged[i].Bytes, encoded[i])
-                    {
-                        // Reuse the chip's existing native image preview, without adding prompt context.
-                        Presentation = mime.StartsWith("image/", StringComparison.Ordinal)
-                            ? new(file.Name!, staged[i].Bytes, file.Name!, string.Empty) : null,
-                    });
-                }
+                if (staged.Length != 0) { RememberDocument(); _origin ??= binding; }
+                _files.AddRange(staged);
                 _pickOwner = null;
-                if (staged.Count != 0) Edited();
+                if (staged.Length != 0) Edited();
             }
         }
         catch (Exception)
@@ -696,37 +672,79 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
         }
         bool OwnsPick() => Current(ticket.Token) && _pickOwner == ticket.Owner;
     }
+
+    private static async Task<StoredFile[]> ReadAttachmentFilesAsync(IReadOnlyList<OpenCodeComposerFileSource> sources,
+        StoredFile[] existing, Func<bool> ownsPick, CancellationToken ct)
+    {
+        var staged = await OpenCodeComposerAttachmentLoader.ReadAsync(sources.ToArray(), existing.Length,
+            existing.Sum(f => (long)f.Bytes.Length), ownsPick, ct).ConfigureAwait(false);
+        return await Task.Run(() =>
+        {
+            var encoded = staged.Select(draft => OpenCodeAttachment.Prepare(new[] { draft })).ToArray();
+            var combined = OpenCodeAttachment.Combine(existing.Select(f => f.Encoded).Concat(encoded).ToArray());
+            OpenCodeAttachment.ValidateRequestSize(new OpenCodeAttachedPromptBody(string.Empty, combined));
+            return staged.Select((draft, i) =>
+            {
+                var file = encoded[i][0];
+                var mime = file.Uri[5..file.Uri.IndexOf(";base64,", StringComparison.Ordinal)];
+                return new StoredFile(Guid.NewGuid(), file.Name!, mime, draft.Bytes, encoded[i])
+                {
+                    Presentation = mime.StartsWith("image/", StringComparison.Ordinal)
+                        ? new(file.Name!, draft.Bytes, file.Name!, string.Empty) : null,
+                };
+            }).ToArray();
+        }, ct).ConfigureAwait(false);
+    }
+
+    internal void CancelPick(OpenCodeComposerPickTicket ticket)
+    {
+        lock (_sync)
+        {
+            if (_pickOwner != ticket.Owner) return;
+            _pickOwner = null;
+        }
+        Publish();
+    }
     public void RemoveAttachment(OpenCodeComposerToken token, Guid id)
     {
         lock (_sync)
         {
-            if (!Current(token) || _files.RemoveAll(f => f.Id == id) == 0) return;
+            if (!Current(token) || _files.All(f => f.Id != id)) return;
+            RememberDocument();
             RemoveImageTextFor(id);
+            _files.RemoveAll(f => f.Id == id);
             Edited();
         }
         Publish();
     }
     public void DiscardDraft(OpenCodeComposerToken token)
+        => _ = TryDiscardDraftForRecovery(token);
+
+    internal OpenCodeComposerEditorAck? TryDiscardDraftForRecovery(OpenCodeComposerToken token)
     {
         CancellationTokenSource previousScope;
+        OpenCodeComposerEditorAck acknowledgment;
         lock (_sync)
         {
             // Inactive origin is deliberately discardable; never mutate shared unknown protections.
-            if (token != Token) return;
+            if (token != Token) return null;
             Clear();
             _scope++;
             previousScope = _scopeCancellation;
             _scopeCancellation = new();
             _submissionOwner = null;
+            acknowledgment = new(Token, _text);
         }
         _ = ObserveCancellationAsync(previousScope.CancelAsync());
         Publish();
+        return acknowledgment;
     }
     private void Clear()
     {
-        _text = string.Empty;
-        _contexts.Clear();
-        ResetChips(null, null, 0);
+        _document = OpenCodeComposerDocument.Empty;
+        _selection = default;
+        _undo.Clear();
+        _redo.Clear();
         _command = null;
         _files.Clear();
         _origin = null;

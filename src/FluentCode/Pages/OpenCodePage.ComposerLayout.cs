@@ -71,6 +71,7 @@ public sealed partial class OpenCodePage
         ComposerInputLayout.SizeChanged += (_, _) => QueueComposerLayout();
         Composer.SizeChanged += (_, _) => QueueComposerLayout();
         Composer.Loaded += (_, _) => QueueComposerLayout();
+        Composer.NativeLayoutReady += QueueComposerLayout;
         Composer.TextCompositionEnded += (_, _) => QueueComposerLayout();
         Composer.RegisterPropertyChangedCallback(Control.FontSizeProperty, (_, _) => QueueComposerLayout());
         Composer.RegisterPropertyChangedCallback(Control.FontFamilyProperty, (_, _) => QueueComposerLayout());
@@ -86,7 +87,7 @@ public sealed partial class OpenCodePage
         DispatcherQueue.TryEnqueue(() =>
         {
             _composerLayoutPending = false;
-            if (_isComposing || ComposerInputLayout.ActualWidth <= 0) return;
+            if (_isComposing || FullScreenComposerActive || ComposerInputLayout.ActualWidth <= 0) return;
             UpdateComposerLayout();
         });
     }
@@ -115,20 +116,19 @@ public sealed partial class OpenCodePage
         // Testing the expanded editor would otherwise bounce between two and three wrapped lines.
         var singleRowWidth = ComposerSingleRowTextWidth(ComposerInputLayout.ActualWidth,
             ComposerToolbarLeft.ActualWidth, ComposerActions.ActualWidth, ComposerInputLayout.ColumnSpacing, horizontalChrome);
-        measure.Text = Composer.Text + "\u200b"; // Preserve a trailing empty line in native text measure.
-        measure.Measure(new Size(singleRowWidth, double.PositiveInfinity));
+        var contentHeight = Math.Max(line, Composer.MeasureContentHeight(singleRowWidth + horizontalChrome) - chrome);
         _composerOverTwoLines = !_newSessionDraftActive && _sidebarLayout.IsWide
-            && ComposerOverTwoLines(measure.DesiredSize.Height, line, _composerOverTwoLines);
+            && ComposerOverTwoLines(contentHeight, line, _composerOverTwoLines);
         var singleRow = UseSingleRowComposer(_newSessionDraftActive, _sidebarLayout.IsWide, _composerOverTwoLines);
         ArrangeComposerRows(singleRow);
         UpdateComposerToolbarLayout();
         // The expand affordance still follows the editor's actual (possibly full-width) wrapping.
         if (!singleRow)
-            measure.Measure(new Size(Math.Max(1, ComposerInputLayout.ActualWidth - horizontalChrome), double.PositiveInfinity));
+            contentHeight = Math.Max(line, Composer.MeasureContentHeight(ComposerInputLayout.ActualWidth) - chrome);
         var maximum = OpenCodeComposerHeightPolicy.ViewportHeight(line, chrome);
         Composer.MinHeight = line + chrome;
         if (Math.Abs(Composer.MaxHeight - maximum) > 0.5) Composer.MaxHeight = maximum;
-        _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(measure.DesiredSize.Height, line);
+        _composerOverFiveLines = OpenCodeComposerHeightPolicy.CanExpand(contentHeight, line);
         ComposerExpandButton.Visibility = _composerOverFiveLines ? Visibility.Visible : Visibility.Collapsed;
         var textPadding = ComposerTextPadding(_composerOverFiveLines);
         if (Composer.Padding != textPadding) Composer.Padding = textPadding; // Shell editor binds to this padding.

@@ -79,7 +79,7 @@ internal static partial class Program
         Check(typeof(OpenCodeComposerSlotData).GetProperties(BindingFlags.Instance | BindingFlags.Public).Length == 0
             && typeof(OpenCodeComposerSnapshot).GetProperties().All(p => p.PropertyType != typeof(byte[]))
             && typeof(OpenCodeComposerAttachmentRow).GetProperty("Bytes")!.PropertyType == typeof(int), "opaque payloads never enter public snapshot metadata");
-        Check(dataA.Contents.GetType().GetProperties().Select(p => p.Name).Order().SequenceEqual(new[] { "Command", "Contexts", "Draft", "Files", "Text" }),
+        Check(dataA.Contents.GetType().GetProperties().Select(p => p.Name).Order().SequenceEqual(new[] { "Command", "Document", "Draft", "Files", "Redo", "Selection", "Undo" }),
             "slot data contains only pure draft contents, no binding/source/token/operation/capability");
     }
     private static async Task SlotValidation()

@@ -24,6 +24,7 @@ $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enabl
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $sources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerDocument.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerCharTriggers.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeAgentMentionScope.cs"
 foreach ($name in @('OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerController.Chips.cs', 'OpenCodeLinkChipParser.cs', 'OpenCodeComposerInputEvidence.cs', 'OpenCodeComposerContinuationModels.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerFilePicker.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerCommandMenu.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeSessionControlCoordinator.cs')) {

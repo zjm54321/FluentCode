@@ -230,7 +230,7 @@ internal static partial class OpenCodeToolDetailContent
     private static FrameworkElement Running(string label)
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        panel.Children.Add(new ProgressRing { Width = 16, Height = 16, IsActive = true });
+        panel.Children.Add(OpenCodeProgressRingSync.Create(16)); // Default ring, in phase with the row's ring.
         panel.Children.Add(Caption(label));
         return panel;
     }

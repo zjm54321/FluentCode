@@ -27,6 +27,8 @@ $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
 $arguments += $references | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $sources = @(Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs')
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerController.BrowserAttachments.cs"
+$sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerDocument.cs"
+$sources += Get-Item "$repo/tests/opencode-composer/DocumentModel.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeWorkingFamily.cs"
 foreach ($name in @('OpenCodeComposerCharTriggers.cs', 'OpenCodeAgentMentionScope.cs', 'OpenCodeComposerComposition.cs', 'OpenCodeComposerContracts.cs', 'OpenCodeComposerController.cs', 'OpenCodeComposerController.Continuation.cs', 'OpenCodeComposerController.Slots.cs', 'OpenCodeComposerController.Chips.cs', 'OpenCodeLinkChipParser.cs', 'OpenCodeFaviconCache.cs', 'OpenCodeComposerEditorSync.cs', 'OpenCodeComposerViewLifetime.cs', 'OpenCodeComposerAttachmentLoader.cs', 'OpenCodeComposerInputPolicy.cs', 'OpenCodeComposerSplash.cs', 'OpenCodeSessionControlCoordinator.cs')) {
     $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/$name"

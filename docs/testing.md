@@ -60,7 +60,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 | 6 | `tests/opencode-view-ack/run.ps1` | 界面确认机制、未处理提示同步、会话未读计数与已观测执行状态 |
 | 7 | `tests/opencode-observations/run.ps1` | 权威会话状态、active 快照与 idle 终态；未打开子会话/孙会话权限和表单的通知跟踪、无关根排除、重连与跟踪退役，保留 root-only 完成通知规则 |
 | 8 | `tests/notification-form/run.ps1` | 原生 Toast 通知组装、交互按钮与输入表单 Nonce 映射、`OpenCodeInteractionGate` 仲裁与未知结果锁定；真实提问卡片/遮罩的“其他”单多选输入、延迟焦点与刷新保留回归（受控调度/原生控件替身，不是物理输入法自动化） |
-| 9 | `tests/opencode-composer/run.ps1` | 输入区状态管理、字符快捷触发器（`@` 提及、`/` 命令、`!` Shell 直通）、多模式草稿切换与持久化 |
+| 9 | `tests/opencode-composer/run.ps1` | 不可变文档、重复标签/相邻 token 编辑收据、属性测试、模型撤销/重做、原始发送/复制偏移，以及原有输入账本、字符触发器、多模式草稿与持有恢复协议 |
 | 10 | `tests/opencode-composer-hookup/run.ps1` | 输入区按键管线：隧道阶段 Enter 拦截、Shift+Enter 换行、IME 中文输入法 80ms 选词保护、发送与停止按钮动态切换 |
 | 11 | `tests/opencode-commands-attachments/run.ps1` | 斜杠命令目录读取与 204 回调确认；附件 Base64 编码、MIME 白名单、单文件与总容量大小硬上限截断 |
 | 12 | `tests/opencode-queued-withdraw/run.ps1` | 服务端收件箱（inbox）排队条目展示、本地归属校验与消息安全撤回 |

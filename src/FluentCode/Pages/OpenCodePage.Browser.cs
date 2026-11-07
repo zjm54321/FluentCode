@@ -95,7 +95,8 @@ public sealed partial class OpenCodePage
         _browserOverlay.SendErrorRequested += (_, page) =>
         {
             if (_selectedSessionId is not { } session || !_browserWorkspaces.TryGetValue(session, out var workspace) || !workspace.Pages.Contains(page)) return;
-            Composer.Text += (Composer.Text.Length == 0 ? "" : "\n") + page.Url + "\n" + OpenCodeBrowserOverlay.ErrorReason(page.LoadError, page.Url) + "\n" + page.LoadError;
+            if (_composerView?.PrepareSubmission() != true) return;
+            Composer.AppendText((Composer.Text.Length == 0 ? "" : "\n") + page.Url + "\n" + OpenCodeBrowserOverlay.ErrorReason(page.LoadError, page.Url) + "\n" + page.LoadError);
         };
         PageRoot.SizeChanged += (_, _) => SizeBrowserHosts();
         InsightsPane.RegisterPropertyChangedCallback(SplitView.IsPaneOpenProperty, (_, _) => SizeBrowserHosts());

@@ -7,15 +7,12 @@ namespace FluentCode.Pages.OpenCode;
 internal sealed partial class OpenCodeComposerController
 {
     // Copies the ordered reference list, not payloads. StoredFile and its bytes remain private and immutable.
-    private sealed record SlotContents(Guid Draft, string Text, string? Command, StoredFile[] Files, OpenCodePromptContext[] Contexts)
-    {
-        internal OpenCodeComposerLinkSpan[] Links { get; init; } = Array.Empty<OpenCodeComposerLinkSpan>();
-        internal OpenCodeComposerImageSpan[] Images { get; init; } = Array.Empty<OpenCodeComposerImageSpan>();
-        internal int ImageHighWater { get; init; }
-    }
+    private sealed record SlotContents(Guid Draft, OpenCodeComposerDocument Document, OpenCodeComposerSelection Selection,
+        string? Command, StoredFile[] Files, DocumentFrame[] Undo, DocumentFrame[] Redo);
 
     internal OpenCodeComposerSlotData CreateEmptySlotData()
-        => OpenCodeComposerSlotData.Wrap(new SlotContents(Guid.NewGuid(), string.Empty, null, Array.Empty<StoredFile>(), Array.Empty<OpenCodePromptContext>()));
+        => OpenCodeComposerSlotData.Wrap(new SlotContents(Guid.NewGuid(), OpenCodeComposerDocument.Empty, default,
+            null, Array.Empty<StoredFile>(), Array.Empty<DocumentFrame>(), Array.Empty<DocumentFrame>()));
 
     internal bool TryCaptureSlotData(OpenCodeComposerToken expected, out OpenCodeComposerSlotData? data)
     {
@@ -24,8 +21,8 @@ internal sealed partial class OpenCodeComposerController
             data = null;
             // Read-only data recovery is allowed even after source revocation. This is NOT CaptureDraft authority.
             if (expected != Token) return false;
-            data = OpenCodeComposerSlotData.Wrap(new SlotContents(_draft, _text, _command, _files.ToArray(), _contexts.ToArray())
-                { Links = _links.ToArray(), Images = _images.ToArray(), ImageHighWater = _imageHighWater });
+            data = OpenCodeComposerSlotData.Wrap(new SlotContents(_draft, _document, _selection, _command,
+                _files.ToArray(), _undo.ToArray(), _redo.ToArray()));
             return true;
         }
     }
@@ -57,14 +54,19 @@ internal sealed partial class OpenCodeComposerController
                 InvalidateCatalog();
                 _note = null;
                 _binding = binding;
-                _text = contents?.Text ?? string.Empty;
+                _document = contents?.Document ?? OpenCodeComposerDocument.Empty;
+                _selection = contents?.Selection ?? default;
                 _command = contents?.Command;
                 if (contents is not null) _draft = contents.Draft;
                 _files.Clear();
                 if (contents is not null) _files.AddRange(contents.Files);
-                _contexts.Clear();
-                if (contents is not null) _contexts.AddRange(contents.Contexts);
-                ResetChips(contents?.Links, contents?.Images, contents?.ImageHighWater ?? 0);
+                _undo.Clear();
+                _redo.Clear();
+                if (contents is not null)
+                {
+                    for (var i = contents.Undo.Length - 1; i >= 0; i--) _undo.Push(contents.Undo[i]);
+                    for (var i = contents.Redo.Length - 1; i >= 0; i--) _redo.Push(contents.Redo[i]);
+                }
                 _origin = binding is not null && HasDraft ? binding : null;
                 next = Token;
                 return true;

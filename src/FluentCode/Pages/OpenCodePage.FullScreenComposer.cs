@@ -14,15 +14,18 @@ namespace FluentCode.Pages;
 public sealed partial class OpenCodePage
 {
     private Grid? _fullScreenComposer;
-    private TextBox? _fullScreenEditor;
+    private Grid? _fullScreenBody;
     private TextBlock? _fullScreenCount;
     private Button? _fullScreenAgent, _fullScreenModel, _fullScreenEffort;
     private Button? _fullScreenSend;
     private OpenCodeComposerBinding? _fullScreenBinding;
-    private OpenCodeComposerToken _fullScreenToken;
-    private bool _fullScreenComposing, _fullScreenApplying;
-    private DateTimeOffset _fullScreenLastCompositionEndedAt = DateTimeOffset.MinValue;
+    private double _normalComposerMaximum;
+    private double _normalComposerMinimum;
+    private Thickness _normalComposerPadding;
+    private bool _fullScreenClosePending;
+    private bool _fullScreenCloseFocus;
     private bool FullScreenComposerActive => _fullScreenComposer?.Visibility == Visibility.Visible;
+    private static bool FullScreenControlDown => (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) != 0;
 
     // /editor relinquishes its short-lived command capability before opening the
     // same live-draft editor as the expand button. Never reopen against another tab
@@ -40,19 +43,26 @@ public sealed partial class OpenCodePage
     private void OpenFullScreenComposer()
     {
         if (FullScreenComposerActive || IsChildComposerSession || _composerBinding is not { } binding
-            || !OwnsComposerBinding(binding) || _composerView?.PrepareSubmission() != true
-            || GetComposerSnapshot() is not { IsActive: true, IsBusy: false } snapshot) return;
+             || !OwnsComposerBinding(binding) || _composerView?.PrepareSubmission() != true
+            || !Composer.CanReparent || GetComposerSnapshot() is not { IsActive: true, IsBusy: false }) return;
         EnsureFullScreenComposer();
+        if (!Composer.TryReparent(_fullScreenBody!)) return;
+        _fullScreenClosePending = false;
         _fullScreenBinding = binding;
-        _fullScreenToken = snapshot.Token;
-        _fullScreenApplying = true;
-        _fullScreenEditor!.Text = snapshot.Text;
-        _fullScreenApplying = false;
-        _fullScreenEditor.Select(Composer.SelectionStart, Composer.SelectionLength);
+        _normalComposerMaximum = Composer.MaxHeight;
+        _normalComposerMinimum = Composer.MinHeight;
+        _normalComposerPadding = Composer.Padding;
+        // Reparent the SAME native editor and companion. One document adapter, ledger, composition owner and undo stack.
+        ComposerCompanionHost.Children.Remove(_composerView!);
+        _fullScreenBody!.Children.Add(_composerView!);
+        Grid.SetRow(Composer, 1);
+        Composer.MaxHeight = double.PositiveInfinity;
+        Composer.MinHeight = 0;
+        Composer.Padding = new Thickness(16);
         _fullScreenComposer!.Visibility = Visibility.Visible;
         RefreshComposerToolbar();
         UpdateFullScreenCount();
-        _fullScreenEditor.Focus(FocusState.Programmatic);
+        Composer.Focus(FocusState.Programmatic);
     }
 
     private void EnsureFullScreenComposer()
@@ -76,28 +86,13 @@ public sealed partial class OpenCodePage
         collapse.Click += (_, _) => CloseFullScreenComposer(focus: true);
         Grid.SetColumn(collapse, 2); heading.Children.Add(collapse);
         surface.Children.Add(heading);
-        var editor = _fullScreenEditor = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
-            VerticalAlignment = VerticalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16), FontSize = Composer.FontSize, FontFamily = Composer.FontFamily };
-        ScrollViewer.SetVerticalScrollBarVisibility(editor, ScrollBarVisibility.Auto);
-        AutomationProperties.SetAutomationId(editor, "OpenCodeFullScreenEditor");
-        AutomationProperties.SetName(editor, "编辑消息");
-        Grid.SetRow(editor, 1); surface.Children.Add(editor);
-        editor.TextChanged += (_, _) => { if (!_fullScreenApplying && !_fullScreenComposing) ApplyFullScreenText(); UpdateFullScreenCount(); };
-        editor.TextCompositionStarted += (_, _) => { _fullScreenComposing = true; _isComposing = true; };
-        editor.TextCompositionEnded += (_, _) =>
-        {
-            _fullScreenComposing = false; _isComposing = false;
-            _fullScreenLastCompositionEndedAt = DateTimeOffset.UtcNow;
-            ApplyFullScreenText();
-        };
-        editor.PreviewKeyDown += (_, e) =>
-        {
-            if (_fullScreenComposing || (DateTimeOffset.UtcNow - _fullScreenLastCompositionEndedAt).TotalMilliseconds < 150) return;
-            if (e.Key == VirtualKey.Escape) { e.Handled = true; CloseFullScreenComposer(focus: true); }
-            else if (e.Key == VirtualKey.Enter && (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) != 0)
-            { e.Handled = true; SubmitFullScreenComposer(); }
-        };
+        var body = _fullScreenBody = new Grid();
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(body, 1);
+        surface.Children.Add(body);
+        Composer.DocumentChanged += UpdateFullScreenCount;
+        Composer.NativeLayoutReady += TryPendingFullScreenClose;
         var footer = new Grid { ColumnSpacing = 8 };
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -131,30 +126,12 @@ public sealed partial class OpenCodePage
         PageRoot.Children.Add(overlay);
     }
 
-    private bool ApplyFullScreenText()
-    {
-        if (!FullScreenComposerActive || _fullScreenApplying || _fullScreenComposing) return false;
-        if (_fullScreenBinding is not { } binding || !OwnsComposerBinding(binding) || IsChildComposerSession) return false;
-        if (_composerController!.Snapshot.Token != _fullScreenToken) return false;
-        if (_composerController.Snapshot.Text == _fullScreenEditor!.Text) return true;
-        _fullScreenApplying = true;
-        try
-        {
-            var ack = _composerController.TryApplyEditorInput(_fullScreenToken, _fullScreenEditor!.Text, allowUnboundCarry: false);
-            if (ack is null) return false;
-            _fullScreenToken = ack.Value.Token;
-            return true;
-        }
-        finally { _fullScreenApplying = false; }
-    }
-
     private void RefreshFullScreenComposerChoices(string? agent, string? color, OpenCodeModelInfo? model, OpenCodeModelRef? selected, bool enabled)
     {
-        if (!FullScreenComposerActive || _fullScreenApplying) return;
+        if (!FullScreenComposerActive) return;
         if (_fullScreenBinding is not { } binding || !OwnsComposerBinding(binding) || IsChildComposerSession)
         { CloseFullScreenComposer(focus: false); return; }
         var snapshot = _composerController!.Snapshot;
-        if (!_fullScreenComposing && snapshot.Text == _fullScreenEditor!.Text) _fullScreenToken = snapshot.Token;
         var labels = ComposerChoiceLabels(Math.Max(0, _fullScreenComposer!.ActualWidth - 260));
         _fullScreenAgent!.Content = ComposerChoiceLabel(OpenCodeAgentIcons.Glyph(agent), OpenCodeAgentIcons.DisplayName(agent ?? "不可用"), labels.Agent);
         OpenCodeAgentPresentation.Apply(_fullScreenAgent, color);
@@ -177,8 +154,8 @@ public sealed partial class OpenCodePage
 
     private void UpdateFullScreenCount()
     {
-        if (_fullScreenCount is null || _fullScreenEditor is null) return;
-        var text = _fullScreenEditor.Text;
+        if (_fullScreenCount is null) return;
+        var text = Composer.Text;
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n').Length;
         _fullScreenCount.Text = $"{lines} 行 · {new System.Globalization.StringInfo(text).LengthInTextElements} 字";
         if (_fullScreenSend is not null) _fullScreenSend.IsEnabled = GetComposerSnapshot() is { CanSubmit: true, IsBusy: false, HasDraft: true };
@@ -187,24 +164,43 @@ public sealed partial class OpenCodePage
     private void CloseFullScreenComposer(bool focus)
     {
         if (!FullScreenComposerActive) return;
-        if (_fullScreenComposing)
+        if (_isComposing || !Composer.CanReparent || _composerView?.InputEvidence.Composing == true)
         {
-            if (_fullScreenBinding is { } composingBinding && OwnsComposerBinding(composingBinding) && !IsChildComposerSession) return;
-            _fullScreenComposing = false; _isComposing = false;
+            _fullScreenClosePending = true;
+            _fullScreenCloseFocus |= focus;
+            return;
         }
         var binding = _fullScreenBinding;
-        ApplyFullScreenText();
+        if (binding is not null && OwnsComposerBinding(binding) && _composerView?.PrepareSubmission() != true) return;
+        var start = Composer.SelectionStart;
+        var length = Composer.SelectionLength;
+        if (!Composer.TryReparent(ComposerEditorHost, 0)) return;
+        _fullScreenClosePending = false;
+        _fullScreenCloseFocus = false;
+        _fullScreenBody!.Children.Remove(_composerView!);
+        Grid.SetRow(Composer, 0);
+        ComposerCompanionHost.Children.Add(_composerView!);
+        Composer.MaxHeight = _normalComposerMaximum;
+        Composer.MinHeight = _normalComposerMinimum;
+        Composer.Padding = _normalComposerPadding;
         _fullScreenComposer!.Visibility = Visibility.Collapsed;
         _fullScreenBinding = null;
         if (focus && binding is not null && OwnsComposerBinding(binding))
-            RestoreExpandedComposerSelection(binding, _fullScreenEditor!.SelectionStart, _fullScreenEditor.SelectionLength);
+            RestoreExpandedComposerSelection(binding, start, length);
+        _composerView!.RequestRender();
+        QueueComposerLayout();
+    }
+    private void TryPendingFullScreenClose()
+    {
+        if (!_fullScreenClosePending || _isComposing || !Composer.CanReparent || _composerView?.InputEvidence.IsClean != true) return;
+        CloseFullScreenComposer(_fullScreenCloseFocus);
     }
 
     private void SubmitFullScreenComposer()
     {
-        if (!ApplyFullScreenText() || _fullScreenSend?.IsEnabled != true) return;
+        if (_composerView?.PrepareSubmission() != true || _fullScreenSend?.IsEnabled != true) return;
         var binding = _fullScreenBinding;
-        var token = _fullScreenToken;
+        var token = _composerController!.Snapshot.Token;
         CloseFullScreenComposer(focus: false);
         _composerView!.RequestRender();
         DispatcherQueue.TryEnqueue(() =>

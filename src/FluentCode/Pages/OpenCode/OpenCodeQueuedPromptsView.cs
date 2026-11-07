@@ -42,6 +42,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     private readonly List<Button> _withdrawButtons = new();
     private readonly List<Button> _deliveryButtons = new();
     private string _signature = string.Empty;
+    private readonly List<JsonElement?> _renderedPayloads = new();
+    private readonly List<OpenCodeUserAttachmentsView> _attachments = new();
     private bool _withdrawBusy;
 
     /// <summary>用户点击某行“撤回”（参数为 inbox 条目 id）。</summary>
@@ -98,7 +100,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     internal void Apply(IReadOnlyList<OpenCodeInboxItem>? items, Func<OpenCodeInboxItem, bool>? canWithdraw = null,
         Func<OpenCodeInboxItem, bool>? canChangeDelivery = null)
     {
-        var rows = new List<(string Id, string Text, string Delivery, bool Withdrawable, bool Changeable)>();
+        var rows = new List<(string Id, string Text, string Delivery, bool Withdrawable, bool Changeable, OpenCodeInboxItem Item)>();
         if (items is not null)
         {
             foreach (var item in items)
@@ -113,24 +115,32 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
 
                 var withdrawable = canWithdraw?.Invoke(item) == true;
                 rows.Add((id, DescribeContent(item), item.Delivery ?? string.Empty, withdrawable,
-                    canChangeDelivery?.Invoke(item) == true));
+                    canChangeDelivery?.Invoke(item) == true, item));
             }
         }
 
         var signature = string.Join("\u001f", rows.ConvertAll(static r => r.Id + "\u001e" + r.Text + "\u001e" + r.Delivery + "\u001e" + r.Withdrawable + "\u001e" + r.Changeable));
-        if (signature == _signature)
+        var samePayloads = rows.Count == _renderedPayloads.Count;
+        for (var i = 0; samePayloads && i < rows.Count; i++)
+            samePayloads = rows[i].Item.Payload is { } current && _renderedPayloads[i] is { } previous
+                ? JsonElement.DeepEquals(current, previous) : rows[i].Item.Payload is null && _renderedPayloads[i] is null;
+        if (signature == _signature && samePayloads)
         {
             return;
         }
 
         var firstItems = !_hasItems;
         _signature = signature;
+        foreach (var attachments in _attachments) attachments.Dispose();
+        _attachments.Clear();
+        _renderedPayloads.Clear();
         _list.Items.Clear();
         _withdrawButtons.Clear();
         _deliveryButtons.Clear();
-        foreach (var (id, text, delivery, withdrawable, changeable) in rows)
+        foreach (var (id, text, delivery, withdrawable, changeable, item) in rows)
         {
-            _list.Items.Add(CreateRow(id, text, delivery, withdrawable, changeable, _list.Items.Count + 1));
+            _renderedPayloads.Add(item.Payload);
+            _list.Items.Add(CreateRow(id, text, delivery, withdrawable, changeable, _list.Items.Count + 1, item));
         }
         _hasItems = rows.Count > 0;
         if (firstItems) _expander.IsExpanded = rows.Count == 1;
@@ -173,7 +183,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         return null;
     }
 
-    private FrameworkElement CreateRow(string id, string text, string delivery, bool withdrawable, bool changeable, int number)
+    private FrameworkElement CreateRow(string id, string text, string delivery, bool withdrawable, bool changeable, int number, OpenCodeInboxItem item)
     {
         // Transparent (not null) background: the whole row, gaps included, is the touch target that reveals actions.
         var grid = new Grid { ColumnSpacing = 12, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
@@ -206,11 +216,16 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
             _withdrawButtons.Add(withdraw);
         }
 
-        var body = OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey, selectable: true);
-        body.TextWrapping = TextWrapping.NoWrap;
-        body.MaxLines = 1;
-        body.TextTrimming = TextTrimming.CharacterEllipsis;
-        body.VerticalAlignment = VerticalAlignment.Center;
+        var files = OpenCodeUserAttachments.FromInbox(item);
+        var rawText = ReadText(item.Payload);
+        var presenter = new OpenCodeRichTextPresenter { AttachmentCounts = OpenCodeUserAttachments.Counts(files) };
+        presenter.Render(files.Count == 0 ? text : rawText, OpenCodeRichTextStyle.Body);
+        var attachments = new OpenCodeUserAttachmentsView();
+        attachments.Update(files, !string.IsNullOrEmpty(rawText));
+        _attachments.Add(attachments);
+        var body = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        body.Children.Add(presenter.Element);
+        body.Children.Add(attachments.Element);
         ToolTipService.SetToolTip(body, text);
         Grid.SetColumn(body, 1);
         grid.Children.Add(body);

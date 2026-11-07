@@ -18,7 +18,7 @@ namespace FluentCode.Pages.OpenCode;
 /// 普通 sealed 业务类（不是控件子类）：构造时创建同一实例的根元素，经 <see cref="Element"/> 暴露，
 /// 节点身份跨轮询保持。行本体是原生 <see cref="Button"/>（内置悬停/按下/焦点视觉与 Enter/Space 键盘行为），
 /// 高 32：类别图标 16 | 工具名（BodyStrong）| 目标（等宽、省略号）| 摘要 | 右侧状态图标 16。
-/// 完成 ✓ 成功色；出错 ✕ 危险色且行底为危险背景；运行中 / 输入生成中 = 统一状态格的强调色进行中弧（<see cref="OpenCodeTimelineStatusCell"/>）；
+/// 完成 ✓ 成功色；出错 ✕ 危险色且行底为危险背景；运行中 / 输入生成中 = 统一状态格的系统默认进度环（与左侧子智能体列表同相，<see cref="OpenCodeTimelineStatusCell"/>）；
 /// 状态严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值，无法识别时如实显示“状态未识别”。
 /// </para>
 /// <para>

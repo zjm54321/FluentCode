@@ -44,6 +44,8 @@ static partial class Checks
             ("pagination anchors, short pages and exhausted budgets", Pagination),
             ("cross-turn outcome and evidence age", Evidence),
             ("never-run configuration history and unchanged protection", ConfigurationHistory),
+            ("internal wakeups preserve idle, real unread results and attention", InternalMessages),
+            ("startup/reconnect never invent unread completions", RestartBaseline),
             ("actual App dispatch, gate, expiry and covered ACK paths", AppPaths) })
         {
             int before = assertions;
@@ -150,6 +152,15 @@ static partial class Checks
             Content = [new() { Id = "call_running", Type = "tool", State = JsonSerializer.SerializeToElement(new { status = "running" }) }] };
         var working = OpenCodeExecutionProjection.Evaluate(input with { Window = OpenCodeExecutionProjection.CreateWindow("ses_test", [runningTool, .. history], true, true, true) });
         Check(working.State == OpenCodeExecutionState.Working && !working.CanSwitchAgent, "later config never hides running tool evidence");
+        foreach (var type in new[] { "user", "synthetic", "system" })
+        foreach (var text in new[] { "<!-- SLIM_INTERNAL_INITIATOR -->", "<subagent-update id=\"test\">progress</subagent-update>" })
+        {
+            var message = new OpenCodeMessage { Id = "msg_internal", Type = type, Text = text, Time = new() { Created = 10 } };
+            var internalInput = input with { Window = OpenCodeExecutionProjection.CreateWindow("ses_test", [.. history, message], true, true, true) };
+            Check(OpenCodeExecutionProjection.Evaluate(internalInput).CanSwitchAgent, "internal notice never starts user turn: " + type);
+            Check(!OpenCodeExecutionProjection.Evaluate(internalInput with { HasPending = true }).CanSwitchAgent, "internal notice never clears real pending");
+            Check(!OpenCodeExecutionProjection.Evaluate(internalInput with { HasGateProtection = true }).CanSwitchAgent, "internal notice never clears unknown mutation");
+        }
         return Task.CompletedTask;
     }
 
@@ -191,10 +202,14 @@ static partial class Checks
         pendingFails = true; viewed = 200;
         await monitor.PollOnceAsync();
         Check(removed.SequenceEqual(new uint[] { 1, 2 }), "newer view still leaves real pending during failed pending read");
+        viewed = 100;
         var rejected = await monitor.AcknowledgeSessionAsync("ses_test", 200, _ => false, default);
         Check(rejected is null && posts == 0, "changed source/selection fence blocks receipt POST");
         var acknowledged = await monitor.AcknowledgeSessionAsync("ses_test", 200, action => { action(); return true; }, default);
         Check(acknowledged == 200 && posts == 1 && !removed.Contains(3), "explicit server receipt does not clear pending");
+        viewed = 200;
+        Check(await monitor.AcknowledgeSessionAsync("ses_test", 200, action => { action(); return true; }, default) == 200 && posts == 1,
+            "retry first reconciles already accepted remote watermark without duplicate POST");
         pendingFails = false; pending = false;
         await monitor.PollOnceAsync();
         Check(removed.SequenceEqual(new uint[] { 1, 2, 3 }), "only fresh complete pending disappearance retires pending display");
