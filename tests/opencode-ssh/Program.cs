@@ -22,6 +22,7 @@ internal static class Program
 {
     private const string Secret = "fixture-only-opaque-password";
     private static int _assertions;
+    private static string? _fixturePhase;
     private static readonly OpenCodeSettings SshSettings = new() { Kind = OpenCodeConnectionKind.Ssh, SshHost = "fixture" };
 
     private static async Task<int> Main(string[] args)
@@ -58,6 +59,8 @@ internal static class Program
             // Process output and service credentials are never printed, even on integration failure.
             Console.Error.WriteLine("SSH check failed: " + ex.GetType().Name
                 + (ex is SshOpenCodeException ? " · " + ex.Message : ex is CheckFailure ? " · " + ex.Message : string.Empty));
+            if (_fixturePhase is not null) Console.Error.WriteLine("Fixture phase: " + _fixturePhase + "; HRESULT=0x" + ex.HResult.ToString("X8"));
+            Console.Error.WriteLine(ex.StackTrace); // Method names/source lines only; never the raw exception message or process output.
             return 1;
         }
     }
@@ -99,6 +102,7 @@ internal static class Program
         var run = SshCommandBuilder.Command(target, options);
         Check(run.ArgumentList.Contains("BatchMode=yes") && run.ArgumentList.Contains("ForwardAgent=no") && run.ArgumentList.Contains("StrictHostKeyChecking=yes"), "non-interactive strict checking and no agent forwarding");
         Check(run.ArgumentList.Contains("ConnectTimeout=10") && run.ArgumentList.Last() == "sh -s", "bounded connection and stdin script");
+        Check(run.ArgumentList.Contains("RequestTTY=no") && run.ArgumentList.Contains("RemoteCommand=none") && run.ArgumentList.Contains("StdinNull=no"), "SSH config cannot force a terminal/custom command or discard the service script stdin");
         var tunnel = SshCommandBuilder.Tunnel(target, 50000, 49375, options);
         Check(tunnel.ArgumentList.Contains("127.0.0.1:50000:127.0.0.1:49375") && tunnel.ArgumentList.Contains("-N"), "IPv4 loopback-only forwarding");
         Check(tunnel.ArgumentList.Contains("ExitOnForwardFailure=yes") && tunnel.ArgumentList.Contains("ServerAliveInterval=30") && tunnel.ArgumentList.Contains("ServerAliveCountMax=3"), "forward failure and keepalive detection");
@@ -294,6 +298,15 @@ internal static class Program
         await Throws<OperationCanceledException>(() => verifier.EnsureTrustedAsync(target, (_, _) => { rejected++; return Task.FromResult(false); },
             text => Console.WriteLine("Fixture progress: " + text), CancellationToken.None), "declined fingerprint does not connect");
         Check(rejected == 1 && (!File.Exists(options.UserKnownHostsFile) || new FileInfo(options.UserKnownHostsFile!).Length == 0), "rejected fingerprint never writes fixture known_hosts");
+        using (var cancellation = new CancellationTokenSource())
+        {
+            await Throws<OperationCanceledException>(() => verifier.EnsureTrustedAsync(target, (_, _) =>
+            {
+                cancellation.Cancel();
+                return new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
+            }, _ => { }, cancellation.Token), "canceling the owner ends confirmation even if its UI callback cannot complete");
+        }
+        Check(!File.Exists(options.UserKnownHostsFile) && !Directory.EnumerateDirectories(options.ProbeRoot!).Any(), "canceled confirmation cleans probe directory and leaves known_hosts untouched");
         IReadOnlyList<string>? accepted = null;
         var primarySettings = SshSettings with { SshCommand = File.ReadAllText(Path.Combine(directory, "real-opencode")).Trim() };
         using var connection = await new SshOpenCodeConnector(options).ConnectAsync(primarySettings,
@@ -335,23 +348,28 @@ internal static class Program
         Console.WriteLine("PASS live Job lifetime: isolated owner process exit killed its ssh.exe tunnel");
         var died = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         connection.Tunnel.Exited += (_, _) => died.TrySetResult();
+        _fixturePhase = "stop fixture listener";
         await RunFixtureHelper("stop-fixture.sh", fixturePid.ToString());
         // Killing a listener does not necessarily end an established SSH session. Simulate unexpected client
         // death using ONLY this Job-owned ssh.exe's exact PID captured at launch; never hunt remote children.
         if (connection.Tunnel.IsAlive)
         {
+            _fixturePhase = "terminate captured Windows client PID";
             using var ownedSsh = Process.GetProcessById(ownedTunnelPid);
             ownedSsh.Kill();
         }
+        _fixturePhase = "await own tunnel exit";
         await died.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Check(!connection.Tunnel.IsAlive, "tunnel death detected");
         int recoveryAttempts = 0;
         var recovery = new SshOpenCodeRecovery(async (settings, progress, ct) =>
         { recoveryAttempts++; return await new SshOpenCodeConnector(options).ConnectAsync(settings, null, progress, ct); }, (_, _) => Task.CompletedTask);
+        _fixturePhase = "bounded reconnect against stopped fixture";
         Check(await recovery.RecoverAsync(primarySettings, _ => { }, CancellationToken.None) is null && recoveryAttempts == 3, "dead fixture recovery stops after three attempts");
         Console.WriteLine("PASS live death/recovery: fixture listener stopped by PidFile, own ssh.exe terminated by captured PID, exit observed, three-attempt recovery failed closed");
         byte[] trustedBefore = await File.ReadAllBytesAsync(options.UserKnownHostsFile!);
         int changedPrompts = 0;
+        _fixturePhase = "rekey fixture";
         int rekeyedPid = int.Parse((await RunFixtureHelper("rekey-fixture.sh")).Trim());
         try
         {
@@ -368,7 +386,7 @@ internal static class Program
             sshClient = SshCommandBuilder.Executable(), sshEndpoint = "127.0.0.1:2222", localPort = connection.Tunnel.LocalPort,
             remotePort = connection.Service.RemotePort, method = "GET", path = "/api/info", status = 200, version,
             fingerprints = accepted, fakeAutoStart = true, realServiceRestarted = false, jobKillOnOwnerExit = true,
-            tunnelDeathDetected = true, recoveryAttempts, changedKeyRejected = true, defaultSshdKex = true, realUserSshFilesTouched = false,
+            tunnelDeathDetected = true, recoveryAttempts, changedKeyRejected = true, canceledProbeCleaned = true, defaultSshdKex = true, realUserSshFilesTouched = false,
         }, new JsonSerializerOptions { WriteIndented = true }));
         Console.WriteLine($"Live SSH fixture passed; {_assertions} assertions; evidence contains no credentials.");
     }

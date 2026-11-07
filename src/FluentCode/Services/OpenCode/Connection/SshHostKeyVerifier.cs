@@ -50,7 +50,7 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
             var fingerprints = ParseFingerprints(result.Output);
             if (result.ExitCode != 0 || fingerprints.Count == 0) throw new SshOpenCodeException(SshFailureKind.HostKeyProbe);
             progress("请核对并确认 SSH 主机指纹…");
-            if (!await confirm(new(target.DisplayName, fingerprints, config.DisplayHost), ct).ConfigureAwait(false))
+            if (!await confirm(new(target.DisplayName, fingerprints, config.DisplayHost), ct).WaitAsync(ct).ConfigureAwait(false))
                 throw new OperationCanceledException(ct);
             ct.ThrowIfCancellationRequested();
 

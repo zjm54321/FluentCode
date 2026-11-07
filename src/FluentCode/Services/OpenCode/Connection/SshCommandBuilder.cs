@@ -112,7 +112,8 @@ internal static class SshCommandBuilder
     {
         Add(start, "-o", "BatchMode=yes", "-o", "ConnectTimeout=" + ConnectTimeoutSeconds,
             "-o", "ForwardAgent=no", "-o", "StrictHostKeyChecking=" + checking,
-            "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ForkAfterAuthentication=no");
+            "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ForkAfterAuthentication=no",
+            "-o", "RequestTTY=no", "-o", "RemoteCommand=none", "-o", "StdinNull=no");
         // No user-owned multiplexed/daemonized master: the Job must actually own every managed tunnel.
         if (options.ConfigFile is not null) Add(start, "-F", options.ConfigFile);
         if (options.IdentityFile is not null) Add(start, "-i", options.IdentityFile, "-o", "IdentitiesOnly=yes");

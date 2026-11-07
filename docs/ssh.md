@@ -12,6 +12,8 @@
 
 Windows OpenSSH 仍负责读取 `%USERPROFILE%\.ssh\config`、身份文件、agent、`ProxyJump` 和 `known_hosts`。主机选择框会展开 `Include`（例如 `conf.d/*.conf`），只列出具体 `Host` 别名，忽略 `*`、`?` 和 `!` 等模式；也可直接输入主机。
 
+FluentCode 的调用会明确禁用终端分配、配置中的自定义 `RemoteCommand` 与连接复用，并保留标准输入供服务发现脚本使用，使 SSH 别名的交互式登录设置不干扰后台连接。
+
 ```sshconfig
 Include conf.d/*.conf
 ```
