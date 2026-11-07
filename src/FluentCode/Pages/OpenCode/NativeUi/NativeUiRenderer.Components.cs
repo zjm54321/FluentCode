@@ -73,9 +73,10 @@ internal sealed partial class NativeUiRenderer
                 var track = new StackPanel { Orientation = Orientation.Horizontal }; var scroll = new ScrollViewer { Content = track, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled }; var carousel = new Visual(scroll);
                 carousel.Apply = node => { var items = Children(P(node, "children"), key + "/children", depth + 1).ToArray(); foreach (var item in items) item.Width = Math.Clamp(N(node, "itemWidth", 240), 80, 640); track.Spacing = NativeUiTheme.Gap(P(node, "gap")); Sync(track, items.Cast<UIElement>().ToArray()); }; return carousel;
             case "Popover":
-                var trigger = new Button(); var flyout = new Flyout(); var popover = new Visual(trigger); trigger.Flyout = flyout;
+                var triggerContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var popoverContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
+                var trigger = new Button { Content = triggerContent }; var flyout = new Flyout { Content = popoverContent }; var popover = new Visual(trigger); trigger.Flyout = flyout;
                 AttachAirspace(flyout); popover.Cleanup = flyout.Hide;
-                popover.Apply = node => { trigger.Content = Slot(P(node, "trigger"), key + "/trigger", depth); flyout.Content = Slot(P(node, "content"), key + "/content", depth); }; return popover;
+                popover.Apply = node => { Sync(triggerContent, Children(P(node, "trigger"), key + "/trigger", depth + 1).Cast<UIElement>().ToArray()); Sync(popoverContent, Children(P(node, "content"), key + "/content", depth + 1).Cast<UIElement>().ToArray()); }; return popover;
             default: return new(NativeUiTheme.Notice("未支持", type));
         }
     }

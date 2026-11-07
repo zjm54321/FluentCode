@@ -33,7 +33,12 @@ internal sealed partial class NativeUiRenderer : IDisposable
     internal NativeUiRenderer(NativeUiRuntime runtime)
     {
         _runtime = runtime; NativeUiTheme.Host(_root); _runtime.OpenUrl = ConfirmUrlAsync;
-        _root.ActualThemeChanged += (_, _) => _root.DispatcherQueue.TryEnqueue(() => { if (!_disposed && _lastRoot is { } root) Render(root); });
+        _root.ActualThemeChanged += (_, _) => _root.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_disposed || _lastRoot is not { } root) return;
+            try { Render(root); }
+            catch (Exception error) { _root.Child = NativeUiTheme.Notice("原生卡片主题更新失败", error.ToString(), true); }
+        });
     }
     internal void Render(NativeUiElement root)
     {

@@ -7,9 +7,9 @@ using FluentCode.Services.NativeUi;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using SkiaSharp;
 using Windows.Foundation;
 
 namespace FluentCode.Pages.OpenCode;
@@ -51,6 +51,37 @@ internal sealed partial class NativeUiRenderer
         shape.Stroke = P(node, "stroke") is not null ? ComponentBrush(S(node, "stroke")) : !filled ? ComponentBrush("ink") : null;
         shape.StrokeThickness = Math.Clamp(N(node, "strokeWidth", filled ? 1 : 2), 0, 1000); shape.Opacity = Math.Clamp(N(node, "opacity", 1), 0, 1); shape.StrokeLineJoin = PenLineJoin.Round; shape.StrokeStartLineCap = shape.StrokeEndLineCap = PenLineCap.Round;
     }
+    private static Geometry? NumericPath(string data, out Size extent)
+    {
+        extent = default;
+        if (data.Length >= 20000 || !Regex.IsMatch(data, @"^[MmLlHhVvCcSsQqTtAaZz\d\s,.eE+-]*$")) return null;
+        using var parsed = SKPath.ParseSvgPathData(data);
+        if (parsed is null) return null;
+        var bounds = parsed.Bounds;
+        if (!float.IsFinite(bounds.Right) || !float.IsFinite(bounds.Bottom)) return null;
+        extent = new(Math.Clamp(bounds.Right, 0, 20000), Math.Clamp(bounds.Bottom, 0, 20000));
+        var result = new PathGeometry { FillRule = FillRule.Nonzero }; PathFigure? figure = null;
+        using var iterator = parsed.CreateRawIterator(); var points = new SKPoint[4]; var count = 0;
+        static Point Convert(SKPoint point) => new(Math.Clamp(point.X, -20000, 20000), Math.Clamp(point.Y, -20000, 20000));
+        for (var verb = iterator.Next(points); verb != SKPathVerb.Done; verb = iterator.Next(points))
+        {
+            if (++count > 4096 || points.Any(point => !float.IsFinite(point.X) || !float.IsFinite(point.Y))) return null;
+            if (verb == SKPathVerb.Move) { figure = new PathFigure { StartPoint = Convert(points[0]), IsFilled = true }; result.Figures.Add(figure); }
+            else if (figure is not null)
+                switch (verb)
+                {
+                    case SKPathVerb.Line: figure.Segments.Add(new LineSegment { Point = Convert(points[1]) }); break;
+                    case SKPathVerb.Quad: figure.Segments.Add(new QuadraticBezierSegment { Point1 = Convert(points[1]), Point2 = Convert(points[2]) }); break;
+                    case SKPathVerb.Cubic: figure.Segments.Add(new BezierSegment { Point1 = Convert(points[1]), Point2 = Convert(points[2]), Point3 = Convert(points[3]) }); break;
+                    case SKPathVerb.Conic:
+                        var quads = SKPath.ConvertConicToQuads(points[0], points[1], points[2], iterator.ConicWeight(), 3);
+                        for (var i = 1; i + 1 < quads.Length; i += 2) { if (++count > 4096) return null; figure.Segments.Add(new QuadraticBezierSegment { Point1 = Convert(quads[i]), Point2 = Convert(quads[i + 1]) }); }
+                        break;
+                    case SKPathVerb.Close: figure.IsClosed = true; break;
+                }
+        }
+        return result;
+    }
     private Visual? CreateDrawing(string type, string key, int depth)
     {
         switch (type)
@@ -82,15 +113,7 @@ internal sealed partial class NativeUiRenderer
                 var path = new Path(); var pathVisual = new Visual(path);
                 pathVisual.Apply = node =>
                 {
-                    var d = S(node, "d"); path.Data = null; path.Width = path.Height = 0;
-                    if (d.Length < 20000 && Regex.IsMatch(d, @"^[MmLlHhVvCcSsQqTtAaZz\d\s,.eE+-]*$"))
-                        try
-                        {
-                            var parsed = (Path)XamlReader.Load("<Path xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Data=\"" + d.Replace("\r", " ").Replace("\n", " ") + "\" />");
-                            var geometry = parsed.Data; parsed.Data = null; path.Data = geometry;
-                            if (geometry is not null) { path.Width = Math.Clamp(geometry.Bounds.Right, 0, 20000); path.Height = Math.Clamp(geometry.Bounds.Bottom, 0, 20000); }
-                        }
-                        catch (Exception) { /* Malformed numeric path is empty, never executable markup. */ }
+                    path.Data = NumericPath(S(node, "d"), out var extent); path.Width = extent.Width; path.Height = extent.Height;
                     Paint(path, node, P(node, "fill") is not null);
                 }; return pathVisual;
             case "Polyline": case "Polygon":

@@ -100,7 +100,10 @@ public partial class App
                     view = Descendants(timeline).OfType<FrameworkElement>().Select(element => element.Tag).OfType<OpenCodeNativeUiPartView>().First();
                     if (!Equals(view.Runtime?.Get("$period"), "每月") || !Equals(view.Runtime?.Get("$date"), "2026-11-12") || !Equals(view.Runtime?.Get("$note"), "回顾交付，讨论风险，明确负责人。")) throw new InvalidOperationException("Native v1 state did not survive re-realization.");
                 }
-                else if (name == "dashboard")
+                await Task.Delay(100); surface.UpdateLayout();
+                var file = name + "-" + theme.ToString().ToLowerInvariant() + ".png";
+                await CaptureNativeUiPngAsync(surface, Path.Combine(root, file));
+                if (name == "dashboard")
                 {
                     var table = Descendants(timeline).OfType<WinUI.TableView.TableView>().Single();
                     if (!Descendants(table).OfType<TextBlock>().Any(text => text.Text == "团队版") || !Descendants(table).OfType<TextBlock>().Any(text => text.Text == "增长")) throw new InvalidOperationException("Native table scalar/component cells are empty.");
@@ -108,9 +111,6 @@ public partial class App
                     if (!chart.Series.OfType<LiveChartsCore.SkiaSharpView.StackedColumnSeries<double>>().Any(series => series.Values?.Any(value => value > 0) is true)) throw new InvalidOperationException("Native chart numeric series are empty.");
                 }
                 else if (name == "mixed" && Descendants(timeline).OfType<Microsoft.UI.Xaml.Shapes.Path>().Single().Data is null) throw new InvalidOperationException("Native numeric SVG path did not materialize.");
-                await Task.Delay(100); surface.UpdateLayout();
-                var file = name + "-" + theme.ToString().ToLowerInvariant() + ".png";
-                await CaptureNativeUiPngAsync(surface, Path.Combine(root, file));
                 records.Add(new { program = name, theme = theme.ToString(), png = file, state = view.Runtime!.State });
             }
         }

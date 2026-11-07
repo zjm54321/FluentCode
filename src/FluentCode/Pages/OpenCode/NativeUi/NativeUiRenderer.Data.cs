@@ -128,7 +128,8 @@ internal sealed partial class NativeUiRenderer
             }
             chart.Series = plots;
             chart.XAxes = new[] { new Axis { Labels = kind == "scatter" ? null : rows.Select(row => NativeUiValues.Text(row.GetValueOrDefault(x))).ToArray(), LabelsPaint = labelsPaint, TextSize = 12, MinStep = kind == "scatter" ? 0 : 1 } };
-            chart.YAxes = new[] { new Axis { Labeler = value => FormatChart(value, node), LabelsPaint = labelsPaint, TextSize = 12 } };
+            var zeroBaseline = kind is "bar" or "area";
+            chart.YAxes = new[] { new Axis { Labeler = value => FormatChart(value, node), LabelsPaint = labelsPaint, TextSize = 12, MinLimit = zeroBaseline && rows.All(row => series.All(name => Value(row, name) >= 0)) ? 0 : null, MaxLimit = zeroBaseline && rows.All(row => series.All(name => Value(row, name) < 0)) ? 0 : null } };
             host.Children.Add(chart);
         }; return chartVisual;
     }
