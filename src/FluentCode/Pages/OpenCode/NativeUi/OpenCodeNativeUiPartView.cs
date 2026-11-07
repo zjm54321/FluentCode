@@ -19,12 +19,17 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
     private NativeUiRenderer? _renderer;
     private string? _source;
     private string? _title;
+    private string? _partId;
     private bool _disposed;
     internal FrameworkElement Element => _root;
     internal NativeUiRuntime? Runtime => _runtime;
     internal Func<NativeUiAssistantRequest, Task<NativeUiHostResult>>? ToAssistant { get; set; }
     internal OpenCodeNativeUiPartView() { NativeUiTheme.Host(_root); _root.Spacing = NativeUiTheme.Gap(2); _root.Tag = this; }
-    internal void Update(OpenCodeContentPart part) => Update(part.State);
+    internal void Update(OpenCodeContentPart part)
+    {
+        if (_partId != part.Id) { ClearRuntime(); _source = null; _partId = part.Id; }
+        Update(part.State);
+    }
     internal void Update(System.Text.Json.JsonElement? state)
     {
         if (_disposed) return;
@@ -43,6 +48,7 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
         {
             NativeUiSafety.Check(parsed.StateDeclarations, _catalog.Limits);
             _runtime = new(parsed, _catalog) { ToAssistant = request => ToAssistant?.Invoke(request) ?? Task.FromResult(new NativeUiHostResult(false, "当前输入区不可用")) };
+            if (_partId is { } id && NativeUiStateStore.Read(id, input.Source ?? "") is { } snapshot) _runtime.Restore(snapshot);
             _renderer = new(_runtime); _runtime.Changed += Refresh;
             _root.Children.Clear();
             if (!string.IsNullOrWhiteSpace(input.Title))
@@ -58,6 +64,7 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
         if (_disposed || _runtime is null || _renderer is null) return;
         try
         {
+            SaveState();
             var root = _runtime.EvaluateRoot();
             if (root is null) { Error("root 当前没有得到组件"); return; }
             _renderer.Render(root);
@@ -71,8 +78,10 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
     { ClearRuntime(); _root.Children.Clear(); _root.Children.Add(NativeUiTheme.Notice("交互卡片无法渲染", NativeUiToolInput.Compact(message), error: true)); }
     private void ClearRuntime()
     {
+        SaveState();
         if (_runtime is not null) _runtime.Changed -= Refresh;
         _renderer?.Dispose(); _runtime?.Dispose(); _renderer = null; _runtime = null;
     }
+    private void SaveState() { if (_runtime is not null && _partId is { Length: > 0 } id && _source is { } source) NativeUiStateStore.Save(id, source, _runtime.Snapshot()); }
     public void Dispose() { _disposed = true; ToAssistant = null; ClearRuntime(); _root.Children.Clear(); _root.Tag = null; }
 }

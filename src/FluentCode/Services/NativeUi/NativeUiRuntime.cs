@@ -243,6 +243,7 @@ internal sealed class NativeUiRuntime : IDisposable
     internal NativeUiParseResult Program { get; }
     internal event Action? Changed;
     internal Func<NativeUiAssistantRequest, Task<NativeUiHostResult>>? ToAssistant { get; set; }
+    internal Func<string, Task<NativeUiHostResult>>? OpenUrl { get; set; }
     internal bool IsExecuting { get; private set; }
     internal string Status { get; private set; } = "";
     internal IReadOnlyList<string> Unsupported => Program.Queries.Select(q => "Query(" + q.StatementId + ")").Concat(Program.Mutations.Select(m => "Mutation(" + m.StatementId + ")")).ToArray();
@@ -250,6 +251,13 @@ internal sealed class NativeUiRuntime : IDisposable
     { Program = program; _catalog = catalog; _state = new(program.StateDeclarations, StringComparer.Ordinal); }
     internal object? Get(string name) => _state.GetValueOrDefault(name);
     internal IReadOnlyDictionary<string, object?> State => new Dictionary<string, object?>(_state, StringComparer.Ordinal);
+    internal NativeUiSnapshot Snapshot() => new(new Dictionary<string, object?>(_state, StringComparer.Ordinal), new Dictionary<string, object?>(_fields, StringComparer.Ordinal));
+    internal void Restore(NativeUiSnapshot snapshot)
+    {
+        NativeUiSafety.Check(snapshot.State, _catalog.Limits); NativeUiSafety.Check(snapshot.Fields, _catalog.Limits);
+        foreach (var (key, value) in snapshot.State) if (Program.StateDeclarations.ContainsKey(key)) _state[key] = value;
+        foreach (var (key, value) in snapshot.Fields) _fields[key] = value;
+    }
     private NativeUiEvaluator Evaluator(IReadOnlyDictionary<string, object?>? scope = null) => new(_catalog, Get, Resolve, scope);
     internal NativeUiElement? EvaluateRoot()
     {
@@ -318,7 +326,12 @@ internal sealed class NativeUiRuntime : IDisposable
                     case "set": Set(step.Target!, Evaluator().Evaluate(step.ValueAst!)); break;
                     case "reset": Reset(step.Targets!); break;
                     case "run": Status = "未支持：Query、Mutation 和 @Run（第二阶段）"; return;
-                    case "open_url": Status = NativeUiSafety.HttpUrl(step.Url) ? "未支持：@OpenUrl（本轮无网络访问）" : "仅允许 http(s) URL"; return;
+                    case "open_url":
+                        if (!NativeUiSafety.HttpUrl(step.Url)) { Status = "仅允许 http(s) URL"; return; }
+                        var opened = OpenUrl is null ? new NativeUiHostResult(false, "当前卡片无法打开链接") : await OpenUrl(step.Url!);
+                        if (_disposed) return;
+                        Status = opened.Message; if (!opened.Accepted) return;
+                        break;
                     case "continue_conversation":
                         var request = new NativeUiAssistantRequest(step.Message ?? "", step.Context, _state.Concat(_fields.Where(p => !_state.ContainsKey(p.Key))).ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal));
                         NativeUiSafety.Check(request.Context, _catalog.Limits); NativeUiSafety.Check(request.FormState, _catalog.Limits);
@@ -332,7 +345,7 @@ internal sealed class NativeUiRuntime : IDisposable
         catch (NativeUiLimitException error) { Status = error.Message; }
         finally { if (!_disposed) { IsExecuting = false; Changed?.Invoke(); } }
     }
-    public void Dispose() { _disposed = true; ToAssistant = null; Changed = null; _state.Clear(); _fields.Clear(); }
+    public void Dispose() { _disposed = true; ToAssistant = null; OpenUrl = null; Changed = null; _state.Clear(); _fields.Clear(); }
 }
 
 internal static class NativeUiSafety
