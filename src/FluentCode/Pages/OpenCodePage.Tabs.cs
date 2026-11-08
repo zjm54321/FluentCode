@@ -473,7 +473,7 @@ public sealed partial class OpenCodePage
 
     partial void OnSessionUiStatesApplied(IReadOnlyDictionary<string, OpenCodeSessionUiState> states)
     {
-        _sessionTabStates = states;
+        _sessionTabStates = _indicatorCaptureStates ?? states;
         QueueHomeProjection();
         foreach (var entry in _sessionTabs.Values)
         {

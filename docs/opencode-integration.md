@@ -103,6 +103,7 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 - `BackgroundWorking`（三值事实）与 `BackgroundChildCount` 按 `QuestionPending` 的原始证据时间、绑定、过期及事件连续性规则保存；外层事实缺失不更新计数，明确 false/unknown 或过期后计数清零。没有子会话证据的监视器事件观察保持 null，不以主会话 idle 推断整棵树结束。
 - 正常连接 SSE 时，页面已接纳的消息执行投影及经验证的子会话树也发布同一事实/计数。关系只从当前来源/会话的接纳结果建立；子会话事件可直接更新后台父标签，最后一个子会话终止后清零。事实租约绑定原页面来源、修订、页面代际及精确事件覆盖；跨断线不续借旧兄弟状态，旧来源/会话结果不能发布。不新增轮询、协议或服务端调用。
 - 标签 `Name` 仍为“标题（id）”；中文状态放在 `ItemStatus` 和 `HelpText`，状态变化时发 `ItemStatusProperty` 变更事件。图形槽及子图形均为 UIA Raw，避免重复朗读；重试次数不按秒更新。
+- 标签头实机证据使用测试专用 `FC_INDICATOR_CAPTURE_TEST=1` + `FC_SHELL_CAPTURE_TEST=1` + 独立 `FC_STARTUP_SMOKE_ROOT` 三重门。单次离线启动复用真实标签构造/状态路径，以 `RenderTargetBitmap` 输出 1920/1024 宽、浅/深色四帧；1024 使用 8 个会话标签（长标题标签兼作工作中）并保留首页项。`tests/opencode-indicator-capture/capture.sh` 持有共享捕获锁，PowerShell 先检查 Active 会话及 RichEditPrototype，再启动/关闭唯一自持 PID；3× 裁图仅复制原始像素，不发送桌面输入、不抓屏、不连接服务端。
 
 ## 4. 状态仲裁门（`OpenCodeInteractionGate`）
 

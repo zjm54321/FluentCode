@@ -30,6 +30,12 @@ public sealed partial class MainWindow
         string output = Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_OUT") is { Length: > 0 } o ? o : evidence;
         Directory.CreateDirectory(output);
 
+        if (Pages.OpenCodePage.IndicatorCaptureEnabled)
+        {
+            await RunIndicatorCaptureAsync(evidence, output);
+            return;
+        }
+
         if (Environment.GetEnvironmentVariable("FC_PANEL_FEEDBACK_TEST") == "1")
         {
             await RunPanelFeedbackCaptureAsync(evidence, output);

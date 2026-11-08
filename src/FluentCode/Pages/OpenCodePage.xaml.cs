@@ -161,6 +161,11 @@ public sealed partial class OpenCodePage : Page
         _homeSettings = settingsService;
 
         this.InitializeComponent();
+        // Header-only offline capture must not instantiate/measure the unrelated native composer template.
+        if (IndicatorCaptureEnabled)
+        {
+            Composer.Visibility = ComposerCell.Visibility = Visibility.Collapsed;
+        }
         NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
         InitializeNoticeDismissal();
 

@@ -31,6 +31,7 @@ internal static partial class Program
         PreviewThemeAndPlacement(args[0]);
         LargeViewFitsContent(args[0]);
         UnifiedRunningIndicator(args[0]);
+        IndicatorCaptureSourceContracts(args[0]);
         Console.WriteLine($"PASS {_checks} focused tool naming, glyph, OMO reports/controls/mention scopes, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, home-settings layout, header-affordance, preview theme/placement and unified running-indicator checks.");
     }
 
@@ -264,6 +265,39 @@ internal static partial class Program
         var foreground = OpenCodeToolRowPresentation.Build(Tool("bash", "completed", new { command = "ls" }, "a", new { },
             new OpenCodeToolTime { Created = 1_700_000_000_000, Completed = 1_700_000_000_009 }));
         Check(foreground is { IsBackground: false, DurationText: "9 毫秒" }, "foreground rows keep their duration");
+    }
+
+    private static void IndicatorCaptureSourceContracts(string repo)
+    {
+        string Read(string name) => File.ReadAllText(Path.Combine(repo, name));
+        var page = Read("src/FluentCode/Pages/OpenCodePage.IndicatorCapture.cs");
+        Check(page.Contains("Environment.GetEnvironmentVariable(\"FC_INDICATOR_CAPTURE_TEST\") == \"1\"", StringComparison.Ordinal)
+            && page.Contains("Environment.GetEnvironmentVariable(\"FC_SHELL_CAPTURE_TEST\") == \"1\"", StringComparison.Ordinal)
+            && page.Contains("FC_STARTUP_SMOKE_ROOT", StringComparison.Ordinal), "indicator fixture requires explicit indicator/shell/disposable-profile gates");
+        Check(page.Contains("if (_source is not null || _client is not null)", StringComparison.Ordinal)
+            && page.Contains("CreateSessionTab(id);", StringComparison.Ordinal)
+            && page.Contains("ApplySessionTabState(entry);", StringComparison.Ordinal)
+            && Read("src/FluentCode/Pages/OpenCodePage.xaml.cs").Contains("Composer.Visibility = ComposerCell.Visibility = Visibility.Collapsed;", StringComparison.Ordinal),
+            "offline fixture uses real tab/status paths, rejects a backend and hides the unrelated composer before first measure");
+        Check(new[] { "working", "background", "retry", "failed", "interrupted", "waiting", "unread", "idle", "long" }
+            .All(state => page.Contains("ses_capture_" + state, StringComparison.Ordinal)), "fixture covers all eight statuses plus a long working title");
+        var shell = Read("src/FluentCode/MainWindow.ShellCapture.cs");
+        var window = Read("src/FluentCode/MainWindow.IndicatorCapture.cs");
+        Check(shell.Contains("if (Pages.OpenCodePage.IndicatorCaptureEnabled)", StringComparison.Ordinal)
+            && window.Contains("new[] { 1920, 1024 }", StringComparison.Ordinal)
+            && window.Contains("new[] { AppTheme.Light, AppTheme.Dark }", StringComparison.Ordinal)
+            && window.Contains("await Screenshot(RootElement", StringComparison.Ordinal)
+            && Read("src/FluentCode/App.xaml.cs").Contains("Environment.GetEnvironmentVariable(\"FC_INDICATOR_CAPTURE_TEST\") != \"1\"", StringComparison.Ordinal),
+            "capture renders both native widths/themes with the existing RTB helper and skips backend ownership");
+        var runner = Read("tests/opencode-indicator-capture/capture.ps1");
+        Check(runner.Contains("Get-Process -Name RichEditPrototype", StringComparison.Ordinal) && runner.Contains("quser", StringComparison.Ordinal)
+            && runner.Contains("$process.Kill();", StringComparison.Ordinal) && runner.Contains("PID=$($process.Id)", StringComparison.Ordinal)
+            && !runner.Contains("SendInput", StringComparison.Ordinal) && !runner.Contains("SendKeys", StringComparison.Ordinal)
+            && !runner.Contains("BitBlt", StringComparison.Ordinal), "capture preflights the active desktop, verifies its PID and never sends desktop input or grabs the screen");
+        var locked = Read("tests/opencode-indicator-capture/capture.sh");
+        Check(locked.Contains("mkdir \"$lock\"", StringComparison.Ordinal) && locked.Contains("SECONDS + 1200", StringComparison.Ordinal)
+            && locked.Contains("sleep 15", StringComparison.Ordinal) && locked.Contains("$lock/owner", StringComparison.Ordinal)
+            && locked.Contains("rmdir -- \"$lock\"", StringComparison.Ordinal), "shared capture lock has bounded 15s retries, owner and exact cleanup");
     }
 
     private static void LargeViewFitsContent(string repo)
