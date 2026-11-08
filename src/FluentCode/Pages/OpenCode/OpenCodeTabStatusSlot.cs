@@ -15,12 +15,14 @@ internal sealed class OpenCodeTabStatusSlot : Grid
     private const string NeutralKey = "TextFillColorSecondaryBrush";
     private const string CautionKey = "SystemFillColorCautionBrush";
     private const string CriticalKey = "SystemFillColorCriticalBrush";
+    private const double InterruptedMarkSize = 10; // 字形占字号的 7/8，约 8.75 DIP，与未读圆点同等分量。
 
     private ProgressRing? _ring;
     private Ellipse? _ringDot, _dot;
     private FontIcon? _retry;
     private InfoBadge? _badge;
-    private Grid? _failed, _interrupted;
+    private FontIcon? _interrupted;
+    private Grid? _failed;
     private OpenCodeTabStatusGlyph _glyph;
     private bool _overlay;
 
@@ -70,7 +72,7 @@ internal sealed class OpenCodeTabStatusSlot : Grid
                 Children.Add(_failed ??= Outcome("\uF13D", CriticalKey)); // 环 + 叉：执行失败。
                 break;
             case OpenCodeTabStatusGlyph.Interrupted:
-                Children.Add(_interrupted ??= Outcome("\uE738", NeutralKey)); // 环 + Remove 横线：用户中断，不是错误。
+                Children.Add(_interrupted ??= Icon("\uE73B", NeutralKey, InterruptedMarkSize)); // 灰色实心小方块：用户停止，不是错误。
                 break;
             case OpenCodeTabStatusGlyph.Unread:
                 Children.Add(_dot ??= Dot(8));
@@ -88,12 +90,12 @@ internal sealed class OpenCodeTabStatusSlot : Grid
         Children = { Icon("\uF138", brushKey), Icon(mark, brushKey) },
     });
 
-    private static FontIcon Icon(string glyph, string brushKey)
+    private static FontIcon Icon(string glyph, string brushKey, double fontSize = OpenCodeWorkingMotion.RingSize)
     {
         var icon = Raw(new FontIcon
         {
             Glyph = glyph,
-            FontSize = OpenCodeWorkingMotion.RingSize,
+            FontSize = fontSize,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         });

@@ -389,7 +389,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 : status == OpenCodeTreeStatus.Failed ? "SystemFillColorCriticalBrush" : "TextFillColorSecondaryBrush";
             // Segoe Fluent glyphs share one optical size/baseline (text ✓/✕ glyphs drifted between fonts).
             var icon = (FontIcon)XamlReader.Load($"<FontIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{{ThemeResource {resource}}}\" FontSize=\"12\" />");
-            icon.Glyph = status switch { OpenCodeTreeStatus.Succeeded => "\uE73E", OpenCodeTreeStatus.Failed => "\uE711", OpenCodeTreeStatus.Interrupted => "\uE738", _ => "\uE9CE" };
+            icon.Glyph = status switch { OpenCodeTreeStatus.Succeeded => "\uE73E", OpenCodeTreeStatus.Failed => "\uE711", OpenCodeTreeStatus.Interrupted => "\uE73B", _ => "\uE9CE" };
             indicator = icon;
         }
         indicator.HorizontalAlignment = HorizontalAlignment.Center;
