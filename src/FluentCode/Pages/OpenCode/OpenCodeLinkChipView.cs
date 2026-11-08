@@ -123,7 +123,7 @@ internal static class OpenCodeLinkChipView
     {
         var panel = new StackPanel { Spacing = 4, MaxWidth = 420 };
         panel.Children.Add(new TextBlock { Text = chip.DisplayUrl, TextWrapping = TextWrapping.WrapWholeWords, FontSize = 12, Opacity = 0.8, IsTextSelectionEnabled = false });
-        if (chip.IsConfusable) panel.Children.Add(new TextBlock { Text = chip.Host, TextWrapping = TextWrapping.Wrap, FontSize = 12 });
+        if (chip.IsConfusable) panel.Children.Add(new TextBlock { Text = "易混淆域名：" + chip.Host, TextWrapping = TextWrapping.Wrap, FontSize = 12 });
         return panel;
     }
 

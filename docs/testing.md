@@ -77,7 +77,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 | 23 | `tests/desktop-bridge-qol/run.ps1` | 桌面增强 QoL 功能：紧凑 Token 格式化（如 `82.3K` / `1M`）、Billion 上下文遥测与压缩块列表投影 |
 | 24 | `tests/opencode-persistent-pty/run.ps1` | 原生终端卡片布局、WinUI 空域（Airspace）同步遮挡与恢复、Windows Terminal 子窗口生命周期 |
 | 25 | `tests/opencode-persistent-pty-transport/run-backend.ps1` | 终端底层 WebSocket 传输协议、VT100 字节流解析、服务端权威网格尺寸协商（Resize）与控制权接管 |
-| 26 | `tests/opencode-tool-presentation/run.ps1` | 工具行呈现：会话/终端类工具按精确名称命名与配图标、不套用文件读取/差异视图，通用详情构建与分组仅标题行悬停高亮；悬停预览与来源行之间让出相邻一整行、详情浮层跟随应用/Windows 主题、完成通知使用 Fluent 完成/出错字形 |
+| 26 | `tests/opencode-tool-presentation/run.ps1` | 工具行呈现：会话/终端类工具按精确名称命名与配图标、不套用文件读取/差异视图，通用详情构建与分组仅标题行悬停高亮；悬停预览与来源行之间让出相邻一整行、详情浮层跟随应用/Windows 主题、完成通知使用 Fluent 完成/出错字形；悬停提示文案简洁，快捷键统一为“名称（快捷键）”，并保留标题、路径等隐藏值 |
 | 27 | `tests/browser-runtime/runtime.test.mjs` | Node.js 侧运行时单元测试：本地 HTTP/CONNECT/WebSocket 隧道代理、TCP 半关闭与背压控制 |
 | 28 | `tests/browser-runtime/audit.test.mjs` | Node.js 侧审计单元测试：真机 Lighthouse 快照审计、CDP 会话扁平化与审计取消清理 |
 
