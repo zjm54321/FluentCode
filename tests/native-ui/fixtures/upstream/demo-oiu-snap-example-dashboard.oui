@@ -1,0 +1,7 @@
+root = Col([head, kpis, Grid([weekly, byRegion], 2, 280, 4), top])
+head = Row([Title("Sales, last 90 days", "lg"), Spacer(), SegmentedControl($region, ["All", "North", "South", "East", "West"])], 3, null, null, true)
+kpis = Grid([Card([Caption("Revenue"), Title("$629.2K", "xl")]), Card([Caption("Orders"), Title("3,721", "xl")])], 2, 160, 3)
+weekly = Card([Title("Revenue by week", "sm"), Chart("line", [{key: "2026-08-10", value: 36832.14}, {key: "2026-08-17", value: 43825.819999999985}, {key: "2026-08-24", value: 42432.31000000001}, {key: "2026-08-31", value: 47086.700000000004}, {key: "2026-09-07", value: 44661.21}, {key: "2026-09-14", value: 58100.88}, {key: "2026-09-21", value: 54562.09000000001}, {key: "2026-09-28", value: 51157.65999999999}, {key: "2026-10-05", value: 51704.25000000001}, {key: "2026-10-12", value: 54330.28000000005}, {key: "2026-10-19", value: 47717.06999999997}, {key: "2026-10-26", value: 47489.819999999956}, {key: "2026-11-02", value: 49284.37999999999}], "key", ["value"], "currency")])
+byRegion = Card([Title("By region", "sm"), Chart("donut", [{key: "East", value: 159927.21000000008}, {key: "South", value: 108504.14999999998}, {key: "West", value: 211856.55000000022}, {key: "North", value: 148896.69999999978}], "key", ["value"], "currency")])
+top = Table(["Product", "Revenue"], [["Trail runner", "$117,852.98"], ["Wireless earbuds", "$90,309.81"], ["Rain shell", "$82,690.34"], ["Wool sweater", "$52,185.62"], ["Portable speaker", "$50,979.13"]])
+$region = "All"

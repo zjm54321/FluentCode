@@ -1,0 +1,1057 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "94e47f14db05b05c47fce274e7e88252260524f11823405eb5d5f9bf6ec50a5f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Pasta night for 4 guests",
+              "size": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "title"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "IconButton",
+                  "props": {
+                    "icon": "minus",
+                    "action": null,
+                    "label": "Fewer"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "4",
+                    "size": "lg",
+                    "color": null,
+                    "weight": "semibold"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "IconButton",
+                  "props": {
+                    "icon": "plus",
+                    "action": null,
+                    "label": "More"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "stepper"
+          },
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "400 g spaghetti",
+                                "size": "sm",
+                                "color": null,
+                                "weight": null,
+                                "italic": false,
+                                "lineThrough": false
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "6 tomatoes",
+                                "size": "sm",
+                                "color": null,
+                                "weight": null,
+                                "italic": false,
+                                "lineThrough": false
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "80 g parmesan",
+                                "size": "sm",
+                                "color": null,
+                                "weight": null,
+                                "italic": false,
+                                "lineThrough": false
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 1
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "list"
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Copy list",
+              "action": null,
+              "variant": "outline",
+              "color": null,
+              "size": "sm",
+              "icon": "copy"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "copy"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Pasta night for 4 guests",
+            "size": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "title"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "minus",
+                  "action": null,
+                  "label": "Fewer"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "4",
+                  "size": "lg",
+                  "color": null,
+                  "weight": "semibold"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "plus",
+                  "action": null,
+                  "label": "More"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "stepper"
+        },
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "400 g spaghetti",
+                              "size": "sm",
+                              "color": null,
+                              "weight": null,
+                              "italic": false,
+                              "lineThrough": false
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "6 tomatoes",
+                              "size": "sm",
+                              "color": null,
+                              "weight": null,
+                              "italic": false,
+                              "lineThrough": false
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "80 g parmesan",
+                              "size": "sm",
+                              "color": null,
+                              "weight": null,
+                              "italic": false,
+                              "lineThrough": false
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 1
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "list"
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Copy list",
+            "action": null,
+            "variant": "outline",
+            "color": null,
+            "size": "sm",
+            "icon": "copy"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "copy"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 213,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Pasta night for 4 guests",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "minus",
+                        "action": null,
+                        "label": "Fewer"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "4",
+                        "size": "lg",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "plus",
+                        "action": null,
+                        "label": "More"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "stepper"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "list",
+            "copy"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 427,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Pasta night for 4 guests",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "minus",
+                        "action": null,
+                        "label": "Fewer"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "4",
+                        "size": "lg",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "plus",
+                        "action": null,
+                        "label": "More"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "stepper"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "sm"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "400 g spaghetti",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": null,
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "sm"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "6 tomatoes",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": null,
+                                    "italic": false,
+                                    "lineThrough": null
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "list"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "f",
+            "copy"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 641,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Pasta night for 4 guests",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "minus",
+                        "action": null,
+                        "label": "Fewer"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "4",
+                        "size": "lg",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "plus",
+                        "action": null,
+                        "label": "More"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "stepper"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "400 g spaghetti",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": null,
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "6 tomatoes",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": null,
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "80 g parmesan",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": null,
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "list"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Copy list",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "copy"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "copy"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

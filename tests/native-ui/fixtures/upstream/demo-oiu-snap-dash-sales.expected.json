@@ -1,0 +1,2894 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "5d433f7c4e9624dd3f5c04de88758d42ae63786740a0cc9d912877780cb249cf",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Store performance",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Demo data, refreshed every 5 minutes"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Select",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$channel"
+                          },
+                          "options": [
+                            {
+                              "value": "All",
+                              "label": "All channels"
+                            },
+                            "Web",
+                            "Mobile",
+                            "Retail"
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": null,
+                    "radius": null,
+                    "border": null,
+                    "width": 150
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "SegmentedControl",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$days"
+                    },
+                    "options": [
+                      {
+                        "value": "30",
+                        "label": "30d"
+                      },
+                      {
+                        "value": "90",
+                        "label": "90d"
+                      },
+                      {
+                        "value": "365",
+                        "label": "1y"
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 3,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Revenue"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "$629.2K",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Orders"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "3,721",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Average order"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "$169.09",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k3"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Last 7 days"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "$49.3K",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "+3.8% vs prior 7",
+                                "color": "success"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2,
+                          "align": null,
+                          "justify": null,
+                          "wrap": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k4"
+                }
+              ],
+              "columns": 4,
+              "minChildWidth": 150,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "kpis"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "Revenue",
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SegmentedControl",
+                              "props": {
+                                "value": {
+                                  "k": "StateRef",
+                                  "n": "$view"
+                                },
+                                "options": [
+                                  "Weekly",
+                                  "Cumulative"
+                                ]
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Chart",
+                        "props": {
+                          "type": "area",
+                          "data": [
+                            {
+                              "key": "2026-08-10",
+                              "value": 36832.14
+                            },
+                            {
+                              "key": "2026-08-17",
+                              "value": 43825.819999999985
+                            },
+                            {
+                              "key": "2026-08-24",
+                              "value": 42432.31000000001
+                            },
+                            {
+                              "key": "2026-08-31",
+                              "value": 47086.700000000004
+                            },
+                            {
+                              "key": "2026-09-07",
+                              "value": 44661.21
+                            },
+                            {
+                              "key": "2026-09-14",
+                              "value": 58100.88
+                            },
+                            {
+                              "key": "2026-09-21",
+                              "value": 54562.09000000001
+                            },
+                            {
+                              "key": "2026-09-28",
+                              "value": 51157.65999999999
+                            },
+                            {
+                              "key": "2026-10-05",
+                              "value": 51704.25000000001
+                            },
+                            {
+                              "key": "2026-10-12",
+                              "value": 54330.28000000005
+                            },
+                            {
+                              "key": "2026-10-19",
+                              "value": 47717.06999999997
+                            },
+                            {
+                              "key": "2026-10-26",
+                              "value": 47489.819999999956
+                            },
+                            {
+                              "key": "2026-11-02",
+                              "value": 49284.37999999999
+                            }
+                          ],
+                          "x": "key",
+                          "series": [
+                            "value"
+                          ],
+                          "format": "currency"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "trend"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Channel mix",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Chart",
+                        "props": {
+                          "type": "donut",
+                          "data": [
+                            {
+                              "key": "Mobile",
+                              "value": 238782.6300000004
+                            },
+                            {
+                              "key": "Web",
+                              "value": 272955.4400000004
+                            },
+                            {
+                              "key": "Retail",
+                              "value": 117446.53999999994
+                            }
+                          ],
+                          "x": "key",
+                          "series": [
+                            "value"
+                          ],
+                          "format": "currency"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "mix"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 300,
+              "gap": 4
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Revenue by region and category",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Chart",
+                        "props": {
+                          "type": "bar",
+                          "data": [
+                            {
+                              "key": "East",
+                              "Apparel": 31254.849999999995,
+                              "Home": 23033.459999999995,
+                              "Outdoors": 60658.61000000004,
+                              "Electronics": 44980.29000000001
+                            },
+                            {
+                              "key": "South",
+                              "Apparel": 23519.46,
+                              "Home": 16894.17,
+                              "Outdoors": 38457.799999999996,
+                              "Electronics": 29632.72
+                            },
+                            {
+                              "key": "West",
+                              "Apparel": 39307.04000000001,
+                              "Home": 29398.539999999986,
+                              "Outdoors": 86089.56999999993,
+                              "Electronics": 57061.399999999994
+                            },
+                            {
+                              "key": "North",
+                              "Apparel": 30958.31999999999,
+                              "Home": 20145.44,
+                              "Outdoors": 55998.66000000002,
+                              "Electronics": 41794.27999999998
+                            }
+                          ],
+                          "x": "key",
+                          "series": null,
+                          "format": "currency",
+                          "currency": null,
+                          "stacked": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "regions"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Top products",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Table",
+                        "props": {
+                          "columns": [
+                            "Product",
+                            "Units",
+                            "Revenue"
+                          ],
+                          "rows": [
+                            [
+                              "Trail runner",
+                              972,
+                              "$117,853"
+                            ],
+                            [
+                              "Wireless earbuds",
+                              633,
+                              "$90,310"
+                            ],
+                            [
+                              "Rain shell",
+                              534,
+                              "$82,690"
+                            ],
+                            [
+                              "Wool sweater",
+                              574,
+                              "$52,186"
+                            ],
+                            [
+                              "Portable speaker",
+                              447,
+                              "$50,979"
+                            ]
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "top"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 300,
+              "gap": 4
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "gap": 4
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 14,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$channel": "All",
+      "$days": "90",
+      "$view": "Weekly"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Store performance",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Demo data, refreshed every 5 minutes"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Select",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$channel",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "options": [
+                          {
+                            "value": "All",
+                            "label": "All channels"
+                          },
+                          "Web",
+                          "Mobile",
+                          "Retail"
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": null,
+                  "radius": null,
+                  "border": null,
+                  "width": 150
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$days",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "30",
+                      "label": "30d"
+                    },
+                    {
+                      "value": "90",
+                      "label": "90d"
+                    },
+                    {
+                      "value": "365",
+                      "label": "1y"
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 3,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Revenue"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "$629.2K",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k1"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Orders"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "3,721",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k2"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Average order"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "$169.09",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k3"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Last 7 days"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$49.3K",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "+3.8% vs prior 7",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k4"
+              }
+            ],
+            "columns": 4,
+            "minChildWidth": 150,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "kpis"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Revenue",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SegmentedControl",
+                            "props": {
+                              "value": {
+                                "__reactive": "assign",
+                                "target": "$view",
+                                "expr": {
+                                  "k": "StateRef",
+                                  "n": "$value"
+                                }
+                              },
+                              "options": [
+                                "Weekly",
+                                "Cumulative"
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "area",
+                        "data": [
+                          {
+                            "key": "2026-08-10",
+                            "value": 36832.14
+                          },
+                          {
+                            "key": "2026-08-17",
+                            "value": 43825.819999999985
+                          },
+                          {
+                            "key": "2026-08-24",
+                            "value": 42432.31000000001
+                          },
+                          {
+                            "key": "2026-08-31",
+                            "value": 47086.700000000004
+                          },
+                          {
+                            "key": "2026-09-07",
+                            "value": 44661.21
+                          },
+                          {
+                            "key": "2026-09-14",
+                            "value": 58100.88
+                          },
+                          {
+                            "key": "2026-09-21",
+                            "value": 54562.09000000001
+                          },
+                          {
+                            "key": "2026-09-28",
+                            "value": 51157.65999999999
+                          },
+                          {
+                            "key": "2026-10-05",
+                            "value": 51704.25000000001
+                          },
+                          {
+                            "key": "2026-10-12",
+                            "value": 54330.28000000005
+                          },
+                          {
+                            "key": "2026-10-19",
+                            "value": 47717.06999999997
+                          },
+                          {
+                            "key": "2026-10-26",
+                            "value": 47489.819999999956
+                          },
+                          {
+                            "key": "2026-11-02",
+                            "value": 49284.37999999999
+                          }
+                        ],
+                        "x": "key",
+                        "series": [
+                          "value"
+                        ],
+                        "format": "currency"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "trend"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Channel mix",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "donut",
+                        "data": [
+                          {
+                            "key": "Mobile",
+                            "value": 238782.6300000004
+                          },
+                          {
+                            "key": "Web",
+                            "value": 272955.4400000004
+                          },
+                          {
+                            "key": "Retail",
+                            "value": 117446.53999999994
+                          }
+                        ],
+                        "x": "key",
+                        "series": [
+                          "value"
+                        ],
+                        "format": "currency"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "mix"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 300,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Revenue by region and category",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "bar",
+                        "data": [
+                          {
+                            "key": "East",
+                            "Apparel": 31254.849999999995,
+                            "Home": 23033.459999999995,
+                            "Outdoors": 60658.61000000004,
+                            "Electronics": 44980.29000000001
+                          },
+                          {
+                            "key": "South",
+                            "Apparel": 23519.46,
+                            "Home": 16894.17,
+                            "Outdoors": 38457.799999999996,
+                            "Electronics": 29632.72
+                          },
+                          {
+                            "key": "West",
+                            "Apparel": 39307.04000000001,
+                            "Home": 29398.539999999986,
+                            "Outdoors": 86089.56999999993,
+                            "Electronics": 57061.399999999994
+                          },
+                          {
+                            "key": "North",
+                            "Apparel": 30958.31999999999,
+                            "Home": 20145.44,
+                            "Outdoors": 55998.66000000002,
+                            "Electronics": 41794.27999999998
+                          }
+                        ],
+                        "x": "key",
+                        "series": null,
+                        "format": "currency",
+                        "currency": null,
+                        "stacked": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "regions"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Top products",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Table",
+                      "props": {
+                        "columns": [
+                          "Product",
+                          "Units",
+                          "Revenue"
+                        ],
+                        "rows": [
+                          [
+                            "Trail runner",
+                            972,
+                            "$117,853"
+                          ],
+                          [
+                            "Wireless earbuds",
+                            633,
+                            "$90,310"
+                          ],
+                          [
+                            "Rain shell",
+                            534,
+                            "$82,690"
+                          ],
+                          [
+                            "Wool sweater",
+                            574,
+                            "$52,186"
+                          ],
+                          [
+                            "Portable speaker",
+                            447,
+                            "$50,979"
+                          ]
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "top"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 300,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "gap": 4
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 927,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Store performance",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Demo data, refreshed every 5 minutes"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Select",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$channel"
+                              },
+                              "options": [
+                                {
+                                  "value": "All",
+                                  "label": "All channels"
+                                },
+                                "Web",
+                                "Mobile",
+                                "Retail"
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": null,
+                        "radius": null,
+                        "border": null,
+                        "width": 150
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$days"
+                        },
+                        "options": [
+                          {
+                            "value": "30",
+                            "label": "30d"
+                          },
+                          {
+                            "value": "90",
+                            "label": "90d"
+                          },
+                          {
+                            "value": "365",
+                            "label": "1y"
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Revenue"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$629.2K",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Orders"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "3,721",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Average order"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$169.09",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Last 7 days"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$49.3K",
+                                    "size": "xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "+3.8% vs prior 7",
+                                    "color": "success"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k4"
+                    }
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "kpis"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Revenue",
+                                    "size": "sm"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "trend"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 300,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [],
+                  "columns": 2,
+                  "minChildWidth": 300,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "SegmentedCon",
+            "mix",
+            "regions",
+            "top"
+          ],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$channel": null,
+          "$days": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1854,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Store performance",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Demo data, refreshed every 5 minutes"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Select",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$channel"
+                              },
+                              "options": [
+                                {
+                                  "value": "All",
+                                  "label": "All channels"
+                                },
+                                "Web",
+                                "Mobile",
+                                "Retail"
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": null,
+                        "radius": null,
+                        "border": null,
+                        "width": 150
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$days"
+                        },
+                        "options": [
+                          {
+                            "value": "30",
+                            "label": "30d"
+                          },
+                          {
+                            "value": "90",
+                            "label": "90d"
+                          },
+                          {
+                            "value": "365",
+                            "label": "1y"
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Revenue"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$629.2K",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Orders"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "3,721",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Average order"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$169.09",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Last 7 days"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$49.3K",
+                                    "size": "xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "+3.8% vs prior 7",
+                                    "color": "success"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k4"
+                    }
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "kpis"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Revenue",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SegmentedControl",
+                                  "props": {
+                                    "value": {
+                                      "k": "StateRef",
+                                      "n": "$view"
+                                    },
+                                    "options": [
+                                      "Weekly",
+                                      "Cumulative"
+                                    ]
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "area",
+                              "data": [
+                                {
+                                  "key": "2026-08-10",
+                                  "value": 36832.14
+                                },
+                                {
+                                  "key": "2026-08-17",
+                                  "value": 43825.819999999985
+                                },
+                                {
+                                  "key": "2026-08-24",
+                                  "value": 42432.31000000001
+                                },
+                                {
+                                  "key": "2026-08-31",
+                                  "value": 47086.700000000004
+                                },
+                                {
+                                  "key": "2026-09-07",
+                                  "value": 44661.21
+                                },
+                                {
+                                  "key": "2026-09-14",
+                                  "value": 58100.88
+                                },
+                                {
+                                  "key": "2026-09-21",
+                                  "value": 54562.09000000001
+                                },
+                                {
+                                  "key": "2026-09-28",
+                                  "value": 51157.65999999999
+                                },
+                                {
+                                  "key": "2026-10-05",
+                                  "value": 51704.25000000001
+                                },
+                                {
+                                  "key": "2026-10-12",
+                                  "value": 54330.28000000005
+                                },
+                                {
+                                  "key": "2026-10-19",
+                                  "value": 47717.06999999997
+                                },
+                                {
+                                  "key": "2026-10-26",
+                                  "value": 47489.819999999956
+                                },
+                                {
+                                  "key": "2026-11-02",
+                                  "value": 49284.37999999999
+                                }
+                              ],
+                              "x": "key",
+                              "series": [
+                                "value"
+                              ],
+                              "format": "currency"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "trend"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Channel mix",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "donut",
+                              "data": [
+                                {
+                                  "key": "Mobile",
+                                  "value": 238782.6300000004
+                                },
+                                {
+                                  "key": "Web",
+                                  "value": 272955.4400000004
+                                },
+                                {
+                                  "key": "Retail",
+                                  "value": 117446.53999999994
+                                }
+                              ],
+                              "x": "key",
+                              "series": [
+                                "value"
+                              ],
+                              "format": "currency"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "mix"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 300,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [],
+                  "columns": 2,
+                  "minChildWidth": 300,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "regions",
+            "top"
+          ],
+          "orphaned": [],
+          "statementCount": 9,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$channel": null,
+          "$days": null,
+          "$view": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2782,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Store performance",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Demo data, refreshed every 5 minutes"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Select",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$channel"
+                              },
+                              "options": [
+                                {
+                                  "value": "All",
+                                  "label": "All channels"
+                                },
+                                "Web",
+                                "Mobile",
+                                "Retail"
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": null,
+                        "radius": null,
+                        "border": null,
+                        "width": 150
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$days"
+                        },
+                        "options": [
+                          {
+                            "value": "30",
+                            "label": "30d"
+                          },
+                          {
+                            "value": "90",
+                            "label": "90d"
+                          },
+                          {
+                            "value": "365",
+                            "label": "1y"
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Revenue"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$629.2K",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Orders"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "3,721",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Average order"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$169.09",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Last 7 days"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$49.3K",
+                                    "size": "xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "+3.8% vs prior 7",
+                                    "color": "success"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k4"
+                    }
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "kpis"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Revenue",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SegmentedControl",
+                                  "props": {
+                                    "value": {
+                                      "k": "StateRef",
+                                      "n": "$view"
+                                    },
+                                    "options": [
+                                      "Weekly",
+                                      "Cumulative"
+                                    ]
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "area",
+                              "data": [
+                                {
+                                  "key": "2026-08-10",
+                                  "value": 36832.14
+                                },
+                                {
+                                  "key": "2026-08-17",
+                                  "value": 43825.819999999985
+                                },
+                                {
+                                  "key": "2026-08-24",
+                                  "value": 42432.31000000001
+                                },
+                                {
+                                  "key": "2026-08-31",
+                                  "value": 47086.700000000004
+                                },
+                                {
+                                  "key": "2026-09-07",
+                                  "value": 44661.21
+                                },
+                                {
+                                  "key": "2026-09-14",
+                                  "value": 58100.88
+                                },
+                                {
+                                  "key": "2026-09-21",
+                                  "value": 54562.09000000001
+                                },
+                                {
+                                  "key": "2026-09-28",
+                                  "value": 51157.65999999999
+                                },
+                                {
+                                  "key": "2026-10-05",
+                                  "value": 51704.25000000001
+                                },
+                                {
+                                  "key": "2026-10-12",
+                                  "value": 54330.28000000005
+                                },
+                                {
+                                  "key": "2026-10-19",
+                                  "value": 47717.06999999997
+                                },
+                                {
+                                  "key": "2026-10-26",
+                                  "value": 47489.819999999956
+                                },
+                                {
+                                  "key": "2026-11-02",
+                                  "value": 49284.37999999999
+                                }
+                              ],
+                              "x": "key",
+                              "series": [
+                                "value"
+                              ],
+                              "format": "currency"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "trend"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Channel mix",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "donut",
+                              "data": [
+                                {
+                                  "key": "Mobile",
+                                  "value": 238782.6300000004
+                                },
+                                {
+                                  "key": "Web",
+                                  "value": 272955.4400000004
+                                },
+                                {
+                                  "key": "Retail",
+                                  "value": 117446.53999999994
+                                }
+                              ],
+                              "x": "key",
+                              "series": [
+                                "value"
+                              ],
+                              "format": "currency"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "mix"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 300,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Revenue by region and category",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "bar",
+                              "data": [
+                                {
+                                  "key": "East",
+                                  "Apparel": 31254.849999999995,
+                                  "Home": 23033.459999999995,
+                                  "Outdoors": 60658.61000000004,
+                                  "Electronics": 44980.29000000001
+                                },
+                                {
+                                  "key": "South",
+                                  "Apparel": 23519.46,
+                                  "Home": 16894.17,
+                                  "Outdoors": 38457.799999999996,
+                                  "Electronics": 29632.72
+                                },
+                                {
+                                  "key": "West",
+                                  "Apparel": 39307.04000000001,
+                                  "Home": 29398.539999999986,
+                                  "Outdoors": 86089.56999999993,
+                                  "Electronics": 57061.399999999994
+                                },
+                                {
+                                  "key": "North",
+                                  "Apparel": 30958.31999999999,
+                                  "Home": 20145.44,
+                                  "Outdoors": 55998.66000000002,
+                                  "Electronics": 41794.27999999998
+                                }
+                              ],
+                              "x": "key",
+                              "series": null,
+                              "format": "currency",
+                              "currency": null,
+                              "stacked": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "regions"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Top products",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Table",
+                            "props": {
+                              "columns": [
+                                "Product",
+                                "Units",
+                                "Revenue"
+                              ],
+                              "rows": [
+                                [
+                                  "Trail runner",
+                                  972,
+                                  "$117,853"
+                                ],
+                                [
+                                  "Wireless earbuds",
+                                  633,
+                                  "$90,310"
+                                ],
+                                [
+                                  "Rain shell",
+                                  534,
+                                  "$82,690"
+                                ],
+                                [
+                                  "Wool sweater",
+                                  574,
+                                  "$52,186"
+                                ],
+                                [
+                                  "Portable speaker",
+                                  447,
+                                  "$50,979"
+                                ]
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "top"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 300,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 14,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$channel": "All",
+          "$days": "90",
+          "$view": "Weekly"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

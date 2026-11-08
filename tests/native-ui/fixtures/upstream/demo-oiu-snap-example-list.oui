@@ -1,0 +1,5 @@
+root = Card([title, stepper, list, copy])
+title = Title("Pasta night for 4 guests", "lg")
+stepper = Row([IconButton("minus", null, "Fewer"), Text("4", "lg", null, "semibold"), IconButton("plus", null, "More")], 3)
+list = Col([Pressable([Row([Icon("circle", "sm"), Text("400 g spaghetti", "sm", null, null, false, false)], 2)], null, false, 2), Pressable([Row([Icon("circle", "sm"), Text("6 tomatoes", "sm", null, null, false, false)], 2)], null, false, 2), Pressable([Row([Icon("circle", "sm"), Text("80 g parmesan", "sm", null, null, false, false)], 2)], null, false, 2)], 1)
+copy = Button("Copy list", null, "outline", null, "sm", "copy")

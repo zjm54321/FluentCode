@@ -1,0 +1,3537 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "ba2375eff977f25eecb0ed45a033cac8aa00bf6ddb070734c2a97e1afa18ee5d",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Fold an origami fox",
+                    "size": "xl"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "A simple fox face from one square of paper: no cutting, about five minutes. Orange on one side and white on the other works best.",
+                    "size": "md",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Beginner",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "5 minutes",
+                          "color": "info"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "One square sheet",
+                          "color": "neutral"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2,
+                    "align": null,
+                    "justify": null,
+                    "wrap": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Step 1 of 6",
+                          "color": "info"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "16.666666666666664% folded"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "100,20 180,100 100,180 20,100",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 20,
+                                "y1": 100,
+                                "x2": 180,
+                                "y2": 100,
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 1.5,
+                                "opacity": 0.5
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 100,
+                                "y1": 34,
+                                "x2": 100,
+                                "y2": 156,
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2,
+                                "opacity": 0.8
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "93,150 107,150 100,164",
+                                "fill": "#B85E1C"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 3,
+                    "background": "surface",
+                    "radius": "lg",
+                    "border": null,
+                    "width": "100%",
+                    "height": null,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Start with a diamond",
+                    "size": "md"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Place the square white side up, with a corner pointing at you.",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "chart1",
+                          "radius": "full",
+                          "border": null,
+                          "width": "16.666666666666664%",
+                          "height": 4
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "border",
+                    "radius": "full",
+                    "border": null,
+                    "width": "100%",
+                    "height": 4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "Back",
+                          "action": null,
+                          "variant": "outline",
+                          "color": null,
+                          "size": null,
+                          "icon": "arrow-left",
+                          "disabled": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "Next fold",
+                          "action": null,
+                          "variant": "solid",
+                          "color": null,
+                          "size": null,
+                          "icon": "arrow-right"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": null,
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "viewer"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "All six steps",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "100,20 180,100 100,180 20,100",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 20,
+                                "y1": 100,
+                                "x2": 180,
+                                "y2": 100,
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 1.5,
+                                "opacity": 0.5
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 100,
+                                "y1": 34,
+                                "x2": 100,
+                                "y2": 156,
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2,
+                                "opacity": 0.8
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "93,150 107,150 100,164",
+                                "fill": "#B85E1C"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "1. Start with a diamond"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": true,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "20,100 180,100 100,180",
+                                "fill": "#F28C38",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 100,
+                                "y1": 100,
+                                "x2": 100,
+                                "y2": 180,
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 1.5,
+                                "opacity": 0.5
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "2. Fold it in half"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "100,100 60,140 100,180 140,140",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 100,
+                                "y1": 100,
+                                "x2": 100,
+                                "y2": 180,
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 1.5
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "3. Corners to the point"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "60,140 100,100 140,140 100,180",
+                                "fill": "#F28C38",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "62,138 98,124 70,58",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "138,138 102,124 130,58",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "4. Make the ears"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "60,140 80,118 120,118 140,140 100,180",
+                                "fill": "#F28C38",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "62,138 98,124 70,58",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "138,138 102,124 130,58",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "80,118 120,118 100,136",
+                                "fill": "#FBE6D2",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 1.5
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "5. Fold the forehead"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "60,140 80,118 120,118 140,140 100,180",
+                                "fill": "#F28C38",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "62,138 98,124 70,58",
+                                "fill": "#F28C38",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "138,138 102,124 130,58",
+                                "fill": "#F28C38",
+                                "stroke": "#B85E1C",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "70,124 88,122 74,82",
+                                "fill": "#FBE6D2"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "130,124 112,122 126,82",
+                                "fill": "#FBE6D2"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 86,
+                                "cy": 142,
+                                "r": 4.5,
+                                "fill": "#2B2B2B"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 114,
+                                "cy": 142,
+                                "r": 4.5,
+                                "fill": "#2B2B2B"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 100,
+                                "cy": 168,
+                                "r": 5,
+                                "fill": "#2B2B2B"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 200 200"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "6. Turn over and add a face"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 6,
+              "minChildWidth": 96,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "strip"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Icon",
+                  "props": {
+                    "name": "lightbulb",
+                    "size": "sm",
+                    "color": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Sharp creases make the difference: run a fingernail along each fold before the next one.",
+                    "size": "sm",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "tip"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Fold an origami fox",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "A simple fox face from one square of paper: no cutting, about five minutes. Orange on one side and white on the other works best.",
+                  "size": "md",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Beginner",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "5 minutes",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "One square sheet",
+                        "color": "neutral"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Step 1 of 6",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "16.666666666666664% folded"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "100,20 180,100 100,180 20,100",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 20,
+                              "y1": 100,
+                              "x2": 180,
+                              "y2": 100,
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 1.5,
+                              "opacity": 0.5
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 100,
+                              "y1": 34,
+                              "x2": 100,
+                              "y2": 156,
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2,
+                              "opacity": 0.8
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "93,150 107,150 100,164",
+                              "fill": "#B85E1C"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 3,
+                  "background": "surface",
+                  "radius": "lg",
+                  "border": null,
+                  "width": "100%",
+                  "height": null,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Start with a diamond",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Place the square white side up, with a corner pointing at you.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": "full",
+                        "border": null,
+                        "width": "16.666666666666664%",
+                        "height": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "border",
+                  "radius": "full",
+                  "border": null,
+                  "width": "100%",
+                  "height": 4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Back",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-left",
+                        "disabled": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Next fold",
+                        "action": null,
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-right"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "viewer"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "All six steps",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "100,20 180,100 100,180 20,100",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 20,
+                              "y1": 100,
+                              "x2": 180,
+                              "y2": 100,
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 1.5,
+                              "opacity": 0.5
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 100,
+                              "y1": 34,
+                              "x2": 100,
+                              "y2": 156,
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2,
+                              "opacity": 0.8
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "93,150 107,150 100,164",
+                              "fill": "#B85E1C"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "1. Start with a diamond"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": true,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "20,100 180,100 100,180",
+                              "fill": "#F28C38",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 100,
+                              "y1": 100,
+                              "x2": 100,
+                              "y2": 180,
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 1.5,
+                              "opacity": 0.5
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "2. Fold it in half"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "100,100 60,140 100,180 140,140",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 100,
+                              "y1": 100,
+                              "x2": 100,
+                              "y2": 180,
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 1.5
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "3. Corners to the point"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "60,140 100,100 140,140 100,180",
+                              "fill": "#F28C38",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "62,138 98,124 70,58",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "138,138 102,124 130,58",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "4. Make the ears"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "60,140 80,118 120,118 140,140 100,180",
+                              "fill": "#F28C38",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "62,138 98,124 70,58",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "138,138 102,124 130,58",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "80,118 120,118 100,136",
+                              "fill": "#FBE6D2",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 1.5
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "5. Fold the forehead"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "60,140 80,118 120,118 140,140 100,180",
+                              "fill": "#F28C38",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "62,138 98,124 70,58",
+                              "fill": "#F28C38",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "138,138 102,124 130,58",
+                              "fill": "#F28C38",
+                              "stroke": "#B85E1C",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "70,124 88,122 74,82",
+                              "fill": "#FBE6D2"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "130,124 112,122 126,82",
+                              "fill": "#FBE6D2"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 86,
+                              "cy": 142,
+                              "r": 4.5,
+                              "fill": "#2B2B2B"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 114,
+                              "cy": 142,
+                              "r": 4.5,
+                              "fill": "#2B2B2B"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 100,
+                              "cy": 168,
+                              "r": 5,
+                              "fill": "#2B2B2B"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 200 200"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "6. Turn over and add a face"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 6,
+            "minChildWidth": 96,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "strip"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Icon",
+                "props": {
+                  "name": "lightbulb",
+                  "size": "sm",
+                  "color": "warning"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Sharp creases make the difference: run a fingernail along each fold before the next one.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "tip"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1054,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Fold an origami fox",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "A simple fox face from one square of paper: no cutting, about five minutes. Orange on one side and white on the other works best.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Beginner",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "5 minutes",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "One square sheet",
+                              "color": "neutral"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Step 1 of 6",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "16.666666666666664% folded"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,20 180,100 100,180 20,100",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 20,
+                                    "y1": 100,
+                                    "x2": 180,
+                                    "y2": 100,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 34,
+                                    "x2": 100,
+                                    "y2": 156,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2,
+                                    "opacity": 0.8
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "93,150 107,150 100,164",
+                                    "fill": "#B85E1C"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 3,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": null,
+                        "width": "100%",
+                        "height": null,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Start with a diamond",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Place the square white side up, with a corner pointing at you.",
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart1",
+                              "radius": "full",
+                              "border": null,
+                              "width": "16.666666666666664%",
+                              "height": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "border",
+                        "radius": "full",
+                        "border": null,
+                        "width": ""
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "viewer"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "All six steps",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "strip",
+            "tip"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2109,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Fold an origami fox",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "A simple fox face from one square of paper: no cutting, about five minutes. Orange on one side and white on the other works best.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Beginner",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "5 minutes",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "One square sheet",
+                              "color": "neutral"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Step 1 of 6",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "16.666666666666664% folded"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,20 180,100 100,180 20,100",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 20,
+                                    "y1": 100,
+                                    "x2": 180,
+                                    "y2": 100,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 34,
+                                    "x2": 100,
+                                    "y2": 156,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2,
+                                    "opacity": 0.8
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "93,150 107,150 100,164",
+                                    "fill": "#B85E1C"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 3,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": null,
+                        "width": "100%",
+                        "height": null,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Start with a diamond",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Place the square white side up, with a corner pointing at you.",
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart1",
+                              "radius": "full",
+                              "border": null,
+                              "width": "16.666666666666664%",
+                              "height": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "border",
+                        "radius": "full",
+                        "border": null,
+                        "width": "100%",
+                        "height": 4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Back",
+                              "action": null,
+                              "variant": "outline",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-left",
+                              "disabled": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Next fold",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-right"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "viewer"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "All six steps",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,20 180,100 100,180 20,100",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 20,
+                                    "y1": 100,
+                                    "x2": 180,
+                                    "y2": 100,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 34,
+                                    "x2": 100,
+                                    "y2": 156,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2,
+                                    "opacity": 0.8
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "93,150 107,150 100,164",
+                                    "fill": "#B85E1C"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "1. Start with a diamond"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "20,100 180,100 100,180",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 100,
+                                    "x2": 100,
+                                    "y2": 180,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "2. Fold it in half"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,100 60,140 100,180 140,140",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 100,
+                                    "x2": 100,
+                                    "y2": 180,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "3. Corners to the point"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": []
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "strip"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "tip"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "strip"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 3164,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Fold an origami fox",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "A simple fox face from one square of paper: no cutting, about five minutes. Orange on one side and white on the other works best.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Beginner",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "5 minutes",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "One square sheet",
+                              "color": "neutral"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Step 1 of 6",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "16.666666666666664% folded"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,20 180,100 100,180 20,100",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 20,
+                                    "y1": 100,
+                                    "x2": 180,
+                                    "y2": 100,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 34,
+                                    "x2": 100,
+                                    "y2": 156,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2,
+                                    "opacity": 0.8
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "93,150 107,150 100,164",
+                                    "fill": "#B85E1C"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 3,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": null,
+                        "width": "100%",
+                        "height": null,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Start with a diamond",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Place the square white side up, with a corner pointing at you.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart1",
+                              "radius": "full",
+                              "border": null,
+                              "width": "16.666666666666664%",
+                              "height": 4
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "border",
+                        "radius": "full",
+                        "border": null,
+                        "width": "100%",
+                        "height": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Back",
+                              "action": null,
+                              "variant": "outline",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-left",
+                              "disabled": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Next fold",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-right"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "viewer"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "All six steps",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,20 180,100 100,180 20,100",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 20,
+                                    "y1": 100,
+                                    "x2": 180,
+                                    "y2": 100,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 34,
+                                    "x2": 100,
+                                    "y2": 156,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2,
+                                    "opacity": 0.8
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "93,150 107,150 100,164",
+                                    "fill": "#B85E1C"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "1. Start with a diamond"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "20,100 180,100 100,180",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 100,
+                                    "x2": 100,
+                                    "y2": 180,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5,
+                                    "opacity": 0.5
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "2. Fold it in half"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "100,100 60,140 100,180 140,140",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 100,
+                                    "y1": 100,
+                                    "x2": 100,
+                                    "y2": 180,
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "3. Corners to the point"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "60,140 100,100 140,140 100,180",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "62,138 98,124 70,58",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "138,138 102,124 130,58",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "4. Make the ears"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "60,140 80,118 120,118 140,140 100,180",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "62,138 98,124 70,58",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "138,138 102,124 130,58",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "80,118 120,118 100,136",
+                                    "fill": "#FBE6D2",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 1.5
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "5. Fold the forehead"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "60,140 80,118 120,118 140,140 100,180",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "62,138 98,124 70,58",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "138,138 102,124 130,58",
+                                    "fill": "#F28C38",
+                                    "stroke": "#B85E1C",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "70,124 88,122 74,82",
+                                    "fill": "#FBE6D2"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "130,124 112,122 126,82",
+                                    "fill": "#FBE6D2"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 86,
+                                    "cy": 142,
+                                    "r": 4.5,
+                                    "fill": "#2B2B2B"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 114,
+                                    "cy": 142,
+                                    "r": 4.5,
+                                    "fill": "#2B2B2B"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 100,
+                                    "cy": 168,
+                                    "r": 5,
+                                    "fill": "#2B2B2B"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 200 200"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "6. Turn over and add a face"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 6,
+                  "minChildWidth": 96,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "strip"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "lightbulb",
+                        "size": "sm",
+                        "color": "warning"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Sharp creases make the difference: run a fingernail along each fold before the next one.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "tip"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+root = Card([head, Caption("Total output"), total, bar, legend, null, sliders, Row([Button("Reset economy", null, "ghost", null, "sm", "rotate-ccw"), Spacer(), Badge("GDP = C + I + G + (X − M)", "purple")], 2, null, null, true), Text("GDP counts the value of final goods and services produced within a country. Imports are subtracted because they were produced elsewhere.", "sm", "muted"), quiz], null, 5, 4)
+head = Row([Col([Title("What makes up GDP?", "lg"), Text("An economy, in four parts.", "sm", "muted")], 1), Spacer(), Badge("Illustrative economy")], 3, "start")
+total = Title("$1 trillion", "2xl")
+bar = Box([Box([Text("$600B", "xs", "#ffffff", "medium")], null, null, null, "chart1", 0, null, null, "100%", 600, "center", "center"), Box([Text("$200B", "xs", "#ffffff", "medium")], null, null, null, "chart2", 0, null, null, "100%", 200, "center", "center"), Box([Text("$170B", "xs", "#ffffff", "medium")], null, null, null, "chart4", 0, null, null, "100%", 170, "center", "center"), Box([null], null, null, null, "chart3", 0, null, null, "100%", 30, "center", "center")], "row", 0.5, null, null, "md", null, "100%", 38)
+legend = Grid([Row([Box([], null, null, null, "chart1", "full", null, 10, 10), Text("Consumer spending", "sm"), Spacer(), Text("$600B", "sm", "muted", "medium", false, false, true)], 2), Row([Box([], null, null, null, "chart2", "full", null, 10, 10), Text("Business investment", "sm"), Spacer(), Text("$200B", "sm", "muted", "medium", false, false, true)], 2), Row([Box([], null, null, null, "chart4", "full", null, 10, 10), Text("Government spending", "sm"), Spacer(), Text("$170B", "sm", "muted", "medium", false, false, true)], 2), Row([Box([], null, null, null, "chart3", "full", null, 10, 10), Text("Net exports", "sm"), Spacer(), Text("$30B", "sm", "muted", "medium", false, false, true)], 2)], 2, 220, 2)
+sliders = Grid([Slider($c, 0, 1200, 10, "Consumer spending, $ billions"), Slider($i, 0, 600, 10, "Business investment, $ billions"), Slider($g, 0, 500, 10, "Government spending, $ billions"), Slider($x, -200, 300, 10, "Net exports, $ billions")], 2, 240, 6)
+quiz = Card([RadioGroup($answer, [{value: "a", label: "Real GDP increases by 10%"}, {value: "b", label: "Nominal GDP rises; real GDP is unchanged"}, {value: "c", label: "Both measures stay the same"}], "The same goods cost 10% more this year. What changes?"), null], "soft", 4, 2)
+$answer = ""
+$c = 600
+$g = 170
+$i = 200
+$x = 30

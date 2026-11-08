@@ -1,0 +1,2333 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "cca3114bd298e0edc5477d5e1a63834724887bff71fb905c0bb3ef12eba0f5ee",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "The central limit theorem",
+                    "size": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Different populations. The same bell-shaped pattern.",
+                    "size": "sm",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 1
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "SegmentedControl",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$dist"
+              },
+              "options": [
+                "Skewed",
+                "Uniform",
+                "Bimodal"
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Population",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "The values we draw from"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Chart",
+                        "props": {
+                          "type": "bar",
+                          "data": [
+                            {
+                              "key": "0",
+                              "value": 74,
+                              "start": 0,
+                              "end": 0.05
+                            },
+                            {
+                              "key": "0.05",
+                              "value": 19,
+                              "start": 0.05,
+                              "end": 0.1
+                            },
+                            {
+                              "key": "0.1",
+                              "value": 13,
+                              "start": 0.1,
+                              "end": 0.15000000000000002
+                            },
+                            {
+                              "key": "0.15",
+                              "value": 11,
+                              "start": 0.15000000000000002,
+                              "end": 0.2
+                            },
+                            {
+                              "key": "0.2",
+                              "value": 9,
+                              "start": 0.2,
+                              "end": 0.25
+                            },
+                            {
+                              "key": "0.25",
+                              "value": 8,
+                              "start": 0.25,
+                              "end": 0.3
+                            },
+                            {
+                              "key": "0.3",
+                              "value": 7,
+                              "start": 0.30000000000000004,
+                              "end": 0.35000000000000003
+                            },
+                            {
+                              "key": "0.35",
+                              "value": 6,
+                              "start": 0.35000000000000003,
+                              "end": 0.4
+                            },
+                            {
+                              "key": "0.4",
+                              "value": 6,
+                              "start": 0.4,
+                              "end": 0.45
+                            },
+                            {
+                              "key": "0.45",
+                              "value": 6,
+                              "start": 0.45,
+                              "end": 0.5
+                            },
+                            {
+                              "key": "0.5",
+                              "value": 5,
+                              "start": 0.5,
+                              "end": 0.55
+                            },
+                            {
+                              "key": "0.55",
+                              "value": 5,
+                              "start": 0.55,
+                              "end": 0.6000000000000001
+                            },
+                            {
+                              "key": "0.6",
+                              "value": 4,
+                              "start": 0.6000000000000001,
+                              "end": 0.6500000000000001
+                            },
+                            {
+                              "key": "0.65",
+                              "value": 5,
+                              "start": 0.65,
+                              "end": 0.7000000000000001
+                            },
+                            {
+                              "key": "0.7",
+                              "value": 4,
+                              "start": 0.7000000000000001,
+                              "end": 0.7500000000000001
+                            },
+                            {
+                              "key": "0.75",
+                              "value": 4,
+                              "start": 0.75,
+                              "end": 0.8
+                            },
+                            {
+                              "key": "0.8",
+                              "value": 3,
+                              "start": 0.8,
+                              "end": 0.8500000000000001
+                            },
+                            {
+                              "key": "0.85",
+                              "value": 4,
+                              "start": 0.8500000000000001,
+                              "end": 0.9000000000000001
+                            },
+                            {
+                              "key": "0.9",
+                              "value": 4,
+                              "start": 0.9,
+                              "end": 0.9500000000000001
+                            },
+                            {
+                              "key": "0.95",
+                              "value": 3,
+                              "start": 0.9500000000000001,
+                              "end": 1
+                            }
+                          ],
+                          "x": "key",
+                          "series": [
+                            "value"
+                          ],
+                          "format": null,
+                          "currency": null,
+                          "stacked": false,
+                          "height": 150
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "popCard"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Sample means",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "The average of each sample of 5"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Draw samples to see the pattern",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "direction": null,
+                          "gap": null,
+                          "padding": 6,
+                          "background": "surface",
+                          "radius": "lg",
+                          "border": true,
+                          "width": "100%",
+                          "height": 150,
+                          "flex": null,
+                          "align": "center",
+                          "justify": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "meanCard"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 260,
+              "gap": 4
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Slider",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$n"
+              },
+              "min": 1,
+              "max": 50,
+              "step": 1,
+              "label": "Values per sample"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Draw 100 samples",
+                    "action": null,
+                    "variant": "solid",
+                    "color": null,
+                    "size": null,
+                    "icon": "dices"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Draw 500",
+                    "action": null,
+                    "variant": "outline"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Reset",
+                    "action": null,
+                    "variant": "ghost",
+                    "color": null,
+                    "size": null,
+                    "icon": "rotate-ccw"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "buttons"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Samples"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "0",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "s1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Mean of the means"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "-",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Population: 0.25"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "s2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Spread of the means"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "-",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Theory, σ/√n: 0.127"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "s3"
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 140,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "stats"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "As the sample size grows, the averages of samples pile up in a bell shape around the population mean, even when the population itself is skewed.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$answer"
+                    },
+                    "options": [
+                      {
+                        "value": "a",
+                        "label": "The population becomes normal"
+                      },
+                      {
+                        "value": "b",
+                        "label": "The sample means form a narrower bell shape"
+                      },
+                      {
+                        "value": "c",
+                        "label": "Every mean becomes exactly the same"
+                      }
+                    ],
+                    "label": "What changes when the sample size grows?"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                null
+              ],
+              "variant": "soft",
+              "padding": 4,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "quiz"
+          }
+        ],
+        "variant": null,
+        "padding": 5,
+        "gap": 4
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 13,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$answer": "",
+      "$dist": "Skewed",
+      "$n": 5
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "The central limit theorem",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Different populations. The same bell-shaped pattern.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 1
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "SegmentedControl",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$dist",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "options": [
+              "Skewed",
+              "Uniform",
+              "Bimodal"
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Population",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "The values we draw from"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "bar",
+                        "data": [
+                          {
+                            "key": "0",
+                            "value": 74,
+                            "start": 0,
+                            "end": 0.05
+                          },
+                          {
+                            "key": "0.05",
+                            "value": 19,
+                            "start": 0.05,
+                            "end": 0.1
+                          },
+                          {
+                            "key": "0.1",
+                            "value": 13,
+                            "start": 0.1,
+                            "end": 0.15000000000000002
+                          },
+                          {
+                            "key": "0.15",
+                            "value": 11,
+                            "start": 0.15000000000000002,
+                            "end": 0.2
+                          },
+                          {
+                            "key": "0.2",
+                            "value": 9,
+                            "start": 0.2,
+                            "end": 0.25
+                          },
+                          {
+                            "key": "0.25",
+                            "value": 8,
+                            "start": 0.25,
+                            "end": 0.3
+                          },
+                          {
+                            "key": "0.3",
+                            "value": 7,
+                            "start": 0.30000000000000004,
+                            "end": 0.35000000000000003
+                          },
+                          {
+                            "key": "0.35",
+                            "value": 6,
+                            "start": 0.35000000000000003,
+                            "end": 0.4
+                          },
+                          {
+                            "key": "0.4",
+                            "value": 6,
+                            "start": 0.4,
+                            "end": 0.45
+                          },
+                          {
+                            "key": "0.45",
+                            "value": 6,
+                            "start": 0.45,
+                            "end": 0.5
+                          },
+                          {
+                            "key": "0.5",
+                            "value": 5,
+                            "start": 0.5,
+                            "end": 0.55
+                          },
+                          {
+                            "key": "0.55",
+                            "value": 5,
+                            "start": 0.55,
+                            "end": 0.6000000000000001
+                          },
+                          {
+                            "key": "0.6",
+                            "value": 4,
+                            "start": 0.6000000000000001,
+                            "end": 0.6500000000000001
+                          },
+                          {
+                            "key": "0.65",
+                            "value": 5,
+                            "start": 0.65,
+                            "end": 0.7000000000000001
+                          },
+                          {
+                            "key": "0.7",
+                            "value": 4,
+                            "start": 0.7000000000000001,
+                            "end": 0.7500000000000001
+                          },
+                          {
+                            "key": "0.75",
+                            "value": 4,
+                            "start": 0.75,
+                            "end": 0.8
+                          },
+                          {
+                            "key": "0.8",
+                            "value": 3,
+                            "start": 0.8,
+                            "end": 0.8500000000000001
+                          },
+                          {
+                            "key": "0.85",
+                            "value": 4,
+                            "start": 0.8500000000000001,
+                            "end": 0.9000000000000001
+                          },
+                          {
+                            "key": "0.9",
+                            "value": 4,
+                            "start": 0.9,
+                            "end": 0.9500000000000001
+                          },
+                          {
+                            "key": "0.95",
+                            "value": 3,
+                            "start": 0.9500000000000001,
+                            "end": 1
+                          }
+                        ],
+                        "x": "key",
+                        "series": [
+                          "value"
+                        ],
+                        "format": null,
+                        "currency": null,
+                        "stacked": false,
+                        "height": 150
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "popCard"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Sample means",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "The average of each sample of 5"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Draw samples to see the pattern",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 6,
+                        "background": "surface",
+                        "radius": "lg",
+                        "border": true,
+                        "width": "100%",
+                        "height": 150,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "meanCard"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 260,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Slider",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$n",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "min": 1,
+            "max": 50,
+            "step": 1,
+            "label": "Values per sample"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Draw 100 samples",
+                  "action": null,
+                  "variant": "solid",
+                  "color": null,
+                  "size": null,
+                  "icon": "dices"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Draw 500",
+                  "action": null,
+                  "variant": "outline"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Reset",
+                  "action": null,
+                  "variant": "ghost",
+                  "color": null,
+                  "size": null,
+                  "icon": "rotate-ccw"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "buttons"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Samples"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "0",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "s1"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Mean of the means"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "-",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Population: 0.25"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "s2"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Spread of the means"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "-",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Theory, σ/√n: 0.127"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "s3"
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 140,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "stats"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "As the sample size grows, the averages of samples pile up in a bell shape around the population mean, even when the population itself is skewed.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$answer",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "a",
+                      "label": "The population becomes normal"
+                    },
+                    {
+                      "value": "b",
+                      "label": "The sample means form a narrower bell shape"
+                    },
+                    {
+                      "value": "c",
+                      "label": "Every mean becomes exactly the same"
+                    }
+                  ],
+                  "label": "What changes when the sample size grows?"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              null
+            ],
+            "variant": "soft",
+            "padding": 4,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "quiz"
+        }
+      ],
+      "variant": null,
+      "padding": 5,
+      "gap": 4
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 961,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The central limit theorem",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Different populations. The same bell-shaped pattern.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$dist"
+                  },
+                  "options": [
+                    "Skewed",
+                    "Uniform",
+                    "Bimodal"
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Population",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The values we draw from"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "bar",
+                              "data": [
+                                {
+                                  "key": "0",
+                                  "value": 74,
+                                  "start": 0,
+                                  "end": 0.05
+                                },
+                                {
+                                  "key": "0.05",
+                                  "value": 19,
+                                  "start": 0.05,
+                                  "end": 0.1
+                                },
+                                {
+                                  "key": "0.1",
+                                  "value": 13,
+                                  "start": 0.1,
+                                  "end": 0.15000000000000002
+                                },
+                                {
+                                  "key": "0.15",
+                                  "value": 11,
+                                  "start": 0.15000000000000002,
+                                  "end": 0.2
+                                },
+                                {
+                                  "key": "0.2",
+                                  "value": 9,
+                                  "start": 0.2,
+                                  "end": 0.25
+                                },
+                                {
+                                  "key": "0.25",
+                                  "value": 8,
+                                  "start": 0.25,
+                                  "end": 0.3
+                                },
+                                {
+                                  "key": "0.3",
+                                  "value": 7,
+                                  "start": 0.30000000000000004,
+                                  "end": null,
+                                  "?": null
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "popCard"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 260,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "min": 1,
+                  "max": 50,
+                  "step": 1,
+                  "label": "Values per sample"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "As the sample size grows, the averages of samples pile up in a bell shape around the population mean, even when the population itself is skewed.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "meanCard",
+            "buttons",
+            "stats",
+            "quiz"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$dist": null,
+          "$n": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1922,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The central limit theorem",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Different populations. The same bell-shaped pattern.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$dist"
+                  },
+                  "options": [
+                    "Skewed",
+                    "Uniform",
+                    "Bimodal"
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Population",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The values we draw from"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "bar",
+                              "data": [
+                                {
+                                  "key": "0",
+                                  "value": 74,
+                                  "start": 0,
+                                  "end": 0.05
+                                },
+                                {
+                                  "key": "0.05",
+                                  "value": 19,
+                                  "start": 0.05,
+                                  "end": 0.1
+                                },
+                                {
+                                  "key": "0.1",
+                                  "value": 13,
+                                  "start": 0.1,
+                                  "end": 0.15000000000000002
+                                },
+                                {
+                                  "key": "0.15",
+                                  "value": 11,
+                                  "start": 0.15000000000000002,
+                                  "end": 0.2
+                                },
+                                {
+                                  "key": "0.2",
+                                  "value": 9,
+                                  "start": 0.2,
+                                  "end": 0.25
+                                },
+                                {
+                                  "key": "0.25",
+                                  "value": 8,
+                                  "start": 0.25,
+                                  "end": 0.3
+                                },
+                                {
+                                  "key": "0.3",
+                                  "value": 7,
+                                  "start": 0.30000000000000004,
+                                  "end": 0.35000000000000003
+                                },
+                                {
+                                  "key": "0.35",
+                                  "value": 6,
+                                  "start": 0.35000000000000003,
+                                  "end": 0.4
+                                },
+                                {
+                                  "key": "0.4",
+                                  "value": 6,
+                                  "start": 0.4,
+                                  "end": 0.45
+                                },
+                                {
+                                  "key": "0.45",
+                                  "value": 6,
+                                  "start": 0.45,
+                                  "end": 0.5
+                                },
+                                {
+                                  "key": "0.5",
+                                  "value": 5,
+                                  "start": 0.5,
+                                  "end": 0.55
+                                },
+                                {
+                                  "key": "0.55",
+                                  "value": 5,
+                                  "start": 0.55,
+                                  "end": 0.6000000000000001
+                                },
+                                {
+                                  "key": "0.6",
+                                  "value": 4,
+                                  "start": 0.6000000000000001,
+                                  "end": 0.6500000000000001
+                                },
+                                {
+                                  "key": "0.65",
+                                  "value": 5,
+                                  "start": 0.65,
+                                  "end": 0.7000000000000001
+                                },
+                                {
+                                  "key": "0.7",
+                                  "value": 4,
+                                  "start": 0.7000000000000001,
+                                  "end": 0.7500000000000001
+                                },
+                                {
+                                  "key": "0.75",
+                                  "value": 4,
+                                  "start": 0.75,
+                                  "end": 0.8
+                                },
+                                {
+                                  "key": "0.8",
+                                  "value": 3,
+                                  "start": 0.8,
+                                  "end": 0.8500000000000001
+                                },
+                                {
+                                  "key": "0.85",
+                                  "value": 4,
+                                  "start": 0.8500000000000001,
+                                  "end": 0.9000000000000001
+                                },
+                                {
+                                  "key": "0.9",
+                                  "value": 4,
+                                  "start": 0.9,
+                                  "end": 0.9500000000000001
+                                },
+                                {
+                                  "key": "0.95",
+                                  "value": 3,
+                                  "start": 0.9500000000000001,
+                                  "end": 1
+                                }
+                              ],
+                              "x": "key",
+                              "series": [
+                                "value"
+                              ],
+                              "format": null,
+                              "currency": null,
+                              "stacked": false,
+                              "height": 150
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "popCard"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Sample means",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The average of each sample of 5"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "D"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "meanCard"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 260,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "min": 1,
+                  "max": 50,
+                  "step": 1,
+                  "label": "Values per sample"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "As the sample size grows, the averages of samples pile up in a bell shape around the population mean, even when the population itself is skewed.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "buttons",
+            "stats",
+            "quiz"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$dist": null,
+          "$n": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2883,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The central limit theorem",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Different populations. The same bell-shaped pattern.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$dist"
+                  },
+                  "options": [
+                    "Skewed",
+                    "Uniform",
+                    "Bimodal"
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Population",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The values we draw from"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "bar",
+                              "data": [
+                                {
+                                  "key": "0",
+                                  "value": 74,
+                                  "start": 0,
+                                  "end": 0.05
+                                },
+                                {
+                                  "key": "0.05",
+                                  "value": 19,
+                                  "start": 0.05,
+                                  "end": 0.1
+                                },
+                                {
+                                  "key": "0.1",
+                                  "value": 13,
+                                  "start": 0.1,
+                                  "end": 0.15000000000000002
+                                },
+                                {
+                                  "key": "0.15",
+                                  "value": 11,
+                                  "start": 0.15000000000000002,
+                                  "end": 0.2
+                                },
+                                {
+                                  "key": "0.2",
+                                  "value": 9,
+                                  "start": 0.2,
+                                  "end": 0.25
+                                },
+                                {
+                                  "key": "0.25",
+                                  "value": 8,
+                                  "start": 0.25,
+                                  "end": 0.3
+                                },
+                                {
+                                  "key": "0.3",
+                                  "value": 7,
+                                  "start": 0.30000000000000004,
+                                  "end": 0.35000000000000003
+                                },
+                                {
+                                  "key": "0.35",
+                                  "value": 6,
+                                  "start": 0.35000000000000003,
+                                  "end": 0.4
+                                },
+                                {
+                                  "key": "0.4",
+                                  "value": 6,
+                                  "start": 0.4,
+                                  "end": 0.45
+                                },
+                                {
+                                  "key": "0.45",
+                                  "value": 6,
+                                  "start": 0.45,
+                                  "end": 0.5
+                                },
+                                {
+                                  "key": "0.5",
+                                  "value": 5,
+                                  "start": 0.5,
+                                  "end": 0.55
+                                },
+                                {
+                                  "key": "0.55",
+                                  "value": 5,
+                                  "start": 0.55,
+                                  "end": 0.6000000000000001
+                                },
+                                {
+                                  "key": "0.6",
+                                  "value": 4,
+                                  "start": 0.6000000000000001,
+                                  "end": 0.6500000000000001
+                                },
+                                {
+                                  "key": "0.65",
+                                  "value": 5,
+                                  "start": 0.65,
+                                  "end": 0.7000000000000001
+                                },
+                                {
+                                  "key": "0.7",
+                                  "value": 4,
+                                  "start": 0.7000000000000001,
+                                  "end": 0.7500000000000001
+                                },
+                                {
+                                  "key": "0.75",
+                                  "value": 4,
+                                  "start": 0.75,
+                                  "end": 0.8
+                                },
+                                {
+                                  "key": "0.8",
+                                  "value": 3,
+                                  "start": 0.8,
+                                  "end": 0.8500000000000001
+                                },
+                                {
+                                  "key": "0.85",
+                                  "value": 4,
+                                  "start": 0.8500000000000001,
+                                  "end": 0.9000000000000001
+                                },
+                                {
+                                  "key": "0.9",
+                                  "value": 4,
+                                  "start": 0.9,
+                                  "end": 0.9500000000000001
+                                },
+                                {
+                                  "key": "0.95",
+                                  "value": 3,
+                                  "start": 0.9500000000000001,
+                                  "end": 1
+                                }
+                              ],
+                              "x": "key",
+                              "series": [
+                                "value"
+                              ],
+                              "format": null,
+                              "currency": null,
+                              "stacked": false,
+                              "height": 150
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "popCard"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Sample means",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The average of each sample of 5"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Draw samples to see the pattern",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 6,
+                              "background": "surface",
+                              "radius": "lg",
+                              "border": true,
+                              "width": "100%",
+                              "height": 150,
+                              "flex": null,
+                              "align": "center",
+                              "justify": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "meanCard"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 260,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "min": 1,
+                  "max": 50,
+                  "step": 1,
+                  "label": "Values per sample"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Draw 100 samples",
+                        "action": null,
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "dices"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Draw 500",
+                        "action": null,
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": null,
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "buttons"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Samples"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "0",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Mean of the means"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "-",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Population: 0.25"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Spread of the means"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "-",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Theory, σ/√n: 0.127"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s3"
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 140,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "stats"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "As the sample size grows, the averages of samples pile up in a bell shape around the population mean, even when the population itself is skewed.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$answer"
+                        },
+                        "options": [
+                          {
+                            "value": "a",
+                            "label": "The population becomes normal"
+                          },
+                          {
+                            "value": "b",
+                            "label": "The sample means form a narrower bell shape"
+                          },
+                          {
+                            "value": "c",
+                            "label": "Every mean becomes exactly the same"
+                          }
+                        ],
+                        "label": "What changes when the sample size grows?"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    null
+                  ],
+                  "variant": "soft",
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "quiz"
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 13,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$answer": "",
+          "$dist": "Skewed",
+          "$n": 5
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}
