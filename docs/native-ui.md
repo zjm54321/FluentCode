@@ -1,8 +1,8 @@
 # Native OpenUI Lang v1
 
-The `native_ui` tool in the **opencode-qol native-ui lane** accepts `{source, title?}`. Server validation uses official MIT `@openuidev/lang-core` **1.1.0**, with a Zod catalog preserving OpenIntelligentUI's names and positional prop order. Success is a short acknowledgement; the program remains in tool `state.input` for history replay.
+The opencode-qol `native_ui` tool accepts `{source, title?}`. Server validation uses official MIT `@openuidev/lang-core` **1.1.0**, with a Zod catalog preserving OpenIntelligentUI's names and positional prop order. Success is a short acknowledgement; the program remains in tool `state.input` for history replay.
 
-The always-on description is a compact grammar/positional component index with two examples. Primary agents can call `native_ui_reference({components:["Chart","Table"]})` for complete prop schemas, native behavior and examples; validation diagnostics direct them there. Both tools are denied to non-primary agents. The generated catalog is `fluentcode-native-ui@0.2.0`: the 54 upstream names except HtmlView plus native Video, Audio and ImageGallery (57 total). Measured with o200k_base: native_ui **1,061 tokens**, reference tool description **45**, combined always-on **1,106** (below 3,000); full expanded reference **5,941**.
+The always-on `native_ui` description is short (**258** o200k_base tokens) and tells the model to load the bundled **native-ui** skill before its first call. That skill (opencode-qol `kernel/defaults/skills/native-ui/`) carries the language, behavior/safety/design guidance, worked examples, error recovery and the full component catalog generated from the same schema the validator uses; validation diagnostics direct the model there. The former `native_ui_reference` tool is removed. The tool and skill are denied to non-primary agents. The generated catalog is `fluentcode-native-ui@0.2.0`: the 54 upstream names except HtmlView plus native Video, Audio and ImageGallery (57 total).
 
 ## Contract
 
