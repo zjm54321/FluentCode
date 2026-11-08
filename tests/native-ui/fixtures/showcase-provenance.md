@@ -43,14 +43,24 @@ The 22 programs above, all except `html` and `game`, are ported as **initial-sta
 
 All 22 pass the official oracle (lang-core 1.1.0 parser plus the QoL `native_ui` validator) with no diagnostics. The tool that makes them is kept with the parity evidence: `snapshot.ts` under `artifacts/native-ui-parity-*/tools/`, which is not committed.
 
-| Folder | Fixtures | Status |
-| --- | --- | --- |
-| `upstream/` | `bill`, `clt`, `dash-sales`, `dash-support`, `drones`, `example-dashboard`, `example-list`, `example-steps`, `gdp-explained`, `monty`, `origami`, `savings` | Parse, runtime and streaming match the oracle |
-| `upstream-blocked/` | `bicycle`, `bike-repair`, `garden`, `heatmap`, `recipe`, `roadtrip`, `room`, `route`, `wardrobe`, `web-analytics` | Parse and streaming match the oracle, but FluentCode's runtime **refuses** them (P0, see below) |
+All 22 snapshots are in `upstream/`. Parse, runtime and streaming all match the oracle.
 
-**P0, still open: runtime node limit.** `NativeUiSafety.Check` (`src/FluentCode/Services/NativeUi/NativeUiRuntime.cs`) has no case for an ordinary string. Strings therefore fall through to the `IEnumerable` case, and every character is counted as a node. So a card with roughly 3,000 characters of text goes over the 4,096 node limit and shows "Native UI value exceeds node/depth limits.", even though the official validator accepts it. Measured with the runtime's own count: room 4,105, recipe 4,435, bicycle 4,725, bike-repair 4,754, route 5,410, wardrobe 6,010, heatmap 6,251, roadtrip 6,456, garden 7,235 and web-analytics 11,115. The largest accepted port is drones at 3,846.
+**P0, fixed: runtime node limit.** The ten heaviest snapshots used to be refused by FluentCode's runtime: `bicycle`, `bike-repair`, `garden`, `heatmap`, `recipe`, `roadtrip`, `room`, `route`, `wardrobe` and `web-analytics`. The cause was that `NativeUiSafety.Check` (`src/FluentCode/Services/NativeUi/NativeUiRuntime.cs`) let strings fall through to its `IEnumerable` case, so every character counted as a node. A card with about 3,000 characters of text went over 4,096 nodes and showed "Native UI value exceeds node/depth limits.", even though the official validator accepted it. The old counts were: room 4,105; recipe 4,435; bicycle 4,725; bike-repair 4,754; route 5,410; wardrobe 6,010; heatmap 6,251; roadtrip 6,456; garden 7,235; web-analytics 11,115.
 
-`Program.cs` requires each blocked fixture to keep failing. When the runtime fix lands, the test will name the fixture to move back to `upstream/`.
+The check now counts the same way as the validator (`validate.ts` in opencode-qol `native-ui`):
+
+- A string, number, element, array or object is one node.
+- Element props and object entries are children.
+- Keys and string characters are not nodes. Strings are still bounded by the character limit and the URL check.
+
+`Program.cs` checks four things:
+
+- a card with 3,000+ characters of text renders;
+- a value with more than 4,096 real nodes is still refused;
+- depth over 64 is still refused;
+- a 70 × 70 generated grid of Text elements still trips the limit at runtime.
+
+`route` is in the corpus only as a snapshot. The verbatim upstream program is still rejected by the validator's own expanded-program limit (4,096 AST nodes after inlining references). That limit is a safety guard, and FluentCode's counting does not affect it, so the verbatim program stays out.
 
 ## Parity check
 

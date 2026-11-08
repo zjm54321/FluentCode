@@ -1,2 +1,0 @@
-# Oracle offsets and source hashes depend on the exact LF bytes, like the parent fixtures.
-*.oui text eol=lf

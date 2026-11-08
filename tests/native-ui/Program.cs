@@ -17,7 +17,6 @@ using FluentCode.Services.NativeUi;
 internal static class Program
 {
     private static int _checks;
-    private static int _blocked;
     private sealed class TileHandler(Func<HttpRequestMessage, HttpResponseMessage> reply) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(reply(request));
@@ -46,11 +45,7 @@ internal static class Program
         {
             var repo = args[0]; var fixtures = Path.Combine(repo, "tests/native-ui/fixtures");
             var catalog = NativeUiCatalog.Default; var parser = new NativeUiParser(catalog);
-            // upstream-blocked: upstream ports the official oracle accepts but FluentCode's runtime still refuses
-            // (NativeUiSafety.Check counts every string character as a node, so text-heavy cards pass 4096).
-            // They must keep failing until that runtime fix lands; then move them back to upstream/.
-            var blocked = Path.Combine(fixtures, "upstream-blocked");
-            var sourceFiles = Directory.GetFiles(fixtures, "*.oui").Concat(Directory.GetFiles(Path.Combine(fixtures, "upstream"), "*.oui")).Concat(Directory.GetFiles(blocked, "*.oui")).Order().ToArray();
+            var sourceFiles = Directory.GetFiles(fixtures, "*.oui").Concat(Directory.GetFiles(Path.Combine(fixtures, "upstream"), "*.oui")).Order().ToArray();
             foreach (var file in sourceFiles)
             {
                 var source = File.ReadAllText(file); var expected = JsonNode.Parse(File.ReadAllText(Path.ChangeExtension(file, ".expected.json")))!;
@@ -59,13 +54,7 @@ internal static class Program
                 var result = parser.Parse(source);
                 Same(result.ToJson(), expected["parse"], Path.GetFileName(file) + " parse");
                 using var runtime = new NativeUiRuntime(result, catalog);
-                if (Path.GetFileName(Path.GetDirectoryName(file)) == "upstream-blocked")
-                {
-                    var refused = false; try { runtime.EvaluateRoot(); } catch (NativeUiLimitException) { refused = true; }
-                    Require(refused, Path.GetFileName(file) + " now evaluates: move it to fixtures/upstream and drop it from the blocked parity list");
-                    _blocked++;
-                }
-                else if (!result.Errors.Any(error => error.Code == "query-cycle"))
+                if (!result.Errors.Any(error => error.Code == "query-cycle"))
                 {
                     NativeUiElement? evaluated;
                     try { evaluated = runtime.EvaluateRoot(); }
@@ -79,7 +68,7 @@ internal static class Program
                     Same(stream.Set(source[..length], length == source.Length).ToJson(), snapshot["result"], Path.GetFileName(file) + " streaming " + length);
                 }
             }
-            Console.WriteLine($"PASS {sourceFiles.Length} official parse/runtime/streaming fixtures ({_blocked} upstream ports still refused by the runtime node limit, tracked in upstream-blocked)");
+            Console.WriteLine($"PASS {sourceFiles.Length} official parse/runtime/streaming fixtures");
 
             NativeUiRuntime Demo(string name) => new(parser.Parse(File.ReadAllText(Path.Combine(fixtures, "demo-" + name + ".oui"))), catalog);
             using var calculator = Demo("calculator");
@@ -275,6 +264,27 @@ internal static class Program
             Require(themeSource.Contains("\"ink\" => \"TextFillColorPrimaryBrush\", \"canvas\" => \"SolidBackgroundFillColorBaseBrush\"")
                 && themeSource.Contains("=> Palette ? \"NativeUiChart\" + color[5] + \"Brush\" : \"AccentFillColorDefaultBrush\"")
                 && themeSource.Contains("text.Foreground = new SolidColorBrush(raw)"), "Chart/ink/canvas backgrounds are solid fills and raw text colours apply");
+            // Node limit counts real nodes like the official validator: string characters and keys are not nodes.
+            var prose = string.Concat(Enumerable.Repeat("Strings are one node each, however long the paragraph is. ", 60));
+            var longCard = parser.Parse("root = Card([Title(\"Long answer\"), " + string.Join(", ", Enumerable.Range(0, 8).Select(i => "Text(\"" + prose + i + "\")")) + "])");
+            using (var longRuntime = new NativeUiRuntime(longCard, catalog))
+            {
+                var longRoot = longRuntime.EvaluateRoot();
+                Require(longCard.Errors.Count == 0 && longRoot is not null && Elements(longRoot).Count(e => e.TypeName == "Text") == 8 && Elements(longRoot).Where(e => e.TypeName == "Text").Sum(e => NativeUiValues.Text(e.Props.GetValueOrDefault("text")).Length) >= 3000,
+                    "A card with 3,000+ characters of text renders under the 4,096 node limit");
+            }
+            Require(Directory.GetFiles(Path.Combine(fixtures, "upstream"), "demo-oiu-snap-web-analytics.oui").Length == 1, "Text-heavy upstream ports (web-analytics, ~9 KB) are in the evaluated corpus");
+            NativeUiSafety.Check(Enumerable.Repeat((object?)new string('x', 4000), 1000).ToList(), catalog.Limits);
+            var wideRefused = false; try { NativeUiSafety.Check(Enumerable.Repeat((object?)"x", catalog.Limits.Nodes).ToList(), catalog.Limits); } catch (NativeUiLimitException) { wideRefused = true; }
+            Require(wideRefused, "A value with more than 4,096 real nodes is still refused");
+            object? deep = "leaf"; for (var i = 0; i < catalog.Limits.Depth + 1; i++) deep = new List<object?> { deep };
+            var deepRefused = false; try { NativeUiSafety.Check(deep, catalog.Limits); } catch (NativeUiLimitException) { deepRefused = true; }
+            Require(deepRefused, "Depth over 64 is still refused");
+            var hugeKey = false; try { NativeUiSafety.Check(new Dictionary<string, object?> { [new string('k', catalog.Limits.StringLength + 1)] = 1d }, catalog.Limits); } catch (NativeUiLimitException) { hugeKey = true; }
+            Require(hugeKey, "Object keys stay bounded by the string limit");
+            var grid = parser.Parse("xs = [" + string.Join(", ", Enumerable.Range(0, 70)) + "]\nroot = Col(@Each(xs, \"x\", Row(@Each(xs, \"y\", Text(\"cell\")))))");
+            var gridRefused = false; try { using var gridRuntime = new NativeUiRuntime(grid, catalog); gridRuntime.EvaluateRoot(); } catch (NativeUiLimitException) { gridRefused = true; }
+            Require(gridRefused, "A genuinely oversized card (70 x 70 generated Text elements) still trips the 4,096 node limit at runtime");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }
