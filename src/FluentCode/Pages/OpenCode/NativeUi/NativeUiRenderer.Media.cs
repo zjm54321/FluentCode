@@ -43,7 +43,8 @@ internal sealed partial class NativeUiRenderer
         }
         player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件；视频可切换全窗口。"; });
         player.MediaFailed += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) { status.Text = "媒体无法播放；请检查格式、编码或地址后重试。"; load.IsEnabled = true; } });
-        element.Unloaded += (_, _) => player.Pause();
+        void OnUnloaded(object sender, RoutedEventArgs args) { if (!visual.Disposed) player.Pause(); }
+        element.Unloaded += OnUnloaded;
         load.Click += async (_, _) =>
         {
             if (visual.Disposed || !NativeUiMediaPolicy.Https(gate.Source) || !gate.Request()) return;
@@ -69,7 +70,7 @@ internal sealed partial class NativeUiRenderer
             AutomationProperties.SetName(element, title.Text); AutomationProperties.SetAutomationId(element, "NativeUi" + type);
             ToolTipService.SetToolTip(load, source);
         };
-        visual.Cleanup = () => { Stop(); player.Dispose(); }; return visual;
+        visual.Cleanup = () => { element.Unloaded -= OnUnloaded; Stop(); element.SetMediaPlayer(null); player.Dispose(); }; return visual;
     }
     private Visual CreateGallery()
     {
