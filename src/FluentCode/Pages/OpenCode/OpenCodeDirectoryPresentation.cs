@@ -7,7 +7,7 @@ namespace FluentCode.Pages.OpenCode;
 internal static class OpenCodeDirectoryPresentation
 {
     internal const string Placeholder = "选择当前来源的项目目录";
-    internal const string PlaceholderToolTip = "选择此新会话使用的项目目录";
+    internal const string PlaceholderToolTip = "选择项目目录";
 
     /// <summary>
     /// 把目录拆成（文件夹名, 父路径）。根目录（"/"、"C:\"）与无分隔符的值整体作为名称、父路径为空。

@@ -178,7 +178,7 @@ internal static partial class OpenCodeToolDetailContent
         void PathAction(string label, string path, bool directory, Action? action, bool reveal = false, int? line = null)
         {
             var reason = options.PathActionUnavailableReason?.Invoke(path, directory)
-                ?? (action is null ? "当前连接未提供已授权的路径打开方式" : null);
+                ?? (action is null ? "连接不支持打开路径" : null);
             var button = new Button { Content = label, IsEnabled = reason is null };
             if (reason is not null) ToolTipService.SetToolTip(button, reason);
             else button.Click += async (_, _) =>

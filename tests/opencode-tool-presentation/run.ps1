@@ -35,6 +35,24 @@ $extracted = Join-Path $output 'ViewMethods.cs'
     "internal sealed partial class HomeLayoutProbe {`n$($homeGeometry.Value)`n$homeLayout`n$homeSettingsLayout`n}"
 ) -join "`n") | Set-Content -Encoding UTF8 $extracted
 
+# Execute the actual tooltip-only projections; keep UI labels, error text and announcements separate.
+$tooltipProjection = foreach ($item in @(
+    @{ File = 'Motion/ActionFeedback.cs'; Name = 'FailureTooltip'; Class = 'FeedbackTooltipProbe'; Access = 'private' },
+    @{ File = 'Pages/OpenCode/OpenCodeSessionInsightsView.cs'; Name = 'StateTooltip'; Class = 'CapabilityTooltipProbe'; Access = 'private' },
+    @{ File = 'Pages/OpenCode/OpenCodeBrowserPanelState.cs'; Name = 'CompactTooltipStatus'; Class = 'BrowserTooltipProbe'; Access = 'public' }
+)) {
+    $text = [IO.File]::ReadAllText((Join-Path "$repo/src/FluentCode" $item.File))
+    $match = [regex]::Matches($text, ('(?ms)^    ' + $item.Access + ' static string ' + $item.Name + '\([^\r\n]*\) =>.*?^    \};'))
+    if ($match.Count -ne 1) { throw "Missing/ambiguous production tooltip projection: $($item.Name)" }
+    "internal static partial class $($item.Class) {`n$($match[0].Value)`n}"
+}
+$browserContract = [IO.File]::ReadAllText("$repo/src/FluentCode/Services/OpenCode/Browser/OpenCodeBrowserContracts.cs")
+$availability = [regex]::Matches($browserContract, '(?ms)^public enum OpenCodeBrowserAvailability\r?\n\{.*?^\}')
+if ($availability.Count -ne 1) { throw 'Missing/ambiguous production browser availability enum.' }
+$tooltipGenerated = Join-Path $output 'TooltipProjections.cs'
+(@('using FluentCode.Services.OpenCode;', 'using FluentCode.Services.OpenCode.Browser;',
+    "namespace FluentCode.Services.OpenCode.Browser {`n$($availability[0].Value)`n}") + $tooltipProjection) -join "`n" | Set-Content -Encoding UTF8 $tooltipGenerated
+
 $production = @()
 foreach ($name in @('OpenCodeConstants.cs', 'OpenCodeJson.cs', 'OpenCodeExceptions.cs', 'OpenCodeDtos.Common.cs',
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs',
@@ -51,7 +69,7 @@ foreach ($name in @('OpenCodeToolRowPresentation.cs', 'OpenCodeDetailPopupLayout
 $assembly = Join-Path $output 'OpenCodeToolPresentationTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$arguments += ($production + @($extracted, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
+$arguments += ($production + @($extracted, $tooltipGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
 $response = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $response
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$response" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')

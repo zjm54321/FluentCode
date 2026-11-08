@@ -118,25 +118,12 @@ internal static class OpenCodeLinkChipView
         catch (Exception) { /* Undecodable icon: keep the globe. */ _ = fallback; }
     }
 
-    /// <summary>Hover card (≈500 ms): full address (secrets masked), site, kind and warnings.</summary>
+    /// <summary>Hover card (≈500 ms): full address with secrets masked.</summary>
     internal static FrameworkElement CreateCard(OpenCodeLinkChip chip)
     {
         var panel = new StackPanel { Spacing = 4, MaxWidth = 420 };
-        var kind = chip.Kind switch
-        {
-            OpenCodeLinkKind.Issue => "Issue", OpenCodeLinkKind.PullRequest => "Pull request", OpenCodeLinkKind.MergeRequest => "Merge request",
-            OpenCodeLinkKind.Commit => "提交", OpenCodeLinkKind.File => "文件", OpenCodeLinkKind.Release => "版本",
-            OpenCodeLinkKind.Repository => "仓库", OpenCodeLinkKind.Owner => "用户 / 组织", OpenCodeLinkKind.Package => "软件包",
-            OpenCodeLinkKind.Ticket => "工单", _ => "网页",
-        };
-        var title = new TextBlock { Text = OpenCodeLinkChipParser.SiteName(chip.Site) + " · " + kind, FontWeight = FontWeights.SemiBold };
-        panel.Children.Add(title);
-        if (chip.Owner is { } owner && chip.Repository is { } repo)
-            panel.Children.Add(new TextBlock { Text = owner + "/" + repo + (chip.Number is { } n && chip.Kind is not OpenCodeLinkKind.Commit ? (chip.Kind == OpenCodeLinkKind.MergeRequest ? " !" : " #") + n : string.Empty), TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = chip.DisplayUrl, TextWrapping = TextWrapping.WrapWholeWords, FontSize = 12, Opacity = 0.8, IsTextSelectionEnabled = false });
-        if (chip.IsConfusable) panel.Children.Add(new TextBlock { Text = "⚠ 域名含易混淆字符，显示为 " + chip.Host, TextWrapping = TextWrapping.Wrap, FontSize = 12 });
-        if (chip.HasCredentials) panel.Children.Add(new TextBlock { Text = "链接包含用户名或令牌（已隐藏）", TextWrapping = TextWrapping.Wrap, FontSize = 12 });
-        if (chip.IsPrivate) panel.Children.Add(new TextBlock { Text = "本机或内网地址，不联网补全", FontSize = 12, Opacity = 0.8 });
+        if (chip.IsConfusable) panel.Children.Add(new TextBlock { Text = chip.Host, TextWrapping = TextWrapping.Wrap, FontSize = 12 });
         return panel;
     }
 
@@ -237,7 +224,7 @@ internal static class OpenCodeLinkChipView
         if (!HighContrast) { chip.Background = new SolidColorBrush(fill); chip.BorderBrush = new SolidColorBrush(stroke); }
         else chip.BorderBrush = ThemeBrush("SystemColorWindowTextColorBrush", Windows.UI.Color.FromArgb(255, 255, 255, 255));
         AutomationProperties.SetName(chip, (pdf ? "PDF " : "图片 ") + number + "，已附加的" + (pdf ? "文件" : "图片"));
-        ToolTipService.SetToolTip(chip, (pdf ? "[PDF " : "[Image ") + number + "]");
+        ToolTipService.SetToolTip(chip, (pdf ? "PDF " : "图片 ") + number);
         AlignInline(chip, label, icon);
         return chip;
     }

@@ -64,7 +64,7 @@ public sealed partial class OpenCodePage
         };
         AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab.New." + id.ToString("N"));
         AutomationProperties.SetName(item, "新会话");
-        ToolTipService.SetToolTip(item, "新会话：输入第一条消息创建，或打开已有会话");
+        ToolTipService.SetToolTip(item, "新会话");
         _blankTabs.Add(id, new(id, _draftSourceEpoch, item));
         var previous = _suppressTabSelection;
         _suppressTabSelection = true;

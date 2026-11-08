@@ -3853,7 +3853,8 @@ public sealed partial class OpenCodePage : Page
         }
 
         _connectionStatusDetail = tooltip;
-        ToolTipService.SetToolTip(ConnectionStatusButton, tooltip + "。点按查看服务状态、MCP、插件与 LSP");
+        tooltip = text;
+        ToolTipService.SetToolTip(ConnectionStatusButton, tooltip);
         AutomationProperties.SetName(ConnectionStatusButton, "连接状态：" + text);
         RenderConnectionFlyoutIfOpen();
     }

@@ -32,6 +32,7 @@ internal static partial class Program
         LargeViewFitsContent(args[0]);
         UnifiedRunningIndicator(args[0]);
         IndicatorCaptureSourceContracts(args[0]);
+        TooltipCopy(args[0]);
         Console.WriteLine($"PASS {_checks} focused tool naming, glyph, OMO reports/controls/mention scopes, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, home-settings layout, header-affordance, preview theme/placement and unified running-indicator checks.");
     }
 
@@ -471,8 +472,8 @@ internal static partial class Program
         Check(narrowButton.Contains("SetAutomationId(button, \"FluentCodeHomeSettingsButton\")", StringComparison.Ordinal)
             && wideButton.Contains("SetAutomationId(button, \"FluentCodeHomeWideSettingsButton\")", StringComparison.Ordinal), "settings buttons have distinct automation identities");
         Check(narrowButton.Contains("SetName(button, \"设置\")", StringComparison.Ordinal) && wideButton.Contains("SetName(button, \"设置\")", StringComparison.Ordinal)
-            && narrowButton.Contains("SetToolTip(button, \"设置\")", StringComparison.Ordinal)
-            && wideButton.Contains("SetToolTip(button, \"设置 (Ctrl+,)\")", StringComparison.Ordinal), "both settings buttons retain Narrator names and mode-specific tooltips");
+            && narrowButton.Contains("SetToolTip(button, \"设置（Ctrl+,）\")", StringComparison.Ordinal)
+            && wideButton.Contains("SetToolTip(button, \"设置（Ctrl+,）\")", StringComparison.Ordinal), "both settings buttons retain Narrator names and concise settings tooltips");
         Check(narrowButton.Contains("button.Click += HomeSettingsButton_Click", StringComparison.Ordinal)
             && wideButton.Contains("button.Click += HomeSettingsButton_Click", StringComparison.Ordinal), "both settings buttons open the existing singleton settings tab");
 

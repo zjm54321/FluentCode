@@ -70,7 +70,8 @@ internal static class TabStatusTests
             Check(tab.AutomationId == "OpenCodeSessionTab." + id, "stable tab identity " + i);
             Check(page.Slot(id).Visibility == (test.Tone == Tone.None ? Visibility.Collapsed : Visibility.Visible), "idle/unknown slot collapses " + i);
             var detail = test.Tone == Tone.Retrying ? test.Status + "：上游限流" : test.Status;
-            Check(Equals(tab.ToolTip, title + Environment.NewLine + detail + Environment.NewLine + id), "three-line tooltip with retry detail " + i);
+            var tooltip = test.Status is "空闲" or "状态未知" ? title : title + Environment.NewLine + detail;
+            Check(Equals(tab.ToolTip, tooltip), "title plus meaningful status/retry detail, without raw session id " + i);
         }
     }
 

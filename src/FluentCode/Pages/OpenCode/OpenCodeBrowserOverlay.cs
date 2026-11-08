@@ -71,6 +71,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var more = Button("\uE712", "更多", () => { }); more.Flyout = MoreMenu(); _actions.Children.Add(more);
         Theme(_windowDivider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _actions.Children.Add(_windowDivider);
         var close = Button("\uE8BB", "关闭浏览器浮窗", () => _workspace?.HideOverlay());
+        ToolTipService.SetToolTip(close, "关闭（Esc）");
         _actions.Children.Add(close);
 
         // Reading order: navigation | address | preview commands | page tools | more and close.
@@ -260,7 +261,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         }
         _displayAddress.Favicon.Visibility = hasFavicon ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetName(_openExternal, external ? "在 Chrome 中显示" : "在外部浏览器打开");
-        ToolTipService.SetToolTip(_openExternal, external ? "在 Chrome 中显示（独立窗口）" : "在外部浏览器打开");
+        ToolTipService.SetToolTip(_openExternal, external ? "在 Chrome 中显示" : "在浏览器中打开");
         var address = OpenCodeBrowserChromePresentation.Describe(page.Url, page.Title, page.PreviewPath, page.LoadError, FluentCode.Services.Configuration.AppServices.Settings.Current?.OpenCode.Kind);
         _originIcon.Glyph = address.Glyph; _originLabel.Text = address.OriginLabel ?? "";
         _preview.UpdateActions();
@@ -362,7 +363,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         var devtools = Item("开发者工具", () => _ = RunPageActionAsync(async page =>
         {
             if (page.EmbeddedView is WebView2 view) view.CoreWebView2?.OpenDevToolsWindow();
-            else { await page.FocusAsync(page.Lifetime); ToolTipService.SetToolTip(_address, "请在 Chrome 窗口按 F12 打开开发者工具。"); }
+            else { await page.FocusAsync(page.Lifetime); ToolTipService.SetToolTip(_address, "开发者工具（F12）"); }
         }), "\uEC7A");
         var zoom = new MenuFlyoutSubItem { Text = "缩放", Icon = new FontIcon { Glyph = "\uE71E" } };
         foreach (var factor in new[] { .5, .75, 1, 1.25, 1.5, 2.0 }) { var item = new MenuFlyoutItem { Text = factor.ToString("P0") }; item.Click += async (_, _) => { if (_page is not null) await _page.CdpAsync("Emulation.setPageScaleFactor", new() { ["pageScaleFactor"] = factor }); }; zoom.Items.Add(item); }

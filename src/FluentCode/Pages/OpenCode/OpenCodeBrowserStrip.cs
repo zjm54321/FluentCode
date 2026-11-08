@@ -222,6 +222,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
         private readonly Border _badge = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(4), Padding = new Thickness(3, 1, 3, 1), CornerRadius = new CornerRadius(4) };
         private readonly TextBlock _label = new() { TextWrapping = TextWrapping.Wrap, MaxLines = 2, MaxWidth = 254 };
         private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, MaxWidth = 254, FontSize = 12 };
+        private readonly TextBlock _address = new() { TextWrapping = TextWrapping.Wrap, MaxWidth = 254, FontSize = 12 };
         private readonly OpenCodeBrowserPreviewThrottle _throttle = new();
         private readonly DispatcherTimer _flash = new() { Interval = TimeSpan.FromMilliseconds(200) };
         private int _flashFrame;
@@ -253,7 +254,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
             _close.Click += (_, _) => page.Close();
             Children.Add(_show); Children.Add(_outline); Children.Add(_badge); Children.Add(_close);
             _badge.IsHitTestVisible = false;
-            _tooltip = new ToolTip { Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Bottom, Content = new StackPanel { Spacing = 6, Children = { _label, _status, _large } } };
+            _tooltip = new ToolTip { Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Bottom, Content = new StackPanel { Spacing = 6, Children = { _label, _address, _large } } };
             ToolTipService.SetToolTip(_show, _tooltip);
             // Set the exact approved 400ms delay rather than relying on the OS tooltip default.
             _hover.Tick += (_, _) => { _hover.Stop(); if (!_disposed) _tooltip.IsOpen = true; };
@@ -321,6 +322,7 @@ internal sealed class OpenCodeBrowserStrip : Grid
             var host = Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) ? uri.Host : _page.Url;
             _label.Text = (_ownerLabel is null ? "" : _ownerLabel + " · ") + (string.IsNullOrEmpty(_page.Title) ? _page.PreviewPath ?? _page.Url : _page.Title) + " · " + host;
             _status.Text = (IsExternal ? "外部 Chrome · 独立窗口 · " : "") + OpenCodeBrowserPanelState.PageState(_page, _shown);
+            _address.Text = _page.PreviewPath ?? _page.Url;
             AutomationProperties.SetName(_show, _label.Text + " · " + _status.Text);
         }
         public void Flash()

@@ -50,7 +50,7 @@ internal sealed class OpenCodeSessionControlCard : Grid
     {
         if (_chrome.Child != _editableRows) _chrome.Child = _editableRows;
         _chrome.Visibility = Visibility.Visible;
-        Describe(AgentButton, "智能体：" + agent, scope, (agentDescription ?? "智能体说明不可用") + (pendingAgent ? " · 下一条消息生效" : string.Empty));
+        Describe(AgentButton, "智能体：" + agent, scope, agentDescription);
         Describe(ModelButton, "模型：" + modelName, scope + (pendingModel ? " · 下次发送生效" : string.Empty));
         Describe(VariantButton, "推理强度：" + variant, scope + (pendingModel ? " · 下次发送生效" : string.Empty));
         AgentButton.IsEnabled = agentEnabled;
@@ -71,9 +71,9 @@ internal sealed class OpenCodeSessionControlCard : Grid
         RenderModelButton(ModelButton, model, false);
         var effort = new OpenCodeEffortChoice(value.Model?.Variant);
         VariantButton.Render(value.Effort is { } label ? new[] { OpenCodeNativeComboBox.Effort(value.Model?.Variant, label) } : noChoices, effort, false);
-        Describe(AgentButton, "智能体：" + (value.Agent ?? "未知"), "子智能体会话仅供查看。");
-        Describe(ModelButton, "模型：" + (value.ModelName ?? "未知"), "子智能体会话仅供查看。");
-        Describe(VariantButton, "推理强度：" + (value.Effort ?? "未知"), "子智能体会话仅供查看。");
+        Describe(AgentButton, "智能体：" + (value.Agent ?? "未知"), "子智能体会话仅供查看。", readOnly: true);
+        Describe(ModelButton, "模型：" + (value.ModelName ?? "未知"), "子智能体会话仅供查看。", readOnly: true);
+        Describe(VariantButton, "推理强度：" + (value.Effort ?? "未知"), "子智能体会话仅供查看。", readOnly: true);
     }
 
     private static OpenCodeNativeComboBox Entry(string id, string name)
@@ -106,10 +106,10 @@ internal sealed class OpenCodeSessionControlCard : Grid
         button.IsEnabled = enabled;
     }
 
-    private static void Describe(Control button, string name, string scope, string? tooltip = null)
+    private static void Describe(Control button, string name, string scope, string? tooltip = null, bool readOnly = false)
     {
         AutomationProperties.SetName(button, name);
         AutomationProperties.SetHelpText(button, scope);
-        ToolTipService.SetToolTip(button, tooltip ?? name + "\n" + scope);
+        ToolTipService.SetToolTip(button, tooltip ?? name + (readOnly ? "（只读）" : string.Empty));
     }
 }

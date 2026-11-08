@@ -76,7 +76,7 @@ internal static partial class OpenCodeToolDetailContent
             if (!options.Compact)
             {
                 var reason = options.PathActionUnavailableReason?.Invoke(file.Path, false)
-                    ?? (options.OpenFile is null ? "当前连接未提供已授权的路径打开方式" : null);
+                    ?? (options.OpenFile is null ? "连接不支持打开路径" : null);
                 button.IsEnabled = reason is null;
                 if (reason is not null) ToolTipService.SetToolTip(button, reason);
             }

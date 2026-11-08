@@ -63,8 +63,7 @@ internal sealed class OpenCodeBrowserButton : Grid
             if (!e.GetCurrentPoint(_toggle).Properties.IsMiddleButtonPressed) return;
             e.Handled = true; NewPageRequested?.Invoke(this, EventArgs.Empty);
         }), true);
-        ToolTipService.SetToolTip(_toggle, new ToolTip { Content = new StackPanel { Spacing = 4, Children = { _tipTitle,
-            new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _tipStatus } } } } });
+        ToolTipService.SetToolTip(_toggle, "浏览器");
         _availabilityFlyout = new Flyout { Content = new StackPanel { Spacing = 8, Children = { _reason, _reclaim } } };
         _statusButton.Flyout = _availabilityFlyout;
         _reclaim.Click += (_, _) => { _availabilityFlyout.Hide(); ReclaimRequested?.Invoke(this, EventArgs.Empty); };
@@ -101,7 +100,8 @@ internal sealed class OpenCodeBrowserButton : Grid
         AutomationProperties.SetName(_statusButton, "浏览器连接状态 · " + _tipStatus.Text);
         var reclaim = OpenCodeBrowserPanelState.ReclaimLabel(workspace?.Availability ?? OpenCodeBrowserAvailability.Detached);
         _reclaim.Content = reclaim; _reclaim.Visibility = reclaim is null ? Visibility.Collapsed : Visibility.Visible;
-        ToolTipService.SetToolTip(_statusButton, _tipStatus.Text);
+        ToolTipService.SetToolTip(_toggle, OpenCodeBrowserPanelState.CompactTooltipTitle(_pages));
+        ToolTipService.SetToolTip(_statusButton, OpenCodeBrowserPanelState.CompactTooltipStatus(_availability, workspace?.AvailabilityReason));
         RefreshTheme();
     }
 

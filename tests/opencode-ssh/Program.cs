@@ -294,6 +294,19 @@ internal static partial class Program
         Check(OpenCodeSshQuickAccess.Editors(new[] { vscode, zed, new WslHostEditor("Emacs", "emacs.exe", WslEditorOpenMode.HostFolder, null) }).Count == 2, "only SSH-capable editors shown");
         Check(OpenCodeSshQuickAccess.Resolve(OpenCodeConnectionKind.Ssh, true, "dev", "~/src").Target is null, "no guessed SSH home path");
         Check(!OpenCodeSshQuickAccess.Resolve(OpenCodeConnectionKind.Ssh, false, "dev", "/src").Visible, "quick open only on a connected source");
+        foreach (var (reason, tooltip) in new[]
+        {
+            ("连接中的 SSH 主机无效", "SSH 主机无效"),
+            ("等待会话提供远程目录…", "等待工作目录"),
+            ("路径含特殊字符，不能在编辑器中打开", "路径含不支持的字符"),
+            ("连接未提供有效的 WSL 发行版", "WSL 发行版无效"),
+            ("无法展开 ~：尚未读取到此 WSL 发行版的用户主目录", "用户主目录未知"),
+        })
+        {
+            var unavailable = new WslQuickAccessState(true, null, reason);
+            Check(unavailable.TooltipReason == tooltip && unavailable.Reason == reason, "compact path tooltip preserves the original reason: " + tooltip);
+        }
+        Check(new WslQuickAccessState(true, null, "路径读取失败：拒绝访问").TooltipReason == "路径读取失败：拒绝访问", "dynamic path error text is kept");
         Console.WriteLine("PASS quick open: Zed SSH URL, VS Code Remote-SSH, absolute paths and no Explorer");
     }
 

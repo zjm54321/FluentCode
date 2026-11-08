@@ -189,7 +189,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _submitButton.Click += (_, _) => HandlePrimaryAction();
         _cancelButton = new Button { Content = "不回答", MinWidth = 88 };
         _cancelButton.Click += (_, _) => BeginCancel();
-        ToolTipService.SetToolTip(_cancelButton, "跳过这个提问，助手会收到“已取消”");
+        ToolTipService.SetToolTip(_cancelButton, "跳过");
         _confirmButton = new Button { Content = "确认不回答", MinWidth = 96, Visibility = Visibility.Collapsed };
         _confirmButton.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle");
         _confirmButton.Click += (_, _) => ConfirmCancel();
@@ -631,7 +631,7 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _pageText.Visibility = paged ? Visibility.Visible : Visibility.Collapsed;
         var last = editor is null || !editor.IsPaged || editor.PageIndex >= editor.PageCount - 1;
         _submitButton.Content = last ? "提交" : "下一个问题";
-        ToolTipService.SetToolTip(_submitButton, last ? "提交整份回答（Ctrl+Enter）" : "暂存当前输入并前往下一个问题（Ctrl+Enter）");
+        ToolTipService.SetToolTip(_submitButton, last ? "提交（Ctrl+Enter）" : "下一题（Ctrl+Enter）");
         _previousButton.IsEnabled = CanNavigate && editor is { PageIndex: > 0 };
         if (!paged || editor is null)
         {

@@ -20,7 +20,9 @@ internal sealed record OpenCodeContextCommand(string Label, string Glyph, Action
     public bool Enabled { get; init; } = true;
     /// <summary>Shortcut hint shown in the list and in the row cell's tooltip. Real shortcuts only.</summary>
     public string? Accelerator { get; init; }
-    /// <summary>Tooltip; for disabled commands, the reason.</summary>
+    /// <summary>Concise action tooltip, independent of the visible shortcut hint.</summary>
+    public string? Tooltip { get; init; }
+    /// <summary>Reason for a disabled command.</summary>
     public string? Description { get; init; }
     public bool Critical { get; init; }
     /// <summary>Draws the glyph mirrored (redo from the undo arrow).</summary>
@@ -124,7 +126,8 @@ internal static class OpenCodeContextMenu
         button.Padding = touch ? new Thickness(11, 10, 11, 10) : new Thickness(11, 6, 11, 6);
         button.MinHeight = touch ? 40 : 32;
         button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        if (command.Description is { } why) ToolTipService.SetToolTip(button, why);
+        var tip = !command.Enabled && command.Description is { } why ? why : command.Tooltip;
+        if (tip is not null) ToolTipService.SetToolTip(button, tip);
         return button;
     }
 
@@ -165,9 +168,8 @@ internal static class OpenCodeContextMenu
             cell.Padding = new Thickness(4, 6, 4, 5);
             cell.MinHeight = touch ? 56 : 48;
             cell.HorizontalContentAlignment = HorizontalAlignment.Center;
-            var tip = command.Accelerator is { } key ? command.Label + " (" + key + ")" : command.Label;
-            if (!command.Enabled && command.Description is { } why) tip += "\n" + why;
-            else if (command.Description is { } more) tip += "\n" + more;
+            var tip = !command.Enabled && command.Description is { } why ? why
+                : command.Tooltip ?? (command.Accelerator is { } key ? command.Label + "（" + key + "）" : command.Label);
             ToolTipService.SetToolTip(cell, tip);
             Grid.SetColumn(cell, grid.ColumnDefinitions.Count - 1);
             grid.Children.Add(cell);

@@ -153,10 +153,10 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         };
         AutomationProperties.SetAutomationId(_billionButton, "OpenCodeInsightsBillionReadButton");
         AutomationProperties.SetName(_billionButton, "读取本机 Billion 记录");
-        ToolTipService.SetToolTip(_billionButton, "向所填地址读取一次 Billion 健康状态和这个会话的记录；不会自动刷新");
+        ToolTipService.SetToolTip(_billionButton, "刷新");
         _billionButton.Click += (_, _) => RaiseRead();
         AutomationProperties.SetAutomationId(_billionDashboard, "OpenCodeBillionDashboard");
-        ToolTipService.SetToolTip(_billionDashboard, "打开已确认的本机 Billion 会话页面；该页面也可浏览此实例其他历史，打开前需要确认。");
+        ToolTipService.SetToolTip(_billionDashboard, "打开 Billion 页面");
         _billionDashboard.Click += (_, _) =>
         {
             if (DisplayedContext() is { } context && _visual is { } shown && OpenCodeBillionPresentation.DashboardUri(shown, context) is not null)
@@ -348,7 +348,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             _scopeText.Text = snapshot.UnavailableReason
                 ?? (snapshot.Loading ? "正在读取…" : snapshot.SampledAt is null ? "等待加载会话概况…" : string.Empty);
             _statusRow.Visibility = _scopeText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (snapshot.SampledAt is { } sampled) ToolTipService.SetToolTip(_usageHost, "更新于 " + Time(sampled) + "；随会话事件自动更新。");
+            if (snapshot.SampledAt is { } sampled) ToolTipService.SetToolTip(_usageHost, "更新于 " + Time(sampled));
 
             ReleaseBillionControls();
             foreach (var page in _pages)
@@ -484,7 +484,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         current.TextTrimming = TextTrimming.CharacterEllipsis;
         AutomationProperties.SetAutomationId(current, "OpenCodeInsightsCurrentContext");
         AutomationProperties.SetName(current, "当前会话上下文：" + line);
-        ToolTipService.SetToolTip(current, "所选会话主 Agent 最近一次请求的上下文参考；不含子会话。撤回、压缩或模型切换后等待新的用量。");
+        ToolTipService.SetToolTip(current, "最近一次请求的上下文");
         heading.Children.Add(current);
         heading.Children.Add(percent);
         Grid.SetRow(heading, OpenCodeContextHeader.ContextRow);
@@ -519,7 +519,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             Grid.SetColumn(cell, index % 3);
             grid.Children.Add(cell);
         }
-        ToolTipService.SetToolTip(grid, "当前会话最近一次 assistant 请求的用量，不含父会话或子会话。\n缓存命中率 = 缓存读取 /（输入 + 缓存读取 + 缓存写入）。");
+        ToolTipService.SetToolTip(grid, "最近一次请求的用量");
         panel.Children.Add(grid);
         if (snapshot.Billion is { Phase: OpenCodeBillionPhase.Loaded, Stats: { } stats })
         {
@@ -543,9 +543,9 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
         totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         totals.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var total = UsageCell("\uE81E", "汇总", knownTokens ? prefix + Token(summary!.Tokens.Total) : string.Empty, strong: true);
-        ToolTipService.SetToolTip(total, "汇总：" + (knownTokens ? Token(summary!.Tokens.Total) : "") + "；总 tokens = 输入 + 输出 + 思考 + 缓存读取 + 缓存写入");
+        ToolTipService.SetToolTip(total, "总计：" + (knownTokens ? Token(summary!.Tokens.Total) : ""));
         var cost = UsageCell("\uE8C7", "花费", knownCost ? prefix + Money(summary!.TotalCost) : string.Empty, strong: true);
-        ToolTipService.SetToolTip(cost, "花费：" + (knownCost ? Money(summary!.TotalCost) : "") + "；本会话及全部子智能体的合计，直接累计 Session.Info.cost，不重新计价。");
+        ToolTipService.SetToolTip(cost, "花费（含子智能体）：" + (knownCost ? Money(summary!.TotalCost) : ""));
         Grid.SetColumn(cost, 1);
         totals.Children.Add(total);
         totals.Children.Add(cost);
@@ -1182,7 +1182,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             _ => "无法确认",
         };
         var row = Table(new List<(string, string)> { (label, text) });
-        ToolTipService.SetToolTip(row, state.Reason);
+        ToolTipService.SetToolTip(row, StateTooltip(state));
         AutomationProperties.SetHelpText(row, state.Reason);
         var panel = new StackPanel { Spacing = 0 };
         panel.Children.Add(row);
@@ -1194,6 +1194,35 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
 
         return panel;
     }
+
+    private static string StateTooltip(OpenCodeCapabilityState state) => state.Reason switch
+    {
+        "状态尚未查询，无法确认" => "状态未读取",
+        "状态查询超时，无法确认" => "状态查询超时",
+        "状态响应不符合公开契约，无法确认" => "状态响应无效",
+        "状态查询失败，无法确认" => "状态查询失败",
+        "状态证据已过期，无法确认" => "状态已过期",
+        "状态证据不完整，无法确认" => "状态不完整",
+        "MCP 状态证据过期或不完整" => "MCP 状态不可用",
+        "插件状态证据过期或不完整" => "插件状态不可用",
+        "MCP 状态目录可用；不表示所有 MCP 已连接" => "MCP 状态可用",
+        "服务器插件目录可用；配置存在不等于实际运行" => "插件列表可用",
+        OpenCodeCapabilityStatus.LspUnavailableReason => "LSP 状态不可用",
+        "原生 To Do 由 experimental.todo 与当前会话 todowrite 记录确认" => "待办状态未知",
+        "Billion 未授权连接；压缩控制禁用" => "Billion 未连接",
+        "Billion 无会话级压缩开关；全局配置写入未授权" => "压缩开关不可用",
+        "MCP 正在连接，尚未确认可用" => "MCP 连接中",
+        "无法识别 MCP 连接状态" => "MCP 状态未知",
+        "服务器报告插件 active" => "插件运行中",
+        "服务器报告插件加载失败" => "插件加载失败",
+        "无法识别插件运行状态" => "插件状态未知",
+        "插件目录存在重复身份，无法确认运行状态" => "插件身份重复",
+        "/api/plugin 已确认服务器插件 active；仅使用 core 公开数据" => "插件运行中",
+        "插件未声明服务器功能；TUI 或 RPC 声明不代表此功能可用" => "插件功能不可用",
+        "/api/plugin 含无法识别身份的插件，无法确认目标插件" => "插件身份未知",
+        "/api/plugin 未列出目标插件，无法确认当前启用（不代表未安装）" => "未找到插件",
+        _ => state.Reason,
+    };
 
     internal static UIElement Bullets(string title, IEnumerable<string> items)
     {

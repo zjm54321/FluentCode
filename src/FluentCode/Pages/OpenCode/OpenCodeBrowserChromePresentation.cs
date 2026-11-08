@@ -32,7 +32,7 @@ internal static class OpenCodeBrowserChromePresentation
         {
             var cut = previewPath.LastIndexOfAny(PathSeparators) + 1;
             return new(FileGlyph, "服务器文件", previewPath[..cut], previewPath[cut..], "", null,
-                previewPath + "\n服务器文件 · 由 OpenCode 服务器读取，不是这台电脑上的路径", false);
+                previewPath, false);
         }
         if (string.IsNullOrWhiteSpace(url) || url == "about:blank")
             return new(GlobeGlyph, null, "", "", "", null, "输入网址", true);
@@ -41,27 +41,26 @@ internal static class OpenCodeBrowserChromePresentation
         var shownTitle = loadError is not null ? "无法访问此页面"
             : string.IsNullOrWhiteSpace(title) || RepeatsAddress(title, url, emphasis, trail) ? null : title.Trim();
         Uri.TryCreate(url, UriKind.Absolute, out var uri);
-        var (glyph, label, note) = Origin(uri, connection);
+        var (glyph, label) = Origin(uri, connection);
 
-        var lines = new List<string>(3);
+        var lines = new List<string>(2);
         if (shownTitle is not null) lines.Add(shownTitle);
         lines.Add(url);
-        if (note is not null) lines.Add(note);
         return new(glyph, label, lead, emphasis, trail, shownTitle, string.Join('\n', lines), false);
     }
 
-    private static (string Glyph, string? Label, string? Note) Origin(Uri? uri, OpenCodeConnectionKind? connection)
+    private static (string Glyph, string? Label) Origin(Uri? uri, OpenCodeConnectionKind? connection)
     {
         // Loopback addresses resolve on the server side, which is the thing worth saying about them.
         if (uri is { IsLoopback: true, Scheme: "http" or "https" })
             return connection == OpenCodeConnectionKind.Wsl
-                ? (NetworkGlyph, "WSL 网络", "WSL 网络 · 这个地址在 WSL 里访问，不是在 Windows 上")
-                : (NetworkGlyph, "远程服务器", "远程服务器 · 这个地址在远程服务器上访问，不是在这台电脑上");
+                ? (NetworkGlyph, "WSL 网络")
+                : (NetworkGlyph, "远程服务器");
         return uri?.Scheme switch
         {
-            "https" => (LockGlyph, null, "HTTPS 连接"),
-            "http" => (InfoGlyph, null, "HTTP 连接（未加密）"),
-            _ => (GlobeGlyph, null, null),
+            "https" => (LockGlyph, null),
+            "http" => (InfoGlyph, null),
+            _ => (GlobeGlyph, null),
         };
     }
 

@@ -216,6 +216,16 @@ internal static class Program
     private static async Task TerminalButtons()
     {
         var before = checks;
+        foreach (var (mode, draft, tooltip) in new[]
+        {
+            (OpenCodeComposerSendMode.Send, true, "发送（Enter）"),
+            (OpenCodeComposerSendMode.Working, false, "停止"),
+            (OpenCodeComposerSendMode.Queue, true, "排队发送（Enter）"),
+            (OpenCodeComposerSendMode.Submitting, true, "正在发送"),
+            (OpenCodeComposerSendMode.Unavailable, true, "当前不可用"),
+            (OpenCodeComposerSendMode.Unavailable, false, "请先输入内容"),
+        })
+            Check(OpenCodeComposerSendPresentation.ToolTip(mode, draft) == tooltip, "concise send-button tooltip: " + mode);
         Check(OpenCodeComposerSendPresentation.Name(OpenCodeComposerSendMode.Working) == "停止"
             && OpenCodeComposerSendPresentation.Glyph(OpenCodeComposerSendMode.Working) == "\uE71A"
             && !OpenCodeComposerSendPresentation.ShowsProgress(OpenCodeComposerSendMode.Working)

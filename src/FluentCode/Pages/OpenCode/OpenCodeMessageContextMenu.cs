@@ -128,11 +128,11 @@ internal static class OpenCodeMessageContextMenu
                 commands.Add(new("撤回", "\uE7A7", () => rollbackRequested(true))
                 {
                     Enabled = state.UndoEnabled,
-                    Description = state.UndoEnabled || state.UndoHint is null
-                        ? "撤回这条消息及之后的回答，并把它放回输入框" : "暂不可用：" + state.UndoHint,
+                    Tooltip = "撤回（/undo）",
+                    Description = state.UndoEnabled ? null : state.UndoHint,
                 });
             if (state.RedoVisible)
-                commands.Add(new("恢复撤回", "\uE7A7", () => rollbackRequested(false)) { Enabled = state.RedoEnabled, Mirrored = true });
+                commands.Add(new("恢复撤回", "\uE7A7", () => rollbackRequested(false)) { Enabled = state.RedoEnabled, Mirrored = true, Tooltip = "恢复撤回（/redo）" });
         }
         return commands;
     }

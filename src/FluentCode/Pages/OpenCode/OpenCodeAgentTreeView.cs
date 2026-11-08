@@ -244,15 +244,13 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         _terminalDivider.Visibility = Visibility.Collapsed;
         foreach (var agent in OpenCodeAgentTreeProjection.VisibleAgents(_agents, _showAll))
         {
-            var kind = (agent.Mode == "subagent" ? "子智能体" : "智能体")
-                + (agent.Hidden ? " · 隐藏" : string.Empty);
             var name = OpenCodeAgentIcons.DisplayName(agent.Name);
             var children = OpenCodeAgentTreeProjection.VisibleInstances(agent.Children, _showAll);
             var rows = children.Select(instance => Row(instance.Title, instance.Model, instance.Status, instance, agent)).ToArray();
             var working = agent.Children.Count(c => c.Status == OpenCodeTreeStatus.Running);
             Group("agent:" + agent.Id, name, OpenCodeAgentIcons.Glyph(agent.Id),
                 OpenCodeAgentTreeProjection.CountLabel(working, agent.Children.Count, _showAll), rows,
-                agent.Children.Count == 0, name + " · " + kind + (agent.Description is { Length: > 0 } description ? "\n" + description : string.Empty), agent.Color, agent.Id);
+                agent.Children.Count == 0, name, agent.Color, agent.Id);
         }
         var shells = OpenCodeAgentTreeProjection.VisibleShells(_shells, _showAll);
         if (shells.Count > 0)
@@ -398,7 +396,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         row.Children.Add(indicator);
         foreach (var child in row.Children) child.IsHitTestVisible = false;
         NameTreeContent(row, title + "，" + subtitle + "，" + statusText);
-        ToolTipService.SetToolTip(row, title + "\n" + subtitle + " · " + statusText);
+        ToolTipService.SetToolTip(row, title + (string.IsNullOrWhiteSpace(subtitle) ? string.Empty : " · " + subtitle));
         return row;
     }
 

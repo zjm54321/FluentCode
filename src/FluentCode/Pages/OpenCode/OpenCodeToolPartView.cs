@@ -250,7 +250,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         };
         AutomationProperties.SetAutomationId(_backgroundButton, "OpenCodeToolBackground");
         AutomationProperties.SetName(_backgroundButton, "将本会话前台工具转入后台");
-        ToolTipService.SetToolTip(_backgroundButton, "将本会话中正在前台运行的终端和子智能体转入后台（Ctrl+B）");
+        ToolTipService.SetToolTip(_backgroundButton, "转入后台");
         _backgroundButton.Click += (_, _) => RequestBackground();
         Grid.SetColumn(_backgroundButton, 2);
         _root.Children.Add(_backgroundButton);

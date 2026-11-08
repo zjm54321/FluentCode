@@ -117,7 +117,7 @@ public sealed partial class OpenCodePage
 
         AutomationProperties.SetAutomationId(add, "OpenCodeSessionTabAdd");
         AutomationProperties.SetName(add, "打开或新建会话");
-        ToolTipService.SetToolTip(add, "打开或新建会话");
+        ToolTipService.SetToolTip(add, "新建会话（/new）");
     }
 
     private static T? FindDescendant<T>(DependencyObject root, string name) where T : FrameworkElement
@@ -526,7 +526,7 @@ public sealed partial class OpenCodePage
         SetTabItemStatus(entry.Item, status);
         var detail = tone == SessionIndicatorTone.Retrying && state!.Retry!.Message is { Length: > 0 } why
             ? status + "：" + why : status;
-        ToolTipService.SetToolTip(entry.Item, title + Environment.NewLine + detail + Environment.NewLine + entry.SessionId);
+        ToolTipService.SetToolTip(entry.Item, status is "空闲" or "状态未知" ? title : title + Environment.NewLine + detail);
     }
 
     private static void SetTabItemStatus(TabViewItem item, string status)
