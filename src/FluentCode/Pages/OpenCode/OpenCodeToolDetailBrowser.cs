@@ -161,7 +161,7 @@ internal static partial class OpenCodeToolDetailContent
         }
         var tabId = OpenCodeBrowserToolPresentation.TabId(model);
         var show = new Button { Content = "显示页面", IsEnabled = tabId is not null && options.ShowBrowserPage is not null && OpenCodeBrowserToolPresentation.Action(model.ToolName) != "tabs.close" };
-        if (!show.IsEnabled) ToolTipService.SetToolTip(show, "页面已关闭或未提供可显示的页面");
+        if (!show.IsEnabled) ToolTipService.SetToolTip(show, "页面不可用");
         show.Click += (_, _) => { if (tabId is not null) options.ShowBrowserPage?.Invoke(tabId); };
         actions.Children.Add(show);
     }

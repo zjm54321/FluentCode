@@ -145,7 +145,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         _hasItems = rows.Count > 0;
         if (firstItems) _expander.IsExpanded = rows.Count == 1;
         _header.Text = rows.Count == 0 ? string.Empty : "排队 " + rows.Count + " 条 · 下一条：" + rows[0].Text;
-        ToolTipService.SetToolTip(_expander, "当前回合结束后发送；顺序由服务器管理");
+        ToolTipService.SetToolTip(_expander, "当前回合结束后发送");
         Visibility = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -203,7 +203,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
             };
             AutomationProperties.SetAutomationId(withdraw, "OpenCodeQueuedPromptWithdraw." + id);
             AutomationProperties.SetName(withdraw, "撤回待投递消息：" + text);
-            ToolTipService.SetToolTip(withdraw, "撤回这条尚未发送的消息；确认未发送后放回输入框");
+            ToolTipService.SetToolTip(withdraw, "撤回");
             withdraw.Click += (_, _) =>
             {
                 if (!_withdrawBusy)

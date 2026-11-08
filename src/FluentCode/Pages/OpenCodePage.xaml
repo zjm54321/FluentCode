@@ -131,7 +131,7 @@
                 <TabViewItem x:Name="HomeTab" IsClosable="False" MinWidth="48" MaxWidth="48"
                              HorizontalContentAlignment="Center" DragStarting="HomeTab_DragStarting"
                              AutomationProperties.AutomationId="OpenCodeHomeTab"
-                             AutomationProperties.Name="首页" ToolTipService.ToolTip="首页：项目与会话">
+                             AutomationProperties.Name="首页" ToolTipService.ToolTip="首页（/sessions）">
                     <TabViewItem.Header>
                         <FontIcon Glyph="&#xE80F;" FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="16"
                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -534,7 +534,7 @@
                                     <Button x:Name="ChildBrowserButton" Grid.Column="2" Height="40" Padding="12,0" Margin="0,12,0,8"
                                             Visibility="Collapsed" Click="ChildBrowserButton_Click"
                                             AutomationProperties.AutomationId="OpenCodeChildBrowser"
-                                            AutomationProperties.Name="子智能体浏览器" ToolTipService.ToolTip="子智能体自己的浏览器页面">
+                                            AutomationProperties.Name="子智能体浏览器" ToolTipService.ToolTip="子智能体浏览器">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="&#xE774;" FontSize="16" />
                                             <TextBlock Text="浏览器" VerticalAlignment="Center" />
@@ -658,7 +658,7 @@
                                                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
                                                             Visibility="Collapsed" Click="ComposerExpandButton_Click"
                                                             AutomationProperties.AutomationId="OpenCodeComposerExpand"
-                                                            AutomationProperties.Name="展开输入框" ToolTipService.ToolTip="展开输入框">
+                                                            AutomationProperties.Name="展开输入框" ToolTipService.ToolTip="展开输入框（/editor）">
                                                         <Button.Style>
                                                             <Style TargetType="Button" BasedOn="{StaticResource OpenCodeTransparentToolButtonStyle}">
                                                                 <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorTransparentBrush}" />

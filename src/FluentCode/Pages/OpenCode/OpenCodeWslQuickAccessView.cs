@@ -86,11 +86,11 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         _editor.IsEnabled = supported;
         // The directory row already shows the path; only explain what is unavailable.
         SetNote(state.Reason ?? (supported ? null : state.IsSsh ? "未找到 VS Code 或 Zed" : "未检测到支持 WSL 的主机编辑器"));
-        ToolTipService.SetToolTip(_explorer, ExplorerText + "\n" + (state.Reason ?? state.Target?.HostPath));
+        ToolTipService.SetToolTip(_explorer, state.TooltipReason ?? state.Target?.HostPath ?? ExplorerText);
         var editorText = _currentEditor is { } current ? "在 " + current.Name + " 中打开" : EditorText;
         AutomationProperties.SetName(_editor, editorText);
-        ToolTipService.SetToolTip(_editor, editorText + "\n" + (state.Reason
-            ?? (state.IsSsh ? "通过 SSH 远程打开（VS Code 需安装 Remote - SSH 扩展）" : _currentEditor?.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : state.Target?.HostPath)));
+        ToolTipService.SetToolTip(_editor, state.TooltipReason
+            ?? (state.IsSsh ? "通过 SSH 远程打开" : _currentEditor?.OpenMode == WslEditorOpenMode.RemoteWsl ? editorText + "（WSL）" : state.Target?.HostPath ?? editorText));
     }
 
     private async System.Threading.Tasks.Task SetPrimaryIconAsync(WslHostEditor editor, int version)

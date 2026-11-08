@@ -132,7 +132,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
             var limit = OpenCodeBrowserPreviewPolicy.Limit(_kind);
             if (_content.Bytes.Length > limit) throw new IOException($"文件超过 {limit / 1024 / 1024} MiB 预览上限");
             if (OpenCodeBrowserPreviewPolicy.IsText(_kind)) _text = OpenCodeBrowserPreviewPolicy.Decode(_content.Bytes);
-            _source.IsEnabled = _text is not null; ToolTipService.SetToolTip(_source, _text is null ? "二进制文件没有可显示的 UTF-8 源码" : "源码");
+            _source.IsEnabled = _text is not null; ToolTipService.SetToolTip(_source, _text is null ? "无法显示二进制文件" : "源码");
             if (_text is null) _selector.SelectedItem = _render;
             _selector.IsEnabled = true; await RenderSafelyAsync();
         }

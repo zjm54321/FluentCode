@@ -163,12 +163,12 @@ internal sealed class OpenCodePermissionCard : StackPanel
 
         // ---- 操作：[拒绝] [始终允许] [允许一次]（主操作在最右，Accent） ----
         _onceButton = CreateActionButton("允许一次", "OpenCodePermissionOnce_", OpenCodePermissionDecisions.Once,
-            "只允许这一次（不保存任何规则）");
+            "允许一次");
         _onceButton.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle");
         _alwaysButton = CreateActionButton("始终允许", "OpenCodePermissionAlways_", OpenCodePermissionDecisions.Always,
-            "为本项目保存规则后允许（需要确认；不是全局授权）");
+            "始终允许");
         _rejectButton = CreateActionButton("拒绝", "OpenCodePermissionReject_", OpenCodePermissionDecisions.Reject,
-            "拒绝（需要确认；会同时拒绝本会话其他待处理的权限请求）");
+            "拒绝");
 
         _actionsPanel = ButtonRow();
         _actionsPanel.Children.Add(_rejectButton);

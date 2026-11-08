@@ -48,6 +48,6 @@ internal sealed class OpenCodeInstructionNoticeView
             _button.Flyout = flyout;
         }
         AutomationProperties.SetName(_button, label);
-        ToolTipService.SetToolTip(_button, count == 0 ? notice.Summary : string.Join("\n", notice.SourceKeys));
+        ToolTipService.SetToolTip(_button, count == 0 ? "未提供指令来源" : string.Join("\n", notice.SourceKeys));
     }
 }

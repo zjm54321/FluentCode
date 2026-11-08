@@ -72,7 +72,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         Children.Add(_previous); Grid.SetColumn(_next, 2); Children.Add(_next);
         _create = OpenCodeTerminalUi.IconButton("\uE710", "新建终端", 28, 28, 12);
         _create.Margin = new Thickness(2, 0, 0, 0);
-        ToolTipService.SetToolTip(_create, "新建终端 · Ctrl+Shift+T");
+        ToolTipService.SetToolTip(_create, "新建终端（Ctrl+Shift+T）");
         AutomationProperties.SetAutomationId(_create, "OpenCodePersistentPtyCreate");
         _create.Click += (_, _) => RequestCreate();
         Grid.SetColumn(_create, 3); Children.Add(_create);
@@ -140,7 +140,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         _live.Visibility = running > 0 ? Visibility.Visible : Visibility.Collapsed;
         var label = entries.Length == 0 ? "新建终端" : "终端 · " + entries.Length;
         AutomationProperties.SetName(_toggle, label);
-        ToolTipService.SetToolTip(_toggle, entries.Length == 0 ? "新建终端 · Ctrl+Shift+T" : _openId is null ? "打开终端 · Ctrl+`" : "关闭终端浮窗 · Ctrl+`");
+        ToolTipService.SetToolTip(_toggle, entries.Length == 0 ? "新建终端（Ctrl+Shift+T）" : _openId is null ? "打开终端（Ctrl+`）" : "关闭终端（Ctrl+`）");
         RefreshTheme();
     }
 
@@ -387,7 +387,7 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         OpenCodeTerminalUi.Themed(_count, "Foreground", "TextFillColorTertiaryBrush");
         var header = new Grid { Height = 44, Margin = new Thickness(0, 0, 0, 2) };
         header.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(10, 0, 0, 0), Children = { heading, _count } });
-        _create.HorizontalAlignment = HorizontalAlignment.Right; ToolTipService.SetToolTip(_create, "新建终端 · Ctrl+Shift+T");
+        _create.HorizontalAlignment = HorizontalAlignment.Right; ToolTipService.SetToolTip(_create, "新建终端（Ctrl+Shift+T）");
         _create.Click += (_, _) => _inventory.RequestCreate();
         header.Children.Add(_create);
         Children.Add(header);
@@ -617,7 +617,7 @@ internal sealed class OpenCodeTerminalRenameBox : TextBox
     internal void Begin(string title, Func<string?, Task<bool>> save)
     {
         if (_saving) return;
-        _save = save; Text = title; ToolTipService.SetToolTip(this, "Enter 保存 · Esc 取消 · 留空恢复默认名称");
+        _save = save; Text = title; ToolTipService.SetToolTip(this, "Enter 保存，Esc 取消");
         Visibility = Visibility.Visible;
         DispatcherQueue.TryEnqueue(() => { if (IsEditing) { Focus(FocusState.Programmatic); SelectAll(); } });
     }

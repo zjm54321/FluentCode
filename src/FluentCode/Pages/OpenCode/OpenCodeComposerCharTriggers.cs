@@ -20,10 +20,10 @@ internal sealed record OpenCodeComposerPlusMenuEntry(OpenCodeComposerPlusMenuKin
 
 internal static class OpenCodeComposerPlusMenu
 {
-    internal const string TerminalTooltip = "在会话工作目录执行 Shell 命令；Esc 返回消息草稿。";
-    internal const string ContextTooltip = "选择 agent 或 skill 上下文。也可以在行首或空格后输入 @。";
-    internal const string ContextUnavailableTooltip = "当前没有可用的工作区目录或服务器连接，无法读取 agent 和 skill。";
-    internal const string CommandTooltip = "服务器命令与 FluentCode 本机操作。也可以在输入框开头输入 /。";
+    internal const string TerminalTooltip = "Shell 命令（!）";
+    internal const string ContextTooltip = "添加上下文（@）";
+    internal const string ContextUnavailableTooltip = "未连接或未选择目录";
+    internal const string CommandTooltip = "命令（/）";
 
     /// <summary>添加附件 · ── · 命令 / · 上下文 @ · 终端 !. The view builds its MenuFlyout from exactly this list.
     /// Segoe Fluent Icons: Attach E723 · Lightning E945 (quick commands) · Mention "@" E168. 终端 has no font glyph: the view

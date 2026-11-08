@@ -600,9 +600,9 @@ internal static class OpenCodeComposerSendPresentation
     internal static string ToolTip(OpenCodeComposerSendMode mode, bool hasDraft) => mode switch
     {
         OpenCodeComposerSendMode.Send => "发送（Enter）",
-        OpenCodeComposerSendMode.Working => "工作中 · 点击停止（只中断当前会话）",
-        OpenCodeComposerSendMode.Queue => "排队发送（Enter）：当前回合结束后发送",
-        OpenCodeComposerSendMode.Submitting => "正在发送…",
-        _ => hasDraft ? "发送（当前不可用）" : "发送（请先输入内容）",
+        OpenCodeComposerSendMode.Working => "停止",
+        OpenCodeComposerSendMode.Queue => "排队发送（Enter）",
+        OpenCodeComposerSendMode.Submitting => "正在发送",
+        _ => hasDraft ? "当前不可用" : "请先输入内容",
     };
 }

@@ -261,9 +261,9 @@ internal static class OpenCodeComposerInputPolicy
             : count >= maxFiles || totalBytes * 10 >= maxTotalBytes * 9 ? OpenCodeComposerAttachmentLimitLevel.Full
             : OpenCodeComposerAttachmentLimitLevel.Ok;
 
-    /// <summary>Hover/focus details of the limit indicator (one limit per line).</summary>
+    /// <summary>Attachment count and total size for the hover/focus indicator.</summary>
     internal static string AttachmentLimitDetails(int count, long totalBytes, int maxFiles, long maxTotalBytes, long maxFileBytes)
-        => $"附件 {count}/{maxFiles}\n合计 {FormatBytes(totalBytes)} / {FormatBytes(maxTotalBytes)}\n单个不超过 {FormatBytes(maxFileBytes)}";
+        => $"附件 {count} 个（{FormatBytes(totalBytes)}）";
 
     /// <summary>Picker allow-list and the MIME the adapter reports (core still validates).</summary>
     internal static readonly IReadOnlyList<string> PickerExtensions =

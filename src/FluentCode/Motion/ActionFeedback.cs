@@ -79,9 +79,20 @@ internal static class ActionFeedback
     internal static void Failure(ContentControl control, string announcement, string? detail = null)
     {
         var icon = Icon(control, FailureGlyph, "SystemFillColorCriticalBrush");
-        Show(control, icon, State.Failure, FailureHold, toolTip: detail ?? announcement);
+        Show(control, icon, State.Failure, FailureHold, toolTip: FailureTooltip(announcement, detail));
         Announce(control, announcement + (detail is null ? string.Empty : "：" + detail));
     }
+
+    private static string FailureTooltip(string announcement, string? detail) => (detail ?? announcement) switch
+    {
+        "复制失败；可选择指纹后手动复制" => "复制失败",
+        "请检查安装与目录访问权限" => "应用或目录不可访问",
+        "请查看提示并核对对话记录" => "撤回未确认",
+        "请选择文本复制" or "请选择代码复制" or "请选中文字复制" => "复制失败",
+        "剪贴板暂不可用，请重试" => "剪贴板不可用",
+        "请稍后重试" or "请重试" => announcement,
+        _ => detail ?? announcement,
+    };
 
     // ---- 图标级反馈：按钮里除图标外还有文字（如会话 ID 行）时，只把那个图标换成结果字形 ----
 

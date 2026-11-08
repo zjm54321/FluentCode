@@ -71,7 +71,7 @@ internal static class OpenCodeModelPickerDialog
         AutomationProperties.SetLiveSetting(favoriteStatus, AutomationLiveSetting.Polite);
         body.Children.Add(favoriteStatus);
         body.Children.Add(lists);
-        ToolTipService.SetToolTip(favoriteSection, favoriteStore.Status);
+        ToolTipService.SetToolTip(favoriteSection, favoriteStore.Available ? "收藏模型" : "收藏不可用");
         var savingFavorite = false;
         async void ToggleFavorite(OpenCodeModelPickerRow row)
         {
@@ -95,7 +95,7 @@ internal static class OpenCodeModelPickerDialog
                 if (!state.IsClosed)
                 {
                     favoriteStatus.Visibility = favoriteStatus.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-                    ToolTipService.SetToolTip(favoriteSection, favoriteStore.Status);
+                    ToolTipService.SetToolTip(favoriteSection, favoriteStore.Available ? "收藏模型" : "收藏不可用");
                     Render();
                 }
             }

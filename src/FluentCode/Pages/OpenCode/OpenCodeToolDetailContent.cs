@@ -1025,7 +1025,7 @@ internal static partial class OpenCodeToolDetailContent
                 content.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
                 preview.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
                 glyph.Glyph = expanded ? "\uE70E" : "\uE70D";
-                var label = expanded ? "收起代码（保留前 6 行）" : "展开全部代码";
+                var label = expanded ? "收起代码" : "展开代码";
                 ToolTipService.SetToolTip(toggle, label);
                 AutomationProperties.SetName(toggle, label);
             }

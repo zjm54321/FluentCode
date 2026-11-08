@@ -95,7 +95,7 @@ internal sealed class OpenCodeRightPanelView
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } footerStyle) Footer.Style = footerStyle;
         Footer.BorderThickness = new Thickness(0); // a quiet row on the card; hover/pressed fill still marks it as a button
         AutomationProperties.SetAutomationId(Footer, "OpenCodeRightPanelConnection");
-        ToolTipService.SetToolTip(Footer, "查看 OpenCode 服务版本、MCP 与 LSP 详情");
+        ToolTipService.SetToolTip(Footer, "连接详情");
         OpenCodeThemeAssets.BindWordmark(_logo);
     }
 
@@ -107,7 +107,7 @@ internal sealed class OpenCodeRightPanelView
         _directory.Text = session?.Directory ?? string.Empty;
         ToolTipService.SetToolTip(_directory, string.IsNullOrEmpty(_directory.Text) ? null : _directory.Text);
         Directory.Visibility = string.IsNullOrEmpty(_directory.Text) ? Visibility.Collapsed : Visibility.Visible;
-        ToolTipService.SetToolTip(CopyButton, session is null ? null : "复制会话 ID：" + session.SessionId);
+        ToolTipService.SetToolTip(CopyButton, session is null ? null : "复制会话 ID");
         CopyButton.IsEnabled = session is not null;
     }
 

@@ -183,7 +183,7 @@ public sealed class OpenCodeHomeView : UserControl
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         SetIdentity(_search, "OpenCodeHomeSearch", "搜索会话、项目或 session ID");
-        ToolTipService.SetToolTip(_search, "搜索会话、项目或 session ID (Ctrl+K)");
+        ToolTipService.SetToolTip(_search, "搜索（Ctrl+K）");
         var searchShortcut = new KeyboardAccelerator { Key = VirtualKey.K, Modifiers = VirtualKeyModifiers.Control };
         searchShortcut.Invoked += (_, e) => { _search.Focus(FocusState.Programmatic); e.Handled = true; };
         KeyboardAccelerators.Add(searchShortcut);
@@ -196,6 +196,7 @@ public sealed class OpenCodeHomeView : UserControl
         };
         var create = new Button { Content = IconText("\uE710", "新建", 12), MinHeight = 36, Margin = new Thickness(10, 0, 0, 0), Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
         SetIdentity(create, "OpenCodeHomeNewSession", "新建会话");
+        ToolTipService.SetToolTip(create, "新建会话（/new）");
         create.Click += (_, _) => NewSession?.Invoke(this, Context());
         Grid.SetColumn(create, 1);
         searchRow.Children.Add(create);
@@ -806,7 +807,7 @@ public sealed class OpenCodeHomeView : UserControl
                 })
                 {
                     Enabled = enabled, AutomationId = "OpenCodeHomeMenu" + action,
-                    Description = enabled ? null : "此会话正在进行其他操作，或列表已变化；请稍后重试。",
+                    Description = enabled ? null : "会话忙碌或列表已变化",
                 };
             }
             return new OpenCodeContextCommand?[]

@@ -8,7 +8,21 @@ using FluentCode.Models;
 namespace FluentCode.Pages.OpenCode;
 
 internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDirectory, string HostPath, string? SshHost = null);
-internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason, bool IsSsh = false);
+internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason, bool IsSsh = false)
+{
+    internal string? TooltipReason => Reason switch
+    {
+        "连接未提供有效的 WSL 发行版" => "WSL 发行版无效",
+        "无法展开 ~：尚未读取到此 WSL 发行版的用户主目录" => "用户主目录未知",
+        "等待会话提供绝对 Linux 工作目录" or "等待会话提供远程目录…" => "等待工作目录",
+        "此 Linux 路径含 Windows UNC 不支持的字符" or "路径含特殊字符，不能在编辑器中打开" => "路径含不支持的字符",
+        "工作目录越过了 Linux 根目录" => "工作目录无效",
+        "连接中的 SSH 主机无效" => "SSH 主机无效",
+        "当前连接未提供已授权的本机路径映射；不能将远程路径作为本机路径打开" => "连接不支持打开路径",
+        "会话未提供可解析相对路径的绝对工作目录" => "工作目录未知",
+        _ => Reason,
+    };
+}
 internal enum WslEditorOpenMode { RemoteWsl, HostFolder }
 internal sealed record WslHostEditor(string Name, string? Executable, WslEditorOpenMode OpenMode, string? Reason);
 internal sealed record WslEditorChoices(IReadOnlyList<WslHostEditor> Installed, WslHostEditor? Current)

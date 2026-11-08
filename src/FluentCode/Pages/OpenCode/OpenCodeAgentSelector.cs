@@ -271,9 +271,9 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         Spacing = 4;
 
         AutomationProperties.SetAutomationId(_currentText, "OpenCodeAgentSelectorCurrent");
-        ToolTipService.SetToolTip(_currentText, "输入 /agents 切换智能体");
+        ToolTipService.SetToolTip(_currentText, "切换智能体（/agents）");
         AutomationProperties.SetAutomationId(_modelText, "OpenCodeCurrentModel");
-        ToolTipService.SetToolTip(_modelText, "输入 /models 切换模型");
+        ToolTipService.SetToolTip(_modelText, "切换模型（/models）");
         AutomationProperties.SetAccessibilityView(_separator, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         foreach (var text in new[] { _currentText, _separator, _modelText })
         {
@@ -655,7 +655,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     {
         var selected = _rows.Find(row => row.Id == CurrentAgentId);
         OpenCodeAgentPresentation.Apply(_currentText, selected?.Color);
-        ToolTipService.SetToolTip(_currentText, selected?.Description ?? "输入 /agents 切换智能体");
+        ToolTipService.SetToolTip(_currentText, selected?.Description is { Length: > 0 } description ? description : "切换智能体（/agents）");
         AutomationProperties.SetHelpText(_currentText, selected?.Description ?? string.Empty);
         AutomationProperties.SetName(_currentText, string.IsNullOrEmpty(_currentAgentId) ? UnknownAgentText : "智能体：" + _currentText.Text);
     }
@@ -670,7 +670,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
             CurrentModelDisplay = null;
             _modelText.Text = UnknownModelText;
             AutomationProperties.SetName(_modelText, UnknownModelText);
-            ToolTipService.SetToolTip(_modelText, "输入 /models 切换模型");
+            ToolTipService.SetToolTip(_modelText, "切换模型（/models）");
             return;
         }
 
@@ -678,7 +678,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         CurrentModelDisplay = _modelText.Text;
         AutomationProperties.SetName(_modelText, "模型：" + _modelText.Text);
         ToolTipService.SetToolTip(_modelText, (model.ProviderId is { Length: > 0 } provider ? provider + " / " : string.Empty)
-            + _modelText.Text + Environment.NewLine + "输入 /models 切换模型");
+            + _modelText.Text);
     }
 
     // ------------------------------------------------------------------
@@ -1002,7 +1002,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
         _rows.Clear();
         _currentText.Text = string.Empty;
         OpenCodeAgentPresentation.Apply(_currentText, null);
-        ToolTipService.SetToolTip(_currentText, "输入 /agents 切换智能体");
+        ToolTipService.SetToolTip(_currentText, "切换智能体（/agents）");
         AutomationProperties.SetHelpText(_currentText, string.Empty);
         _modelText.Text = string.Empty;
         CurrentModelDisplay = null;

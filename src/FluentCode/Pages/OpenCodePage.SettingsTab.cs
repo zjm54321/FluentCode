@@ -63,7 +63,7 @@ public sealed partial class OpenCodePage
             };
             AutomationProperties.SetAutomationId(item, "FluentCodeSettingsTab");
             AutomationProperties.SetName(item, "设置");
-            ToolTipService.SetToolTip(item, "设置 (Ctrl+,)");
+            ToolTipService.SetToolTip(item, "设置（Ctrl+,）");
             _settingsTab = item;
             var previous = _suppressTabSelection;
             _suppressTabSelection = true;
@@ -187,7 +187,7 @@ public sealed partial class OpenCodePage
         };
         AutomationProperties.SetAutomationId(button, "FluentCodeHomeSettingsButton");
         AutomationProperties.SetName(button, "设置");
-        ToolTipService.SetToolTip(button, "设置");
+        ToolTipService.SetToolTip(button, "设置（Ctrl+,）");
         button.Click += HomeSettingsButton_Click;
         return button;
     }
@@ -214,7 +214,7 @@ public sealed partial class OpenCodePage
         };
         AutomationProperties.SetAutomationId(button, "FluentCodeHomeWideSettingsButton");
         AutomationProperties.SetName(button, "设置");
-        ToolTipService.SetToolTip(button, "设置 (Ctrl+,)");
+        ToolTipService.SetToolTip(button, "设置（Ctrl+,）");
         button.Click += HomeSettingsButton_Click;
         return button;
     }

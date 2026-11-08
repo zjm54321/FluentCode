@@ -14,13 +14,13 @@ internal static class ChromePresentationTests
 
         var local = Web("http://localhost:5173/", "WSL probe");
         Check(local is { Lead: "http://", Emphasis: "localhost:5173", Trail: "", Title: "WSL probe", OriginLabel: "WSL 网络", IsBlank: false }, "address shows the URL and keeps the title as secondary text");
-        Check(local.ToolTip.Contains("WSL probe") && local.ToolTip.Contains("http://localhost:5173/") && local.ToolTip.Contains("WSL 里访问"), "address tooltip carries title, full URL and where the address is reached");
+        Check(local.ToolTip == "WSL probe\nhttp://localhost:5173/", "address tooltip keeps only the title and full URL");
         Check(Web("http://127.0.0.1:3000/a", kind: OpenCodeConnectionKind.Remote).OriginLabel == "远程服务器" && Web("http://[::1]:3000/", kind: null).OriginLabel == "远程服务器", "remote and legacy connections name the remote server");
 
         var https = Web("https://example.com/a/b?c=1#d", "Example");
         Check(https is { Lead: "https://", Emphasis: "example.com", Trail: "/a/b?c=1#d", OriginLabel: null, Glyph: "\uE72E" }, "public HTTPS page has a lock and no origin label");
         var http = Web("http://example.com/");
-        Check(http is { Emphasis: "example.com", Trail: "", OriginLabel: null, Glyph: "\uE946" } && http.ToolTip.Contains("未加密"), "plain HTTP page is called out");
+        Check(http is { Emphasis: "example.com", Trail: "", OriginLabel: null, Glyph: "\uE946" } && http.ToolTip == "http://example.com/", "plain HTTP keeps its glyph and full-URL tooltip");
         Check(Web("https://example.com@evil.test/x") is { Lead: "https://example.com@", Emphasis: "evil.test", Trail: "/x" }, "credentials never pass as the highlighted host");
         Check(Web("http://localhost:5173/", "localhost:5173").Title is null && Web("https://a.test/p", "https://a.test/p").Title is null && Web("https://a.test/p", "  ").Title is null, "title that only repeats the address is dropped");
         Check(Web("http://localhost:5173/", "stale", "CannotConnect") is { Title: "无法访问此页面", Emphasis: "localhost:5173", OriginLabel: "WSL 网络" }, "failed page keeps its address and origin");
@@ -29,7 +29,7 @@ internal static class ChromePresentationTests
 
         Check(File("/tmp/opencode/brtest/index.html") is { Lead: "/tmp/opencode/brtest/", Emphasis: "index.html", Trail: "", Title: null, OriginLabel: "服务器文件", IsBlank: false }, "file preview shows the path and names the server");
         Check(File("C:\\src\\a.txt") is { Lead: "C:\\src\\", Emphasis: "a.txt" } && File("a.txt") is { Lead: "", Emphasis: "a.txt" }, "file name splits on either separator");
-        Check(File("/tmp/a.txt").ToolTip.StartsWith("/tmp/a.txt\n", StringComparison.Ordinal) && File("/tmp/a.txt").ToolTip.Contains("服务器"), "file tooltip carries the path and where it is read");
+        Check(File("/tmp/a.txt").ToolTip == "/tmp/a.txt", "file tooltip keeps only the full path");
 
         var path = OpenCodeBrowserChromePresentation.FitAddress(100, 300, 80, 0, 0);
         Check(path.Emphasis == 80 && path.Lead == 20, "long path trims its folders before the file name");

@@ -32,6 +32,26 @@ internal sealed class OpenCodeBrowserPanelState
             OpenCodeBrowserAvailability.Unsupported => "这个 OpenCode 版本不支持让智能体使用浏览器",
             _ => "智能体暂时不能使用浏览器：会话尚未接入",
         });
+    public static string CompactTooltipTitle(int count) => count == 0 ? "浏览器" : $"浏览器（{count} 个页面）";
+    public static string CompactTooltipStatus(OpenCodeBrowserAvailability availability, string? reason) => reason switch
+    {
+        "智能体可以使用浏览器" or "智能体可以使用浏览器（45 个操作）" => "已连接",
+        "正在接入浏览器…" => "连接中",
+        "与 OpenCode 的连接断开，正在重连…" or "智能体暂时不能使用浏览器：与 OpenCode 的连接断开了，正在重连…" => "重连中",
+        "这个会话的浏览器现在由另一个桌面应用提供" or "这个会话的浏览器现在由另一台电脑 / 另一个窗口提供" => "已由其他应用接管",
+        "这个 OpenCode 版本不支持让智能体使用浏览器" => "当前版本不支持",
+        "智能体暂时不能使用浏览器：会话尚未接入" or "此会话尚未接入浏览器" => "未连接",
+        "智能体暂时不能使用浏览器：接入失败，请重试" => "连接失败",
+        _ => reason ?? (availability switch
+        {
+            OpenCodeBrowserAvailability.Available => "已连接",
+            OpenCodeBrowserAvailability.Attaching => "连接中",
+            OpenCodeBrowserAvailability.Reconnecting => "重连中",
+            OpenCodeBrowserAvailability.Replaced => "已由其他应用接管",
+            OpenCodeBrowserAvailability.Unsupported => "当前版本不支持",
+            _ => "未连接",
+        }),
+    };
     public static string? ReclaimLabel(OpenCodeBrowserAvailability availability) => availability switch
     {
         OpenCodeBrowserAvailability.Replaced => "改为在这里提供",

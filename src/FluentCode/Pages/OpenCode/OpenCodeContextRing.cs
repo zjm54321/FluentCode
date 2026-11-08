@@ -246,7 +246,7 @@ internal sealed class OpenCodeContextRing
         if (_percent is not null) _percent.Text = _percentText;
         Summary = "上下文 " + (ratio is { } ? FormatPercent(percent) : "—")
             + (usage is not null ? " · " + usage : "") + " · " + qualifier;
-        ToolTipService.SetToolTip(_button, Summary);
+        ToolTipService.SetToolTip(_button, "上下文 " + _percentText + (usage is not null ? "（" + usage + "）" : string.Empty));
         AutomationProperties.SetName(_button, "上下文参考 " + (ratio is { } ? "约 " + FormatPercent(percent) : "未知"));
         AutomationProperties.SetHelpText(_button, Summary);
         AutomationProperties.SetName(_ring, "上下文参考占比 " + (ratio is { } ? FormatPercent(percent) : "未知"));

@@ -82,18 +82,18 @@ public sealed partial class OpenCodePage
         BlankModelButton.Width = labels.Model ? double.NaN : 36;
         BlankModelButton.Padding = labels.Model ? new Thickness(8, 0, 8, 0) : new Thickness(0);
         DescribeComposerIcon(BlankAgentButton, "选择智能体：" + (agent ?? "不可用"));
-        ToolTipService.SetToolTip(BlankAgentButton, description ?? "智能体说明不可用");
+        ToolTipService.SetToolTip(BlankAgentButton, description);
         DescribeComposerIcon(BlankModelButton, "选择模型：" + (model?.Name ?? "不可用"));
         BlankStrengthButton.Visibility = Visibility.Visible;
         DescribeComposerIcon(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));
         if (!_newSessionDraftActive)
         {
             if (_agentSelector.HasPendingAgent)
-                ToolTipService.SetToolTip(BlankAgentButton, (description ?? "智能体说明不可用") + " · 下次发送生效");
+                ToolTipService.SetToolTip(BlankAgentButton, description);
             if (_agentSelector.HasPendingModel)
             {
-                ToolTipService.SetToolTip(BlankModelButton, "选择模型：" + model?.Name + " · 下次发送生效");
-                ToolTipService.SetToolTip(BlankStrengthButton, "选择推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant) + " · 下次发送生效");
+                ToolTipService.SetToolTip(BlankModelButton, "模型：" + model?.Name);
+                ToolTipService.SetToolTip(BlankStrengthButton, "推理强度：" + OpenCodeModelPresentation.VariantLabel(selected?.Variant));
             }
         }
         RefreshFullScreenComposerChoices(agent, color, model, selected, enabled);

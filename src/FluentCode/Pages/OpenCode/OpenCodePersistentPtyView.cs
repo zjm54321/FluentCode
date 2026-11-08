@@ -171,13 +171,21 @@ internal sealed class OpenCodePersistentPtyView : Grid
         OpenCodeTerminalUi.Themed(_readOnly, "BorderBrush", "ControlStrokeColorDefaultBrush");
         _jump.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new FontIcon { Glyph = "\uE74B", FontSize = 12 }, _jumpText } };
         _jump.Click += (_, _) => JumpToLatest();
-        ToolTipService.SetToolTip(_jump, "跳到最新 · Ctrl+Shift+End");
+        ToolTipService.SetToolTip(_jump, "跳到最新（Ctrl+Shift+End）");
         AutomationProperties.SetAutomationId(_jump, "OpenCodePersistentPtyJump");
         var chips = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Children = { _jump, _statusPill, _readOnly } };
         Grid.SetColumn(chips, 2); _header.Children.Add(chips);
         var divider = new Border { Width = 1, Height = 20, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         OpenCodeTerminalUi.Themed(divider, "Background", "DividerStrokeColorDefaultBrush");
-        foreach (var button in new[] { _find, _copy, _paste, _more, _back }) ToolTipService.SetToolTip(button, new ToolTip { Content = AutomationProperties.GetName(button), Placement = PlacementMode.Top });
+        foreach (var (button, tooltip) in new[]
+        {
+            (_menu, "终端列表（Ctrl+Shift+L）"),
+            (_find, "查找（Ctrl+Shift+F）"),
+            (_copy, "复制（Ctrl+Shift+C）"),
+            (_paste, "粘贴（Ctrl+Shift+V）"),
+            (_more, "更多"),
+            (_back, "关闭终端（Ctrl+`）"),
+        }) ToolTipService.SetToolTip(button, new ToolTip { Content = tooltip, Placement = PlacementMode.Top });
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0),
             Children = { _find, _copy, _paste, _more, divider, _back } };
         Grid.SetColumn(tools, 3); _header.Children.Add(tools);
@@ -326,7 +334,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         _badgeText.Text = count.ToString(System.Globalization.CultureInfo.InvariantCulture);
         _badge.Visibility = !expanded && count >= 2 ? Visibility.Visible : Visibility.Collapsed;
         _menu.Visibility = _switcher is null ? Visibility.Collapsed : Visibility.Visible;
-        var label = expanded ? "隐藏终端列表 · Ctrl+Shift+L" : "显示终端列表 · Ctrl+Shift+L";
+        var label = expanded ? "隐藏终端列表（Ctrl+Shift+L）" : "显示终端列表（Ctrl+Shift+L）";
         AutomationProperties.SetName(_menu, label);
         ToolTipService.SetToolTip(_menu, new ToolTip { Content = label, Placement = PlacementMode.Top });
     }
@@ -374,7 +382,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         _status.Text = model?.Status ?? string.Empty;
         AutomationProperties.SetName(_statusPill, _status.Text);
         _readOnly.Visibility = model is not null && !model.Writable ? Visibility.Visible : Visibility.Collapsed;
-        ToolTipService.SetToolTip(_readOnly, model?.CanActivate == true ? "双击终端即可在此输入" : null);
+        ToolTipService.SetToolTip(_readOnly, model?.CanActivate == true ? "双击以输入" : null);
         var notice = model?.ControlConflict == true ? string.Empty : model?.Notice ?? string.Empty;
         _notice.Message = notice;
         _notice.Severity = model?.Phase is OpenCodePersistentPtyPhase.Unavailable or OpenCodePersistentPtyPhase.Disconnected ? InfoBarSeverity.Error : InfoBarSeverity.Warning;
@@ -397,7 +405,8 @@ internal sealed class OpenCodePersistentPtyView : Grid
         else if (model.CanActivate) text = "双击终端即可在此输入" + (model.Directory is { Length: > 0 } cwd ? " · " + cwd : string.Empty);
         else text = string.Join(" · ", new[] { model.Source, model.Directory }.WherePresent());
         _subtitle.Text = text;
-        ToolTipService.SetToolTip(_subtitle, text.Length == 0 ? null : text);
+        ToolTipService.SetToolTip(_subtitle, model is null ? null : model.Directory
+            ?? (model.ControlConflict ? "其他客户端正在输入" : model.CanActivate ? "双击以输入" : model.Source));
         // A click or keystroke on a read-only terminal briefly highlights how to type here.
         OpenCodeTerminalUi.Themed(_subtitle, "Foreground", _hinting && model?.CanActivate == true ? "AccentTextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush");
     }

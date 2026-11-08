@@ -20,9 +20,12 @@ internal static partial class Program
             "plus icons: attach paperclip, lightning for commands, @ mention for context; terminal has no font glyph (shared >_ path icon)");
         Check(entries.Where(e => e.Kind != OpenCodeComposerPlusMenuKind.Separator).Select(e => e.Text)
             .SequenceEqual(new[] { "添加附件", "命令", "上下文", "终端" }), "plus menu labels");
-        Check(OpenCodeComposerPlusMenu.TerminalTooltip.Contains("Shell")
+        Check(OpenCodeComposerPlusMenu.TerminalTooltip == "Shell 命令（!）"
             && OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, true, false, false, true)
             && !OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, false, false, false, true), "terminal enabled only for editable composer");
+        Check(OpenCodeComposerPlusMenu.ContextTooltip == "添加上下文（@）"
+            && OpenCodeComposerPlusMenu.ContextUnavailableTooltip == "未连接或未选择目录"
+            && OpenCodeComposerPlusMenu.CommandTooltip == "命令（/）", "concise plus-menu tooltips and full-width shortcut parentheses");
         var shell = new OpenCodeComposerShellState();
         shell.Enter();
         Check(shell.Active && !shell.CanSubmit, "shell empty Enter is inert");

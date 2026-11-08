@@ -280,7 +280,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         };
         AutomationProperties.SetAutomationId(_addButton, "OpenCodeComposerAddButton");
         AutomationProperties.SetName(_addButton, "添加附件、命令或上下文");
-        ToolTipService.SetToolTip(_addButton, "添加附件、命令、上下文");
+        ToolTipService.SetToolTip(_addButton, "添加");
 
         _limitIcon = new FontIcon { Glyph = "\uEC61", FontSize = 16 };
         _limitIndicator = new ContentControl
@@ -843,9 +843,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         _terminalItem.IsEnabled = OpenCodeComposerPlusMenu.IsEnabled(OpenCodeComposerPlusMenuKind.Terminal, canEdit, full, MenuWanted(snapshot), mentionAvailable);
         if ((!canEdit || !mentionAvailable) && _mentionShown) CloseMention();
         _attachItem.Text = full ? "添加附件（已达 10 个上限）" : "添加附件";
-        ToolTipService.SetToolTip(_attachItem, full
-            ? "已达到 10 个附件上限；先移除部分附件再添加。"
-            : "图片、文本、Markdown、PDF 或 JSON（最多 10 个；单个不超过 10 MB，合计不超过 20 MB）");
+        ToolTipService.SetToolTip(_attachItem, full ? "已达 10 个附件上限" : "添加附件");
         _addButton.IsEnabled = _commandItem.IsEnabled || _attachItem.IsEnabled || _contextItem.IsEnabled || _terminalItem.IsEnabled;
         long total = 0;
         foreach (var a in snapshot.Attachments) total += a.Bytes;
@@ -1163,7 +1161,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         _menuRing.Visibility = _menuRing.IsActive ? Visibility.Visible : Visibility.Collapsed;
         _menuRetry.Visibility = p.Status == OpenCodeComposerMenuStatus.Failed ? Visibility.Visible : Visibility.Collapsed;
         _menuRetry.IsEnabled = _snapshot is { IsBusy: false };
-        ToolTipService.SetToolTip(_menuRetry, "重新读取服务器命令");
+        ToolTipService.SetToolTip(_menuRetry, "刷新");
 
         // Rebuild only when the opening or the shown rows changed (value equality), so the highlight/focus stay stable.
         if (!ReferenceEquals(_renderedHandle, p.Handle) || !_renderedRows.SequenceEqual(p.Rows))
@@ -1481,7 +1479,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         }
         var item = new ListViewItem { Content = row, Tag = candidate, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(item, parent + " " + candidate.Id);
-        ToolTipService.SetToolTip(item, candidate.Description ?? candidate.Id);
+        ToolTipService.SetToolTip(item, candidate.Description is { Length: > 0 } description ? description : "@" + candidate.Id);
         return item;
     }
 
@@ -1690,7 +1688,11 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             + (description.Length > 0 ? "，" + description : string.Empty)
             + (!row.Selectable && row.Unavailable is { } why ? "，暂不可用：" + why : string.Empty);
         AutomationProperties.SetName(item, automation);
-        ToolTipService.SetToolTip(item, automation);
+        ToolTipService.SetToolTip(item, row.Selectable ? "/" + row.Name : row.Unavailable switch
+        {
+            "需要先清空输入框、已选命令和附件" or "需要输入框、已选命令和附件都为空" => "请先清空输入",
+            _ => row.Unavailable ?? "/" + row.Name,
+        });
         return item;
     }
 
@@ -1742,9 +1744,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         {
             var bounded = OpenCodeComposerInputPolicy.Bound(s.SelectedCommand, OpenCodeComposerInputPolicy.MaxChipNameLength);
             _commandChipText.Text = "/" + bounded;
-            ToolTipService.SetToolTip(_commandChip, $"已选命令 /{bounded}：发送时执行，输入框内容作为参数。服务器确认接收不代表执行完成。");
+            ToolTipService.SetToolTip(_commandChip, $"命令 /{bounded}");
             AutomationProperties.SetName(_commandChipRemove, $"移除命令 /{bounded}（保留参数文本）");
-            ToolTipService.SetToolTip(_commandChipRemove, "移除命令（保留输入框中的参数）");
+            ToolTipService.SetToolTip(_commandChipRemove, "移除命令");
             _commandChipRemove.IsEnabled = canEdit;
         }
 
@@ -1757,12 +1759,12 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             _intentChipText.Text = "/" + name;
             var label = $"FluentCode 本机操作 /{name}：{OpenCodeComposerCommandMenuSession.NativeDescription(intent.Kind)}";
             AutomationProperties.SetName(_intentChip, label);
-            ToolTipService.SetToolTip(_intentChip, label + "。不是服务器命令，不会发送消息。");
+            ToolTipService.SetToolTip(_intentChip, label);
             _intentRun.IsEnabled = s.CanInvokeClientAction;
             AutomationProperties.SetName(_intentRun, $"执行本机操作 /{name}");
-            ToolTipService.SetToolTip(_intentRun, "执行（也可以再按一次 Enter）。会先打开确认或选择界面，不会直接发送消息。");
+            ToolTipService.SetToolTip(_intentRun, "执行（Enter）");
             AutomationProperties.SetName(_intentRemove, $"取消本机操作 /{name}（保留输入内容）");
-            ToolTipService.SetToolTip(_intentRemove, "取消这个本机操作（输入框内容、已选命令和附件保持不变）");
+            ToolTipService.SetToolTip(_intentRemove, "取消");
             _intentRemove.IsEnabled = s.IsActive && !s.IsBusy;
         }
         var intentNote = intent is null ? null : _menuSession.Note;
@@ -1952,8 +1954,6 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         caption.TextTrimming = TextTrimming.CharacterEllipsis;
         caption.MaxWidth = AttachmentPreviewSize;
         content.Children.Add(caption);
-        if (!string.IsNullOrWhiteSpace(image.Details) && image.Details != image.Name)
-            content.Children.Add(new TextBlock { Text = image.Details, TextWrapping = TextWrapping.Wrap, MaxLines = 8, MaxWidth = AttachmentPreviewSize });
         var tip = new ToolTip { Content = content };
         AutomationProperties.SetAutomationId(tip, "OpenCodeComposerAttachmentPreview");
         return tip;

@@ -133,7 +133,7 @@ internal static class OpenCodeConnectionFlyout
             };
             AutomationProperties.SetAutomationId(button, "OpenCodeConnectionRefresh");
             AutomationProperties.SetName(button, "重新读取连接详情");
-            ToolTipService.SetToolTip(button, "重新读取一次服务版本与 MCP / 插件状态");
+            ToolTipService.SetToolTip(button, "刷新");
             button.Click += (_, _) => refresh();
             root.Children.Add(button);
         }
