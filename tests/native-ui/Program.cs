@@ -162,6 +162,7 @@ internal static class Program
                 && dataSource.Contains("new CartesianChart { Background = ComponentBrush(\"surface\", true)"), "Native chart controls use the shared light/dark surface background");
             var themeSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiTheme.cs"));
             Require(themeSource.Contains("background || token == \"surface\" ? Background(token)"), "Surface colour semantics remain a background brush for SVG fills");
+            Require(themeSource.Contains("table.Margin = new Thickness(0)") && !themeSource.Contains("new Thickness(-16, 0, -16, 0)"), "Tables stay within their card content padding instead of bleeding into the outer frame");
             var captureSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/App.NativeUiCapture.cs"));
             Require(captureSource.Contains("chart.UpdateFinished += Finished") && captureSource.Contains("Throttling = false")
                 && captureSource.Contains("Native chart draw completed without any rendered series/legend pixels"), "Native chart capture waits for draw completion and verifies painted pixels, not only populated data");

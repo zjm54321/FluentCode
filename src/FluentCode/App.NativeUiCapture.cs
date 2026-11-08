@@ -178,6 +178,14 @@ public partial class App
                 }
                 await Task.Delay(100); surface.UpdateLayout();
                 await WaitForNativeChartDrawsAsync(surface);
+                foreach (var table in Descendants(timeline).OfType<WinUI.TableView.TableView>())
+                {
+                    if (table.Parent is FrameworkElement parent)
+                    {
+                        var origin = table.TransformToVisual(parent).TransformPoint(new(0, 0));
+                        if (origin.X < -.5 || origin.X + table.ActualWidth > parent.ActualWidth + .5) throw new InvalidOperationException("Native table exceeds its card content width/padding.");
+                    }
+                }
                 var file = name + "-" + theme.ToString().ToLowerInvariant() + ".png";
                 await CaptureNativeUiPngAsync(surface, Path.Combine(root, file));
                 if (name == "dashboard")

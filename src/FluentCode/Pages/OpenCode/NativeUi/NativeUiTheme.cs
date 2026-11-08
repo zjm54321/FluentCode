@@ -396,7 +396,7 @@ internal static class NativeUiTheme
     {
         table.HeaderRowHeight = table.HeaderRowMinHeight = 32;
         table.RowHeight = table.RowMinHeight = 36;
-        table.Margin = new Thickness(-16, 0, -16, 0);
+        table.Margin = new Thickness(0);
         table.Background = table.AlternateRowBackground = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         table.HeadersVisibility = TableViewHeadersVisibility.Columns;
         table.GridLinesVisibility = table.HeaderGridLinesVisibility = TableViewGridLinesVisibility.Horizontal;
