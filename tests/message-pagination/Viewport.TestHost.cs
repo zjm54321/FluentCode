@@ -37,9 +37,7 @@ namespace Microsoft.UI.Xaml.Media
 }
 namespace FluentCode.Pages.OpenCode
 {
-    internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Windows.Foundation.Rect LabelBounds,
-        Windows.Foundation.Rect EffectiveViewport, Windows.Foundation.Rect ScrollBounds);
-    internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
+    internal sealed record OpenCodeIdleCompletion(string MessageId, double Watermark, string Outcome, long RenderVersion);
 }
 namespace FluentCode
 {
@@ -64,9 +62,10 @@ namespace FluentCode
         { _sessionUiChanged |= _sessionUiStore!.Apply(new(CurrentOpenCodePageSource!.Identity, CurrentOpenCodePageSource.Revision, session,
             Completion: new("succeeded", watermark)), DateTimeOffset.UtcNow); PublishSessionUiChanges(); }
         public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string session,
-            double watermark, Func<bool> fence, CancellationToken token)
+            double watermark, Func<bool> fence, CancellationToken token, Action? onReceiptStarted = null)
         {
             if (!fence() || token.IsCancellationRequested) return Task.FromResult<double?>(null);
+            onReceiptStarted?.Invoke();
             Calls++; Last = watermark; return Task.FromResult<double?>(watermark);
         }
     }
@@ -76,16 +75,16 @@ namespace FluentCode.Pages
     public sealed partial class OpenCodeConversationView
     {
         internal long RenderVersion { get; private set; }
-        private OpenCode.OpenCodeVisibleIdle? _testIdle;
+        private OpenCode.OpenCodeIdleCompletion? _testIdle;
         internal bool IsIdleLayoutCurrent => _testIdle is not null;
         internal event EventHandler? IdleViewportInvalidated;
         public event EventHandler<object>? LayoutUpdated;
         public event Action<object, Microsoft.UI.Xaml.SizeChangedEventArgs>? SizeChanged;
         private void InvalidateGeometry() { RenderVersion++; _testIdle = null; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
-        internal OpenCode.OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) => new(RenderVersion, _testIdle);
+        internal OpenCode.OpenCodeIdleCompletion? CaptureIdleCompletion() => _testIdle;
         internal void TestGeometry(double? watermark)
         {
-            _testIdle = watermark is { } value ? new("msg_idle_" + value, value, new(0, 0, 10, 10), new(0, 0, 100, 100), new(0, 0, 100, 100)) : null;
+            _testIdle = watermark is { } value ? new("msg_idle_" + value, value, "succeeded", RenderVersion) : null;
             LayoutUpdated?.Invoke(this, new());
         }
         internal void TestResize() => SizeChanged?.Invoke(this, new());

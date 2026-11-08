@@ -48,6 +48,7 @@ static partial class Checks
             ("internal wakeups preserve idle, real unread results and attention", InternalMessages),
             ("view clears unread, already-selected completions stay read, child results and owner/source fences", ViewedSessionAttention),
             ("startup/reconnect never invent unread completions", RestartBaseline),
+            ("exact idle receipt, busy veto, interrupted stop and durable restart", ViewReceiptLifecycle),
             ("actual App dispatch, gate, expiry and covered ACK paths", AppPaths) })
         {
             int before = assertions;
@@ -185,7 +186,7 @@ static partial class Checks
             }
             if (path.EndsWith("/permission/per_test")) return Json(new { data = Permission() });
             if (path.EndsWith("/active")) return Json(new { data = new Dictionary<string, object>() });
-            if (path == "/api/session/ses_test") return Json(new { data = new { id = "ses_test", time = new { idle = 200, viewed } } });
+            if (path == "/api/session/ses_test") return Json(new { data = new { id = "ses_test", outcome = "succeeded", time = new { idle = 200, viewed } } });
             return Json(new { data = Array.Empty<object>() });
         }));
         using var client = Client(http); var source = new TrustedOpenCodeNotificationSource("ep-view", client);

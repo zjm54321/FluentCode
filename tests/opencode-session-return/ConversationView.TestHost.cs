@@ -824,6 +824,7 @@ namespace Microsoft.UI.Xaml.Controls
 
 namespace Microsoft.UI.Xaml.Controls.Primitives
 {
+    public class ScrollPresenter : Microsoft.UI.Xaml.Controls.ContentControl { }
     public enum FlyoutPlacementMode { TopEdgeAlignedLeft }
 }
 

@@ -302,7 +302,7 @@ internal static partial class Program
             f.Page.ProveViewport();
             Check(f.App.Acks.Count == 1, "ack.same-watermark-not-retried-after-return-revision-unload");
             var nextIdle = new[] { new OpenCodeMessage { Id = "msg_next_idle", Type = OpenCodeMessageTypes.Idle,
-                Time = new OpenCodeMessageTime { Created = 43 } } };
+                Outcome = OpenCodeSessionOutcomes.Succeeded, Time = new OpenCodeMessageTime { Created = 43 } } };
             f.Page.Conversation.ApplyMessages(nextIdle);
             f.Page.NotifyViewAcknowledgementRendered(nextIdle, windowVisible: true);
             f.Page.ProveViewport();

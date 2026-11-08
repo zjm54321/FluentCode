@@ -152,7 +152,7 @@ static partial class Checks
             if (path.Count(c => c == '/') == 3)
             {
                 exactReads++;
-                return Json(new { data = new { id = path.Split('/')[3], time = new { idle = 42 } } });
+                return Json(new { data = new { id = path.Split('/')[3], outcome = "succeeded", time = new { idle = 42 } } });
             }
             return Json(new { data = Array.Empty<object>() });
         }));

@@ -209,7 +209,8 @@ internal static partial class Program
             new() { Id = "msg_view_idle", Type = "idle", Outcome = "succeeded", Time = new() { Created = 100 } },
         });
         var viewport = new Microsoft.UI.Xaml.Controls.ScrollView();
-        var presenter = new Microsoft.UI.Xaml.Controls.ScrollContentPresenter { Content = view };
+        // ScrollView's template uses ScrollPresenter, NOT ScrollViewer's ScrollContentPresenter.
+        var presenter = new Microsoft.UI.Xaml.Controls.Primitives.ScrollPresenter { Content = view };
         viewport.Content = presenter;
         var root = new Microsoft.UI.Xaml.Controls.Border { Child = viewport };
         var xamlRoot = new Microsoft.UI.Xaml.XamlRoot();
@@ -229,18 +230,30 @@ internal static partial class Program
         Geometry(idle, 600); // End separator is entirely below the viewport.
         var answer = (Microsoft.UI.Xaml.FrameworkElement)view.Children[^2];
         answer.ActualHeight = 800; answer.TestTransform = _ => new Microsoft.UI.Xaml.Media.GeneralTransform(-300);
-        Check(view.CaptureIdleViewport(viewport).Candidate is null, "viewport.content-bottom-before-layout-does-not-ack");
+        Check(view.CaptureIdleCompletion() is null, "completion.before-current-layout-does-not-ack");
         view.RaiseLayoutUpdatedForTest();
-        Check(view.CaptureIdleViewport(viewport).Candidate?.Watermark == 100,
-            "viewport.latest-answer-bottom-visible-with-offscreen-idle-separator");
+        Check(view.CaptureIdleCompletion()?.Watermark == 100,
+            "completion.current-idle-with-offscreen-separator");
         answer.TestTransform = _ => new Microsoft.UI.Xaml.Media.GeneralTransform(-299);
-        Check(view.CaptureIdleViewport(viewport).Candidate is null, "viewport.answer-bottom-below-viewport-does-not-ack");
+        Check(view.CaptureIdleCompletion()?.Watermark == 100, "completion.offscreen-answer-bottom-cannot-veto-viewed-session");
         answer.TestTransform = _ => new Microsoft.UI.Xaml.Media.GeneralTransform(-300);
         answer.Opacity = 0;
-        Check(view.CaptureIdleViewport(viewport).Candidate is null, "viewport.hidden-answer-never-proves-view");
+        Check(view.CaptureIdleCompletion()?.Watermark == 100, "completion.row-opacity-is-not-session-visibility");
         answer.Opacity = 1;
         viewport.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-        Check(view.CaptureIdleViewport(viewport).Candidate is null, "viewport.hidden-ancestor-never-proves-view");
+        Check(view.CaptureIdleCompletion()?.Watermark == 100, "completion.geometry-does-not-authorize-or-revoke-page-visibility");
+        viewport.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        foreach (var outcome in new[] { "succeeded", "failed", "interrupted" })
+        {
+            view.ApplyMessages(new[] { new OpenCodeMessage { Id = "msg_terminal_" + outcome, Type = "idle",
+                Outcome = outcome, Time = new() { Created = 200 } } });
+            Geometry(root); view.RaiseLayoutUpdatedForTest();
+            Check(view.CaptureIdleCompletion()?.Watermark == 200,
+                "completion.current-" + outcome + "-without-assistant-content");
+        }
+        // No native template/ancestor is needed to cover accepted history and current layout.
+        presenter.Content = null; viewport.Content = view; Geometry(root); view.RaiseLayoutUpdatedForTest();
+        Check(view.CaptureIdleCompletion()?.Watermark == 200, "completion.no-scroll-presenter-or-geometry-required");
         view.ClearMessages();
     }
 }
