@@ -53,7 +53,8 @@ internal static partial class Program
         Reject(() => OpenCodeComposerNativeGeometry.FontSize(14, double.MaxValue), "scaled font overflow rejected");
         Check(OpenCodeComposerNativeGeometry.IsRecoverable(new COMException("fixture", unchecked((int)0x80070057)))
             && OpenCodeComposerNativeGeometry.IsRecoverable(new ArgumentException())
-            && !OpenCodeComposerNativeGeometry.IsRecoverable(new InvalidOperationException()), "native boundary catches only COM/argument failures");
+            && OpenCodeComposerNativeGeometry.IsRecoverable(new UnauthorizedAccessException())
+            && !OpenCodeComposerNativeGeometry.IsRecoverable(new InvalidOperationException()), "native boundary catches only COM/argument/access-denied failures");
 
         var link = new OpenCodeComposerInlineToken(Guid.NewGuid(), OpenCodeComposerInlineKind.Link, "https://example.test/paste", "paste");
         var other = new OpenCodeComposerInlineToken(Guid.NewGuid(), OpenCodeComposerInlineKind.Mention, "explorer", "Explorer");

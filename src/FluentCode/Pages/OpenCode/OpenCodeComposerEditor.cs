@@ -186,8 +186,13 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         // RichEdit applies text scaling itself, so store the unscaled paragraph metric.
         var scale = IsTextScaleFactorEnabled ? TextScale : 1;
         var spacing = OpenCodeComposerNativeGeometry.ParagraphSpacing(line.Height, scale);
+        // TOM rejects formatting on a read-only RichEditBox with E_ACCESSDENIED (e.g. composer locked while
+        // disconnected). Formatting is not user input, so lift read-only for this synchronous call only and
+        // restore the exact previous value (callers may already hold it unlocked for a guarded patch).
+        var wasReadOnly = base.IsReadOnly;
         try
         {
+            if (wasReadOnly) base.IsReadOnly = false;
             var format = Document.GetDefaultParagraphFormat();
             format.SetLineSpacing(LineSpacingRule.Exactly, spacing);
             format.SpaceBefore = 0;
@@ -198,6 +203,10 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error))
         {
             ReportNativeBoundary("paragraph metrics", error); // Keep native default spacing; text remains editable.
+        }
+        finally
+        {
+            if (wasReadOnly) base.IsReadOnly = true;
         }
         if (_placeholder is { } placeholder)
         {

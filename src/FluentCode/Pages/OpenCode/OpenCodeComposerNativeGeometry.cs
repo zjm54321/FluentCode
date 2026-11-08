@@ -12,7 +12,7 @@ internal static class OpenCodeComposerNativeGeometry
     internal const int MaxRasterPixels = 4096;
     internal const double MaxParagraphPoints = 1638;
 
-    internal static bool IsRecoverable(Exception error) => error is COMException or ArgumentException;
+    internal static bool IsRecoverable(Exception error) => error is COMException or ArgumentException or UnauthorizedAccessException;
 
     internal static (int Width, int Height, int Ascent) ImageSize(double width, double height, double ascent)
     {
