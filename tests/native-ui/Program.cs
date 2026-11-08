@@ -143,6 +143,14 @@ internal static class Program
                 && markdownSource.Contains("? nativeUiSandbox ? \"text\" : \"mermaid\""), "Native Markdown has no inherited files/network/browser capability");
             var confirmationSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Components.cs"));
             Require(confirmationSource.Contains("NativeUiComponentTheme.Text(url)") && confirmationSource.Contains("await completion.Task") && confirmationSource.Contains("Launcher.LaunchUriAsync"), "Full URL confirmation precedes external launch");
+            Require(confirmationSource.Contains("private void Slot(StackPanel panel, object? value, string path, int depth)")
+                && !confirmationSource.Contains("private StackPanel Slot("), "Slot updates an existing host instead of allocating a parent during native layout refresh");
+            var controlsSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Controls.cs"));
+            Require(controlsSource.Contains("Content = tileContent") && controlsSource.Contains("Slot(tileContent, P(node, \"children\")")
+                && !controlsSource.Contains("tile.Content = Slot("), "Pressable retains its native slot host");
+            var contentSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Content.cs"));
+            Require(contentSource.Contains("Slot(row.Body, values[i]") && contentSource.Contains("Content = flashContent")
+                && contentSource.Contains("Slot(flashFace,") && !contentSource.Contains("flash.Content = face"), "List rows and Flashcard retain native slot hosts across refreshes");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }

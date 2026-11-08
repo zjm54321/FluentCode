@@ -29,11 +29,10 @@ internal sealed partial class NativeUiRenderer
     private static string S(NativeUiElement node, string key) => NativeUiTheme.String(node, key);
     private static double N(NativeUiElement node, string key, double fallback = 0) => NativeUiComponentTheme.Number(node, key, fallback);
     private static bool B(NativeUiElement node, string key) => NativeUiTheme.Flag(node, key);
-    private StackPanel Slot(object? value, string path, int depth)
-    {
-        var panel = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
-        Sync(panel, Children(value, path, depth + 1).Cast<UIElement>().ToArray()); return panel;
-    }
+    // The host belongs to the component's Visual. Reusing it avoids moving realized
+    // controls into a new parent during native template/layout-triggered refreshes.
+    private void Slot(StackPanel panel, object? value, string path, int depth)
+        => Sync(panel, Children(value, path, depth + 1).Cast<UIElement>().ToArray());
     private Visual CreateComponent(string type, string key, int depth)
     {
         var specialized = CreateData(type, key, depth) ?? CreateControls(type, key, depth) ?? CreateContent(type, key, depth) ?? CreateDrawing(type, key, depth);
@@ -84,7 +83,7 @@ internal sealed partial class NativeUiRenderer
                 var triggerContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var popoverContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
                 var trigger = new Button { Content = triggerContent }; var flyout = new Flyout { Content = popoverContent }; var popover = new Visual(trigger); trigger.Flyout = flyout;
                 AttachAirspace(flyout); popover.Cleanup = flyout.Hide;
-                popover.Apply = node => { Sync(triggerContent, Children(P(node, "trigger"), key + "/trigger", depth + 1).Cast<UIElement>().ToArray()); Sync(popoverContent, Children(P(node, "content"), key + "/content", depth + 1).Cast<UIElement>().ToArray()); }; return popover;
+                popover.Apply = node => { Slot(triggerContent, P(node, "trigger"), key + "/trigger", depth); Slot(popoverContent, P(node, "content"), key + "/content", depth); }; return popover;
             default: return new(NativeUiTheme.Notice("未支持", type));
         }
     }

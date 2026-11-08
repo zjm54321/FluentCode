@@ -123,8 +123,27 @@ public partial class App
                 }
                 else if (name == "showcase-explorer")
                 {
+                    var tile = Descendants(timeline).OfType<ContentControl>().Single(control => control.GetType() == typeof(ContentControl) && control.IsTabStop);
+                    var slot = tile.Content;
                     view.Runtime.Set("$faq", true);
+                    if (!ReferenceEquals(tile.Content, slot)) throw new InvalidOperationException("Pressable replaced its realized slot during refresh.");
                     if (!Descendants(timeline).OfType<HyperlinkButton>().Any()) throw new InvalidOperationException("Showcase accordion did not expand.");
+                }
+                else if (name == "showcase-journey")
+                {
+                    Grid[] ListRows() => Descendants(timeline).OfType<Grid>().Where(row => row.Children.Count == 2 && row.Children[0] is StackPanel { MinWidth: 20 } && row.Children[1] is StackPanel).ToArray();
+                    var rows = ListRows(); var slots = rows.Select(row => row.Children[1]).ToArray();
+                    view.Runtime.Set("$done", true);
+                    var refreshed = ListRows();
+                    if (rows.Length != 4 || !rows.SequenceEqual(refreshed) || !slots.SequenceEqual(refreshed.Select(row => row.Children[1]))) throw new InvalidOperationException("List replaced realized row/slot hosts during refresh.");
+                }
+                else if (name == "showcase-learning")
+                {
+                    var flash = Descendants(timeline).OfType<Button>().First(control => Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(control) == "闪卡正面，点击翻面");
+                    var content = (StackPanel)flash.Content; var slot = content.Children[0];
+                    await Press("闪卡正面，点击翻面");
+                    await Press("闪卡背面，点击返回");
+                    if (!ReferenceEquals(flash.Content, content) || !ReferenceEquals(content.Children[0], slot)) throw new InvalidOperationException("Flashcard replaced its realized slot while flipping.");
                 }
                 else if (name == "showcase-planner")
                 {

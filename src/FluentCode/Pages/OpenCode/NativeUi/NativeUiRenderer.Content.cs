@@ -17,6 +17,19 @@ namespace FluentCode.Pages.OpenCode;
 
 internal sealed partial class NativeUiRenderer
 {
+    private sealed class ListSlotRow
+    {
+        internal readonly Grid Row = new() { ColumnSpacing = NativeUiTheme.Gap(3) };
+        internal readonly StackPanel Body = new() { Spacing = NativeUiTheme.Gap(2) };
+        internal readonly TextBlock Marker = NativeUiComponentTheme.Text("", true);
+        internal readonly Border Line = new() { Width = 1, MinHeight = 24, HorizontalAlignment = HorizontalAlignment.Center };
+        internal ListSlotRow()
+        {
+            Row.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); Row.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+            Row.Children.Add(new StackPanel { MinWidth = 20, Children = { Marker, Line } });
+            Grid.SetColumn(Body, 1); Row.Children.Add(Body);
+        }
+    }
     private Visual? CreateContent(string type, string key, int depth)
     {
         switch (type)
@@ -38,26 +51,30 @@ internal sealed partial class NativeUiRenderer
                 var item = new StackPanel { Spacing = NativeUiTheme.Gap(1) }; var itemVisual = new Visual(item);
                 itemVisual.Apply = node => { var nodes = new List<UIElement> { NativeUiComponentTheme.Text(S(node, "title")) }; if (S(node, "description").Length > 0) nodes.Add(NativeUiComponentTheme.Text(S(node, "description"), true)); nodes.AddRange(Children(P(node, "children"), key + "/children", depth + 1)); Sync(item, nodes); }; return itemVisual;
             case "List":
-                var list = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var listVisual = new Visual(list);
+                var list = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var listVisual = new Visual(list); var rows = new List<ListSlotRow>();
                 listVisual.Apply = node =>
                 {
                     var values = P(node, "items") as IReadOnlyList<object?> ?? []; var children = new List<UIElement>();
+                    if (rows.Count > values.Count) rows.RemoveRange(values.Count, rows.Count - values.Count);
                     for (var i = 0; i < values.Count; i++)
                     {
-                        var row = new Grid { ColumnSpacing = NativeUiTheme.Gap(3) }; row.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); row.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+                        if (i == rows.Count) rows.Add(new ListSlotRow());
+                        var row = rows[i];
                         var custom = values[i] is NativeUiElement entry ? S(entry, "marker") : "";
                         var marker = custom.Length > 0 ? custom : S(node, "marker") switch { "none" => "", "number" => (i + 1).ToString(CultureInfo.InvariantCulture), _ => "•" };
-                        var markerText = NativeUiComponentTheme.Text(marker, true); var rail = new StackPanel { MinWidth = 20 }; rail.Children.Add(markerText);
-                        if (B(node, "timeline") && i < values.Count - 1) rail.Children.Add(new Border { Width = 1, MinHeight = 24, Background = ComponentBrush("faint"), HorizontalAlignment = HorizontalAlignment.Center });
-                        row.Children.Add(rail); var body = Slot(values[i], key + "/items/" + i, depth); Grid.SetColumn(body, 1); row.Children.Add(body); children.Add(row);
+                        row.Marker.Text = marker; row.Line.Background = ComponentBrush("faint");
+                        row.Line.Visibility = B(node, "timeline") && i < values.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
+                        Slot(row.Body, values[i], key + "/items/" + i, depth); children.Add(row.Row);
                     }
                     Sync(list, children);
                 }; return listVisual;
             case "Flashcard":
-                var flash = new Button { HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 140, Padding = new(NativeUiTheme.Gap(4)) }; var flashVisual = new Visual(flash);
+                var flashFace = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var flashHint = NativeUiComponentTheme.Text("", true);
+                var flashContent = new StackPanel { Spacing = NativeUiTheme.Gap(2), Children = { flashFace, flashHint } };
+                var flash = new Button { Content = flashContent, HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 140, Padding = new(NativeUiTheme.Gap(4)) }; var flashVisual = new Visual(flash);
                 var flipKey = "$ui:" + key + ":flipped";
                 flash.Click += (_, _) => { if (!flashVisual.Disposed) _runtime.TrySetField(flipKey, null, _runtime.Field(flipKey, false) is not true); };
-                flashVisual.Apply = node => { var flipped = _runtime.Field(flipKey, false) is true; var face = Slot(P(node, flipped ? "back" : "front"), key + (flipped ? "/back" : "/front"), depth); face.Children.Add(NativeUiComponentTheme.Text(flipped ? "点击返回正面" : S(node, "hint") is { Length: > 0 } hint ? hint : "点击翻面", true)); flash.Content = face; AutomationProperties.SetName(flash, flipped ? "闪卡背面，点击返回" : "闪卡正面，点击翻面"); }; return flashVisual;
+                flashVisual.Apply = node => { var flipped = _runtime.Field(flipKey, false) is true; Slot(flashFace, P(node, flipped ? "back" : "front"), key + (flipped ? "/back" : "/front"), depth); flashHint.Text = flipped ? "点击返回正面" : S(node, "hint") is { Length: > 0 } hint ? hint : "点击翻面"; AutomationProperties.SetName(flash, flipped ? "闪卡背面，点击返回" : "闪卡正面，点击翻面"); }; return flashVisual;
             case "Celebration":
                 var celebration = new Canvas { Height = 0, IsHitTestVisible = false, Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, 640, 100) } }; var celebrationVisual = new Visual(celebration); var storyboard = new Storyboard(); bool? was = null;
                 celebrationVisual.Apply = node =>
