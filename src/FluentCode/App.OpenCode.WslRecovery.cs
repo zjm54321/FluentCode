@@ -21,7 +21,7 @@ public partial class App
 
     private readonly IWslOpenCodeCommandRunner _wslCommandRunner = new WslOpenCodeCommandRunner();
     private WslRecoveryOwner? _wslRecoveryOwner;
-    public string? OpenCodeRecoveryStatus { get; private set; }
+    public OpenCodeConnectionStatus? OpenCodeRecoveryStatus { get; private set; }
     public event EventHandler? OpenCodeRecoveryStatusChanged;
 
     private WslRecoveryOwner? CreateWslRecoveryOwner(AppSettings settings, int generation)
@@ -66,10 +66,10 @@ public partial class App
             });
         }
         catch (OperationCanceledException) { /* Reconfiguration/shutdown owns cancellation. */ }
-        catch (Exception) { PostToApp(() => { if (OwnsWslRecovery(owner)) SetOpenCodeRecoveryStatus("自动连接失败"); }); }
+        catch (Exception) { PostToApp(() => { if (OwnsWslRecovery(owner)) SetOpenCodeRecoveryStatus(new("自动连接失败", "自动连接失败", true)); }); }
     }
 
-    private void SetOpenCodeRecoveryStatus(string? status)
+    private void SetOpenCodeRecoveryStatus(OpenCodeConnectionStatus? status)
     {
         OpenCodeRecoveryStatus = status;
         RaiseAppEvent(OpenCodeRecoveryStatusChanged, EventArgs.Empty);

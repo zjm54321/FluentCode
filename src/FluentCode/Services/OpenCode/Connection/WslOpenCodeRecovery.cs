@@ -19,7 +19,7 @@ internal sealed class WslOpenCodeRecovery(
     private Task<OpenCodeClientOptions?>? _work;
 
     internal Task<OpenCodeClientOptions?> RecoverAsync(OpenCodeSettings settings, bool unreachable,
-        Action<string> status, CancellationToken ct)
+        Action<OpenCodeConnectionStatus> status, CancellationToken ct)
     {
         if (settings.Kind != OpenCodeConnectionKind.Wsl || !OpenCodeSettings.IsValidWslDistributionName(settings.WslDistribution))
             return Task.FromResult<OpenCodeClientOptions?>(null);
@@ -27,7 +27,7 @@ internal sealed class WslOpenCodeRecovery(
             return _work ??= Task.Run(() => RunAsync(settings.WslDistribution!, unreachable, status, ct), ct);
     }
 
-    private async Task<OpenCodeClientOptions?> RunAsync(string distribution, bool unreachable, Action<string> status, CancellationToken ct)
+    private async Task<OpenCodeClientOptions?> RunAsync(string distribution, bool unreachable, Action<OpenCodeConnectionStatus> status, CancellationToken ct)
     {
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
         budget.CancelAfter(TimeSpan.FromSeconds(90));
@@ -43,7 +43,7 @@ internal sealed class WslOpenCodeRecovery(
                         await (delay ?? Task.Delay)(TimeSpan.FromSeconds(attempt), token).ConfigureAwait(false);
                     if (unreachable)
                     {
-                        status("正在启动 WSL…");
+                        status(new("正在启动 WSL…", "正在启动 WSL…"));
                         await runner.RunAsync(distribution, WslOpenCodeCommand.BootDistribution, token).ConfigureAwait(false);
                     }
                     await locator.InvalidateAsync(distribution, token).ConfigureAwait(false);
@@ -54,11 +54,11 @@ internal sealed class WslOpenCodeRecovery(
                     {
                         // Official CLI: `opencode service --help` lists `start`; status is checked
                         // first, so an already-running service is never restarted.
-                        status("正在启动 OpenCode…");
+                        status(new("正在启动 OpenCode…", "正在启动 OpenCode…"));
                         await runner.RunAsync(distribution, WslOpenCodeCommand.ServiceStart, token).ConfigureAwait(false);
                         service = await locator.DiscoverAsync(distro, token).ConfigureAwait(false);
                     }
-                    status("正在重新连接 OpenCode…");
+                    status(new("正在重新连接 OpenCode…", "正在重新连接 OpenCode…"));
                     var options = service.ToClientOptions();
                     await verify(options with { Timeout = TimeSpan.FromSeconds(3) }, token).ConfigureAwait(false);
                     return options;
@@ -71,7 +71,7 @@ internal sealed class WslOpenCodeRecovery(
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) { /* Overall 90 s bound. */ }
         ct.ThrowIfCancellationRequested();
-        status("自动连接失败（已达重试上限）");
+        status(new("自动连接失败", "自动连接失败（已达重试上限）", true));
         return null;
     }
 }

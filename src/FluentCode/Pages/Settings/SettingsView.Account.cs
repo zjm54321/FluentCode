@@ -18,6 +18,13 @@ public sealed partial class SettingsView
     private OpenCodeConnectionView? _connectionView;
     private Button? _disconnectButton;
 
+    /// <summary>主页面安全提示的“打开连接设置”：切到「账号与连接」分类（若已在其他分类）。</summary>
+    internal void ShowAccountCategory()
+    {
+        int index = _categories.FindIndex(static c => c.Title == "账号与连接");
+        if (index >= 0) _categoryList.SelectedIndex = index;
+    }
+
     private UIElement BuildAccountSection()
     {
         _connectionView = new OpenCodeConnectionView(_settingsService, _secretStore) { HorizontalAlignment = HorizontalAlignment.Left, MaxWidth = 640 };

@@ -7,8 +7,8 @@ using FluentCode.Models;
 
 namespace FluentCode.Pages.OpenCode;
 
-internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDirectory, string HostPath);
-internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason);
+internal sealed record WslQuickAccessTarget(string Distribution, string LinuxDirectory, string HostPath, string? SshHost = null);
+internal sealed record WslQuickAccessState(bool Visible, WslQuickAccessTarget? Target, string? Reason, bool IsSsh = false);
 internal enum WslEditorOpenMode { RemoteWsl, HostFolder }
 internal sealed record WslHostEditor(string Name, string? Executable, WslEditorOpenMode OpenMode, string? Reason);
 internal sealed record WslEditorChoices(IReadOnlyList<WslHostEditor> Installed, WslHostEditor? Current)
@@ -75,11 +75,13 @@ internal static class OpenCodeWslQuickAccess
     }
 
     public static WslHostLaunch ExplorerLaunch(WslQuickAccessTarget target, string windowsDirectory)
-        => new(Path.Combine(windowsDirectory, "explorer.exe"), new[] { target.HostPath });
+        => target.SshHost is null ? new(Path.Combine(windowsDirectory, "explorer.exe"), new[] { target.HostPath })
+            : throw new InvalidOperationException("SSH v1 不支持在资源管理器中打开远端路径");
 
     public static Task LaunchAsync(WslQuickAccessState state, WslHostEditor? editor, IWslQuickAccessLauncher launcher)
     {
         if (!state.Visible || state.Target is not { } target) return Task.CompletedTask;
+        if (state.IsSsh && editor is null) return Task.CompletedTask;
         return editor is null ? launcher.OpenExplorerAsync(target)
             : launcher.OpenEditorAsync(EditorLaunch(target, editor));
     }
@@ -119,6 +121,7 @@ internal static class OpenCodeWslQuickAccess
 
     public static WslHostLaunch EditorLaunch(WslQuickAccessTarget target, WslHostEditor editor)
     {
+        if (target.SshHost is not null) return OpenCodeSshQuickAccess.EditorLaunch(target, editor);
         if (editor.Executable is null)
             throw new InvalidOperationException("未检测到此主机编辑器");
         // VS Code's documented WSL CLI; other editors accept an ordinary Windows folder.

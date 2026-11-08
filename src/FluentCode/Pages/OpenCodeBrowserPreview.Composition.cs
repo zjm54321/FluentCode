@@ -19,21 +19,26 @@ public sealed partial class OpenCodePage
         {
             if (!Current()) return new(true, null, "会话服务器未连接");
             var settings = _homeSettings?.Current?.OpenCode;
-            if (settings?.Kind != OpenCodeConnectionKind.Wsl) return new(true, null, "Remote 连接没有已授权的 WSL 主机路径映射");
+            if (settings?.Kind is not (OpenCodeConnectionKind.Wsl or OpenCodeConnectionKind.Ssh))
+                return new(true, null, "远程地址连接不能在本机编辑器中打开文件");
             var directory = BrowserSessionDirectory(workspace.SessionId);
             if (!path.StartsWith('/'))
             {
                 if (directory?.StartsWith('/') != true) return new(true, null, "会话未提供绝对服务器目录");
                 path = directory.TrimEnd('/') + "/" + path;
             }
-            return OpenCodeWslQuickAccess.Resolve(settings.Kind, true, settings.WslDistribution, path);
+            return settings.Kind == OpenCodeConnectionKind.Ssh
+                ? OpenCodeSshQuickAccess.Resolve(settings.Kind, true, settings.SshHost, path)
+                : OpenCodeWslQuickAccess.Resolve(settings.Kind, true, settings.WslDistribution, path);
         }
-        workspace.PreviewPathUnavailableReason = (path, editor) => Target(path) is { Target: null } state
-            ? state.Reason : editor && DetailPathEditor() is null ? "未检测到可用的主机编辑器" : null;
+        workspace.PreviewPathUnavailableReason = (path, editor) => Target(path) is var state && state.Target is null
+            ? state.Reason : state.IsSsh && !editor ? "SSH 连接的文件夹不能在资源管理器中打开，请用 Zed 或 VS Code"
+                : editor && DetailPathEditor() is null ? "未检测到可用的主机编辑器" : null;
         workspace.OpenPreviewPathAsync = async (path, editor) =>
         {
             var state = Target(path);
             if (state.Target is not { } target) throw new IOException(state.Reason);
+            if (state.IsSsh && !editor) throw new IOException("SSH 连接的文件夹不能在资源管理器中打开，请用 Zed 或 VS Code");
             if (!editor)
             {
                 // Existing Explorer route opens the containing folder, not a guessed /select shell command.
@@ -41,8 +46,8 @@ public sealed partial class OpenCodePage
                 state = OpenCodeWslQuickAccess.Resolve(OpenCodeConnectionKind.Wsl, true, target.Distribution, parent);
                 target = state.Target ?? throw new IOException(state.Reason);
             }
-            var mapped = await _wslHostPaths.MapAsync(target);
-            if (!Current() || Target(path).Target?.Distribution != target.Distribution) return;
+            var mapped = state.IsSsh ? target : await _wslHostPaths.MapAsync(target);
+            if (!Current() || Target(path).Target != target) return;
             if (editor)
             {
                 var selected = DetailPathEditor() ?? throw new IOException("未检测到可用的主机编辑器");

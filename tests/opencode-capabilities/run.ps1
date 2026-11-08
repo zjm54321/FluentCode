@@ -14,7 +14,7 @@ $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enabl
 $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 # Explicit source list: real transport + its required partials/DTOs, no parallel usage lane or WinUI pairing.
 @(
-    'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeExceptions.cs', 'OpenCodeJson.cs',
+    'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeSocketTransport.cs', 'OpenCodeExceptions.cs', 'OpenCodeJson.cs',
     'OpenCodeConstants.cs', 'OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs',
     'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Messages.cs',

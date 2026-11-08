@@ -36,6 +36,12 @@ public sealed partial class MainWindow
             return;
         }
 
+        if (Environment.GetEnvironmentVariable("FC_SSH_CAPTURE_TEST") == "1")
+        {
+            await RunSshCaptureAsync(evidence, output);
+            return;
+        }
+
         async Task<bool> Until(Func<bool> condition, double seconds)
         {
             var until = DateTime.UtcNow.AddSeconds(seconds);

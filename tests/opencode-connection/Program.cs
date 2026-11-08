@@ -351,7 +351,7 @@ internal static class Program
         var settings = new OpenCodeSettings { Kind = OpenCodeConnectionKind.Wsl, WslDistribution = "TestDistro", BaseUrl = "http://localhost:1" };
         var cli = new RecoveryCli();
         var locator = new WslOpenCodeServiceLocator(cli);
-        var statuses = new List<string>();
+        var statuses = new List<OpenCodeConnectionStatus>();
         var verified = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         int verifies = 0;
@@ -374,7 +374,8 @@ internal static class Program
         Check(options is not null && verifies == 1 && cli.Calls.SequenceEqual(new[] {
             WslOpenCodeCommand.BootDistribution, WslOpenCodeCommand.ServiceStatus, WslOpenCodeCommand.ServiceStart,
             WslOpenCodeCommand.ServiceStatus, WslOpenCodeCommand.ServicePassword }), "WK1 stopped WSL -> boot -> status -> official start -> resolve -> verify -> replacement options");
-        Check(statuses.SequenceEqual(new[] { "正在启动 WSL…", "正在启动 OpenCode…", "正在重新连接 OpenCode…" }), "WK1 visible bounded startup stages");
+        Check(statuses.Select(status => status.Label).SequenceEqual(new[] { "正在启动 WSL…", "正在启动 OpenCode…", "正在重新连接 OpenCode…" })
+            && statuses.All(status => !status.Failed), "WK1 typed visible bounded startup stages");
         int reconnectReads = 0;
         using var http = new System.Net.Http.HttpClient(new RecoveryHttp((_, _) => { reconnectReads++; return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK)
             { Content = new System.Net.Http.StringContent("{\"directory\":\"/test\",\"project\":{\"id\":\"test\"}}") }); }));

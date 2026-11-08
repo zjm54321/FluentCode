@@ -44,6 +44,12 @@ public sealed record OpenCodeSettings
     /// <summary>Kind=Wsl 时的发行版名称（来自系统枚举，非硬编码）；Remote 时为 null。</summary>
     public string? WslDistribution { get; init; }
 
+    /// <summary>Kind=Ssh 时的 Windows SSH config 别名或 user@host[:port]；不含密码。</summary>
+    public string? SshHost { get; init; }
+
+    /// <summary>远端 opencode 可执行文件名或路径（可选）；不是 shell 脚本，不接受凭据参数。</summary>
+    public string? SshCommand { get; init; }
+
     /// <summary>
     /// 发行版名称的词法校验（1-64 字符；不得含路径分隔符、控制字符或 Windows 保留字符），
     /// 以便安全拼接 <c>\\wsl.localhost\&lt;名称&gt;</c>。不对具体名称做任何假设。
@@ -75,6 +81,9 @@ public enum OpenCodeConnectionKind
 
     /// <summary>本机 WSL 发行版内自动发现的 OpenCode 服务（底层仍走 HTTP，但类型必须记为 Wsl）。</summary>
     Wsl = 2,
+
+    /// <summary>通过 Windows OpenSSH 发现服务并建立仅本机可用的 HTTP 隧道。</summary>
+    Ssh = 3,
 }
 
 /// <summary>

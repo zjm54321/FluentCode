@@ -303,10 +303,21 @@
                             </Grid>
                         </SplitView.Pane>
 
-                        <Grid>
+                        <Grid RowDefinitions="Auto,*">
+                            <!-- SSH 安全提示（主机密钥变化 / 监听警告）：放在会话布局与首页之外，首页与会话页都能看到；
+                                 左右 16 与会话区内边距对齐，下方间距由会话区顶部 8 提供。关闭时不占空间。 -->
+                            <InfoBar
+                                x:Name="SshConnectionAlert"
+                                Grid.Row="0"
+                                Margin="16,8,16,0"
+                                Visibility="Collapsed"
+                                Severity="Warning"
+                                IsOpen="False"
+                                IsClosable="True"
+                                AutomationProperties.AutomationId="OpenCodeSshConnectionAlert" />
                             <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
                             <!-- S2: replies own their card surfaces; the reading host exposes page acrylic. -->
-                            <Grid x:Name="ConversationSurface">
+                            <Grid x:Name="ConversationSurface" Grid.Row="1">
                             <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
                                 <Grid.RowDefinitions>
                                     <RowDefinition x:Name="SessionStatusRow" Height="Auto" />
@@ -740,6 +751,8 @@
                                                                         <TextBlock
                                                                             x:Name="ConnectionStatusText"
                                                                             Text="尚未连接"
+                                                                            MaxWidth="240"
+                                                                            TextTrimming="CharacterEllipsis"
                                                                             Style="{ThemeResource CaptionTextBlockStyle}"
                                                                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                             VerticalAlignment="Center" />

@@ -8,6 +8,7 @@ using FluentCode.Models;
 using FluentCode.Services.Configuration;
 using FluentCode.Services.Notifications;
 using FluentCode.Services.OpenCode;
+using FluentCode.Services.OpenCode.Connection;
 using Microsoft.UI.Dispatching;
 
 namespace FluentCode;
@@ -79,12 +80,29 @@ public partial class App
         RequestOpenCodeConfiguration(_settingsService.Current);
     }
 
-    private void OnAppSettingsChanged(object? sender, AppSettingsChangedEventArgs args) =>
-        PostToApp(() => RequestOpenCodeConfiguration(_settingsService?.Current));
-
-    private void RequestOpenCodeConfiguration(AppSettings? settings, OpenCodeClientOptions? recoveredOptions = null)
+    private void OnAppSettingsChanged(object? sender, AppSettingsChangedEventArgs args)
     {
-        if (_closing) return;
+        if (_settingsService?.Current is { } saved) _ = RemoveStoredSshSecretAsync(saved);
+        PostToApp(() => RequestOpenCodeConfiguration(_settingsService?.Current));
+    }
+
+    private async Task RemoveStoredSshSecretAsync(AppSettings saved)
+    {
+        try
+        {
+            if (_settingsService is null || _secretStore is null) return;
+            await OpenCodeConnectionCommitter.RemoveStoredSshSecretAsync(saved,
+                (transform, ct) => _settingsService.UpdateAsync(transform, ct), () => _settingsService.Current,
+                (id, ct) => _secretStore.RemoveAsync(id, ct), _appLifetime.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { RecordDiagnostic("opencode-ssh-old-credential-cleanup-failed", error: ex); }
+    }
+
+    private void RequestOpenCodeConfiguration(AppSettings? settings, OpenCodeClientOptions? recoveredOptions = null,
+        SshOpenCodeConnection? recoveredSsh = null)
+    {
+        if (_closing) { recoveredSsh?.Dispose(); return; }
         // WK1: kind/distribution now own recovery authority, not just presentation metadata.
         // Changing them must retire the old WSL recovery worker as well as its source capability.
         OpenCodeSettings? relevant = settings?.OpenCode;
@@ -94,8 +112,9 @@ public partial class App
                 relevant = relevant with { BaseUrl = OpenCodeClient.NormalizeBaseUri(relevant.BaseUrl).AbsoluteUri };
         }
         catch (Exception ex) { RecordDiagnostic("opencode-configuration-invalid", error: ex); }
-        if (recoveredOptions is null && _configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
+        if (recoveredOptions is null && recoveredSsh is null && _configurationRequested && Equals(relevant, _requestedOpenCodeConfiguration)) return;
         StopWslRecovery();
+        StopSshRecovery();
         _configurationRequested = true;
         _requestedOpenCodeConfiguration = relevant;
         ResetOpenCodeObservations();
@@ -115,13 +134,15 @@ public partial class App
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_appLifetime.Token);
         var previous = Interlocked.Exchange(ref _configurationCancellation, cancellation);
         try { previous?.Cancel(); } catch (ObjectDisposedException) { /* Previous configuration already drained. */ }
-        _ = ConfigureOpenCodeAsync(settings, generation, cancellation, recoveredOptions);
+        _ = ConfigureOpenCodeAsync(settings, generation, cancellation, recoveredOptions, recoveredSsh);
     }
 
     private async Task ConfigureOpenCodeAsync(AppSettings? settings, int generation, CancellationTokenSource cancellation,
-        OpenCodeClientOptions? recoveredOptions = null)
+        OpenCodeClientOptions? recoveredOptions = null, SshOpenCodeConnection? recoveredSsh = null)
     {
         bool held = false;
+        SshOpenCodeConnection? stagedSsh = recoveredSsh;
+        SshRecoveryOwner? sshOwner = null;
         try
         {
             var token = cancellation.Token;
@@ -134,7 +155,7 @@ public partial class App
             var options = settings.OpenCode;
             if (string.IsNullOrWhiteSpace(options.BaseUrl)) { RecordDiagnostic("opencode-not-configured"); return; }
             string? secret = null;
-            if (recoveredOptions is null && options.AuthenticationMode != OpenCodeAuthenticationMode.None)
+            if (options.Kind != OpenCodeConnectionKind.Ssh && recoveredOptions is null && options.AuthenticationMode != OpenCodeAuthenticationMode.None)
             {
                 if (!string.IsNullOrWhiteSpace(options.CredentialId))
                 {
@@ -157,13 +178,23 @@ public partial class App
                 AuthenticationMode = options.AuthenticationMode,
                 Username = options.Username, Secret = secret
             };
+            if (options.Kind == OpenCodeConnectionKind.Ssh)
+            {
+                stagedSsh ??= await CreateSshRecovery().RecoverAsync(options,
+                    status => PostToApp(() => { if (generation == _configurationGeneration) SetOpenCodeRecoveryStatus(status); }), token, initial: true).ConfigureAwait(false);
+                if (stagedSsh is null) { RecordDiagnostic("opencode-ssh-connect-failed"); return; }
+                clientOptions = stagedSsh.ToClientOptions();
+                sshOwner = new(settings, generation, CreateSshRecovery(), CancellationTokenSource.CreateLinkedTokenSource(_appLifetime.Token));
+                var owner = sshOwner;
+                clientOptions = clientOptions with { ConnectionFailure = _ => PostToApp(() => BeginSshRecovery(owner)) };
+            }
             var recoveryOwner = CreateWslRecoveryOwner(settings, generation);
             if (recoveryOwner is not null)
                 clientOptions = clientOptions with { ConnectionFailure = unreachable =>
                     PostToApp(() => BeginWslRecovery(recoveryOwner, unreachable)) };
             var client = new OpenCodeClient(clientOptions); // Validates options before publishing a page factory.
             // Identity is endpoint-only so credential changes do NOT bypass unknown-result tombstones.
-            string endpoint = CreateOpenCodeEndpointIdentity(options.BaseUrl);
+            string endpoint = CreateOpenCodeEndpointIdentity(options);
             var monitor = new OpenCodeNotificationMonitor(_completionNotifications, new(endpoint, client));
             monitor.Observed += OnOpenCodeObserved;
             monitor.SessionObserved += OnOpenCodeSessionObserved;
@@ -173,6 +204,9 @@ public partial class App
                 { recoveryOwner?.Cancellation.Dispose(); monitor.Dispose(); client.Dispose(); return; }
                 _openCodeClient = client;
                 _wslRecoveryOwner = recoveryOwner;
+                _sshRecoveryOwner = sshOwner;
+                _sshConnection = stagedSsh;
+                stagedSsh = null;
                 _openCodeMonitor = monitor;
                 _openCodeEndpointIdentity = endpoint;
                 _openCodePageSource = new OpenCodePageSource(endpoint, checked(++_openCodeSourceRevision),
@@ -181,6 +215,14 @@ public partial class App
                 _trackedEndpointIdentity = endpoint;
                 foreach (string session in _trackedOpenCodeSessions) monitor.TrackSession(session);
                 _completionNotifications?.ResumeInteractions();
+            }
+            if (sshOwner is { } liveSshOwner && _sshConnection is { } liveSsh)
+            {
+                liveSsh.Tunnel.Exited += (_, _) => PostToApp(() => BeginSshRecovery(liveSshOwner));
+                // The process may have exited between verification and event subscription.
+                if (!liveSsh.Tunnel.IsAlive) PostToApp(() => BeginSshRecovery(liveSshOwner));
+                PostToApp(() => { if (OwnsSshRecovery(liveSshOwner) && !liveSshOwner.Started) SetOpenCodeRecoveryStatus(OpenCodeConnectionStatus.SshWarning(liveSsh.Service.Warning)); });
+                sshOwner = null; // Published owner now owns its cancellation source.
             }
             bool started = monitor.Start(); // State observation is independent of native notification registration.
             RecordDiagnostic(started ? "opencode-monitor-ready" : "opencode-monitor-notifications-unavailable");
@@ -204,21 +246,29 @@ public partial class App
         catch (Exception ex) { RecordDiagnostic("opencode-configuration-failed", error: ex); }
         finally
         {
+            stagedSsh?.Dispose();
+            sshOwner?.Cancellation.Dispose();
             if (held) _configurationGate.Release();
             Interlocked.CompareExchange(ref _configurationCancellation, null, cancellation);
             cancellation.Dispose();
         }
     }
 
-    private static string CreateOpenCodeEndpointIdentity(string baseUrl)
+    private static string CreateOpenCodeEndpointIdentity(OpenCodeSettings settings)
     {
-        var uri = OpenCodeClient.NormalizeBaseUri(baseUrl);
-        return "ep-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(uri.AbsoluteUri)));
+        // SSH's local port changes after recovery/relaunch. Keep unknown-result tombstones on the logical remote
+        // profile instead of letting a new ephemeral port bypass them; passwords/remote service ports are excluded.
+        string identity = settings.Kind == OpenCodeConnectionKind.Ssh
+            ? "ssh\n" + SshConnectionTarget.Parse(settings.SshHost!).DisplayName + "\n" + (settings.SshCommand ?? "opencode")
+            : OpenCodeClient.NormalizeBaseUri(settings.BaseUrl!).AbsoluteUri;
+        return "ep-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
     }
 
     private void StopOpenCodeRequests()
     {
         StopWslRecovery();
+        StopSshRecovery();
+        _sshConnection?.Dispose();
         OpenCodePageSource? stoppedSource;
         lock (_integrationSync)
         {
@@ -247,16 +297,19 @@ public partial class App
         OpenCodeClient? client;
         string? endpoint;
         OpenCodePageSource? releasedSource;
+        SshOpenCodeConnection? ssh;
         lock (_integrationSync)
         {
             monitor = _openCodeMonitor; client = _openCodeClient; endpoint = _openCodeEndpointIdentity;
             releasedSource = _openCodePageSource;
+            ssh = _sshConnection; _sshConnection = null;
             // Revoke before exposing an empty owner and before any monitor await.
             _openCodePageSource?.Revoke();
             _openCodePageSource = null;
             _ = _completionNotifications?.SuspendInteractionsAsync(endpoint);
             _openCodeMonitor = null; _openCodeClient = null; _openCodeEndpointIdentity = null;
         }
+        ssh?.Dispose();
         PostToApp(() =>
         {
             InvalidateSessionUiStore(releasedSource);

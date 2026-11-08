@@ -296,6 +296,19 @@ public sealed class SettingsService
         {
             errors.Add("openCode.wslDistribution 仅允许在 Kind=Wsl 时出现");
         }
+
+        if (openCode.Kind == OpenCodeConnectionKind.Ssh)
+        {
+            if (!FluentCode.Services.OpenCode.Connection.SshConnectionTarget.TryParse(openCode.SshHost, out _))
+                errors.Add("openCode.sshHost 缺失或非法（Kind=Ssh 时必填，不能包含密码或命令参数）");
+            if (!FluentCode.Services.OpenCode.Connection.SshConnectionTarget.IsValidCommand(openCode.SshCommand))
+                errors.Add("openCode.sshCommand 必须是可执行文件名或路径，不能包含 shell 操作符或凭据参数");
+            if (openCode.BaseUrl is { } url && (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                || uri.Scheme != Uri.UriSchemeHttp || uri.Host != "127.0.0.1" || uri.AbsolutePath != "/"))
+                errors.Add("SSH 连接的 HTTP 地址必须是本机 IPv4 回环隧道");
+        }
+        else if (openCode.SshHost is not null || openCode.SshCommand is not null)
+            errors.Add("openCode.sshHost / sshCommand 仅允许在 Kind=Ssh 时出现");
     }
 
     private static bool IsAbsoluteHttpUrl(string? url) =>

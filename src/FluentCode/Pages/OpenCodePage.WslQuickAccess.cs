@@ -59,11 +59,13 @@ public sealed partial class OpenCodePage
     }
 
     private void WslQuickAccessSettingsChanged(object? sender, AppSettingsChangedEventArgs e)
-        => DispatcherQueue.TryEnqueue(RefreshWslQuickAccess);
+        => DispatcherQueue.TryEnqueue(DetectWslEditors);
 
     private void DetectWslEditors()
     {
         _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost);
+        if (_homeSettings?.Current?.OpenCode.Kind == FluentCode.Models.OpenCodeConnectionKind.Ssh)
+            _wslEditors = OpenCodeSshQuickAccess.Editors(_wslEditors);
         RefreshWslQuickAccess();
     }
 
@@ -72,6 +74,8 @@ public sealed partial class OpenCodePage
         var settings = _homeSettings?.Current?.OpenCode;
         var connected = _pageActive && _connection == ConnectionState.Connected && _client is not null
             && _source is { IsRevoked: false } && !_homeActive;
+        if (settings?.Kind == FluentCode.Models.OpenCodeConnectionKind.Ssh)
+            return OpenCodeSshQuickAccess.Resolve(settings.Kind, connected, settings.SshHost, CurrentWslQuickAccessDirectory());
         var home = ReferenceEquals(_wslHomeSource, _source) && _wslHomeDistribution == settings?.WslDistribution
             ? _wslAuthoritativeHome : null;
         return OpenCodeWslQuickAccess.Resolve(settings?.Kind, connected, settings?.WslDistribution,
@@ -144,13 +148,14 @@ public sealed partial class OpenCodePage
         Motion.ActionFeedback.Busy(view.ActionControl(editorAction));
         try
         {
-            var mapped = await _wslHostPaths.MapAsync(target);
+            var mapped = state.IsSsh ? target : await _wslHostPaths.MapAsync(target);
             // Mapping is asynchronous: do not launch a folder from a superseded session/connection.
             if (CurrentWslQuickAccess().Target != target) return;
             state = state with { Target = mapped };
             if (editorName is not null)
             {
                 _wslEditors = WslHostEditorDetection.Detect(_wslEditorHost);
+                if (state.IsSsh) _wslEditors = OpenCodeSshQuickAccess.Editors(_wslEditors);
                 await OpenCodeWslQuickAccess.LaunchEditorAsync(state, _wslEditors, _selectedWslEditor,
                     selectDefault ? editorName : null, name =>
                     {
@@ -181,13 +186,15 @@ public sealed partial class OpenCodePage
     {
         var settings = _homeSettings?.Current?.OpenCode;
         if (!IsCurrentMessageHistoryRead(read)) return new(true, null, "会话或连接已切换");
-        if (settings?.Kind != FluentCode.Models.OpenCodeConnectionKind.Wsl)
+        if (settings?.Kind is not (FluentCode.Models.OpenCodeConnectionKind.Wsl or FluentCode.Models.OpenCodeConnectionKind.Ssh))
             return new(true, null, "当前连接未提供已授权的本机路径映射；不能将远程路径作为本机路径打开");
         if (!path.StartsWith('/') && path is not "~" && !path.StartsWith("~/", StringComparison.Ordinal))
         {
             if (read.Directory?.StartsWith('/') != true) return new(true, null, "会话未提供可解析相对路径的绝对工作目录");
             path = read.Directory.TrimEnd('/') + "/" + path;
         }
+        if (settings.Kind == FluentCode.Models.OpenCodeConnectionKind.Ssh)
+            return OpenCodeSshQuickAccess.Resolve(settings.Kind, true, settings.SshHost, path);
         var home = ReferenceEquals(_wslHomeSource, read.Source) && _wslHomeDistribution == settings.WslDistribution ? _wslAuthoritativeHome : null;
         return OpenCodeWslQuickAccess.Resolve(settings.Kind, true, settings.WslDistribution, path, home);
     }
@@ -197,8 +204,9 @@ public sealed partial class OpenCodePage
     private string? DetailPathUnavailableReason(MessageHistoryRead read, string path, bool directory)
     {
         var state = ResolveDetailPath(read, path);
+        if (state.IsSsh && directory) return "SSH 连接的文件夹不能在资源管理器中打开，请用 Zed 或 VS Code";
         return state.Target is null ? state.Reason ?? "当前路径不可用"
-            : !directory && DetailPathEditor() is null ? "未检测到可用于打开此 WSL 文件的主机编辑器" : null;
+            : !directory && DetailPathEditor() is null ? state.IsSsh ? "未找到可打开此文件的 VS Code 或 Zed" : "未检测到可用于打开此 WSL 文件的主机编辑器" : null;
     }
 
     private async Task LaunchDetailPathAsync(MessageHistoryRead read, string path, bool directory, bool reveal, int? line,
@@ -227,11 +235,12 @@ public sealed partial class OpenCodePage
             }
             else if (DetailPathEditor() is { } editor && IsCurrentMessageHistoryRead(read))
             {
-                target = await _wslHostPaths.MapAsync(target);
+                target = state.IsSsh ? target : await _wslHostPaths.MapAsync(target);
                 if (!IsCurrentMessageHistoryRead(read)) return;
                 var launch = OpenCodeWslQuickAccess.EditorLaunch(target, editor);
                 if (line is > 0 && editor.OpenMode == WslEditorOpenMode.RemoteWsl)
-                    launch = new(launch.Executable, new[] { "--remote", "wsl+" + target.Distribution, "--goto", target.LinuxDirectory + ":" + line.Value });
+                    launch = new(launch.Executable, new[] { "--remote", state.IsSsh ? "ssh-remote+" + target.SshHost : "wsl+" + target.Distribution,
+                        "--goto", target.LinuxDirectory + ":" + line.Value });
                 await _wslQuickAccessLauncher.OpenEditorAsync(launch);
                 launched = true;
             }

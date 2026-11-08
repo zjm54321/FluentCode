@@ -54,6 +54,7 @@ public sealed partial class OpenCodeClient : IDisposable
     private readonly string? _authorization;
     private readonly TimeSpan _timeout;
     private readonly Action<bool>? _connectionFailure;
+    private readonly OpenCodeSocketTransport? _socketTransport;
     private bool _disposed;
 
     /// <summary>
@@ -88,8 +89,13 @@ public sealed partial class OpenCodeClient : IDisposable
         ValidateOptions(options);
 
         _baseUri = NormalizeBaseUri(options.BaseUrl);
+        _socketTransport = options.SocketTransport;
+        if (options.RequiresSshTransport && _socketTransport is null)
+            throw new OpenCodeConfigurationException("SSH 连接缺少受校验的隧道传输；未发送请求或凭据。");
+        if (_socketTransport is not null && (injectedHttpClient is not null || !_socketTransport.Matches(_baseUri)))
+            throw new OpenCodeConfigurationException("SSH 必须使用本来源校验过的直接传输；不得替换目标或注入其他 HTTP 管线。");
         _ownsHttpClient = ownsHttpClient;
-        _httpClient = injectedHttpClient ?? CreateOwnedHttpClient(options.ConnectionFailure is not null);
+        _httpClient = injectedHttpClient ?? _socketTransport?.CreateClient() ?? CreateOwnedHttpClient(options.ConnectionFailure is not null);
         _authorization = CreateAuthorization(options);
         _timeout = options.Timeout;
         _connectionFailure = options.ConnectionFailure;
@@ -551,6 +557,8 @@ public sealed partial class OpenCodeClient : IDisposable
         CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
+        _socketTransport?.ThrowIfInvalidated();
 
         using var request = new HttpRequestMessage(method, BuildUri(relativePath, query))
         {

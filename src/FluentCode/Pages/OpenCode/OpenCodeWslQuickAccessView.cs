@@ -66,6 +66,7 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
 
     public void Render(WslQuickAccessState state, IReadOnlyList<WslHostEditor> editors, string? selectedEditor)
     {
+        _explorer.Visibility = state.IsSsh ? Visibility.Collapsed : Visibility.Visible;
         _explorer.IsEnabled = state.Target is not null;
         var choices = WslEditorChoices.Resolve(editors, selectedEditor);
         _currentEditor = choices.Current;
@@ -84,12 +85,12 @@ internal sealed class OpenCodeWslQuickAccessView : StackPanel
         }
         _editor.IsEnabled = supported;
         // The directory row already shows the path; only explain what is unavailable.
-        SetNote(state.Reason ?? (supported ? null : "未检测到支持 WSL 的主机编辑器"));
+        SetNote(state.Reason ?? (supported ? null : state.IsSsh ? "未找到 VS Code 或 Zed" : "未检测到支持 WSL 的主机编辑器"));
         ToolTipService.SetToolTip(_explorer, ExplorerText + "\n" + (state.Reason ?? state.Target?.HostPath));
         var editorText = _currentEditor is { } current ? "在 " + current.Name + " 中打开" : EditorText;
         AutomationProperties.SetName(_editor, editorText);
         ToolTipService.SetToolTip(_editor, editorText + "\n" + (state.Reason
-            ?? (_currentEditor?.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : state.Target?.HostPath)));
+            ?? (state.IsSsh ? "通过 SSH 远程打开（VS Code 需安装 Remote - SSH 扩展）" : _currentEditor?.OpenMode == WslEditorOpenMode.RemoteWsl ? "WSL 远程模式" : state.Target?.HostPath)));
     }
 
     private async System.Threading.Tasks.Task SetPrimaryIconAsync(WslHostEditor editor, int version)

@@ -12,6 +12,7 @@ public sealed record OpenCodeConnectionSummary(
     OpenCodeAuthenticationMode AuthenticationMode,
     bool HasCredential)
 {
+    public string? SshHost { get; init; }
     public bool IsConfigured => Kind is not null && !string.IsNullOrWhiteSpace(BaseUrl);
 
     public override string ToString() => "OpenCodeConnectionSummary { [redacted] }";
@@ -20,6 +21,7 @@ public sealed record OpenCodeConnectionSummary(
     public string DisplayText => Kind switch
     {
         OpenCodeConnectionKind.Wsl => $"WSL · {WslDistribution}",
+        OpenCodeConnectionKind.Ssh => "SSH · " + SshHost,
         OpenCodeConnectionKind.Remote => "远程 · " + HostOf(BaseUrl),
         _ => "未连接 OpenCode",
     };
@@ -59,7 +61,8 @@ public static class OpenCodeConnectionProfile
             settings.BaseUrl,
             kind == OpenCodeConnectionKind.Wsl ? settings.WslDistribution : null,
             settings.AuthenticationMode,
-            HasCredential: settings.CredentialId is not null);
+            HasCredential: settings.CredentialId is not null)
+        { SshHost = kind == OpenCodeConnectionKind.Ssh ? settings.SshHost : null };
     }
 
     /// <summary>
@@ -72,7 +75,9 @@ public static class OpenCodeConnectionProfile
         string baseUrl,
         OpenCodeAuthenticationMode mode,
         string? username,
-        string? wslDistribution)
+        string? wslDistribution,
+        string? sshHost = null,
+        string? sshCommand = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         if (!Enum.IsDefined(kind))
@@ -88,6 +93,10 @@ public static class OpenCodeConnectionProfile
         }
         if (kind == OpenCodeConnectionKind.Wsl && !OpenCodeSettings.IsValidWslDistributionName(wslDistribution))
             throw new OpenCodeConfigurationException("WSL 连接必须记录合法的发行版名称。");
+        if (kind == OpenCodeConnectionKind.Ssh && !SshConnectionTarget.TryParse(sshHost, out _))
+            throw new OpenCodeConfigurationException("SSH 连接必须记录合法的配置别名或 user@host[:port]。");
+        if (kind == OpenCodeConnectionKind.Ssh && !SshConnectionTarget.IsValidCommand(sshCommand))
+            throw new OpenCodeConfigurationException("远程命令必须是 opencode 可执行文件名或路径，不能包含 shell 操作符、换行或凭据参数。");
         if (mode == OpenCodeAuthenticationMode.Basic && !IsValidBasicUsername(username))
             throw new OpenCodeConfigurationException("Basic 用户名不能为空，且不能包含冒号或换行。");
 
@@ -95,6 +104,8 @@ public static class OpenCodeConnectionProfile
         {
             Kind = kind,
             WslDistribution = kind == OpenCodeConnectionKind.Wsl ? wslDistribution : null,
+            SshHost = kind == OpenCodeConnectionKind.Ssh ? sshHost : null,
+            SshCommand = kind == OpenCodeConnectionKind.Ssh ? sshCommand : null,
             BaseUrl = baseUrl,
             AuthenticationMode = mode,
             Username = mode == OpenCodeAuthenticationMode.Basic ? username : current.Username,

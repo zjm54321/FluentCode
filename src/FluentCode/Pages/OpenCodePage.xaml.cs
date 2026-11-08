@@ -3792,6 +3792,8 @@ public sealed partial class OpenCodePage : Page
         UpdateConnectionStatus();
     }
 
+    private FluentCode.Services.OpenCode.Connection.OpenCodeConnectionStatus? _shownSshAlert;
+
     private void UpdateConnectionStatus()
     {
         RefreshWslQuickAccess();
@@ -3823,11 +3825,20 @@ public sealed partial class OpenCodePage : Page
                 break;
         }
 
-        if ((Application.Current as App)?.OpenCodeRecoveryStatus is { } recoveryStatus)
+        var recoveryStatus = (Application.Current as App)?.OpenCodeRecoveryStatus;
+        if (recoveryStatus is not null)
         {
-            text = recoveryStatus;
-            tooltip = recoveryStatus;
-            brushKey = "TextFillColorSecondaryBrush";
+            // 顶栏只放短状态；完整步骤 / 原因进入提示与连接浮层（_connectionStatusDetail）。
+            text = recoveryStatus.Label;
+            tooltip = recoveryStatus.Detail;
+            brushKey = recoveryStatus.Failed ? "SystemFillColorCriticalBrush"
+                : recoveryStatus.Warning ? "SystemFillColorCautionBrush" : "TextFillColorSecondaryBrush";
+        }
+        // 独立、可关闭的非模态安全提示，不被普通请求结果覆盖；同一状态不反复打开。
+        if (_shownSshAlert != recoveryStatus)
+        {
+            _shownSshAlert = recoveryStatus;
+            ShowSshAlert(recoveryStatus);
         }
         ConnectionStatusText.Text = text;
         // ThemeResource 样式（XamlReader 构造、按键缓存）：主题切换时由框架重取，不是一次性画刷。
