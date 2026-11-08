@@ -36,25 +36,29 @@ public sealed class OpenCodeConnectionView : UserControl
     private static readonly string SshClientMissingText = new SshOpenCodeException(SshFailureKind.MissingOpenSsh).Message;
     private readonly ComboBox _sshHost = new() { Header = "SSH 主机", IsEditable = true, PlaceholderText = SshHostPlaceholder, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Button _refreshSsh = new() { Content = "刷新 SSH 主机" };
-    // 字段自带说明（原生 Description），提示与字段成组，而不是另起一段。
+    // 字段自带说明（原生 Description），提示与字段成组，而不是另起一段；原生模板不留上间距，补 4px。
     private readonly TextBox _sshCommand = new() { Header = "远程 opencode 路径（可选）", PlaceholderText = "默认 opencode",
-        Description = Hint("远程找不到 opencode 时再填写，例如 ~/.local/bin/opencode") };
+        Description = FieldHint("远程找不到 opencode 时再填写，例如 ~/.local/bin/opencode") };
     private readonly TextBox _address = new() { Header = "远程地址（绝对 http/https URL）", PlaceholderText = "https://服务器" };
     private readonly TextBox _username = new() { Header = "用户名" };
     private readonly PasswordBox _password = new() { Header = "密码（不回显已保存凭据）", PasswordRevealMode = PasswordRevealMode.Hidden };
     private readonly PasswordBox _pairLink = new() { Header = "远程配对链接", PlaceholderText = "https://服务器/auth/connect/…", PasswordRevealMode = PasswordRevealMode.Hidden };
     private readonly TextBlock _summary = Text(string.Empty, OpenCodeInteractionUi.BodyStrongStyleKey);
-    private readonly TextBlock _status = Text(string.Empty, OpenCodeInteractionUi.BodyStyleKey);
-    private readonly HyperlinkButton _statusAction = new() { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 8, 0, 0), Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left };
+    // 状态分两种呈现：进行中 / 提示 = 无底色的一行（图标或进度环 + 次要正文）；结果（成功 / 警告 / 失败）= 原生 InfoBar。
+    private readonly TextBlock _status = Text(string.Empty, OpenCodeInteractionUi.BodySubtleStyleKey);
+    private readonly FontIcon _statusIcon = new() { Glyph = "\uE946", FontSize = 16, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0) };
+    private readonly ProgressRing _progress = new() { Width = 16, Height = 16, MinWidth = 0, MinHeight = 0, IsActive = false, Visibility = Visibility.Collapsed,
+        VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0) };
+    private readonly Grid _statusRow = new() { ColumnSpacing = 8, Visibility = Visibility.Collapsed };
+    private readonly InfoBar _result = new() { IsClosable = false, IsOpen = false, Visibility = Visibility.Collapsed };
+    private readonly Button _statusAction = new();
     private Func<Task>? _statusActionHandler;
-    private readonly FontIcon _statusIcon = new() { FontSize = 16, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0) };
-    private readonly Border _statusCard = new() { CornerRadius = new CornerRadius(4), Padding = new Thickness(12, 8, 12, 8), Visibility = Visibility.Collapsed };
+    private bool _busyVisual;
     private readonly TextBlock _pairHint = Hint("一次性链接只在点击连接时兑换；失败不自动重试。兑换成功后可在本窗口重试验证与保存，不再兑换。");
     private readonly Border _pairPending = new() { CornerRadius = new CornerRadius(4), Padding = new Thickness(12, 8, 12, 8) };
     private readonly Button _connect = new() { Content = "连接 OpenCode", MinWidth = 120, Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
     private readonly Button _discardPair = new() { Content = "放弃配对结果", Visibility = Visibility.Collapsed };
     private readonly Button _cancel = new() { Content = "取消操作", Visibility = Visibility.Collapsed };
-    private readonly ProgressRing _progress = new() { Width = 20, Height = 20, IsActive = false, Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center };
     private readonly StackPanel _wsl = new() { Spacing = 12 };
     private readonly StackPanel _remote = new() { Spacing = 12 };
     private readonly StackPanel _pairing = new() { Spacing = 12 };
@@ -66,6 +70,7 @@ public sealed class OpenCodeConnectionView : UserControl
     private bool _sshHostsLoaded;
     private bool _distributionsLoaded;
     private bool _hostKeyDeclined;
+    private ContentDialog? _hostKeyDialog;
 
     public bool IsBusy => _operation is not null;
 
@@ -87,7 +92,10 @@ public sealed class OpenCodeConnectionView : UserControl
         AutomationProperties.SetAutomationId(_refreshSsh, "AccountOpenCodeSshRefresh");
         AutomationProperties.SetAutomationId(_connect, "AccountOpenCodeConnect");
         AutomationProperties.SetAutomationId(_status, "AccountOpenCodeStatus");
-        // 进度与结果只在状态条里变化：设为实时区域，讲述人才能听到（SetStatus 中触发 LiveRegionChanged）。
+        AutomationProperties.SetAutomationId(_result, "AccountOpenCodeResult");
+        AutomationProperties.SetAutomationId(_statusAction, "AccountOpenCodeResultAction");
+        AutomationProperties.SetName(_progress, "正在处理");
+        // 进度只在状态行里变化：设为实时区域，讲述人才能听到（SetStatus 中触发 LiveRegionChanged）；结果 InfoBar 打开时自行播报。
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
 
         foreach (string name in new[] { "WSL 自动发现", "远程地址 + 用户名 + 密码", "远程配对链接", "SSH 自动发现" }) _flow.Items.Add(name);
@@ -115,7 +123,8 @@ public sealed class OpenCodeConnectionView : UserControl
         _pairing.Children.Add(_pairPending);
         _pairing.Children.Add(_discardPair);
 
-        // ④ SSH：沿用 WSL 的原生选择框 + 刷新行与同样的间距；不新增视觉样式。
+        // ④ SSH：沿用 WSL 的原生选择框 + 刷新行与同样的 12px 字段间距；不新增视觉样式。
+        // 节奏：方式说明 → 12 → 主机行 → 12 → 路径（说明贴字段 4）→ 12 → 一组脚注（段间 4，读作同一块）。
         _ssh.Children.Add(Hint("用本机的 SSH 配置和密钥连接；远程 OpenCode 未运行时会自动启动。"));
         var sshRow = new Grid { ColumnSpacing = 8 };
         sshRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -126,9 +135,11 @@ public sealed class OpenCodeConnectionView : UserControl
         sshRow.Children.Add(_refreshSsh);
         _ssh.Children.Add(sshRow);
         _ssh.Children.Add(_sshCommand);
+        var sshNotes = new StackPanel { Spacing = 4 };
         // BatchMode=yes：不会弹出 SSH 密码 / 密码短语输入，必须事先说明，而不是等认证失败。
-        _ssh.Children.Add(Hint("只支持密钥登录，不能在这里输入 SSH 密码；带密码的密钥请先用 ssh-add 加载。首次连接新主机时需核对指纹。"));
-        _ssh.Children.Add(Hint("通过 SSH 获取的 OpenCode 服务密码仅在内存中使用，不会保存。"));
+        sshNotes.Children.Add(Hint("只支持密钥登录，不能在这里输入 SSH 密码；带密码的密钥请先用 ssh-add 加载。首次连接新主机时需核对指纹。"));
+        sshNotes.Children.Add(Hint("通过 SSH 获取的 OpenCode 服务密码仅在内存中使用，不会保存。"));
+        _ssh.Children.Add(sshNotes);
 
         // 当前连接：卡片中“当前配置”为强调正文，单账号规则为次要说明。
         var currentPanel = new StackPanel { Spacing = 4 };
@@ -137,30 +148,31 @@ public sealed class OpenCodeConnectionView : UserControl
         var currentCard = new Border { Child = currentPanel, CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1), Padding = new Thickness(12, 10, 12, 10) };
         OpenCodeToolTheme.Apply(currentCard, OpenCodeToolTheme.Border("CardBackgroundFillColorDefaultBrush", OpenCodeToolTheme.CardStroke));
 
-        // 唯一主操作（强调色）在左，取消与进度环跟随其后。
+        // 唯一主操作（强调色）在左，取消跟随其后；进度环放在状态行里，与它描述的步骤文字同处一行。
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(_connect);
         actions.Children.Add(_cancel);
-        actions.Children.Add(_progress);
 
-        // 状态条：图标 + 文本（文本保持主文字色，着色只在底色与图标上，与 Fluent InfoBar 一致）。
-        var statusRow = new Grid { ColumnSpacing = 10 };
-        statusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        statusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        AutomationProperties.SetAccessibilityView(_statusIcon, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-        var statusBody = new StackPanel();
-        statusBody.Children.Add(_status);
-        statusBody.Children.Add(_statusAction);
-        Grid.SetColumn(statusBody, 1);
-        statusRow.Children.Add(_statusIcon);
-        statusRow.Children.Add(statusBody);
-        _statusCard.Child = statusRow;
+        // 进行中 / 提示：图标（或进度环）+ 次要正文，无底色，与表单说明同一层级。
+        _statusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _statusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        AutomationProperties.SetAccessibilityView(_statusIcon, AccessibilityView.Raw);
+        OpenCodeToolTheme.Apply(_statusIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary));
+        Grid.SetColumn(_status, 1);
+        _statusRow.Children.Add(_statusIcon);
+        _statusRow.Children.Add(_progress);
+        _statusRow.Children.Add(_status);
+        // 结果：原生 InfoBar（语义底色 + 描边 + 图标，Light / Dark / 高对比度由控件自身处理）；需要用户处理的错误带操作按钮。
         _statusAction.Click += async (_, _) =>
         {
             if (_statusActionHandler is not { } action) return;
             try { await action(); }
             catch (Exception) { SetStatus("无法执行此操作，请在终端或 Windows 设置中手动处理。", StatusTone.Warning); }
         };
+        // 两种状态共用一个宿主：任一时刻只显示其一，空状态整体折叠，不在表单底部留下多余间距。
+        var statusHost = new Grid();
+        statusHost.Children.Add(_statusRow);
+        statusHost.Children.Add(_result);
 
         var body = new StackPanel { Spacing = 16, MaxWidth = 520 };
         if (showCurrentConnection) body.Children.Add(currentCard);
@@ -170,7 +182,7 @@ public sealed class OpenCodeConnectionView : UserControl
         body.Children.Add(_pairing);
         body.Children.Add(_ssh);
         body.Children.Add(actions);
-        body.Children.Add(_statusCard);
+        body.Children.Add(statusHost);
         // 宿主（设置分类滚动区 / 欢迎页滚动区）负责纵向滚动，不出现嵌套滚动条。
         Content = body;
 
@@ -240,50 +252,66 @@ public sealed class OpenCodeConnectionView : UserControl
     /// <summary>说明文字：次要 Caption（主题次要文字色，Light / Dark 均 ≥ 4.5:1；高对比度下为系统文字色）。</summary>
     private static TextBlock Hint(string value) => Text(value, OpenCodeInteractionUi.CaptionSubtleStyleKey);
 
+    /// <summary>字段说明（TextBox.Description）：原生说明区紧贴输入框底边，补 4px 与 Fluent 字段说明间距一致。</summary>
+    private static TextBlock FieldHint(string value)
+    {
+        var hint = Hint(value);
+        hint.Margin = new Thickness(0, 4, 0, 0);
+        return hint;
+    }
+
     private enum StatusTone { Neutral, Success, Warning, Error }
 
     /// <summary>
-    /// 仅视觉：同一状态文本按语义着色。Neutral（进行中 / 提示）无底色、次要文字；Success / Warning / Error 使用 Fluent InfoBar
-    /// 同款背景画刷 + 语义色图标（不只靠颜色），文本保持主文字色以确保对比度。空文本隐藏状态条。
+    /// 仅视觉：Neutral（进行中 / 提示）= 无底色的一行，忙碌时图标换成 16px 进度环；Success / Warning / Error = 原生 InfoBar
+    /// （语义色图标，不只靠颜色），可带标题与一个操作按钮。空文本隐藏状态区。
     /// </summary>
-    private void SetStatus(string text, StatusTone tone = StatusTone.Neutral, string? actionText = null, Func<Task>? action = null)
+    private void SetStatus(string text, StatusTone tone = StatusTone.Neutral, string? actionText = null, Func<Task>? action = null, string? title = null)
     {
-        _status.Text = text;
-        _statusAction.Content = actionText;
+        bool empty = string.IsNullOrEmpty(text);
         _statusActionHandler = action;
-        _statusAction.Visibility = action is null ? Visibility.Collapsed : Visibility.Visible;
-        _statusCard.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
-        var (background, iconKey, glyph) = tone switch
+        if (tone == StatusTone.Neutral || empty)
         {
-            StatusTone.Success => (OpenCodeToolTheme.SuccessBackground, OpenCodeToolTheme.Success, "\uEC61"),
-            StatusTone.Warning => (OpenCodeToolTheme.CautionBackground, OpenCodeToolTheme.Caution, "\uE7BA"),
-            StatusTone.Error => (OpenCodeToolTheme.CriticalBackground, OpenCodeToolTheme.Critical, "\uEB90"),
-            _ => ((string?)null, OpenCodeToolTheme.TextSecondary, "\uE946"),
-        };
-        if (background is null)
-        {
-            _statusCard.ClearValue(Border.BackgroundProperty);
-            _statusCard.Padding = new Thickness(0);
-            if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodySubtleStyleKey) is { } subtle) _status.Style = subtle;
-        }
-        else
-        {
-            OpenCodeToolTheme.Apply(_statusCard, OpenCodeToolTheme.Border(background));
-            _statusCard.Padding = new Thickness(12, 8, 12, 8);
-            if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodyStyleKey) is { } body) _status.Style = body;
+            _result.IsOpen = false;
+            _result.Visibility = Visibility.Collapsed;
+            _result.ActionButton = null;
+            _status.Text = text;
+            UpdateProgressSlot();
+            if (!empty)
+                (FrameworkElementAutomationPeer.FromElement(_status) ?? FrameworkElementAutomationPeer.CreatePeerForElement(_status))
+                    ?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+            return;
         }
 
-        _statusIcon.Glyph = glyph;
-        OpenCodeToolTheme.Apply(_statusIcon, OpenCodeToolTheme.Icon(iconKey));
-        if (!string.IsNullOrEmpty(text))
+        _status.Text = string.Empty;
+        _statusRow.Visibility = Visibility.Collapsed;
+        _result.Severity = tone switch
         {
-            AutomationProperties.SetLiveSetting(_status, tone == StatusTone.Error ? AutomationLiveSetting.Assertive : AutomationLiveSetting.Polite);
-            (FrameworkElementAutomationPeer.FromElement(_status) ?? FrameworkElementAutomationPeer.CreatePeerForElement(_status))
-                ?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
-        }
-        // 结果（成功 / 警告 / 失败）出现在表单底部：滚动宿主中自动带入视野，避免在矮窗口里看不到。
-        if (tone != StatusTone.Neutral && _statusCard.IsLoaded)
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => _statusCard.StartBringIntoView());
+            StatusTone.Success => InfoBarSeverity.Success,
+            StatusTone.Warning => InfoBarSeverity.Warning,
+            _ => InfoBarSeverity.Error,
+        };
+        _result.Title = title ?? string.Empty;
+        _result.Message = text;
+        _statusAction.Content = actionText;
+        _result.ActionButton = action is null ? null : _statusAction;
+        // 先关后开：同一 InfoBar 内容替换时也会重新播报（InfoBar 打开时按严重度发出通知）。
+        _result.IsOpen = false;
+        _result.Visibility = Visibility.Visible;
+        _result.IsOpen = true;
+        // 结果出现在表单底部：滚动宿主中自动带入视野，避免在矮窗口里看不到。
+        if (_result.IsLoaded)
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => _result.StartBringIntoView());
+    }
+
+    private void UpdateProgressSlot()
+    {
+        _progress.IsActive = _busyVisual;
+        _progress.Visibility = _busyVisual ? Visibility.Visible : Visibility.Collapsed;
+        _statusIcon.Visibility = _busyVisual ? Visibility.Collapsed : Visibility.Visible;
+        // 忙碌时即使步骤文字尚未到达，也显示进度环（原先位于按钮旁）；结果 InfoBar 显示时不叠加。
+        _statusRow.Visibility = _result.Visibility == Visibility.Collapsed && (_busyVisual || _status.Text.Length > 0)
+            ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static string SafeAddress(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var uri)
@@ -360,8 +388,10 @@ public sealed class OpenCodeConnectionView : UserControl
             control.IsEnabled = !busy;
         _connect.IsEnabled = !busy && !SshBlocked;
         _cancel.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
-        _progress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
-        _progress.IsActive = busy;
+        _busyVisual = busy;
+        // 新操作开始时收起上一次的结果条，进度环与新步骤取而代之。
+        if (busy && _result.Visibility == Visibility.Visible) SetStatus(string.Empty);
+        UpdateProgressSlot();
     }
 
     private async Task RefreshDistributionsAsync(CancellationToken ct)
@@ -497,6 +527,8 @@ public sealed class OpenCodeConnectionView : UserControl
         { SetStatus("路径只能是 opencode 程序名或路径，不能带参数或符号。", StatusTone.Warning); return; }
         if (SshClientMissing) { ShowSshFailure(new(SshFailureKind.MissingOpenSsh)); return; }
         var settings = new OpenCodeSettings { Kind = OpenCodeConnectionKind.Ssh, SshHost = host, SshCommand = command };
+        // 进度环在状态行里：第一步文字立即出现，不让上一条提示陪着进度环转。
+        SetStatus("正在连接 " + host + "…");
         _hostKeyDeclined = false;
         SshOpenCodeConnection opened;
         try
@@ -521,11 +553,16 @@ public sealed class OpenCodeConnectionView : UserControl
         _pairLink.Password = string.Empty;
         _pairingResult = null;
         ShowSummary(_settings.Current!.OpenCode);
-        string success = "已连接 " + host + "。关闭 FluentCode 不会停止远程 OpenCode。\n" + outcome.Message;
-        SetStatus(success + (outcome.Warning is { } warning ? "\n" + warning : string.Empty),
-            outcome.Warning is null ? StatusTone.Success : StatusTone.Warning);
+        ShowSshSuccess(host, outcome.Message, outcome.Warning);
         FluentCode.Motion.ActionFeedback.Success(_connect, "已保存并连接 OpenCode");
         // The app settings owner opens its own tunnel; this preflight tunnel is always disposed, including failures.
+    }
+
+    /// <summary>D2：仅 SSH 显示成功条。标题给出结果，正文放“关闭不会停止远程 OpenCode”与保存说明；安全提示时转为警告色。</summary>
+    private void ShowSshSuccess(string host, string saved, string? warning)
+    {
+        string message = "关闭 FluentCode 不会停止远程 OpenCode。" + saved + (warning is null ? string.Empty : "\n" + warning);
+        SetStatus(message, warning is null ? StatusTone.Success : StatusTone.Warning, title: "已连接 " + host);
     }
 
     private Task<bool> ConfirmSshHostKeyAsync(SshHostKeyConfirmation confirmation, CancellationToken ct)
@@ -538,10 +575,13 @@ public sealed class OpenCodeConnectionView : UserControl
                 if (_closed || ct.IsCancellationRequested || XamlRoot is null) { answer.TrySetResult(false); return; }
                 var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = "核对主机指纹", Content = HostKeyBody(confirmation),
                     PrimaryButtonText = "一致，信任并连接", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close,
-                    Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle") };
+                    Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"), RequestedTheme = ActualTheme };
                 AutomationProperties.SetAutomationId(dialog, "AccountOpenCodeSshHostKeyConfirmation");
                 using var registration = ct.Register(() => DispatcherQueue.TryEnqueue(() => { try { dialog.Hide(); } catch (Exception) { } }));
-                var result = await dialog.ShowAsync();
+                _hostKeyDialog = dialog;
+                ContentDialogResult result;
+                try { result = await dialog.ShowAsync(); }
+                finally { _hostKeyDialog = null; }
                 bool accepted = result == ContentDialogResult.Primary && !_closed && !ct.IsCancellationRequested;
                 // 仅用户主动拒绝时给出专门文案；“取消操作”/关闭窗口仍走通用取消。
                 if (!accepted && !ct.IsCancellationRequested) _hostKeyDeclined = true;
@@ -571,7 +611,9 @@ public sealed class OpenCodeConnectionView : UserControl
             int row = facts.RowDefinitions.Count;
             facts.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var key = Hint(label);
-            key.VerticalAlignment = VerticalAlignment.Center;
+            // 标签（Caption 12/16）与值（Body 14/20）首行对齐：顶对齐 + 2px，值换行时标签仍贴第一行。
+            key.VerticalAlignment = VerticalAlignment.Top;
+            key.Margin = new Thickness(0, 2, 0, 0);
             var text = Text(value, OpenCodeInteractionUi.BodyStyleKey);
             text.IsTextSelectionEnabled = true;
             AutomationProperties.SetName(text, label + "：" + value);
@@ -589,18 +631,20 @@ public sealed class OpenCodeConnectionView : UserControl
         {
             string algorithm = fingerprint.Algorithm;
             string value = fingerprint.Sha256;
-            var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(12, 10, 12, 10) };
+            // 卡片：左 12 与说明文字对齐；右 / 上下 8 让 32px 复制按钮贴边而不显得悬空。
+            var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(12, 8, 8, 8) };
             OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border("CardBackgroundFillColorSecondaryBrush", OpenCodeToolTheme.CardStroke));
-            var stack = new StackPanel { Spacing = 2 };
+            var row = new Grid { ColumnSpacing = 8 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var stack = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
             stack.Children.Add(Hint(algorithm));
             var mono = new TextBlock { Text = value, FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 14,
                 IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
             AutomationProperties.SetName(mono, algorithm + " 指纹：" + value);
-            var row = new Grid { ColumnSpacing = 8 };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var copy = new Button { Content = new FontIcon { Glyph = "\uE8C8", FontSize = 16 }, Width = 32, Height = 32,
-                Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle") };
+            stack.Children.Add(mono);
+            var copy = new Button { Content = new FontIcon { Glyph = "\uE8C8", FontSize = 16 }, Width = 32, Height = 32, Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center, Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle") };
             AutomationProperties.SetName(copy, "复制 " + algorithm + " 指纹");
             ToolTipService.SetToolTip(copy, "复制指纹");
             copy.Click += (_, _) =>
@@ -609,10 +653,9 @@ public sealed class OpenCodeConnectionView : UserControl
                 catch (Exception) { FluentCode.Motion.ActionFeedback.Failure(copy, "复制失败；可选择指纹后手动复制"); }
             };
             Grid.SetColumn(copy, 1);
-            row.Children.Add(mono);
+            row.Children.Add(stack);
             row.Children.Add(copy);
-            stack.Children.Add(row);
-            card.Child = stack;
+            card.Child = row;
             prints.Children.Add(card);
         }
         body.Children.Add(prints);
@@ -622,7 +665,8 @@ public sealed class OpenCodeConnectionView : UserControl
 
     // ---- Opt-in shell capture (FC_SHELL_CAPTURE_TEST, isolated startup-smoke profile only) ----
     internal int TestDistributionCount => _distributions.Items.Count;
-    internal string TestStatusText => _status.Text;
+    internal string TestStatusText => _result.Visibility == Visibility.Visible
+        ? string.Join(" ", new[] { _result.Title, _result.Message }.Where(static s => !string.IsNullOrEmpty(s))) : _status.Text;
     internal void TestFillRemote(string address, string username, string password)
     {
         _flow.SelectedIndex = 1;
@@ -633,6 +677,47 @@ public sealed class OpenCodeConnectionView : UserControl
     internal void TestSelectWsl() => _flow.SelectedIndex = 0;
     internal void TestSelectSsh() => _flow.SelectedIndex = 3;
     internal Task TestConnectAsync() => RunAsync(ConnectAsync);
+
+    /// <summary>
+    /// SSH 视觉取证（FC_SSH_CAPTURE_TEST）：用与生产相同的呈现路径摆出各状态，不发起任何 SSH / 网络 / 文件写入。
+    /// 指纹与主机均为示例值。返回 false 表示状态名未知。
+    /// </summary>
+    internal bool TestShowSshState(string state)
+    {
+        _busyVisual = false;
+        switch (state)
+        {
+            case "idle": _cancel.Visibility = Visibility.Collapsed; UpdateProgressSlot(); return true;
+            case "progress":
+                SetStatus("远程 OpenCode 未运行，正在启动（最多约 30 秒）…");
+                _busyVisual = true;
+                _cancel.Visibility = Visibility.Visible;
+                UpdateProgressSlot();
+                return true;
+            case "error-auth": _cancel.Visibility = Visibility.Collapsed; ShowSshFailure(new(SshFailureKind.Authentication)); return true;
+            case "error-changed-key":
+                _cancel.Visibility = Visibility.Collapsed;
+                ShowSshFailure(new(SshFailureKind.ChangedHostKey, "myserver", @"C:\Users\me\.ssh\known_hosts"));
+                return true;
+            case "warning-missing-ssh": _cancel.Visibility = Visibility.Collapsed; ShowSshFailure(new(SshFailureKind.MissingOpenSsh)); return true;
+            case "success":
+                _cancel.Visibility = Visibility.Collapsed;
+                ShowSshSuccess("myserver", "已保存 SSH 连接设置；服务密码仅在内存中使用，未持久化。", null);
+                return true;
+            default: return false;
+        }
+    }
+
+    internal static SshHostKeyConfirmation TestHostKeyConfirmation => new("myserver",
+        new[]
+        {
+            new SshHostKeyFingerprint("ED25519", "SHA256:u8Jm0Il1OoQ3x7c2PbVqKzR9tYwX4eF6hN5sLdGaAkE"),
+            new SshHostKeyFingerprint("ECDSA", "SHA256:Z0oO1lIi9bQ8Wm3Kx7vNcR2tFy5PdLsH4gJeA6uTqYw"),
+        }, ResolvedHost: "203.0.113.24:22");
+
+    /// <summary>以生产对话框路径打开指纹确认；取消 <paramref name="ct"/> 即关闭（不会被记为“用户拒绝”）。</summary>
+    internal Task<bool> TestShowHostKeyDialogAsync(CancellationToken ct) => ConfirmSshHostKeyAsync(TestHostKeyConfirmation, ct);
+    internal ContentDialog? TestHostKeyDialog => _hostKeyDialog;
 
     public void Close()
     {

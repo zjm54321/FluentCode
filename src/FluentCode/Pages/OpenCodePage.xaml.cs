@@ -3838,14 +3838,7 @@ public sealed partial class OpenCodePage : Page
         if (_shownSshAlert != recoveryStatus)
         {
             _shownSshAlert = recoveryStatus;
-            bool changedKey = recoveryStatus?.FailureKind == FluentCode.Services.OpenCode.Connection.SshFailureKind.ChangedHostKey;
-            SshConnectionAlert.IsOpen = changedKey || recoveryStatus?.Warning == true;
-            if (SshConnectionAlert.IsOpen)
-            {
-                SshConnectionAlert.Severity = changedKey ? InfoBarSeverity.Error : InfoBarSeverity.Warning;
-                SshConnectionAlert.Title = recoveryStatus!.Label;
-                SshConnectionAlert.Message = recoveryStatus.Detail;
-            }
+            ShowSshAlert(recoveryStatus);
         }
         ConnectionStatusText.Text = text;
         // ThemeResource 样式（XamlReader 构造、按键缓存）：主题切换时由框架重取，不是一次性画刷。

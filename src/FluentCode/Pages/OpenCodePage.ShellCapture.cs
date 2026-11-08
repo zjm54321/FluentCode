@@ -11,6 +11,9 @@ public sealed partial class OpenCodePage
 
     internal bool TestIsHomeActive => _homeActive;
 
+    /// <summary>SSH 视觉取证：用生产路径显示 / 收起主页面安全提示（不改变 App 的恢复状态）。</summary>
+    internal void TestShowSshAlert(FluentCode.Services.OpenCode.Connection.OpenCodeConnectionStatus? status) => ShowSshAlert(status);
+
     /// <summary>Open the most recently updated top-level session through the normal guarded switch.</summary>
     internal async Task<bool> TestOpenRecentSessionAsync()
     {
