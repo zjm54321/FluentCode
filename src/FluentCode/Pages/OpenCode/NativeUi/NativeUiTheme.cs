@@ -34,6 +34,8 @@ internal static class NativeUiTheme
     internal const double WideWidth = 808;
     internal const double WrapCellWidth = 144;
     internal const string PlaceholderTag = "native-ui-placeholder";
+    // Mapsui draws through Skia, which does not apply XAML's CJK font fallback.
+    internal const string MapLabelFont = "Microsoft YaHei UI";
     private const double SmallRadius = 4;
     private const string Xmlns = " xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
     private static readonly HashSet<string> WideTypes = new(StringComparer.Ordinal) { "Table", "Chart", "Carousel", "Map", "Grid", "Image", "ImageGallery", "Video" };

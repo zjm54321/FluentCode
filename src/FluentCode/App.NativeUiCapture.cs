@@ -120,6 +120,9 @@ public partial class App
                     if (name == "map")
                     {
                         if (Descendants(timeline).OfType<Mapsui.UI.WinUI.MapControl>().Any()) throw new InvalidOperationException("MapControl exists before explicit load.");
+                        using var typeface = SkiaSharp.SKTypeface.FromFamilyName(NativeUiTheme.MapLabelFont);
+                        using var labelFont = new SkiaSharp.SKFont(typeface, 14);
+                        if (labelFont.GetGlyphs("故宫景山公园天坛").Any(glyph => glyph == 0)) throw new InvalidOperationException("Native map font cannot render the fixture's CJK marker labels.");
                         await Press("加载地图");
                         for (var i = 0; i < 100 && tileRequests == 0; i++) await Task.Delay(50);
                         var map = Descendants(timeline).OfType<Mapsui.UI.WinUI.MapControl>().Single();
@@ -142,6 +145,9 @@ public partial class App
                         for (var i = 0; i < 100 && gallery.Visibility != Visibility.Visible; i++) await Task.Delay(25);
                         if (assetRequests != 3 || gallery.Items.Count != 3) throw new InvalidOperationException("Native gallery did not materialize all fixture images.");
                         gallery.SelectedIndex = 1;
+                        // Selection animates natively; do not capture two slides halfway through the transition.
+                        await Task.Delay(500); surface.UpdateLayout();
+                        if (gallery.SelectedIndex != 1) throw new InvalidOperationException("Native gallery did not retain the selected fixture image.");
                     }
                     else
                     {

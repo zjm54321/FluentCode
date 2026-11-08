@@ -78,7 +78,7 @@ internal sealed partial class NativeUiRenderer
                 var label = S(item.Marker, "label"); var chosen = label == selected;
                 var feature = new PointFeature(item.Point); feature["label"] = label;
                 feature.Styles.Add(new SymbolStyle { SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? MapColor.OrangeRed : MapColor.DodgerBlue), Outline = new Pen(MapColor.White, 2) });
-                feature.Styles.Add(new LabelStyle { Text = label, ForeColor = MapColor.Black, BackColor = new Mapsui.Styles.Brush(MapColor.White), Offset = new Offset(0, 22), CollisionDetection = false }); features.Add(feature);
+                feature.Styles.Add(new LabelStyle { Text = label, Font = new Mapsui.Styles.Font { FontFamily = NativeUiTheme.MapLabelFont, Size = 14 }, ForeColor = MapColor.Black, BackColor = new Mapsui.Styles.Brush(MapColor.White), Offset = new Offset(0, 22), CollisionDetection = false }); features.Add(feature);
             }
             points.Features = features; points.FeaturesWereModified();
             route.Features = B(visual.Model, "route") && projected.Length > 1
