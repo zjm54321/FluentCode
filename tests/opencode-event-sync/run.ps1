@@ -65,7 +65,7 @@ $members = foreach ($name in @('SwitchToSessionAsync', 'CancelSessionOperations'
     Extract-Member $page $name
 }
 $events = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.EventSync.cs")
-foreach ($name in @('StopEventSync', 'RestartSessionEventSync', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'DrainEventQueue')) {
+foreach ($name in @('StopEventSync', 'RestartSessionEventSync', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'DrainEventQueue', 'UpdateLiveSessionRetry')) {
     $members += Extract-Member $events $name
 }
 $layout = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.ComposerLayout.cs")

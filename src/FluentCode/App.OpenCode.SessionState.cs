@@ -97,7 +97,24 @@ public partial class App
                 && (continuous || IsFreshSessionUiEvidence(observation.ObservedAt, now)) ? observation.CompletionAbsentThrough : null,
             QuestionPending = observation.QuestionPendingFact is { } question
                 && (continuous || IsFreshSessionUiEvidence(question.ObservedAt, now)) ? question : null,
+            BackgroundWorking = observation.BackgroundWorkingFact is { } background
+                && (continuous || IsFreshSessionUiEvidence(background.ObservedAt, now)) ? background : null,
+            BackgroundChildCount = observation.BackgroundChildCount,
         };
+    }
+
+    /// <summary>页面已接纳的父/子会话投影；只更新内存 UI 事实，不跟踪会话、不调用服务端。</summary>
+    internal void ApplyOpenCodeSessionBackgroundState(OpenCodePageSource source, long revision, string sessionId,
+        OpenCodeSessionUiFact fact, int childCount)
+    {
+        RequireAppThread();
+        if (!IsSessionUiOwner(source, revision) || fact.CurrentEventStream?.Invoke() == false) return;
+        _sessionUiChanged |= _sessionUiStore!.Apply(new(source.Identity, revision, sessionId)
+        {
+            BackgroundWorking = fact,
+            BackgroundChildCount = childCount,
+        }, DateTimeOffset.UtcNow);
+        PublishSessionUiChanges();
     }
 
     private void ApplySessionUiProtection(OpenCodePageSource source, string sessionId, bool isProtected,

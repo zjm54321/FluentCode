@@ -10,6 +10,7 @@ public sealed partial class OpenCodePage
 {
     private sealed record TreeBinding(string SessionId);
     private TreeBinding? _treeBinding;
+    private bool _treeChildrenAccepted = false;
     private readonly List<OpenCodeAgentInfo> _treeAgents = new();
     private readonly Dictionary<string, OpenCodeSessionInfo> _treeChildren = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeTreeStatus> _treeStatuses = new(StringComparer.Ordinal);
@@ -37,13 +38,16 @@ public sealed partial class OpenCodePage
     private void OnBrowserAgentTreeChanged() { }
     private Func<string, bool>? AgentTreeScope() => null;
     private void QueueAgentTreeRefresh() { }
+    partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children, bool complete);
     private void SyncShellTerminalEntries() { }
     internal int TestBackgroundCount { get; private set; }
     private void RenderSubagentCount(int running) => TestBackgroundCount = running;
     internal IReadOnlyList<OpenCodeTreeAgent> TestBackgroundTree => _agentTree.Agents;
+    internal void TestRedrawBackgroundTree() => RenderAgentTree();
     internal void TestBindBackgroundChild(string childId)
     {
         _treeBinding = new(_selectedSessionId!);
+        _treeChildrenAccepted = true;
         _treeAgents.Add(new() { Id = "worker", Name = "Worker", Mode = "subagent" });
         _treeChildren[childId] = new() { Id = childId, ParentId = _selectedSessionId, Agent = "worker" };
     }

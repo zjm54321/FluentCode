@@ -210,6 +210,55 @@ internal static partial class Program
         Check(page.TestForeground is null && page.ActivityRefreshes == before, "old-source active REST cannot repopulate or notify the replacement page");
     }
 
+    private static Task RetryTabPublication()
+    {
+        var backend = new LatencyBackend(); using var client = backend.Client();
+        var page = new OpenCodePage(); page.TestActivate(Session, client); var stream = page.TestBeginEvents();
+        const string other = "ses_retry";
+        page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + other + "\"}"));
+        var before = page.SessionStateRefreshes;
+        var retryEvent = Wire("session.retry.scheduled", "{\"sessionID\":\"" + other + "\",\"attempt\":1,\"at\":1700000003000,\"error\":{\"message\":\"rate limited\"}}");
+        page.TestReceive(stream, retryEvent);
+        Check(page.TestSessionWorking(other) == true && page.TestSessionRetry(other) == new OpenCodeSessionRetryMark(1, 1700000003000, "rate limited")
+            && page.SessionStateRefreshes == before + 1, "V2 retry stores attempt/deadline/message and repaints already-working tab");
+        page.TestReceive(stream, retryEvent);
+        Check(page.SessionStateRefreshes == before + 1, "identical retry does not republish UI state");
+        foreach (var fields in new[] { "\"attempt\":0,\"at\":1", "\"attempt\":\"1\",\"at\":1", "\"attempt\":1,\"at\":\"later\"", "\"attempt\":1,\"at\":1e999" })
+        {
+            page.TestReceive(stream, Wire("session.retry.scheduled", "{\"sessionID\":\"" + other + "\"," + fields + ",\"error\":{}}"));
+            Check(page.TestSessionRetry(other)?.Attempt == 1 && page.SessionStateRefreshes == before + 1, "invalid retry cannot replace current mark or churn status");
+        }
+        page.TestReceive(stream, Wire("session.status", "{\"sessionID\":\"" + other + "\",\"status\":{\"type\":\"retry\",\"attempt\":2,\"next\":1700000005000,\"message\":\"legacy limit\"}}"));
+        Check(page.TestSessionRetry(other) == new OpenCodeSessionRetryMark(2, 1700000005000, "legacy limit")
+            && page.SessionStateRefreshes == before + 2, "legacy retry stores next/message and updates count while Working stays true");
+        var prior = new OpenCodeSessionUiState(other, false, true, true, new("succeeded", 50), 40, OpenCodeStateUnknownReason.Expired)
+            { QuestionPending = true, BackgroundWorking = true, BackgroundChildCount = 3 };
+        var overlaid = page.TestLiveOverride(prior);
+        Check(overlaid is { Working: true, QuestionPending: true, BackgroundWorking: true, BackgroundChildCount: 3 }
+            && overlaid.Retry == page.TestSessionRetry(other) && overlaid.PendingAction == true && overlaid.Completion == prior.Completion
+            && overlaid.ViewedWatermark == 40 && overlaid.UnknownReason == OpenCodeStateUnknownReason.None, "with overlay preserves independent facts/history and attaches retry");
+        foreach (var type in new[] { "session.execution.started", "session.step.started", "session.text.delta", "session.reasoning.delta", "session.tool.called" })
+        {
+            page.TestReceive(stream, retryEvent); before = page.SessionStateRefreshes;
+            page.TestReceive(stream, Wire(type, "{\"sessionID\":\"" + other + "\"}"));
+            Check(page.TestSessionRetry(other) is null && page.TestSessionWorking(other) == true && page.SessionStateRefreshes == before + 1,
+                "next-attempt activity clears retry and repaints tab: " + type);
+        }
+        foreach (var type in new[] { "session.idle", "session.execution.succeeded", "session.execution.failed", "session.execution.interrupted", "session.status" })
+        {
+            page.TestReceive(stream, retryEvent);
+            page.TestReceive(stream, Wire(type, "{\"sessionID\":\"" + other + "\",\"status\":{\"type\":\"idle\"}}"));
+            Check(page.TestSessionRetry(other) is null && page.TestSessionWorking(other) == false, "terminal clears retry: " + type);
+        }
+        page.TestReceive(stream, retryEvent);
+        page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"ses_other\"}"));
+        Check(page.TestSessionRetry(other) is not null, "other session activity cannot clear retry");
+        Check(backend.Messages == 0 && backend.States == 0 && backend.Active == 0, "background-tab retry bookkeeping makes no server calls");
+        page.TestActivate(Session, client);
+        Check(page.TestSessionRetry(other) is null, "StopEventSync clears all per-session retry marks");
+        return Task.CompletedTask;
+    }
+
     private static Task HealthyStreamSkipsPolling()
     {
         var backend = new LatencyBackend(); using var client = backend.Client();

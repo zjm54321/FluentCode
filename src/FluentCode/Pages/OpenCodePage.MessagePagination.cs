@@ -199,7 +199,9 @@ public sealed partial class OpenCodePage
             IsLoadedMessageHistoryComplete(), true);
         _historyUnresolvedChildren = OpenCodeExecutionProjection.Evaluate(new(sessionId, window,
             false, false, false, false, false, false, false, false, _historyUnresolvedChildren)).KnownUnresolvedChildSessionIds;
+        OnSessionBackgroundProjection(sessionId, _historyUnresolvedChildren, IsLoadedMessageHistoryComplete());
     }
+    partial void OnSessionBackgroundProjection(string sessionId, ImmutableArray<string> unresolvedChildren, bool complete);
     /// <summary>续页 limit（与首屏一致；续页只带 cursor + limit，绝不带 order）。</summary>
     private const int MessagePageSize = 100;
 

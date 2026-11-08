@@ -331,6 +331,7 @@ namespace FluentCode.Pages
             _sessionCts = new CancellationTokenSource();
             _homeActive = false;
             Microsoft.UI.Xaml.Application.Current = _ackApp;
+            _ackApp.BindBackgroundSource(_source);
             AttachViewAcknowledgementEvents();
             NotifyHostWindowVisibility(true);
         }

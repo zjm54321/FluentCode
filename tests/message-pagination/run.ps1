@@ -32,7 +32,7 @@ $openCode = @(
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Sessions.cs',
     'OpenCodeDtos.Messages.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs',
     'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs', 'OpenCodeDtos.Models.cs', 'OpenCodeDtos.Capabilities.cs',
-    'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs',
+    'OpenCodeUsageAggregator.cs', 'OpenCodeContextEstimate.cs', 'OpenCodeSessionUiState.cs', 'OpenCodeSessionUiStateStore.cs',
     'OpenCodeManualBackgroundIndex.cs', 'OpenCodeShellCompletion.cs', 'OpenCodeClient.AgentTreeShells.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeCapabilityStatus.cs'
 ) | ForEach-Object { Join-Path "$repo/src/FluentCode/Services/OpenCode" $_ }
 $sources = $openCode + @(
@@ -59,6 +59,7 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/FluentCode/Services/Notifications/NotificationInteractions.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.MessagePagination.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.MessageBinding.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.BackgroundState.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.SwitchPerformance.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewAcknowledgement.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.ViewVisibility.cs'),
@@ -81,7 +82,7 @@ $extractions = @(@{ Path = $pagePath; Names = @('CreateOperationToken', 'SwitchT
     @{ Path = "$repo/src/FluentCode/Pages/OpenCodePage.ComposerLayout.cs"; Names = @('ConversationColumn', 'ConversationScrollBarLeft') },
     @{ Path = $builtinPath; Names = @('ResetAcceptedHistoryProjection') },
     @{ Path = "$repo/src/FluentCode/Pages/OpenCodePage.AgentTree.cs"; Names = @('OnAgentTreeEvent', 'RenderAgentTree', 'MergeAgentTreeShell') },
-    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'CaptureHealthyEventStream', 'HasContinuousEventCoverage', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'IsSelectedBackgroundChildCompletion', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
+    @{ Path = $eventPath; Names = @('ApplyLiveSessionStatuses', 'CaptureHealthyEventStream', 'HasContinuousEventCoverage', 'PrepareEventSnapshot', 'OnEventStreamConnected', 'OnEventStreamDisconnected', 'OnMessageHistoryWorkflowEnded', 'OnEventMessageHistoryReset', 'StopEventSync', 'DrainEventQueue', 'UpdateLiveSessionRetry', 'IsSelectedBackgroundChildCompletion', 'RefreshListedSessionStatusesAsync', 'RefreshConversationSessionActivity') })
 $members = @()
 foreach ($extraction in $extractions) {
     $text = [IO.File]::ReadAllText($extraction.Path)
@@ -96,7 +97,12 @@ foreach ($extraction in $extractions) {
         if (!$block.Success) { throw "Extraction failed: $name" }; $members += $block.Value
     }
 }
-$members += [regex]::Matches([IO.File]::ReadAllText($eventPath), '(?m)^    partial void OnBrowser[^;]+;') | ForEach-Object Value
+$members += [regex]::Matches([IO.File]::ReadAllText($eventPath), '(?m)^    partial void (?:OnBrowser|OnSessionBackground)[^;]+;') | ForEach-Object Value
+$indicatorSource = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.SessionStateUi.cs")
+$indicatorEnum = [regex]::Matches($indicatorSource, '(?ms)^    internal enum SessionIndicatorTone\r?\n    \{.*?^    \}')
+$indicatorMethod = [regex]::Matches($indicatorSource, '(?ms)^    internal static SessionIndicatorTone ClassifySessionIndicator\(.*?^    \}')
+if ($indicatorEnum.Count -ne 1 -or $indicatorMethod.Count -ne 1) { throw 'Missing/ambiguous production tab classification.' }
+$members += @($indicatorEnum[0].Value, $indicatorMethod[0].Value)
 $generated = Join-Path $output 'PageMembers.cs'
 @'
 using System;
@@ -119,6 +125,19 @@ namespace FluentCode.Pages;
 public sealed partial class OpenCodePage {
 '@ + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $sources += $generated
+# Actual App background fact publisher/store ownership; unrelated App/ACK/native boundaries stay inert.
+$appStateSource = [IO.File]::ReadAllText("$repo/src/FluentCode/App.OpenCode.SessionState.cs")
+$appMembers = foreach ($name in @('GetOpenCodeSessionUiSnapshot', 'IsSessionUiOwner', 'BindSessionUiStore', 'PublishSessionUiChanges', 'ApplyOpenCodeSessionBackgroundState')) {
+    $matches = [regex]::Matches($appStateSource, ('(?ms)^    (?:private|internal|public) [^\r\n]*\b' + $name + '\(.*?^    \}\r?$'))
+    if ($matches.Count -ne 1) { throw "Missing/ambiguous production App background member: $name" }
+    $matches[0].Value
+}
+$appEventArgs = [regex]::Matches($appStateSource, '(?ms)^public sealed class OpenCodeSessionUiStateChangedEventArgs.*?^\}')
+if ($appEventArgs.Count -ne 1) { throw 'Missing/ambiguous production session UI event args.' }
+$appGenerated = Join-Path $output 'App.BackgroundMembers.cs'
+"using System; using FluentCode.Services.OpenCode; using FluentCode.Services.Notifications; namespace FluentCode;`n" + $appEventArgs[0].Value +
+    "`npublic sealed partial class App {`n" + ($appMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $appGenerated
+$sources += $appGenerated
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

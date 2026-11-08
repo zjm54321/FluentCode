@@ -212,9 +212,7 @@ public sealed partial class OpenCodePage
         foreach (var entry in _sessionTabs.Values)
         {
             _retiredSessionTabs[entry.Item] = entry;
-            entry.Working.IsActive = false;
-            entry.Working.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-            entry.Attention.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            entry.Status.Clear();
         }
         _sessionTabs.Clear();
         _sessionTitles.Clear();

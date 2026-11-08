@@ -95,6 +95,16 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 
 ---
 
+### 3.5 会话标签工作指示（v3）
+- 标题头部使用 `Grid(Auto, *)`：16×16 状态位（右间距 8 DIP）先分配宽度，标题在剩余宽度内省略；不再用 `MaxWidth = 200`，不修改标签模板。空闲时整格收起，标题多出 24 DIP。
+- 显示优先级为：等待你 > 重试中 > 主会话工作中 > 未读失败/中断 > 子智能体工作中 > 新回复 > 空闲。主会话使用强调色 14 DIP 原生同步环，只有子智能体在跑时使用次要文字色同款环且没有角标；与未读组合时仅在圈心加 6 DIP 圆点。
+- 重试使用静止 `E72C` 注意色箭头；待处理使用注意色实心叹号；失败使用危险色 `F138 + F13D` 环加叉，用户中断使用次要文字色 `F138 + E738` 环加横线。所有图形使用主题资源；减少动画与共享 `RingPhase` 行为沿用时间线/智能体树同步器。
+- `OpenCodeSessionRetryMark(Attempt, At, Message)` 仅由页面按会话叠加。V2 `session.retry.scheduled` 读取 `attempt/at/error.message`，旧 `session.status(type=retry)` 读取 `attempt/next/message`；次数必须为正、期限必须有限。其他执行活动与终止事件清除重试，即使 `Working` 不变也刷新标签。
+- `BackgroundWorking`（三值事实）与 `BackgroundChildCount` 按 `QuestionPending` 的原始证据时间、绑定、过期及事件连续性规则保存；外层事实缺失不更新计数，明确 false/unknown 或过期后计数清零。没有子会话证据的监视器事件观察保持 null，不以主会话 idle 推断整棵树结束。
+- 正常连接 SSE 时，页面已接纳的消息执行投影及经验证的子会话树也发布同一事实/计数。关系只从当前来源/会话的接纳结果建立；子会话事件可直接更新后台父标签，最后一个子会话终止后清零。事实租约绑定原页面来源、修订、页面代际及精确事件覆盖；跨断线不续借旧兄弟状态，旧来源/会话结果不能发布。不新增轮询、协议或服务端调用。
+- 标签 `Name` 仍为“标题（id）”；中文状态放在 `ItemStatus` 和 `HelpText`，状态变化时发 `ItemStatusProperty` 变更事件。图形槽及子图形均为 UIA Raw，避免重复朗读；重试次数不按秒更新。
+- 标签头实机证据使用测试专用 `FC_INDICATOR_CAPTURE_TEST=1` + `FC_SHELL_CAPTURE_TEST=1` + 独立 `FC_STARTUP_SMOKE_ROOT` 三重门。单次离线启动复用真实标签构造/状态路径，以 `RenderTargetBitmap` 输出 1920/1024 宽、浅/深色四帧；1024 使用 8 个会话标签（长标题标签兼作工作中）并保留首页项。`tests/opencode-indicator-capture/capture.sh` 持有共享捕获锁，PowerShell 先检查 Active 会话及 RichEditPrototype，再启动/关闭唯一自持 PID；3× 裁图仅复制原始像素，不发送桌面输入、不抓屏、不连接服务端。
+
 ## 4. 状态仲裁门（`OpenCodeInteractionGate`）
 
 权限审批（Permission）与交互表单（Form）涉及敏感操作，必须防止网络重试或多入口（如系统通知与页面按钮）并发引发的重复执行。

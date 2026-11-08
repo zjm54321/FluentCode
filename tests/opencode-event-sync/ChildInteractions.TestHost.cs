@@ -18,6 +18,7 @@ namespace FluentCode.Pages;
 public sealed partial class OpenCodePage : FrameworkElement
 {
     partial void OnMessageHistoryWorkflowEnded();
+    partial void OnSessionBackgroundActivity(string sessionId, bool working);
     private readonly record struct SessionRecoveryOrigin(OpenCodePageSource Source, long Revision, int SourceGeneration,
         string SessionId, int SessionGeneration, string RequestId, NotificationNavigationKind Kind);
     private OpenCodePageSource? _source;
@@ -65,6 +66,7 @@ public sealed partial class OpenCodePage : FrameworkElement
     private object? _messageHistoryWorkflowOwner = null;
     private bool _messageHistoryNeedsState = false;
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new();
+    private readonly Dictionary<string, OpenCodeSessionRetryMark> _liveSessionRetries = new();
     private long _liveStatusVersion;
     private OpenCodeEventReducer? _eventReducer;
     private readonly List<OpenCodeMessage> _latestMessages = new();
@@ -136,6 +138,7 @@ public sealed partial class OpenCodePage : FrameworkElement
     private void StartEventSync() { _eventCts?.Cancel(); _eventCts = new(); _eventReady = new(TaskCreationOptions.RunContinuationsAsynchronously); }
     private void ResetRuntimeFeedback() { }
     private void RefreshCurrentRetry() { }
+    private void RetainHistoryChildEvidence(string sessionId, IReadOnlyList<OpenCodeMessage> messages) { } // Real history/child projection is linked by message-pagination, not this permission UI fixture.
     private void OnBrowserEventSyncStopped() { }
     private void OnBrowserEventStreamHealthChanged(bool connected) { }
     private void OnBrowserControlEvent(OpenCodeEvent item) { }

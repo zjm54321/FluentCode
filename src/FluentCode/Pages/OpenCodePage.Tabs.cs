@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
 using Microsoft.UI.Dispatching;
 using Windows.Foundation.Collections;
 
@@ -19,16 +20,13 @@ public sealed partial class OpenCodePage
     internal event Action<string?>? SessionTitleChanged;
     internal string? CurrentSessionTitle => !_homeActive && !_newSessionDraftActive && _activeTabSessionId is { } id
         ? _sessionTitles.GetValueOrDefault(id, id) : null;
-    private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, ProgressRing working, Ellipse attention, OpenCodeWorkingShimmer shimmer)
+    private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, OpenCodeTabStatusSlot status)
     {
         internal OpenCodeDraftSlotKey? DraftSlotKey { get; set; }
         internal string SessionId { get; } = sessionId;
         internal TabViewItem Item { get; } = item;
         internal TextBlock Title { get; } = title;
-        internal ProgressRing Working { get; } = working;
-        internal Ellipse Attention { get; } = attention;
-        /// <summary>B13：working 流光（共享时钟驱动）；仅 Working 时运行。</summary>
-        internal OpenCodeWorkingShimmer Shimmer { get; } = shimmer;
+        internal OpenCodeTabStatusSlot Status { get; } = status;
     }
 
     private readonly Dictionary<string, SessionTabEntry> _sessionTabs = new(StringComparer.Ordinal);
@@ -142,39 +140,6 @@ public sealed partial class OpenCodePage
         return null;
     }
 
-    /// <summary>F6 工作环颜色（ThemeResource 前景样式，主题切换自动更新）：等待提问/权限 = 注意（黄），失败/中断 = 严重（红），其余 = 强调色。</summary>
-    private static string IndicatorBrushKey(SessionIndicatorTone tone) => tone switch
-    {
-        SessionIndicatorTone.WorkingNeedsAction or SessionIndicatorTone.NeedsAction => OpenCodeToolTheme.Caution,
-        SessionIndicatorTone.Failed => OpenCodeToolTheme.Critical,
-        _ => OpenCodeToolTheme.Accent,
-    };
-
-    /// <summary>
-    /// 标签栏（页面顶部）状态指示：B13 起工作中（Working）不再用旋转环，改由标题下方的共享时钟流光
-    /// （<see cref="OpenCodeWorkingShimmer"/>，全部 working 标签同向同速同相）表达；本环只承担静态状态：
-    /// 工作中但等待提问/权限 = 注意色静止满环（被阻塞，不用运动暗示“在推进”）；未工作但等待处理 = 注意色静止满环；
-    /// 未读的失败/中断 = 严重色静止满环；普通未读仍为圆点。静止环为原生 ProgressRing 的确定模式（Value = 100）。
-    /// </summary>
-    private static void ApplyIndicatorRing(ProgressRing ring, SessionIndicatorTone tone)
-    {
-        var visible = tone is SessionIndicatorTone.WorkingNeedsAction
-            or SessionIndicatorTone.NeedsAction or SessionIndicatorTone.Failed;
-        OpenCodeToolTheme.Apply(ring, OpenCodeToolTheme.Ring(IndicatorBrushKey(tone)));
-        ring.IsIndeterminate = false;
-        ring.Value = ring.Maximum;
-
-        ring.IsActive = visible;
-        ring.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        AutomationProperties.SetName(ring, tone switch
-        {
-            SessionIndicatorTone.WorkingNeedsAction => "会话工作中，等待你处理",
-            SessionIndicatorTone.NeedsAction => "会话需要你处理",
-            SessionIndicatorTone.Failed => "会话执行失败或已中断",
-            _ => "会话工作中",
-        });
-    }
-
     private void MirrorSessionSelection(string sessionId, bool userInitiated)
     {
         if (_draftRecoveryPending) return; // List rebuild/highlight cannot relabel a readonly recovery actor.
@@ -205,45 +170,33 @@ public sealed partial class OpenCodePage
 
     private void CreateSessionTab(string sessionId, int insertAt = -1)
     {
-        var working = new ProgressRing
-        {
-            Width = 12,
-            Height = 12,
-            IsActive = false,
-            Visibility = Visibility.Collapsed,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        AutomationProperties.SetName(working, "会话工作中");
-        AutomationProperties.SetAutomationId(working, "OpenCodeSessionTabIndicator." + sessionId);
-        var attention = new Ellipse
-        {
-            Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.AttentionDotStyleKey),
-            Visibility = Visibility.Collapsed,
-        };
-        AutomationProperties.SetName(attention, "会话需要注意");
+        var status = new OpenCodeTabStatusSlot();
         var title = new TextBlock
         {
-            MaxWidth = 200,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.NoWrap,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var header = new StackPanel
+        Grid.SetColumn(title, 1);
+        var header = new Grid
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children = { working, attention, title },
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+            },
+            Children = { status, title },
         };
-        var shimmer = new OpenCodeWorkingShimmer(header);
 
         var item = new TabViewItem
         {
             Tag = sessionId,
             Header = header,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
             IsClosable = true,
         };
         AutomationProperties.SetAutomationId(item, "OpenCodeSessionTab." + sessionId);
-        var entry = new SessionTabEntry(sessionId, item, title, working, attention, shimmer);
+        var entry = new SessionTabEntry(sessionId, item, title, status);
         item.ContextFlyout = CreateSessionTabMenu(entry);
         _sessionTabs[sessionId] = entry;
         ApplySessionTabState(entry);
@@ -469,8 +422,7 @@ public sealed partial class OpenCodePage
             if (ReferenceEquals(slot, _activeDraftSlot)) ForceSuspendDraftSlot("当前会话标签已移除。输入只读保留，请先复制需要的内容。");
             else ReleaseDraftSlot(slot);
         }
-        entry.Working.IsActive = false;
-        entry.Shimmer.SetWorking(false);
+        entry.Status.Clear();
         if (isCurrent)
         {
             _sessionTabs.Remove(entry.SessionId);
@@ -521,17 +473,17 @@ public sealed partial class OpenCodePage
 
     partial void OnSessionUiStatesApplied(IReadOnlyDictionary<string, OpenCodeSessionUiState> states)
     {
-        _sessionTabStates = states;
+        _sessionTabStates = _indicatorCaptureStates ?? states;
         QueueHomeProjection();
         foreach (var entry in _sessionTabs.Values)
         {
             ApplySessionTabState(entry);
         }
 
-        // 旧来源代际冻结的标签不再接收状态：流光离开共享时钟（来源切换会经 ClearSessionStateIndicators 走到这里）。
+        // 旧来源代际冻结的标签不再接收状态：状态位清空，工作环离开共享时钟。
         foreach (var retired in _retiredSessionTabs.Values)
         {
-            retired.Shimmer.SetWorking(false);
+            retired.Status.Clear();
         }
     }
 
@@ -543,21 +495,47 @@ public sealed partial class OpenCodePage
         var tone = ClassifySessionIndicator(state);
 
         entry.Title.Text = title;
-        ApplyIndicatorRing(entry.Working, tone);
-        entry.Shimmer.SetWorking(tone == SessionIndicatorTone.Working);
-        entry.Attention.Visibility = tone == SessionIndicatorTone.Unread ? Visibility.Visible : Visibility.Collapsed;
+        entry.Status.Show(tone switch
+        {
+            SessionIndicatorTone.Working => OpenCodeTabStatusGlyph.Working,
+            SessionIndicatorTone.BackgroundWorking => OpenCodeTabStatusGlyph.Background,
+            SessionIndicatorTone.Retrying => OpenCodeTabStatusGlyph.Retrying,
+            SessionIndicatorTone.WorkingNeedsAction or SessionIndicatorTone.NeedsAction => OpenCodeTabStatusGlyph.NeedsYou,
+            SessionIndicatorTone.Failed => OpenCodeTabStatusGlyph.Failed,
+            SessionIndicatorTone.Interrupted => OpenCodeTabStatusGlyph.Interrupted,
+            SessionIndicatorTone.Unread => OpenCodeTabStatusGlyph.Unread,
+            _ => OpenCodeTabStatusGlyph.None,
+        }, unreadOverlay: state?.IsUnread == true);
 
-        var status = state is null ? "状态未知"
-            : tone == SessionIndicatorTone.WorkingNeedsAction ? "工作中，需要你处理"
-            : tone == SessionIndicatorTone.Working ? "工作中"
-            : tone == SessionIndicatorTone.NeedsAction ? "需要你处理"
-            : tone == SessionIndicatorTone.Failed ? (state.Completion?.Outcome == "interrupted" ? "已中断" : "执行失败")
-            : state.IsUnread ? "有新的回复"
-            : state.Working == false ? "空闲"
-            : "状态未知";
+        var count = state?.BackgroundChildCount ?? 0;
+        var status = state is null ? "状态未知" : tone switch
+        {
+            SessionIndicatorTone.WorkingNeedsAction => "工作中，需要你处理",
+            SessionIndicatorTone.NeedsAction => "需要你处理",
+            SessionIndicatorTone.Retrying => "重试中，第 " + state.Retry!.Attempt.ToString(CultureInfo.InvariantCulture) + " 次",
+            SessionIndicatorTone.Working => "工作中",
+            SessionIndicatorTone.Failed => "执行失败",
+            SessionIndicatorTone.Interrupted => "已中断",
+            SessionIndicatorTone.BackgroundWorking => (state.IsUnread ? "有新的回复，" : string.Empty) + "子智能体工作中"
+                + (count > 0 ? "（" + count.ToString(CultureInfo.InvariantCulture) + " 个）" : string.Empty),
+            SessionIndicatorTone.Unread => "有新的回复",
+            _ => state.Working == false ? "空闲" : "状态未知",
+        };
         AutomationProperties.SetName(entry.Item, title + "（" + entry.SessionId + "）");
         AutomationProperties.SetHelpText(entry.Item, status);
-        ToolTipService.SetToolTip(entry.Item, title + Environment.NewLine + status + Environment.NewLine + entry.SessionId);
+        SetTabItemStatus(entry.Item, status);
+        var detail = tone == SessionIndicatorTone.Retrying && state!.Retry!.Message is { Length: > 0 } why
+            ? status + "：" + why : status;
+        ToolTipService.SetToolTip(entry.Item, title + Environment.NewLine + detail + Environment.NewLine + entry.SessionId);
+    }
+
+    private static void SetTabItemStatus(TabViewItem item, string status)
+    {
+        var old = AutomationProperties.GetItemStatus(item);
+        if (old == status) return;
+        AutomationProperties.SetItemStatus(item, status);
+        FrameworkElementAutomationPeer.FromElement(item)?.RaisePropertyChangedEvent(
+            AutomationElementIdentifiers.ItemStatusProperty, old, status);
     }
 
     // ------------------------------------------------------------------

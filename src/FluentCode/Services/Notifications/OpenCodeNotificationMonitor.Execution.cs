@@ -18,6 +18,8 @@ public sealed record OpenCodeSessionObservation(string EndpointIdentity, string 
     // 待处理动作 UI 事实；其携带时间戳为该事实的原始独立证据时间。
     public OpenCodeSessionUiFact? PendingActionFact { get; init; }
     public OpenCodeSessionUiFact? QuestionPendingFact { get; init; }
+    public OpenCodeSessionUiFact? BackgroundWorkingFact { get; init; }
+    public int BackgroundChildCount { get; init; }
 
     // 成功 ID 匹配时 Info 读取的开始时间。
     public DateTimeOffset? InfoObservedAt { get; init; }
@@ -155,6 +157,9 @@ public sealed partial class OpenCodeNotificationMonitor
             WorkingFact = workingFact,
             PendingActionFact = pendingActionFact,
             QuestionPendingFact = questionPendingFact,
+            BackgroundWorkingFact = workingFact is { } work
+                ? new(projection.KnownUnresolvedBackground, work.ObservedAt) : null,
+            BackgroundChildCount = projection.KnownUnresolvedChildSessionIds.Length,
             InfoObservedAt = infoObservedAt,
             CompletionObservedAt = completionObservedAt,
             // A later internal report after a genuine idle never erases that unread result.

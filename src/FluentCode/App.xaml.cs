@@ -60,8 +60,9 @@ public partial class App : Application
             window.Activate();
             if (StartupSmokeRoot is not null)
             {
-                // Opt-in shell capture needs a real OpenCode source (isolated profile; client only, no tray/taskbar/toasts).
-                if (Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_TEST") == "1") StartOpenCodeOwnership();
+                // Shell captures may need a real isolated source; the indicator fixture stays entirely offline.
+                if (Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_TEST") == "1"
+                    && Environment.GetEnvironmentVariable("FC_INDICATOR_CAPTURE_TEST") != "1") StartOpenCodeOwnership();
                 StartStartupSmoke(window);
                 return;
             }

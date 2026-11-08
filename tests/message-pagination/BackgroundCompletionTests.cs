@@ -7,6 +7,65 @@ using FluentCode.Services.OpenCode;
 
 internal static partial class Program
 {
+    private static async Task ConnectedBackgroundTabs()
+    {
+        var backend = new LatencyBackend(); using var client = backend.Client();
+        var page = new OpenCodePage(); page.TestActivate(Session, client);
+        var children = new[] { "ses_child_a", "ses_child_b" };
+        var launch = new OpenCodeMessage
+        {
+            Id = "msg_launch", Type = "assistant", Time = new() { Created = 10 },
+            Content = children.Select((id, i) => new OpenCodeContentPart
+            {
+                Id = "part_launch" + i, Type = "tool", Name = "subagent",
+                State = System.Text.Json.JsonSerializer.SerializeToElement(new { status = "completed", input = new { background = true }, metadata = new { sessionID = id } }),
+            }).ToList(),
+        };
+        var idle = new OpenCodeMessage { Id = "msg_parent_idle", Type = "idle", Outcome = "succeeded", Time = new() { Created = 20 } };
+        backend.ReadMessages = () => Task.FromResult(Json(new { data = new[] { idle, launch } }));
+        var stream = page.TestBeginEvents(); page.TestReady(stream); await page.TestLatestAsync();
+        var state = page.TestTabState(Session)!;
+        Check(page.TestCaptureCoverage() is not null && state is { Working: false, BackgroundWorking: true, BackgroundChildCount: 2 }
+            && OpenCodePage.ClassifySessionIndicator(state) == OpenCodePage.SessionIndicatorTone.BackgroundWorking,
+            "accepted connected parent history publishes child-only state for the grey tab ring");
+        var version = page.TestBackgroundVersion;
+        var reads = backend.Messages; var active = backend.Active; var states = backend.States;
+        page.TestBackgroundProjection("ses_foreign", children, true);
+        Check(page.TestBackgroundVersion == version && page.TestTabState("ses_foreign") is null, "foreign/stale selected-session projection cannot publish a tab fact");
+        page.TestBindBackgroundChild(children[0]);
+        page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + children[0] + "\"}"));
+        version = page.TestBackgroundVersion;
+        page.TestReceive(stream, Wire("session.text.delta", "{\"sessionID\":\"" + children[0] + "\",\"delta\":\"token\"}"));
+        Check(page.TestBackgroundVersion == version && backend.Messages == reads && backend.Active == active && backend.States == states,
+            "same connected child activity causes no per-token fact churn, polling or server calls");
+        page.TestReceive(stream, Wire("session.execution.succeeded", "{\"sessionID\":\"" + children[0] + "\"}"));
+        Check(page.TestTabState(Session) is { BackgroundWorking: true, BackgroundChildCount: 1 }, "one child's native terminal decrements the parent tab count");
+        page.TestReceive(stream, Wire("session.execution.interrupted", "{\"sessionID\":\"" + children[1] + "\"}"));
+        state = page.TestTabState(Session)!;
+        Check(state is { Working: false, BackgroundWorking: false, BackgroundChildCount: 0 }
+            && OpenCodePage.ClassifySessionIndicator(state) == OpenCodePage.SessionIndicatorTone.None,
+            "all children finished clears the grey-ring fact; idle tab slot collapses");
+        Check(backend.Messages == reads + 2 && backend.Active == active && backend.States == states,
+            "background fact path adds no calls beyond the existing one parent repair per child-terminal batch");
+        page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + children[0] + "\"}"));
+        Check(page.TestTabState(Session)?.BackgroundWorking == true, "a known child's new execution can resume the parent grey ring");
+        page.TestDisconnected(stream); page.TestExpireBackground();
+        Check(page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 }, "disconnect invalidates the exact event lease and clears stale child count");
+        version = page.TestBackgroundVersion;
+        page.TestRedrawBackgroundTree();
+        Check(page.TestBackgroundVersion == version && page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 },
+            "presentation-only tree redraw cannot renew expired background evidence or grant a fresh lease");
+        page.TestBackgroundProjection(Session, children, true);
+        Check(page.TestTabState(Session)?.BackgroundWorking == true, "a genuinely accepted fresh history projection can renew disconnected evidence");
+        page.TestReady(stream, reconnect: true);
+        var replacement = page.TestBeginEvents(); version = page.TestBackgroundVersion;
+        page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + children[1] + "\"}"));
+        Check(page.TestBackgroundVersion == version && !replacement.Ready.Task.IsCompleted, "retired stream cannot publish background facts into a new event owner");
+        page.TestRevokeSource();
+        page.TestBackgroundProjection(Session, children, true);
+        Check(page.TestTabState(Session) is null, "revoked source cannot publish or expose old background tab state");
+    }
+
     private static async Task BackgroundChildCompletion()
     {
         foreach (var manual in new[] { false, true })

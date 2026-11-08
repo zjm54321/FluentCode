@@ -274,6 +274,8 @@ public sealed partial class OpenCodePage
         foreach (var id in _treeChildren.Keys)
             if (!statuses.ContainsKey(id) && _liveSessionStatuses.TryGetValue(id, out var live) && live.Working)
                 statuses[id] = OpenCodeTreeStatus.Running;
+        OnSessionBackgroundTree(binding.SessionId, _treeChildren.Values.Select(child =>
+            (child.Id!, statuses.GetValueOrDefault(child.Id!, OpenCodeAgentTreeProjection.Outcome(child.Outcome)))), _treeChildrenAccepted);
         _treeModels = _agentSelector.ModelChoices;
         var agents = OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses, AgentTreeScope(), _treeModels);
         RenderSubagentCount(agents.Sum(agent => agent.Children.Count(child => child.Status == OpenCodeTreeStatus.Running)));
@@ -325,6 +327,8 @@ public sealed partial class OpenCodePage
                 _treeStatuses[id] = OpenCodeAgentTreeProjection.Outcome(child.Outcome);
         RenderAgentTree();
     }
+
+    partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children, bool complete);
 
     partial void OnAgentTreeMessages(IReadOnlyList<OpenCodeMessage> messages)
     {

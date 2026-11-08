@@ -1,5 +1,6 @@
 // Geometry/native-frame/App boundaries only; actual Page ACK, refresh, cache and SSE bodies compile.
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Services.Notifications;
@@ -42,10 +43,20 @@ namespace FluentCode.Pages.OpenCode
 }
 namespace FluentCode
 {
-    public sealed class App : Microsoft.UI.Xaml.Application
+    public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         internal int Calls;
         internal double? Last;
+        private bool _closing = false;
+        private OpenCodeSessionUiStateStore? _sessionUiStore;
+        private OpenCodePageSource? _sessionUiSourceOwner;
+        private bool _sessionUiChanged;
+        public OpenCodePageSource? CurrentOpenCodePageSource { get; private set; }
+        public event EventHandler<OpenCodeSessionUiStateChangedEventArgs>? OpenCodeSessionUiStateChanged;
+        private static void RequireAppThread() { }
+        private void RaiseAppEvent<T>(EventHandler<T>? handlers, T args) where T : EventArgs => handlers?.Invoke(this, args);
+        internal void BindBackgroundSource(OpenCodePageSource source) { CurrentOpenCodePageSource = source; BindSessionUiStore(source); }
+        internal void ExpireBackground() { _sessionUiChanged |= _sessionUiStore!.Expire(DateTimeOffset.UtcNow); PublishSessionUiChanges(); }
         public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string session,
             double watermark, Func<bool> fence, CancellationToken token)
         {
@@ -99,5 +110,17 @@ namespace FluentCode.Pages
             ApplyLiveSessionStatuses(states); return states[previous.SessionId];
         }
         internal static OpenCode.OpenCodeHomeStatus? TestAdaptHomeStatus(OpenCodeSessionUiState? state, OpenCodeSessionInfo info) => CreateHomeStatus(state, info);
+        internal OpenCodeSessionUiState? TestTabState(string id)
+        {
+            var snapshot = _ackApp.GetOpenCodeSessionUiSnapshot(_source!, _sourceRevision);
+            if (snapshot is null) return null;
+            var states = new System.Collections.Generic.Dictionary<string, OpenCodeSessionUiState>();
+            foreach (var state in snapshot.Sessions) states[state.SessionId] = state;
+            ApplyLiveSessionStatuses(states);
+            return states.GetValueOrDefault(id);
+        }
+        internal long TestBackgroundVersion => _ackApp.GetOpenCodeSessionUiSnapshot(_source!, _sourceRevision)!.Version;
+        internal void TestExpireBackground() => _ackApp.ExpireBackground();
+        internal void TestBackgroundProjection(string id, string[] children, bool complete) => OnSessionBackgroundProjection(id, System.Collections.Immutable.ImmutableArray.CreateRange(children), complete);
     }
 }
