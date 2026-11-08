@@ -137,6 +137,7 @@ internal static partial class Program
         Check(new SshOpenCodeException(SshFailureKind.ChangedHostKey, effective.KnownHostsLookup, "C:/space's/known_hosts").HostKeyRemovalCommand
             == "ssh-keygen -R 'server-key' -f 'C:/space''s/known_hosts'", "copy-only removal command quotes the resolved lookup and custom trust file");
         Check(new SshOpenCodeException(SshFailureKind.ChangedHostKey, "host").HostKeyRemovalCommand!.Contains("<known_hosts 文件路径>"), "unknown trust file uses an explicit placeholder, not a guessed default");
+        Check(new SshOpenCodeException(SshFailureKind.ChangedHostKey).HostKeyRemovalCommand!.Contains("<解析后的主机或密钥别名>"), "changed key during a later SSH command still provides a safe copy action without guessing resolved fields");
         Check(SshHostKeyVerifier.ParseOffendingKeyFile("debug3: expanded UserKnownHostsFile '~/.ssh/first' -> 'C:/first'\nOffending ED25519 key in C:/space's/second known_hosts:12\r\n")
             == "C:/space's/second known_hosts", "removal targets the offending record file, not the first acceptance file");
         Check(SshHostKeyVerifier.ParseOffendingKeyFile("unsupported diagnostic") is null, "unrecognized offending-file diagnostics never guess a path");

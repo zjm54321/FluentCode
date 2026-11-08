@@ -106,8 +106,8 @@ public sealed class SshOpenCodeException(SshFailureKind kind, string? hostKeyLoo
     public string? HostKeyLookup { get; } = hostKeyLookup;
     public string? HostKeyFile { get; } = hostKeyFile;
     // A copy-only PowerShell command. Never guess the default file for a custom/global trust store.
-    public string? HostKeyRemovalCommand => HostKeyLookup is { } lookup
-        ? "ssh-keygen -R " + Quote(lookup) + " -f " + Quote(HostKeyFile ?? "<known_hosts 文件路径>") : null;
+    public string? HostKeyRemovalCommand => Kind == SshFailureKind.ChangedHostKey
+        ? "ssh-keygen -R " + Quote(HostKeyLookup ?? "<解析后的主机或密钥别名>") + " -f " + Quote(HostKeyFile ?? "<known_hosts 文件路径>") : null;
     private static string Quote(string value) => "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
     public bool CanRetry => Kind is SshFailureKind.Unavailable or SshFailureKind.Timeout or SshFailureKind.Forward;
 
