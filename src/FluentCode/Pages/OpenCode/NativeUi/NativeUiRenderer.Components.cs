@@ -16,12 +16,15 @@ internal sealed partial class NativeUiRenderer
 {
     private Flyout? _confirmation;
     private Brush ComponentBrush(string token, bool background = false) => NativeUiTheme.Brush(token, background, _root.ActualTheme);
+    // Spacers and flex Boxes take the Row's free space (OIU `flex: N 1 0%`), in proportion to flex.
     private static void ApplySpacers(Grid row)
     {
-        foreach (var spacer in row.Children.OfType<FrameworkElement>().Where(child => Equals(child.Tag, "native-ui-spacer")))
+        foreach (var child in row.Children.OfType<FrameworkElement>())
         {
-            var column = Grid.GetColumn(spacer);
-            if (column < row.ColumnDefinitions.Count) row.ColumnDefinitions[column].Width = new(1, GridUnitType.Star);
+            var flex = Equals(child.Tag, "native-ui-spacer") ? 1 : child.Tag is NativeUiElement node ? Math.Min(N(node, "flex"), 1000) : 0;
+            if (flex <= 0) continue;
+            var column = Grid.GetColumn(child);
+            if (column < row.ColumnDefinitions.Count) row.ColumnDefinitions[column].Width = new(flex, GridUnitType.Star);
             row.HorizontalAlignment = HorizontalAlignment.Stretch;
         }
     }
@@ -40,16 +43,18 @@ internal sealed partial class NativeUiRenderer
         switch (type)
         {
             case "Box":
-                var panel = new NativeUiFlexPanel(); var border = new Border { Child = panel }; var box = new Visual(border);
+                var panel = new NativeUiFlexPanel(); var border = new Border { Child = panel }; var boxHost = new NativeUiBoxHost { Children = { border } }; var box = new Visual(boxHost);
                 box.Apply = node =>
                 {
                     Sync(panel, Children(P(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray());
                     panel.Model = node; panel.InvalidateMeasure();
                     border.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 0)); border.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
                     border.Background = S(node, "background").Length > 0 ? ComponentBrush(S(node, "background"), true) : null;
+                    // Raw colours do not follow the app theme; text on them switches to the legible ramp (OIU onColor).
+                    border.RequestedTheme = NativeUiTheme.ContrastTheme(S(node, "background"));
                     border.BorderBrush = ComponentBrush("faint"); border.BorderThickness = new(B(node, "border") ? 1 : 0);
                     NativeUiComponentTheme.Length(border, P(node, "width")); NativeUiComponentTheme.Length(border, P(node, "height"), true);
-                    border.Tag = node;
+                    boxHost.Tag = node; boxHost.InvalidateMeasure();
                 }; return box;
             case "Grid":
                 var grid = new Grid(); var gridVisual = new Visual(grid);

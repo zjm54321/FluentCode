@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading;
 using FluentCode.Models;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.NativeUi;
 
 internal static class Program
@@ -246,6 +247,34 @@ internal static class Program
             var captureSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/App.NativeUiCapture.cs"));
             Require(captureSource.Contains("chart.UpdateFinished += Finished") && captureSource.Contains("Throttling = false")
                 && captureSource.Contains("Native chart draw completed without any rendered series/legend pixels"), "Native chart capture waits for draw completion and verifies painted pixels, not only populated data");
+            // Upstream gallery parity (tests/native-ui/fixtures/upstream): renderer rules checked without WinUI.
+            Require(NativeUiStyleMath.DarkTextOn("#f5e6c8") == true && NativeUiStyleMath.DarkTextOn("#d6e8cf") == true && NativeUiStyleMath.DarkTextOn("#1e3a5f") == false
+                && NativeUiStyleMath.DarkTextOn("#fff") == true && NativeUiStyleMath.DarkTextOn("#000") == false && NativeUiStyleMath.DarkTextOn("chart1") is null
+                && NativeUiStyleMath.DarkTextOn("#00ffffff") is null && NativeUiStyleMath.DarkTextOn("#12345") is null, "Raw colour backgrounds pick legible text like OIU contrastOn (luminance > 0.36)");
+            Require(NativeUiStyleMath.TryHex("#abc", out var ha, out var hr, out var hg, out var hb) && (ha, hr, hg, hb) == (255, 0xaa, 0xbb, 0xcc)
+                && NativeUiStyleMath.TryHex("#80102030", out ha, out hr, out _, out _) && ha == 0x80 && hr == 0x10 && !NativeUiStyleMath.TryHex("#ggg", out _, out _, out _, out _), "Hex colours: #rgb, #rrggbb, #aarrggbb");
+            Require(NativeUiStyleMath.Percent("62%") == .62 && NativeUiStyleMath.Percent("140%") == 1 && NativeUiStyleMath.Percent("100%") == 1 && NativeUiStyleMath.Percent("62") is null && NativeUiStyleMath.Percent("") is null, "Box percentage lengths");
+            var shares = NativeUiStyleMath.FlexShares(300, new[] { 1d, 0d, 2d });
+            Require(shares[0] == 100 && shares[1] == 0 && shares[2] == 200 && NativeUiStyleMath.FlexShares(-5, new[] { 1d })[0] == 0, "Box flex shares free space in proportion (basis 0)");
+            var upstreamIcons = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var file in Directory.GetFiles(Path.Combine(fixtures, "upstream"), "*.oui"))
+            {
+                using var upstream = new NativeUiRuntime(parser.Parse(File.ReadAllText(file)), catalog);
+                foreach (var element in Elements(upstream.EvaluateRoot()))
+                    foreach (var name in new[] { element.TypeName == "Icon" ? element.Props.GetValueOrDefault("name") : element.Props.GetValueOrDefault("icon") }.Select(NativeUiValues.Text).Where(name => name.Length > 0 && name.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-')))
+                        upstreamIcons.Add(name);
+            }
+            var unmapped = upstreamIcons.Where(name => NativeUiStyleMath.Glyph(name) is null).Order().ToArray();
+            Require(upstreamIcons.Count >= 20 && unmapped.All(name => name is "bike" or "no-such-icon"), "Upstream gallery icons map to Fluent glyphs (only bike has no counterpart): " + string.Join(",", unmapped));
+            var flexSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiFlexPanel.cs"));
+            Require(flexSource.Contains("internal sealed partial class NativeUiBoxHost : Panel") && flexSource.Contains("NativeUiStyleMath.FlexShares(")
+                && flexSource.Contains("!cell.FixedCross ? lineCross"), "Box percent lengths resolve against the parent and sized Boxes do not stretch");
+            Require(confirmationSource.Contains("new Visual(boxHost)") && confirmationSource.Contains("border.RequestedTheme = NativeUiTheme.ContrastTheme(")
+                && confirmationSource.Contains("new(flex, GridUnitType.Star)"), "Box hosts percent lengths, follows raw-colour contrast, and flex Boxes share a Row");
+            Require(controlsSource.Contains("tile.RequestedTheme = NativeUiTheme.ContrastTheme("), "Pressable follows raw-colour contrast");
+            Require(themeSource.Contains("\"ink\" => \"TextFillColorPrimaryBrush\", \"canvas\" => \"SolidBackgroundFillColorBaseBrush\"")
+                && themeSource.Contains("=> Palette ? \"NativeUiChart\" + color[5] + \"Brush\" : \"AccentFillColorDefaultBrush\"")
+                && themeSource.Contains("text.Foreground = new SolidColorBrush(raw)"), "Chart/ink/canvas backgrounds are solid fills and raw text colours apply");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }

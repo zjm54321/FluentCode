@@ -23,7 +23,7 @@ internal static class NativeUiComponentTheme
         var numeric = value is double number ? number : text.EndsWith("px", StringComparison.Ordinal) && double.TryParse(text[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : double.NaN;
         numeric = double.IsFinite(numeric) ? Math.Clamp(numeric, 0, 4096) : double.NaN;
         if (height) element.Height = numeric; else element.Width = numeric;
-        // Percentages participate in the parent's native stretch layout, not CSS measurement.
+        // Percentages are resolved by NativeUiBoxHost against the parent's offered size, not CSS measurement.
         if (!height && text.EndsWith('%')) element.HorizontalAlignment = HorizontalAlignment.Stretch;
     }
 }
