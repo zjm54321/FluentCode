@@ -44,6 +44,7 @@ internal sealed partial class NativeUiRenderer : IDisposable
     {
         _lastRoot = root;
         _seen.Clear(); _budget = new(NativeUiCatalog.Default.Limits);
+        NativeUiTheme.Surface(_root, root);
         var element = Node(root, "root", 0);
         if (!ReferenceEquals(_root.Child, element)) { Detach(element); _root.Child = element; }
         foreach (var key in _visuals.Keys.Where(key => !_seen.Contains(key)).ToArray()) { var old = _visuals[key]; old.Disposed = true; old.Cleanup?.Invoke(); _visuals.Remove(key); }
@@ -135,9 +136,10 @@ internal sealed partial class NativeUiRenderer : IDisposable
                 var badgePanel = new StackPanel { Orientation = Orientation.Horizontal }; var badgeText = new TextBlock(); var badge = new Border { Child = badgePanel }; var badgeVisual = new Visual(badge);
                 badgeVisual.Apply = node =>
                 {
-                    badgeText.Text = NativeUiTheme.String(node, "text"); NativeUiTheme.Text(badgeText, node); NativeUiTheme.Badge(badge, node);
+                    badgeText.Text = NativeUiTheme.String(node, "text"); NativeUiTheme.Text(badgeText, node);
                     var icon = NativeUiTheme.Icon(NativeUiTheme.String(node, "icon"));
                     Sync(badgePanel, icon is null ? new UIElement[] { badgeText } : new UIElement[] { icon, badgeText });
+                    NativeUiTheme.Badge(badge, node);
                 };
                 return badgeVisual;
             case "Divider":
@@ -191,11 +193,11 @@ internal sealed partial class NativeUiRenderer : IDisposable
                     input.MaxLength = NativeUiCatalog.Default.Limits.StringLength;
                     var value = Field(inputVisual, key, "value", NativeUiTheme.String(node, "label"));
                     if (!Equals(value, shown)) { input.Text = NativeUiValues.Text(value); shown = value; }
-                    AutomationProperties.SetName(input, NativeUiTheme.String(node, "label"));
+                    AutomationProperties.SetName(input, NativeUiTheme.String(node, "label")); NativeUiTheme.Input(input, node);
                 };
                 return inputVisual;
             case "Slider":
-                var slider = new Slider(); var sliderVisual = new Visual(slider);
+                var slider = new Slider(); var sliderVisual = new Visual(NativeUiTheme.SliderHost(slider));
                 slider.ValueChanged += (_, _) => SetField(sliderVisual, key, "value", NativeUiTheme.String(sliderVisual.Model, "label"), slider.Value);
                 sliderVisual.Apply = node =>
                 {
@@ -207,7 +209,7 @@ internal sealed partial class NativeUiRenderer : IDisposable
                     slider.Value = Math.Clamp(value, min, max);
                     var unit = NativeUiTheme.String(node, "unit"); var label = NativeUiTheme.String(node, "label");
                     var readout = unit.StartsWith('¥') || unit.StartsWith('$') || unit.StartsWith('€') ? unit + NativeUiValues.Text(slider.Value) : NativeUiValues.Text(slider.Value) + unit;
-                    slider.Header = label.Length > 0 || unit.Length > 0 ? label + "   " + readout : null;
+                    NativeUiTheme.Slider(slider, node, readout);
                     slider.IsThumbToolTipEnabled = true; AutomationProperties.SetName(slider, label.Length > 0 ? label : "数值");
                 };
                 return sliderVisual;
