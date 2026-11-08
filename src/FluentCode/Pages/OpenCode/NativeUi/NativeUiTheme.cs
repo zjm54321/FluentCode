@@ -285,6 +285,7 @@ internal static class NativeUiTheme
         var color = String(node, "color");
         var size = String(node, "size");
         button.Style = variant == "solid" ? Style("AccentButtonStyle") : null;
+        button.CornerRadius = Application.Current.Resources.TryGetValue("ControlCornerRadius", out var radius) && radius is CornerRadius corner ? corner : new CornerRadius(SmallRadius);
         Aliases(button, variant + ":" + color, ButtonAliases(variant, color));
         var block = Flag(node, "block");
         button.HorizontalAlignment = block ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;

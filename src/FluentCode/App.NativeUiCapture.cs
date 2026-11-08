@@ -178,6 +178,9 @@ public partial class App
                 }
                 await Task.Delay(100); surface.UpdateLayout();
                 await WaitForNativeChartDrawsAsync(surface);
+                if (name is "calculator" or "sizing")
+                    foreach (var button in Descendants(timeline).OfType<Button>().Where(button => Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button).Length > 0))
+                        if (button.CornerRadius != new CornerRadius(4)) throw new InvalidOperationException("Native keypad/button variant lost the standard 4px corner radius.");
                 foreach (var table in Descendants(timeline).OfType<WinUI.TableView.TableView>())
                 {
                     if (table.Parent is FrameworkElement parent)
