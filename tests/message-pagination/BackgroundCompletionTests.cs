@@ -12,6 +12,7 @@ internal static partial class Program
         var backend = new LatencyBackend(); using var client = backend.Client();
         var page = new OpenCodePage(); page.TestActivate(Session, client);
         var children = new[] { "ses_child_a", "ses_child_b" };
+        backend.ReadActive = () => Task.FromResult(Json(new { data = children.ToDictionary(id => id, _ => new { type = "running" }) }));
         var launch = new OpenCodeMessage
         {
             Id = "msg_launch", Type = "assistant", Time = new() { Created = 10 },
@@ -27,7 +28,13 @@ internal static partial class Program
         var state = page.TestTabState(Session)!;
         Check(page.TestCaptureCoverage() is not null && state is { Working: false, BackgroundWorking: true, BackgroundChildCount: 2 }
             && OpenCodePage.ClassifySessionIndicator(state) == OpenCodePage.SessionIndicatorTone.BackgroundWorking,
-            "accepted connected parent history publishes child-only state for the grey tab ring");
+            "accepted parent relationships plus current active child drains publish the grey tab ring");
+        page.TestCompleteSession(40);
+        Check(page.TestTabState(Session)!.IsUnread, "background completion initially carries unread");
+        page.TestViewSession(true);
+        Check(page.TestTabState(Session) is { IsUnread: false, ViewedWatermark: 40, BackgroundChildCount: 2 }, "view clears unread without clearing actual child work");
+        page.TestCompleteSession(50);
+        Check(page.TestTabState(Session) is { IsUnread: false, ViewedWatermark: 50 }, "already-selected tab consumes a newly arriving completion without selection change");
         var version = page.TestBackgroundVersion;
         var reads = backend.Messages; var active = backend.Active; var states = backend.States;
         page.TestBackgroundProjection("ses_foreign", children, true);
@@ -40,6 +47,8 @@ internal static partial class Program
             "same connected child activity causes no per-token fact churn, polling or server calls");
         page.TestReceive(stream, Wire("session.execution.succeeded", "{\"sessionID\":\"" + children[0] + "\"}"));
         Check(page.TestTabState(Session) is { BackgroundWorking: true, BackgroundChildCount: 1 }, "one child's native terminal decrements the parent tab count");
+        page.TestCompleteSession(50);
+        Check(page.TestTabState(Session) is { IsUnread: false, ViewedWatermark: 50 }, "child completion while viewing cannot re-mark its parent unread");
         page.TestReceive(stream, Wire("session.execution.interrupted", "{\"sessionID\":\"" + children[1] + "\"}"));
         state = page.TestTabState(Session)!;
         Check(state is { Working: false, BackgroundWorking: false, BackgroundChildCount: 0 }
@@ -56,7 +65,7 @@ internal static partial class Program
         Check(page.TestBackgroundVersion == version && page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 },
             "presentation-only tree redraw cannot renew expired background evidence or grant a fresh lease");
         page.TestBackgroundProjection(Session, children, true);
-        Check(page.TestTabState(Session)?.BackgroundWorking == true, "a genuinely accepted fresh history projection can renew disconnected evidence");
+        Check(page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 }, "fresh parent history cannot resurrect expired child execution evidence");
         page.TestReady(stream, reconnect: true);
         var replacement = page.TestBeginEvents(); version = page.TestBackgroundVersion;
         page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + children[1] + "\"}"));
@@ -64,6 +73,51 @@ internal static partial class Program
         page.TestRevokeSource();
         page.TestBackgroundProjection(Session, children, true);
         Check(page.TestTabState(Session) is null, "revoked source cannot publish or expose old background tab state");
+    }
+
+    private static async Task StaleBackgroundFacts()
+    {
+        const string child = "ses_historical";
+        var launch = new OpenCodeMessage { Id = "msg_historical_launch", Type = "assistant", Time = new() { Created = 10 },
+            Content = new() { new() { Id = "part_historical", Type = "tool", Name = "subagent",
+                State = System.Text.Json.JsonSerializer.SerializeToElement(new { status = "completed", input = new { background = true }, metadata = new { sessionID = child } }) } } };
+        var idle = new OpenCodeMessage { Id = "msg_historical_idle", Type = "idle", Outcome = "succeeded", Time = new() { Created = 20 } };
+        foreach (var terminal in new[] { "session.execution.succeeded", "session.execution.failed", "session.execution.interrupted", "session.idle" })
+        {
+            var backend = new LatencyBackend(); using var client = backend.Client();
+            backend.ReadMessages = () => Task.FromResult(Json(new { data = new[] { idle, launch } }));
+            var page = new OpenCodePage(); page.TestActivate(Session, client);
+            var stream = page.TestBeginEvents(); page.TestReady(stream);
+            page.TestReceive(stream, Wire(terminal, "{\"sessionID\":\"" + child + "\"}"));
+            await page.TestLatestAsync();
+            Check(page.TestTabState(Session) is { BackgroundWorking: false, BackgroundChildCount: 0 },
+                "child terminal accepted before relationship discovery is retained: " + terminal);
+            page.TestBackgroundProjection(Session, new[] { child }, true);
+            Check(page.TestTabState(Session) is { BackgroundWorking: false, BackgroundChildCount: 0 }, "historical launch cannot resurrect terminal child: " + terminal);
+        }
+        {
+            var backend = new LatencyBackend(); using var client = backend.Client();
+            backend.ReadMessages = () => Task.FromResult(Json(new { data = new[] { idle, launch } }));
+            var page = new OpenCodePage(); page.TestActivate(Session, client);
+            var stream = page.TestBeginEvents(); page.TestReady(stream); await page.TestLatestAsync();
+            Check(page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 }, "history-only child is unresolved, not proved running");
+            page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + child + "\"}"));
+            Check(page.TestTabState(Session) is { BackgroundWorking: true, BackgroundChildCount: 1 }, "current child activity still enables the grey ring");
+            page.TestDisconnected(stream); page.TestExpireBackground();
+            var reads = backend.Messages;
+            page.TestBackgroundProjection(Session, new[] { child }, true);
+            Check(page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 }, "replayed parent history cannot renew a lost child event epoch");
+            page.TestReady(stream, reconnect: true);
+            await page.TestLatestAsync();
+            Check(page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 }, "reconnect with no running child keeps the stale ring cleared");
+            page.TestAcceptBackgroundOutcome(child, "failed");
+            Check(page.TestTabState(Session) is { BackgroundWorking: false, BackgroundChildCount: 0 }, "fresh verified errored child snapshot proves terminal absence after reconnect");
+            page.TestBackgroundProjection(Session, new[] { child }, true);
+            Check(page.TestTabState(Session) is { BackgroundWorking: false, BackgroundChildCount: 0 }, "parent history cannot overwrite a newer verified child terminal snapshot");
+            page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + child + "\"}"));
+            Check(page.TestTabState(Session) is { BackgroundWorking: true, BackgroundChildCount: 1 }, "new execution after verified child terminal creates a new running proof");
+            Check(backend.Messages >= reads && backend.Active > 0, "background reconciliation uses only the existing parent/active reads");
+        }
     }
 
     private static async Task BackgroundChildCompletion()

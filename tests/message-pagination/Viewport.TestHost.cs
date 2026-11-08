@@ -50,6 +50,7 @@ namespace FluentCode
         private bool _closing = false;
         private OpenCodeSessionUiStateStore? _sessionUiStore;
         private OpenCodePageSource? _sessionUiSourceOwner;
+        private object? _sessionUiViewedOwner;
         private bool _sessionUiChanged;
         public OpenCodePageSource? CurrentOpenCodePageSource { get; private set; }
         public event EventHandler<OpenCodeSessionUiStateChangedEventArgs>? OpenCodeSessionUiStateChanged;
@@ -57,6 +58,11 @@ namespace FluentCode
         private void RaiseAppEvent<T>(EventHandler<T>? handlers, T args) where T : EventArgs => handlers?.Invoke(this, args);
         internal void BindBackgroundSource(OpenCodePageSource source) { CurrentOpenCodePageSource = source; BindSessionUiStore(source); }
         internal void ExpireBackground() { _sessionUiChanged |= _sessionUiStore!.Expire(DateTimeOffset.UtcNow); PublishSessionUiChanges(); }
+        internal void ViewSession(string session, bool viewed)
+        { ApplySessionUiViewedSession(this, CurrentOpenCodePageSource, session, viewed); PublishSessionUiChanges(); }
+        internal void CompleteSession(string session, double watermark)
+        { _sessionUiChanged |= _sessionUiStore!.Apply(new(CurrentOpenCodePageSource!.Identity, CurrentOpenCodePageSource.Revision, session,
+            Completion: new("succeeded", watermark)), DateTimeOffset.UtcNow); PublishSessionUiChanges(); }
         public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string session,
             double watermark, Func<bool> fence, CancellationToken token)
         {
@@ -122,5 +128,7 @@ namespace FluentCode.Pages
         internal long TestBackgroundVersion => _ackApp.GetOpenCodeSessionUiSnapshot(_source!, _sourceRevision)!.Version;
         internal void TestExpireBackground() => _ackApp.ExpireBackground();
         internal void TestBackgroundProjection(string id, string[] children, bool complete) => OnSessionBackgroundProjection(id, System.Collections.Immutable.ImmutableArray.CreateRange(children), complete);
+        internal void TestViewSession(bool viewed) => _ackApp.ViewSession(_selectedSessionId!, viewed);
+        internal void TestCompleteSession(double watermark) => _ackApp.CompleteSession(_selectedSessionId!, watermark);
     }
 }

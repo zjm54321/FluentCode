@@ -29,6 +29,8 @@ public sealed partial class OpenCodePage
     private bool _treeRefreshQueued;
     private bool _treeLoading;
     private bool _treeChildrenAccepted;
+    private DateTimeOffset? _treeBackgroundObservedAt;
+    private Task? _treeBackgroundCoverage;
     private bool _treeReload;
     private string? _treeDirectory;
     private string? _treeHint;
@@ -93,6 +95,8 @@ public sealed partial class OpenCodePage
         _treeModels = null;
         _treeLoading = false;
         _treeChildrenAccepted = false;
+        _treeBackgroundObservedAt = null;
+        _treeBackgroundCoverage = null;
         _treeReload = false;
         OnBrowserAgentTreeChanged();
         _agentTree.Reset();
@@ -181,6 +185,8 @@ public sealed partial class OpenCodePage
             if (!Current()) return;
             _treeAgents.Clear();
             _treeAgents.AddRange(agents);
+            var childrenAt = DateTimeOffset.UtcNow;
+            var childrenCoverage = CaptureHealthyEventStream();
             var children = new Dictionary<string, OpenCodeSessionInfo>(StringComparer.Ordinal);
             var cursors = new HashSet<string>(StringComparer.Ordinal);
             string? cursor = null;
@@ -217,6 +223,8 @@ public sealed partial class OpenCodePage
                 _treeChildren[pair.Key] = _treeObservedSteps.TryGetValue(pair.Key, out var step)
                     ? pair.Value with { Agent = step.Agent ?? pair.Value.Agent, Model = step.Model } : pair.Value;
             _treeChildrenAccepted = true;
+            _treeBackgroundObservedAt = childrenAt;
+            _treeBackgroundCoverage = childrenCoverage;
             OnBrowserAgentTreeChanged();
             _treeHint = children.Values.Any(s => !_treeAgents.Any(a => a.Id == s.Agent))
                 ? "部分子会话的智能体不在当前有效配置中" : null;
@@ -275,7 +283,8 @@ public sealed partial class OpenCodePage
             if (!statuses.ContainsKey(id) && _liveSessionStatuses.TryGetValue(id, out var live) && live.Working)
                 statuses[id] = OpenCodeTreeStatus.Running;
         OnSessionBackgroundTree(binding.SessionId, _treeChildren.Values.Select(child =>
-            (child.Id!, statuses.GetValueOrDefault(child.Id!, OpenCodeAgentTreeProjection.Outcome(child.Outcome)))), _treeChildrenAccepted);
+            (child.Id!, OpenCodeAgentTreeProjection.Outcome(child.Outcome))),
+            _treeChildrenAccepted, _treeBackgroundObservedAt, _treeBackgroundCoverage);
         _treeModels = _agentSelector.ModelChoices;
         var agents = OpenCodeAgentTreeProjection.Agents(_treeAgents, _treeChildren.Values, binding.SessionId, statuses, AgentTreeScope(), _treeModels);
         RenderSubagentCount(agents.Sum(agent => agent.Children.Count(child => child.Status == OpenCodeTreeStatus.Running)));
@@ -328,7 +337,8 @@ public sealed partial class OpenCodePage
         RenderAgentTree();
     }
 
-    partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children, bool complete);
+    partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children,
+        bool complete, DateTimeOffset? observedAt, Task? coverage);
 
     partial void OnAgentTreeMessages(IReadOnlyList<OpenCodeMessage> messages)
     {

@@ -14,7 +14,9 @@ public partial class App
             var current = foreground && !_closing && source is { IsRevoked: false }
                 && ReferenceEquals(source, _openCodePageSource);
             if (foreground && !current) return;
+            ApplySessionUiViewedSession(owner, source, session, current);
             _ = _completionNotifications?.UpdateOpenCodeForegroundSession(owner, source?.Identity, session, current);
         }
+        PublishSessionUiChanges();
     }
 }

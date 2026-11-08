@@ -127,7 +127,7 @@ public sealed partial class OpenCodePage {
 $sources += $generated
 # Actual App background fact publisher/store ownership; unrelated App/ACK/native boundaries stay inert.
 $appStateSource = [IO.File]::ReadAllText("$repo/src/FluentCode/App.OpenCode.SessionState.cs")
-$appMembers = foreach ($name in @('GetOpenCodeSessionUiSnapshot', 'IsSessionUiOwner', 'BindSessionUiStore', 'PublishSessionUiChanges', 'ApplyOpenCodeSessionBackgroundState')) {
+$appMembers = foreach ($name in @('GetOpenCodeSessionUiSnapshot', 'IsSessionUiOwner', 'BindSessionUiStore', 'PublishSessionUiChanges', 'ApplyOpenCodeSessionBackgroundState', 'ApplySessionUiViewedSession')) {
     $matches = [regex]::Matches($appStateSource, ('(?ms)^    (?:private|internal|public) [^\r\n]*\b' + $name + '\(.*?^    \}\r?$'))
     if ($matches.Count -ne 1) { throw "Missing/ambiguous production App background member: $name" }
     $matches[0].Value
@@ -138,6 +138,15 @@ $appGenerated = Join-Path $output 'App.BackgroundMembers.cs'
 "using System; using FluentCode.Services.OpenCode; using FluentCode.Services.Notifications; namespace FluentCode;`n" + $appEventArgs[0].Value +
     "`npublic sealed partial class App {`n" + ($appMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $appGenerated
 $sources += $appGenerated
+# The background publisher uses the monitor's production TTL; no monitor transport/native
+# behavior belongs in this pagination fixture. Link the exact production field, not a copied TTL.
+$executionSource = [IO.File]::ReadAllText("$repo/src/FluentCode/Services/Notifications/OpenCodeNotificationMonitor.Execution.cs")
+$lifetime = [regex]::Matches($executionSource, '(?m)^    public static readonly TimeSpan ObservationLifetime[^\r\n]+')
+if ($lifetime.Count -ne 1) { throw 'Missing/ambiguous production observation lifetime.' }
+$lifetimeGenerated = Join-Path $output 'NotificationMonitor.Lifetime.cs'
+"using System; namespace FluentCode.Services.Notifications; public sealed class OpenCodeNotificationMonitor {`n" +
+    $lifetime[0].Value + "`n}" | Set-Content -Encoding UTF8 $lifetimeGenerated
+$sources += $lifetimeGenerated
 $arguments += $sources | ForEach-Object { '"' + $_ + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

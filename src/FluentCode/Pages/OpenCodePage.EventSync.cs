@@ -449,6 +449,7 @@ public sealed partial class OpenCodePage
     partial void OnAgentTreeReset();
     partial void OnAgentTreeActivityChanged();
     partial void OnSessionBackgroundActivity(string sessionId, bool working);
+    partial void OnSessionBackgroundActiveSnapshot(string sessionId, DateTimeOffset observedAt, Task? coverage);
 
     partial void RefreshConversationSessionActivity()
     {
@@ -466,6 +467,8 @@ public sealed partial class OpenCodePage
         _statusRefreshRunning = true;
         var generation = _pageGeneration;
         var version = _liveStatusVersion;
+        var observedAt = DateTimeOffset.UtcNow;
+        var coverage = CaptureHealthyEventStream();
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(_pageCts.Token, source.RevocationToken);
         var ct = linked.Token;
         try
@@ -483,6 +486,7 @@ public sealed partial class OpenCodePage
                 if (_liveSessionStatuses.TryGetValue(id, out var live) && live.Version > version) continue;
                 if (response.Data.TryGetValue(id, out var active) && active.Type != "running") continue;
                 _liveSessionStatuses[id] = (response.Data.ContainsKey(id), ++_liveStatusVersion);
+                if (response.Data.ContainsKey(id)) OnSessionBackgroundActiveSnapshot(id, observedAt, coverage);
             }
             RefreshSessionStateUi();
             RefreshComposerSessionActivity();

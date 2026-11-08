@@ -98,6 +98,7 @@ if ($motion.Count -ne 1) { throw 'Missing/ambiguous production working-motion co
 $motionGenerated = Join-Path $output 'TabStatus.WorkingMotion.cs'
 "using System; namespace FluentCode.Pages.OpenCode;`n" + $motion[0].Value | Set-Content -Encoding UTF8 $motionGenerated
 $tabSources = @("$repo/src/FluentCode/Services/OpenCode/OpenCodeSessionUiState.cs",
+    "$repo/src/FluentCode/Services/OpenCode/OpenCodeSessionUiStateStore.cs", "$repo/src/FluentCode/Services/OpenCode/OpenCodeConstants.cs",
     "$repo/src/FluentCode/Pages/OpenCode/OpenCodeTabStatusSlot.cs", $tabGenerated,
     $motionGenerated, (Join-Path $PSScriptRoot 'TabStatus.TestHost.cs'), (Join-Path $PSScriptRoot 'TabStatusTests.cs'))
 $tabArguments += $tabSources | ForEach-Object { '"' + $_ + '"' }

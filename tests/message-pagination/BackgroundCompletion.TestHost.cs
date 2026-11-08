@@ -11,6 +11,8 @@ public sealed partial class OpenCodePage
     private sealed record TreeBinding(string SessionId);
     private TreeBinding? _treeBinding;
     private bool _treeChildrenAccepted = false;
+    private DateTimeOffset? _treeBackgroundObservedAt;
+    private System.Threading.Tasks.Task? _treeBackgroundCoverage;
     private readonly List<OpenCodeAgentInfo> _treeAgents = new();
     private readonly Dictionary<string, OpenCodeSessionInfo> _treeChildren = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OpenCodeTreeStatus> _treeStatuses = new(StringComparer.Ordinal);
@@ -38,7 +40,8 @@ public sealed partial class OpenCodePage
     private void OnBrowserAgentTreeChanged() { }
     private Func<string, bool>? AgentTreeScope() => null;
     private void QueueAgentTreeRefresh() { }
-    partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children, bool complete);
+    partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children,
+        bool complete, DateTimeOffset? observedAt, System.Threading.Tasks.Task? coverage);
     private void SyncShellTerminalEntries() { }
     internal int TestBackgroundCount { get; private set; }
     private void RenderSubagentCount(int running) => TestBackgroundCount = running;
@@ -48,7 +51,16 @@ public sealed partial class OpenCodePage
     {
         _treeBinding = new(_selectedSessionId!);
         _treeChildrenAccepted = true;
+        _treeBackgroundObservedAt = DateTimeOffset.UtcNow;
+        _treeBackgroundCoverage = CaptureHealthyEventStream();
         _treeAgents.Add(new() { Id = "worker", Name = "Worker", Mode = "subagent" });
         _treeChildren[childId] = new() { Id = childId, ParentId = _selectedSessionId, Agent = "worker" };
+    }
+    internal void TestAcceptBackgroundOutcome(string childId, string outcome)
+    {
+        TestBindBackgroundChild(childId);
+        _treeChildren[childId] = _treeChildren[childId] with { Outcome = outcome };
+        _treeStatuses.Remove(childId);
+        RenderAgentTree();
     }
 }

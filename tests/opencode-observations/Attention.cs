@@ -8,6 +8,87 @@ using FluentCode.Services.OpenCode;
 
 static partial class Checks
 {
+    private static Task ViewedSessionAttention()
+    {
+        const string endpoint = "ep-view-attention";
+        var requests = 0;
+        using var http = new HttpClient(new Handler((_, _) => { requests++; return Task.FromResult(Json(new { data = Array.Empty<object>() })); }));
+        using var client = Client(http);
+        using var monitor = new OpenCodeNotificationMonitor((CompletionNotificationService?)null, new(endpoint, client));
+        var source = new OpenCodePageSource(endpoint, 1, () => client);
+        var app = new FluentCode.App(); app.SetSource(source, monitor);
+        OpenCodeSessionUiState State(string session = "ses_test") => app.GetOpenCodeSessionUiSnapshot(app.CurrentOpenCodePageSource!, app.CurrentOpenCodePageSource!.Revision)!
+            .Sessions.Single(state => state.SessionId == session);
+        void Complete(double watermark, string session = "ses_test", bool pending = false)
+        {
+            var now = DateTimeOffset.UtcNow;
+            app.Observe(monitor, new(endpoint, session, new(OpenCodeExecutionState.Idle, pending, true, false, false, []),
+                "succeeded", watermark, 0, now)
+            {
+                WorkingFact = new(false, now), PendingActionFact = new(pending, now), QuestionPendingFact = new(pending, now),
+                CompletionObservedAt = now, InfoObservedAt = now,
+            });
+            app.Drain();
+        }
+        Complete(100, pending: true);
+        app.ApplyOpenCodeSessionBackgroundState(source, 1, "ses_test", new(true, DateTimeOffset.UtcNow), 2);
+        Check(State().IsUnread, "actual App starts with an unread completion");
+        var owner = new object();
+        app.UpdateOpenCodeForegroundSession(owner, source, "ses_test", true);
+        Check(State() is { IsUnread: false, ViewedWatermark: 100, PendingAction: true, QuestionPending: true,
+            BackgroundWorking: true, BackgroundChildCount: 2 }, "selected active view clears unread immediately without clearing real pending or child work");
+        var version = app.GetOpenCodeSessionUiSnapshot(source, 1)!.Version;
+        app.UpdateOpenCodeForegroundSession(owner, source, "ses_test", true);
+        Check(app.GetOpenCodeSessionUiSnapshot(source, 1)!.Version == version, "already-selected active publication causes no snapshot churn");
+        Complete(200);
+        Check(State() is { IsUnread: false, ViewedWatermark: 200 }, "new completion while the tab remains selected is immediately read");
+        Complete(150, "ses_child");
+        Check(!State().IsUnread && State().ViewedWatermark == 200 && State("ses_child").IsUnread,
+            "child completion uses its own session key, not the viewed parent's unread watermark");
+        app.ApplyOpenCodeSessionBackgroundState(source, 1, "ses_test", new(false, DateTimeOffset.UtcNow), 0);
+        Complete(200);
+        Check(State() is { IsUnread: false, BackgroundWorking: false, BackgroundChildCount: 0 }, "child result reconciliation while viewing cannot re-mark parent unread");
+        app.UpdateOpenCodeForegroundSession(owner, source, "ses_test", false);
+        Complete(200);
+        Check(!State().IsUnread, "deactivation and an older server viewed watermark cannot restore consumed unread");
+        Complete(300);
+        Check(State().IsUnread && State().ViewedWatermark == 200, "only a new completion while not viewing becomes unread");
+        var replacementOwner = new object();
+        app.UpdateOpenCodeForegroundSession(replacementOwner, source, "ses_test", true);
+        app.UpdateOpenCodeForegroundSession(owner, source, "ses_test", false);
+        Complete(400);
+        Check(!State().IsUnread && State().ViewedWatermark == 400, "late old-page deactivation cannot revoke the new viewed owner");
+        var stale = new OpenCodePageSource(endpoint, 1, () => client);
+        app.UpdateOpenCodeForegroundSession(owner, stale, "ses_other", true);
+        Complete(450);
+        Check(!State().IsUnread, "same endpoint/revision with a stale source cannot replace current viewed selection");
+        var replacement = new OpenCodePageSource(endpoint, 2, () => client);
+        app.SetSource(replacement, monitor);
+        Complete(500);
+        app.UpdateOpenCodeForegroundSession(owner, source, "ses_test", true);
+        Check(State().IsUnread, "source rebind retires viewing and rejects the old source's late clear");
+        app.UpdateOpenCodeForegroundSession(replacementOwner, replacement, "ses_test", true);
+        Check(!State().IsUnread && State().ViewedWatermark == 500, "viewing the replacement source clears only its real completion");
+        var staleInfoAt = DateTimeOffset.UtcNow;
+        app.Observe(monitor, new(endpoint, "ses_test", new(OpenCodeExecutionState.Idle, false, true, true, false, ["ses_child"]),
+            null, 900, 0, staleInfoAt) { InfoObservedAt = staleInfoAt.AddSeconds(-16) });
+        app.Drain();
+        Check(State().ViewedWatermark == 500, "stale Info evidence cannot enlarge local viewed coverage");
+        var idleAt = DateTimeOffset.UtcNow;
+        app.Observe(monitor, new(endpoint, "ses_test", new(OpenCodeExecutionState.Idle, false, true, true, false, ["ses_child"]),
+            null, 700, 0, idleAt) { InfoObservedAt = idleAt, BackgroundWorkingFact = new(true, idleAt), BackgroundChildCount = 1 });
+        app.Drain();
+        Check(State().Completion?.IdleWatermark == 500 && State().ViewedWatermark == 700,
+            "view consumes fresh server idle watermark while unresolved child protection withholds main completion");
+        app.UpdateOpenCodeForegroundSession(replacementOwner, replacement, "ses_test", false);
+        Complete(700);
+        Check(!State().IsUnread, "late child reconciliation after leaving cannot restore unread for the already-viewed main turn");
+        Complete(800);
+        Check(State().IsUnread, "a genuinely new main turn finishing after leaving still becomes unread");
+        Check(requests == 0, "local unread consumption requires no GET, viewed POST, permission reply or prompt");
+        return Task.CompletedTask;
+    }
+
     private static async Task InternalMessages()
     {
         OpenCodeMessage[] history = [new() { Id = "msg_internal", Type = "user", Time = new() { Created = 200 },

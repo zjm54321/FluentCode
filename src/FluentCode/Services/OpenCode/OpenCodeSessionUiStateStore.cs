@@ -18,6 +18,7 @@ public sealed class OpenCodeSessionUiStateStore
     private string _endpointIdentity;
     private long _revision;
     private long _version;
+    private string? _viewedSessionId;
 
     public OpenCodeSessionUiStateStore(string endpointIdentity, long revision, TimeSpan? evidenceLifetime = null)
     {
@@ -53,6 +54,17 @@ public sealed class OpenCodeSessionUiStateStore
             return false;
         }
 
+        if (_viewedSessionId == sessionId) _viewedSessionId = null;
+        _version++;
+        return true;
+    }
+
+    /// <summary>当前选中且窗口激活的会话。仅消费本地完成水位，不代替服务端已查看回执。</summary>
+    public bool SetViewedSession(string endpointIdentity, long revision, string? sessionId)
+    {
+        if (!IsBoundTo(endpointIdentity, revision) || sessionId is not null && string.IsNullOrWhiteSpace(sessionId)) return false;
+        _viewedSessionId = sessionId;
+        if (sessionId is null || !_entries.TryGetValue(sessionId, out var entry) || !MarkViewed(entry)) return false;
         _version++;
         return true;
     }
@@ -71,6 +83,7 @@ public sealed class OpenCodeSessionUiStateStore
         }
 
         var bindingChanged = !IsBoundTo(endpointIdentity, revision);
+        _viewedSessionId = null;
         if (bindingChanged || _entries.Count > 0)
         {
             _entries.Clear();
@@ -133,6 +146,7 @@ public sealed class OpenCodeSessionUiStateStore
         var backgroundWorking = FilterFact(observation.BackgroundWorking, existing?.BackgroundWorking, now);
         var completion = FilterCompletion(observation.Completion);
         var viewed = FilterViewedWatermark(observation.ViewedWatermark);
+        var observedIdle = FilterViewedWatermark(observation.ObservedIdleWatermark);
         var mutationProtected = observation.MutationProtected;
         var absentThrough = FilterViewedWatermark(observation.CompletionAbsentThrough);
 
@@ -143,7 +157,7 @@ public sealed class OpenCodeSessionUiStateStore
             && backgroundWorking is null
             && completion is null
             && viewed is null
-            && mutationProtected is null && absentThrough is null)
+            && mutationProtected is null && absentThrough is null && observedIdle is null)
         {
             // 全空或全非法输入：不注册空会话。
             return false;
@@ -216,6 +230,16 @@ public sealed class OpenCodeSessionUiStateStore
             existing.ViewedWatermark = viewedValue;
             changed = true;
         }
+
+        if (observedIdle is { } idleValue && ShouldReplaceViewedWatermark(idleValue, existing.ObservedIdleWatermark))
+        {
+            existing.ObservedIdleWatermark = idleValue;
+            changed = true;
+        }
+
+        // Viewing remains current even when selection does not change. A late completion or
+        // child-result reconciliation cannot re-mark the visible session's same turn unread.
+        if (_viewedSessionId == observation.SessionId) changed |= MarkViewed(existing);
 
         if (mutationProtected is { } mutationValue && existing.MutationProtected != mutationValue)
         {
@@ -415,6 +439,15 @@ public sealed class OpenCodeSessionUiStateStore
     private static bool ShouldReplaceViewedWatermark(double incoming, double? current)
         => current is not { } existing || incoming > existing;
 
+    private static bool MarkViewed(Entry entry)
+    {
+        var watermark = entry.ObservedIdleWatermark;
+        if (entry.Completion is { } completion && (watermark is null || completion.IdleWatermark > watermark)) watermark = completion.IdleWatermark;
+        if (watermark is not { } covered || !ShouldReplaceViewedWatermark(covered, entry.ViewedWatermark)) return false;
+        entry.ViewedWatermark = covered;
+        return true;
+    }
+
     private static bool IsKnownOutcome(string? outcome)
         => string.Equals(outcome, OpenCodeSessionOutcomes.Succeeded, StringComparison.Ordinal)
             || string.Equals(outcome, OpenCodeSessionOutcomes.Failed, StringComparison.Ordinal)
@@ -492,5 +525,6 @@ public sealed class OpenCodeSessionUiStateStore
         public OpenCodeCompletionMark? Completion { get; set; }
 
         public double? ViewedWatermark { get; set; }
+        public double? ObservedIdleWatermark { get; set; }
     }
 }

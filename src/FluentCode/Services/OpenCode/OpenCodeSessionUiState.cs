@@ -94,4 +94,6 @@ public sealed record OpenCodeSessionUiObservation(
     /// <summary>Fresh complete history proves there is no completion through this message watermark.
     /// Unlike a null Completion (no update), this can retire a disproven historical mark, not a real unread result.</summary>
     public double? CompletionAbsentThrough { get; init; }
+    /// <summary>匹配会话的 Info GET 原始 idle 水位；仅供本地查看覆盖，不构成完成或服务端回执证明。</summary>
+    public double? ObservedIdleWatermark { get; init; }
 }

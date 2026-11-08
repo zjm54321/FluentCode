@@ -149,6 +149,17 @@ public sealed partial class OpenCodeNotificationMonitor
                     state.PermissionsAt, state.FormsAt)
                 : null;
 
+        // Unresolved launch history still protects agent switching, but is not current running
+        // evidence. Only fresh active child drains prove work; missing child terminals stay unknown.
+        var backgroundCount = activeSessions is not null && Fresh(activeAt)
+            ? projection.KnownUnresolvedChildSessionIds.Count(id => activeSessions.TryGetValue(id, out var child) && child.Type == "running") : 0;
+        OpenCodeSessionUiFact? backgroundFact = projection.KnownUnresolvedChildSessionIds.IsEmpty
+            && window.IsComplete && window.IsChronological && EarliestUiEvidence(uiNow, state.HistoryAt) is { } absentAt
+                ? new(false, absentAt)
+                : window.IsChronological && activeSessions is not null
+                    && EarliestUiEvidence(uiNow, state.HistoryAt, activeAt) is { } backgroundAt
+                        ? new(backgroundCount > 0 ? true : null, backgroundAt) : null;
+
         if (protectedSession) projection = projection with { State = OpenCodeExecutionState.Unknown };
         state.Idle = projection.CanSwitchAgent && !projection.Waiting && !projection.KnownUnresolvedBackground
             && state.Permissions.Count == 0 && state.Forms.Count == 0;
@@ -157,9 +168,8 @@ public sealed partial class OpenCodeNotificationMonitor
             WorkingFact = workingFact,
             PendingActionFact = pendingActionFact,
             QuestionPendingFact = questionPendingFact,
-            BackgroundWorkingFact = workingFact is { } work
-                ? new(projection.KnownUnresolvedBackground, work.ObservedAt) : null,
-            BackgroundChildCount = projection.KnownUnresolvedChildSessionIds.Length,
+            BackgroundWorkingFact = backgroundFact,
+            BackgroundChildCount = backgroundFact?.Value == true ? backgroundCount : 0,
             InfoObservedAt = infoObservedAt,
             CompletionObservedAt = completionObservedAt,
             // A later internal report after a genuine idle never erases that unread result.

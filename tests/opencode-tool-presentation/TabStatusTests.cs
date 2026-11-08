@@ -28,6 +28,7 @@ internal static class TabStatusTests
         ClassificationAndStatus();
         GlyphsAndCollapse();
         StableNameAndStatusEvents();
+        ViewClearsUnread();
         HeaderGeometryAndSourceContracts(args[0]);
         Console.WriteLine($"PASS {_checks} v3 tab classification, glyph/collapse, ItemStatus/change-event and finite-header geometry/source checks; inert WinUI only, no native rendering or Narrator audio.");
     }
@@ -142,6 +143,44 @@ internal static class TabStatusTests
         Check(peer.Changes.Count == 3 && tab.ItemStatus == "重试中，第 4 次" && tab.AutomationName == name, "retry attempt changes status once, never the tab Name");
         page.Tab("ses_events", "固定名称", Idle());
         Check(tab.ItemStatus == "空闲" && page.Slot("ses_events").Visibility == Visibility.Collapsed, "idle update removes the slot and reports idle");
+    }
+
+    private static void ViewClearsUnread()
+    {
+        const string endpoint = "ep-tab-view", id = "ses_viewed";
+        var now = new DateTimeOffset(2026, 11, 8, 0, 0, 0, TimeSpan.Zero);
+        var store = new OpenCodeSessionUiStateStore(endpoint, 1);
+        var page = new OpenCodePage();
+        OpenCodeSessionUiState State() => store.GetSnapshot().Sessions.Single();
+        TabViewItem Apply() => page.Tab(id, "当前已查看的会话", State());
+        store.Apply(new(endpoint, 1, id, Working: new(false, now), PendingAction: new(false, now), Completion: new("succeeded", 100))
+            { BackgroundWorking = new(true, now), BackgroundChildCount = 2 }, now);
+        var tab = Apply();
+        Check(page.Slot(id).Children.OfType<Ellipse>().Single().Width == 6 && tab.ItemStatus == "有新的回复，子智能体工作中（2 个）",
+            "background unread fixture reproduces the reported centered dot");
+        Check(store.SetViewedSession(endpoint, 1, id), "viewing the selected session consumes its actual completion watermark");
+        Apply();
+        Check(page.Slot(id).Children.Single() is ProgressRing { IsActive: true } && tab.ItemStatus == "子智能体工作中（2 个）",
+            "view clears only the unread overlay while proven child work keeps the grey ring");
+        store.Apply(new(endpoint, 1, id, Completion: new("succeeded", 200), ViewedWatermark: 0), now);
+        Apply();
+        Check(!State().IsUnread && State().ViewedWatermark == 200 && !page.Slot(id).Children.OfType<Ellipse>().Any(),
+            "new completion while already selected cannot redraw unread");
+        store.Apply(new(endpoint, 1, id, Completion: new("succeeded", 200)) { BackgroundWorking = new(false, now) }, now);
+        Apply();
+        Check(!State().IsUnread && page.Slot(id).Visibility == Visibility.Collapsed && tab.ItemStatus == "空闲",
+            "child completion while viewing clears the grey ring without re-marking unread");
+        store.SetViewedSession(endpoint, 1, null);
+        store.Apply(new(endpoint, 1, id, Completion: new("succeeded", 200), ViewedWatermark: 100), now);
+        Apply();
+        Check(page.Slot(id).Visibility == Visibility.Collapsed, "replayed completion or older server viewed receipt does not restore the dot");
+        store.Apply(new(endpoint, 1, id, Completion: new("succeeded", 300)), now);
+        Apply();
+        Check(page.Slot(id).Children.Single() is Ellipse { Width: 8 } && tab.ItemStatus == "有新的回复",
+            "only a new background assistant completion restores unread");
+        store.SetViewedSession(endpoint, 1, id);
+        Apply();
+        Check(page.Slot(id).Visibility == Visibility.Collapsed, "selecting the unread tab clears it again");
     }
 
     private static void HeaderGeometryAndSourceContracts(string repo)

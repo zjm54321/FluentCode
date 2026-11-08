@@ -46,6 +46,7 @@ static partial class Checks
             ("background facts/counts preserve evidence, reach actual App store and clear when children finish", BackgroundFacts),
             ("never-run configuration history and unchanged protection", ConfigurationHistory),
             ("internal wakeups preserve idle, real unread results and attention", InternalMessages),
+            ("view clears unread, already-selected completions stay read, child results and owner/source fences", ViewedSessionAttention),
             ("startup/reconnect never invent unread completions", RestartBaseline),
             ("actual App dispatch, gate, expiry and covered ACK paths", AppPaths) })
         {

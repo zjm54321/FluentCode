@@ -102,6 +102,9 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 - `OpenCodeSessionRetryMark(Attempt, At, Message)` 仅由页面按会话叠加。V2 `session.retry.scheduled` 读取 `attempt/at/error.message`，旧 `session.status(type=retry)` 读取 `attempt/next/message`；次数必须为正、期限必须有限。其他执行活动与终止事件清除重试，即使 `Working` 不变也刷新标签。
 - `BackgroundWorking`（三值事实）与 `BackgroundChildCount` 按 `QuestionPending` 的原始证据时间、绑定、过期及事件连续性规则保存；外层事实缺失不更新计数，明确 false/unknown 或过期后计数清零。没有子会话证据的监视器事件观察保持 null，不以主会话 idle 推断整棵树结束。
 - 正常连接 SSE 时，页面已接纳的消息执行投影及经验证的子会话树也发布同一事实/计数。关系只从当前来源/会话的接纳结果建立；子会话事件可直接更新后台父标签，最后一个子会话终止后清零。事实租约绑定原页面来源、修订、页面代际及精确事件覆盖；跨断线不续借旧兄弟状态，旧来源/会话结果不能发布。不新增轮询、协议或服务端调用。
+- 历史后台启动只证明父子关系及未解决的保护状态，不直接证明子会话仍在运行。灰环/计数仅取当前子会话事件、现有 active 读取的正证据或新鲜已验证子会话树状态；active 缺席不能当作子会话完成。终态在父历史加载前到达也会保留；树重绘保留原 GET 时间/事件覆盖，父历史与新兄弟事件不能续借已断线的子会话状态。
+- 选中会话且窗口激活时，本地 UI 存储消费该会话已有完成水位；保持选中期间收到的新完成也立即视为已读。切换标签、首页、隐藏/失活与来源重绑撤销查看租约，旧页面回调不能撤销新所有者。仅新后台助手轮次完成能重新产生未读；查看不清除权限/提问、工作状态或交互保护。服务端已查看 POST 仍独立要求原有布局/渲染帧及精确可见水位证明，本地消点不扩大或伪造该回执。
+- `ObservedIdleWatermark` 只记录新鲜且 id 匹配的 Info GET 原始 idle 水位。查看时可覆盖这个已知主轮次水位，即使未解决子会话暂缓了完成结论；离开后子会话才结束也不会重新标记这轮未读。该水位不生成完成结论、不放开执行保护、也不授权服务端 POST。
 - 标签 `Name` 仍为“标题（id）”；中文状态放在 `ItemStatus` 和 `HelpText`，状态变化时发 `ItemStatusProperty` 变更事件。图形槽及子图形均为 UIA Raw，避免重复朗读；重试次数不按秒更新。
 - 标签头实机证据使用测试专用 `FC_INDICATOR_CAPTURE_TEST=1` + `FC_SHELL_CAPTURE_TEST=1` + 独立 `FC_STARTUP_SMOKE_ROOT` 三重门。单次离线启动复用真实标签构造/状态路径，以 `RenderTargetBitmap` 输出 1920/1024 宽、浅/深色四帧；1024 使用 8 个会话标签（长标题标签兼作工作中）并保留首页项。`tests/opencode-indicator-capture/capture.sh` 持有共享捕获锁，PowerShell 先检查 Active 会话及 RichEditPrototype，再启动/关闭唯一自持 PID；3× 裁图仅复制原始像素，不发送桌面输入、不抓屏、不连接服务端。
 

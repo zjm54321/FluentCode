@@ -26,6 +26,7 @@ public partial class App
     // Dispatcher-owned. Retain the store across bindings so Reset preserves monotonic Version.
     private OpenCodeSessionUiStateStore? _sessionUiStore;
     private OpenCodePageSource? _sessionUiSourceOwner;
+    private object? _sessionUiViewedOwner;
     private bool _sessionUiChanged;
 
     public event EventHandler<OpenCodeSessionUiStateChangedEventArgs>? OpenCodeSessionUiStateChanged;
@@ -49,6 +50,7 @@ public partial class App
 
     private void BindSessionUiStore(OpenCodePageSource source)
     {
+        _sessionUiViewedOwner = null;
         if (_sessionUiStore is null) _sessionUiStore = new(source.Identity, source.Revision);
         else _sessionUiStore.Reset(source.Identity, source.Revision);
         _sessionUiSourceOwner = source;
@@ -58,6 +60,7 @@ public partial class App
     private void InvalidateSessionUiStore(OpenCodePageSource? expectedOwner)
     {
         if (expectedOwner is null || !ReferenceEquals(expectedOwner, _sessionUiSourceOwner)) return;
+        _sessionUiViewedOwner = null;
         _sessionUiSourceOwner = null;
         _sessionUiChanged = false;
         _sessionUiStore!.Reset(expectedOwner.Identity, expectedOwner.Revision);
@@ -90,9 +93,13 @@ public partial class App
         var viewed = IsFreshSessionUiEvidence(observation.InfoObservedAt, now)
             && observation.ViewedWatermark is { } watermark && double.IsFinite(watermark) && watermark >= 0
             ? (double?)watermark : null;
+        var observedIdle = IsFreshSessionUiEvidence(observation.InfoObservedAt, now)
+            && observation.IdleWatermark is { } observed && double.IsFinite(observed) && observed >= 0
+                ? (double?)observed : null;
         return new(source.Identity, source.Revision, observation.SessionId,
             observation.WorkingFact, observation.PendingActionFact, Completion: completion, ViewedWatermark: viewed)
         {
+            ObservedIdleWatermark = observedIdle,
             CompletionAbsentThrough = observation.IsNeutralIdle
                 && (continuous || IsFreshSessionUiEvidence(observation.ObservedAt, now)) ? observation.CompletionAbsentThrough : null,
             QuestionPending = observation.QuestionPendingFact is { } question
@@ -130,5 +137,20 @@ public partial class App
         if (!IsSessionUiOwner(source, revision)) return;
         _sessionUiChanged |= _sessionUiStore!.Apply(
             new(source.Identity, revision, sessionId, ViewedWatermark: covered), DateTimeOffset.UtcNow);
+    }
+
+    private void ApplySessionUiViewedSession(object owner, OpenCodePageSource? source, string? sessionId, bool foreground)
+    {
+        if (foreground && source is not null && !string.IsNullOrWhiteSpace(sessionId) && IsSessionUiOwner(source, source.Revision))
+        {
+            _sessionUiViewedOwner = owner;
+            _sessionUiChanged |= _sessionUiStore!.SetViewedSession(source.Identity, source.Revision, sessionId);
+        }
+        else if (ReferenceEquals(owner, _sessionUiViewedOwner))
+        {
+            _sessionUiViewedOwner = null;
+            if (_sessionUiSourceOwner is { } current && IsSessionUiOwner(current, current.Revision))
+                _sessionUiChanged |= _sessionUiStore!.SetViewedSession(current.Identity, current.Revision, null);
+        }
     }
 }

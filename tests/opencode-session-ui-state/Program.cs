@@ -18,7 +18,8 @@ internal static class Program
         BindingSnapshotsAndVersions();
         IndependentQuestionEvidence();
         IndependentBackgroundEvidence();
-        Console.WriteLine($"PASS: 5 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
+        ViewedSessionAttention();
+        Console.WriteLine($"PASS: 6 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
     }
 
     private static void Check(bool condition, string label)
@@ -271,6 +272,56 @@ internal static class Program
             "history.zero-is-nonnegative");
         Apply(store, Observation("ses_b") with { ViewedWatermark = 500, MutationProtected = true }, 18, true, "history.other-session");
         Check(State(store) == saved, "history.session-isolation");
+    }
+
+    private static void ViewedSessionAttention()
+    {
+        var store = Store();
+        Apply(store, Observation() with { Completion = new("succeeded", 100), PendingAction = Fact(true, 0),
+            QuestionPending = Fact(true, 0), BackgroundWorking = Fact(true, 0), BackgroundChildCount = 2, MutationProtected = true },
+            0, true, "view.initial-unread");
+        Check(!store.SetViewedSession("other", Revision, "ses_a") && !store.SetViewedSession(Endpoint, Revision + 1, "ses_a")
+            && !store.SetViewedSession(Endpoint, Revision, " ") && State(store).IsUnread, "view.invalid-binding-or-id-cannot-clear");
+        var version = store.GetSnapshot().Version;
+        Check(store.SetViewedSession(Endpoint, Revision, "ses_a") && store.GetSnapshot().Version == version + 1,
+            "view.selected-session-clears-immediately");
+        Check(State(store) is { IsUnread: false, ViewedWatermark: 100, PendingAction: true, QuestionPending: true,
+            BackgroundWorking: true, BackgroundChildCount: 2, MutationProtected: true }, "view.preserves-real-pending-work-and-protection");
+        Check(!store.SetViewedSession(Endpoint, Revision, "ses_a") && store.GetSnapshot().Version == version + 1,
+            "view.already-selected-no-version-churn");
+        Apply(store, Observation() with { Completion = new("succeeded", 200), ViewedWatermark = 0 }, 1, true, "view.new-visible-turn");
+        Check(!State(store).IsUnread && State(store).ViewedWatermark == 200, "view.already-selected-late-completion-stays-read");
+        Apply(store, Observation("ses_child") with { Completion = new("failed", 150) }, 1, true, "view.child-completes");
+        Check(!State(store).IsUnread && State(store).ViewedWatermark == 200 && State(store, "ses_child").IsUnread,
+            "view.child-completion-does-not-rekey-or-remark-parent");
+        Apply(store, Observation() with { Completion = new("succeeded", 200), BackgroundWorking = Fact(false, 2) }, 2, true, "view.parent-child-reconciliation");
+        Check(State(store) is { IsUnread: false, BackgroundWorking: false, BackgroundChildCount: 0 }, "view.child-terminal-clear-preserves-read");
+        Check(!store.SetViewedSession(Endpoint, Revision, null), "view.hidden-removes-lease-without-changing-snapshot");
+        Apply(store, Observation() with { Completion = new("succeeded", 200), ViewedWatermark = 100 }, 2, false, "view.old-completion-or-receipt-cannot-rearm");
+        Apply(store, Observation() with { Completion = new("succeeded", 300) }, 2, true, "view.new-background-turn");
+        Check(State(store).IsUnread && State(store).ViewedWatermark == 200, "view.only-new-background-completion-becomes-unread");
+        Check(store.SetViewedSession(Endpoint, Revision, "ses_child") && State(store).IsUnread,
+            "view.selecting-child-clears-only-child");
+        Check(store.SetViewedSession(Endpoint, Revision, "ses_a") && !State(store).IsUnread, "view.returning-to-parent-clears");
+        store.Reset(Endpoint, Revision);
+        Apply(store, Observation() with { Completion = new("succeeded", 400) }, 3, true, "view.reset-retires-visibility");
+        Check(State(store).IsUnread, "view.restart-does-not-restore-old-visibility-lease");
+        Check(!store.SetViewedSession(Endpoint, Revision, "ses_new"), "view.select-before-first-completion-does-not-create-empty-entry");
+        Apply(store, Observation("ses_new") with { Completion = new("succeeded", 500) }, 3, true, "view.first-visible-completion");
+        Check(!State(store, "ses_new").IsUnread, "view.selected-before-state-arrives-stays-read");
+        Check(store.Remove(Endpoint, Revision, "ses_new"), "view.remove-visible-session");
+        Apply(store, Observation("ses_new") with { Completion = new("succeeded", 600) }, 3, true, "view.removed-session-no-longer-viewed");
+        Check(State(store, "ses_new").IsUnread, "view.removal-retires-lease");
+        var delayed = Store();
+        Apply(delayed, Observation() with { ObservedIdleWatermark = 100, BackgroundWorking = Fact(true, 0), BackgroundChildCount = 1 },
+            0, true, "view.main-idle-known-before-child-completion");
+        Check(State(delayed).Completion is null && delayed.SetViewedSession(Endpoint, Revision, "ses_a")
+            && State(delayed).ViewedWatermark == 100, "view.covers-known-idle-even-when-background-protection-withholds-completion");
+        delayed.SetViewedSession(Endpoint, Revision, null);
+        Apply(delayed, Observation() with { Completion = new("succeeded", 100), BackgroundWorking = Fact(false, 1) }, 1, true, "view.late-child-publishes-old-main-completion");
+        Check(!State(delayed).IsUnread, "view.child-completing-after-user-leaves-cannot-rearm-already-viewed-main-turn");
+        Apply(delayed, Observation() with { Completion = new("succeeded", 200), ObservedIdleWatermark = 200 }, 1, true, "view.genuinely-new-unviewed-turn");
+        Check(State(delayed).IsUnread && State(delayed).ViewedWatermark == 100, "view.new-unviewed-main-completion-still-unread");
     }
 
     private static void BindingSnapshotsAndVersions()
