@@ -99,7 +99,8 @@ internal static class TabStatusTests
         slot.Show(OpenCodeTabStatusGlyph.Failed);
         Outcome(slot, "\uF13D", "SystemFillColorCriticalBrush");
         slot.Show(OpenCodeTabStatusGlyph.Interrupted);
-        Outcome(slot, "\uE738", "TextFillColorSecondaryBrush");
+        Check(slot.Children.Single() is FontIcon { Glyph: "\uE73B", FontSize: 10, Style.Key: "TextFillColorSecondaryBrush" }, "interrupted is a calm neutral 10px stop square without a ring");
+        RawTree(slot);
         slot.Show(OpenCodeTabStatusGlyph.Unread);
         Check(slot.Children.Single() is Ellipse { Width: 8, Height: 8, Style.Key: "OpenCodeAttentionDotStyle" }, "done-unread retains the 8px dot");
         RawTree(slot);
